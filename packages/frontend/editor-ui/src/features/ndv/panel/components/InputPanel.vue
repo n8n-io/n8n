@@ -35,7 +35,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -443,7 +443,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				>
 					{{ i18n.baseText('ndv.input') }}
 				</N8nText>
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
 					:options="inputModes"
@@ -505,6 +505,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
+						has-compact-action
 					>
 						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
@@ -524,6 +525,21 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<br />
 							</template>
 						</I18nT>
+						<template #actions>
+							<NodeExecuteButton
+								icon-only
+								hide-label
+								variant="subtle"
+								size="medium"
+								:node-name="nodeNameToExecute"
+								:aria-label="i18n.baseText('ndv.input.noOutputData.action')"
+								:tooltip="i18n.baseText('ndv.input.noOutputData.action')"
+								telemetry-source="inputs"
+								data-test-id="execute-previous-node-compact"
+								execution-mode="exclusive"
+								@execute="onNodeExecute"
+							/>
+						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
 						<template #icon>

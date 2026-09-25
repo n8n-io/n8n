@@ -28,6 +28,7 @@ const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({
 	useWorkflowPublicationService: true,
 	publicationReconcileIntervalSeconds: 5,
+	publicationOutboxLeaseSeconds: 120,
 });
 const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
@@ -59,6 +60,7 @@ beforeEach(() => {
 	Object.assign(config, {
 		useWorkflowPublicationService: true,
 		publicationReconcileIntervalSeconds: 5,
+		publicationOutboxLeaseSeconds: 120,
 	});
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
@@ -66,13 +68,14 @@ beforeEach(() => {
 	outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue([]);
 	outboxRepository.findTriggerStatusDriftedWorkflowIds.mockResolvedValue([]);
 	outboxRepository.findUnreportedPublishedWorkflowIds.mockResolvedValue([]);
-	outboxConsumer.drainPending.mockResolvedValue(0);
+	outboxConsumer.drainPending.mockResolvedValue();
 	setRegistered({});
 	activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
 	activeWorkflowTriggers.remove.mockResolvedValue(true);
 	workflowRepository.getActiveIds.mockResolvedValue([]);
 	workflowRepository.findOneBy.mockResolvedValue(null);
-	lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => await fn());
+	lifecycleLock.runExclusive.mockImplementation(async ({ fn }) => await fn());
+	lifecycleLock.isLocked.mockReturnValue(false);
 	triggerDeactivator.sweepGhostTriggers.mockResolvedValue(0);
 	service = new WorkflowPublicationReconciler(
 		logger,
@@ -121,6 +124,40 @@ describe('WorkflowPublicationReconciler', () => {
 
 			expect(triggerDeactivator.sweepGhostTriggers).toHaveBeenCalled();
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('enqueue reason per pass', () => {
+		beforeEach(() => {
+			triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([
+				{ workflowId: 'wf-1', nodeId: 'n1' },
+			]);
+			setRegistered({}); // n1 not registered → wf-1 is re-enqueued every pass
+		});
+
+		it("stamps 'startup' on the initial pass at boot", async () => {
+			service.init();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-1'], 'startup');
+		});
+
+		it("stamps 'reconcile' on an interval tick", async () => {
+			service.startReconciler();
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-1'], 'reconcile');
+		});
+
+		it("stamps 'leadership-takeover' on the takeover pass", async () => {
+			service.startReconciler();
+
+			await service.reconcileOnLeaderTakeover();
+
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(
+				['wf-1'],
+				'leadership-takeover',
+			);
 		});
 	});
 
@@ -207,9 +244,9 @@ describe('WorkflowPublicationReconciler', () => {
 			]);
 			setRegistered({ 'wf-1': ['n1'] }); // n2 is missing
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-1']);
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-1'], 'reconcile');
 			expect(outboxConsumer.startPolling).toHaveBeenCalled();
 			expect(outboxConsumer.drainPending).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -224,7 +261,7 @@ describe('WorkflowPublicationReconciler', () => {
 			]);
 			setRegistered({ 'wf-1': ['n1'] });
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(outboxRepository.enqueueByWorkflowIds).not.toHaveBeenCalled();
 			expect(outboxConsumer.drainPending).not.toHaveBeenCalled();
@@ -237,17 +274,17 @@ describe('WorkflowPublicationReconciler', () => {
 			]);
 			setRegistered({ 'wf-1': ['n1'], 'wf-2': [] }); // only wf-2 is missing a trigger
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-2']);
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-2'], 'reconcile');
 		});
 
 		it('re-enqueues a workflow whose published version diverged from the active version', async () => {
 			outboxRepository.findVersionSkewedWorkflowIds.mockResolvedValue(['wf-skew']);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-skew']);
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-skew'], 'reconcile');
 			expect(outboxConsumer.drainPending).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
@@ -258,9 +295,9 @@ describe('WorkflowPublicationReconciler', () => {
 		it('re-enqueues a workflow whose trigger-status rows lag the active version', async () => {
 			outboxRepository.findTriggerStatusDriftedWorkflowIds.mockResolvedValue(['wf-drift']);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-drift']);
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-drift'], 'reconcile');
 			expect(outboxConsumer.drainPending).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
@@ -271,9 +308,12 @@ describe('WorkflowPublicationReconciler', () => {
 		it('re-enqueues a published workflow that has no trigger-status rows', async () => {
 			outboxRepository.findUnreportedPublishedWorkflowIds.mockResolvedValue(['wf-unreported']);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(['wf-unreported']);
+			expect(outboxRepository.enqueueByWorkflowIds).toHaveBeenCalledWith(
+				['wf-unreported'],
+				'reconcile',
+			);
 			expect(outboxConsumer.drainPending).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
@@ -286,7 +326,7 @@ describe('WorkflowPublicationReconciler', () => {
 				new Error('DB error'),
 			);
 
-			await expect(service.reconcile()).resolves.toBeUndefined();
+			await expect(service.reconcile('reconcile')).resolves.toBeUndefined();
 			expect(errorReporter.error).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
@@ -297,7 +337,7 @@ describe('WorkflowPublicationReconciler', () => {
 		it('runs the ghost sweep and none of the leader detections when not leader', async () => {
 			Object.assign(instanceSettings, { isLeader: false });
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(triggerDeactivator.sweepGhostTriggers).toHaveBeenCalledTimes(1);
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
@@ -312,7 +352,7 @@ describe('WorkflowPublicationReconciler', () => {
 		});
 
 		it('does not run the ghost sweep on the leader', async () => {
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
@@ -333,9 +373,13 @@ describe('WorkflowPublicationReconciler', () => {
 		it('tears down ghost triggers under the workflow lock and reports the surplus', async () => {
 			setGhost('wf-ghost');
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-ghost', expect.any(Function));
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+				workflowId: 'wf-ghost',
+				fn: expect.any(Function),
+				signal: expect.any(AbortSignal),
+			});
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-ghost');
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
@@ -347,12 +391,30 @@ describe('WorkflowPublicationReconciler', () => {
 			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1']);
 			workflowRepository.getActiveIds.mockResolvedValue(['wf-1']);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',
 				expect.objectContaining({ surplusCount: 0 }),
+			);
+		});
+
+		it('skips a ghost whose workflow lock is held rather than queueing on it', async () => {
+			// A record (or an abandoned one) holds the lock: queueing would wedge this
+			// pass, and every later tick, behind it. The next tick retries.
+			setGhost('wf-ghost');
+			lifecycleLock.isLocked.mockReturnValue(true);
+
+			await service.reconcile('reconcile');
+
+			expect(lifecycleLock.runExclusive).not.toHaveBeenCalled();
+			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
+			// The pass carried on into the later detections.
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.objectContaining({ result: 'success', surplusCount: 0 }),
 			);
 		});
 
@@ -362,7 +424,7 @@ describe('WorkflowPublicationReconciler', () => {
 				mock<WorkflowPublicationOutbox>({ workflowId: 'wf-ghost' }),
 			);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		});
@@ -376,7 +438,7 @@ describe('WorkflowPublicationReconciler', () => {
 				return true;
 			});
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-good');
 			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
@@ -400,7 +462,7 @@ describe('WorkflowPublicationReconciler', () => {
 				activeVersionId: 'v-2',
 			} as WorkflowEntity);
 
-			await service.reconcile();
+			await service.reconcile('reconcile');
 
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
 		});

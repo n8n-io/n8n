@@ -81,6 +81,26 @@ export default class PackageExport extends BaseCommand {
 				'What to do when a dependency workflow (sub-workflow) is not explicitly included in the package target',
 			aliases: ['missing-workflow-dependency-policy'],
 		}),
+		workflowVersionPolicy: Flags.string({
+			options: ['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'],
+			default: 'latest',
+			description: 'Which version of each workflow travels in the package',
+			aliases: ['workflow-version-policy'],
+		}),
+		// No default: the key is only sent when set, so older servers that reject unknown fields keep working.
+		credentialExportPolicy: Flags.string({
+			options: ['expression-values-only', 'no-values'],
+			description:
+				'Whether expression values from credential data are bundled into the package; literal values never travel (default on the instance: expression-values-only)',
+			aliases: ['credential-export-policy'],
+		}),
+		includeArchivedWorkflows: Flags.string({
+			description:
+				'Whether folder and project exports include their archived workflows (workflows given by id always export)',
+			options: ['true', 'false'],
+			default: 'false',
+			aliases: ['include-archived-workflows'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -91,6 +111,9 @@ export default class PackageExport extends BaseCommand {
 		const includeVariableValues = flags.includeVariableValues !== 'false';
 		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
+		const workflowVersionPolicy = flags.workflowVersionPolicy;
+		const credentialExportPolicy = flags.credentialExportPolicy;
+		const includeArchivedWorkflows = flags.includeArchivedWorkflows === 'true';
 
 		// A package is either loose workflows/folders or whole projects, not both.
 		if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -106,13 +129,24 @@ export default class PackageExport extends BaseCommand {
 			try {
 				result = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, includeVariableValues, includeTags, missingWorkflowDependencyPolicy }
+						? {
+								projectIds,
+								includeVariableValues,
+								includeTags,
+								missingWorkflowDependencyPolicy,
+								workflowVersionPolicy,
+								credentialExportPolicy,
+								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
+							}
 						: {
 								workflowIds,
 								folderIds,
 								includeVariableValues,
 								includeTags,
 								missingWorkflowDependencyPolicy,
+								workflowVersionPolicy,
+								credentialExportPolicy,
+								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
 							},
 				);
 			} catch (error) {

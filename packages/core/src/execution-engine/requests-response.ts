@@ -268,7 +268,12 @@ export function handleRequest({
 		return { nodesToBeExecuted: [] };
 	}
 
-	// 3. add current node back to the bottom of the stack
+	// 3. under executionOrder v1 reverse the actions to run the requests in the order the root requested them to run
+	if (workflow.settings.executionOrder === 'v1') {
+		nodesToBeExecuted.reverse();
+	}
+
+	// 4. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
 		inputConnectionData: result.connectionData,
 		parentOutputIndex: 0,

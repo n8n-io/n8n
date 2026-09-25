@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import {
 	N8nButton,
-	N8nDropdownMenu,
 	N8nIcon,
 	N8nLoading,
 	N8nText,
+	N8nTooltip,
 	updatedIconSet,
-	type DropdownMenuItemProps,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -14,14 +13,19 @@ import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
 import type { AgentChannelConnectAction } from '../channels/types';
 
-type ChannelAction = 'edit' | 'disconnect';
-
 interface Props {
 	integration: ChatIntegrationDescriptor;
 	configured: boolean;
 	connected: boolean;
 	connectAction: AgentChannelConnectAction;
 	loading?: boolean;
+	/**
+	 * Set up and meant to be running, but the last startup attempt failed. Never
+	 * true together with `connected`.
+	 */
+	notRunning?: boolean;
+	/** Why it isn't running, shown on hover. */
+	runtimeError?: string;
 }
 
 const props = defineProps<Props>();
@@ -29,38 +33,29 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	setup: [channelType: string];
 	edit: [channelType: string];
-	disconnect: [channelType: string];
 }>();
 
 const i18n = useI18n();
-
-const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
-	const actions: Array<DropdownMenuItemProps<ChannelAction>> = [
-		{
-			id: 'edit',
-			label: i18n.baseText('generic.edit'),
-		},
-		{
-			id: 'disconnect',
-			label: i18n.baseText('generic.disconnect'),
-		},
-	];
-
-	return actions;
-});
 
 function isIconName(icon: string): icon is IconName {
 	return icon in updatedIconSet;
 }
 
-function handleConfiguredAction(action: ChannelAction) {
-	if (action === 'edit') {
-		emit('edit', props.integration.type);
-		return;
-	}
+const statusLabel = computed(() => {
+	if (props.notRunning) return i18n.baseText('agents.channels.modal.notRunning');
+	if (props.connected) return i18n.baseText('agents.channels.modal.connected');
+	return i18n.baseText('agents.channels.modal.configured');
+});
 
-	emit('disconnect', props.integration.type);
-}
+/**
+ * The tooltip is the only place the startup error is shown, so it must not be
+ * empty when there is one to explain — fall back to generic copy if the server
+ * reported a failure without a message.
+ */
+const statusTooltip = computed(() => {
+	if (!props.notRunning) return '';
+	return props.runtimeError || i18n.baseText('agents.channels.modal.notRunning.tooltip');
+});
 </script>
 
 <template>
@@ -92,33 +87,32 @@ function handleConfiguredAction(action: ChannelAction) {
 			</div>
 
 			<div :class="$style.channelActions">
-				<N8nDropdownMenu
+				<N8nTooltip
 					v-if="configured"
-					:items="configuredActions"
-					placement="bottom-end"
-					:modal="false"
-					@select="handleConfiguredAction"
+					:content="statusTooltip"
+					:disabled="!notRunning"
+					placement="top"
 				>
-					<template #trigger>
-						<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-							<div
-								v-if="connected"
-								:class="$style.connectedDotContainer"
-								data-testid="agent-channel-connected-indicator"
-							>
-								<span :class="[$style.connectedDot, $style.ping]" />
-								<span :class="$style.connectedDot" />
-							</div>
-							{{
-								i18n.baseText(
-									connected
-										? 'agents.channels.modal.connected'
-										: 'agents.channels.modal.configured',
-								)
-							}}
-						</N8nButton>
-					</template>
-				</N8nDropdownMenu>
+					<button
+						type="button"
+						:class="$style.connectedTrigger"
+						@click="emit('edit', integration.type)"
+					>
+						<span
+							v-if="!notRunning"
+							:class="$style.connectedIcon"
+							data-testid="agent-channel-connected-indicator"
+						>
+							<N8nIcon icon="check" :size="14" aria-hidden="true" />
+						</span>
+						<span
+							v-else-if="notRunning"
+							:class="$style.notRunningIndicator"
+							data-testid="agent-channel-not-running-indicator"
+						/>
+						{{ statusLabel }}
+					</button>
+				</N8nTooltip>
 				<N8nButton
 					v-else
 					variant="subtle"
@@ -134,7 +128,7 @@ function handleConfiguredAction(action: ChannelAction) {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
+@use '@n8n/design-system/css/mixins/focus';
 
 .channelItem {
 	display: flex;
@@ -145,8 +139,8 @@ function handleConfiguredAction(action: ChannelAction) {
 
 .iconWrapper {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -161,8 +155,8 @@ function handleConfiguredAction(action: ChannelAction) {
 }
 
 .buttonSkeleton {
-	height: 32px;
-	width: 80px;
+	height: var(--spacing--xl);
+	width: calc(var(--spacing--xl) * 2.5);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -198,24 +192,35 @@ function handleConfiguredAction(action: ChannelAction) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: 0;
+	border-radius: var(--radius--2xs);
+	background: none;
+	color: var(--color--text--tint-1);
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	white-space: nowrap;
+	cursor: pointer;
 
-.connectedDotContainer {
-	display: grid;
-	place-content: center;
-
-	> * {
-		grid-area: 1 / 1;
+	&:hover {
+		background: var(--color--background--light-1);
 	}
+
+	@include focus.focus-visible-ring;
 }
 
-.connectedDot {
-	width: 6px;
-	height: 6px;
-	border-radius: var(--radius--full);
-	background: var(--color--green-500);
+.connectedIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--color--success);
 }
-.ping {
-	@include motion.ping;
+
+.notRunningIndicator {
+	flex-shrink: 0;
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	background: var(--color--danger);
 }
 </style>

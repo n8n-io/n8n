@@ -26,7 +26,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 				.flat()
 				.find((c) => c.id === id),
 		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
-		fetchAllCredentialsForWorkflow: vi.fn().mockResolvedValue(undefined),
+		fetchUsableCredentials: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 

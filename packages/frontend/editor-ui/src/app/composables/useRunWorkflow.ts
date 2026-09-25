@@ -22,6 +22,7 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
+import { until } from '@vueuse/core';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
 import { useToast } from '@n8n/composables/useToast';
@@ -56,7 +57,6 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -64,6 +64,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useEditorContext } from './useEditorContext';
+import { useRunWorkflowApi } from './useRunWorkflowApi';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
@@ -88,8 +89,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
-	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowRunner = useRunWorkflowApi();
 	const workflowDocumentStore =
 		useRunWorkflowOpts.workflowDocumentStore ?? injectWorkflowDocumentStore();
 	const workflowExecutionState = computed(() =>
@@ -126,35 +127,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (!pushConnectionStore.isConnected) {
-			// Do not start if the connection to server is not active
-			// because then it can not receive the data as it executes.
-			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
-		}
-
-		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowExecutionState.value.setActiveExecutionId(null);
-
-		let response: IExecutionPushResponse;
-		try {
-			response = await workflowsStore.runWorkflow(runData);
-		} catch (error) {
-			workflowExecutionState.value.setActiveExecutionId(undefined);
-			throw error;
-		}
-
-		const workflowExecutionIdIsNew =
-			workflowExecutionState.value.previousExecutionId !== response.executionId;
-		const workflowExecutionIdIsPending = workflowExecutionState.value.activeExecutionId === null;
-		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowExecutionState.value.setActiveExecutionId(response.executionId);
-		}
-
-		if (response.waitingForWebhook === true) {
-			workflowExecutionState.value.setExecutionWaitingForWebhook(true);
-		}
-
-		return response;
+		return await workflowRunner.runWorkflowApi(runData, workflowDocumentStore.value.documentId);
 	}
 
 	async function runWorkflow(options: {
@@ -561,8 +534,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowExecutionState.value.activeExecutionId;
+		let executionId = workflowExecutionState.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
+
+		// null means the run started but the backend id is not yet known.
+		// Wait for it instead of dropping the click.
+		if (executionId === null) {
+			executionId = await until(() => workflowExecutionState.value.activeExecutionId).toMatch(
+				(id) => id !== null,
+				{ timeout: 10_000 },
+			);
+		}
 
 		if (!executionId) {
 			return;

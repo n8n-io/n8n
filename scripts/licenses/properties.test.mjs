@@ -27,6 +27,9 @@ import { isFirstParty } from './render-licenses-md.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGES_DIR = path.resolve(HERE, '..', '..', 'packages');
+// Frozen fixture config, not the shipped one: these are rule assertions over the
+// component classes below, so they must not move when a dependency does.
+const FIXTURE_OVERRIDES = path.join(HERE, '__fixtures__', 'license-overrides.json');
 const ALLOW = new Set([FIRST_PARTY_LICENSE_REF]);
 const NPM = ['pkg:npm/'];
 
@@ -45,7 +48,7 @@ const cfg = () => ({
 
 before(async () => {
 	spdxIds = await loadSpdxIds();
-	({ overrides, byName, elections } = await loadLicenseConfig());
+	({ overrides, byName, elections } = await loadLicenseConfig(FIXTURE_OVERRIDES));
 	firstPartyOsi = await buildFirstPartyOsiMap(PACKAGES_DIR, spdxIds);
 });
 
@@ -125,7 +128,7 @@ const RESOLVABLE = [
 		licenses: [{ expression: 'SEE LICENSE IN LICENSE.md' }],
 	}, // first-party ref
 	{ group: '@n8n', name: 'tournament', version: '9.9.9', purl: 'pkg:npm/%40n8n/tournament@9.9.9' }, // first-party OSI (Apache-2.0)
-	{ name: 'binascii', version: '0.0.2', purl: 'pkg:npm/binascii@0.0.2' }, // purl-pinned override
+	{ name: 'binascii', version: '0.0.2', purl: 'pkg:npm/binascii@0.0.2' }, // purl-pinned override (fixture config)
 	{
 		name: 'ssh2',
 		version: '9.9.9',
@@ -238,7 +241,7 @@ describe('isPhantomNpm — properties', () => {
 		}
 	});
 
-	it('CANONICAL-PATH-WITH-VERSION-NEVER-PHANTOM', () => {
+	it('CANONICAL-PATH-WITH-VERSION-NEVER-PHANTOM (for a well-formed npm name)', () => {
 		const node = (group, name) => ({
 			group,
 			name,
@@ -253,6 +256,27 @@ describe('isPhantomNpm — properties', () => {
 		});
 		assert.equal(isPhantomNpm(node('', 'ssh2')), false);
 		assert.equal(isPhantomNpm(node('@n8n', 'db')), false);
+	});
+
+	it('SUBPATH-NAME-ALWAYS-PHANTOM: a slash past the scope is never a real npm name', () => {
+		const atCanonicalPath = (group, name) => ({
+			group,
+			name,
+			version: '1.0.0',
+			purl: `pkg:npm/${group ? group + '/' : ''}${name}@1.0.0`,
+			properties: [
+				{
+					name: 'syft:location:0:path',
+					value: `/x/node_modules/${group ? group + '/' : ''}${name}/package.json`,
+				},
+			],
+		});
+		// Canonical path AND a resolved version — every other signal says "real".
+		assert.equal(isPhantomNpm(atCanonicalPath('@google', 'genai/node')), true);
+		assert.equal(isPhantomNpm(atCanonicalPath('@linear', 'sdk/webhooks')), true);
+		assert.equal(isPhantomNpm(atCanonicalPath('', 'foo/bar')), true);
+		// The scope slash alone must not trip it.
+		assert.equal(isPhantomNpm(atCanonicalPath('@google', 'genai')), false);
 	});
 
 	it('NON-NPM-NEVER-PHANTOM: OS and other ecosystems are out of scope', () => {

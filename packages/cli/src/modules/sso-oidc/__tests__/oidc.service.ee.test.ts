@@ -5,7 +5,7 @@ import type { HttpTransport, SsrfProtectionService } from '@n8n/backend-network'
 import { OutboundHttp } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -63,6 +63,12 @@ describe('OidcService', () => {
 		loadOnStartup: true,
 	};
 
+	const setOidcState = (loginEnabled: boolean, isActive: boolean) => {
+		vi.spyOn(ssoHelpers, 'isOidcCurrentAuthenticationMethod').mockReturnValue(isActive);
+		const svc = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+		svc.oidcConfig = { ...svc.oidcConfig, loginEnabled };
+	};
+
 	beforeEach(async () => {
 		vi.resetAllMocks();
 		Container.reset();
@@ -109,6 +115,7 @@ describe('OidcService', () => {
 		);
 
 		await oidcService.init();
+		setOidcState(true, true);
 	});
 
 	describe('reload', () => {
@@ -384,6 +391,37 @@ describe('OidcService', () => {
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('state redirect target', () => {
+		beforeEach(() => {
+			vi.mocked(jwtService.sign).mockImplementation((payload) => JSON.stringify(payload));
+			vi.mocked(jwtService.verify).mockImplementation((token) => JSON.parse(token));
+		});
+
+		it('round-trips the in-app destination through the signed state', () => {
+			const { signed } = oidcService.generateState(false, '/workflow/abc?tab=1');
+
+			expect(oidcService.verifyState(signed)).toEqual({
+				state: expect.stringMatching(/^n8n_state:/),
+				redirectUrl: '/workflow/abc?tab=1',
+			});
+		});
+
+		it('omits the destination for the home page', () => {
+			const { signed } = oidcService.generateState(false, '/');
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
+		});
+
+		it('ignores a destination that is not a string', () => {
+			const signed = JSON.stringify({
+				state: 'n8n_state:5d3a3f6e-1d2b-4c8a-9e1f-0a1b2c3d4e5f',
+				redirectUrl: 42,
+			});
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
 		});
 	});
 
@@ -739,6 +777,38 @@ describe('OidcService', () => {
 		});
 	});
 
+	describe('login flow requires OIDC to be the active, enabled method', () => {
+		const login = async () =>
+			await oidcService.loginUser(
+				new URL('https://example.com/callback'),
+				oidcService.generateState().signed,
+				oidcService.generateNonce().signed,
+			);
+
+		it('generateLoginUrl is rejected when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('generateLoginUrl is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(oidcService.generateLoginUrl()).rejects.toThrow(ForbiddenError);
+		});
+
+		it('loginUser is rejected and issues no session when login is disabled', async () => {
+			setOidcState(false, true);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
+			expect(authIdentityRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('loginUser is rejected when another method is active', async () => {
+			setOidcState(true, false);
+			await expect(login()).rejects.toThrow(ForbiddenError);
+			expect(client.authorizationCodeGrant).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('applySsoProvisioning', () => {
 		const claims = { sub: 'user-123', n8n_instance_role: 'global:member' };
 		const userInfo = { email: 'test@example.com', email_verified: true };
@@ -819,7 +889,7 @@ describe('OidcService', () => {
 
 			// The discovery / token / userinfo endpoints are admin-configured and may
 			// legitimately point at an internal IdP, so SSRF protection is disabled.
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('always calls discovery with the factory customFetch (no proxy/no-proxy branch)', async () => {
@@ -868,7 +938,11 @@ describe('OidcService', () => {
 
 		beforeEach(() => {
 			idpServer.clear();
-			const realOutboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), logger);
+			const realOutboundHttp = new OutboundHttp(
+				mock<SsrfProtectionService>(),
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				logger,
+			);
 			realOidcService = new OidcService(
 				settingsRepository,
 				authIdentityRepository,

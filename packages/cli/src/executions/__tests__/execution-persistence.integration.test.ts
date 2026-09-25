@@ -179,6 +179,40 @@ describe('ExecutionPersistence', () => {
 		);
 	});
 
+	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
+	// startup recovery never learned about it and the row stayed `new` forever.
+	describe('findMultipleExecutionsWithUnreadable', () => {
+		it('returns the ids of enqueued executions whose data row is gone', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const create = async () =>
+				await executionPersistence.create({
+					workflowId: workflow.id,
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					mode: 'webhook',
+					status: 'new',
+					finished: false,
+				});
+
+			const healthyId = await create();
+			const orphanedId = await create();
+			await executionDataRepository.delete({ executionId: orphanedId });
+
+			const { executions, unreadableIds } =
+				await executionPersistence.findMultipleExecutionsWithUnreadable({
+					select: ['id', 'mode'],
+					where: { status: 'new' },
+					order: { id: 'ASC' },
+				});
+
+			expect(executions.map((e) => e.id)).toEqual([healthyId]);
+			expect(unreadableIds).toEqual([orphanedId]);
+		});
+	});
+
 	describe('findSingleExecution', () => {
 		it('returns the persisted bundle byte size and the workflow version id', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);

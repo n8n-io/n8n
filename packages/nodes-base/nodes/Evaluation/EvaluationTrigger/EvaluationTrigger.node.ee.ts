@@ -235,8 +235,9 @@ export class EvaluationTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
-			const effectiveTotal = Math.min(count, maxRows);
-			const rowsLeft = Math.max(0, effectiveTotal - 1);
+			// `count` is the number of rows still matching (current row included), so the
+			// row limit has to be measured against the rows already consumed.
+			const rowsLeft = Math.max(0, Math.min(count - 1, maxRows - currentIndex - 1));
 
 			const currentRow = {
 				json: {

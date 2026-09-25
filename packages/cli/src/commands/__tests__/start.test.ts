@@ -1,10 +1,13 @@
 // Import zod alias support before importing Start command
 import '@/zod-alias-support';
 
+import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import http from 'node:http';
+import https from 'node:https';
 
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
@@ -18,25 +21,31 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService } from '@/services/jwt.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
+const roleCacheService = mockInstance(RoleCacheService);
+roleCacheService.refreshCache.mockResolvedValue(undefined);
+
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -64,7 +73,9 @@ mockInstance(NodeTypes);
 const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
@@ -102,6 +113,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
 		Container.set(InstanceSettings, instanceSettings);
@@ -116,7 +128,9 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MultiMainSetup, multiMainSetup);
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
+		Container.set(OtelService, mockInstance(OtelService));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
+		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
 			WorkflowFailureNotificationEventRelay,
 			mockInstance(WorkflowFailureNotificationEventRelay),
@@ -153,6 +167,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
 		};
@@ -188,6 +203,11 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
+			// The role cache is rebuilt after the role sync committed, never before it.
+			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
+			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
+				authRolesService.init.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
@@ -196,6 +216,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -208,6 +229,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
 			};
@@ -223,6 +245,7 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).not.toHaveBeenCalled();
+			expect(roleCacheService.refreshCache).not.toHaveBeenCalled();
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader (advisory lock serializes)', async () => {
@@ -231,6 +254,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -243,6 +267,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
 			};
@@ -277,6 +302,7 @@ describe('Start - AuthRolesService initialization', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
 			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
 			sentry: {
@@ -289,6 +315,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
 		};
@@ -362,4 +389,56 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(license.reload).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('init - env-proxy global agents', () => {
+		afterEach(() => {
+			uninstallGlobalProxyAgent();
+			vi.unstubAllEnvs();
+		});
+
+		it('should install env-proxy global agents before any outbound request', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should install env-proxy global agents in main-only mode, as start runs the main server', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.outboundProxy = { mode: 'main-only' };
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should keep plain global agents when no proxy env var is set', async () => {
+			setupInstanceSettings('main', false, false);
+			for (const envVar of [
+				'HTTP_PROXY',
+				'http_proxy',
+				'HTTPS_PROXY',
+				'https_proxy',
+				'ALL_PROXY',
+				'all_proxy',
+			]) {
+				vi.stubEnv(envVar, undefined);
+			}
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('Agent');
+			expect(https.globalAgent.constructor.name).toBe('Agent');
+		});
+	});
+});
+
+test('start needs the expression engine', () => {
+	expect(new Start().needsExpressionEngine).toBe(true);
 });

@@ -9,6 +9,32 @@ import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
+export interface AgentContinueLoadedEvent {
+	sessionId: string;
+	count: number;
+}
+
+export interface AgentFixWithAssistantFailure {
+	toolCallId: string;
+	toolName: string;
+	toolDisplayName: string;
+	error: string;
+	startedAt?: number;
+	endedAt?: number;
+}
+
+export interface AgentFixWithAssistantEvent {
+	executionId: string;
+	failures: AgentFixWithAssistantFailure[];
+}
+
+/** A preview-chat message that asks the agent to change its own setup. */
+export interface AgentEditRequestEvent {
+	changeRequest: string;
+}
+
+export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentEditRequestEvent;
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.

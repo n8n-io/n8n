@@ -89,7 +89,9 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt({ clientId: 'test-client-id' }),
+				// These routes only serve end-user credentials.
+				isResolvable: true,
+				data: cipher.encryptWithInstanceKey({ clientId: 'test-client-id' }),
 			}),
 		);
 		credentialId = credential.id;
@@ -99,7 +101,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
-			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
+			config: cipher.encryptWithInstanceKey(JSON.stringify({ apiKey: 'test-api-key' })),
 		});
 		resolverId = resolver.id;
 
@@ -207,7 +209,9 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt({ clientId: 'test-client-id' }),
+				// These routes only serve end-user credentials.
+				isResolvable: true,
+				data: cipher.encryptWithInstanceKey({ clientId: 'test-client-id' }),
 			}),
 		);
 		credentialId = credential.id;
@@ -217,7 +221,7 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
-			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
+			config: cipher.encryptWithInstanceKey(JSON.stringify({ apiKey: 'test-api-key' })),
 		});
 		resolverId = resolver.id;
 

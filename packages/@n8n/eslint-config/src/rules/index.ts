@@ -5,10 +5,9 @@ import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause.j
 import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
-import { NoPlainErrorsRule } from './no-plain-errors.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
-import { NoMisplacedTypeormImportDisableRule } from './no-misplaced-typeorm-import-disable.js';
+import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
@@ -16,7 +15,6 @@ import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-mo
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 import { NoArgumentSpreadRule } from './no-argument-spread.js';
 import { NoInternalPackageImportRule } from './no-internal-package-import.js';
-import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
 import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
 import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js';
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
@@ -24,11 +22,17 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
-import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
+import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
+import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
+import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
+import { NoRawEnumRule } from './no-raw-enum.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -38,17 +42,15 @@ export const rules = {
 	'no-useless-catch-throw': NoUselessCatchThrowRule,
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
-	'no-plain-errors': NoPlainErrorsRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
-	'no-misplaced-typeorm-import-disable': NoMisplacedTypeormImportDisableRule,
+	'no-guardrail-disable': NoGuardrailDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
 	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
 	'no-argument-spread': NoArgumentSpreadRule,
 	'no-internal-package-import': NoInternalPackageImportRule,
-	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
 	'no-type-only-import-in-di': NoTypeOnlyImportInDiRule,
 	'no-error-instance-in-to-throw': NoErrorInstanceInToThrowRule,
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
@@ -56,9 +58,15 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
-	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
+	'require-escaped-query-values': RequireEscapedQueryValuesRule,
+	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
+	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
+	'no-raw-enum': NoRawEnumRule,
 } satisfies Record<string, AnyRuleModule>;

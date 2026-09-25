@@ -1,10 +1,16 @@
-import { AgentIntegrationConfig, type RichCardComponentType } from '@n8n/api-types';
+import {
+	AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
+	type RichCardComponentType,
+} from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -12,24 +18,41 @@ import {
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-	IntegrationMessageContext,
-	IntegrationToolConnectionDescriptor,
+	IntegrationContextQueryParams,
+	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
 
-/** Per-connection context handed to AgentChatIntegration hooks. */
-export interface AgentChatIntegrationContext {
+/**
+ * Channel identity, without the decrypted credential. Enough for checks that
+ * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
+ */
+export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Per-connection context handed to AgentChatIntegration hooks. */
+export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
+	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
 	/** Whether this connection may receive events from the external platform. */
 	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
+}
+
+export interface AgentIntegrationRemovalContext {
+	agentId: string;
+	projectId: string;
+	credentialId: string;
+	user: User;
+	deleteExternalResource?: boolean;
 }
 
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
@@ -81,8 +104,35 @@ export function onceStatusHandle(
 	};
 }
 
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	slackThreadContext?: SlackThreadContext;
+	/** Allow-listed metadata from the current platform message. */
+	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
@@ -99,9 +149,12 @@ export type BridgeResumeExecutionContext = Pick<
 >;
 
 export interface BridgeMessageContextParams {
+	/** Capture durable input without showing processing status while it waits. */
+	startStatus?: boolean;
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
+	integration: AgentIntegrationConfig;
 	logger: Logger;
 	agentId: string;
 	statusRetry?: AbortController;
@@ -223,6 +276,14 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
+
+	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
 	 */
@@ -251,15 +312,21 @@ export abstract class AgentChatIntegration {
 	 * mains and either duplicate or get lost. Webhook-based platforms return
 	 * false so any main can answer inbound webhooks (which the load balancer
 	 * routes round-robin across all mains).
+	 *
+	 * `ingressEnabled` is passed because exclusivity can depend on it: an outbound
+	 * connection that receives nothing may well be safe on every main even when the
+	 * ingress one is not. Only the integration knows — it is the same input its
+	 * `createAdapter` uses to pick a transport — so the answer belongs here rather
+	 * than inferred by the caller.
 	 */
-	requiresLeader(): boolean {
+	requiresLeader(_options: { ingressEnabled: boolean } = { ingressEnabled: true }): boolean {
 		return false;
 	}
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
-	/** Validate platform-specific configuration before credentials or persistence are touched. */
+	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
 
 	/**
@@ -299,6 +366,19 @@ export abstract class AgentChatIntegration {
 	 */
 	onBeforeConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
+	/**
+	 * The deterministic part of {@link onBeforeConnect}: a check that reads only
+	 * our own state, so it always answers the same way and never depends on the
+	 * platform being reachable.
+	 *
+	 * Publishing runs this as a preflight, before it writes anything, so a
+	 * conflict a user has to resolve fails the publish outright instead of
+	 * leaving an agent published with a channel that never started. Anything
+	 * that calls the platform belongs in `onBeforeConnect` only — a platform
+	 * outage is transient, and must never block a publish.
+	 */
+	assertStartupPreconditions?(ctx: AgentChannelPreconditionContext): Promise<void>;
+
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
@@ -316,10 +396,21 @@ export abstract class AgentChatIntegration {
 	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
-	 * Prepare a thread created or selected by an outbound send. Platforms can
-	 * use this to receive follow-up messages in that thread.
+	 * Cleanup performed only when a user explicitly removes a persisted
+	 * integration. This is deliberately separate from runtime disconnect hooks.
 	 */
-	prepareSentThread?(thread: Thread<unknown, unknown>): Promise<void>;
+	onRemove?(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined>;
+
+	/**
+	 * Prepare a thread created or selected by an outbound send. Slack uses this
+	 * to subscribe the bot so follow-up messages reach the agent.
+	 */
+	prepareSentThread?(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void>;
 
 	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless
@@ -354,6 +445,25 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Thread id anchored at a message, for platforms where a top-level message
+	 * starts its own thread (e.g. Slack). Outbound sends and inbound channel
+	 * posts travel through a channel-level pseudo-thread (empty thread_ts);
+	 * replies arrive in the thread anchored at the message's own id, so
+	 * subscription and session context must attach there.
+	 *
+	 * Inbound callers pass `{ inbound: true }` and the message `raw` payload.
+	 * Slack uses that to leave conversation-scoped DMs and group DMs
+	 * (`slack:D123:`, `slack:G…:` with `channel_type: mpim`) un-rewritten so
+	 * Agent-view chat stays one session. Private-channel inbound still
+	 * re-anchors. Return undefined when the message is already in an anchored
+	 * thread, or when inbound re-anchoring should not apply.
+	 */
+	messageThreadId?(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined;
 
 	/**
 	 * Optional per-user authorisation check called on every inbound mention,
@@ -417,6 +527,7 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		logger: Logger;
 		agentId: string;
+		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 	}): Promise<BridgeResumeExecutionContext>;
 
 	/**
@@ -440,22 +551,17 @@ export abstract class AgentChatIntegration {
 }
 
 /** Per-platform context-query execution params. */
-export interface PlatformContextQueryParams {
+export interface PlatformContextQueryParams
+	extends Omit<IntegrationContextQueryParams, 'persistence'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	query: IntegrationContextQuery;
-	input: Record<string, unknown>;
 }
 
 /** Per-platform action-execution params. */
-export interface PlatformActionParams {
+export interface PlatformActionParams
+	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**

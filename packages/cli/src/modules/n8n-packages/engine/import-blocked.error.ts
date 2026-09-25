@@ -14,8 +14,10 @@ export function toImportBlockedError(
 		issues.some(
 			(issue) =>
 				issue.type === 'workflow-conflict' ||
+				issue.type === 'workflow-lineage-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
 				issue.type === 'workflow-folder-conflict' ||
+				issue.type === 'workflow-removal-conflict' ||
 				issue.type === 'project-conflict' ||
 				issue.type === 'folder-conflict' ||
 				issue.type === 'variable-conflict' ||

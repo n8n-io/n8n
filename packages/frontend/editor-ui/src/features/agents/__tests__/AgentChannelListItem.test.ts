@@ -14,13 +14,18 @@ const integration = {
 	credentialTypes: ['slackOAuth2Api'],
 };
 
-function mountItem(configured: boolean, connected: boolean) {
+function mountItem(
+	configured: boolean,
+	connected: boolean,
+	extra: { notRunning?: boolean; runtimeError?: string } = {},
+) {
 	return mount(AgentChannelListItem, {
 		props: {
 			integration,
 			configured,
 			connected,
 			connectAction: { label: 'generic.connect' },
+			...extra,
 		},
 		global: {
 			stubs: {
@@ -28,8 +33,12 @@ function mountItem(configured: boolean, connected: boolean) {
 				N8nDropdownMenu: {
 					template: '<div data-testid="channel-actions"><slot name="trigger" /></div>',
 				},
-				N8nIcon: { template: '<i />' },
+				N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
 				N8nText: { template: '<span><slot /></span>' },
+				N8nTooltip: {
+					props: ['content', 'disabled'],
+					template: '<div :data-tooltip="content" :data-tooltip-disabled="disabled"><slot /></div>',
+				},
 			},
 		},
 	});
@@ -45,8 +54,52 @@ describe('AgentChannelListItem', () => {
 
 		expect(wrapper.text()).toContain(label);
 		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(
-			connected,
+			configured,
 		);
+		if (configured) {
+			expect(wrapper.find('[data-icon="check"]').exists()).toBe(true);
+		}
+	});
+
+	describe('a channel that failed to start', () => {
+		it('reads as not running rather than configured', () => {
+			const wrapper = mountItem(true, false, { notRunning: true });
+
+			expect(wrapper.text()).toContain('agents.channels.modal.notRunning');
+			expect(wrapper.text()).not.toContain('agents.channels.modal.configured');
+			expect(wrapper.find('[data-testid="agent-channel-not-running-indicator"]').exists()).toBe(
+				true,
+			);
+			expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(
+				false,
+			);
+		});
+
+		it('explains why on hover', () => {
+			const wrapper = mountItem(true, false, {
+				notRunning: true,
+				runtimeError: 'This Telegram credential is already connected to agent "Support"',
+			});
+
+			expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
+				'This Telegram credential is already connected to agent "Support"',
+			);
+			expect(wrapper.get('[data-tooltip]').attributes('data-tooltip-disabled')).toBe('false');
+		});
+
+		it('still says something when the failure came with no message', () => {
+			const wrapper = mountItem(true, false, { notRunning: true });
+
+			expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
+				'agents.channels.modal.notRunning.tooltip',
+			);
+		});
+
+		it('leaves the tooltip off a healthy channel', () => {
+			const wrapper = mountItem(true, true);
+
+			expect(wrapper.get('[data-tooltip]').attributes('data-tooltip-disabled')).toBe('true');
+		});
 	});
 
 	it('renders registry-provided connect action metadata', () => {

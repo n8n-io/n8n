@@ -1,3 +1,4 @@
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
@@ -87,6 +88,30 @@ export class WorkflowLoopStorage {
 		});
 	}
 
+	async updateWorkItem(
+		threadId: string,
+		workItemId: string,
+		update: (record: WorkflowLoopWorkItemRecord) => WorkflowLoopWorkItemRecord | null,
+	): Promise<boolean> {
+		let updated = false;
+		const thread = await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record) return null;
+
+				const next = update(record);
+				if (!next) return null;
+
+				all[workItemId] = next;
+				updated = true;
+				return { metadata: { ...metadata, [METADATA_KEY]: all } };
+			},
+		});
+		return updated && thread !== null;
+	}
+
 	async getActiveWorkItem(threadId: string): Promise<WorkflowLoopWorkItemRecord | null> {
 		const all = await this.loadAll(threadId);
 		for (const record of Object.values(all)) {
@@ -95,6 +120,22 @@ export class WorkflowLoopStorage {
 			}
 		}
 		return null;
+	}
+
+	async updateBuildOutcome(
+		threadId: string,
+		workItemId: string,
+		update: (outcome: WorkflowBuildOutcome) => WorkflowBuildOutcome,
+	): Promise<void> {
+		const updated = await this.updateWorkItem(threadId, workItemId, (record) => {
+			if (!record.lastBuildOutcome) return null;
+			return { ...record, lastBuildOutcome: update(record.lastBuildOutcome) };
+		});
+		if (!updated) {
+			throw new OperationalError(
+				'Verification state is unavailable or could not be saved. Rebuild the workflow.',
+			);
+		}
 	}
 
 	async listWorkItems(threadId: string): Promise<WorkflowLoopWorkItemRecord[]> {
@@ -182,7 +223,7 @@ export class WorkflowLoopStorage {
 			update: ({ metadata = {} }) => {
 				const all = this.parse(metadata[METADATA_KEY]);
 				const record = all[workItemId];
-				if (!record || record.state.setupRoutingClaimId !== claimId) return null;
+				if (record?.state.setupRoutingClaimId !== claimId) return null;
 
 				all[workItemId] = {
 					state: clearSetupRoutingClaim(record.state),

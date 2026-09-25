@@ -3,16 +3,19 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
+	InstanceAiPromptConfiguration,
 } from '@n8n/api-types';
+import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 import type { EvalAttribution } from './harness/attribution';
-import type { CaseSeed } from './harness/schema';
+import type { CaseSeed, ConversationTurnSchema, EvalTestCaseInput } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -161,6 +164,7 @@ export interface EventOutcome {
 }
 
 export interface BuildTrace {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	finalText: string;
 	toolCalls: CapturedToolCall[];
 	agentActivities: AgentActivity[];
@@ -182,6 +186,13 @@ export interface ArtifactRef {
 	id: string;
 }
 
+/** Structured agent preview. Capture redacts it; persistence validates and caps it. */
+export interface AgentArtifact {
+	agentId?: string;
+	config: unknown;
+	skills: Record<string, AgentSkill>;
+}
+
 export interface ExecutionScenario {
 	name: string;
 	description: string;
@@ -195,22 +206,10 @@ export interface ExecutionScenario {
 	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
-export interface ConversationTurn {
-	role: 'user' | 'assistant';
-	text: string;
-	/** Hand the agent a seeded workflow with this turn (opening turn only), the way
-	 *  the editor does when a user opens the assistant with a workflow in front of
-	 *  them. `workflow` is the id as the seed declares it; the harness swaps in the
-	 *  per-run remapped id. See `ConversationTurnSchema`. */
-	attach?: { workflow: string };
-}
+export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
-export interface TestCaseCredential {
-	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
-	type: string;
-	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
-	name?: string;
-}
+/** Seeded credentials use the case schema. The push verifies that the suite retains each field. */
+export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[number];
 
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -229,6 +228,13 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional case override. Unset cases use the suite mode or control. */
+	buildMode?: 'progressive' | 'default';
+	promptVersion?: string;
+	/** Enable the user-run action for credential-free execution cases. */
+	allowUserExecution?: boolean;
+	/** Harness drives compaction, and reports the case not judged if it never ran. */
+	requiresMemoryCompaction?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -245,6 +251,11 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
+	/** Opts into the credential-setup BROWSER lane and picks what it talks to:
+	 *  a shipped fixture id (hermetic lookalike) or `local` (the REAL provider
+	 *  site in the developer's own Chrome). Omitted → no browser lane; absence
+	 *  never means real internet. */
+	credentialFixture?: string;
 	/** History restored before the live turn, in one slot so the modes can't
 	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
 	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
@@ -286,6 +297,26 @@ export interface ExecutionScenarioResult {
 	incomplete?: boolean;
 }
 
+/**
+ * A seeded workflow to run BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance, so a case can ask about "the last
+ * run" and the honest answer requires the agent to go and read it. Without this,
+ * execution history is unreachable as a premise: the harness only ever executes a
+ * workflow *after* a build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
+	workflow: string;
+	/**
+	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is
+	 * how a prior run is made to fail in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to find out how.
+	 */
+	hints?: string;
+}
+
 /** Verdict for one author-written build expectation. Scored as a unit in the
  *  pass rate alongside execution scenarios. */
 export interface BuildExpectationResult {
@@ -306,8 +337,10 @@ export interface WorkflowTestCaseResult {
 	workflowId?: string;
 	/** Agent the case's scenarios executed (agent-artifact cases). */
 	agentId?: string;
-	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	/** Rendered agent config + skills, used by the local HTML report. */
 	agentArtifactContext?: string;
+	/** Structured, redacted agent config and skills. Persistence validates and caps this value. */
+	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
@@ -344,6 +377,8 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** Main run plus any resumes — the join key for this turn's token usage. */
+	runIds?: string[];
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */
@@ -369,7 +404,10 @@ export type ToolInteraction =
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
-			skippedNodes: SetupWizardSkippedNode[];
+			/** Left unconfigured — nobody has filled these in yet. */
+			nodesStillNeedingSetup: SetupWizardSkippedNode[];
+			/** Actively dismissed by the user, which the assistant must not ask about again. */
+			skippedByUser?: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
 	| {
@@ -400,6 +438,7 @@ export interface PlanTask {
 export interface AskUserQuestion {
 	id: string;
 	question: string;
+	type?: 'single' | 'multi' | 'text';
 	options?: string[];
 }
 

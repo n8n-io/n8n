@@ -8,6 +8,7 @@ import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -116,6 +117,18 @@ describe('ParameterInputFull.vue', () => {
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
+	it('does not offer a model override when disabled', () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { queryByTestId } = renderComponent({ props: { disableFromAi: true } });
+
+		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+	});
+
 	it('should render parameter with override button in options', async () => {
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			codex: {
@@ -146,10 +159,30 @@ describe('ParameterInputFull.vue', () => {
 		const { queryByTestId, getByTestId } = renderComponent({
 			props: {
 				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
+				disableFromAi: true,
 			},
 		});
 		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
 		expect(queryByTestId('override-button')).not.toBeInTheDocument();
+	});
+
+	it('shows external validation issues in the parameter row', () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
+				disableFromAi: true,
+				externalIssues: ["The model can't set the URL. Enter a fixed URL."],
+			},
+		});
+
+		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 	});
 
 	it('should render an existing fromAI override for static options parameters', async () => {
@@ -217,5 +250,121 @@ describe('ParameterInputFull.vue', () => {
 		await nextTick();
 
 		expect(emitted().hover).toEqual([[true], [false]]);
+	});
+
+	// Guards the three capability reads in this component. Each test pairs a baseline
+	// with the flag set, so reverting a read back to the literal
+	// `isResourceLocator` list flips the flagged case and fails here.
+	describe('module-contributed capabilities', () => {
+		const contributedInput = { render: () => null };
+
+		const asAiToolNode = () => {
+			mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+				codex: { categories: ['AI'], subcategories: { AI: ['Tools'] } },
+			});
+		};
+
+		afterEach(() => {
+			parameterInputRegistry.clear();
+		});
+
+		describe('ownsFromAiOverride', () => {
+			it('offers the from-AI override to a contributed input that does not claim it', () => {
+				asAiToolNode();
+				parameterInputRegistry.register({ type: 'string', component: contributedInput });
+
+				const { getByTestId } = renderComponent();
+
+				expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
+			});
+
+			it('hides the shell override when the contributed input owns it', () => {
+				asAiToolNode();
+				parameterInputRegistry.register({
+					type: 'string',
+					component: contributedInput,
+					capabilities: { ownsFromAiOverride: true },
+				});
+
+				const { queryByTestId } = renderComponent();
+
+				expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('disableDrop', () => {
+			// `DraggableTarget` only reports `droppable` mid-drag, and that flag reaches
+			// the DOM as the `droppable` class on the parameter input.
+			const startMappingDrag = () => {
+				mockNdvState.isDraggableDragging = true;
+				mockNdvState.draggableType = 'mapping';
+				mockNdvState.draggable = {
+					isDragging: true,
+					type: 'mapping',
+					data: '',
+					dimensions: { width: 0, height: 0 },
+					activeTarget: null,
+					stickyPosition: null,
+				} as never;
+				mockNdvState.setDraggableTarget = vi.fn();
+			};
+
+			it('accepts a drop for a contributed input that does not disable it', () => {
+				startMappingDrag();
+				parameterInputRegistry.register({ type: 'string', component: contributedInput });
+
+				const { container } = renderComponent();
+
+				expect(container.querySelector('.droppable')).toBeInTheDocument();
+			});
+
+			it('refuses the drop when the contributed input disables it', () => {
+				startMappingDrag();
+				parameterInputRegistry.register({
+					type: 'string',
+					component: contributedInput,
+					capabilities: { disableDrop: true },
+				});
+
+				const { container } = renderComponent();
+
+				expect(container.querySelector('.droppable')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('ownsExpressionRendering', () => {
+			// A list-only parameter is where the two paths diverge: the flagged path
+			// derives the selector from the modes, the default path does not look at them.
+			const listOnlyParameter = createTestNodeProperties({
+				displayName: 'My Param',
+				name: 'myParam',
+				type: 'string',
+				modes: [{ displayName: 'From list', name: 'list', type: 'list' }],
+			});
+
+			it('keeps the expression selector for a contributed input that does not own expression rendering', () => {
+				parameterInputRegistry.register({ type: 'string', component: contributedInput });
+
+				const { getByTestId } = renderComponent({
+					props: { parameter: listOnlyParameter, displayOptions: true },
+				});
+
+				expect(getByTestId('radio-button-expression')).toBeInTheDocument();
+			});
+
+			it('drops the expression selector for a list-only parameter when the input owns expression rendering', () => {
+				parameterInputRegistry.register({
+					type: 'string',
+					component: contributedInput,
+					capabilities: { ownsExpressionRendering: true },
+				});
+
+				const { queryByTestId } = renderComponent({
+					props: { parameter: listOnlyParameter, displayOptions: true },
+				});
+
+				expect(queryByTestId('radio-button-expression')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

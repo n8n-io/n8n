@@ -15,11 +15,13 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import {
+	ensureNodeParameters,
 	sanitizeNodeCredentials,
 	toNodeGroupSummary,
 	toTagSummary,
 	workflowDetailsOutputSchema,
 } from './schemas';
+import { trackAndRethrowToolError } from './tool-error.utils';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
@@ -66,7 +68,7 @@ const toActiveVersionSummary = (workflow: FoundWorkflow) => {
 	if (!workflow.activeVersionId || !workflow.activeVersion) return null;
 	if (workflow.activeVersionId === workflow.versionId) return { sameAsDraft: true as const };
 
-	const publishedNodes = workflow.activeVersion.nodes ?? [];
+	const publishedNodes = ensureNodeParameters(workflow.activeVersion.nodes ?? []);
 	return {
 		sameAsDraft: false as const,
 		nodes: publishedNodes.map(sanitizeNodeCredentials),
@@ -153,13 +155,7 @@ export const createWorkflowDetailsTool = (
 					structuredContent: payload,
 				};
 			} catch (error) {
-				// Track failed execution
-				telemetryPayload.results = {
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				throw error;
+				trackAndRethrowToolError(telemetry, telemetryPayload, error);
 			}
 		},
 	};
@@ -186,7 +182,7 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true, includeTags: true },
+		{ includeActiveVersion: true, includeTags: true, includeParentFolder: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -195,7 +191,7 @@ export async function getWorkflowDetails(
 	const scopes = workflowWithScopes.scopes ?? [];
 	const canExecute = scopes.includes('workflow:execute');
 
-	const nodes = workflow.nodes ?? [];
+	const nodes = ensureNodeParameters(workflow.nodes ?? []);
 
 	const noticeFor = async ({ supported, unsupported }: ReturnType<typeof splitTriggers>) =>
 		await getTriggerDetails(
@@ -228,7 +224,9 @@ export async function getWorkflowDetails(
 	const publishedNodes = hasDivergedPublishedVersion ? workflow.activeVersion?.nodes : undefined;
 	let activeVersionTriggerNotice: string | undefined;
 	if (publishedNodes) {
-		const publishedTriggers = splitTriggers(publishedNodes);
+		// Normalized like the draft nodes, so a node differing only by a missing
+		// `parameters` key does not read as a trigger divergence.
+		const publishedTriggers = splitTriggers(ensureNodeParameters(publishedNodes));
 		if (JSON.stringify(publishedTriggers) !== JSON.stringify(draftTriggers)) {
 			const publishedNotice = await noticeFor(publishedTriggers);
 			if (publishedNotice !== triggerNotice) {

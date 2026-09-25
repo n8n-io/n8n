@@ -4,12 +4,14 @@ import {
 	emptyChildTrace,
 	settleChildTrace,
 	type PersistedChildTrace,
+	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry';
+import type { ToolRegistry, ToolRegistryEntry } from './tool-registry';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -168,11 +170,6 @@ function normaliseStreamError(error: unknown): string {
 const REDACTED_VALUE = '[REDACTED]';
 const CIRCULAR_VALUE = '[Circular]';
 
-function isSecretKey(key: string): boolean {
-	const probe = `${key}=value`;
-	return scrubSecretsInText(probe) !== probe;
-}
-
 function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
 	if (typeof value === 'string') return scrubSecretsInText(value);
 
@@ -191,7 +188,7 @@ function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>())
 
 	const sanitized: Record<string, unknown> = {};
 	for (const [key, item] of Object.entries(value)) {
-		sanitized[key] = isSecretKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
+		sanitized[key] = isSensitiveKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
 	}
 
 	seen.delete(value);
@@ -203,6 +200,61 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
+export interface ToolCallDetails {
+	toolName: string;
+	displayName?: string;
+	kind: ToolRegistryEntry['kind'];
+	input: unknown;
+	node?: {
+		type: string;
+		typeVersion?: number;
+		parameters?: Record<string, unknown>;
+	};
+	workflow?: {
+		id?: string;
+		name?: string;
+		triggerType?: string;
+	};
+}
+
+/** Build the sanitized, resolved tool configuration shown in preview approvals. */
+export function buildToolCallDetails(
+	registry: ToolRegistry,
+	toolName: string,
+	input: unknown,
+): ToolCallDetails {
+	const entry = registry.get(toolName);
+	const kind = entry?.kind ?? 'tool';
+	const details: ToolCallDetails = {
+		toolName,
+		kind,
+		input: sanitizeExecutionLogValue(input),
+	};
+
+	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
+
+	if (kind === 'node' && entry?.nodeType) {
+		details.node = {
+			type: entry.nodeType,
+			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
+			...(entry.nodeParameters !== undefined && {
+				parameters: sanitizeExecutionLogRecord(
+					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
+				),
+			}),
+		};
+	} else if (kind === 'workflow') {
+		details.workflow = {
+			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
+			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
+			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
+		};
+		if (entry?.workflowName) details.displayName = entry.workflowName;
+	}
+
+	return details;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
@@ -210,11 +262,12 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
-			kind: 'tool' | 'workflow' | 'node';
+			kind: ToolRegistryEntry['kind'];
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -238,7 +291,20 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
 	  }
-	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+	| {
+			type: 'suspension';
+			toolName: string;
+			toolCallId: string;
+			timestamp: number;
+			input?: unknown;
+			suspendPayload?: unknown;
+	  }
+	| {
+			type: 'hitl-response';
+			toolCallId: string;
+			response: unknown;
+			timestamp: number;
+	  };
 
 /**
  * Collects execution data from agent stream chunks.
@@ -262,8 +328,25 @@ export class ExecutionRecorder {
 	constructor(
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
+		startedAt: Date = new Date(),
 	) {
+		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
+		if (backgroundJobSignal) {
+			this.timeline.push({
+				type: 'background-task-signal',
+				timestamp: this.startTime,
+				signal: {
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
+						id,
+						title: scrubSecretsInText(title),
+						kind,
+						status,
+					})),
+				},
+			});
+		}
 	}
 
 	private textParts: string[] = [];
@@ -296,9 +379,21 @@ export class ExecutionRecorder {
 
 	private error: string | null = null;
 
-	private readonly startTime = Date.now();
+	private readonly startTime: number;
 
 	private childTraceChars = new Map<string, number>();
+
+	/** Record the human response that caused a suspended tool call to resume. */
+	recordHitlResponse(toolCallId: string, response: unknown): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		this.appendCompletedEvent({
+			type: 'hitl-response',
+			toolCallId,
+			response: sanitizeExecutionLogValue(response),
+			timestamp: Date.now(),
+		});
+	}
 
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
@@ -354,6 +449,7 @@ export class ExecutionRecorder {
 				}
 				entry.childTrace ??= emptyChildTrace();
 				applyForwardedChildChunk(entry.childTrace, inner);
+				this.scheduleTimelineSnapshot();
 				break;
 			}
 			case 'tool-result':
@@ -387,12 +483,18 @@ export class ExecutionRecorder {
 					toolName: chunk.toolName ?? '',
 					toolCallId: chunk.toolCallId ?? '',
 					timestamp: Date.now(),
+					...(chunk.input !== undefined && {
+						input: sanitizeExecutionLogValue(chunk.input),
+					}),
+					...(chunk.suspendPayload !== undefined && {
+						suspendPayload: sanitizeExecutionLogValue(chunk.suspendPayload),
+					}),
 				});
 				break;
 			case 'error': {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
-				this.error = normaliseStreamError(chunk.error);
+				this.error ??= normaliseStreamError(chunk.error);
 				break;
 			}
 		}
@@ -409,6 +511,8 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		clearTimeout(this.timelineSnapshotTimer);
+		this.timelineSnapshotTimer = undefined;
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
@@ -490,6 +594,8 @@ export class ExecutionRecorder {
 					timestamp: this.reasoningStartTime,
 					endTime: now,
 				});
+			} else {
+				this.emitTimelineSnapshot();
 			}
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();

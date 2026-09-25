@@ -159,6 +159,40 @@ describe('NodeResourceExplorerService', () => {
 		});
 	});
 
+	test('accepts the n8n Connect managed tag and passes a gateway-managed credential', async () => {
+		mockNodeDescription({ properties: [] as never });
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+			results: [{ name: 'gpt-5-mini', value: 'gpt-5-mini' }],
+		} as never);
+
+		const result = await service.exploreResources(user, {
+			...baseParams,
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			credentialType: 'openAiApi',
+			credentialId: '__AI_GATEWAY_MANAGED__',
+			methodName: 'searchModels',
+		});
+
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledWith(
+			'searchModels',
+			'',
+			expect.anything(),
+			{ name: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 2.3 },
+			expect.any(Object),
+			{
+				openAiApi: {
+					id: null,
+					name: 'Gateway credits',
+					__aiGatewayManaged: true,
+				},
+			},
+			undefined,
+			undefined,
+		);
+		expect(result.results).toEqual([{ name: 'gpt-5-mini', value: 'gpt-5-mini', url: undefined }]);
+	});
+
 	test('loadOptions path: calls getOptionsViaMethodName and maps description through', async () => {
 		mockCredentialOwned();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
@@ -693,6 +727,100 @@ describe('NodeResourceExplorerService', () => {
 
 			expect(result).toEqual([]);
 			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('validates options properties with loadOptionsMethod/listSearch', async () => {
+			mockCredentialOwned({
+				id: 'cred-google',
+				type: 'googlePalmApi',
+				name: 'Google Gemini',
+			});
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				properties: [
+					{
+						displayName: 'Model',
+						name: 'modelName',
+						type: 'options',
+						typeOptions: { loadOptionsMethod: 'listSearch' },
+						default: 'models/gemini-2.5-flash',
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			mockAvailableModels(['models/gemini-3.1-pro-preview', 'models/gemini-3.1-flash-lite']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				version: 1,
+				credentialType: 'googlePalmApi',
+				credentialId: 'cred-google',
+				parameters: { modelName: 'models/gemini-2.5-flash' },
+			});
+
+			expect(result).toEqual([
+				{
+					name: 'modelName',
+					displayName: 'Model',
+					currentValue: 'models/gemini-2.5-flash',
+				},
+			]);
+		});
+
+		test('validates options properties with declarative loadOptions.routing', async () => {
+			mockCredentialOwned({
+				id: 'cred-google',
+				type: 'googlePalmApi',
+				name: 'Google Gemini',
+			});
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				properties: [
+					{
+						displayName: 'Model',
+						name: 'modelName',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
+								routing: {
+									request: {
+										method: 'GET',
+										url: '/v1beta/models',
+									},
+								},
+							},
+						},
+						default: 'models/gemini-2.5-flash',
+						builderHint: { propertyHint: 'Default to gemini-3.1-pro-preview' },
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			dynamicNodeParametersService.getOptionsViaLoadOptionsByPath.mockResolvedValue([
+				{ name: 'models/gemini-3.1-pro-preview', value: 'models/gemini-3.1-pro-preview' },
+				{ name: 'models/gemini-3.1-flash-lite', value: 'models/gemini-3.1-flash-lite' },
+			] as never);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				version: 1,
+				credentialType: 'googlePalmApi',
+				credentialId: 'cred-google',
+				parameters: { modelName: 'models/gemini-2.5-flash' },
+			});
+
+			expect(result).toEqual([
+				{
+					name: 'modelName',
+					displayName: 'Model',
+					currentValue: 'models/gemini-2.5-flash',
+				},
+			]);
+			expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).toHaveBeenCalledWith(
+				'modelName',
+				expect.anything(),
+				{ name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1 },
+				{ modelName: 'models/gemini-2.5-flash' },
+				expect.anything(),
+			);
 		});
 	});
 });

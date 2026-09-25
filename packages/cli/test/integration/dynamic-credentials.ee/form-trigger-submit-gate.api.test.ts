@@ -6,7 +6,11 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, WebhookRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	WebhookRepository,
+	WorkflowPublishedVersionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
@@ -79,6 +83,10 @@ const setupPublishedForm = async () => {
 
 	const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
 	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 	await Container.get(WebhookRepository).insert({
 		workflowId: workflow.id,
 		webhookPath,
@@ -102,7 +110,14 @@ const mintAccessToken = async (userId: string, resourceUrl: string) => {
 		tokenEndpointAuthMethod: 'none',
 	});
 	const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		userId,
+		[],
+		pair.audience,
+	);
 	return pair.accessToken;
 };
 
@@ -129,7 +144,6 @@ const executionCountFor = async (workflowId: string) =>
 	await Container.get(ExecutionRepository).count({ where: { workflowId } });
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true';
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
 
 	// The webhook path is served by a real `WebhookServer` running the real Form
@@ -146,10 +160,6 @@ beforeAll(async () => {
 	const server = new WebhookServer();
 	await server.start();
 	agent = testAgent(server.app) as unknown as SuperAgentTest;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 beforeEach(async () => {

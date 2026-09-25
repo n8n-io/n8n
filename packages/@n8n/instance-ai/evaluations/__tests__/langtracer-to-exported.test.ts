@@ -85,6 +85,36 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect('description' in body).toBe(false);
 	});
 
+	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
+		const seedDataTables = [
+			{
+				id: 'seed-table-1',
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' as const }],
+				rows: [{ email: 'ada@example.com' }],
+			},
+		];
+		const body = diskCaseToLangTracerCreate(
+			diskCase({
+				executionScenarios: [
+					{
+						name: 'seeded',
+						description: 'd',
+						dataSetup: 's',
+						successCriteria: 'ok',
+						seedDataTables,
+					},
+					{ name: 'plain', description: 'd', dataSetup: 's', successCriteria: 'ok' },
+				],
+			}),
+			'c',
+			{ suiteId: 1, setKind: 'regression', synthetic: true },
+		);
+
+		expect(body.scenarios?.[0].seedDataTables).toEqual(seedDataTables);
+		expect('seedDataTables' in (body.scenarios?.[1] ?? {})).toBe(false);
+	});
+
 	it('preserves a scenario `requires` field when present', () => {
 		const body = diskCaseToLangTracerCreate(
 			diskCase({
@@ -107,6 +137,38 @@ describe('diskCaseToLangTracerCreate', () => {
 });
 
 describe('unsupportedPushReason', () => {
+	it.each([null, 'Production reports'])(
+		'refuses description %s until the case-write API preserves it',
+		(description) => {
+			const input = diskCase({ credentials: [{ type: 'httpHeaderAuth', description }] });
+			expect(unsupportedPushReason(input)).toContain('description');
+			const body = diskCaseToLangTracerCreate(input, 'description-case', {
+				suiteId: 8,
+				setKind: 'regression',
+				synthetic: true,
+			});
+			expect(body.credentials).toEqual(input.credentials);
+		},
+	);
+
+	it('allows credentials without descriptions', () => {
+		expect(
+			unsupportedPushReason(diskCase({ credentials: [{ type: 'httpHeaderAuth' }] })),
+		).toBeNull();
+	});
+
+	it('refuses a case whose prompt version would be lost', () => {
+		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
+			'promptVersion',
+		);
+	});
+	it.each(['default', 'progressive'] as const)(
+		'refuses a case whose %s mode would be lost',
+		(buildMode) => {
+			expect(unsupportedPushReason(diskCase({ buildMode }))).toContain('buildMode');
+		},
+	);
+
 	it('returns null for a plain conversation-driven case', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
 	});
@@ -133,10 +195,79 @@ describe('unsupportedPushReason', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					folders: [],
+					projects: [],
 				},
 			}),
 		);
 		expect(reason).toBeNull();
+	});
+
+	// The write API's `seed` key set carries `projects` now (same rules as this
+	// schema: unique, trimmed, ≤255 chars, ≤5), so a project-scope case is a durable
+	// fixture the suite can hold. The push's read-back check still catches a
+	// deployment that predates the key.
+	it('ALLOWS an inline seed that carries projects — the write API stores them', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [],
+					dataTables: [],
+					agents: [],
+					folders: [],
+					projects: [{ name: 'Foobar' }],
+				},
+			}),
+		);
+		expect(reason).toBeNull();
+	});
+
+	// The write API's `seed` has no `folders` key and its `workflows[]` items no
+	// `parentFolderId`. Pushing anyway would land a folder case WITHOUT its folder and
+	// with every workflow at the root — it would still run, and the agent would be
+	// graded on finding a folder that does not exist.
+	it('REFUSES an inline seed that carries folders, until lang-tracer stores them', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [],
+					dataTables: [],
+					agents: [],
+					folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+					projects: [],
+				},
+			}),
+		);
+		expect(reason).toMatch(/folders/);
+	});
+
+	it('REFUSES an inline seed whose workflow is placed in a folder, even with no folder listed', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [
+						{
+							id: 'odwSignal1Wf',
+							name: 'Odds Watch - 1',
+							nodes: [],
+							connections: {},
+							parentFolderId: 'odwFolder0001',
+						},
+					],
+					dataTables: [],
+					agents: [],
+					folders: [],
+					projects: [],
+				},
+			}),
+		);
+		expect(reason).toMatch(/parentFolderId/);
 	});
 
 	it('carries the inline seed into the create body verbatim', () => {
@@ -154,13 +285,18 @@ describe('unsupportedPushReason', () => {
 			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 			dataTables: [],
 			agents: [],
+			folders: [],
+			projects: [],
 		};
 		const body = diskCaseToLangTracerCreate(diskCase({ seed }), 'repair-it', {
 			suiteId: 1,
 			setKind: 'regression',
 			synthetic: true,
 		});
-		expect(body.seed).toEqual(seed);
+		// Minus the empty `folders` slot: the write API's `seed` has no such key, so
+		// even the schema default would 400 every seeded push.
+		const { folders: _empty, ...pushable } = seed;
+		expect(body.seed).toEqual(pushable);
 	});
 
 	it('omits the seed key entirely for an unseeded case', () => {
@@ -198,6 +334,8 @@ describe('attach round-trip: write → export → reparse', () => {
 				workflows: [{ id: WORKFLOW_ID, name: 'Batch loop', nodes: [], connections: {} }],
 				dataTables: [],
 				agents: [],
+				folders: [],
+				projects: [],
 			},
 		} as Partial<EvalTestCaseInput>);
 	}
@@ -242,6 +380,42 @@ describe('attach round-trip: write → export → reparse', () => {
 		);
 
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: WORKFLOW_ID });
+	});
+
+	it('carries an Agent attachment through create, export, and reparse', () => {
+		const agentId = 'AgentMcpRepairSeed01';
+		const agentCase = diskCase({
+			conversation: [{ role: 'user', text: '', attach: { agent: agentId } }],
+			seed: {
+				mode: 'inline',
+				messages: [],
+				workflows: [],
+				dataTables: [],
+				folders: [],
+				projects: [],
+				agents: [
+					{
+						id: agentId,
+						config: {
+							name: 'Notion research',
+							model: 'anthropic/claude-sonnet-4-5',
+							instructions: 'Research company notes.',
+						},
+					},
+				],
+			},
+		} as Partial<EvalTestCaseInput>);
+		const body = diskCaseToLangTracerCreate(agentCase, 'agent-handoff', {
+			suiteId: 1,
+			setKind: 'regression',
+			synthetic: true,
+		});
+
+		const parsed = EvalTestCaseSchema.parse(
+			normalizeExportedCase(exportedFrom(body.conversation, body.seed)),
+		);
+
+		expect(parsed.conversation?.[0].attach).toEqual({ agent: agentId });
 	});
 
 	it('fails at load when the deployment stripped attach, instead of running as a find-it case', () => {

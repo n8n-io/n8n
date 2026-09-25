@@ -1,10 +1,10 @@
 import {
-	zodToJsonSchema,
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,13 +12,19 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const user = mock<User>({ id: 'user-1' });
 const credentialProvider = mock<CredentialProvider>();
+const preparedDraftRunInput = {
+	agentId,
+	projectId,
+	message: 'Hi',
+	user,
+	sessionId: 'session-1',
+};
 const approvalResumeSchema = (() => {
 	const schema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
 	if (schema === null) throw new Error('Failed to generate approval resume schema');
@@ -60,6 +66,7 @@ function makeService() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
+	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
 	return {
@@ -77,6 +84,110 @@ function makeService() {
 }
 
 describe('AgentTestRunService', () => {
+	it('executes a prepared draft run without repeating preparation', async () => {
+		const { service, agentExecutionOrchestratorService, agentValidationService } = makeService();
+		const executionError = new Error('streamed execution failed');
+		const chunks: StreamChunk[] = [
+			{ type: 'text-delta', id: 'text-1', delta: 'Hello' },
+			{ type: 'error', error: executionError },
+			{ type: 'text-delta', id: 'text-1', delta: ' there' },
+		];
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			yield* chunks;
+			config.onExecutionRecorded?.('execution-1');
+		});
+		const onChunk = vi.fn();
+
+		await expect(
+			service.executePreparedDraftRun({
+				...preparedDraftRunInput,
+				attachments: [
+					{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+				],
+				errorMode: 'forward',
+				onChunk,
+			}),
+		).resolves.toEqual({
+			status: 'completed',
+			response: 'Hello there',
+			executionId: 'execution-1',
+		});
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+		expect(onChunk).toHaveBeenCalledWith({ type: 'error', error: executionError });
+		expect(onChunk).toHaveBeenCalledTimes(3);
+		expect(agentExecutionOrchestratorService.executeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				memory: { threadId: 'session-1', resourceId: 'draft-chat:user-1' },
+				attachments: [
+					{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+				],
+			}),
+		);
+	});
+
+	it('resumes a prepared draft run with its selected memory scope', async () => {
+		const { service, agentExecutionOrchestratorService, agentExecutionService } = makeService();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			yield { type: 'text-delta', id: 'text-1', delta: 'continued' };
+			config.onExecutionRecorded?.('execution-2');
+		});
+
+		await expect(
+			service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				resumeData: { approved: true },
+				user,
+				expectedMemory: { threadId: 'session-1', resourceId: 'draft-chat:user-1' },
+				initialResponse: 'Already ',
+			}),
+		).resolves.toEqual({
+			status: 'completed',
+			response: 'Already continued',
+			executionId: 'execution-2',
+		});
+		expect(agentExecutionService.findThreadById).not.toHaveBeenCalled();
+		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				expectedMemory: { threadId: 'session-1', resourceId: 'draft-chat:user-1' },
+			}),
+		);
+	});
+
+	it('reports an observer failure after the execution stream settles', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		const abortController = new AbortController();
+		const deliveryError = new Error('delivery failed');
+		const produced: string[] = [];
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			try {
+				yield { type: 'text-delta', id: 'text-1', delta: 'first' };
+				produced.push('continued');
+				yield { type: 'text-delta', id: 'text-1', delta: 'second' };
+			} finally {
+				produced.push('settled');
+			}
+		});
+		const onChunk = vi.fn(() => {
+			throw deliveryError;
+		});
+
+		await expect(
+			service.executePreparedDraftRun({
+				...preparedDraftRunInput,
+				onChunk,
+				abortSignal: abortController.signal,
+			}),
+		).rejects.toBe(deliveryError);
+		expect(onChunk).toHaveBeenCalledTimes(1);
+		expect(produced).toEqual(['continued', 'settled']);
+		expect(abortController.signal.aborted).toBe(false);
+	});
+
 	it('runs a draft test and returns its response and execution identifiers', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
@@ -105,6 +216,7 @@ describe('AgentTestRunService', () => {
 			expect.objectContaining({
 				agentId,
 				projectId,
+				user,
 				source: 'instance-ai',
 				memory: {
 					threadId: result.sessionId,
@@ -134,8 +246,9 @@ describe('AgentTestRunService', () => {
 				resumeSchema: { type: 'object' },
 			},
 		];
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			yield* chunks;
+			config.onExecutionRecorded?.('execution-1');
 		});
 
 		await expect(
@@ -151,6 +264,7 @@ describe('AgentTestRunService', () => {
 			status: 'suspended',
 			response: 'I can do that. ',
 			sessionId: 'session-1',
+			executionId: 'execution-1',
 			suspensions: [
 				{
 					runId: 'run-1',
@@ -299,11 +413,7 @@ describe('AgentTestRunService', () => {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 		} = makeService();
-		agentExecutionService.findThreadById.mockResolvedValue({
-			id: 'session-1',
-			projectId: 'another-project',
-			agentId,
-		} as AgentExecutionThread);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
 
 		await expect(
 			service.executeDraftRun({
@@ -353,22 +463,24 @@ describe('AgentTestRunService', () => {
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
-	it('propagates a streamed execution error instead of completing the draft run', async () => {
+	it.each(['headless', 'observed'])('rejects a streamed error for an %s run', async (caller) => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		const executionError = new Error('streamed execution failed');
+		let settled = false;
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield { type: 'error', error: executionError };
-			yield { type: 'finish', finishReason: 'error' };
+			try {
+				yield { type: 'error', error: executionError };
+				yield { type: 'finish', finishReason: 'error' };
+			} finally {
+				settled = true;
+			}
 		});
 
-		await expect(
-			service.executeDraftRun({
-				agentId,
-				projectId,
-				message: 'Hi',
-				user,
-				credentialProvider,
-			}),
-		).rejects.toBe(executionError);
+		const execution =
+			caller === 'headless'
+				? service.executeDraftRun({ ...preparedDraftRunInput, credentialProvider })
+				: service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk: vi.fn() });
+		await expect(execution).rejects.toBe(executionError);
+		expect(settled).toBe(true);
 	});
 });

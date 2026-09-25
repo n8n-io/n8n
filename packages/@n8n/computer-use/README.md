@@ -29,32 +29,25 @@ Shell execution runs inside an OS-level sandbox, see [Shell sandboxing](#shell-s
 
 ## Quick start
 
-### Daemon mode (recommended)
+### Connect with a pairing token
 
-Start the daemon with your n8n instance URL. n8n will connect to the daemon
-on `127.0.0.1:7655` when the AI needs local machine access.
+In n8n, select the local-computer setup action and copy the generated command.
+The command contains your instance URL and a short-lived pairing token. Run
+that command on the computer that you want n8n to access.
 
 ```bash
-# The start command is shown inside n8n AI — replace with your instance URL
-npx @n8n/computer-use https://my-instance.app.n8n.cloud
+# The generated command has this form
+npx @n8n/computer-use <instance-url> <pairing-token>
 
 # For local development (localhost is not in the default allowlist)
-npx @n8n/computer-use http://localhost:5678 --allowed-origins http://localhost:5678
+npx @n8n/computer-use <instance-url> <pairing-token> --allowed-origins http://localhost:5678
 
 # Specify a working directory
-npx @n8n/computer-use https://my-instance.app.n8n.cloud --dir /path/to/project
-npx @n8n/computer-use https://my-instance.app.n8n.cloud -d /path/to/project
+npx @n8n/computer-use <instance-url> <pairing-token> --dir /path/to/project
+npx @n8n/computer-use <instance-url> <pairing-token> -d /path/to/project
 
 # Non-interactive (uses Recommended defaults, override with --permission-* flags)
-npx @n8n/computer-use https://my-instance.app.n8n.cloud --non-interactive --permission-shell ask
-```
-
-### Direct mode
-
-Connect directly to an n8n instance with a Computer Use token:
-
-```bash
-npx @n8n/computer-use https://my-n8n.com abc123xyz /path/to/project
+npx @n8n/computer-use <instance-url> <pairing-token> --non-interactive --permission-shell ask
 ```
 
 ## Configuration
@@ -141,7 +134,7 @@ Read-only access to files within a sandboxed directory.
 
 | Tool | Description |
 |------|-------------|
-| `read_file` | Read file contents (max 512 KB, paginated by line range) |
+| `read_file` | Read file contents (max 1 MiB, paginated by line range) |
 | `list_files` | List immediate children of a directory |
 | `get_file_tree` | Get indented directory tree (configurable depth) |
 | `search_files` | Regex search across files with optional glob filter |
@@ -201,7 +194,7 @@ Full browser automation via `@n8n/mcp-browser` (32 tools). Supports
 Chromium, Firefox, Safari, and WebKit across ephemeral, persistent, and local
 session modes.
 
-See the [@n8n/mcp-browser docs](../mcp-browser/docs/tools.md) for the
+See the [@n8n/mcp-browser docs](../mcp-browser/spec/browser-mcp.md) for the
 complete tool reference.
 
 ## Permissions

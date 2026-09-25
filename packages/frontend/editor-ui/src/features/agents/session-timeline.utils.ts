@@ -1,10 +1,28 @@
-import type { BaseTextKey } from '@n8n/i18n';
-import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
+import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
+import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
+import type {
+	EventKind,
+	HitlRequestType,
+	HitlResponseStatus,
+	IdleRange,
+	TimelineItem,
+	TimelineStatusFilterKey,
+	ToolCallOutcome,
+} from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
-import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
+import {
+	formatToolNameForDisplay,
+	getToolNameTranslationKey,
+	resolveToolNameForDisplay,
+} from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
+
+const LOAD_SKILL_TOOL_NAME = 'load_skill';
 
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
@@ -13,6 +31,184 @@ export function endTimestampOf(item: TimelineItem): number {
 /** A `delegate_subagent` tool call — rendered as a sub-agent (bot icon) rather than a plain tool. */
 export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
+}
+
+function errorTextFromValue(value: unknown): string {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (isRecord(value) && typeof value.message === 'string' && value.message.length > 0) {
+		return value.message;
+	}
+	return '';
+}
+
+/** MCP CallToolResult stores the message in structuredContent.error or text content. */
+function mcpErrorMessage(output: Record<string, unknown>): string {
+	if (isRecord(output.structuredContent)) {
+		const fromStructured = errorTextFromValue(output.structuredContent.error);
+		if (fromStructured) return fromStructured;
+	}
+
+	if (!Array.isArray(output.content)) return '';
+	for (const block of output.content) {
+		if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
+		const text = block.text.trim();
+		if (!text) continue;
+		try {
+			const parsed: unknown = JSON.parse(text);
+			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+			if (isRecord(parsed)) {
+				const fromJson = errorTextFromValue(parsed.error);
+				if (fromJson) return fromJson;
+			}
+		} catch {
+			return text;
+		}
+	}
+	return '';
+}
+
+/**
+ * A tool/workflow/node call is failed when the runtime recorded an error
+ * outcome, or when a built-in tool returned a soft-failure payload instead
+ * of throwing. In-flight calls without output are not failed.
+ */
+export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
+	if (
+		item.kind !== 'tool' &&
+		item.kind !== 'skill' &&
+		item.kind !== 'workflow' &&
+		item.kind !== 'node'
+	) {
+		return false;
+	}
+	if (item.toolOutcome === 'error') return true;
+	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
+	if (!isRecord(item.toolOutput)) return false;
+
+	const { error, status, success, ok, isError } = item.toolOutput;
+	const hasErrorMessage =
+		(typeof error === 'string' && error.length > 0) ||
+		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
+
+	return (
+		hasErrorMessage ||
+		status === 'error' ||
+		status === 'failed' ||
+		success === false ||
+		ok === false ||
+		isError === true
+	);
+}
+
+export function isErroredTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'execution-error' || isErroredToolCallTimelineItem(item);
+}
+
+/** Extracts a human-readable error message from a failed item's tool output. */
+export function timelineItemErrorMessage(item: TimelineItem): string {
+	if (!isErroredToolCallTimelineItem(item)) return '';
+	const output = item.toolOutput;
+	if (!isRecord(output)) return '';
+	return errorTextFromValue(output.error) || mcpErrorMessage(output);
+}
+
+const HITL_REQUEST_LABEL_KEYS: Record<HitlRequestType, BaseTextKey> = {
+	approval: 'agentSessions.timeline.approvalRequested',
+	interaction: 'agentSessions.timeline.hitlRequested',
+	wait: 'agentSessions.timeline.waitRequested',
+};
+
+/** Search/filter keys resolved by the label maps in the timeline panel and table. */
+const HITL_REQUEST_FILTER_KEYS: Record<HitlRequestType, string> = {
+	approval: 'approval-requested',
+	interaction: 'hitl-requested',
+	wait: 'wait-requested',
+};
+
+/** Label for a suspension row. Legacy items with no request type read as an interaction. */
+export function hitlRequestLabelKey(requestType: HitlRequestType | undefined): BaseTextKey {
+	return HITL_REQUEST_LABEL_KEYS[requestType ?? 'interaction'];
+}
+
+export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined {
+	if (item.hitlRequestType !== 'approval') return undefined;
+	if (item.kind === 'suspension') return 'agentSessions.timeline.approvalRequestForTool';
+	if (item.kind === 'hitl-response') return 'agentSessions.timeline.approvalResponseForTool';
+	return undefined;
+}
+
+type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+export function backgroundJobSignalSummary(
+	item: TimelineItem,
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText' | 'locale'>,
+): string {
+	const labels = (item.backgroundJobSignal?.tasks ?? []).map((job) =>
+		backgroundJobResultLabel(job, i18n),
+	);
+	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(labels);
+}
+
+export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterrupted'
+			: 'agentSessions.timeline.executionFailed',
+	);
+}
+
+export function executionErrorMessage(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.content) return item.content;
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterruptedFallback'
+			: 'agentSessions.timeline.executionFailedFallback',
+	);
+}
+
+export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): string {
+	return (
+		item.hitlToolDisplayName ??
+		item.workflowName ??
+		item.nodeDisplayName ??
+		resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput)
+	);
+}
+
+export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string {
+	const toolName = linkedToolDisplayName(item, i18n);
+	const nameKey = hitlTimelineNameKey(item);
+	return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
+}
+
+export type TimelineItemStatus = {
+	kind: 'hitl-response' | 'tool-error';
+	labelKey: BaseTextKey;
+	theme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
+};
+
+export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
+	if (item.kind === 'hitl-response') {
+		if (item.hitlResponseStatus === 'approved') {
+			return {
+				kind: 'hitl-response',
+				labelKey: 'agentSessions.timeline.approved',
+				theme: 'success',
+			};
+		}
+		return {
+			kind: 'hitl-response',
+			labelKey:
+				item.hitlResponseStatus === 'declined'
+					? 'agentSessions.timeline.declined'
+					: 'agentSessions.timeline.responseReceived',
+			theme: 'outline',
+		};
+	}
+	if (isErroredTimelineItem(item)) {
+		return { kind: 'tool-error', labelKey: 'agentSessions.timeline.error', theme: 'danger' };
+	}
+	return undefined;
 }
 
 export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
@@ -35,6 +231,23 @@ export function itemFilterKey(item: TimelineItem): string {
 	// stays compact regardless of how many distinct tools the agent uses; the
 	// search input handles per-tool drill-down.
 	return item.kind;
+}
+
+export function itemStatusFilterKey(item: TimelineItem): TimelineStatusFilterKey | undefined {
+	if (isErroredTimelineItem(item)) return 'error';
+	if (
+		item.kind === 'hitl-response' &&
+		(item.hitlResponseStatus === 'approved' || item.hitlResponseStatus === 'declined')
+	) {
+		return item.hitlResponseStatus;
+	}
+	return undefined;
+}
+
+export function matchesTimelineFilters(item: TimelineItem, selectedFilters: Set<string>): boolean {
+	if (selectedFilters.size === 0 || selectedFilters.has(itemFilterKey(item))) return true;
+	const statusKey = itemStatusFilterKey(item);
+	return statusKey !== undefined && selectedFilters.has(statusKey);
 }
 
 export type TimelineLabelResolver = (key: string) => string;
@@ -61,11 +274,24 @@ export function timelineItemSearchText(
 	const parts: Array<string | undefined> = [];
 
 	parts.push(labelForKey(itemFilterKey(item)));
-	if (item.kind === 'suspension') {
-		parts.push(labelForKey('suspension-waiting'));
+	if (item.kind === 'execution-error' && item.executionStatus === 'interrupted') {
+		parts.push(labelForKey('execution-interrupted'));
 	}
-	if (item.kind === 'tool' && item.isUserFeedback) {
-		parts.push(labelForKey('user-feedback'));
+	if (item.kind === 'suspension') {
+		parts.push(labelForKey(HITL_REQUEST_FILTER_KEYS[item.hitlRequestType ?? 'interaction']));
+	}
+	if (item.kind === 'hitl-response') {
+		parts.push(labelForKey('hitl-response'));
+	}
+	if (item.hitlResponseStatus) {
+		parts.push(labelForKey(item.hitlResponseStatus));
+	}
+	if (isErroredTimelineItem(item)) {
+		parts.push(labelForKey('error'));
+	}
+
+	for (const job of item.backgroundJobSignal?.tasks ?? []) {
+		parts.push(job.title, labelForKey(`background-task-${job.status}`));
 	}
 
 	parts.push(
@@ -73,9 +299,12 @@ export function timelineItemSearchText(
 		item.toolName,
 		item.workflowName,
 		item.nodeDisplayName,
+		item.skillName,
 		item.subAgentName,
 		searchableValueText(item.toolInput),
 		searchableValueText(item.toolOutput),
+		searchableValueText(item.hitlRequest),
+		searchableValueText(item.hitlResponse),
 	);
 	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 
@@ -107,7 +336,7 @@ export function filteredTimelineItemIndexes(
 		.map((item, index) => ({ item, index }))
 		.filter(
 			({ item }) =>
-				(visibleKinds.size === 0 || visibleKinds.has(itemFilterKey(item))) &&
+				matchesTimelineFilters(item, visibleKinds) &&
 				matchesSearch(item, searchQuery.trim(), labelForKey),
 		)
 		.map(({ index }) => index);
@@ -129,10 +358,14 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 const COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-400)',
 	agent: 'var(--color--secondary)',
+	skill: 'var(--color--orange-400)',
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
+	'execution-error': 'var(--color--danger)',
 	suspension: 'var(--color--warning)',
+	'hitl-response': 'var(--color--blue-400)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function kindColorToken(kind: EventKind): string {
@@ -142,10 +375,14 @@ export function kindColorToken(kind: EventKind): string {
 const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-600)',
 	agent: 'var(--color--purple-600)',
+	skill: 'var(--color--orange-600)',
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
-	workflow: 'var(--color--orange-600)',
+	workflow: 'var(--color--pink-600)',
+	'execution-error': 'var(--color--red-600)',
 	suspension: 'var(--color--yellow-600)',
+	'hitl-response': 'var(--color--blue-600)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function chartBlockColor(kind: EventKind): string {
@@ -154,9 +391,9 @@ export function chartBlockColor(kind: EventKind): string {
 
 export function builtinToolLabelKey(
 	toolName: string | undefined,
-	_output?: unknown,
+	output?: unknown,
 ): BaseTextKey | null {
-	return getToolNameTranslationKey(toolName) ?? null;
+	return getToolNameTranslationKey(toolName, output) ?? null;
 }
 
 export function formatDuration(ms: number): string {
@@ -173,7 +410,7 @@ export function formatDuration(ms: number): string {
 
 interface RawToolCallEvent {
 	type: 'tool-call';
-	kind?: 'tool' | 'workflow' | 'node';
+	kind?: 'tool' | 'workflow' | 'node' | 'skill';
 	name: string;
 	toolCallId: string;
 	input: unknown;
@@ -203,9 +440,29 @@ interface RawSuspensionEvent {
 	toolName: string;
 	toolCallId: string;
 	timestamp: number;
+	input?: unknown;
+	suspendPayload?: unknown;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
+interface RawHitlResponseEvent {
+	type: 'hitl-response';
+	toolCallId: string;
+	response: unknown;
+	timestamp: number;
+}
+
+interface RawBackgroundJobSignalEvent {
+	type: 'background-task-signal';
+	timestamp: number;
+	signal: AgentBackgroundJobSignal;
+}
+
+type RawEvent =
+	| RawToolCallEvent
+	| RawTextEvent
+	| RawSuspensionEvent
+	| RawHitlResponseEvent
+	| RawBackgroundJobSignalEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -217,11 +474,184 @@ function timelineEvents(exec: AgentExecution): RawEvent[] {
 	return (exec.timeline ?? []) as unknown as RawEvent[];
 }
 
+function isDeclinedToolOutput(output: unknown): boolean {
+	return isRecord(output) && output.declined === true;
+}
+
+function isApprovalRequest(value: unknown): boolean {
+	return isRecord(value) && value.type === 'approval';
+}
+
+function isIntegrationActionRequest(value: unknown): boolean {
+	return isRecord(value) && value.type === 'integration_action';
+}
+
+function isWaitRequest(value: unknown): boolean {
+	return isRecord(value) && value.type === WORKFLOW_WAIT_SUSPEND_TYPE;
+}
+
+function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
+	if (event.endTime === 0) return undefined;
+	return event.success ? 'success' : 'error';
+}
+
+function isSkillToolCall(event: RawToolCallEvent): boolean {
+	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
+}
+
+function skillNameFromText(value: string): string | undefined {
+	const match = /^\[Skill: ([^\]]+)\]/m.exec(value);
+	const name = match?.[1];
+	if (!name) return undefined;
+	if (!name.startsWith('"')) return name;
+	if (!name.endsWith('"')) return name.slice(1);
+
+	try {
+		const parsed: unknown = JSON.parse(name);
+		return typeof parsed === 'string' ? parsed : name;
+	} catch {
+		return name.slice(1, -1);
+	}
+}
+
+function skillNameFromOutput(output: unknown): string | undefined {
+	if (!isRecord(output)) return undefined;
+	if (typeof output.name === 'string' && output.name.length > 0) return output.name;
+	if (!Array.isArray(output.value)) return undefined;
+
+	for (const part of output.value) {
+		if (!isRecord(part) || typeof part.text !== 'string') continue;
+		const name = skillNameFromText(part.text);
+		if (name) return name;
+	}
+	return undefined;
+}
+
+function skillNameFromEvent(event: RawToolCallEvent): string | undefined {
+	const outputName = skillNameFromOutput(event.output);
+	if (outputName) return outputName;
+	if (!isRecord(event.input)) return undefined;
+	if (typeof event.input.name === 'string' && event.input.name.length > 0) return event.input.name;
+	return typeof event.input.skillId === 'string' && event.input.skillId.length > 0
+		? event.input.skillId
+		: undefined;
+}
+
+interface HitlContext {
+	requestType: HitlRequestType;
+	toolName: string;
+	toolCallId: string;
+	toolCall?: RawToolCallEvent;
+	toolItem?: TimelineItem;
+	toolDisplayName?: string;
+	hasExplicitResponse: boolean;
+}
+
+function inferHitlRequestType(
+	event: RawSuspensionEvent,
+	toolCall: RawToolCallEvent | undefined,
+	legacyApprovalToolCallIds: Set<string>,
+): HitlRequestType {
+	if (isApprovalRequest(event.suspendPayload)) return 'approval';
+	if (legacyApprovalToolCallIds.has(event.toolCallId)) return 'approval';
+	// A workflow tool parked on a Wait node: no one is being asked anything, so it
+	// must not read as a request for user input.
+	if (isWaitRequest(event.suspendPayload)) return 'wait';
+	// Any other payload that is present but not an approval is an interaction,
+	// whatever the tool kind.
+	if (event.suspendPayload !== undefined) return 'interaction';
+	// Older records persisted no payload at all. There, node and workflow tools are
+	// the legacy approval-gated cases; generic action tools were interactions.
+	return toolCall?.kind === 'node' || toolCall?.kind === 'workflow' ? 'approval' : 'interaction';
+}
+
+function collectLegacyApprovalToolCallIds(executions: AgentExecution[]): Set<string> {
+	const toolCallIds = new Set<string>();
+	for (const exec of executions) {
+		for (const event of timelineEvents(exec)) {
+			if (event.type === 'tool-call' && isDeclinedToolOutput(event.output)) {
+				toolCallIds.add(event.toolCallId);
+			}
+		}
+	}
+	return toolCallIds;
+}
+
+function hitlRequestPayload(
+	event: RawSuspensionEvent,
+	toolCall: RawToolCallEvent | undefined,
+	requestType: HitlRequestType,
+): unknown {
+	if (requestType === 'approval') {
+		return (
+			event.suspendPayload ?? {
+				type: 'approval',
+				toolName: event.toolName,
+				args: event.input ?? toolCall?.input,
+			}
+		);
+	}
+	if (event.suspendPayload !== undefined && !isIntegrationActionRequest(event.suspendPayload)) {
+		return event.suspendPayload;
+	}
+	return event.input ?? toolCall?.input ?? event.suspendPayload;
+}
+
+function approvalDisplayName(payload: unknown): string | undefined {
+	if (!isRecord(payload) || typeof payload.displayName !== 'string') return undefined;
+	return payload.displayName;
+}
+
+function hitlResponseStatus(
+	requestType: HitlRequestType,
+	response: unknown,
+	isLegacyResponse = false,
+): HitlResponseStatus {
+	if (requestType === 'approval' && isRecord(response) && typeof response.approved === 'boolean') {
+		return response.approved ? 'approved' : 'declined';
+	}
+	if (isDeclinedToolOutput(response)) return 'declined';
+	if (isLegacyResponse && requestType === 'approval') return 'approved';
+	return 'responded';
+}
+
+function mergeResumedToolResult(item: TimelineItem | undefined, event: RawToolCallEvent): void {
+	if (!item || isDeclinedToolOutput(event.output)) return;
+	item.toolOutput = event.output;
+	item.toolOutcome = toolCallOutcome(event);
+	item.toolSuccess = event.endTime === 0 ? undefined : event.success;
+	if (item.kind === 'workflow') item.workflowExecutionId = event.workflowExecutionId;
+}
+
+function hitlResponseItem(
+	context: HitlContext,
+	executionId: string,
+	response: unknown,
+	timestamp: number,
+	isLegacyResponse = false,
+): TimelineItem {
+	return {
+		kind: 'hitl-response',
+		executionId,
+		toolName: context.toolName,
+		toolCallId: context.toolCallId,
+		hitlRequestType: context.requestType,
+		hitlResponse: response,
+		hitlResponseStatus: hitlResponseStatus(context.requestType, response, isLegacyResponse),
+		hitlToolDisplayName: context.toolDisplayName,
+		timestamp,
+		endTimestamp: timestamp,
+		workflowName: context.toolCall?.workflowName,
+		nodeDisplayName: context.toolCall?.nodeDisplayName,
+	};
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
-	// Tool calls recorded AFTER a suspension of the same toolCallId are the
-	// resumed segment's record of the user's answer, not a fresh tool call.
-	const suspendedToolCallIds = new Set<string>();
+	const initialToolCalls = new Map<string, RawToolCallEvent>();
+	const initialToolItems = new Map<string, TimelineItem>();
+	const hitlContexts = new Map<string, HitlContext>();
+	const legacyApprovalToolCallIds = collectLegacyApprovalToolCallIds(executions);
 	for (const exec of executions) {
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
@@ -233,12 +663,20 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				executionId: exec.id,
 				content: exec.userMessage ?? '',
 				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				...(exec.author && { authorName: exec.author.name }),
 				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}
 
 		for (const event of timelineEvents(exec)) {
-			if (event.type === 'text') {
+			if (event.type === 'background-task-signal') {
+				items.push({
+					kind: 'background-task-signal',
+					executionId: exec.id,
+					timestamp: event.timestamp,
+					backgroundJobSignal: event.signal,
+				});
+			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
 				const startTs = event.timestamp ?? 0;
@@ -253,20 +691,29 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					resumed: showResumed,
 				});
 			} else if (event.type === 'tool-call') {
+				const hitlContext = hitlContexts.get(event.toolCallId);
+				if (hitlContext) {
+					mergeResumedToolResult(hitlContext.toolItem, event);
+					if (!hitlContext.hasExplicitResponse) {
+						items.push(hitlResponseItem(hitlContext, exec.id, event.output, event.startTime, true));
+					}
+					hitlContexts.delete(event.toolCallId);
+					continue;
+				}
+
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
-				const isUserFeedback =
-					!isWorkflow &&
-					!isNode &&
-					event.toolCallId !== undefined &&
-					suspendedToolCallIds.has(event.toolCallId);
-				items.push({
-					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
+				const isSkill = isSkillToolCall(event);
+				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
+				const item: TimelineItem = {
+					kind: isWorkflow ? 'workflow' : isNode ? 'node' : isSkill ? 'skill' : 'tool',
 					executionId: exec.id,
 					toolName: event.name,
+					skillName: isSkill ? skillNameFromEvent(event) : undefined,
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,
+					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
 					timestamp: event.startTime,
 					endTimestamp: event.endTime || event.startTime,
@@ -278,18 +725,53 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
-					...(isUserFeedback && { isUserFeedback: true }),
-				});
+				};
+				items.push(item);
+				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);
 			} else if (event.type === 'suspension') {
-				if (event.toolCallId) suspendedToolCallIds.add(event.toolCallId);
+				const toolCall = initialToolCalls.get(event.toolCallId);
+				const requestType = inferHitlRequestType(event, toolCall, legacyApprovalToolCallIds);
+				const request = hitlRequestPayload(event, toolCall, requestType);
+				const toolDisplayName = approvalDisplayName(request);
+				if (event.toolCallId) {
+					hitlContexts.set(event.toolCallId, {
+						requestType,
+						toolName: event.toolName || toolCall?.name || '',
+						toolCallId: event.toolCallId,
+						toolCall,
+						toolItem: initialToolItems.get(event.toolCallId),
+						toolDisplayName,
+						hasExplicitResponse: false,
+					});
+				}
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,
 					toolName: event.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
+					hitlRequestType: requestType,
+					hitlRequest: request,
+					hitlToolDisplayName: toolDisplayName,
+					workflowName: toolCall?.workflowName,
+					nodeDisplayName: toolCall?.nodeDisplayName,
 				});
+			} else if (event.type === 'hitl-response') {
+				const hitlContext = hitlContexts.get(event.toolCallId);
+				if (!hitlContext) continue;
+				hitlContext.hasExplicitResponse = true;
+				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
 			}
+		}
+		if (exec.status === 'error' || exec.status === 'interrupted') {
+			const terminalTimestamp = exec.stoppedAt ?? exec.startedAt ?? exec.createdAt;
+			items.push({
+				kind: 'execution-error',
+				executionId: exec.id,
+				executionStatus: exec.status,
+				content: exec.error ?? undefined,
+				timestamp: terminalTimestamp ? new Date(terminalTimestamp).getTime() : 0,
+			});
 		}
 	}
 	return items;

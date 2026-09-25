@@ -4,7 +4,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSegmentControl, N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -16,6 +16,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -311,7 +312,7 @@ const onTest = async () => {
 		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
-			window.open(url, '_blank');
+			openSafeUrl(url);
 		}
 	} catch (error) {
 		toast.showError(error, 'error');
@@ -399,7 +400,7 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nRadioButtons
+						<N8nSegmentControl
 							v-model="ipsType"
 							:disabled="isSsoManagedByEnv"
 							:options="ipsOptions"

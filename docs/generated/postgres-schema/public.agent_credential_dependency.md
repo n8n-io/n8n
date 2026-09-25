@@ -47,6 +47,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
@@ -57,6 +58,7 @@ erDiagram
 "public.credentials_entity" {
   timestamp_3__with_time_zone createdAt
   text data
+  text description
   varchar_36_ id
   boolean isGlobal
   boolean isManaged

@@ -14,6 +14,7 @@ import N8nText from '../N8nText';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import N8nTooltip from '../N8nTooltip';
+import MarkdownEditorExpandedViewButton from './MarkdownEditorExpandedViewButton.vue';
 import type { MarkdownEditorVariant, MarkdownEditorToolbarMode } from './MarkdownEditor.types';
 import { isUrl } from './markdownEditorUtils';
 
@@ -32,10 +33,13 @@ const props = defineProps<{
 	isRawMode?: boolean;
 	mode: Exclude<MarkdownEditorToolbarMode, 'never'>;
 	variant: MarkdownEditorVariant;
+	allowExpandedView?: boolean;
+	isExpandedView?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:isRawMode': [value: boolean];
+	'toggle-expanded-view': [];
 }>();
 
 const isLinkPopoverOpen = ref(false);
@@ -294,7 +298,11 @@ const setTextStyle = (value: string | number) => {
 </script>
 <template>
 	<div
-		:class="[$style.toolbar, mode === 'always' ? $style.alwaysVisible : '']"
+		:class="[
+			$style.toolbar,
+			mode === 'always' && $style.alwaysVisible,
+			mode === 'floating' && $style.floating,
+		]"
 		data-test-id="markdown-editor-toolbar"
 	>
 		<div
@@ -480,7 +488,7 @@ const setTextStyle = (value: string | number) => {
 				</template>
 			</N8nToggleGroup>
 
-			<div :class="[$style.toolbarGroup, $style.rawToggleGroup]">
+			<div v-if="mode !== 'floating'" :class="[$style.toolbarGroup, $style.rawToggleGroup]">
 				<N8nToggle
 					:model-value="isRawMode"
 					:label="
@@ -495,22 +503,48 @@ const setTextStyle = (value: string | number) => {
 					@update:model-value="emit('update:isRawMode', $event)"
 				/>
 			</div>
+			<div v-if="allowExpandedView && mode !== 'floating'" :class="$style.expandedViewGroup">
+				<MarkdownEditorExpandedViewButton
+					:is-expanded-view="isExpandedView"
+					@toggle="emit('toggle-expanded-view')"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .toolbar {
+	--n8n-markdown-editor-toolbar--pos-x: 0;
+	--n8n-markdown-editor-toolbar--pos-y: 0;
+
 	position: absolute;
-	inset-inline: 0;
-	top: 0;
+	inset-inline: var(--n8n-markdown-editor-toolbar--pos-x);
+	top: var(--n8n-markdown-editor-toolbar--pos-y);
 	z-index: 1;
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
 }
+.floating {
+	position: static;
+	inset: auto;
+	width: max-content;
+	max-width: calc(100vw - var(--spacing--lg));
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+
+	.toolbarInner {
+		border: var(--border);
+		border-radius: var(--radius--lg);
+		background-color: var(--background--surface);
+		box-shadow: var(--shadow--md);
+	}
+}
 
 .toolbarInner {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -590,11 +624,10 @@ const setTextStyle = (value: string | number) => {
 	align-items: center;
 	flex: 0 0 auto;
 
-	&:not(:last-child)::after {
+	&:not(:first-child)::before {
 		content: '';
 		width: 1px;
 		height: var(--height--xs);
-		margin-inline-start: var(--spacing--3xs);
 		background-color: var(--border-color);
 	}
 }
@@ -602,6 +635,11 @@ const setTextStyle = (value: string | number) => {
 .rawToggleGroup {
 	display: inline-flex;
 	align-items: center;
+}
+
+.expandedViewGroup {
+	margin-inline-start: auto;
+	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
 }
 
 .addLinkFormLabel {

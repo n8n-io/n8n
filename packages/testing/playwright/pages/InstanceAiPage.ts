@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { hoverToReveal } from '../utils/retry-utils';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -29,8 +30,7 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput()
 			.waitFor({ state: 'visible', timeout: 10_000 })
 			.catch(async () => {
-				const aiMenuItem = this.page.getByRole('menuitem', { name: 'AI Assistant' });
-				await aiMenuItem.click({ timeout: 10_000 });
+				await this.getNewThreadButton().click({ timeout: 10_000 });
 				await this.enableInstanceAiIfPrompted();
 			});
 		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
@@ -53,7 +53,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getOnboardingWizard(): Locator {
-		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
+		return this.page.getByRole('dialog', { name: 'Set up n8n Assistant' });
 	}
 
 	getWizardPrimaryButton(): Locator {
@@ -74,7 +74,7 @@ export class InstanceAiPage extends BasePage {
 
 	getOnboardingDoneHeading(): Locator {
 		return this.getOnboardingWizard().getByRole('heading', {
-			name: 'AI Assistant is on for everyone on this instance',
+			name: 'n8n Assistant is on for everyone on this instance',
 		});
 	}
 
@@ -87,20 +87,27 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async enableInstanceAiIfPrompted(): Promise<void> {
-		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try new n8n Assistant' });
 		try {
 			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
 		} catch {
 			return;
 		}
 
-		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /Enable n8n Assistant on this instance/ }).click();
 		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
 		await dialog.waitFor({ state: 'hidden' });
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
 		await this.page.goto(`/assistant/${threadId}`);
+	}
+
+	/** Thread id of the conversation currently open, read from the URL. */
+	getCurrentThreadId(): string {
+		const threadId = new URL(this.page.url()).pathname.split('/').pop();
+		if (!threadId) throw new Error(`No thread id in URL: ${this.page.url()}`);
+		return threadId;
 	}
 
 	getContainer(): Locator {
@@ -111,13 +118,14 @@ export class InstanceAiPage extends BasePage {
 		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
 	}
 
+	getNewThreadButton(): Locator {
+		return this.page
+			.getByTestId('project-instance-ai-menu-item')
+			.getByRole('menuitem', { name: 'Assistant', exact: true });
+	}
+
 	/**
-	 * Expand the chat-history sidebar if it isn't already open. The sidebar
-	 * starts collapsed by default, so any test that needs to query thread
-	 * items must open it first. Idempotent — does nothing if already open.
-	 *
-	 * Waits for the thread-list to become visible so callers can immediately
-	 * query thread items without racing the 200ms slide-in transition.
+	 * Open the chat-history popover if needed and wait until its list is queryable.
 	 */
 	async openSidebar(): Promise<void> {
 		const threadList = this.page.getByTestId('instance-ai-thread-list');
@@ -130,7 +138,11 @@ export class InstanceAiPage extends BasePage {
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
-		return this.container.getByRole('textbox');
+		return this.container.getByRole('textbox').or(this.container.getByRole('combobox'));
+	}
+
+	getComposer(): Locator {
+		return this.container.getByTestId('instance-ai-composer');
 	}
 
 	getSendButton(): Locator {
@@ -151,6 +163,16 @@ export class InstanceAiPage extends BasePage {
 
 	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
+	}
+
+	/**
+	 * Text anywhere in the chat panel. Broader than `getAssistantMessageText`: a run's
+	 * output can land outside an assistant-message bubble (an error callout, a status
+	 * line), so use this when the assertion is "the panel says this" rather than "this
+	 * message says this".
+	 */
+	getPanelText(text: string | RegExp): Locator {
+		return this.getContainer().getByText(text);
 	}
 
 	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
@@ -183,6 +205,93 @@ export class InstanceAiPage extends BasePage {
 
 	getAttachmentsAt(messageIndex: number): Locator {
 		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
+	}
+
+	/**
+	 * Files staged in the composer but not yet sent, counted via each preview's remove
+	 * control. Two markers are needed: `AttachmentPreview` renders
+	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
+	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
+	 * first would silently count 0 for a staged PDF or CSV.
+	 */
+	getComposerAttachments(): Locator {
+		return this.getContainer().locator(
+			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+		);
+	}
+
+	getMentionButton(): Locator {
+		return this.container.getByTestId('instance-ai-mention-button');
+	}
+
+	getMentionMenu(): Locator {
+		return this.page.getByTestId('instance-ai-mention-menu-content');
+	}
+
+	getMentionMenuItem(name: string | RegExp): Locator {
+		return this.page.getByRole('menuitem', { name });
+	}
+
+	async highlightMentionWithKeyboard(name: string | RegExp): Promise<void> {
+		const item = this.getMentionMenuItem(name);
+		await item.waitFor({ state: 'visible' });
+		const input = this.getChatInput();
+		for (let index = 0; index < 20; index++) {
+			if ((await item.getAttribute('data-virtual-highlighted')) !== null) {
+				return;
+			}
+			await input.press('ArrowDown');
+		}
+
+		throw new Error(`Could not highlight mention menu item: ${String(name)}`);
+	}
+
+	async selectMentionWithKeyboard(name: string | RegExp): Promise<void> {
+		await this.highlightMentionWithKeyboard(name);
+		await this.getChatInput().press('Enter');
+	}
+
+	async openHighlightedMentionSubmenu(): Promise<void> {
+		await this.getChatInput().press('ArrowRight');
+	}
+
+	getComposerWorkflowChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('attachment-preview-resource').filter({ hasText: name });
+	}
+
+	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
+		return this.getComposerWorkflowChip(name).getByRole('button', {
+			name: 'Remove workflow context',
+		});
+	}
+
+	getComposerNodeChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('nodes-chip-node').filter({ hasText: name });
+	}
+
+	getComposerGroupChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('nodes-chip-group').filter({ hasText: name });
+	}
+
+	getUserMessageByText(text: string | RegExp): Locator {
+		return this.getUserMessages().filter({ hasText: text });
+	}
+
+	getWorkflowChipInMessage(message: Locator, name: string | RegExp): Locator {
+		return message.getByTestId('attachment-preview-resource').filter({ hasText: name });
+	}
+
+	getNodeChipInMessage(message: Locator, name: string | RegExp): Locator {
+		return message.getByRole('group', { name });
+	}
+
+	async reloadThread(): Promise<void> {
+		await this.page.reload();
+		await this.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
+	}
+
+	getCurrentPath(): string {
+		return new URL(this.page.url()).pathname;
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────
@@ -385,9 +494,14 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
 	}
 
+	/**
+	 * The "Execute step" toolbar button only renders once the AI build has
+	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar,
+	 * so reveal it with a re-hovering poll.
+	 */
 	async executePreviewNodeByName(nodeName: string): Promise<void> {
 		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
-		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await hoverToReveal(this.getPreviewNodeByName(nodeName), executeNodeButton);
 		await executeNodeButton.dispatchEvent('click');
 	}
 

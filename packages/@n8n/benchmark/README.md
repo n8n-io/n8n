@@ -9,6 +9,7 @@ packages/@n8n/benchmark
 ├── scenarios        Benchmark scenarios
 ├── src              Source code for the n8n-benchmark cli
 ├── Dockerfile       Dockerfile for the n8n-benchmark cli
+├── infra            Terraform code for the cloud benchmark environment
 ├── scripts          Orchestration scripts
 ```
 
@@ -64,8 +65,15 @@ pnpm benchmark-locally --runDir /tmp/n8n-data --scenarioFilter http-node sqlite
 
 ### In the cloud
 
+The cloud environment is a dedicated Azure VM. [`./infra`](./infra/) holds the
+Terraform code that creates it.
+
+Create the environment, run the benchmarks, then delete the environment:
+
 ```sh
+pnpm provision-cloud-env
 pnpm benchmark-in-cloud
+pnpm destroy-cloud-env
 ```
 
 ## Running the `n8n-benchmark` cli
@@ -98,7 +106,7 @@ docker run \
 Requirements:
 
 - [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/)
-- Node.js v20 or higher
+- Node.js v24 or higher
 
 ```sh
 pnpm build

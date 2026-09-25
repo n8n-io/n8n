@@ -3,6 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
@@ -82,6 +83,8 @@ describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
 
+	mockInstance(ExternalSecretsConfig, { connectTimeout: 20, refreshTimeout: 45 });
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
@@ -118,7 +121,8 @@ describe('InfisicalProvider', () => {
 			expect(requests).toHaveBeenCalledWith({
 				baseURL: SITE_URL,
 				headers: expect.any(Function),
-				ssrf: 'disabled',
+				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 45_000,
 			});
 		});
 

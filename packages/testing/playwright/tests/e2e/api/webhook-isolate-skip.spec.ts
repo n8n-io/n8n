@@ -51,7 +51,7 @@ async function triggerTransformed(
 		'webhook-isolate-skip-static.json',
 		{
 			transform: (workflow) => {
-				transformNode(workflow.nodes![0] as never);
+				transformNode(workflow.nodes![0]);
 				return workflow;
 			},
 		},

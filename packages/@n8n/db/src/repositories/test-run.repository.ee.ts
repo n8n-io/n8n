@@ -6,7 +6,7 @@ import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 import { TestRun } from '../entities';
 import type { TestRunStatus } from '../entities/test-run.ee';
 import { TestRunErrorCode } from '../entities/types-db';
-import type { AggregatedTestRunMetrics, TestRunFinalResult, ListQuery } from '../entities/types-db';
+import type { AggregatedTestRunMetrics, TestRunFinalResult } from '../entities/types-db';
 import { getTestRunFinalResult } from '../utils/get-final-test-result';
 
 export type TestRunSummary = TestRun & {
@@ -98,7 +98,11 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { runningInstanceId: null, cancelRequested: false });
 	}
 
-	async getMany(workflowId: string, options: ListQuery.Options, status?: TestRunStatus) {
+	async getMany(
+		workflowId: string,
+		{ offset, limit }: { offset?: number; limit?: number } = {},
+		status?: TestRunStatus,
+	) {
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { workflow: { id: workflowId }, ...(status ? { status } : {}) },
 			// `id` tiebreaker keeps offset pagination stable when runs share a `createdAt` (ms precision).
@@ -110,9 +114,9 @@ export class TestRunRepository extends Repository<TestRun> {
 			select: { testCaseExecutions: { id: true, status: true } },
 		};
 
-		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
+		if (limit) {
+			findManyOptions.skip = offset;
+			findManyOptions.take = limit;
 		}
 
 		const testRuns = await this.find(findManyOptions);
@@ -144,6 +148,16 @@ export class TestRunRepository extends Repository<TestRun> {
 	 */
 	async existsInWorkflow(testRunId: string, workflowId: string): Promise<boolean> {
 		return await this.existsBy({ id: testRunId, workflow: { id: workflowId } });
+	}
+
+	/**
+	 * Relation-free lookup scoped to a workflow. Cross-workflow ids return
+	 * `null` so a caller cannot reach another workflow's run by guessing ids.
+	 */
+	async findOneByIdAndWorkflowId(testRunId: string, workflowId: string): Promise<TestRun | null> {
+		return await this.findOne({
+			where: { id: testRunId, workflow: { id: workflowId } },
+		});
 	}
 
 	/**

@@ -1,5 +1,26 @@
 import { z } from 'zod';
 
+/**
+ * Human-in-the-loop approval selection. Absent means no approval required.
+ * Shared by MCP servers, where `tools` holds tool names, and channels, where
+ * it holds action names such as `send_channel_message`.
+ */
+export const AgentApprovalSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('global') }).strict(),
+	z
+		.object({
+			mode: z.literal('selected'),
+			tools: z.array(z.string().min(1)).min(1),
+		})
+		.strict(),
+]);
+
+export type AgentApproval = z.infer<typeof AgentApprovalSchema>;
+
+const approval = AgentApprovalSchema.optional().describe(
+	'Channel actions that need approval before they run. Absent = no approval required',
+);
+
 const createCredIntegrationSchema = <
 	Value extends string,
 	Settings extends z.ZodTypeAny | z.ZodEffects<z.ZodTypeAny>,
@@ -11,12 +32,7 @@ const createCredIntegrationSchema = <
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
 		settings: settingsSchema,
-	});
-
-const createSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
-	z.object({
-		type: z.literal<Value>(typeName),
-		credentialId: z.string().min(1),
+		approval,
 	});
 
 const createDraftCredIntegrationSchema = <
@@ -30,15 +46,13 @@ const createDraftCredIntegrationSchema = <
 		type: z.literal<Value>(typeName),
 		credentialId: z.string(),
 		settings: settingsSchema,
-	});
-
-const createDraftSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
-	z.object({
-		type: z.literal<Value>(typeName),
-		credentialId: z.string(),
+		approval,
 	});
 
 export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
+
+/** Minutes of inactivity after which a channel starts a fresh session. Unset or `null` disables rotation. */
+const sessionIdleTimeoutMinutes = z.number().int().positive().nullable().optional();
 
 export const AgentTelegramSettingsSchema = z
 	.object({
@@ -55,6 +69,7 @@ export const AgentTelegramSettingsSchema = z
 			)
 			.default([])
 			.transform((items) => [...new Set(items)]),
+		sessionIdleTimeoutMinutes,
 	})
 	.strict()
 	.superRefine((settings, ctx) => {
@@ -69,7 +84,96 @@ export const AgentTelegramSettingsSchema = z
 
 export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSettingsSchema>;
 
-export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
+export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
+
+export const AgentSlackSettingsSchema = z
+	.object({
+		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+		sessionIdleTimeoutMinutes,
+	})
+	.strict();
+
+export type AgentSlackIntegrationSettings = z.infer<typeof AgentSlackSettingsSchema>;
+
+/** Settings shape for integrations with no platform-specific settings of their own. */
+const AgentSessionOnlySettingsSchema = z.object({ sessionIdleTimeoutMinutes }).strict();
+
+export const AgentDiscordSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSettingsSchema>;
+
+export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
+
+/**
+ * Where the Teams app may be used, and how much it may read there.
+ *
+ * These are manifest fields, not runtime switches: they become the bot's
+ * `scopes` and its resource-specific permissions, so changing one means a new
+ * app package. Direct chat is not listed because it is always on — it is what
+ * makes the connection testable.
+ *
+ * Both reads default off. Without them Teams delivers only @mentions in a
+ * shared conversation; with them every message arrives.
+ */
+/** Teams rejects a longer short name or short description outright. */
+export const TEAMS_DISPLAY_NAME_MAX = 30;
+export const TEAMS_DESCRIPTION_MAX = 80;
+
+export const AgentTeamsSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/**
+		 * How the app appears in Teams. Both fall back to the agent's own name
+		 * when unset, so a first setup needs neither.
+		 */
+		displayName: z
+			.string()
+			.trim()
+			.min(1)
+			.max(TEAMS_DISPLAY_NAME_MAX)
+			// Teams strips control and formatting characters, so a name made only of
+			// those would be stored as an override that never appears.
+			.refine((value) => /[^\p{Cc}\p{Cf}\s]/u.test(value), {
+				message: 'Enter a name with at least one visible character',
+			})
+			.optional(),
+		description: z.string().trim().min(1).max(TEAMS_DESCRIPTION_MAX).optional(),
+		teamChannels: z.boolean().optional(),
+		groupChats: z.boolean().optional(),
+		readAllChannelMessages: z.boolean().optional(),
+		readAllGroupMessages: z.boolean().optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		// A read permission without its surface would sit in the manifest doing
+		// nothing, and would read to the user as if it were in effect.
+		if (value.readAllChannelMessages && !value.teamChannels) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['readAllChannelMessages'],
+				message: 'Turn on team channels before reading all channel messages',
+			});
+		}
+		if (value.readAllGroupMessages && !value.groupChats) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['readAllGroupMessages'],
+				message: 'Turn on group and meeting chats before reading all group messages',
+			});
+		}
+	});
+export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
+
+export const AgentIntegrationSettingsSchema = z.union([
+	AgentTelegramSettingsSchema,
+	AgentSlackSettingsSchema,
+	AgentDiscordSettingsSchema,
+	AgentLinearSettingsSchema,
+	// Teams was left out while it aliased the shared shape, when the entry was a
+	// no-op. Its settings now differ, so leaving it out would reject them.
+	AgentTeamsSettingsSchema,
+	z.undefined(),
+]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
 
 const credentialIntegrations = [
@@ -77,18 +181,37 @@ const credentialIntegrations = [
 		// keep optional for older agents
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createSimpleIntegrationSchema('slack'),
-	createSimpleIntegrationSchema('linear'),
-	createSimpleIntegrationSchema('discord'),
+	createCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		// Existing Slack integrations use the legacy Assistant messaging experience.
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
+	createCredIntegrationSchema('linear', AgentLinearSettingsSchema).extend({
+		settings: AgentLinearSettingsSchema.optional(),
+	}),
+	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
+		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
+	}),
 ] as const;
 
 const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createDraftSimpleIntegrationSchema('slack'),
-	createDraftSimpleIntegrationSchema('linear'),
-	createDraftSimpleIntegrationSchema('discord'),
+	createDraftCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('linear', AgentLinearSettingsSchema).extend({
+		settings: AgentLinearSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
+		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
+	}),
 ] as const;
 
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);

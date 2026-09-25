@@ -61,6 +61,7 @@ function connectionContext(
 	return {
 		agentId: AGENT_ID,
 		projectId: 'project-1',
+		integration: { type: 'discord', credentialId: CREDENTIAL_ID },
 		credentialId: CREDENTIAL_ID,
 		credential: {
 			botToken: BOT_TOKEN,
@@ -252,6 +253,14 @@ describe('DiscordIntegration', () => {
 			replyExpectation: 'optional',
 		} as never);
 		expect(optional.statusHandle).toBeUndefined();
+		expect(startTyping).not.toHaveBeenCalled();
+
+		const queued = await integration.createBridgeExecutionContext({
+			...params,
+			replyExpectation: 'required',
+			startStatus: false,
+		} as never);
+		expect(queued.statusHandle).toBeUndefined();
 		expect(startTyping).not.toHaveBeenCalled();
 
 		const required = await integration.createBridgeExecutionContext({

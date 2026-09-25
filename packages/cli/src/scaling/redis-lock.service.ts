@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { RedisClientService } from '@/services/redis-client.service';
@@ -168,7 +169,7 @@ export class RedisLockService implements ILockService {
 
 			const jitter = Math.floor(Math.random() * 50); // Random jitter to avoid thundering herd
 
-			await new Promise((resolve) => setTimeout(resolve, 50 + jitter)); // Wait before retrying
+			await sleep(50 + jitter); // Wait before retrying
 		}
 	}
 

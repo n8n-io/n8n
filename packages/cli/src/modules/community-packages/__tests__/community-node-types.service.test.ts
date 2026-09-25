@@ -1,3 +1,4 @@
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
 import { inProduction } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 
@@ -33,6 +34,7 @@ describe('CommunityNodeTypesService', () => {
 			enabled: true,
 			verifiedEnabled: true,
 			aiNodeSdkVersion: 1,
+			nodesApiVersion: N8N_NODES_API_VERSION,
 		};
 		communityPackagesServiceMock = {};
 
@@ -51,26 +53,36 @@ describe('CommunityNodeTypesService', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1, N8N_NODES_API_VERSION);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+				'production',
+				{},
+				1,
+				N8N_NODES_API_VERSION,
+			);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+				'production',
+				{},
+				1,
+				N8N_NODES_API_VERSION,
+			);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1, N8N_NODES_API_VERSION);
 		});
 
 		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {
@@ -960,9 +972,21 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(true);
-			expect(isInstalled('package-2.node')).toBe(true);
-			expect(isInstalled('package-3.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(true);
+			expect(isInstalled({ packageName: 'package-2' })).toBe(true);
+			expect(isInstalled({ packageName: 'package-3' })).toBe(false);
+		});
+
+		it('should match a package name containing a dot', async () => {
+			// Splitting the node type on its first dot would look up
+			// 'n8n-nodes-chatwoot' and report the installed package as missing.
+			communityPackagesServiceMock.getAllInstalledPackages = vi
+				.fn()
+				.mockResolvedValue([{ packageName: 'n8n-nodes-chatwoot.io' }]);
+
+			const isInstalled = await (service as any).createIsInstalled();
+
+			expect(isInstalled({ packageName: 'n8n-nodes-chatwoot.io' })).toBe(true);
 		});
 
 		it('should handle empty package list', async () => {
@@ -970,7 +994,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(false);
 		});
 
 		it('should handle null package list', async () => {
@@ -978,7 +1002,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const isInstalled = await (service as any).createIsInstalled();
 
-			expect(isInstalled('package-1.node')).toBe(false);
+			expect(isInstalled({ packageName: 'package-1' })).toBe(false);
 		});
 	});
 });

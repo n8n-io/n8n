@@ -27,7 +27,7 @@ describe('@ApiErrorResponse Decorator', () => {
 			TestController as Controller,
 			'handler',
 		);
-		expect(route.errorResponses).toEqual([404]);
+		expect(route.errorResponses).toEqual([{ status: 404 }]);
 	});
 
 	it('should accumulate multiple stacked status codes on the route in ASC order', () => {
@@ -42,6 +42,53 @@ describe('@ApiErrorResponse Decorator', () => {
 			TestController as Controller,
 			'handler',
 		);
-		expect(route.errorResponses).toEqual([404, 409]);
+		expect(route.errorResponses).toEqual([{ status: 404 }, { status: 409 }]);
+	});
+
+	it('should store the response body DTO and description given for a status', () => {
+		class ConflictDto {
+			static parse(data: unknown) {
+				return data;
+			}
+		}
+
+		class TestController {
+			@Get('/')
+			@ApiErrorResponse(404)
+			@ApiErrorResponse(409, {
+				dto: ConflictDto,
+				description: 'Conflict, e.g. an open review blocks publication.',
+			})
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.errorResponses).toEqual([
+			{ status: 404 },
+			{
+				status: 409,
+				dto: ConflictDto,
+				description: 'Conflict, e.g. an open review blocks publication.',
+			},
+		]);
+	});
+
+	it('should store a description given without a DTO', () => {
+		class TestController {
+			@Get('/')
+			@ApiErrorResponse(404, { description: 'No workflow with that ID.' })
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.errorResponses).toEqual([
+			{ status: 404, description: 'No workflow with that ID.' },
+		]);
 	});
 });

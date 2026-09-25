@@ -19,6 +19,15 @@ import {
 // it, and the URL resolution — so later actions and the future trigger plug
 // it in without their own copies.
 
+const GUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+// Every /sites/{id} form Graph documents: composite hostname,GUID,GUID, a bare
+// site GUID, a bare hostname (tenant root), or the literal `root`
+// https://learn.microsoft.com/en-us/graph/api/site-get
+export const SITE_ID_REGEX = `^(?:root|${GUID}|[a-zA-Z0-9][a-zA-Z0-9.-]*(?:,${GUID},${GUID})?)$`;
+const SITE_ID_PATTERN = new RegExp(SITE_ID_REGEX);
+const SITE_ID_FORMATS_HINT =
+	'Use the ID from the site picker or Graph (hostname,GUID,GUID), a site GUID, a hostname, or "root". For a site address, switch the field to URL mode.';
+
 export const siteRLC: INodeProperties = {
 	displayName: 'Site',
 	name: 'site',
@@ -56,6 +65,15 @@ export const siteRLC: INodeProperties = {
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. contoso.sharepoint.com,5a58bb09-…,9f0d…',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: SITE_ID_REGEX,
+						errorMessage: SITE_ID_FORMATS_HINT,
+					},
+				},
+			],
 		},
 	],
 };
@@ -149,6 +167,13 @@ export async function resolveSiteId(
 	if (value === '') {
 		throw new NodeOperationError(this.getNode(), "The 'Site' parameter is empty", {
 			description: 'Set the site ID or URL and try again.',
+		});
+	}
+	// The field's typed validation doesn't run for expression-provided values,
+	// so ID mode re-checks here; list-mode values come from Graph's own search.
+	if (site.mode === 'id' && !SITE_ID_PATTERN.test(value)) {
+		throw new NodeOperationError(this.getNode(), "The 'Site' ID is not valid", {
+			description: `${SITE_ID_FORMATS_HINT} Check for stray characters such as quotes.`,
 		});
 	}
 	if (site.mode !== 'url') {

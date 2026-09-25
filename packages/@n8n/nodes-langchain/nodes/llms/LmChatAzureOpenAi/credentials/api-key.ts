@@ -1,5 +1,6 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**
@@ -13,9 +14,11 @@ export async function setupApiKeyAuthentication(
 		// Get Azure OpenAI Config (Endpoint, Version, etc.)
 		const configCredentials = await this.getCredentials<{
 			apiKey?: string;
-			resourceName: string;
-			apiVersion: string;
+			resourceName?: string;
+			apiVersion?: string;
 			endpoint?: string;
+			endpointType?: 'classic' | 'foundry';
+			foundryEndpoint?: string;
 		}>(credentialName);
 
 		if (!configCredentials.apiKey) {
@@ -26,6 +29,27 @@ export async function setupApiKeyAuthentication(
 		}
 
 		this.logger.info('Using API Key authentication for Azure OpenAI.');
+
+		if (configCredentials.endpointType === 'foundry') {
+			const foundryEndpoint = requireFoundryEndpoint(
+				this.getNode(),
+				configCredentials.foundryEndpoint,
+			);
+			return {
+				azureOpenAIApiKey: configCredentials.apiKey,
+				azureOpenAIApiInstanceName: '',
+				azureOpenAIApiVersion: '',
+				azureOpenAIEndpoint: foundryEndpoint,
+				azureFoundryBaseURL: foundryEndpoint,
+			};
+		}
+
+		if (!configCredentials.resourceName?.trim() || !configCredentials.apiVersion?.trim()) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+			);
+		}
 
 		return {
 			azureOpenAIApiKey: configCredentials.apiKey,

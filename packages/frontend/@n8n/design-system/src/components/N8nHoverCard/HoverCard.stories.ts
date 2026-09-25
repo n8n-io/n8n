@@ -9,7 +9,7 @@ import N8nTag from '../N8nTag/Tag.vue';
 import N8nText from '../N8nText/Text.vue';
 
 export default {
-	title: 'Core/Hover Card',
+	title: 'Core/HoverCard',
 	component: N8nHoverCard,
 	argTypes: {
 		openDelay: { control: 'number' },
@@ -33,7 +33,7 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 	setup: () => ({ args }),
 	components: { N8nHoverCard, N8nButton, N8nIcon, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; justify-content: center;">
+		<div>
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
 					<N8nButton>Customer onboarding</N8nButton>
@@ -47,7 +47,7 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 									<N8nText size="small" color="text-light">Assigns setup tasks, enriches CRM data, and notifies account owners.</N8nText>
 								</div>
 							</div>
-							<N8nBadge theme="secondary" size="small">Active</N8nBadge>
+							<N8nBadge variant="secondary" size="small">Active</N8nBadge>
 						</header>
 
 						<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing--2xs);">
@@ -86,8 +86,8 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 	`,
 });
 
-export const WorkflowPreview = WorkflowPreviewTemplate.bind({});
-WorkflowPreview.args = {
+export const Default = WorkflowPreviewTemplate.bind({});
+Default.args = {
 	maxWidth: '380px',
 	side: 'right',
 	align: 'center',
@@ -100,7 +100,7 @@ const EnvironmentTemplate: StoryFn = (args) => ({
 	},
 	components: { N8nHoverCard, N8nTag, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; flex-direction: column; align-items: center; gap: var(--spacing--sm);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm)">
 			<N8nText size="small" color="text-light">Open: {{ isOpen }}</N8nText>
 			<N8nHoverCard v-model:open="isOpen" v-bind="args">
 				<template #trigger>
@@ -113,7 +113,7 @@ const EnvironmentTemplate: StoryFn = (args) => ({
 								<N8nText bold>Production environment</N8nText>
 								<N8nText size="small" color="text-light">Webhook traffic is routed to this workflow version.</N8nText>
 							</div>
-							<N8nBadge theme="secondary" size="small">Healthy</N8nBadge>
+							<N8nBadge variant="secondary" size="small">Healthy</N8nBadge>
 						</header>
 
 						<div style="padding: var(--spacing--xs); border-radius: var(--radius--xs); background: var(--color--background--light); display: flex; flex-direction: column; gap: var(--spacing--2xs);">
@@ -219,7 +219,7 @@ const SharedReferenceTemplate: StoryFn = (args) => ({
 	},
 	components: { N8nHoverCard, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 112px;">
+		<div>
 			<N8nHoverCard
 				v-model:open="open"
 				hide-trigger
@@ -233,7 +233,7 @@ const SharedReferenceTemplate: StoryFn = (args) => ({
 								<N8nText bold>{{ activeStep.label }}</N8nText>
 								<N8nText size="small" color="text-light">{{ activeStep.detail }}</N8nText>
 							</div>
-							<N8nBadge size="small" theme="secondary">{{ activeStep.status }}</N8nBadge>
+							<N8nBadge size="small" variant="secondary">{{ activeStep.status }}</N8nBadge>
 						</header>
 
 						<div style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing--2xs) var(--spacing--sm);">
@@ -332,7 +332,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 	}),
 	components: { N8nHoverCard, N8nButton, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; justify-content: center;">
+		<div>
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
 					<N8nButton>Recent executions</N8nButton>
@@ -350,7 +350,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 									<N8nText size="small" bold>#{{ execution.id }} · {{ execution.workflowName }}</N8nText>
 									<N8nText size="xsmall" color="text-light">Started {{ execution.started }} · Runtime {{ execution.duration }}</N8nText>
 								</div>
-								<N8nBadge size="small" theme="secondary">{{ execution.status }}</N8nBadge>
+								<N8nBadge size="small" variant="secondary">{{ execution.status }}</N8nBadge>
 							</div>
 						</div>
 					</section>

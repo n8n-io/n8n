@@ -1,7 +1,14 @@
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { CaseSeed } from '../harness/schema';
-import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
+import type {
+	ConversationTurn,
+	SetupWizardSkippedNode,
+	ToolInteraction,
+	TranscriptStep,
+	TranscriptTurn,
+} from '../types';
 
 /** Render a turn's out-of-band workflow attachment for a transcript/prompt, e.g.
  *  `[attached workflow: Batch loop]`, or '' when it has none. The editor hands the
@@ -17,17 +24,30 @@ export function attachedWorkflowNote(label: string | undefined): string {
 	return label ? `[attached workflow: ${label}]` : '';
 }
 
-/** The name a seed declares for an attached workflow id. The authored-conversation
- *  path has only the id, and the seed is where that id gets its name; falls back
- *  to the id when the seed can't resolve it, so the hand-off stays visible. */
-function attachedWorkflowLabel(
+/** Render an out-of-band Agent attachment for a transcript or prompt. */
+export function attachedAgentNote(label: string | undefined): string {
+	return label ? `[attached agent: ${label}]` : '';
+}
+
+/** Resolve an authored attachment id to the resource name declared by the seed. */
+function attachedResourceNote(
 	turn: ConversationTurn | undefined,
 	seed: CaseSeed | undefined,
-): string | undefined {
-	const id = turn?.attach?.workflow;
-	if (id === undefined) return undefined;
-	const declared = seed?.mode === 'inline' ? seed.workflows.find((w) => w.id === id) : undefined;
-	return declared?.name ?? id;
+): string {
+	const attachment = turn?.attach;
+	if (attachment === undefined) return '';
+	if ('workflow' in attachment) {
+		const declared =
+			seed?.mode === 'inline'
+				? seed.workflows.find((workflow) => workflow.id === attachment.workflow)
+				: undefined;
+		return attachedWorkflowNote(declared?.name ?? attachment.workflow);
+	}
+	const declared =
+		seed?.mode === 'inline'
+			? seed.agents.find((agent) => agent.id === attachment.agent)
+			: undefined;
+	return attachedAgentNote(declared?.config.name ?? attachment.agent);
 }
 
 /**
@@ -47,7 +67,7 @@ export function caseDisplayPrompt(
 	if (liveTurn) return liveTurn;
 	const { seed } = testCase;
 	if (seed?.mode === 'replay') return `[seeded] thread ${seed.threadId.slice(0, 8)}`;
-	return attachedWorkflowNote(attachedWorkflowLabel(testCase.conversation?.[0], seed));
+	return attachedResourceNote(testCase.conversation?.[0], seed);
 }
 
 /**
@@ -83,9 +103,7 @@ export function conversationUserTurnsAsText(
 		.filter((t) => t.role === 'user')
 		// Name an attachment, so a text-less hand-off isn't filtered out below and
 		// handed to the prompt-aware checks as an empty prompt.
-		.map((t) =>
-			[attachedWorkflowNote(attachedWorkflowLabel(t, seed)), t.text].filter(Boolean).join(' '),
-		)
+		.map((t) => [attachedResourceNote(t, seed), t.text].filter(Boolean).join(' '))
 		.filter((text) => text.length > 0);
 
 	if (turns.length === 0) return '';
@@ -93,12 +111,104 @@ export function conversationUserTurnsAsText(
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
 }
 
-/** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
-export function transcriptAsText(transcript: TranscriptTurn[]): string {
+export interface UsageTokens {
+	input: number;
+	output: number;
+	cacheRead: number;
+	cacheWrite: number;
+}
+
+function numberOr0(value: unknown): number {
+	return typeof value === 'number' ? value : 0;
+}
+
+/** A step's usage is one number for the whole LLM call — real granularity bottoms
+ *  out here, not at the individual tool-call/message level. `inputTokens`/`promptTokens`
+ *  naming varies by SDK version, matching `parseUsageSummary`'s own fallback; cache
+ *  fields nest under `inputTokenDetails` per the AI SDK's `LanguageModelUsage` shape. */
+export function usageTokens(usage: unknown, providerMetadata?: unknown): UsageTokens {
+	if (!isRecord(usage)) return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+	const details = isRecord(usage.inputTokenDetails) ? usage.inputTokenDetails : undefined;
+	const cacheRead = numberOr0(details?.cacheReadTokens);
+	const cacheWrite = numberOr0(details?.cacheWriteTokens);
+	return {
+		input: numberOr0(usage.inputTokens ?? usage.promptTokens),
+		output: numberOr0(usage.outputTokens ?? usage.completionTokens),
+		// OpenAI's provider reports cache hits only in `providerMetadata` and leaves
+		// the SDK's `inputTokenDetails` at zero, so an explicit zero there is not
+		// evidence of no cache. The provider figure is read only when the SDK fields
+		// carry nothing, the same fallback the runtime's `toTokenUsage`
+		// (`@n8n/agents`, `runtime/streaming/stream.ts`) applies, so the two agree.
+		cacheRead: cacheRead || cacheWrite ? cacheRead : openAiCachedPromptTokens(providerMetadata),
+		cacheWrite,
+	};
+}
+
+function openAiCachedPromptTokens(providerMetadata: unknown): number {
+	if (!isRecord(providerMetadata) || !isRecord(providerMetadata.openai)) return 0;
+	return numberOr0(providerMetadata.openai.cachedPromptTokens);
+}
+
+/** A run's usage plus its step count — totals sum ACROSS steps, so without the count
+ *  "76033 tokens in" reads as one huge prompt when it was two ordinary ones. */
+export type RunUsage = UsageTokens & { steps: number };
+
+/** The four usage fields summed over LLM steps, with the step count. The one
+ *  accumulator: the turn headings and the verifier's totals both read it, so the
+ *  two cannot drift. */
+export function sumUsage(steps: InstanceAiRunDebugResponse['steps']): RunUsage {
+	const total: RunUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, steps: 0 };
+	for (const step of steps) {
+		const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
+		total.input += usage.input;
+		total.output += usage.output;
+		total.cacheRead += usage.cacheRead;
+		total.cacheWrite += usage.cacheWrite;
+		total.steps++;
+	}
+	return total;
+}
+
+/** Token usage per run-id, the join target for a turn's `runIds`. */
+function usageByRunId(runDebug: InstanceAiRunDebugResponse[] | undefined): Map<string, RunUsage> {
+	return new Map((runDebug ?? []).map((run) => [run.runId, sumUsage(run.steps)]));
+}
+
+/** `" (N steps, N tokens in [C cached], M tokens out)"` for a turn heading. The cached
+ *  clause is omitted when the provider reported none, and '' when nothing matched —
+ *  a plain heading beats a false zero. */
+function turnUsageSuffix(turn: TranscriptTurn, usageMap: Map<string, RunUsage>): string {
+	if (!turn.runIds || turn.runIds.length === 0) return '';
+	let input = 0;
+	let output = 0;
+	let cacheRead = 0;
+	let steps = 0;
+	let matched = false;
+	for (const runId of turn.runIds) {
+		const usage = usageMap.get(runId);
+		if (!usage) continue;
+		matched = true;
+		input += usage.input;
+		output += usage.output;
+		cacheRead += usage.cacheRead;
+		steps += usage.steps;
+	}
+	if (!matched) return '';
+	const cached = cacheRead > 0 ? ` [${String(cacheRead)} cached]` : '';
+	const stepWord = steps === 1 ? 'step' : 'steps';
+	return ` (${String(steps)} ${stepWord}, ${String(input)} tokens in${cached}, ${String(output)} tokens out)`;
+}
+
+/** Transcript as plain text for LLM-judged checks; `runDebug` inlines per-turn usage. */
+export function transcriptAsText(
+	transcript: TranscriptTurn[],
+	runDebug?: InstanceAiRunDebugResponse[],
+): string {
+	const usageMap = usageByRunId(runDebug);
 	return transcript
 		.map((turn, i) => {
 			// No seeded label: the judge evaluates the whole conversation as one.
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			const lines: string[] = [`### Turn ${String(i + 1)}${turnUsageSuffix(turn, usageMap)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
@@ -183,9 +293,20 @@ export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 // Cap each serialized field to bound judge token cost (matches the report's cap).
 const MAX_STEP_CHARS = 2000;
 
-function cap(text: string): string {
-	return text.length > MAX_STEP_CHARS
-		? `${text.slice(0, MAX_STEP_CHARS)}… (${String(text.length - MAX_STEP_CHARS)} more chars)`
+/**
+ * The agent's own words get a larger budget than tool payloads. Process and
+ * behaviour expectations are graded from what the agent said, and a
+ * report-shaped answer puts its conclusion last — an analysis case lost a
+ * legitimate green because the closing "which should I build?" fell past the
+ * 2000-char cut while the stored transcript held it in full. Tool args and
+ * results keep the tighter cap: they are unbounded and are what actually
+ * drives judge token cost.
+ */
+const MAX_NARRATION_CHARS = 8000;
+
+function cap(text: string, limit: number = MAX_STEP_CHARS): string {
+	return text.length > limit
+		? `${text.slice(0, limit)}… (${String(text.length - limit)} more chars)`
 		: text;
 }
 
@@ -201,7 +322,7 @@ function capJson(value: unknown): string {
 
 function describeStep(step: TranscriptStep): string | null {
 	if (step.kind === 'agent-text') {
-		return step.text ? `Assistant: ${cap(step.text)}` : null;
+		return step.text ? `Assistant: ${cap(step.text, MAX_NARRATION_CHARS)}` : null;
 	}
 	return describeInteraction(step);
 }
@@ -229,9 +350,10 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 			}
 			const qs = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` (${q.type})` : '';
 					const opts = q.options && q.options.length > 0 ? ` [${q.options.join(' / ')}]` : '';
 					const answer = answerByQId.get(q.id);
-					return `Q: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
+					return `Q${type}: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
 				})
 				.join(' | ');
 			return `Asked user: ${qs}`;
@@ -246,12 +368,17 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 				);
 				parts.push(`configured ${configured.join('; ')}`);
 			}
-			if (interaction.skippedNodes.length > 0) {
-				const skipped = interaction.skippedNodes.map(
-					(s) =>
-						`${s.nodeName}${s.credentialType ? ` (needs ${s.credentialType} credential)` : ' (needs parameters)'}`,
+			const describeNeeds = (node: SetupWizardSkippedNode) =>
+				`${node.nodeName}${node.credentialType ? ` (needs ${node.credentialType} credential)` : ' (needs parameters)'}`;
+			if (interaction.nodesStillNeedingSetup.length > 0) {
+				parts.push(
+					`still needs setup ${interaction.nodesStillNeedingSetup.map(describeNeeds).join(', ')}`,
 				);
-				parts.push(`skipped ${skipped.join(', ')}`);
+			}
+			// Kept distinct from the above: the judge cares whether the assistant re-asked for
+			// something the user declined, which reads the same as "unconfigured" if merged.
+			if (interaction.skippedByUser && interaction.skippedByUser.length > 0) {
+				parts.push(`user skipped ${interaction.skippedByUser.map(describeNeeds).join(', ')}`);
 			}
 			const body = parts.length > 0 ? parts.join('; ') : 'nothing to apply';
 			return `Setup wizard: ${body}${interaction.reason ? ` — ${interaction.reason}` : ''}`;

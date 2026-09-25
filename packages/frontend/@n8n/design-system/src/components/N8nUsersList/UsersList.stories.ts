@@ -32,8 +32,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const UsersList = Template.bind({});
-UsersList.args = {
+export const Default = Template.bind({});
+Default.args = {
 	actions: [
 		{
 			label: 'Resend Invite',

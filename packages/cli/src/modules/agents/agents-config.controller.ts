@@ -8,6 +8,8 @@ import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -19,13 +21,15 @@ export class AgentsConfigController {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		return await this.agentConfigService.getConfig(agentId, projectId);
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		return { config, configHash: getAgentConfigHash(config) };
 	}
 
 	/**
@@ -49,6 +53,7 @@ export class AgentsConfigController {
 			this.credentialsService,
 			projectId,
 			req.user,
+			agentId,
 		);
 		return await this.agentValidationService.validateLoadedAgentConfiguration(
 			agent,
@@ -66,9 +71,19 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config } = payload;
+		const { config, baseConfigHash } = payload;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update',
+		);
 		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
+			baseConfigHash,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -81,9 +96,18 @@ export class AgentsConfigController {
 		@Param('toolId') toolId: string,
 	) {
 		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'delete',
+		);
 		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { ok: true };
 	}

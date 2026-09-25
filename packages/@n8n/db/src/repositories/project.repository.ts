@@ -1,13 +1,68 @@
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
-import { Project } from '../entities';
+import { BaseRepository } from './base-repository';
+import { Project, ProjectRelation } from '../entities';
+import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+
+export class ProjectIdConflictError extends UserError {
+	constructor() {
+		super('A project with this ID already exists');
+	}
+}
 
 @Service()
-export class ProjectRepository extends Repository<Project> {
-	constructor(dataSource: DataSource) {
-		super(Project, dataSource.manager);
+export class ProjectRepository extends BaseRepository<Project> {
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+	) {
+		super(Project, dataSource.manager, txRunner);
+	}
+
+	/** Returns null when the team project quota is full. */
+	async insertTeamProjectWithAdmin(
+		data: Pick<Project, 'name'> &
+			Partial<Pick<Project, 'id' | 'icon' | 'description' | 'customTelemetryTags'>>,
+		creatorId: string,
+		limit: number,
+	): Promise<Project | null> {
+		// Keep the quota check and both inserts in one serializable transaction.
+		return await this.txRunner.run(
+			{},
+			async (ctx) => {
+				const manager = this.managerFor(ctx);
+				if (limit !== UNLIMITED_LICENSE_QUOTA) {
+					const count = await manager.count(Project, { where: { type: 'team' } });
+					if (count >= limit) {
+						if (data.id && (await manager.existsBy(Project, { id: data.id }))) {
+							throw new ProjectIdConflictError();
+						}
+						return null;
+					}
+				}
+
+				const project = this.create({ ...data, type: 'team', creatorId });
+				try {
+					await manager.insert(Project, project);
+				} catch (error) {
+					if (isUniqueConstraintError(error)) throw new ProjectIdConflictError();
+					throw error;
+				}
+				await manager.insert(ProjectRelation, {
+					projectId: project.id,
+					userId: creatorId,
+					role: { slug: 'project:admin' },
+				});
+				return await manager.findOneByOrFail(Project, { id: project.id });
+			},
+			{ isolationLevel: 'SERIALIZABLE' },
+		);
 	}
 
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
@@ -33,6 +88,25 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	/** IDs of every team project, ordered for a stable export. */
+	async findTeamProjectIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { type: 'team' },
+			select: { id: true },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
+	}
+
+	/** Id and type of every project that exists with one of these ids. */
+	async findTypesByIds(ids: string[]): Promise<Array<Pick<Project, 'id' | 'type'>>> {
+		const rows: Array<Pick<Project, 'id' | 'type'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: {
@@ -41,6 +115,14 @@ export class ProjectRepository extends Repository<Project> {
 				},
 			},
 		});
+	}
+
+	async findTeamProjects(): Promise<Project[]> {
+		return await this.findBy({ type: 'team' });
+	}
+
+	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
+		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
 	}
 
 	async getAccessibleProjectsByExactName(

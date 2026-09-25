@@ -1,10 +1,19 @@
-import { renderComponent } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestingPinia } from '@pinia/testing';
-import { h } from 'vue';
 import type { IWorkflowGroup } from 'n8n-workflow';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
+
+import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
+import type { CanvasGroupNodeData } from '../../../canvas.types';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+
+import { renderComponent } from '@/__tests__/render';
 
 // Handle requires a <VueFlow> ancestor. Mock it as an inert div so the
 // title bar can render in isolation. Other VueFlow imports are type-only.
@@ -31,11 +40,16 @@ vi.mock('@vue-flow/core', () => ({
 	}),
 }));
 
-import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
-import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
-import { useCanvasNodeGroupDescriptionVisibility } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
-import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
-import type { CanvasGroupNodeData } from '../../../canvas.types';
+// A real `ref` so template `v-if` auto-unwraps it like the production computed.
+const { isNodeContextEnabled } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ref } = require('vue');
+	return { isNodeContextEnabled: ref(false) };
+});
+
+vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
+	useIsNodeContextEnabled: () => isNodeContextEnabled,
+}));
 
 const baseGroup: IWorkflowGroup = {
 	id: 'g1',
@@ -56,6 +70,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	beforeEach(() => {
 		viewportRef.value = { x: 0, y: 0, zoom: 1 };
 		localStorage.clear();
+		isNodeContextEnabled.value = false;
 	});
 
 	function render(
@@ -66,6 +81,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			readOnly: boolean;
 			selected: boolean;
 			canExtract: boolean;
+			hasTrigger: boolean;
 		}> = {},
 		descriptionVisibility?: ReturnType<typeof useCanvasNodeGroupDescriptionVisibility>,
 	) {
@@ -83,9 +99,30 @@ describe('CanvasNodeGroupTitleBar', () => {
 				readOnly: props.readOnly ?? false,
 				selected: props.selected ?? false,
 				canExtract: props.canExtract ?? false,
+				hasTrigger: props.hasTrigger ?? false,
 			},
 		});
 	}
+
+	describe('trigger mark', () => {
+		it('renders the zap when a collapsed group holds a trigger', () => {
+			const wrapper = render({ hasTrigger: true, data: makeData({ isCollapsed: true }) });
+
+			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeTruthy();
+		});
+
+		it('renders no zap when the group holds no trigger', () => {
+			const wrapper = render({ hasTrigger: false, data: makeData({ isCollapsed: true }) });
+
+			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeNull();
+		});
+
+		it('renders no zap while the group is open, where the triggers are visible', () => {
+			const wrapper = render({ hasTrigger: true, data: makeData({ isCollapsed: false }) });
+
+			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeNull();
+		});
+	});
 
 	describe('chevron caption and icon by state', () => {
 		it('renders chevron-down with Expand label when collapsed', () => {
@@ -107,6 +144,22 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('add to chat', () => {
+		it('hides the add-to-chat button when the node-context flag is off', () => {
+			isNodeContextEnabled.value = false;
+			const wrapper = render();
+			expect(wrapper.queryByTestId('canvas-node-group-add-to-chat')).toBeNull();
+		});
+
+		it('shows the button when the flag is on and emits add-nodes-to-chat with the group id', async () => {
+			isNodeContextEnabled.value = true;
+			const wrapper = render();
+			const btn = wrapper.getByTestId('canvas-node-group-add-to-chat');
+			await fireEvent.click(btn);
+			expect(wrapper.emitted()['add-nodes-to-chat']).toEqual([['g1']]);
 		});
 	});
 

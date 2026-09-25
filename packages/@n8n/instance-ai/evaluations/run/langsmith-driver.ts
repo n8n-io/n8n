@@ -7,6 +7,7 @@
 // lives here because it reads or writes LangSmith state.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
@@ -20,12 +21,7 @@ import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
-import {
-	isPlainObject,
-	parseTargetOutput,
-	reshapeLangSmithRuns,
-	type TargetOutput,
-} from './reshape';
+import { parseTargetOutput, reshapeLangSmithRuns, type TargetOutput } from './reshape';
 import { partialIsolationWarning } from '../cli/args';
 import type { CliArgs } from '../cli/args';
 import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
@@ -391,8 +387,8 @@ async function updateExperimentAggregates(config: {
 		const project = await lsClient.readProject({ projectName: experimentName });
 		// `updateProject` replaces `extra` wholesale — preserve it so auto-set
 		// fields (splits, etc.) survive. Narrow via typeof guards rather than `as`.
-		const existingExtra = isPlainObject(project.extra) ? project.extra : {};
-		const existingMetadata = isPlainObject(existingExtra.metadata) ? existingExtra.metadata : {};
+		const existingExtra = isRecord(project.extra) ? project.extra : {};
+		const existingMetadata = isRecord(existingExtra.metadata) ? existingExtra.metadata : {};
 		await lsClient.updateProject(project.id, {
 			projectExtra: existingExtra,
 			metadata: { ...existingMetadata, ...aggregates },

@@ -167,6 +167,7 @@ export async function reseedScenarioTables(
 	threadId: string,
 	tableIdsByName: Record<string, string>,
 	logger: EvalLogger,
+	deadline?: number,
 ): Promise<void> {
 	for (const table of scenario.seedDataTables ?? []) {
 		const tableId = tableIdsByName[table.name];
@@ -175,7 +176,11 @@ export async function reseedScenarioTables(
 				`Scenario "${scenario.name}" declares seed table "${table.name}" that was not pre-seeded before the build; cannot bind its rows.`,
 			);
 		}
-		await client.seedDataTableRows(threadId, tableId, table.rows ?? []);
+		const timeoutMs = deadline === undefined ? undefined : deadline - Date.now();
+		if (timeoutMs !== undefined && timeoutMs <= 0) {
+			throw new Error('Case timed out while preparing user execution data');
+		}
+		await client.seedDataTableRows(threadId, tableId, table.rows ?? [], timeoutMs);
 		logger.verbose(
 			`    [${scenario.name}] reseeded data table "${table.name}" (${String((table.rows ?? []).length)} row(s))`,
 		);
@@ -192,17 +197,4 @@ function sameSeedTableShape(
 		JSON.stringify({ columns: a.columns, rows: a.rows }) ===
 		JSON.stringify({ columns: b.columns, rows: b.rows })
 	);
-}
-
-/** Agent scenarios don't seed data-table rows (tables exist but stay empty) — shared warning for both orchestration paths. */
-export function warnAgentSeedDataTablesIgnored(
-	logger: EvalLogger,
-	scenarioName: string,
-	seedDataTables: unknown[] | undefined,
-): void {
-	if ((seedDataTables?.length ?? 0) > 0) {
-		logger.warn(
-			`    [${scenarioName}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
-		);
-	}
 }

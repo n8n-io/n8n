@@ -1,6 +1,9 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -30,6 +33,20 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
+const rollouts = { computerUse: true, browserUse: true };
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: () => ({
+		isFeatureEnabled: computed(() => rollouts.computerUse),
+	}),
+}));
+
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: () => ({
+		isFeatureEnabled: computed(() => rollouts.browserUse),
+	}),
+}));
+
 const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();
@@ -42,6 +59,9 @@ const mockVerifySandbox = vi.fn();
 const mockVerifySearch = vi.fn();
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
+const mockCreateBrowserLink = vi.fn();
+const mockDisconnectBrowserSession = vi.fn();
+const mockGetBrowserStatus = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -61,6 +81,9 @@ vi.mock('../instanceAi.api', () => ({
 	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
 	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
 	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
+	createBrowserLink: (...args: unknown[]) => mockCreateBrowserLink(...args),
+	disconnectBrowserSession: (...args: unknown[]) => mockDisconnectBrowserSession(...args),
+	getBrowserStatus: (...args: unknown[]) => mockGetBrowserStatus(...args),
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -74,6 +97,7 @@ function makeModuleSettings(
 ): InstanceAiModuleSettings {
 	return {
 		enabled: true,
+		mcpConnectionsAvailable: true,
 		localGatewayDisabled: false,
 		browserUseEnabled: true,
 		proxyEnabled: false,
@@ -106,6 +130,8 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		rollouts.computerUse = true;
+		rollouts.browserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -134,6 +160,21 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+	});
+
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {
 			setModuleSettings(settingsStore, {
@@ -158,6 +199,21 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when module settings is undefined', () => {
 			settingsStore.moduleSettings = {};
 			expect(store.isInstanceAiDisabled).toBe(true);
+		});
+	});
+
+	describe('isMcpAvailable', () => {
+		it('uses public module settings', () => {
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: true });
+			expect(store.isMcpAvailable).toBe(true);
+
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: false });
+			expect(store.isMcpAvailable).toBe(false);
+		});
+
+		it('returns false before module settings load', () => {
+			settingsStore.moduleSettings = {};
+			expect(store.isMcpAvailable).toBe(false);
 		});
 	});
 
@@ -523,89 +579,49 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('connections', () => {
-		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
+	describe('unexpected disconnects', () => {
+		it('distinguishes an unavailable gateway from a user-disconnected gateway', async () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
 			setUserPreference(store, { localGatewayDisabled: false });
+			mockGetGatewayStatus
+				.mockResolvedValueOnce({
+					connected: true,
+					directory: '/tmp',
+					hostIdentifier: 'host-1',
+					toolCategories: [],
+				})
+				.mockResolvedValueOnce({
+					connected: false,
+					directory: null,
+					hostIdentifier: null,
+					toolCategories: [],
+				});
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'disconnected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'browser', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('connected');
+			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('disconnected');
+			expect(store.gatewayHostIdentifier).toBe('host-1');
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				name: '/Users/test/project',
-				status: 'connected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'connected',
-			});
+			mockDisconnectGatewaySession.mockResolvedValue(undefined);
+			await store.disconnectComputerUse();
+			expect(store.computerUseConnectionStatus).toBe('none');
+			expect(store.gatewayHostIdentifier).toBeNull();
 		});
 
-		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'filesystem', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
+		it('tracks Browser Use disconnects observed in the current session', async () => {
+			mockGetBrowserStatus
+				.mockResolvedValueOnce({ connected: true, connectedAt: '2026-01-01', toolCategories: [] })
+				.mockResolvedValueOnce({ connected: false, connectedAt: null, toolCategories: [] });
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
-			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('connected');
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('disconnected');
+
+			mockDisconnectBrowserSession.mockResolvedValue(undefined);
+			await store.disconnectBrowserUse();
+			expect(store.browserUseConnectionStatus).toBe('none');
 		});
 	});
 
@@ -687,6 +703,47 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.setupCommandExpiresAt).toBeNull();
 			expect(store.setupCommandTtlSeconds).toBeNull();
 			expect(store.setupCommandFetchedAt).toBeNull();
+		});
+	});
+
+	describe('computerUseChannels', () => {
+		it('reports both entries when each rollout and admin switch allows it', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer', 'browser']);
+		});
+
+		it('reports nothing when neither rollout covers the user', () => {
+			rollouts.computerUse = false;
+			rollouts.browserUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual([]);
+		});
+
+		it('drops the local computer when the admin disabled the gateway', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: true, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['browser']);
+		});
+
+		it('drops the browser when the admin disabled browser-use', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('drops the browser when its rollout does not cover the user', () => {
+			rollouts.browserUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('reports nothing while the module settings have not loaded', () => {
+			settingsStore.moduleSettings = {};
+
+			expect(store.computerUseChannels).toEqual([]);
 		});
 	});
 });

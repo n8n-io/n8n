@@ -3,6 +3,8 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref,
 import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
+import truncate from 'lodash/truncate';
+import { CompactParameterHintsKey } from '@/app/constants/injectionKeys';
 
 import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
@@ -52,6 +54,7 @@ import {
 	shouldSkipParamValidation,
 } from '@/features/ndv/shared/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUtils';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -62,10 +65,10 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -147,6 +150,7 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,6 +164,7 @@ const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
+	externalIssues: () => [],
 });
 
 const emit = defineEmits<{
@@ -183,7 +188,6 @@ const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
-const { askAi } = useEditorContext();
 const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -194,6 +198,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -268,6 +273,22 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
 });
 
+const parameterType = computed(() => props.parameter.type);
+const { contributedComponent, capabilities: contributedCapabilities } =
+	useParameterInputContribution(parameterType);
+
+/**
+ * A contributed input that owns expression rendering replaces every built-in
+ * branch. One that does not yields to the expression editor first, exactly as a
+ * built-in non-resource-locator type does.
+ */
+const showContributedComponent = computed<boolean>(() => {
+	if (!contributedComponent.value) return false;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
+
+	return !isModelValueExpression.value && !props.forceShowExpression;
+});
+
 const isSecretParameter = computed<boolean>(() => {
 	return getTypeOption('password') === true;
 });
@@ -332,7 +353,13 @@ const parameterOptions = computed(() => {
 	// the unsupported-action notice instead of showing a blank dropdown.
 	const paramName = props.parameter.name;
 	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
-	if (shortPath.value !== paramName) return displayableOptions;
+	// Filter only the top-level resource/operation param (not one nested in a
+	// collection). The path root is 'parameters' in the NDV and empty in the
+	// standalone tool-config form, so accept both roots instead of relying on the
+	// stripped `shortPath`, which is empty when there is no root segment.
+	if (props.path !== paramName && props.path !== `parameters.${paramName}`) {
+		return displayableOptions;
+	}
 
 	const currentValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value
@@ -498,6 +525,16 @@ const displayValue = computed(() => {
 	return returnValue as string;
 });
 
+function normalizeNumberValue(value: unknown): number | undefined {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+	if (typeof value !== 'string' || value.trim() === '') return undefined;
+
+	const parsedValue = Number(value);
+	return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+const numberDisplayValue = computed(() => normalizeNumberValue(displayValue.value));
+
 const expressionDisplayValue = computed(() => {
 	if (props.forceShowExpression) {
 		return '';
@@ -577,7 +614,7 @@ const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
 
 	if (validationError) {
-		return [validationError];
+		return [validationError, ...props.externalIssues];
 	}
 
 	if (props.hideIssues || !node.value) {
@@ -657,10 +694,10 @@ const getIssues = computed<string[]>(() => {
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
-		return issues.parameters[props.parameter.name];
+		return [...issues.parameters[props.parameter.name], ...props.externalIssues];
 	}
 
-	return [];
+	return props.externalIssues;
 });
 
 const displayTitle = computed<string>(() => {
@@ -770,7 +807,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		isResourceLocatorParameter.value ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(
@@ -815,16 +852,25 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
 
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
+
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
 
-function getPlaceholder(): string {
+const compactHints = inject(CompactParameterHintsKey, false);
+const fullPlaceholderHint = computed(() => {
 	const rawValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value
 		: props.modelValue;
-	if (typeof rawValue === 'string') {
-		const labels = extractPlaceholderLabels(rawValue);
-		if (labels.length > 0) return labels[0];
+	return typeof rawValue === 'string' ? extractPlaceholderLabels(rawValue)[0] : undefined;
+});
+
+function getPlaceholder(): string {
+	if (fullPlaceholderHint.value) {
+		return compactHints
+			? truncate(fullPlaceholderHint.value, { length: 60, separator: ' ' })
+			: fullPlaceholderHint.value;
 	}
 
 	return props.isForCredential
@@ -1492,6 +1538,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>
@@ -1515,8 +1562,30 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 		>
+			<component
+				:is="contributedComponent"
+				v-if="showContributedComponent"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:node="node"
+				:display-title="displayTitle"
+				:is-read-only="isReadOnly"
+				:is-value-expression="isModelValueExpression"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:dependent-parameters-values="dependentParametersValues"
+				:parameter-issues="getIssues"
+				:droppable="droppable ?? false"
+				:event-bus="eventBus"
+				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<ResourceLocator
-				v-if="parameter.type === 'resourceLocator'"
+				v-else-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -1629,7 +1698,6 @@ onUpdated(async () => {
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
-							:disable-ask-ai="!askAi"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1702,7 +1770,6 @@ onUpdated(async () => {
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					:disable-ask-ai="!askAi"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1845,7 +1912,6 @@ onUpdated(async () => {
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
-						:disable-ask-ai="!askAi"
 					/>
 				</div>
 				<N8nInput
@@ -1862,7 +1928,8 @@ onUpdated(async () => {
 						remoteParameterOptionsLoading ||
 						remoteParameterOptionsLoadingIssues !== null
 					"
-					:title="displayTitle"
+					:title="compactHints && fullPlaceholderHint ? fullPlaceholderHint : displayTitle"
+					:aria-label="compactHints ? switchLabel : undefined"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
 					@update:model-value="
@@ -1956,7 +2023,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="displayValue"
+				:model-value="numberDisplayValue"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
@@ -1965,7 +2032,7 @@ onUpdated(async () => {
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@update:model-value="onUpdateTextInput"
+				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@paste="onPasteNumber"
@@ -2176,6 +2243,8 @@ onUpdated(async () => {
 </style>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;

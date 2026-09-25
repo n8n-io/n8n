@@ -2,15 +2,12 @@
 import { computed, reactive, ref, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
-	AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import {
 	N8nButton,
-	N8nDialog,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nFormInput,
 	N8nIcon,
 	N8nInputLabel,
@@ -27,6 +24,7 @@ import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAg
 import type { AgentSkill, AgentSkillReference } from '../types';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import AgentChipButton from './AgentChipButton.vue';
+import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -51,6 +49,7 @@ const props = withDefaults(
 		selectedPath?: string;
 		scrollable?: boolean;
 		showValidationWarnings?: boolean;
+		showNameField?: boolean;
 	}>(),
 	{
 		availableTools: () => [],
@@ -59,6 +58,7 @@ const props = withDefaults(
 		selectedPath: SKILL_FILE,
 		scrollable: true,
 		showValidationWarnings: false,
+		showNameField: true,
 	},
 );
 
@@ -86,7 +86,6 @@ const referenceFileName = ref('');
 const fileError = ref('');
 const addToolDialogOpen = ref(false);
 const formValidation = reactive({
-	name: false,
 	description: false,
 	referenceName: true,
 });
@@ -98,6 +97,14 @@ const nameValidationRules: Array<Rule | RuleGroup> = [
 const normalizedExistingSkillNames = computed(
 	() => new Set(props.existingSkillNames.map((name) => name.trim().toLowerCase())),
 );
+const nameIsValid = computed(() => {
+	const value = name.value.trim();
+	return (
+		value.length > 0 &&
+		value.length <= 128 &&
+		!normalizedExistingSkillNames.value.has(value.toLowerCase())
+	);
+});
 const nameValidators: Record<string, IValidator> = {
 	uniqueSkillName: {
 		validate: (value: Validatable) =>
@@ -120,15 +127,14 @@ const referenceNameValidators: Record<string, IValidator> = {
 	},
 };
 
-const utf8Bytes = (value: string) => new TextEncoder().encode(value).byteLength;
-// Bytes, not characters — matching the server-side agentSkillSchema limit.
-const instructionsBytes = computed(() => utf8Bytes(props.skill.instructions ?? ''));
+// Characters, matching the server-side agentSkillSchema limits.
+const instructionsLength = computed(() => (props.skill.instructions ?? '').length);
 const instructionsError = computed(() => {
 	const value = props.skill.instructions ?? '';
 	if (!value.trim()) return '';
-	if (instructionsBytes.value > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
+	if (instructionsLength.value > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
 		return i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
-			interpolate: { max: String(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) },
+			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
 		});
 	}
 	return '';
@@ -136,19 +142,22 @@ const instructionsError = computed(() => {
 const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
-const referenceBytes = (reference: AgentSkillReference) => utf8Bytes(reference.content);
+const referenceLength = (reference: AgentSkillReference) => reference.content.length;
 const invalidReferences = computed(() =>
 	(props.skill.references ?? []).filter(
 		(reference) =>
 			!reference.content.trim() ||
-			referenceBytes(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+			referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	),
 );
-const totalReferenceBytes = computed(() =>
-	(props.skill.references ?? []).reduce((total, reference) => total + referenceBytes(reference), 0),
+const totalReferenceLength = computed(() =>
+	(props.skill.references ?? []).reduce(
+		(total, reference) => total + referenceLength(reference),
+		0,
+	),
 );
 const referencesTotalError = computed(() => {
-	if (totalReferenceBytes.value <= AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) return '';
+	if (totalReferenceLength.value <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH) return '';
 	return i18n.baseText('agents.builder.skills.import.referencesTooLarge');
 });
 const referencesCountError = computed(() => {
@@ -165,16 +174,16 @@ const referencesValid = computed(
 );
 const formIsValid = computed(
 	() =>
-		formValidation.name &&
+		nameIsValid.value &&
 		formValidation.description &&
 		(!selectedReference.value || formValidation.referenceName) &&
 		instructionsValid.value &&
 		referencesValid.value,
 );
-const instructionsByteCount = computed(() =>
-	i18n.baseText('agents.builder.skills.instructions.byteCount', {
+const instructionsCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.instructions.characterCount', {
 		interpolate: {
-			count: instructionsBytes.value.toLocaleString(),
+			count: instructionsLength.value.toLocaleString(),
 			max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString(),
 		},
 	}),
@@ -201,14 +210,14 @@ const addableAllowedTools = computed(() => {
 	const selected = new Set(props.skill.allowedTools ?? []);
 	return props.availableTools.filter((tool) => !selected.has(tool.name));
 });
-const selectedReferenceByteCount = computed(() =>
-	i18n.baseText('agents.builder.skills.references.byteCount' as BaseTextKey, {
+const selectedReferenceCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.references.characterCount' as BaseTextKey, {
 		interpolate: {
 			count: (selectedReference.value
-				? referenceBytes(selectedReference.value)
+				? referenceLength(selectedReference.value)
 				: 0
 			).toLocaleString(),
-			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString(),
+			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
 		},
 	}),
 );
@@ -217,10 +226,9 @@ const selectedReferenceError = computed(() => {
 	if (!reference) return '';
 	if (!reference.content.trim())
 		return i18n.baseText('agents.builder.skills.references.contentRequired');
-	const bytes = referenceBytes(reference);
-	if (bytes > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
-		return i18n.baseText('agents.builder.skills.references.contentMaxBytes', {
-			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString() },
+	if (referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH) {
+		return i18n.baseText('agents.builder.skills.references.contentMaxLength', {
+			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString() },
 		});
 	}
 	return '';
@@ -244,8 +252,8 @@ function onDescriptionInput(value: string | number | boolean | null | undefined)
 	emit('update:skill', { description: next });
 }
 
-function onFieldValidate(field: 'name' | 'description', valid: boolean) {
-	formValidation[field] = valid;
+function onDescriptionValidate(valid: boolean) {
+	formValidation.description = valid;
 }
 
 function onReferenceNameValidate(valid: boolean) {
@@ -447,6 +455,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					ref="skillFileInput"
 					type="file"
 					accept=".md,text/markdown"
+					tabindex="-1"
 					:disabled="props.disabled"
 					:class="$style.fileInput"
 					data-testid="agent-skill-skill-md-file-input"
@@ -457,6 +466,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					type="file"
 					webkitdirectory
 					multiple
+					tabindex="-1"
 					:disabled="props.disabled"
 					:class="$style.fileInput"
 					data-testid="agent-skill-folder-file-input"
@@ -469,7 +479,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				props.errors.references
 			}}</N8nText>
 
-			<div :class="$style.field">
+			<div v-if="props.showNameField" :class="$style.field">
 				<N8nFormInput
 					:model-value="name"
 					:label="i18n.baseText('agents.builder.skills.name.label')"
@@ -483,7 +493,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:validators="nameValidators"
 					data-testid="agent-skill-name-input"
 					@update:model-value="onNameInput"
-					@validate="onFieldValidate('name', $event)"
 				/>
 			</div>
 
@@ -493,6 +502,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:label="i18n.baseText('agents.builder.skills.description.label')"
 					name="skill-description"
 					required
+					:focus-initially="!props.showNameField"
 					label-size="small"
 					:placeholder="i18n.baseText('agents.builder.skills.description.placeholder')"
 					:disabled="props.disabled"
@@ -500,7 +510,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:validation-rules="descriptionValidationRules"
 					data-testid="agent-skill-description-input"
 					@update:model-value="onDescriptionInput"
-					@validate="onFieldValidate('description', $event)"
+					@validate="onDescriptionValidate"
 				/>
 			</div>
 
@@ -572,6 +582,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 						:class="$style.editor"
 						:container-class="$style.fullHeightEditor"
 						:model-value="props.skill.instructions ?? ''"
+						show-toolbar="floating"
 						:readonly="props.disabled"
 						max-height="100%"
 						data-testid="agent-skill-instructions-editor"
@@ -584,7 +595,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 						<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
 							props.errors.instructions
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">{{ instructionsByteCount }}</N8nText>
+						<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
 					</div>
 				</N8nInputLabel>
 			</div>
@@ -618,6 +629,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:class="$style.editor"
 					:container-class="$style.fullHeightEditor"
 					:model-value="selectedReference.content"
+					show-toolbar="floating"
 					:readonly="props.disabled"
 					max-height="100%"
 					data-testid="agent-skill-reference-editor"
@@ -630,17 +642,19 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					<N8nText v-if="referencesError && !selectedReferenceError" size="small" color="danger">{{
 						referencesError
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ selectedReferenceByteCount }}</N8nText>
+					<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
 				</div>
 			</N8nInputLabel>
 		</div>
 
-		<N8nDialog :open="addToolDialogOpen" size="small" @update:open="addToolDialogOpen = $event">
-			<N8nDialogHeader>
-				<N8nDialogTitle>
-					{{ i18n.baseText('agents.builder.skills.allowedTools.addModal.title' as BaseTextKey) }}
-				</N8nDialogTitle>
-			</N8nDialogHeader>
+		<AgentModal
+			:open="addToolDialogOpen"
+			:title="i18n.baseText('agents.builder.skills.allowedTools.addModal.title' as BaseTextKey)"
+			size="small"
+			stacked
+			:show-footer="false"
+			@update:open="addToolDialogOpen = $event"
+		>
 			<div :class="$style.allowedToolOptions">
 				<N8nText v-if="props.availableTools.length === 0" size="small" color="text-light">
 					{{ i18n.baseText('agents.builder.skills.allowedTools.addModal.empty' as BaseTextKey) }}
@@ -661,7 +675,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					{{ tool.label }}
 				</AgentChipButton>
 			</div>
-		</N8nDialog>
+		</AgentModal>
 	</div>
 </template>
 
@@ -746,7 +760,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 
 .allowedToolOption {

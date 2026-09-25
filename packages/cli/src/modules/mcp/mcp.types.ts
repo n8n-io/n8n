@@ -1,9 +1,10 @@
-import type { CallToolResult } from '@modelcontextprotocol/server';
+import type { CallToolResult, InputRequiredResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -14,12 +15,25 @@ import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.t
  * Standard Schema interface the v2 SDK expects (see tool-schema.util.ts), so
  * handlers keep receiving the zod-parsed args object.
  */
-export type ToolHandler<InputArgs extends z.ZodRawShape = z.ZodRawShape> = (
+/**
+ * A handler answers with a tool result or, on a multi-round-trip tool, with a request for more
+ * input from the client. Tools default to the plain result so their tests read `content` freely;
+ * a tool that elicits names the union explicitly.
+ */
+export type ToolHandlerResult = CallToolResult | InputRequiredResult;
+
+export type ToolHandler<
+	InputArgs extends z.ZodRawShape = z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+> = (
 	args: z.objectOutputType<InputArgs, z.ZodTypeAny>,
 	extra?: unknown,
-) => CallToolResult | Promise<CallToolResult>;
+) => Result | Promise<Result>;
 
-export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
+export type ToolDefinition<
+	InputArgs extends z.ZodRawShape = z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+> = {
 	name: string;
 	config: {
 		description?: string;
@@ -35,12 +49,15 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 		/** Arbitrary tool metadata, e.g. the MCP App resource marker. */
 		_meta?: Record<string, unknown>;
 	};
-	handler: ToolHandler<InputArgs>;
+	handler: ToolHandler<InputArgs, Result>;
 };
 
 /** Registers a tool on the per-request server if the granted scopes cover it. */
-export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
-	tool: ToolDefinition<InputArgs>,
+export type RegisterToolFn = <
+	InputArgs extends z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+>(
+	tool: ToolDefinition<InputArgs, Result>,
 ) => void;
 
 /** Read result for a static MCP resource (a single text document). */
@@ -92,6 +109,8 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	folderId?: string;
+	includeSubfolders?: boolean;
 };
 
 export type SearchWorkflowsItem = {
@@ -103,12 +122,14 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	availableInMCP: boolean;
+	parentFolderId: string | null;
 	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
+	error?: string;
 };
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
@@ -134,6 +155,33 @@ export type McpClientInfo = {
 	version?: string;
 };
 
+/**
+ * What the MCP auth middleware resolved from the bearer token, carried on the
+ * request for the handlers downstream of it. Both fields are absent until the
+ * middleware runs.
+ */
+export type McpAuthenticatedRequest = AuthenticatedRequest & {
+	mcpCaller?: McpCallerAuth;
+	/** `undefined` = not scope-bearing (API key) → full tool access. */
+	mcpScopes?: string[];
+};
+
+/**
+ * The same resolution, in the shape the MCP server is built from. Read off the
+ * request by the controller so nothing below it touches Express, and passed as
+ * one object because scopes gate which tools register while the caller only
+ * labels the tool-call events.
+ */
+export type McpAuthContext = {
+	/**
+	 * Required, because this is the field that gates which tools register: a
+	 * partial context must not be able to silently expose every tool. `undefined`
+	 * = not scope-bearing (API key, legacy token) → all tools register.
+	 */
+	grantedScopes: string[] | undefined;
+	caller?: McpCallerAuth;
+};
+
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
@@ -145,15 +193,17 @@ export type UserConnectedToMCPEventPayload = {
 	protocol_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	/** Status the server answered a failed handshake with; unset on success. */
+	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
-	mcp_canvas_groups_enabled?: boolean;
 	error?: string;
 };
 
 export type ExecuteWorkflowsInputMeta = {
-	type: 'webhook' | 'chat' | 'schedule' | 'form';
-	parameter_count: number;
+	type?: 'webhook' | 'chat' | 'form';
+	parameter_count?: number;
+	triggerNodeName?: string;
 };
 
 export type WorkflowNotFoundReason =
@@ -164,7 +214,8 @@ export type WorkflowNotFoundReason =
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
 	| 'execution_not_found'
-	| 'invalid_pin_data';
+	| 'invalid_pin_data'
+	| 'invalid_inputs';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;

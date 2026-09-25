@@ -20,6 +20,7 @@ import {
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -30,17 +31,21 @@ import {
 	isDraftIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -69,6 +74,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -89,13 +95,25 @@ import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { getAgentConfigHash } from '../utils/agent-config-hash';
+import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
 		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
 };
+
+const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
+	path: '(root)',
+	message:
+		'The agent is being edited by a user in the n8n builder right now, so it cannot be modified. ' +
+		'Stop editing and tell the user to finish or close their editing session, then retry.',
+};
+
+type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
+
+const STALE_SKILL_ERROR_MESSAGE =
+	'Skill changed since you last read it. Call read_skill, then retry using the skill and skillHash it returns.';
 
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -123,15 +141,92 @@ const createSkillInputSchema = z
 
 type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
 
+const readSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to read.'),
+		referencePaths: z
+			.array(z.string().min(1))
+			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
+			.optional()
+			.describe(
+				'Optional reference paths whose content is needed. Omit to receive paths and character counts only.',
+			),
+	})
+	.strict();
+
+type ReadSkillInput = z.infer<typeof readSkillInputSchema>;
+
+const updateSkillFieldsSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.optional(),
+		description: agentSkillSchema.shape.description.optional(),
+		instructions: agentSkillSchema.shape.instructions.optional(),
+		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
+		references: agentSkillSchema.shape.references
+			.unwrap()
+			.refine((references) => references.length > 0, 'Pass null to clear references.')
+			.nullable()
+			.optional(),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one skill field must be supplied.',
+	});
+
+const updateSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to update.'),
+		baseSkillHash: z
+			.string()
+			.min(1)
+			.describe('skillHash from the immediately preceding read_skill result for this skill.'),
+		updates: updateSkillFieldsSchema.describe(
+			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+		),
+	})
+	.strict();
+
+type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
+
+const updateTaskFieldsSchema = z
+	.object({
+		name: agentTaskSchema.shape.name.optional(),
+		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
+		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+		timezone: agentTaskSchema.shape.timezone.describe(
+			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
+		),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one task field must be supplied.',
+	});
+
+const updateTaskInputSchema = z
+	.object({
+		taskId: z.string().min(1).describe('Persisted target-agent task id to update.'),
+		updates: updateTaskFieldsSchema.describe('Only the task fields to change.'),
+	})
+	.strict();
+
+type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
+
+type BuilderConfigFailure = {
+	ok: false;
+	stage?: 'parse' | 'stale' | 'patch' | 'schema';
+	errors: ConfigValidationError[];
+};
+
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
 }
 
-/** Builder-session context threaded through telemetry so it's joinable to `instance_ai_agent_build_route`. */
-interface BuilderTelemetryContext {
+/** Builder-session options from the Instance AI host. */
+interface BuilderToolsOptions {
 	threadId?: string;
 	runId?: string;
+	useEvalModelCatalog?: boolean;
 }
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
@@ -225,10 +320,9 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	/**
@@ -257,15 +351,41 @@ export class AgentsBuilderToolsService {
 		};
 	}
 
+	/**
+	 * Returns a `{ ok: false, errors }` tool result while a user holds the
+	 * agent's builder write lock, or null when the agent can be modified.
+	 * Every mutating tool returns this shape on failure, so the model gets one
+	 * consistent signal to stop and ask the user to close their editing session.
+	 */
+	private async getEditorLockFailure(agentId: string): Promise<EditorLockFailure | null> {
+		try {
+			await this.collaborationService.ensureAgentEditable(agentId);
+			return null;
+		} catch (error) {
+			if (error instanceof LockedError) {
+				return { ok: false, errors: [AGENT_LOCKED_BY_EDITOR_ERROR] };
+			}
+			throw error;
+		}
+	}
+
 	getTools(
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
-		telemetryContext?: BuilderTelemetryContext,
+		options?: BuilderToolsOptions,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			json: this.getJsonTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+				options,
+			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
@@ -274,363 +394,194 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
-		telemetryContext?: BuilderTelemetryContext,
+		options?: BuilderToolsOptions,
 	): BuiltTool[] {
 		const track: BuilderTrackFn = (entry, properties) =>
 			this.telemetry.track(entry, {
 				agent_id: agentId,
 				user_id: user.id,
-				...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
-				...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
+				...(options?.threadId ? { thread_id: options.threadId } : {}),
+				...(options?.runId ? { run_id: options.runId } : {}),
 				...properties,
 			});
-		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
-			.description(
-				'Read the latest persisted agent configuration and its freshness token. ' +
-					'Returns { ok: true, config, configHash }. This is the only tool that returns the full config — ' +
-					'write_config, patch_config, and stale responses never echo it back. ' +
-					'Call this before every write_config or patch_config and use configHash as baseConfigHash.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				try {
-					const snapshot = await this.getConfigSnapshot(agentId, projectId);
-					return { ok: true, ...snapshot };
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
-			.build();
+		const readConfigTool = this.buildReadConfigTool(agentId, projectId);
+		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
+		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
+		const listIntegrationTypesTool = this.buildListIntegrationTypesTool();
+		const listSubAgentsTool = this.buildListSubAgentsTool(projectId, agentId);
+		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
+		const unpublishAgentTool = this.buildUnpublishAgentTool(user, projectId, agentId);
+		const callAgentTool = this.buildCallAgentTool(user, projectId, agentId, credentialProvider);
+		const modelLookup = this.createModelLookup(user, projectId, options);
+		const tools: BuiltTool[] = [
+			readConfigTool,
+			this.withConfigMutationMarker(writeConfigTool, agentId),
+			this.withConfigMutationMarker(patchConfigTool, agentId),
+			listIntegrationTypesTool,
+			listSubAgentsTool,
+			this.withConfigMutationMarker(publishAgentTool, agentId),
+			this.withConfigMutationMarker(unpublishAgentTool, agentId),
+			callAgentTool,
+			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
+			this.createCredentialTool(credentialService, projectId, agentId, track),
+			this.createEmbeddingCredentialTool(credentialService, projectId, track),
+			buildAskQuestionsTool({ track }),
+			this.withConfigMutationMarker(
+				this.createConfigureChannelTool(agentId, projectId, track),
+				agentId,
+			),
+			this.withConfigMutationMarker(
+				this.createFinishSetupTool(credentialService, agentId, projectId, track),
+				agentId,
+			),
+			this.createVerifyMcpServerTool(agentId, credentialProvider, projectId, user),
+			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
+			buildResolveIntegrationTool({
+				mcpRegistryService: this.mcpRegistryService,
+				agentsToolsService: this.agentsToolsService,
+			}),
+		];
 
-		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
-			.description(
-				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'read_config again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
-					'On stage: "stale", call read_config and retry once using its fresh config and configHash.',
-			)
-			.input(
-				z.object({
-					json: z.string().describe('Complete agent configuration as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding read_config result; null only if no config exists',
-						),
-				}),
-			)
-			.handler(
-				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) => {
-					const parsed = tryParseConfigJson(json);
-					if (!parsed.ok) {
-						return { ok: false, errors: parsed.errors };
-					}
-					let snapshot: AgentConfigSnapshot;
-					try {
-						snapshot = await this.getConfigSnapshot(agentId, projectId);
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'stale',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-					if (baseConfigHash !== snapshot.configHash) {
-						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
-					}
-					const zodResult = parseBuilderWriteConfig(parsed.data, snapshot.config);
-					if (!zodResult.success) {
-						return { ok: false, errors: formatZodErrors(zodResult.error) };
-					}
-					const emptyInstructions = rejectIfEmptyInstructions(
-						zodResult.data,
-						CLI_AGENT_CONFIG_MESSAGES,
-					);
-					if (emptyInstructions) {
-						return { ok: false, errors: emptyInstructions };
-					}
-					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
-					if (unsupportedNativeWebSearch) {
-						return { ok: false, errors: unsupportedNativeWebSearch };
-					}
-					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
-						zodResult.data,
-						snapshot.config,
-						this.nodeTypes,
-						CLI_AGENT_CONFIG_MESSAGES,
-					);
-					if (dynamicSelectorFromAi) {
-						return { ok: false, errors: dynamicSelectorFromAi };
-					}
-					// Seed the builder's "native model gets web search by default" ergonomic
-					// as an explicit flag; updateConfig owns the actual provider-tool
-					// reconciliation so the write and read paths can't disagree.
-					const configWithDefaults = applyPromptCachingBuilderDefaults(
-						applyNativeWebSearchDefaultOn(zodResult.data),
-					);
-					try {
-						await this.agentConfigService.updateConfig(
-							agentId,
-							projectId,
-							configWithDefaults,
-							user,
-							{ modifiedBy: 'builder' },
-						);
-						return { ok: true };
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'schema',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
+		return tools;
+	}
+
+	private createVerifyMcpServerTool(
+		agentId: string,
+		credentialProvider: CredentialProvider,
+		projectId: string,
+		user: User,
+	): BuiltTool {
+		return buildVerifyMcpServerTool({
+			agentId,
+			credentialProvider,
+			oauthService: this.oauthService,
+			projectId,
+			proxyFetch: createAiMcpFetch(this.outboundHttp),
+			resolveRegistryConnection: async (nodeTypeName) =>
+				await this.mcpRegistryService.getConnection(nodeTypeName),
+			applyCredentialToMcpServer: async (serverName, credentialId) =>
+				await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
+		});
+	}
+
+	private createFinishSetupTool(
+		credentialService: InstanceAiCredentialService,
+		agentId: string,
+		projectId: string,
+		track: BuilderTrackFn,
+	): BuiltTool {
+		return buildFinishSetupTool({
+			credentialService,
+			agentId,
+			projectId,
+			track,
+			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			listIntegrationCredentialIds: async () => {
+				const agent = await this.agentsService.findById(agentId, projectId);
+				return (agent?.integrations ?? [])
+					.filter((integration) => !isDraftIntegration(integration))
+					.map((integration) => integration.credentialId);
+			},
+			listChatIntegrationTypes: () =>
+				this.agentIntegrationPersistenceService
+					.listChatIntegrations()
+					.map((integration) => integration.type),
+			listAiGatewayManagedCredentialTypes: async () => {
+				const agent = await this.agentsService.findById(agentId, projectId);
+				return listAiGatewayManagedCredentialTypes(agent?.schema?.tools, this.nodeTypes);
+			},
+		});
+	}
+
+	private createConfigureChannelTool(
+		agentId: string,
+		projectId: string,
+		track: BuilderTrackFn,
+	): BuiltTool {
+		return buildConfigureChannelTool({
+			agentId,
+			projectId,
+			listChatIntegrationTypes: () =>
+				this.agentIntegrationPersistenceService
+					.listChatIntegrations()
+					.map((integration) => integration.type),
+			track,
+		});
+	}
+
+	private createEmbeddingCredentialTool(
+		credentialService: InstanceAiCredentialService,
+		projectId: string,
+		track: BuilderTrackFn,
+	): BuiltTool {
+		return buildAskEmbeddingCredentialTool({
+			credentialService,
+			projectId,
+			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
+			track,
+		});
+	}
+
+	private createCredentialTool(
+		credentialService: InstanceAiCredentialService,
+		projectId: string,
+		agentId: string,
+		track: BuilderTrackFn,
+	): BuiltTool {
+		return buildAskCredentialTool({
+			credentialService,
+			projectId,
+			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			listIntegrationCredentialIds: async () => {
+				const agent = await this.agentsService.findById(agentId, projectId);
+				return (agent?.integrations ?? [])
+					.filter((integration) => !isDraftIntegration(integration))
+					.map((integration) => integration.credentialId);
+			},
+			track,
+		});
+	}
+
+	private createLlmTool(
+		credentialProvider: CredentialProvider,
+		modelLookup: ModelLookup,
+		user: User,
+		projectId: string,
+	): BuiltTool {
+		return buildResolveLlmTool({
+			credentialProvider,
+			modelLookup,
+			isProviderServedByGateway: async (provider) => {
+				try {
+					return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
+				} catch {
+					return false;
+				}
+			},
+			freeCredits: {
+				isEligible: () => this.freeAiCreditsService.isEligible(user),
+				claim: async () => {
+					const credential = await this.freeAiCreditsService.claim(user, projectId);
+					this.telemetry.track('User claimed OpenAI credits', {
+						user_id: user.id,
+						source: 'agentBuilderResolveLlm',
+					});
+					return { credentialId: credential.id, credentialName: credential.name };
 				},
-			)
-			.build();
+			},
+		});
+	}
 
-		const patchConfigTool = new Tool(BUILDER_TOOLS.PATCH_CONFIG)
-			.description(
-				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
-					'Pass an array of patch operations as a JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
-					'Supported ops: add, remove, replace, move, copy, test. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'read_config again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
-					'once using its fresh config and configHash.',
-			)
-			.input(
-				z.object({
-					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding read_config result; null only if no config exists',
-						),
-				}),
-			)
-			.handler(
-				async ({
-					operations,
-					baseConfigHash,
-				}: {
-					operations: string;
-					baseConfigHash: string | null;
-				}) => {
-					const parsedOps = tryParseConfigJson(operations);
-					if (!parsedOps.ok) {
-						return { ok: false, stage: 'parse', errors: parsedOps.errors };
-					}
-
-					let snapshot: AgentConfigSnapshot;
-					try {
-						snapshot = await this.getConfigSnapshot(agentId, projectId);
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'stale',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-					if (baseConfigHash !== snapshot.configHash) {
-						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
-					}
-					if (!snapshot.config) {
-						return {
-							ok: false,
-							stage: 'patch',
-							errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }],
-						};
-					}
-
-					const jsonpatch = (await import('fast-json-patch')).default;
-					const ops = parsedOps.data as Operation[];
-					const patchError = jsonpatch.validate(ops, snapshot.config);
-					if (patchError) {
-						const opPath =
-							(patchError.operation as { path?: string } | undefined)?.path ?? '(root)';
-						return {
-							ok: false,
-							stage: 'patch',
-							errors: [{ path: opPath, message: patchError.message ?? 'Invalid patch operation' }],
-						};
-					}
-
-					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
-						.newDocument as unknown as AgentJsonConfig;
-
-					const zodResult = parseBuilderWriteConfig(patched, snapshot.config);
-					if (!zodResult.success) {
-						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
-					}
-					const emptyInstructions = rejectIfEmptyInstructions(
-						zodResult.data,
-						CLI_AGENT_CONFIG_MESSAGES,
-					);
-					if (emptyInstructions) {
-						return { ok: false, stage: 'schema', errors: emptyInstructions };
-					}
-					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
-					if (unsupportedNativeWebSearch) {
-						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch };
-					}
-					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
-						zodResult.data,
-						snapshot.config,
-						this.nodeTypes,
-						CLI_AGENT_CONFIG_MESSAGES,
-					);
-					if (dynamicSelectorFromAi) {
-						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };
-					}
-					const configWithDefaults = applyPromptCachingBuilderDefaults(
-						applyNativeWebSearchDefaultOn(zodResult.data),
-					);
-
-					try {
-						await this.agentConfigService.updateConfig(
-							agentId,
-							projectId,
-							configWithDefaults,
-							user,
-							{ modifiedBy: 'builder' },
-						);
-						return { ok: true };
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'schema',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-				},
-			)
-			.build();
-
-		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
-			.description(
-				"List integration types that can be added to the agent's `integrations` array. " +
-					'Returns every available chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
-					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
-					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
-					'For a chat integration, pass the selected integration `type` to `configure_channel`; ' +
-					'never use `ask_credential` for chat-channel credentials.',
-			)
-			.input(z.object({}))
-			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
-			.build();
-
-		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
-			.description(
-				'List published agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
-					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				const agents = await this.agentsService.findByProjectId(projectId);
-				return {
-					agents: agents
-						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
-						.map((agent) => ({
-							agentId: agent.id,
-							name: agent.name,
-						})),
-				};
-			})
-			.build();
-
-		const publishAgentTool = new Tool(BUILDER_TOOLS.PUBLISH_AGENT)
-			.description(
-				'Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. ' +
-					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
-					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
-					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
-					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
-			)
-			.input(
-				z.object({
-					versionId: z
-						.string()
-						.min(1)
-						.optional()
-						.describe(
-							'Optional history version ID to activate. Omit to publish the current draft.',
-						),
-				}),
-			)
-			.handler(async ({ versionId }: { versionId?: string }) => {
-				if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
-					return {
-						ok: false,
-						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
-					};
-				}
-				try {
-					const { agent } = await this.agentPublishService.publishAgent(
-						agentId,
-						projectId,
-						user,
-						{ by: 'builder', trigger: 'explicit' },
-						versionId,
-					);
-					return {
-						ok: true,
-						agentId,
-						activeVersionId: agent.activeVersionId,
-						versionId: agent.versionId,
-					};
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
-			.build();
-
-		const unpublishAgentTool = new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)
-			.description(
-				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
-					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
-					'Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				if (!(await userHasScopes(user, ['agent:unpublish'], false, { projectId }))) {
-					return {
-						ok: false,
-						errors: [
-							{ message: 'You do not have permission to unpublish agents in this project.' },
-						],
-					};
-				}
-				try {
-					await this.agentPublishService.unpublishAgent(agentId, projectId, user, 'builder');
-					return { ok: true, agentId, activeVersionId: null };
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
-			.build();
-
-		const callAgentTool = new Tool(BUILDER_TOOLS.CALL_AGENT)
+	private buildCallAgentTool(
+		user: User,
+		projectId: string,
+		agentId: string,
+		credentialProvider: CredentialProvider,
+	) {
+		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
 					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
@@ -666,82 +617,17 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentPreviewPath(projectId, agentId);
 					try {
-						let result: AgentTestRunResult;
-						if (ctx.resumeData === undefined) {
-							result = await this.agentTestRunService.executeDraftRun({
-								agentId,
-								projectId,
-								message,
-								sessionId,
-								credentialProvider,
-								user,
-								source: 'instance-ai',
-								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-							});
-						} else {
-							result = await this.agentTestRunService.resumeDraftApproval({
-								agentId,
-								projectId,
-								continuation: ctx.continuation,
-								approved: ctx.resumeData.approved,
-								user,
-								source: 'instance-ai',
-								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-							});
-						}
-
-						if (result.status === 'session_not_found') {
-							return {
-								status: 'error',
-								code: 'session_not_found',
-								message: 'Session not found.',
-							};
-						}
-						if (result.status === 'agent_misconfigured') {
-							return {
-								status: 'error',
-								code: 'agent_misconfigured',
-								message: "This agent isn't ready to run yet. Finish configuring it and try again.",
-								missing: result.missing,
-							};
-						}
-						if (result.status === 'completed') return result;
-
-						const approvals = collectStandardApprovals(result);
-						const firstApproval = approvals?.[0];
-						if (firstApproval) {
-							const { continuation, ...approval } = firstApproval;
-							return await ctx.suspend(approval, { continuation });
-						}
-
-						const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+						const result = await this.runDraftTest(
+							ctx,
 							agentId,
-							suspensions: result.suspensions,
-							userId: user.id,
-						});
-						if (!cancelled) {
-							return {
-								status: 'error',
-								code: 'cancellation_failed',
-								message:
-									'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
-								sessionId: result.sessionId,
-								previewPath,
-							};
-						}
+							projectId,
+							message,
+							sessionId,
+							credentialProvider,
+							user,
+						);
 
-						return {
-							status: 'approval_required',
-							response: result.response,
-							sessionId: result.sessionId,
-							...(result.executionId ? { executionId: result.executionId } : {}),
-							suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
-								runId,
-								toolCallId,
-								toolName,
-							})),
-							previewPath,
-						};
+						return await this.formatDraftTestResult(result, ctx, agentId, user, previewPath);
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
 						if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -751,138 +637,261 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)
 			.build();
+	}
 
-		const modelLookup: ModelLookup = {
-			// `list` resolves the n8n Connect managed tag to the synthetic gateway
-			// credential internally, so no managed branch is needed here.
-			list: async (credentialId, credentialType, provider) =>
-				await this.builderModelLiveLookupService.list(
-					user,
-					projectId,
-					credentialId,
-					credentialType,
-					provider,
-				),
-		};
-
-		const tools: BuiltTool[] = [
-			readConfigTool,
-			this.withConfigMutationMarker(writeConfigTool, agentId),
-			this.withConfigMutationMarker(patchConfigTool, agentId),
-			listIntegrationTypesTool,
-			listSubAgentsTool,
-			this.withConfigMutationMarker(publishAgentTool, agentId),
-			this.withConfigMutationMarker(unpublishAgentTool, agentId),
-			callAgentTool,
-			buildResolveLlmTool({
-				credentialProvider,
-				modelLookup,
-				isProviderServedByGateway: async (provider) => {
-					try {
-						return (
-							(await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined
-						);
-					} catch {
-						return false;
-					}
-				},
-				freeCredits: {
-					isEligible: () => this.freeAiCreditsService.isEligible(user),
-					claim: async () => {
-						const credential = await this.freeAiCreditsService.claim(user, projectId);
-						this.telemetry.track('User claimed OpenAI credits', {
-							user_id: user.id,
-							source: 'agentBuilderResolveLlm',
-						});
-						return { credentialId: credential.id, credentialName: credential.name };
-					},
-				},
-			}),
-			buildAskCredentialTool({
-				credentialProvider,
-				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-				listIntegrationCredentialIds: async () => {
-					const agent = await this.agentsService.findById(agentId, projectId);
-					return (agent?.integrations ?? [])
-						.filter((integration) => !isDraftIntegration(integration))
-						.map((integration) => integration.credentialId);
-				},
-				track,
-			}),
-			buildAskEmbeddingCredentialTool({
-				credentialProvider,
-				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
-				track,
-			}),
-			buildAskQuestionsTool({ track }),
-			this.withConfigMutationMarker(
-				buildConfigureChannelTool({
-					agentId,
-					projectId,
-					listChatIntegrationTypes: () =>
-						this.agentIntegrationPersistenceService
-							.listChatIntegrations()
-							.map((integration) => integration.type),
-					track,
-				}),
+	private async runDraftTest(
+		ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+		agentId: string,
+		projectId: string,
+		message: string,
+		sessionId: string | undefined,
+		credentialProvider: CredentialProvider,
+		user: User,
+	): Promise<AgentTestRunResult> {
+		let result: AgentTestRunResult;
+		if (ctx.resumeData === undefined) {
+			result = await this.agentTestRunService.executeDraftRun({
 				agentId,
-			),
-			this.withConfigMutationMarker(
-				buildFinishSetupTool({
-					credentialProvider,
-					agentId,
-					projectId,
-					track,
-					isCredentialTypeKnown: (credentialType) =>
-						this.credentialTypes.recognizes(credentialType),
-					listIntegrationCredentialIds: async () => {
-						const agent = await this.agentsService.findById(agentId, projectId);
-						return (agent?.integrations ?? [])
-							.filter((integration) => !isDraftIntegration(integration))
-							.map((integration) => integration.credentialId);
-					},
-					listChatIntegrationTypes: () =>
-						this.agentIntegrationPersistenceService
-							.listChatIntegrations()
-							.map((integration) => integration.type),
-					listAiGatewayManagedCredentialTypes: async () => {
-						const agent = await this.agentsService.findById(agentId, projectId);
-						return listAiGatewayManagedCredentialTypes(agent?.schema?.tools, this.nodeTypes);
-					},
-				}),
-				agentId,
-			),
-			buildVerifyMcpServerTool({
-				agentId,
-				credentialProvider,
-				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
-				applyCredentialToMcpServer: async (serverName, credentialId) =>
-					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
-			}),
-			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
-			buildResolveIntegrationTool({
-				mcpRegistryService: this.mcpRegistryService,
-				agentsToolsService: this.agentsToolsService,
-			}),
-		];
+				message,
+				sessionId,
+				credentialProvider,
+				user,
+				source: 'instance-ai',
+				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+			});
+		} else {
+			result = await this.agentTestRunService.resumeDraftApproval({
+				agentId,
+				projectId,
+				continuation: ctx.continuation,
+				approved: ctx.resumeData.approved,
+				user,
+				source: 'instance-ai',
+				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+			});
+		}
+		return result;
+	}
 
-		return tools;
+	private buildUnpublishAgentTool(user: User, projectId: string, agentId: string) {
+		return new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)
+			.description(
+				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
+					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
+					'Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				if (!(await userHasScopes(user, ['agent:unpublish'], false, { projectId }))) {
+					return {
+						ok: false,
+						errors: [
+							{ message: 'You do not have permission to unpublish agents in this project.' },
+						],
+					};
+				}
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
+				try {
+					await this.agentPublishService.unpublishAgent(agentId, projectId, user, 'builder');
+					return { ok: true, agentId, activeVersionId: null };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildPublishAgentTool(user: User, projectId: string, agentId: string) {
+		return new Tool(BUILDER_TOOLS.PUBLISH_AGENT)
+			.description(
+				'Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. ' +
+					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
+					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
+					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
+					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
+			)
+			.input(
+				z.object({
+					versionId: z
+						.string()
+						.min(1)
+						.optional()
+						.describe(
+							'Optional history version ID to activate. Omit to publish the current draft.',
+						),
+				}),
+			)
+			.handler(async ({ versionId }: { versionId?: string }) => {
+				if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
+					return {
+						ok: false,
+						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
+					};
+				}
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
+				try {
+					const { agent } = await this.agentPublishService.publishAgent(
+						agentId,
+						projectId,
+						user,
+						{ by: 'builder', trigger: 'explicit' },
+						versionId,
+					);
+					return {
+						ok: true,
+						agentId,
+						activeVersionId: agent.activeVersionId,
+						versionId: agent.versionId,
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildListSubAgentsTool(projectId: string, agentId: string) {
+		return new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
+			.description(
+				'List agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
+					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				const agents = await this.agentsService.findByProjectId(projectId);
+				return {
+					agents: agents
+						.filter((agent) => agent.id !== agentId)
+						.map((agent) => ({
+							agentId: agent.id,
+							name: agent.name,
+						})),
+				};
+			})
+			.build();
+	}
+
+	private buildListIntegrationTypesTool() {
+		return new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
+			.description(
+				"List integration types that can be added to the agent's `integrations` array. " +
+					'Returns every available chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
+					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
+					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
+					'For a chat integration, pass the selected integration `type` to `configure_channel`; ' +
+					'never use `ask_credential` for chat-channel credentials.',
+			)
+			.input(z.object({}))
+			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
+			.build();
+	}
+
+	private buildPatchConfigTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.PATCH_CONFIG)
+			.description(
+				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
+					'Pass an array of patch operations as a JSON string. ' +
+					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
+					'write_config/patch_config success or from a stale response. ' +
+					'Supported ops: add, remove, replace, move, copy, test. ' +
+					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
+					'read_config again before any later inspection or mutation — or ' +
+					'{ ok: false, stage, errors } on failure. ' +
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
+					'once using its fresh config and configHash. On stage: "locked", stop and tell the user to close ' +
+					'their editing session in the n8n builder.',
+			)
+			.input(
+				z.object({
+					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
+					baseConfigHash: z
+						.string()
+						.nullable()
+						.describe(
+							'configHash from the immediately preceding read_config result; null only if no config exists',
+						),
+				}),
+			)
+			.handler(
+				async ({
+					operations,
+					baseConfigHash,
+				}: { operations: string; baseConfigHash: string | null }) =>
+					await this.patchBuilderConfig(agentId, projectId, user, operations, baseConfigHash),
+			)
+			.build();
+	}
+
+	private buildWriteConfigTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
+			.description(
+				'Create or replace the agent configuration by writing a complete JSON string. ' +
+					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
+					'write_config/patch_config success or from a stale response. ' +
+					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
+					'read_config again before any later inspection or mutation — or ' +
+					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
+					'On stage: "stale", call read_config and retry once using its fresh config and configHash.',
+			)
+			.input(
+				z.object({
+					json: z.string().describe('Complete agent configuration as a JSON string'),
+					baseConfigHash: z
+						.string()
+						.nullable()
+						.describe(
+							'configHash from the immediately preceding read_config result; null only if no config exists',
+						),
+				}),
+			)
+			.handler(
+				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) =>
+					await this.writeBuilderConfig(agentId, projectId, user, json, baseConfigHash),
+			)
+			.build();
+	}
+
+	private buildReadConfigTool(agentId: string, projectId: string) {
+		return new Tool(BUILDER_TOOLS.READ_CONFIG)
+			.description(
+				'Read the latest persisted agent configuration and its freshness token. ' +
+					'Returns { ok: true, config, configHash }. This is the only tool that returns the full config — ' +
+					'write_config, patch_config, and stale responses never echo it back. ' +
+					'Call this before every write_config or patch_config and use configHash as baseConfigHash.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				try {
+					const snapshot = await this.getConfigSnapshot(agentId, projectId);
+					return { ok: true, ...snapshot };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
 	}
 
 	private getSharedTools(
@@ -891,42 +900,172 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		user: User,
 	): BuiltTool[] {
-		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
+		const buildCustomToolTool = this.buildCustomToolTool(agentId, projectId, user);
+		const createSkillsTool = this.buildCreateSkillsTool(agentId, projectId, user);
+		const readSkillTool = this.buildReadSkillTool(agentId, projectId);
+		const listSkillsTool = this.buildListSkillsTool(agentId, projectId);
+		const updateSkillTool = this.buildUpdateSkillTool(agentId, projectId, user);
+		const listTasksTool = this.buildListTasksTool(agentId, projectId);
+		const updateTaskTool = this.buildUpdateTaskTool(agentId, projectId, user);
+		const createTasksTool = this.buildCreateTasksTool(agentId, projectId, user);
+		const listWorkflowsTool = this.buildListWorkflowsTool(user, projectId);
+
+		return [
+			buildCustomToolTool,
+			createSkillsTool,
+			listSkillsTool,
+			readSkillTool,
+			this.withConfigMutationMarker(updateSkillTool, agentId),
+			this.withConfigMutationMarker(createTasksTool, agentId),
+			listTasksTool,
+			this.withConfigMutationMarker(updateTaskTool, agentId),
+			listWorkflowsTool,
+			buildGetResourceLocatorOptionsTool({
+				dynamicNodeParametersService: this.dynamicNodeParametersService,
+				nodeTypes: this.nodeTypes,
+				user,
+				projectId,
+			}),
+			...this.agentsToolsService.getSharedTools(
+				credentialProvider,
+				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
+					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
+					'into the config.',
+			),
+		];
+	}
+
+	private buildListWorkflowsTool(user: User, projectId: string) {
+		return new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
 			.description(
-				'Compile and store a custom tool. Pass the complete TypeScript source ' +
-					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
-					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
-					'This does NOT register the tool in the agent config — follow up with ' +
-					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
-					'to `tools`.' +
-					'Returns { ok: true, id, name } or { ok: false, errors }.',
+				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
+					`Only returns workflows that start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger. ` +
+					'The published agent cannot call a workflow with `published: false` until the user publishes it. ' +
+					'Pass `searchTerm` to narrow by workflow name; ' +
+					'omitting it returns the 10 most recently updated attachable workflows.',
 			)
 			.input(
 				z.object({
-					code: z
+					searchTerm: z
 						.string()
-						.describe('Complete TypeScript source using export default new Tool(...)'),
+						.optional()
+						.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }, ctx) => {
+			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
+				return {
+					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
+				};
+			})
+			.build();
+	}
+
+	private buildCreateTasksTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.CREATE_TASKS)
+			.description(
+				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
+					'schedule per task) in a single call. Pass every task you currently know how to write in one ' +
+					"`tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's " +
+					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
+					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
+					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
+					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
+					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
+			)
+			.systemInstruction(
+				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
+					'required section, or an unclear schedule. Each objective must follow the required structured ' +
+					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
+					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
+					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
+					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
+					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
+					'only when even a reasonable assumption is impossible, before calling ' +
+					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
+					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
+					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +
+					'runtime. Batch every task you currently know how to write into one call.',
+			)
+			.input(
+				z.object({
+					tasks: z
+						.array(
+							z.object({
+								name: agentTaskSchema.shape.name.describe('Short, human-readable task name.'),
+								objective: agentTaskSchema.shape.objective.describe(TASK_OBJECTIVE_GUIDANCE),
+								cronExpression: agentTaskSchema.shape.cronExpression.describe(
+									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
+								),
+								timezone: agentTaskSchema.shape.timezone.describe(
+									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+								),
+							}),
+						)
+						.min(1)
+						.max(20)
+						.describe('Every task to create, in the order they should be created.'),
+				}),
+			)
+			.handler(
+				async ({
+					tasks,
+				}: {
+					tasks: Array<{
+						name: string;
+						objective: string;
+						cronExpression: string;
+						timezone?: string | null;
+					}>;
+				}) => {
+					// Each task is already validated against `.input()` (agentTaskSchema
+					// shapes) by the tool runtime before the handler runs.
+					const editorLock = await this.getEditorLockFailure(agentId);
+					if (editorLock) return editorLock;
+					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
+					try {
+						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
+						// and creates every body in one transaction. Enabled by default; each
+						// task starts running once the agent is (re)published via publish_agent.
+						created = await this.agentTaskService.createTasks(
+							agentId,
+							projectId,
+							tasks.map((task) => ({ ...task, enabled: true })),
+							{ user, modifiedBy: 'builder' },
+						);
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+
+					return {
+						ok: true,
+						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
+					};
+				},
+			)
+			.build();
+	}
+
+	private buildUpdateTaskTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.UPDATE_TASK)
+			.description(
+				'Update selected body fields of an existing target-agent scheduled task in place, preserving ' +
+					'its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } ' +
+					'or { ok: false, errors }.',
+			)
+			.input(updateTaskInputSchema)
+			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
-					const descriptor = await this.secureRuntime.describeToolSecurely(code);
-					const built = await this.agentCustomToolsService.buildCustomTool(
-						agentId,
-						projectId,
-						code,
-						descriptor,
-						{ user, modifiedBy: 'builder' },
-					);
-					return { ok: true, id: built.id, name: descriptor.name };
+					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
+						user,
+						modifiedBy: 'builder',
+					});
+					return { ok: true, id: updated.id, name: updated.name };
 				} catch (e) {
-					// Unlike its sibling handlers, this one runs long isolate work, so an
-					// abort can land mid-call and must not be reported as a build error.
-					// When a signal is present it is the authority: the isolate compiles
-					// model-authored code, so a generated tool throwing `Aborted` must not
-					// be mistaken for a cancellation and kill the whole builder run.
-					if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(e)) throw e;
 					return {
 						ok: false,
 						errors: [{ message: e instanceof Error ? e.message : String(e) }],
@@ -934,8 +1073,170 @@ export class AgentsBuilderToolsService {
 				}
 			})
 			.build();
+	}
 
-		const createSkillsTool = new Tool(BUILDER_TOOLS.CREATE_SKILLS)
+	private buildListTasksTool(agentId: string, projectId: string) {
+		return new Tool(BUILDER_TOOLS.LIST_TASKS)
+			.description(
+				'List the target agent scheduled tasks, including each persisted body and whether its ' +
+					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
+					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, enabled }] } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					if (!agent) throw new Error('Agent not found');
+
+					const tasks = await this.agentTaskService.list(agentId);
+					const enabledByTaskId = new Map(
+						(composeJsonConfig(agent)?.tasks ?? []).map((task) => [task.id, task.enabled]),
+					);
+					return {
+						ok: true,
+						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
+							id,
+							name,
+							objective,
+							cronExpression,
+							// Null means the task runs on the instance timezone.
+							timezone,
+							enabled: enabledByTaskId.get(id) ?? false,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildUpdateSkillTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.UPDATE_SKILL)
+			.description(
+				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
+					'agent config reference. Requires baseSkillHash from the immediately preceding read_skill ' +
+					'result. Pass null for allowedTools to remove the tool restriction, or null ' +
+					'for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. On a stale ' +
+					'skill error, call read_skill and retry once with its fresh skillHash.',
+			)
+			.input(updateSkillInputSchema)
+			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
+				const { allowedTools, references, ...requiredUpdates } = updates;
+				const normalizedUpdates = {
+					...requiredUpdates,
+					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
+					...(references !== undefined ? { references: references ?? undefined } : {}),
+				};
+
+				try {
+					const updated = await this.agentSkillsService.updateSkill(
+						agentId,
+						projectId,
+						skillId,
+						normalizedUpdates,
+						{ user, modifiedBy: 'builder' },
+						baseSkillHash,
+					);
+					return { ok: true, id: updated.id, name: updated.skill.name };
+				} catch (e) {
+					const message = e instanceof Error ? e.message : String(e);
+					return {
+						ok: false,
+						errors: [{ message: e instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildListSkillsTool(agentId: string, projectId: string) {
+		return new Tool(BUILDER_TOOLS.LIST_SKILLS)
+			.description(
+				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
+					'existing skill owns a capability before reading or creating a skill. Returns ' +
+					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
+					return {
+						ok: true,
+						skills: Object.entries(skills).map(([id, skill]) => ({
+							id,
+							name: skill.name,
+							description: skill.description,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildReadSkillTool(agentId: string, projectId: string) {
+		return new Tool(BUILDER_TOOLS.READ_SKILL)
+			.description(
+				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
+					'references are returned as { path, characterCount } metadata by default to keep context small. ' +
+					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill, skillHash } or ' +
+					'{ ok: false, errors }. Call this before every update_skill and use skillHash as baseSkillHash.',
+			)
+			.input(readSkillInputSchema)
+			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
+				try {
+					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+					const skillHash = getAgentSkillHash(skill);
+					const { references, ...body } = skill;
+					const requestedPaths = new Set(referencePaths);
+					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
+					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
+					if (missingPaths.length > 0) {
+						return {
+							ok: false,
+							errors: [
+								{
+									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
+								},
+							],
+						};
+					}
+
+					const visibleReferences = references?.map((reference) => ({
+						path: reference.path,
+						characterCount: reference.content.length,
+						...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
+					}));
+					return {
+						ok: true,
+						id: skillId,
+						skillHash,
+						skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+	}
+
+	private buildCreateSkillsTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.CREATE_SKILLS)
 			.description(
 				'Create and store one or more agent skills (reusable, load-on-demand capabilities) in a ' +
 					'single call. Pass every skill you currently know how to write in one `skills` array — do ' +
@@ -971,6 +1272,8 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ skills }: { skills: CreateSkillInput[] }) => {
 				// Each skill is already validated against `.input()` (agentSkillSchema
 				// shapes) by the tool runtime before the handler runs.
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
 						user,
@@ -988,121 +1291,54 @@ export class AgentsBuilderToolsService {
 				}
 			})
 			.build();
+	}
 
-		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
+	private buildCustomToolTool(agentId: string, projectId: string, user: User) {
+		return new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
-				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
-					'schedule per task) in a single call. Pass every task you currently know how to write in one ' +
-					"`tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's " +
-					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
-					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
-					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
-					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
-			)
-			.systemInstruction(
-				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
-					'required section, or an unclear schedule. Each objective must follow the required structured ' +
-					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
-					'section filled in with concrete content — it is the exact, self-contained message the agent ' +
-					"receives on each unattended run. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
-					'only when even a reasonable assumption is impossible, before calling ' +
-					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
-					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
-					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +
-					'runtime. Batch every task you currently know how to write into one call.',
+				'Compile and store a custom tool. Pass the complete TypeScript source ' +
+					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
+					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
+					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'This does NOT register the tool in the agent config — follow up with ' +
+					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'to `tools`.' +
+					'Returns { ok: true, id, name } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
-					tasks: z
-						.array(
-							z.object({
-								name: agentTaskSchema.shape.name.describe('Short, human-readable task name.'),
-								objective: agentTaskSchema.shape.objective.describe(TASK_OBJECTIVE_GUIDANCE),
-								cronExpression: agentTaskSchema.shape.cronExpression.describe(
-									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
-								),
-							}),
-						)
-						.min(1)
-						.max(20)
-						.describe('Every task to create, in the order they should be created.'),
-				}),
-			)
-			.handler(
-				async ({
-					tasks,
-				}: {
-					tasks: Array<{ name: string; objective: string; cronExpression: string }>;
-				}) => {
-					// Each task is already validated against `.input()` (agentTaskSchema
-					// shapes) by the tool runtime before the handler runs.
-					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
-					try {
-						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
-						// and creates every body in one transaction. Enabled by default; each
-						// task starts running once the agent is (re)published via publish_agent.
-						created = await this.agentTaskService.createTasks(
-							agentId,
-							projectId,
-							tasks.map((task) => ({ ...task, enabled: true })),
-							{ user, modifiedBy: 'builder' },
-						);
-					} catch (e) {
-						return {
-							ok: false,
-							errors: [{ message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-
-					return {
-						ok: true,
-						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
-					};
-				},
-			)
-			.build();
-
-		const listWorkflowsTool = new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
-			.description(
-				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
-					'Only returns workflows with supported trigger types. Pass `searchTerm` to narrow by workflow name; ' +
-					'omitting it returns the 10 most recently updated attachable workflows.',
-			)
-			.input(
-				z.object({
-					searchTerm: z
+					code: z
 						.string()
-						.optional()
-						.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
+						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
-				return {
-					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
-				};
+			.handler(async ({ code }: { code: string }, ctx) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
+				try {
+					const descriptor = await this.secureRuntime.describeToolSecurely(code);
+					const built = await this.agentCustomToolsService.buildCustomTool(
+						agentId,
+						projectId,
+						code,
+						descriptor,
+						{ user, modifiedBy: 'builder' },
+					);
+					return { ok: true, id: built.id, name: descriptor.name };
+				} catch (e) {
+					// Unlike its sibling handlers, this one runs long isolate work, so an
+					// abort can land mid-call and must not be reported as a build error.
+					// When a signal is present it is the authority: the isolate compiles
+					// model-authored code, so a generated tool throwing `Aborted` must not
+					// be mistaken for a cancellation and kill the whole builder run.
+					if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(e)) throw e;
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
 			})
 			.build();
-
-		return [
-			buildCustomToolTool,
-			createSkillsTool,
-			this.withConfigMutationMarker(createTasksTool, agentId),
-			listWorkflowsTool,
-			buildGetResourceLocatorOptionsTool({
-				dynamicNodeParametersService: this.dynamicNodeParametersService,
-				nodeTypes: this.nodeTypes,
-				user,
-				projectId,
-			}),
-			...this.agentsToolsService.getSharedTools(
-				credentialProvider,
-				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
-					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
-					'into the config.',
-			),
-		];
 	}
 
 	private async getConfigSnapshot(
@@ -1123,6 +1359,11 @@ export class AgentsBuilderToolsService {
 		credentialId: string,
 		user: User,
 	): Promise<{ applied: boolean }> {
+		// verify_mcp_server still reports a successful verification; the
+		// credential just is not written while a user is editing the agent.
+		if (await this.getEditorLockFailure(agentId)) {
+			return { applied: false };
+		}
 		const snapshot = await this.getConfigSnapshot(agentId, projectId);
 		const config = snapshot.config;
 		const servers = config?.mcpServers;
@@ -1157,8 +1398,238 @@ export class AgentsBuilderToolsService {
 		);
 
 		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
+			baseConfigHash: snapshot.configHash,
 			modifiedBy: 'builder',
 		});
 		return { applied: true };
+	}
+
+	private async getFreshConfigSnapshot(
+		agentId: string,
+		projectId: string,
+		baseConfigHash: string | null,
+	): Promise<{ ok: true; snapshot: AgentConfigSnapshot } | BuilderConfigFailure> {
+		try {
+			const snapshot = await this.getConfigSnapshot(agentId, projectId);
+			if (baseConfigHash !== snapshot.configHash) {
+				return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
+			}
+			return { ok: true, snapshot };
+		} catch (e) {
+			return {
+				ok: false,
+				stage: 'stale',
+				errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+			};
+		}
+	}
+
+	private validateBuilderConfig(
+		incoming: unknown,
+		currentConfig: AgentJsonConfig | null,
+	): { ok: true; config: AgentJsonConfig } | BuilderConfigFailure {
+		const parsed = parseBuilderWriteConfig(incoming, currentConfig);
+		if (!parsed.success) return { ok: false, errors: formatZodErrors(parsed.error) };
+		const emptyInstructions = rejectIfEmptyInstructions(parsed.data, CLI_AGENT_CONFIG_MESSAGES);
+		if (emptyInstructions) return { ok: false, errors: emptyInstructions };
+		const unsupportedWebSearch = rejectIfUnsupportedNativeWebSearch(parsed.data);
+		if (unsupportedWebSearch) return { ok: false, errors: unsupportedWebSearch };
+		const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
+			parsed.data,
+			currentConfig,
+			this.nodeTypes,
+			CLI_AGENT_CONFIG_MESSAGES,
+		);
+		if (dynamicSelectorFromAi) return { ok: false, errors: dynamicSelectorFromAi };
+		// Save defaults explicitly so the write and read paths agree.
+		const config = applyPromptCachingBuilderDefaults(applyNativeWebSearchDefaultOn(parsed.data));
+		return { ok: true, config };
+	}
+
+	private async saveBuilderConfig(
+		agentId: string,
+		projectId: string,
+		user: User,
+		config: AgentJsonConfig,
+		baseConfigHash: string | null,
+	): Promise<{ ok: true } | BuilderConfigFailure> {
+		try {
+			await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
+				baseConfigHash,
+				modifiedBy: 'builder',
+			});
+			return { ok: true };
+		} catch (e) {
+			return {
+				ok: false,
+				stage: e instanceof ConflictError ? 'stale' : 'schema',
+				errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+			};
+		}
+	}
+
+	private async writeBuilderConfig(
+		agentId: string,
+		projectId: string,
+		user: User,
+		json: string,
+		baseConfigHash: string | null,
+	) {
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return editorLock;
+		const parsed = tryParseConfigJson(json);
+		if (!parsed.ok) return { ok: false, errors: parsed.errors };
+		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
+		if (!fresh.ok) return fresh;
+		const validated = this.validateBuilderConfig(parsed.data, fresh.snapshot.config);
+		if (!validated.ok) return validated;
+		return await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			fresh.snapshot.configHash,
+		);
+	}
+
+	private async patchBuilderConfig(
+		agentId: string,
+		projectId: string,
+		user: User,
+		operations: string,
+		baseConfigHash: string | null,
+	) {
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return { ...editorLock, stage: 'locked' };
+		const parsed = tryParseConfigJson(operations);
+		if (!parsed.ok) return { ok: false, stage: 'parse', errors: parsed.errors };
+		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
+		if (!fresh.ok) return fresh;
+		if (!fresh.snapshot.config) {
+			return {
+				ok: false,
+				stage: 'patch',
+				errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }],
+			};
+		}
+		const patched = await this.applyConfigPatch(parsed.data, fresh.snapshot.config);
+		if (!patched.ok) return patched;
+		const validated = this.validateBuilderConfig(patched.config, fresh.snapshot.config);
+		if (!validated.ok) return { ...validated, stage: 'schema' };
+		return await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			fresh.snapshot.configHash,
+		);
+	}
+
+	private async applyConfigPatch(
+		operations: unknown,
+		config: AgentJsonConfig,
+	): Promise<{ ok: true; config: unknown } | BuilderConfigFailure> {
+		const jsonpatch = (await import('fast-json-patch')).default;
+		const ops = operations as Operation[];
+		const patchError = jsonpatch.validate(ops, config);
+		if (patchError) {
+			const opPath = (patchError.operation as { path?: string } | undefined)?.path ?? '(root)';
+			return {
+				ok: false,
+				stage: 'patch',
+				errors: [{ path: opPath, message: patchError.message ?? 'Invalid patch operation' }],
+			};
+		}
+		return { ok: true, config: jsonpatch.applyPatch(jsonpatch.deepClone(config), ops).newDocument };
+	}
+
+	private async formatDraftTestResult(
+		result: AgentTestRunResult,
+		ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+		agentId: string,
+		user: User,
+		previewPath: string,
+	) {
+		if (result.status === 'session_not_found') {
+			return {
+				status: 'error',
+				code: 'session_not_found',
+				message: 'Session not found.',
+			};
+		}
+		if (result.status === 'agent_misconfigured') {
+			return {
+				status: 'error',
+				code: 'agent_misconfigured',
+				message: "This agent isn't ready to run yet. Finish configuring it and try again.",
+				missing: result.missing,
+			};
+		}
+		if (result.status === 'completed') return result;
+
+		const approvals = collectStandardApprovals(result);
+		const firstApproval = approvals?.[0];
+		if (firstApproval) {
+			const { continuation, ...approval } = firstApproval;
+			return await ctx.suspend(approval, { continuation });
+		}
+
+		return await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath);
+	}
+
+	private async cancelUnsupportedDraftTest(
+		result: Extract<AgentTestRunResult, { status: 'suspended' }>,
+		agentId: string,
+		user: User,
+		previewPath: string,
+	) {
+		const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+			agentId,
+			suspensions: result.suspensions,
+			userId: user.id,
+		});
+		if (!cancelled) {
+			return {
+				status: 'error',
+				code: 'cancellation_failed',
+				message:
+					'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+				sessionId: result.sessionId,
+				previewPath,
+			};
+		}
+
+		return {
+			status: 'approval_required',
+			response: result.response,
+			sessionId: result.sessionId,
+			...(result.executionId ? { executionId: result.executionId } : {}),
+			suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
+				runId,
+				toolCallId,
+				toolName,
+			})),
+			previewPath,
+		};
+	}
+
+	private createModelLookup(
+		user: User,
+		projectId: string,
+		options?: BuilderToolsOptions,
+	): ModelLookup {
+		return {
+			// `list` resolves the n8n Connect managed tag to the synthetic gateway
+			// credential internally, so no managed branch is needed here.
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					provider,
+					{ useEvalModelCatalog: options?.useEvalModelCatalog === true },
+				),
+		};
 	}
 }

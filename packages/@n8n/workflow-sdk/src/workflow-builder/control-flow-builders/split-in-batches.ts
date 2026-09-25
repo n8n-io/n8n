@@ -14,7 +14,11 @@ import type {
 	SwitchCaseBuilder,
 } from '../../types/base';
 import { isNodeChain, isNodeInstance } from '../../types/base';
-import { isIfElseBuilder, isSwitchCaseBuilder } from '../node-builders/node-builder';
+import {
+	declaredNodeId,
+	isIfElseBuilder,
+	isSwitchCaseBuilder,
+} from '../node-builders/node-builder';
 import { assertPlainObject } from '../validation-helpers';
 
 /**
@@ -29,13 +33,16 @@ class SplitInBatchesNodeInstance
 	readonly id: string;
 	readonly name: string;
 
-	constructor(input: SplitInBatchesFactoryConfig) {
+	constructor(input: SplitInBatchesFactoryConfig, id?: string) {
 		const config = input.config ?? {};
 		this.version = String(input.version);
-		this.id = uuid();
+		// An explicit `id` argument (update) wins over one declared in the source,
+		// so `update()` can never re-identify a node.
+		this.id = id ?? declaredNodeId(config.id) ?? uuid();
 		this.name = config.name ?? 'Split In Batches';
 		this.config = {
 			...config,
+			id: declaredNodeId(config.id),
 			parameters: config.parameters,
 		};
 	}
@@ -43,13 +50,18 @@ class SplitInBatchesNodeInstance
 	update(
 		config: Partial<NodeConfig>,
 	): NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> {
-		return new SplitInBatchesNodeInstance({
-			version: this.version,
-			config: {
-				...this.config,
-				...config,
+		return new SplitInBatchesNodeInstance(
+			{
+				version: this.version,
+				config: {
+					...this.config,
+					...config,
+					// Identity is not patchable — see NodeInstanceImpl.update().
+					id: this.config.id,
+				},
 			},
-		});
+			this.id,
+		);
 	}
 
 	input(_index: number): InputTarget {
@@ -373,7 +385,7 @@ export function splitInBatches(
 		);
 	}
 	// Otherwise, treat it as a SplitInBatchesFactoryConfig (new { version, config } pattern)
-	return new SplitInBatchesBuilderImpl(configOrNode as SplitInBatchesFactoryConfig);
+	return new SplitInBatchesBuilderImpl(configOrNode);
 }
 
 /**
@@ -419,10 +431,10 @@ function extractNodesFromTarget(
 	if (isSplitInBatchesBuilderShape(target)) {
 		const nodes: Array<NodeInstance<string, string, unknown>> = [target.sibNode];
 		for (const doneBatch of target._doneBatches) {
-			nodes.push(...extractNodesFromTarget(doneBatch as BranchTarget));
+			nodes.push(...extractNodesFromTarget(doneBatch));
 		}
 		for (const eachBatch of target._eachBatches) {
-			nodes.push(...extractNodesFromTarget(eachBatch as BranchTarget));
+			nodes.push(...extractNodesFromTarget(eachBatch));
 		}
 		if (target._doneTarget !== undefined) {
 			nodes.push(...extractNodesFromTarget(target._doneTarget));

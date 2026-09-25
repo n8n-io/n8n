@@ -5,10 +5,14 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, onMounted, watch } from 'vue';
-import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
 
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = { baseText: (key: string) => key };
@@ -20,16 +24,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 }));
 
-const ModalStub = defineComponent({
-	props: ['name', 'customClass', 'width'],
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-});
+const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
 
 const SkillViewerStub = defineComponent({
 	emits: ['import:skill', 'update:skill', 'update:valid'],
@@ -42,7 +40,8 @@ const SkillViewerStub = defineComponent({
 			return Boolean(
 				props.skill?.name?.trim() &&
 					props.skill?.description?.trim() &&
-					props.skill?.instructions?.trim(),
+					props.skill?.instructions?.trim() &&
+					props.skill.instructions.length <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 			);
 		}
 		onMounted(() => emit('update:valid', computeValid()));
@@ -51,7 +50,14 @@ const SkillViewerStub = defineComponent({
 			() => emit('update:valid', computeValid()),
 		);
 		return () =>
-			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [h('span', props.selectedPath)]);
+			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [
+				h('span', props.selectedPath),
+				h(
+					'span',
+					{ 'data-testid': 'agent-skill-instructions-error' },
+					props.errors?.instructions ?? '',
+				),
+			]);
 	},
 });
 
@@ -62,16 +68,18 @@ function renderModal({
 	skill,
 	skillId,
 	availableTools,
+	existingSkillNames,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: Array<{ name: string; label: string }>;
+	existingSkillNames?: string[];
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
 			stubs: {
-				Modal: ModalStub,
+				AgentModal: AgentModalTestStub,
 				AgentSkillViewer: SkillViewerStub,
 				N8nButton: {
 					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
@@ -93,6 +101,7 @@ function renderModal({
 				skill,
 				skillId,
 				availableTools,
+				existingSkillNames,
 				onConfirm,
 			},
 		},
@@ -110,11 +119,26 @@ describe('AgentSkillModal', () => {
 		uiStore.closeModal = vi.fn();
 	});
 
-	it('does not call createAgentSkill when the user cancels before saving', async () => {
-		const onConfirm = vi.fn();
-		const { getByText } = renderModal({ onConfirm });
+	it('uses the wider fit-content Agent modal width', () => {
+		const { container } = renderModal();
 
-		await fireEvent.click(getByText('agents.builder.skills.create.cancel'));
+		expect(container.querySelector('[data-testid="agent-skill-modal"]')).toHaveAttribute(
+			'data-size',
+			'fit',
+		);
+		expect(container.querySelector('[data-testid="agent-skill-modal"]')).toHaveAttribute(
+			'data-body-flush',
+			'true',
+		);
+	});
+
+	it('does not call createAgentSkill when the user closes before saving', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({ onConfirm });
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="dialog-close-button"]') as Element,
+		);
 
 		expect(apiCreateSpy).not.toHaveBeenCalled();
 		expect(onConfirm).not.toHaveBeenCalled();
@@ -139,6 +163,43 @@ describe('AgentSkillModal', () => {
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(showMessage).not.toHaveBeenCalled();
+	});
+
+	it('uses the next available default name for a new skill', () => {
+		const { container } = renderModal({
+			existingSkillNames: [
+				'agents.builder.skills.defaultName',
+				'agents.builder.skills.defaultName 2',
+			],
+		});
+
+		expect(container.querySelector('[data-testid="agent-modal-title-input"]')).toHaveValue(
+			'agents.builder.skills.defaultName 3',
+		);
+	});
+
+	it('explains why overlong instructions cannot be saved', async () => {
+		const onConfirm = vi.fn();
+		const { container } = renderModal({
+			onConfirm,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'x'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+			},
+		});
+
+		await fireEvent.click(
+			container.querySelector('[data-testid="agent-skill-create-save"]') as Element,
+		);
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(
+			container.querySelector('[data-testid="agent-skill-instructions-error"]'),
+		).toHaveTextContent('agents.builder.skills.validation.instructionsMaxLength');
 	});
 
 	it('adds and removes references from the file navigation', async () => {

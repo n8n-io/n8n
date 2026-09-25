@@ -2,7 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
+import type { ExecutionContextService } from 'n8n-core';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
+	INodeParameters,
 	ITaskData,
 	IWorkflowBase,
 	IWebhookData,
@@ -15,6 +18,11 @@ import { v4 as uuid } from 'uuid';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {
@@ -24,7 +32,7 @@ import type {
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WebhookRequest } from '@/webhooks/webhook.types';
+import type { IWebhookResponseCallbackData, WebhookRequest } from '@/webhooks/webhook.types';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
@@ -44,10 +52,17 @@ const webhook = mock<IWebhookData>({
 	userId,
 });
 
+const flushMicrotasks = async () => {
+	const { setImmediate: realSetImmediate } =
+		await vi.importActual<typeof import('timers')>('timers');
+	await new Promise((resolve) => realSetImmediate(resolve));
+};
+
 describe('TestWebhooks', () => {
 	const logger = mock<Logger>();
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
+	const executionContextService = mock<ExecutionContextService>();
 
 	const testWebhooks = new TestWebhooks(
 		logger,
@@ -57,6 +72,7 @@ describe('TestWebhooks', () => {
 		mock(),
 		mock(),
 		webhookService,
+		executionContextService,
 	);
 
 	beforeAll(() => {
@@ -88,6 +104,52 @@ describe('TestWebhooks', () => {
 
 			expect(registerOrder).toBeLessThan(createOrder);
 			expect(needsWebhook).toBe(true);
+		});
+
+		test('registers with a TTL that covers the listener window plus the buffer', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			await testWebhooks.needsWebhook(args);
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: 600_000 });
+
+			const ttls = registrations.register.mock.calls.map(([, ttl]) => ttl);
+			expect(ttls[0]).toBe(TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
+			expect(ttls.at(-1)).toBe(600_000 + TEST_WEBHOOK_TIMEOUT_BUFFER);
+		});
+
+		test('clears the timer of a replaced registration so it cannot cancel the new one early', async () => {
+			vi.clearAllTimers();
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression: mock<WorkflowExpression>(),
+			});
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			const cancelSpy = vi.spyOn(testWebhooks, 'cancelWebhook').mockResolvedValue(false);
+
+			await testWebhooks.needsWebhook(args);
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: TEST_WEBHOOK_MAX_TIMEOUT });
+
+			vi.advanceTimersByTime(TEST_WEBHOOK_TIMEOUT);
+			expect(cancelSpy).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(TEST_WEBHOOK_MAX_TIMEOUT - TEST_WEBHOOK_TIMEOUT);
+			expect(cancelSpy).toHaveBeenCalledExactlyOnceWith(workflowEntity.id);
+		});
+
+		test('clamps timeoutMs to the maximum window and falls back to the default for non-positive values', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: 0 });
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: 2 * TEST_WEBHOOK_MAX_TIMEOUT });
+
+			const ttls = registrations.register.mock.calls.map(([, ttl]) => ttl);
+			expect(ttls[0]).toBe(TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
+			expect(ttls.at(-1)).toBe(TEST_WEBHOOK_MAX_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
 		});
 
 		test('if webhook activation fails, should deactivate workflow webhooks', async () => {
@@ -287,6 +349,162 @@ describe('TestWebhooks', () => {
 			expect(registrations.register).toHaveBeenCalled();
 			expect(registrations.register.mock.calls[0][0].destinationNode).toEqual(destinationNodeObj);
 		});
+
+		describe('runner identity for end-user credentials', () => {
+			const n8nAuthCookie = 'n8n-auth-jwt';
+			const carrier = 'encrypted-carrier';
+
+			/**
+			 * `availableInChat` is what makes a chat trigger identity-bearing today, per
+			 * `classifyTriggerIdentity`. `authentication` alone does not.
+			 */
+			const IDENTITY_BEARING = { availableInChat: true };
+
+			const chatWorkflow = (parameters: INodeParameters, type = CHAT_TRIGGER_NODE_TYPE) =>
+				mock<Workflow>({
+					id: workflowEntity.id,
+					nodes: {
+						chatTriggerNode: { type, name: 'chatTriggerNode', parameters },
+					},
+					expression: mock<WorkflowExpression>(),
+				});
+
+			const chatWebhook = () =>
+				mock<IWebhookData>({
+					node: 'chatTriggerNode',
+					httpMethod,
+					path: 'original-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+
+			beforeEach(() => {
+				executionContextService.buildManualExecutionCredentials.mockResolvedValue(carrier);
+			});
+
+			test('mints and stores the carrier for an identity-bearing chat trigger', async () => {
+				// ARRANGE
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(IDENTITY_BEARING));
+				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook()]);
+
+				// ACT
+				await testWebhooks.needsWebhook({ ...args, chatSessionId: 'session', n8nAuthCookie });
+
+				// ASSERT
+				expect(executionContextService.buildManualExecutionCredentials).toHaveBeenCalledWith(
+					n8nAuthCookie,
+				);
+				expect(registrations.register.mock.calls[0][0].encryptedRunnerIdentity).toBe(carrier);
+			});
+
+			test('mints only once for a trigger that registers several webhooks', async () => {
+				// ARRANGE
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(IDENTITY_BEARING));
+				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+					chatWebhook(),
+					chatWebhook(),
+				]);
+
+				// ACT
+				await testWebhooks.needsWebhook({ ...args, n8nAuthCookie });
+
+				// ASSERT
+				expect(executionContextService.buildManualExecutionCredentials).toHaveBeenCalledTimes(1);
+			});
+
+			test.each([
+				{
+					// A `n8nOAuth2` webhook node is identity-bearing too, but establishes its own
+					// stronger carrier while its webhook runs, so this gate stays out of its way.
+					reason: 'the trigger is not a chat trigger',
+					parameters: { authentication: 'n8nOAuth2' },
+					type: 'n8n-nodes-base.webhook',
+					cookie: n8nAuthCookie,
+				},
+				{
+					// Publish-time validation rejects this pairing with an end-user credential, so
+					// granting it identity in test mode would diverge from production. Expected to
+					// start minting once IAM-1263 makes it identity-bearing.
+					reason: 'the chat trigger is n8nUserAuth but not available in chat',
+					parameters: { authentication: 'n8nUserAuth' },
+					type: CHAT_TRIGGER_NODE_TYPE,
+					cookie: n8nAuthCookie,
+				},
+				{
+					reason: 'authentication is basicAuth',
+					parameters: { authentication: 'basicAuth' },
+					type: CHAT_TRIGGER_NODE_TYPE,
+					cookie: n8nAuthCookie,
+				},
+				{
+					reason: 'the chat trigger carries no relevant parameters',
+					parameters: {},
+					type: CHAT_TRIGGER_NODE_TYPE,
+					cookie: n8nAuthCookie,
+				},
+				{
+					reason: 'availableInChat is an unresolved expression',
+					parameters: { availableInChat: '={{ $json.inChat }}' },
+					type: CHAT_TRIGGER_NODE_TYPE,
+					cookie: n8nAuthCookie,
+				},
+				{
+					reason: 'no cookie was supplied',
+					parameters: IDENTITY_BEARING,
+					type: CHAT_TRIGGER_NODE_TYPE,
+					cookie: undefined,
+				},
+			])('does not mint a carrier when $reason', async ({ parameters, type, cookie }) => {
+				// ARRANGE
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(chatWorkflow(parameters, type));
+				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook()]);
+
+				// ACT
+				await testWebhooks.needsWebhook({ ...args, n8nAuthCookie: cookie });
+
+				// ASSERT
+				expect(executionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+				expect(registrations.register.mock.calls[0][0].encryptedRunnerIdentity).toBeUndefined();
+			});
+
+			test('stores the carrier only on the chat trigger registration', async () => {
+				// ARRANGE
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(
+					mock<Workflow>({
+						id: workflowEntity.id,
+						nodes: {
+							chatTriggerNode: {
+								type: CHAT_TRIGGER_NODE_TYPE,
+								name: 'chatTriggerNode',
+								parameters: IDENTITY_BEARING,
+							},
+							webhookNode: { type: 'n8n-nodes-base.webhook', name: 'webhookNode' },
+						},
+						expression: mock<WorkflowExpression>(),
+					}),
+				);
+				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+					chatWebhook(),
+					mock<IWebhookData>({
+						node: 'webhookNode',
+						httpMethod,
+						path: 'webhook-path',
+						workflowId: workflowEntity.id,
+						userId,
+					}),
+				]);
+
+				// ACT
+				await testWebhooks.needsWebhook({ ...args, n8nAuthCookie });
+
+				// ASSERT
+				expect(registrations.register.mock.calls[0][0].encryptedRunnerIdentity).toBe(carrier);
+				const webhookNodeCall = registrations.register.mock.calls.find(
+					([registration]) => registration.webhook.node === 'webhookNode',
+				);
+				expect(webhookNodeCall?.[0].encryptedRunnerIdentity).toBeUndefined();
+			});
+		});
 		test.each([
 			{ published: true, withSingleWebhookTrigger: true, shouldThrow: true },
 			{ published: true, withSingleWebhookTrigger: false, shouldThrow: false },
@@ -426,6 +644,168 @@ describe('TestWebhooks', () => {
 
 			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
 		});
+
+		test('releases isolate only after deactivateWebhooks completes on successful execution', async () => {
+			const expression = mock<WorkflowExpression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: vi.fn().mockReturnValue(workflowStartNode),
+			});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const deactivateSpy = vi
+				.spyOn(testWebhooks, 'deactivateWebhooks')
+				.mockResolvedValue(undefined);
+
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (...args: unknown[]) => {
+				const onDone = args[10] as (error: Error | null, data: unknown) => void;
+				onDone(null, { noWebhookResponse: true });
+				return 'execution-id';
+			});
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			const [acquireOrder] = (expression.acquireIsolate as Mock).mock.invocationCallOrder;
+			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
+			const [releaseOrder] = (expression.releaseIsolate as Mock).mock.invocationCallOrder;
+			expect(acquireOrder).toBeLessThan(deactivateOrder);
+			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
+
+		test('logs when isolate release fails after teardown', async () => {
+			const expression = mock<WorkflowExpression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: vi.fn().mockReturnValue(workflowStartNode),
+			});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue(undefined);
+
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (...args: unknown[]) => {
+				const onDone = args[10] as (error: Error | null, data: unknown) => void;
+				onDone(null, { noWebhookResponse: true });
+				return 'execution-id';
+			});
+
+			const error = new Error('release failed');
+			expression.releaseIsolate.mockRejectedValueOnce(error);
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to release expression isolate for test webhook',
+				expect.objectContaining({ error, workflowId: workflowEntity.id }),
+			);
+		});
+
+		describe('multi-main, webhook handled on a main that does not hold the pushRef', () => {
+			const pushRef = 'owner-session';
+			const originalIsMultiMain = (testWebhooks as any).instanceSettings.isMultiMain;
+
+			afterEach(() => {
+				(testWebhooks as any).instanceSettings.isMultiMain = originalIsMultiMain;
+				((testWebhooks as any).push.hasPushRef as Mock).mockReset();
+			});
+
+			const setup = () => {
+				const expression = mock<WorkflowExpression>();
+				const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+					type: 'n8n-nodes-base.webhook',
+				});
+				const workflow = mock<Workflow>({
+					id: workflowEntity.id,
+					expression,
+					getNode: vi.fn().mockReturnValue(workflowStartNode),
+				});
+
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+				vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+				registrations.get.mockResolvedValueOnce({
+					version: 1,
+					workflowEntity,
+					webhook,
+					pushRef,
+				} as TestWebhookRegistration);
+
+				(testWebhooks as any).instanceSettings.isMultiMain = true;
+				((testWebhooks as any).push.hasPushRef as Mock).mockReturnValue(false);
+			};
+
+			const mockDeferredExecuteWebhook = async (data: IWebhookResponseCallbackData) => {
+				const { setImmediate: realSetImmediate } =
+					await vi.importActual<typeof import('timers')>('timers');
+
+				vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+					async (...args: unknown[]) => {
+						const onDone = args[10] as (error: Error | null, data: unknown) => void;
+						realSetImmediate(() => onDone(null, data));
+						return 'execution-id';
+					},
+				);
+			};
+
+			test('resolves with the responseNode callback data received after executeWebhook returns', async () => {
+				setup();
+				const callbackData = {
+					data: { ok: true },
+					responseCode: 201,
+					headers: { 'x-test': 'value' },
+				} as unknown as IWebhookResponseCallbackData;
+				await mockDeferredExecuteWebhook(callbackData);
+
+				const result = await testWebhooks.executeWebhook(
+					mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+					mock<express.Response>(),
+				);
+
+				expect(result).toEqual(callbackData);
+			});
+
+			test('rejects with the error thrown by WebhookHelpers.executeWebhook', async () => {
+				setup();
+				const error = new Error('boom');
+				vi.spyOn(WebhookHelpers, 'executeWebhook').mockRejectedValue(error);
+
+				const promise = testWebhooks.executeWebhook(
+					mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+					mock<express.Response>(),
+				);
+
+				await expect(promise).rejects.toThrow(error);
+			});
+		});
 	});
 
 	describe('deactivateWebhooks()', () => {
@@ -446,12 +826,6 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('cancelWebhook()', () => {
-		const flushMicrotasks = async () => {
-			const { setImmediate: realSetImmediate } =
-				await vi.importActual<typeof import('timers')>('timers');
-			await new Promise((resolve) => realSetImmediate(resolve));
-		};
-
 		test('acquires and releases isolate around deactivateWebhooks', async () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });

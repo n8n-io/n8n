@@ -3,7 +3,7 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 defineProps<{
 	incomplete: boolean;
 	connectModelOnly: boolean;
+	returnVisit: boolean;
 	modelValue: string;
 	sandboxValue: string;
 	searchValue: string;
@@ -21,12 +22,12 @@ defineProps<{
 
 const emit = defineEmits<{
 	setup: [];
+	setupLater: [];
 	openStep: [step: 'model' | 'sandbox' | 'search'];
 	turnOff: [];
 }>();
 
 const i18n = useI18n();
-const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assistant';
 </script>
 
 <template>
@@ -39,7 +40,7 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
-			<N8nPreviewTag v-if="!incomplete" :class="$style.preview" size="medium" />
+			<N8nPreviewBadge v-if="!incomplete" :class="$style.preview" size="medium" />
 
 			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}
@@ -110,16 +111,16 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 					@click="emit('setup')"
 				/>
 				<N8nButton
+					v-if="!returnVisit"
 					variant="ghost"
 					size="medium"
-					:href="DOCS_URL"
-					target="_blank"
-					:label="i18n.baseText('instanceAi.onboarding.learnMore')"
-					data-test-id="assistant-learn-more"
+					:label="i18n.baseText('instanceAi.onboarding.setUpLater')"
+					data-test-id="assistant-set-up-later"
+					@click="emit('setupLater')"
 				/>
 			</div>
 
-			<div :class="$style.turnOff">
+			<div v-if="returnVisit" :class="$style.turnOff">
 				<N8nButton
 					variant="ghost"
 					size="small"

@@ -46,7 +46,7 @@ export const Default: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen" v-bind="args">
@@ -88,7 +88,7 @@ export const Sizes: Story = {
 			return { sizes, openDialogs, openDialog };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; justify-content: center; padding: 40px;">
+		<div style="display: flex; gap: 16px;">
 			<template v-for="size in sizes" :key="size">
 				<N8nButton :label="size" variant="outline" @click="openDialog(size)" />
 
@@ -128,7 +128,7 @@ export const WithoutCloseButton: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen" v-bind="args">
@@ -162,7 +162,7 @@ export const ScrollableContent: Story = {
 			return { isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="View Terms" variant="outline" @click="isOpen = true" />
 
 			<N8nDialog
@@ -205,8 +205,8 @@ export const AccessibilityFallback: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
-			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+		<div style="display: flex; flex-direction: column; gap: 16px">
+			<p style="max-width: 500px; color: var(--color--text--tint-1);">
 				This dialog uses <code>ariaLabel</code> and <code>ariaDescription</code> props instead of
 				<code>N8nDialogTitle</code> and <code>N8nDialogDescription</code> components.
 				The title and description are visually hidden but accessible to screen readers.
@@ -255,8 +255,8 @@ export const AccessibilityFallbackTitleOnly: Story = {
 			return { args, isOpen };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
-			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+		<div style="display: flex; flex-direction: column; gap: 16px">
+			<p style="max-width: 500px; color: var(--color--text--tint-1);">
 				This dialog only uses the <code>ariaLabel</code> prop for an accessible title.
 				Useful for simple confirmation dialogs or icon-only interfaces.
 			</p>
@@ -302,7 +302,7 @@ export const CustomHeader: Story = {
 			return { isOpen };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Open Dialog" @click="isOpen = true" />
 
 			<N8nDialog v-model:open="isOpen">

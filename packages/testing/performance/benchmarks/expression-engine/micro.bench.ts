@@ -12,11 +12,7 @@
  */
 import { bench } from 'vitest';
 import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-} from 'n8n-workflow/expression-sandboxing';
+import { expressionSandboxHooks } from 'n8n-workflow/expression-sandboxing';
 
 import { BENCH_OPTIONS } from '../bench-options';
 
@@ -24,10 +20,7 @@ import { BENCH_OPTIONS } from '../bench-options';
 const evaluator = new ExpressionEvaluator({
 	createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
 	maxCodeCacheSize: 1024,
-	hooks: {
-		before: [ThisSanitizer],
-		after: [PrototypeSanitizer, DollarSignValidator],
-	},
+	hooks: expressionSandboxHooks,
 });
 await evaluator.initialize();
 const caller = {};

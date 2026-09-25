@@ -1,10 +1,7 @@
 import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 const MANAGED_CREDENTIAL_IDS = new Set<string>([MANAGED_CREDENTIAL_TOKEN, AI_GATEWAY_MANAGED_TAG]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function addCredentialId(value: unknown, credentialIds: Set<string>): void {
 	if (typeof value === 'string' && value !== '' && !MANAGED_CREDENTIAL_IDS.has(value)) {

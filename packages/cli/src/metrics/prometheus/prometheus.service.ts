@@ -9,15 +9,19 @@ import { PrometheusCacheMetricsService } from './cache-metrics.service';
 import { PrometheusDbPoolMetricsService } from './db-pool-metrics.service';
 import { PrometheusDefaultMetricsService } from './default-metrics.service';
 import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
+import { PrometheusEncryptionMetricsService } from './encryption-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
+import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import { PrometheusPollTriggerMetricsService } from './poll-trigger-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
 import { PrometheusRouteMetricsService } from './route-metrics.service';
 import { PrometheusSchedulerMetricsService } from './scheduler-metrics.service';
 import { PrometheusSsrfMetricsService } from './ssrf-metrics.service';
+import { PrometheusSystemTaskMetricsService } from './system-task-metrics.service';
 import { PrometheusTokenExchangeMetricsService } from './token-exchange-metrics.service';
 import { PrometheusVersionMetricsService } from './version-metrics.service';
 import { PrometheusWebhookAndFormMetricsService } from './webhook-and-form-metrics.service';
@@ -52,9 +56,13 @@ export class PrometheusMetricsService {
 		webhook: PrometheusWebhookAndFormMetricsService,
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
 		instanceAi: PrometheusInstanceAiMetricsService,
+		mcpPostSave: PrometheusMcpPostSaveMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
 		scheduler: PrometheusSchedulerMetricsService,
+		pollTrigger: PrometheusPollTriggerMetricsService,
+		encryption: PrometheusEncryptionMetricsService,
+		systemTask: PrometheusSystemTaskMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -76,9 +84,13 @@ export class PrometheusMetricsService {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			mcpPostSave,
 			dbPool,
 			workflowPublication,
 			scheduler,
+			pollTrigger,
+			encryption,
+			systemTask,
 		];
 	}
 

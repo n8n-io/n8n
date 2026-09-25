@@ -5,6 +5,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './nodes-api-version';
 export * from './common';
 export * from './cron';
 export * from './data-table.types';
@@ -40,7 +41,10 @@ export * from './mcp-helpers';
 export * from './tool-helpers';
 export * from './trigger-credential-gate';
 export * from './trigger-identity';
+export * from './url';
 export * from './n8n-oauth2-auth';
+export * from './n8n-browser-oauth2-flow';
+export * from './auth-redaction';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';

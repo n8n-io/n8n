@@ -1,6 +1,6 @@
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import type { Project, SourceFile } from 'ts-morph';
+import { Node, type Project, type PropertyAccessExpression, type SourceFile } from 'ts-morph';
 
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
@@ -65,6 +65,16 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 
 				let match;
 				while ((match = regex.exec(content)) !== null) {
+					const matchedNode = file.getDescendantAtPos(match.index);
+					const propertyAccess = matchedNode?.getParent();
+					if (
+						match[0].startsWith('fetch') &&
+						Node.isPropertyAccessExpression(propertyAccess) &&
+						this.isPlaywrightRouteFetch(propertyAccess)
+					) {
+						continue;
+					}
+
 					// Get some context around the match for allowPattern checking
 					const contextStart = Math.max(0, match.index - 50);
 					const contextEnd = Math.min(content.length, match.index + match[0].length + 50);
@@ -99,6 +109,38 @@ export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 		}
 
 		return violations;
+	}
+
+	private isPlaywrightRouteFetch(propertyAccess: PropertyAccessExpression): boolean {
+		const receiver = propertyAccess.getExpression();
+		if (!Node.isIdentifier(receiver)) return false;
+
+		const routeParameter = receiver
+			.getSymbol()
+			?.getDeclarations()
+			.find((declaration) => Node.isParameterDeclaration(declaration));
+		const routeHandler = routeParameter?.getParent();
+		if (
+			!routeHandler ||
+			(!Node.isArrowFunction(routeHandler) && !Node.isFunctionExpression(routeHandler))
+		) {
+			return false;
+		}
+
+		const routeCall = routeHandler.getParent();
+		if (!Node.isCallExpression(routeCall)) return false;
+
+		const routeMethod = routeCall.getExpression();
+		if (!Node.isPropertyAccessExpression(routeMethod) || routeMethod.getName() !== 'route') {
+			return false;
+		}
+
+		const routeTarget = routeMethod.getExpression();
+		const routeTargetName = Node.isPropertyAccessExpression(routeTarget)
+			? routeTarget.getName()
+			: routeTarget.getText();
+
+		return routeTargetName === 'page' || routeTargetName === 'context';
 	}
 
 	/**

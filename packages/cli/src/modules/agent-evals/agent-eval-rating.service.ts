@@ -1,4 +1,5 @@
 import type { AgentEvalRatingRecord, CreateAgentEvalRatingPayload } from '@n8n/api-types';
+import { AGENT_EVAL_MAX_COMMENT_CHARS, AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AgentEvalResult, User } from '@n8n/db';
 import {
@@ -16,8 +17,9 @@ import { toRatingRecord } from './agent-eval-record-mappers';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
 // The body arrives straight from a request, so bound it before it hits the column.
-const MAX_COMMENT_CHARS = 2_000;
-const MAX_CORRECTION_TEXT_CHARS = 20_000;
+// The per-field limits are shared with the editor so it can cap its inputs at the
+// same numbers; the total stays here because it bounds the serialized blob, which
+// a client can't usefully pre-check.
 const MAX_CORRECTION_CHARS = 32_000;
 
 /**
@@ -151,8 +153,10 @@ export class AgentEvalRatingService {
 
 /** Rejects rather than truncating: a silently clipped gold answer is worse. */
 function assertPayloadWithinBounds(payload: CreateAgentEvalRatingPayload): void {
-	if (payload.comment !== undefined && payload.comment.length > MAX_COMMENT_CHARS) {
-		throw new BadRequestError(`A rating comment cannot exceed ${MAX_COMMENT_CHARS} characters.`);
+	if (payload.comment !== undefined && payload.comment.length > AGENT_EVAL_MAX_COMMENT_CHARS) {
+		throw new BadRequestError(
+			`A rating comment cannot exceed ${AGENT_EVAL_MAX_COMMENT_CHARS} characters.`,
+		);
 	}
 
 	const { correction } = payload;
@@ -164,9 +168,9 @@ function assertPayloadWithinBounds(payload: CreateAgentEvalRatingPayload): void 
 	if (typeof finalText !== 'string' || finalText.trim().length === 0) {
 		throw new BadRequestError("A correction must carry the edited answer in 'finalText'.");
 	}
-	if (finalText.length > MAX_CORRECTION_TEXT_CHARS) {
+	if (finalText.length > AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS) {
 		throw new BadRequestError(
-			`A corrected answer cannot exceed ${MAX_CORRECTION_TEXT_CHARS} characters.`,
+			`A corrected answer cannot exceed ${AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS} characters.`,
 		);
 	}
 	if (JSON.stringify(correction).length > MAX_CORRECTION_CHARS) {

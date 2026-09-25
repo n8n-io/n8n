@@ -1,18 +1,23 @@
 import {
 	AGENT_EVALS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
-import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
-import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
+import type { FeatureFlagPayloads, FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-node';
 
 import { N8N_VERSION } from '@/constants';
 
@@ -31,8 +36,12 @@ function sanitizeSessionId(value: string | undefined): string | undefined {
 	return sanitized ? sanitized.slice(0, SESSION_ID_MAX_LENGTH) : undefined;
 }
 
-interface CachedFlags {
-	flags: FeatureFlags;
+interface FeatureFlagData {
+	featureFlags: FeatureFlags;
+	featureFlagPayloads: FeatureFlagPayloads;
+}
+
+interface CachedFlags extends FeatureFlagData {
 	expiresAt: number;
 }
 
@@ -131,85 +140,176 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
-		// Catch PostHog errors here (rather than letting them propagate) so
-		// env-var overrides still apply when PostHog is unreachable. Without
-		// this, a transient PostHog outage would short-circuit the override
-		// path and leave operators without an escape hatch.
-		let flags: FeatureFlags = {};
-		try {
-			flags = await this.fetchFlagsFromPostHog(user);
-		} catch {
-			// fall through to env overrides
-		}
-		return this.applyEnvOverrides(flags);
+		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
 	}
 
-	private async fetchFlagsFromPostHog(
-		user: Pick<PublicUser, 'id' | 'createdAt'>,
-	): Promise<FeatureFlags> {
-		if (!this.postHog) return {};
-
+	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
 		const { instanceId } = this.instanceSettings;
-		const fullId = [instanceId, user.id].join('#');
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
 
-		const cached = this.flagsCache.get(fullId);
-		if (cached && cached.expiresAt > Date.now()) {
-			return cached.flags;
+		try {
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: ['instance', instanceId, flagName].join('#'),
+				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+				options: {
+					flagKeys: [flagName],
+					groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
 		}
 
-		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
-			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
-				instance_id: instanceId,
-				version_cli: N8N_VERSION,
-			},
-			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-		});
-		const flags = this.resolveFeatureFlagVariants(evaluatedFlags);
-
-		if (Object.keys(flags).length > 0) {
-			this.flagsCache.set(fullId, { flags, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
-		}
-
-		return flags;
+		return this.applyEnvOverrides(data).featureFlags[flagName];
 	}
 
-	private resolveFeatureFlagVariants(evaluatedFlags: FeatureFlagEvaluations): FeatureFlags {
-		const result: FeatureFlags = {};
+	async getFeatureFlagsAndPayloads(
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlagData> {
+		// Apply local overrides when PostHog is not available.
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+		try {
+			const { instanceId } = this.instanceSettings;
+			const distinctId = [instanceId, user.id].join('#');
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: distinctId,
+				distinctId,
+				options: {
+					personProperties: {
+						created_at_timestamp: user.createdAt.getTime().toString(),
+						instance_id: instanceId,
+						version_cli: N8N_VERSION,
+					},
+					...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const credentialDescriptionsEnabled =
+			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		return {
+			...overridden,
+			featureFlags: {
+				...overridden.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+			},
+		};
+	}
 
-		if (!evaluatedFlags || !Array.isArray(evaluatedFlags.keys)) return result;
+	private async fetchFlagsFromPostHog({
+		cacheKey,
+		distinctId,
+		options,
+	}: {
+		cacheKey: string;
+		distinctId: string;
+		options: AllFlagsOptions;
+	}): Promise<FeatureFlagData> {
+		if (!this.postHog) {
+			return { featureFlags: {}, featureFlagPayloads: {} };
+		}
+
+		const cached = this.flagsCache.get(cacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			return cached;
+		}
+
+		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
+
+		const data = this.resolveFeatureFlagData(evaluatedFlags);
+
+		if (Object.keys(data.featureFlags).length > 0) {
+			this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		}
+
+		return data;
+	}
+
+	private resolveFeatureFlagData(evaluatedFlags: FeatureFlagEvaluations): FeatureFlagData {
+		const featureFlags: FeatureFlags = {};
+		const featureFlagPayloads: FeatureFlagPayloads = {};
+
+		if (!evaluatedFlags || !Array.isArray(evaluatedFlags.keys)) {
+			return { featureFlags, featureFlagPayloads };
+		}
 
 		for (const key of evaluatedFlags.keys) {
 			try {
-				result[key] = evaluatedFlags.getFlag(key);
+				featureFlags[key] = evaluatedFlags.getFlag(key);
+				const payload = evaluatedFlags.getFlagPayload(key);
+				if (payload !== undefined && payload !== null) {
+					featureFlagPayloads[key] = payload;
+				}
 			} catch {}
 		}
 
-		return result;
+		return { featureFlags, featureFlagPayloads };
 	}
 
-	/**
-	 * Applies env-var overrides on top of PostHog-resolved flags. The override
-	 * is force-enable only — `false` defers to PostHog. Cached PostHog data is
-	 * stored without overrides so changing the env var (across restarts)
-	 * doesn't poison the cache.
-	 */
-	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
-		const overrides: FeatureFlags = {};
+	/** Applies local settings after PostHog. Dedicated feature settings take priority. */
+	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
+		const overrides = { ...this.globalConfig.featureFlags.override };
+
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
 		}
+
 		// `088_config_evaluations` is multivariate — the enabled arm is the
-		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
+		// `variant` string, not a boolean (`resolveExperimentGates` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
 		}
+
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
 		}
-		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
-			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
+
+		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {
+			overrides[CANVAS_NODE_CONTEXT_FLAG] = true;
 		}
-		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
+
+		if (this.globalConfig.instanceAi.nodeUsageEnabled) {
+			overrides[INSTANCE_AI_NODE_USAGE_FLAG] = true;
+		}
+
+		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
+			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
+				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
+		}
+
+		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
+			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithManyBoundariesEnabled) {
+			overrides[GROUPS_WITH_MANY_BOUNDARIES_FLAG] = true;
+		}
+
+		if (Object.keys(overrides).length === 0) {
+			return {
+				featureFlags: data.featureFlags,
+				featureFlagPayloads: data.featureFlagPayloads,
+			};
+		}
+
+		const featureFlags = { ...data.featureFlags };
+		const featureFlagPayloads = { ...data.featureFlagPayloads };
+
+		for (const [key, override] of Object.entries(overrides)) {
+			const value = typeof override === 'object' ? override.value : override;
+			const payload = typeof override === 'object' ? override.payload : undefined;
+
+			featureFlags[key] = value;
+			if (payload === undefined || payload === null) {
+				delete featureFlagPayloads[key];
+			} else {
+				featureFlagPayloads[key] = payload;
+			}
+		}
+
+		return { featureFlags, featureFlagPayloads };
 	}
 }

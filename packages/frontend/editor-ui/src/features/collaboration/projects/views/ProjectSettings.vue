@@ -16,7 +16,6 @@ import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -28,6 +27,7 @@ import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
+import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -64,6 +64,11 @@ const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
 );
 
+/** Changing the membership list is gated separately from editing project details. */
+const canManageMembers = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
+);
+
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 };
@@ -86,12 +91,14 @@ const resourceCounts = ref<ResourceCounts>({
 const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+		defaultPool: string | null;
 	}
 >({
 	name: '',
 	description: '',
 	relations: [],
 	customTelemetryTags: [],
+	defaultPool: null,
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -104,11 +111,7 @@ const search = ref('');
 const membersTableState = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: 10,
-	sortBy: [
-		{ id: 'firstName', desc: false },
-		{ id: 'lastName', desc: false },
-		{ id: 'email', desc: false },
-	],
+	sortBy: [],
 });
 
 const userSearchQuery = ref('');
@@ -116,14 +119,25 @@ const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
 const shouldFetchAllUsers = computed(
-	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
+);
+
+// Instance owners and admins reach every team project through their global
+// role, so the backend lists them next to the real relations.
+const implicitMembersById = computed(
+	() =>
+		new Map(
+			(projectsStore.currentProject?.implicitMembers ?? []).map((member) => [member.id, member]),
+		),
 );
 
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
-		return !isAlreadySharedWithUser;
+		// Adding them would create a relation that the member list gives no way to
+		// remove again, and it would buy them nothing: they already have access.
+		return !isAlreadySharedWithUser && !implicitMembersById.value.has(user.id);
 	}),
 );
 
@@ -132,7 +146,9 @@ const firstLicensedRole = computed(
 );
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
-	if (rolesManaged.value) {
+	// Removing a member is part of managing the membership list, so it needs the
+	// same scope as adding one — otherwise the action 403s from the API.
+	if (rolesManaged.value || !canManageMembers.value) {
 		return [];
 	}
 	return [
@@ -150,19 +166,8 @@ const onAddMember = async (userId: string) => {
 	const user = usersStore.usersById[userId];
 	if (!user) return;
 
-	// Default to project admin for instance owners and admins
-	let role = firstLicensedRole.value;
+	const role = firstLicensedRole.value;
 	if (!role) return;
-
-	// If user is instance owner or admin, default to project admin
-	if (user.role === ROLE.Owner || user.role === ROLE.Admin) {
-		const projectAdminRole = rolesStore.processedProjectRoles.find(
-			(r) => r.slug === 'project:admin' && r.licensed,
-		);
-		if (projectAdminRole) {
-			role = 'project:admin';
-		}
-	}
 
 	// Optimistically update UI
 	if (!formData.value.relations.find((r) => r.id === userId)) {
@@ -283,6 +288,14 @@ const resetFormData = () => {
 		? deepCopy(projectsStore.currentProject.customTelemetryTags)
 		: [];
 	telemetryTagsRef.value?.resetTouched();
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+const hasWorkerPoolsChanges = (): boolean => {
+	const stored = projectsStore.currentProjectPoolSettings?.defaultPool || null;
+	// Treat empty string and null as equivalent (both mean "default queue")
+	const current = formData.value.defaultPool || null;
+	return current !== stored;
 };
 
 const onCancel = () => {
@@ -357,13 +370,28 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name ?? '',
-			description: formData.value.description ?? '',
-			...(settingsStore.isOtelCustomSpanAttributesEnabled
-				? { customTelemetryTags: formData.value.customTelemetryTags }
-				: {}),
-		});
+		const projectId = projectsStore.currentProject.id;
+		const tasks: Array<Promise<void>> = [];
+
+		tasks.push(
+			projectsStore.updateProject(projectId, {
+				name: formData.value.name ?? '',
+				description: formData.value.description ?? '',
+				...(settingsStore.isOtelCustomSpanAttributesEnabled
+					? { customTelemetryTags: formData.value.customTelemetryTags }
+					: {}),
+			}),
+		);
+
+		if (isWorkerPoolsEnabled.value && hasWorkerPoolsChanges()) {
+			tasks.push(
+				projectsStore.updateCurrentProjectPoolSettings(projectId, {
+					defaultPool: formData.value.defaultPool ?? '',
+				}),
+			);
+		}
+
+		await Promise.all(tasks);
 		isDirty.value = false;
 	} catch (error) {
 		showSaveError(error);
@@ -440,7 +468,15 @@ const onIconUpdated = async () => {
 	}
 };
 
-// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
+const isWorkerPoolsEnabled = computed(() => settingsStore.isWorkerPoolsEnabled);
+
+const resetPoolSettingsFormData = () => {
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits.
+// Also the single hook reacting to the project becoming available (it loads asynchronously on a
+// direct page load), so project-scoped data like the pool settings is fetched here too.
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -454,17 +490,31 @@ watch(
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
 		}
+
+		const projectId = projectsStore.currentProjectId;
+		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
+			await projectsStore
+				.fetchProjectPoolSettings(projectId)
+				.catch(() => {
+					// Non-fatal; store has been cleared, fall back to defaults below.
+				})
+				.finally(resetPoolSettingsFormData);
+		}
 	},
 	{ immediate: true },
 );
 
 // Add users property to the relation objects,
 // So that the table has access to the full user data
-const relationUsers = computed(() =>
-	formData.value.relations.map((relation) => {
+const relationUsers = computed<ProjectMemberData[]>(() => {
+	const implicitMembers = implicitMembersById.value;
+	const currentUserId = usersStore.currentUser?.id;
+
+	const rows: ProjectMemberData[] = formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
 		// Ensure type safety for UI display while preserving original role in formData
 		const safeRole: Role['slug'] = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const implicitMember = implicitMembers.get(relation.id);
 
 		return {
 			...user,
@@ -473,27 +523,86 @@ const relationUsers = computed(() =>
 			firstName: relation?.firstName ?? user?.firstName ?? null,
 			lastName: relation?.lastName ?? user?.lastName ?? null,
 			email: relation?.email ?? user?.email ?? null,
+			isCurrentUser: relation.id === currentUserId,
+			...(implicitMember && {
+				alwaysHasAccess: true,
+				instanceRole: implicitMember.globalRole,
+			}),
 		};
-	}),
-);
+	});
 
-const membersTableData = computed(() => ({
-	items: relationUsers.value,
-	count: relationUsers.value.length,
-}));
+	// Append the implicit members who hold no relation, so the existing rows keep
+	// their order.
+	const rowIds = new Set(rows.map((row) => row.id));
+	for (const member of implicitMembers.values()) {
+		if (rowIds.has(member.id)) continue;
+		rows.push({
+			id: member.id,
+			firstName: member.firstName ?? null,
+			lastName: member.lastName ?? null,
+			email: member.email ?? null,
+			role: member.globalRole.slug,
+			isPendingUser: usersStore.usersById[member.id]?.isPendingUser ?? false,
+			isCurrentUser: member.id === currentUserId,
+			alwaysHasAccess: true,
+			instanceRole: member.globalRole,
+		});
+	}
 
-const filteredMembersData = computed(() => {
-	if (!search.value.trim()) return membersTableData.value;
+	return rows;
+});
+
+const filteredMembers = computed(() => {
+	if (!search.value.trim()) return relationUsers.value;
 
 	const searchTerm = search.value.toLowerCase();
-	const filtered = relationUsers.value.filter((member) => {
+	return relationUsers.value.filter((member) => {
 		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
 		const email = (member.email ?? '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
-
-	return { items: filtered, count: filtered.length };
 });
+
+const memberSortName = (member: ProjectMemberData) =>
+	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
+
+// The project creator comes first and the current user second, so both are
+// always on page one. Pending users have no name, so they sort by email.
+const sortedMembers = computed(() => {
+	const creatorId = projectsStore.currentProject?.creatorId;
+	const currentUserId = usersStore.currentUser?.id;
+	const rank = (member: ProjectMemberData) => {
+		if (creatorId && member.id === creatorId) return 0;
+		if (member.id === currentUserId) return 1;
+		return 2;
+	};
+
+	return [...filteredMembers.value].sort(
+		(a, b) =>
+			rank(a) - rank(b) ||
+			memberSortName(a).localeCompare(memberSortName(b), undefined, { sensitivity: 'base' }),
+	);
+});
+
+const membersPageData = computed(() => {
+	const { page, itemsPerPage } = membersTableState.value;
+	const start = page * itemsPerPage;
+	return {
+		items: sortedMembers.value.slice(start, start + itemsPerPage),
+		count: sortedMembers.value.length,
+	};
+});
+
+// Step back when a removal empties the last page.
+watch(
+	() => sortedMembers.value.length,
+	(count) => {
+		const { page, itemsPerPage } = membersTableState.value;
+		if (page > 0 && page * itemsPerPage >= count) {
+			membersTableState.value.page = Math.max(0, Math.ceil(count / itemsPerPage) - 1);
+		}
+	},
+);
 
 const SEARCH_THRESHOLD = 10;
 const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
@@ -559,7 +668,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	if (!canUpdateProject.value) return;
+	if (!canManageMembers.value) return;
 	await searchUsers('');
 });
 
@@ -568,7 +677,7 @@ const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
-	if (!canUpdateProject.value) return;
+	if (!canUpdateProject.value && !canManageMembers.value) return;
 
 	selectProjectNameIfMatchesDefault();
 	await rolesStore.fetchRoles();
@@ -653,7 +762,7 @@ onMounted(async () => {
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<template v-if="canUpdateProject">
+			<template v-if="canUpdateProject || canManageMembers">
 				<fieldset id="projectMembers">
 					<h3>
 						<label for="projectMembers">{{
@@ -672,7 +781,7 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							:disabled="rolesManaged"
+							:disabled="rolesManaged || !canManageMembers"
 							@update:model-value="onAddMember"
 						>
 							<template #prefix>
@@ -703,11 +812,11 @@ onMounted(async () => {
 						<ProjectMembersTable
 							v-model:table-options="membersTableState"
 							data-test-id="project-members-table"
-							:data="filteredMembersData"
+							:data="membersPageData"
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!rolesManaged"
+							:can-edit-role="!rolesManaged && canManageMembers"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@show-role-upgrade-dialog="upgradeDialogVisible = true"
@@ -715,6 +824,9 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
+			</template>
+
+			<template v-if="canUpdateProject">
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
 						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
@@ -726,6 +838,18 @@ onMounted(async () => {
 						@validate="isTelemetryTagsValid = $event"
 					/>
 				</fieldset>
+				<ProjectWorkerPoolsSection
+					v-if="isWorkerPoolsEnabled"
+					:default-pool="formData.defaultPool"
+					:available-pools="projectsStore.currentProjectPoolSettings?.availablePools ?? []"
+					@update:default-pool="
+						(v) => {
+							formData.defaultPool = v;
+							onTextInput();
+						}
+					"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{

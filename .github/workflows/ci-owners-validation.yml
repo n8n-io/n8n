@@ -1,0 +1,39 @@
+name: 'CI: Validate OWNERS'
+
+# Validates OWNERS strictly: line syntax (pattern, one team,
+# then options), duplicate patterns, and patterns that no longer point at an
+# existing file or directory. Runs on OWNERS changes and on changes to the
+# owned paths, so a move or delete that orphans an OWNERS entry fails here.
+#
+# Team names are not checked here: that needs an org read token, which fork
+# PRs do not have. A separate workflow covers it (see DEVP-891).
+
+# The paths cover every top-level path that OWNERS entries point at, so a
+# move or delete of an owned path cannot slip through unvalidated.
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'assets/**'
+      - 'docker/**'
+      - 'packages/**'
+      - 'patches/**'
+      - 'scripts/**'
+      - 'security/**'
+      - '.code-health-baseline.json'
+      - 'OWNERS'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # owners.mjs only uses node built-ins, so no dependency install is needed.
+      - run: node .github/scripts/owners/owners.mjs --check

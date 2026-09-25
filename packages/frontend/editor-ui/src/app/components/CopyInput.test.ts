@@ -44,4 +44,20 @@ describe('BannerStack', () => {
 		);
 		expect(getByTestId('copy-input')).toHaveClass('ph-no-capture');
 	});
+
+	it('does not truncate the start by default', () => {
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('copy-input').className).not.toContain('truncateStart');
+	});
+
+	it('truncates the start when truncate is "start"', () => {
+		const { getByTestId } = renderComponent(
+			merge({}, DEFAULT_SETUP, {
+				props: {
+					truncate: 'start' as const,
+				},
+			}),
+		);
+		expect(getByTestId('copy-input').className).toContain('truncateStart');
+	});
 });

@@ -85,14 +85,6 @@ export interface JanitorConfig {
 	 */
 	skipTags: string[];
 
-	/**
-	 * Prefix used to extract capabilities from tags during discovery.
-	 * Tags matching this prefix have it stripped to produce capability names.
-	 * @example '@capability:' extracts 'proxy' from '@capability:proxy'
-	 * @example '@needs:' extracts 'kafka' from '@needs:kafka'
-	 */
-	capabilityPrefix: string;
-
 	/** Orchestration configuration for distributing specs across shards */
 	orchestration: {
 		/** Path to metrics JSON file (relative to rootDir). When unset, all specs get defaultDuration. */
@@ -101,6 +93,10 @@ export interface JanitorConfig {
 		defaultDuration: number;
 		/** Max group duration before splitting into sub-groups (ms) @default 300_000 */
 		maxGroupDuration: number;
+		/** Test time to aim for per shard. Limits the shard count on small selections (ms) @default 300_000 */
+		targetShardDuration: number;
+		/** Minimum specs per shard. Limits the shard count. Set to 1 to disable. @default 1 */
+		minShardSpecs: number;
 		/** Only include specs with paths starting with this prefix @default undefined (all specs) */
 		specFilter?: string;
 	};
@@ -185,11 +181,11 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 
 	skipTags: [],
 
-	capabilityPrefix: '@capability:',
-
 	orchestration: {
 		defaultDuration: 60_000,
 		maxGroupDuration: 5 * 60 * 1000,
+		targetShardDuration: 5 * 60 * 1000,
+		minShardSpecs: 1,
 	},
 
 	tcr: {

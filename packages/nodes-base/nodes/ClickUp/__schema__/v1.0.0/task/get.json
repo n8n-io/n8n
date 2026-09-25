@@ -231,6 +231,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -266,11 +269,20 @@
                                     }
                                 }
                             },
+                            "include_guests": {
+                                "type": "boolean"
+                            },
+                            "include_team_members": {
+                                "type": "boolean"
+                            },
                             "linked_subcategory_access": {
                                 "type": "boolean"
                             },
                             "new_drop_down": {
                                 "type": "boolean"
+                            },
+                            "number_format": {
+                                "type": "string"
                             },
                             "options": {
                                 "type": "array",
@@ -288,6 +300,9 @@
                                         }
                                     }
                                 }
+                            },
+                            "single_user": {
+                                "type": "boolean"
                             },
                             "sorting": {
                                 "type": "string"
@@ -318,7 +333,7 @@
                 "type": "object",
                 "properties": {
                     "chain_id": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "date_created": {
                         "type": "string"
@@ -340,6 +355,9 @@
                     }
                 }
             }
+        },
+        "description": {
+            "type": "string"
         },
         "folder": {
             "type": "object",
@@ -364,7 +382,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "email": {
                         "type": "string"
@@ -538,6 +556,9 @@
         "team_id": {
             "type": "string"
         },
+        "text_content": {
+            "type": "string"
+        },
         "time_spent": {
             "type": "integer"
         },
@@ -565,5 +586,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

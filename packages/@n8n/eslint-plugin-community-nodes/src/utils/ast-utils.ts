@@ -55,6 +55,33 @@ export function isTriggerNode(
 	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
 }
 
+/**
+ * Returns the name a property key stands for, or null when it is only known at
+ * runtime. `delete`, `'delete'` and `['delete']` all name the same property, so
+ * how the key is written must not decide whether a rule sees it.
+ */
+export function getPropertyKeyName(
+	property: TSESTree.Property | TSESTree.PropertyDefinition | TSESTree.MethodDefinition,
+): string | null {
+	const { key } = property;
+
+	if (key.type === AST_NODE_TYPES.Literal) {
+		return key.value === null ? null : String(key.value);
+	}
+
+	// A computed key still names one property when it is a template without
+	// substitutions; written plainly, an identifier is the name itself.
+	if (key.type === AST_NODE_TYPES.TemplateLiteral) {
+		return key.expressions.length === 0 ? (key.quasis[0]?.value.cooked ?? null) : null;
+	}
+
+	if (key.type === AST_NODE_TYPES.Identifier) {
+		return property.computed ? null : key.name;
+	}
+
+	return null;
+}
+
 export function findClassProperty(
 	node: TSESTree.ClassDeclaration,
 	propertyName: string,
@@ -62,10 +89,76 @@ export function findClassProperty(
 	const property = node.body.body.find(
 		(member) =>
 			member.type === AST_NODE_TYPES.PropertyDefinition &&
-			member.key?.type === AST_NODE_TYPES.Identifier &&
-			member.key.name === propertyName,
+			getPropertyKeyName(member) === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.PropertyDefinition ? property : null;
+}
+
+/**
+ * Returns the object literal behind an expression, and looks through the type
+ * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ */
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	let current = node;
+	while (
+		current?.type === AST_NODE_TYPES.TSAsExpression ||
+		current?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+		current?.type === AST_NODE_TYPES.TSTypeAssertion ||
+		current?.type === AST_NODE_TYPES.TSNonNullExpression
+	) {
+		current = current.expression;
+	}
+
+	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
+}
+
+function findConstructorAssignedDescription(
+	node: TSESTree.ClassDeclaration,
+): TSESTree.ObjectExpression | null {
+	const constructor = node.body.body.find(
+		(member) => member.type === AST_NODE_TYPES.MethodDefinition && member.kind === 'constructor',
+	);
+	if (constructor?.type !== AST_NODE_TYPES.MethodDefinition) {
+		return null;
+	}
+
+	for (const statement of constructor.value.body?.body ?? []) {
+		if (statement.type !== AST_NODE_TYPES.ExpressionStatement) continue;
+
+		const { expression } = statement;
+		if (
+			expression.type === AST_NODE_TYPES.AssignmentExpression &&
+			expression.operator === '=' &&
+			expression.left.type === AST_NODE_TYPES.MemberExpression &&
+			expression.left.object.type === AST_NODE_TYPES.ThisExpression &&
+			expression.left.property.type === AST_NODE_TYPES.Identifier &&
+			expression.left.property.name === 'description'
+		) {
+			const description = asObjectExpression(expression.right);
+			if (description) {
+				return description;
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Returns the `description` object literal of a node class. Versioned nodes
+ * follow the layout in the node-building docs and assign `this.description` in
+ * their constructor, so look there when the class property has no initializer.
+ */
+export function findNodeDescriptionObject(
+	node: TSESTree.ClassDeclaration,
+): TSESTree.ObjectExpression | null {
+	const property = findClassProperty(node, 'description');
+	const propertyValue = asObjectExpression(property?.value ?? null);
+	if (propertyValue) {
+		return propertyValue;
+	}
+
+	return findConstructorAssignedDescription(node);
 }
 
 export function findObjectProperty(
@@ -73,10 +166,7 @@ export function findObjectProperty(
 	propertyName: string,
 ): TSESTree.Property | null {
 	const property = obj.properties.find(
-		(prop) =>
-			prop.type === AST_NODE_TYPES.Property &&
-			prop.key.type === AST_NODE_TYPES.Identifier &&
-			prop.key.name === propertyName,
+		(prop) => prop.type === AST_NODE_TYPES.Property && getPropertyKeyName(prop) === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.Property ? property : null;
 }

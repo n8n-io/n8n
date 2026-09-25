@@ -3,6 +3,7 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
@@ -26,6 +27,13 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
+export interface TransientWorkflowArtifactReference {
+	referenceId: string;
+	workflowId: string;
+	workflowName: string;
+	projectId?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
@@ -39,8 +47,15 @@ interface Collections {
 	linkableByName: Map<string, ResourceEntry>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {
@@ -190,9 +205,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
+	// Historical workflows action=get-json events return the workflow document itself,
+	// not under a `workflow` key. Keep them available when replaying stored threads.
 	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
@@ -354,6 +368,14 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'nodes') {
+			const workflowName = optionalString(attachment.workflowName);
+			if (!workflowName) continue;
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.workflowId,
+				name: workflowName,
+			});
 		}
 	}
 }
@@ -390,12 +412,56 @@ function enrichWorkflowNames(
 		if (entry.type !== 'workflow') continue;
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
-			col.byName.delete(entry.name.toLowerCase());
-			col.linkableByName.delete(entry.name.toLowerCase());
+			const previousKey = entry.name.toLowerCase();
+			const wasLinkable = col.linkableByName.get(previousKey)?.id === entry.id;
+			col.byName.delete(previousKey);
+			col.linkableByName.delete(previousKey);
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
-			col.linkableByName.set(storeName.toLowerCase(), entry);
+			if (wasLinkable) col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
+	}
+}
+
+/**
+ * Surface a workflow the editor handed off before any message carries it, so
+ * the canvas tab opens on arrival. Skipped once a message attachment (or any
+ * other producer) already knows this id.
+ */
+function enrichWorkflowFromPendingAttachment(
+	col: Collections,
+	pending: InstanceAiWorkflowAttachment | undefined,
+): void {
+	if (!pending) return;
+	if (col.produced.has(pending.id)) return;
+
+	recordProduced(
+		col,
+		{
+			type: 'workflow',
+			id: pending.id,
+			name: optionalString(pending.name) ?? 'Untitled',
+		},
+		{ linkable: true },
+	);
+}
+
+function enrichWorkflowsFromTransientReferences(
+	col: Collections,
+	references: readonly TransientWorkflowArtifactReference[],
+): void {
+	for (const reference of references) {
+		if (col.produced.has(reference.workflowId)) continue;
+		recordProduced(
+			col,
+			{
+				type: 'workflow',
+				id: reference.workflowId,
+				name: reference.workflowName,
+				...(reference.projectId ? { projectId: reference.projectId } : {}),
+			},
+			{ linkable: false },
+		);
 	}
 }
 
@@ -457,6 +523,8 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -483,6 +551,8 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

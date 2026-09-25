@@ -36,6 +36,12 @@ export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
 /** Abort when the stream goes silent for this long AFTER its first chunk (agents path only).
  *  Pre-first-chunk time is bounded by the attempt cap, not this window. */
 export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
+/**
+ * Completion budget for checklist JSON. Some OpenAI-compatible defaults (~250)
+ * truncate mid-result (~298 tokens observed); 4096 leaves headroom for thinking
+ * tokens plus multi-item checklists.
+ */
+export const VERIFIER_MAX_OUTPUT_TOKENS = 4_096;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 function jitteredPauseMs(attempt: number): number {
@@ -168,6 +174,7 @@ async function runNativeOpenAiVerifier(
 	const model = resolveEvalModelConfig();
 	const requestBody = {
 		model: model.providerModelId,
+		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
 		...(supportsOpenAiReasoning(model.providerModelId) ? { reasoning: { effort: 'high' } } : {}),
 		input: [
 			{
@@ -455,6 +462,7 @@ export async function verifyChecklist(
 				const streamResult = await agent.stream(messages, {
 					abortSignal: abortController.signal,
 					smoothStream: false,
+					maxOutputTokens: VERIFIER_MAX_OUTPUT_TOKENS,
 				});
 				const streamed = await consumeVerifierStream(
 					streamResult.stream,

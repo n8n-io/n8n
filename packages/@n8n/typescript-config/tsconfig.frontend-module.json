@@ -1,0 +1,55 @@
+// Base tsconfig for frontend module packages (`packages/modules/*/frontend`).
+//
+// Hand-maintained, and it has to agree with editor-ui's Vite aliases and its own tsconfig `paths`
+// — a package pointed at a different src here would typecheck modules against something the
+// editor never bundles. `editor-ui/vite/aliases.test.ts` fails when they disagree.
+//
+// `paths` lists the L0-L2 packages a module consumes from source. Module packages are absent
+// from it on purpose, which stops an *accidental* cross-module import — but it is not a
+// boundary: `paths` is additive, so once a module declares another module as a dependency,
+// pnpm symlinks it and the import typechecks clean. Boundary enforcement is the ESLint rule.
+//
+// Modules declare their own `include`, `rootDirs` and `types`, and cannot inherit them: relative
+// entries in those three resolve against the *consuming* config, so inheriting them from here
+// would point them at this directory. `paths` is the exception — it anchors to the file that
+// declares it, which is what lets one base serve modules at any depth.
+//
+// `useUnknownInCatchVariables` is a cost of consuming L1/L2 packages from source rather than from
+// a built `dist`; see the comment on it below. The ambient `.d.ts` shims are the other half of
+// that cost, and live in each module's own tsconfig for the resolution reason above.
+{
+	"extends": "./tsconfig.frontend.json",
+	"compilerOptions": {
+		"moduleResolution": "bundler",
+		"noEmit": true,
+		"useUnknownInCatchVariables": false,
+		"paths": {
+			"@n8n/api-types": ["../api-types/src/index.ts"],
+			"@n8n/api-types/*": ["../api-types/src/*"],
+			"@n8n/chat": ["../../frontend/@n8n/chat/src/index.ts"],
+			"@n8n/chat/*": ["../../frontend/@n8n/chat/src/*"],
+			"@n8n/chat-hub": ["../chat-hub/src/index.ts"],
+			"@n8n/chat-hub/*": ["../chat-hub/src/*"],
+			"@n8n/composables/*": ["../../frontend/@n8n/composables/src/*"],
+			"@n8n/constants": ["../constants/src/index.ts"],
+			"@n8n/constants/*": ["../constants/src/*"],
+			"@n8n/design-system": ["../../frontend/@n8n/design-system/src/index.ts"],
+			"@n8n/design-system/*": ["../../frontend/@n8n/design-system/src/*"],
+			"@n8n/frontend-constants/*": ["../../frontend/@n8n/frontend-constants/src/*"],
+			"@n8n/frontend-module-sdk": ["../../frontend/@n8n/frontend-module-sdk/src/index.ts"],
+			"@n8n/frontend-module-sdk/*": ["../../frontend/@n8n/frontend-module-sdk/src/*"],
+			"@n8n/frontend-test-utils": ["../../frontend/@n8n/frontend-test-utils/src/index.ts"],
+			"@n8n/frontend-test-utils/*": ["../../frontend/@n8n/frontend-test-utils/src/*"],
+			"@n8n/frontend-utils/*": ["../../frontend/@n8n/frontend-utils/src/*"],
+			"@n8n/i18n": ["../../frontend/@n8n/i18n/src/index.ts"],
+			"@n8n/i18n/*": ["../../frontend/@n8n/i18n/src/*"],
+			"@n8n/rest-api-client": ["../../frontend/@n8n/rest-api-client/src/index.ts"],
+			"@n8n/rest-api-client/*": ["../../frontend/@n8n/rest-api-client/src/*"],
+			"@n8n/stores": ["../../frontend/@n8n/stores/src/index.ts"],
+			"@n8n/stores/*": ["../../frontend/@n8n/stores/src/*"],
+			"@n8n/telemetry": ["../telemetry/src/index.ts"],
+			"@n8n/telemetry/*": ["../telemetry/src/*"],
+			"@n8n/utils/*": ["../utils/src/*"]
+		}
+	}
+}

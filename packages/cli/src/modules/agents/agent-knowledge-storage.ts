@@ -1,15 +1,26 @@
 import type { AgentFileDto } from '@n8n/api-types';
+import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { AgentFile } from './entities/agent-file.entity';
 
-// Local sandbox disk mirroring the persisted knowledge files, so repeated
-// reads/searches avoid re-fetching from the knowledge file store each time.
-export const KNOWLEDGE_MIRROR_DIR = '/home/daytona/knowledge-mirror';
-export const KNOWLEDGE_MIRROR_FILES_DIR = `${KNOWLEDGE_MIRROR_DIR}/files`;
-export const KNOWLEDGE_MIRROR_MANIFEST = `${KNOWLEDGE_MIRROR_DIR}/manifest`;
+export interface AgentKnowledgePaths {
+	filesDir: string;
+	manifest: string;
+	stagingDir: string;
+}
+
+export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledgePaths {
+	const home = path.dirname(getPromptWorkspaceRoot(provider));
+	const mirrorDir = `${home}/knowledge-mirror`;
+	return {
+		filesDir: `${mirrorDir}/files`,
+		manifest: `${mirrorDir}/manifest`,
+		stagingDir: `${mirrorDir}/.staging`,
+	};
+}
 
 export function hasControlCharacter(value: string): boolean {
 	for (const character of value) {

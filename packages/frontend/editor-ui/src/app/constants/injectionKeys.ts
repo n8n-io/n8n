@@ -10,6 +10,7 @@ import type { TelemetryContext } from '@/app/types/telemetry';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import type { INodeUpdatePropertiesInformation } from '@/Interface';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -30,6 +31,8 @@ export const ExecutionDataStoreKey: InjectionKey<
 // derived from it via injectWorkflowExecutionStateStore(), so a subtree's
 // document scope and execution scope can never diverge.
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
+/** Keep setup hints compact while retaining their full text on the field. */
+export const CompactParameterHintsKey: InjectionKey<boolean> = Symbol('CompactParameterHints');
 /**
  * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
  * `false` (stay in the local stacking context, e.g. inside the NDV dialog).
@@ -41,6 +44,22 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/** Whether resource mappers may reconcile cached schemas without an explicit user action. */
+export const ResourceMapperSchemaAutoRefreshKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperSchemaAutoRefresh',
+);
+/** Whether an empty resource mapper may load once its dependencies first become available. */
+export const ResourceMapperRefreshEmptySchemaKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperRefreshEmptySchema',
+);
+/**
+ * Optional callback for hosts that keep a local node draft (e.g. tool-config
+ * modals). ParameterInput invokes this when CredentialsSelect picks a
+ * credential, so the draft stays in sync with the document store write.
+ */
+export const ToolConfigCredentialSelectedKey: InjectionKey<
+	(update: INodeUpdatePropertiesInformation) => void
+> = Symbol('ToolConfigCredentialSelected');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
  * AI editor capabilities a host can toggle per editor, using enablement
@@ -75,6 +94,8 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
 	executionButtonType?: 'primary' | 'secondary';
+	/** Show missing credentials as setup warnings in hosts with a setup panel. */
+	credentialSetupWarnings?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');

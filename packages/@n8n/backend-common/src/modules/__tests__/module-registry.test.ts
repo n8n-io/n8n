@@ -1,4 +1,4 @@
-import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
+import type { ModuleInterface, ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
@@ -30,57 +30,34 @@ describe('getModuleEntryUrl', () => {
 describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('agents');
+		expect(eligible).not.toContain('type-availability-policies');
 	});
 
-	it('should include instance-ai by default', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toContain('instance-ai');
+	it('should include policy-infrastructure by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
 	});
 
-	it('should allow opting out of a default module via env var', () => {
-		process.env.N8N_DISABLED_MODULES = 'instance-ai';
-		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('instance-ai');
+	it('should allow opting out of policy-infrastructure via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
+
+	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+	});
+
+	it.each(['instance-ai', 'agents'])(
+		'should allow opting out of the default %s module via env var',
+		(moduleName) => {
+			process.env.N8N_DISABLED_MODULES = moduleName;
+			expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+		},
+	);
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
-			'external-secrets',
-			'community-packages',
-			'data-table',
-			'oauth-server',
-			'mcp',
-			'provisioning',
-			'breaking-changes',
-			'source-control',
-			'dynamic-credentials',
-			'chat-hub',
-			'sso-oidc',
-			'sso-saml',
-			'log-streaming',
-			'ldap',
-			'quick-connect',
-			'workflow-builder',
-			'favorites',
-			'redaction',
-			'instance-registry',
-			'otel',
-			'token-exchange',
-			'instance-version-history',
-			'encryption-key-manager',
-			'oauth-jwe',
-			'n8n-packages',
-			'runtime-credentials',
-			'mcp-registry',
-			'workflow-reviews',
-			'instance-ai',
-		]);
-	});
-
-	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'agents';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
-			'insights',
+			'policy-infrastructure',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -114,6 +91,45 @@ describe('eligibleModules', () => {
 		]);
 	});
 
+	it('should consider a module eligible if it was enabled via env var', () => {
+		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
+			'insights',
+			'external-secrets',
+			'community-packages',
+			'data-table',
+			'oauth-server',
+			'mcp',
+			'provisioning',
+			'breaking-changes',
+			'source-control',
+			'dynamic-credentials',
+			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'favorites',
+			'redaction',
+			'instance-registry',
+			'otel',
+			'token-exchange',
+			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
+			'n8n-packages',
+			'runtime-credentials',
+			'mcp-registry',
+			'workflow-reviews',
+			'instance-ai',
+			'agents',
+			'type-availability-policies',
+		]);
+	});
+
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {
 		process.env.N8N_ENABLED_MODULES = 'insights';
 		process.env.N8N_DISABLED_MODULES = 'insights';
@@ -134,7 +150,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -148,7 +164,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -166,11 +182,37 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).toHaveBeenCalled();
+	});
+
+	it('should register the system tasks returned by a module', async () => {
+		const TaskClass = class TestTask {};
+		const ModuleClass = { init: vi.fn(), systemTasks: vi.fn().mockReturnValue([TaskClass]) };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi
+				.fn()
+				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
+		});
+		const systemTaskMetadata = mock<SystemTaskMetadata>();
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			mock(),
+			mock(),
+			systemTaskMetadata,
+		);
+
+		await moduleRegistry.initModules('main');
+
+		expect(ModuleClass.systemTasks).toHaveBeenCalled();
+		expect(systemTaskMetadata.register).toHaveBeenCalledTimes(1);
+		expect(systemTaskMetadata.register).toHaveBeenCalledWith(TaskClass);
 	});
 
 	it('should init module if it is licensed', async () => {
@@ -185,7 +227,7 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(true) });
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -204,7 +246,7 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(false) });
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -221,7 +263,7 @@ describe('initModules', () => {
 
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -241,7 +283,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -265,7 +307,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -287,7 +329,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -311,7 +353,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -331,7 +373,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules('main');
@@ -351,7 +393,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -367,7 +409,7 @@ describe('initModules', () => {
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules('main');
 
@@ -386,7 +428,7 @@ describe('nodeLoaders', () => {
 			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
 		Container.get = vi.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
 

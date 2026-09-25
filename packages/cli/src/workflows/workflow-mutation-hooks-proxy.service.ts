@@ -8,21 +8,27 @@ import { Service } from '@n8n/di';
  * Distinct from the `workflow.afterArchive` / `workflow.afterDelete` external
  * hooks, which notify code outside n8n rather than modules inside it.
  *
- * The `after*` hooks observe an already-committed mutation and must not throw —
- * there is nothing left to abort. `beforeWorkflowDeleted` is the exception:
- * it runs while the delete can still be called off, so it may throw to stop it.
+ * No hook may throw: the `after*` hooks observe an already-committed mutation
+ * with nothing left to abort, and `beforeWorkflowDeleted` only captures state —
+ * a provider that let it throw would abort deletions on its own failures.
+ *
+ * `userId` is the acting user, or `null` for a system-driven mutation
+ * (e.g. a source-control pull).
  */
 export interface WorkflowMutationHooks {
-	afterWorkflowArchived(workflowId: string): Promise<void>;
+	afterWorkflowArchived(workflowId: string, userId: string | null): Promise<void>;
 
 	/** Called only for workflows whose owning project actually changed. */
-	afterWorkflowsTransferred(workflowIds: string[]): Promise<void>;
+	afterWorkflowsTransferred(workflowIds: string[], userId: string | null): Promise<void>;
 
 	/**
 	 * Called before anything about the workflow is destroyed, while rows
-	 * referencing it still exist. Throwing here aborts the deletion.
+	 * referencing it still exist. Capture-only: a provider reads what the delete
+	 * is about to cascade away and acts on it in `afterWorkflowsDeleted`. Must
+	 * not throw — the delete may still fail after this, so nothing durable may
+	 * be written yet either.
 	 */
-	beforeWorkflowDeleted(workflowId: string): Promise<void>;
+	beforeWorkflowDeleted(workflowId: string, userId: string | null): Promise<void>;
 
 	/**
 	 * Called once the workflow rows are gone, for cleanup that can only be done
@@ -31,6 +37,17 @@ export interface WorkflowMutationHooks {
 	 * (e.g. a folder cascade); the ids identify what triggered the cleanup.
 	 */
 	afterWorkflowsDeleted(workflowIds: string[]): Promise<void>;
+
+	/**
+	 * Called at the publication commit boundary: the version is durably active
+	 * (outbox record or trigger setup committed), whatever later steps of the
+	 * calling request still fail.
+	 */
+	afterWorkflowPublished(event: {
+		workflowId: string;
+		versionId: string;
+		userId: string;
+	}): Promise<void>;
 }
 
 @Service()
@@ -41,19 +58,27 @@ export class WorkflowMutationHooksProxy implements WorkflowMutationHooks {
 		this.provider = provider;
 	}
 
-	async afterWorkflowArchived(workflowId: string): Promise<void> {
-		await this.provider?.afterWorkflowArchived(workflowId);
+	async afterWorkflowArchived(workflowId: string, userId: string | null): Promise<void> {
+		await this.provider?.afterWorkflowArchived(workflowId, userId);
 	}
 
-	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
-		await this.provider?.afterWorkflowsTransferred(workflowIds);
+	async afterWorkflowsTransferred(workflowIds: string[], userId: string | null): Promise<void> {
+		await this.provider?.afterWorkflowsTransferred(workflowIds, userId);
 	}
 
-	async beforeWorkflowDeleted(workflowId: string): Promise<void> {
-		await this.provider?.beforeWorkflowDeleted(workflowId);
+	async beforeWorkflowDeleted(workflowId: string, userId: string | null): Promise<void> {
+		await this.provider?.beforeWorkflowDeleted(workflowId, userId);
 	}
 
 	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
 		await this.provider?.afterWorkflowsDeleted(workflowIds);
+	}
+
+	async afterWorkflowPublished(event: {
+		workflowId: string;
+		versionId: string;
+		userId: string;
+	}): Promise<void> {
+		await this.provider?.afterWorkflowPublished(event);
 	}
 }

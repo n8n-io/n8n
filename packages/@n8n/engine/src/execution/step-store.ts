@@ -1,38 +1,61 @@
-import type { JsonValue } from '../common';
-import type { StepSlots, StepStatus } from './execution.types';
+import type {
+	StepError,
+	StepKey,
+	StepKeyId,
+	ResumeCause,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from './execution.types';
 
-/** A new step to persist. `id` and timestamps are assigned by the store. */
-export interface NewStepRecord {
-	executionId: string;
-	nodeId: string;
-	status: StepStatus;
-	/** Only for a step recorded already-completed, such as the trigger. */
-	outputs?: StepSlots;
-}
+/**
+ * A new step to persist. `id` and timestamps are assigned by the store.
+ *
+ * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
+ * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
+ * `cancelPendingSteps`, so it cannot bypass the checks and locking those
+ * transitions enforce.
+ *
+ * A step created `completed` (the trigger) must carry its slot list, even
+ * `[]`: a missing one persists as SQL NULL, which liveness reads as every
+ * output slot dead.
+ */
+export type NewStepRecord = { nodeId: string; iteration: number } & (
+	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
+	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
+);
 
-/** The error that failed a step, as persisted on its row. */
-export interface StepError {
-	name: string;
-	message: string;
-	stack?: string;
-	/**
-	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
-	 */
-	details?: JsonValue;
-}
-
-/** A step record. */
+/**
+ * Type of what running and settling a step needs of its row
+ */
 export interface StepRecord {
 	id: string;
 	executionId: string;
 	nodeId: string;
+	iteration: number;
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
-	/** The error that failed the step; `null` unless it failed. */
-	error: StepError | null;
+	/** The wait this step declared; `null` unless it has suspended. */
+	waitDeclaration: WaitDeclaration | null;
+	/** What resumed this step's current dispatch; `null` on a first run. */
+	resumeCause: ResumeCause | null;
+	/** Why the step failed; absent unless it did. */
+	error?: StepError | null;
+}
+
+/**
+ * Planning view of a step row: everything a settlement decision needs, and no
+ * payloads — outputs can dominate row size, and planning only ever asks
+ * whether a slot holds data, not what.
+ */
+export interface StepSummary {
+	id: string;
+	nodeId: string;
+	iteration: number;
+	status: StepStatus;
+	/** Per output slot: whether the completed step put data there. Empty unless completed. */
+	filledOutputSlots: boolean[];
 }
 
 /** Thrown by `loadStep` when no step exists for the given id. */
@@ -43,26 +66,44 @@ export class StepNotFoundError extends Error {
 	}
 }
 
+/** A wait the sweep resumed: what `step:ready` needs, and nothing more. */
+export interface DueStep {
+	id: string;
+	executionId: string;
+}
+
 /** Persistence interface for step records. */
 export interface StepStore {
 	/**
-	 * Persist new step records, batched so planning a fan-out costs a single round
-	 * trip. Returns the rows actually created.
+	 * Persist new step records for one execution, batched so planning a fan-out
+	 * costs a single round trip. Returns the rows actually created.
 	 *
-	 * If a step for a given `(executionId, nodeId)` already exists, it is skipped
-	 * and not returned. This allows multiple planners to race to enqueue the same
-	 * node without erroring or duplicating work. We return the actually created rows
+	 * If a step for a given `(executionId, nodeId, iteration)` already exists, it
+	 * is skipped and not returned. This allows multiple planners to race to enqueue
+	 * the same step without erroring or duplicating work. A further iteration of
+	 * the same node is a new row, not a duplicate. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
+	 *
+	 * Creates nothing once any step in the execution has failed (serialized with
+	 * `failStep`), so a planning insert cannot land after the failure's
+	 * cancellation sweep and strand rows `queued` forever.
 	 */
-	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
+	createSteps(
+		executionId: string,
+		records: NewStepRecord[],
+	): Promise<Array<{ id: string } & StepKey>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;
 
 	/**
-	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
+	 * Claim a queued step for execution (`queued -> running`). A compare-and-set,
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
+	 *
+	 * The claim also refuses once any step in the execution has failed
+	 * (serialized with `failStep`), so fail-fast holds even for a `step:ready`
+	 * published before the failure landed.
 	 *
 	 * Transitions are exposed one named method at a time rather than as a generic
 	 * `(from, to)` pair, so the interface can't express a transition the
@@ -78,34 +119,126 @@ export interface StepStore {
 	 */
 	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
 
+	/**
+	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
+	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
+	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 */
+	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
+
+	/**
+	 * Resume a wait: persist `resume_cause` and return the step to `queued`, from
+	 * where the normal worker path re-dispatches it. A compare-and-set on
+	 * `waiting`, so a doubled resume — a webhook retry, a sweep racing a
+	 * request — resolves the wait once. The declaration stays on the row: a
+	 * deadline resume reads its captured outputs after the claim.
+	 *
+	 * Whether a given resume is allowed against a given wait is checked by
+	 * whoever accepts it, not here.
+	 *
+	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
+	 * a resume request is the caller.
+	 */
+	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
+
+	/**
+	 * Resume every waiting step whose deadline has passed, up to `limit`, and
+	 * return the rows resumed. The oldest deadlines are taken first. The order
+	 * of the returned rows is not defined.
+	 *
+	 * One statement, unlike `resumeStep`, and that is the point: a second
+	 * sweeper cannot take a step this one already claimed, and a step resolved
+	 * by request and re-suspended with a later deadline cannot be fired early.
+	 * Reading the rows and then transitioning them one by one leaves a window
+	 * for both.
+	 *
+	 * `limit` bounds the batch, so a backlog cannot turn one sweep into a single
+	 * long-running update.
+	 */
+	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
+
+	/**
+	 * The earliest deadline any waiting step still holds, or `null` when no step
+	 * waits on one.
+	 *
+	 * The sweep reads this to decide when to look next, so that a wait fires at
+	 * its deadline rather than at the end of a fixed interval. The answer is a
+	 * hint and never an authority: `resumeDueSteps` still decides what may
+	 * resume, so a stale or lost answer costs precision and nothing else.
+	 */
+	nextWaitDeadline(): Promise<Date | null>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 
-	/** Cancel every step of the execution still `queued` (`queued → cancelled`). */
-	cancelQueuedSteps(executionId: string): Promise<void>;
+	/**
+	 * Cancel every pending step of the execution (`-> cancelled`). A pending step
+	 * is `queued` or `waiting`. No worker runs either one, and nothing starts
+	 * either one again after the execution ends.
+	 *
+	 * A `waiting` step must be included. Nothing resumes a request-only wait
+	 * after the execution ends, so the step would stay `waiting` for ever. The
+	 * sweep would also resume a deadline wait inside an execution that already
+	 * failed. `resumeDueSteps` reads the status, so a cancelled row is invisible
+	 * to it.
+	 *
+	 * A `running` step keeps its status. Its worker still owns the outcome, and
+	 * `completeStep` and `failStep` compare-and-set on `running`.
+	 */
+	cancelPendingSteps(executionId: string): Promise<void>;
 
 	/**
-	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
-	 * node id. A node whose step is absent or hasn't completed maps to `null`.
+	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A
+	 * key with no row yet is absent from the result — absence always means
+	 * "not planned yet", never "forgotten".
 	 *
-	 * This is for gathering a step's inputs, so it deliberately can't answer
-	 * "have all predecessors completed?" — the two are indistinguishable from a
-	 * `null` here. Use `loadCompletedNodeIds` for that.
+	 * Full rows, outputs included — for gathering a ready step's inputs from its
+	 * direct predecessors. Planning reads `loadStepSummariesByKeys` instead.
 	 */
-	loadStepOutputs(
+	loadStepsByKeys(executionId: string, keys: StepKey[]): Promise<Record<StepKeyId, StepRecord>>;
+
+	/**
+	 * Planning view of the given keys' rows, keyed by `stepKeyId`; absent as in
+	 * `loadStepsByKeys`. The per-slot booleans are computed in the database, so
+	 * planning never pulls the potentially large outputs over the wire.
+	 */
+	loadStepSummariesByKeys(
+		executionId: string,
+		keys: StepKey[],
+	): Promise<Record<StepKeyId, StepSummary>>;
+
+	/**
+	 * Planning view of each named node's highest-iteration row, keyed by node id,
+	 * omitting the nodes with no row. For a batch node this is the row that says
+	 * whether its loop has ended.
+	 *
+	 * One query for every node asked about, since a settlement can span several
+	 * loops. The row ending a loop holds everything that loop accumulated, so this
+	 * returns the same slim view as `loadStepSummariesByKeys`, not the whole row.
+	 */
+	loadLatestStepSummaries(
 		executionId: string,
 		nodeIds: string[],
-	): Promise<Record<string, StepSlots | null>>;
+	): Promise<Record<string, StepSummary>>;
 
 	/**
-	 * Which of `nodeIds` have a completed step in the execution. Returns the
-	 * subset rather than a yes/no so one query can answer readiness for several
-	 * candidate steps at once.
+	 * Every step of the execution, at every iteration.
+	 *
+	 * For the v1 shim, which resolves expressions against whatever the execution
+	 * has produced so far and cannot know in advance which steps a given
+	 * expression names. TODO(CAT-3017): load selectively instead.
 	 */
-	loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>>;
+	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
-	/** Whether the execution has any step still `queued` or `running`. */
-	hasActiveSteps(executionId: string): Promise<boolean>;
+	/**
+	 * How many of the execution's steps have settled (completed, failed,
+	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
+	 * for reachable nodes, and never unsettle, so comparing this against the
+	 * number of rows the execution owes answers "has everything settled?" exactly.
+	 * A loop makes that number more than the node count, so the comparison runs
+	 * against `expectedSettledRows` rather than against the graph.
+	 */
+	countSettledSteps(executionId: string): Promise<number>;
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;

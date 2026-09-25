@@ -48,9 +48,11 @@ onMounted(async () => {
 	}, 0);
 });
 
-// Exclude purpose built credentials for ChatHub
+// Exclude hidden and purpose-built credentials for ChatHub
 const allSelectableCredentialTypes = computed(() =>
-	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
+	credentialsStore.allCredentialTypes.filter(
+		(credentialType) => !credentialType.hidden && !credentialType.name.startsWith('chatHub'),
+	),
 );
 
 const selectableCredentialTypes = computed(() => {

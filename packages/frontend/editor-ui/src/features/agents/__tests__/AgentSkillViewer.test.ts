@@ -3,7 +3,8 @@ import { defineComponent, h, onMounted } from 'vue';
 import { nextTick } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import {
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
 
@@ -12,8 +13,11 @@ import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.builder.skills.references.byteCount') {
-				return `${options?.interpolate?.count} / ${options?.interpolate?.max} bytes`;
+			if (
+				key === 'agents.builder.skills.instructions.characterCount' ||
+				key === 'agents.builder.skills.references.characterCount'
+			) {
+				return `${options?.interpolate?.count} / ${options?.interpolate?.max} characters`;
 			}
 			if (key === 'agents.builder.skills.references.maxCount') {
 				return `Skills can have up to ${options?.interpolate?.max} reference files.`;
@@ -215,7 +219,22 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
-	it('shows the selected reference byte count', () => {
+	it('shows the instructions character count, not their byte size', () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				// Each of these is 3 UTF-8 bytes, so a byte counter would read 9.
+				instructions: '日本語',
+			},
+		});
+
+		expect(wrapper.text()).toContain(
+			`3 / ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString()} characters`,
+		);
+	});
+
+	it('shows the selected reference character count, not its byte size', () => {
 		const wrapper = mountViewer({
 			skill: {
 				name: 'Research',
@@ -231,8 +250,9 @@ describe('AgentSkillViewer', () => {
 			selectedPath: 'references/guide.md',
 		});
 
+		// '€' is 3 UTF-8 bytes but one character — the counter shows characters.
 		expect(wrapper.text()).toContain(
-			`9 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString()} bytes`,
+			`3 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString()} characters`,
 		);
 	});
 

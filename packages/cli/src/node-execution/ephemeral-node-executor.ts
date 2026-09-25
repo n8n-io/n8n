@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
@@ -141,7 +142,7 @@ export function isUsableAsAgentTool(description: {
 	return outputs.some((o: unknown) => {
 		if (typeof o === 'string') return o === NodeConnectionTypes.AiTool;
 		if (o && typeof o === 'object' && 'type' in o) {
-			return (o as { type: unknown }).type === NodeConnectionTypes.AiTool;
+			return o.type === NodeConnectionTypes.AiTool;
 		}
 		return false;
 	});
@@ -377,7 +378,7 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
 			return { status: 'error', data: [], error: message };
 		}
@@ -397,7 +398,7 @@ export class EphemeralNodeExecutor {
 				request.nodeParameters,
 			);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			this.logger.debug('Node execution validation failed', {
 				nodeType: request.nodeType,
 				error: message,
@@ -507,7 +508,7 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			return { ok: false, error: message };
 		} finally {
 			for (const closeFunction of closeFunctions) {
@@ -575,12 +576,24 @@ export class EphemeralNodeExecutor {
 	 *
 	 * Returns `null` when the tool has no structured schema (base `Tool` /
 	 * `DynamicTool` — caller falls back to `{ input: string }`) or when
-	 * introspection fails for any reason (credentials missing, MCP server
-	 * unreachable). Swallowing failures here keeps tool registration robust:
-	 * a bad MCP connection shouldn't prevent the agent from loading.
+	 * introspection fails because a credential is missing or inaccessible to the
+	 * project, or the MCP server is unreachable. Failures do not stop registration.
 	 */
 	async introspectSupplyDataToolSchema(tool: EphemeralWorkflowToolLike): Promise<unknown> {
-		const result = await this.withSupplyDataTool(tool, [], (response) => {
+		let credentials = tool.credentials;
+		if (credentials && Object.keys(credentials).length > 0) {
+			try {
+				credentials = await this.verifyCredentialDetailsForProject(tool.projectId, credentials);
+			} catch (error) {
+				this.logger.warn('supplyData tool introspection failed', {
+					nodeType: tool.nodeType,
+					error: getErrorMessage(error),
+				});
+				return null;
+			}
+		}
+
+		const result = await this.withSupplyDataTool({ ...tool, credentials }, [], (response) => {
 			// Toolkits hold multiple tools, each with its own schema — there's no
 			// single Zod schema to hand back. Return null so the factory falls
 			// through to its `{ input: string }` default; proper per-method

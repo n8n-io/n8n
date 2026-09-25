@@ -88,8 +88,22 @@ describe('HostIdClashCheck', () => {
 				expectAudit: 'none',
 			},
 			{
+				name: 'clash on an empty hostId: warning + detected audit',
+				previous: [],
+				current: [inst('a', ''), inst('b', '')],
+				expectWarning: true,
+				expectAudit: 'detected',
+			},
+			{
 				name: 'clash resolved: resolved audit, no warning',
 				previous: [inst('a', 'shared'), inst('b', 'shared')],
+				current: [inst('a', 'host-a'), inst('b', 'host-b')],
+				expectWarning: false,
+				expectAudit: 'resolved',
+			},
+			{
+				name: 'clash on an empty hostId resolved: resolved audit, no warning',
+				previous: [inst('a', ''), inst('b', '')],
 				current: [inst('a', 'host-a'), inst('b', 'host-b')],
 				expectWarning: false,
 				expectAudit: 'resolved',

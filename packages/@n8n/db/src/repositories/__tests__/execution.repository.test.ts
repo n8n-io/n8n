@@ -1,19 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { In, LessThan, LessThanOrEqual, And, Not } from '@n8n/typeorm';
+import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity } from '../../entities';
+import { ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
+import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { ExecutionRepository } from '../execution.repository';
+import { SharedWorkflowRepository } from '../shared-workflow.repository';
 
 const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
@@ -26,10 +30,16 @@ describe('ExecutionRepository', () => {
 		logging: { outputs: ['console'], scopes: [] },
 	});
 	mockInstance(BinaryDataService);
+	const logger = mockInstance(Logger);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+	const transactionRunner = mock<TransactionRunner>();
+	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 	});
 
 	describe('countInWorkflows', () => {
@@ -153,6 +163,81 @@ describe('ExecutionRepository', () => {
 				expect(result).toBe(mockCount);
 			});
 		});
+
+		describe('with startedAfter and startedBefore filters', () => {
+			const startedAfter = '2024-01-01T00:00:00.000Z';
+			const startedBefore = '2024-12-31T23:59:59.999Z';
+			const startedAfterCondition = MoreThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter)),
+			);
+			const startedBeforeCondition = LessThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore)),
+			);
+
+			test('should filter executions started after a given time', async () => {
+				const limit = 10;
+				const mockCount = 4;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedAfter,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedAfterCondition),
+					},
+					take: limit,
+				});
+				expect(result).toBe(mockCount);
+			});
+
+			test('should filter executions started before a given time', async () => {
+				const limit = 10;
+				const mockCount = 6;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedBefore,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedBeforeCondition),
+					},
+					take: limit,
+				});
+				expect(result).toBe(mockCount);
+			});
+
+			test('should filter executions started within a time range', async () => {
+				const limit = 10;
+				const mockCount = 3;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedAfter,
+					startedBefore,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedAfterCondition, startedBeforeCondition),
+					},
+					take: limit,
+				});
+				expect(result).toBe(mockCount);
+			});
+		});
 	});
 
 	describe('getConcurrentExecutionsCount', () => {
@@ -169,19 +254,47 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('markAsCrashed', () => {
-		test('should batch updates above a threshold', async () => {
-			// Generates a list of many execution ids.
-			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
-			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
-				.fill(undefined)
-				.map((_, i) => i.toString());
-			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
-			expect(entityManager.update).toBeCalledTimes(2);
+	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
+
+	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>
+		Object.assign(new ExecutionEntity(), {
+			id,
+			workflowId: `workflow-${id}`,
+			mode: 'trigger',
+			startedAt: crashedStartedAt,
+			workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
+			...overrides,
 		});
 
-		test('should clear waitTill when marking executions as crashed', async () => {
+	const ownerProject = (
+		id: string,
+		customTelemetryTags: Array<{ key: string; value: string }> = [],
+	) => Object.assign(new Project(), { id, customTelemetryTags });
+
+	const executionIdsOfLength = (length: number) =>
+		Array(length)
+			.fill(undefined)
+			.map((_, i) => i.toString());
+
+	describe('markAsCrashed', () => {
+		test('should batch updates above a threshold and report each batch as it transitions', async () => {
+			const manyExecutionsToMarkAsCrashed = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+			const reported: string[][] = [];
+
+			const crashed = await executionRepository.markAsCrashed(
+				manyExecutionsToMarkAsCrashed,
+				(batch) => reported.push(batch.map(({ id }) => id)),
+			);
+
+			expect(entityManager.update).toBeCalledTimes(2);
+			expect(reported).toEqual([['1'], ['1']]);
+			expect(crashed).toHaveLength(2);
+		});
+
+		test('should crash only in-progress rows and clear their `waitTill`', async () => {
 			const executionIds = ['1', '2'];
+			entityManager.find.mockResolvedValue(executionIds.map((id) => crashableRow(id)));
 
 			await executionRepository.markAsCrashed(executionIds);
 
@@ -190,6 +303,181 @@ describe('ExecutionRepository', () => {
 				{ id: In(executionIds), status: In(['new', 'running', 'unknown']) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
+		});
+
+		test('should report the workflow, name, mode and start time of each execution it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed).toEqual([
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
+				},
+			]);
+		});
+
+		test('should read back only the rows carrying the `stoppedAt` it wrote, soft-deleted ones included', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed(['1']);
+
+			const updateValues = entityManager.update.mock.calls[0][2] as { stoppedAt: Date };
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({
+				select: {
+					workflowVersionId: true,
+					retryOf: true,
+					workflow: { settings: { customTelemetryTags: true } },
+				},
+				where: { id: In(['1']), status: 'crashed', stoppedAt: updateValues.stoppedAt },
+				withDeleted: true,
+			});
+		});
+
+		test('should read back and report the trace context of each execution', async () => {
+			const tracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', { tracingContext }),
+				crashableRow('2', { tracingContext: null }),
+			]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({ select: { tracingContext: { traceparent: true } } });
+			expect(crashed[0].tracingContext).toEqual(tracingContext);
+			expect(crashed[1].tracingContext).toBeUndefined();
+		});
+
+		test('should read back and report the version id, retry source and workflow tags', async () => {
+			const customTelemetryTags = [{ key: 'env', value: 'production' }];
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', {
+					workflowVersionId: 'version-1',
+					retryOf: '9',
+					workflow: mock<WorkflowEntity>({ settings: { customTelemetryTags } }),
+				}),
+				crashableRow('2', { workflowVersionId: null }),
+			]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed[0]).toMatchObject({
+				workflowVersionId: 'version-1',
+				retryOf: '9',
+				workflowCustomTelemetryTags: customTelemetryTags,
+			});
+			expect(crashed[1].workflowVersionId).toBeUndefined();
+			expect(crashed[1].retryOf).toBeUndefined();
+		});
+
+		test('should report the owner project of each execution', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['workflow-1', ownerProject('project-1', [{ key: 'team', value: 'platform' }])]]),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1'), crashableRow('2')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed[0].project).toEqual({
+				id: 'project-1',
+				customTelemetryTags: [{ key: 'team', value: 'platform' }],
+			});
+			expect(crashed[1].project).toBeUndefined();
+		});
+
+		test('should report without a project when the owner lookup fails', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockRejectedValue(
+				new Error('connection reset'),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1']);
+
+			expect(crashed[0].project).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to load owner projects for crashed executions',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		test('should look up the owner projects once for each batch, on deduplicated workflow ids', async () => {
+			entityManager.find.mockResolvedValue([
+				crashableRow('1', { workflowId: 'workflow-1' }),
+				crashableRow('2', { workflowId: 'workflow-1' }),
+			]);
+
+			await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledTimes(1);
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
+				'workflow-1',
+			]);
+		});
+
+		test('should collapse duplicated ids before batching', async () => {
+			const oneBatchWorthOfIds = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD - 1);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed([...oneBatchWorthOfIds, '0']);
+
+			expect(entityManager.update).toBeCalledTimes(1);
+		});
+
+		test('should skip the read-back and report nothing when the UPDATE affects no rows', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			const crashed = await executionRepository.markAsCrashed(['1']);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
+			expect(crashed).toEqual([]);
+		});
+	});
+
+	describe('markWorkflowExecutionsAsCrashed', () => {
+		test('should select the rows to crash by workflow rather than by id, and report each one it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(entityManager.update).toBeCalledTimes(1);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ workflowId: 'workflow-1', status: In(['new', 'running', 'unknown']) },
+				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
+			expect(crashed).toEqual([
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+					startedAt: crashedStartedAt,
+					stoppedAt: expect.any(Date),
+				},
+			]);
+		});
+
+		test('should report the owner project of each execution it transitioned', async () => {
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['workflow-1', ownerProject('project-1')]]),
+			);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(crashed[0].project).toEqual({ id: 'project-1', customTelemetryTags: [] });
 		});
 	});
 

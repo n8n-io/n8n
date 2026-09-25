@@ -8,11 +8,16 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
+import { isStreamTransportError } from './stream-transport-error';
 
 export type InstanceAiErrorReportContext = {
 	component: string;
 	/** Report non-terminal, best-effort failures at warning level. */
 	severity?: 'warning';
+	/**
+	 * Set when the error terminated the model provider stream.
+	 */
+	providerStream?: boolean;
 } & InstanceAiObservabilityContext;
 
 type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
@@ -74,6 +79,15 @@ export class InstanceAiErrorReporterService {
 			// Expected condition: the user ran out of AI credits and the run already
 			// surfaces it as `quota_exhausted`. Not worth a Sentry event.
 			this.logger.info(`Instance AI quota exhausted in ${context.component}`, {
+				component: context.component,
+				...observability,
+			});
+			return;
+		}
+
+		if (context.providerStream && isStreamTransportError(error)) {
+			this.logger.warn(`Instance AI stream transport failure in ${context.component}`, {
+				error,
 				component: context.component,
 				...observability,
 			});

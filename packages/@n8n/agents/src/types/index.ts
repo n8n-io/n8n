@@ -27,7 +27,9 @@ export type { BuiltFileStore } from './sdk/file-store';
 
 export type {
 	Provider,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -59,6 +61,7 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 } from './sdk/agent';
+export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
 
@@ -75,16 +78,16 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	EpisodicMemoryConfig,
-	EpisodicMemoryCursor,
+	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureKind,
+	EpisodicMemoryCaptureMethods,
+	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryExtractFn,
-	EpisodicMemoryExtraction,
-	EpisodicMemoryExtractionCandidate,
-	EpisodicMemoryExtractorInput,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
@@ -99,7 +102,6 @@ export type {
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
-	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -107,6 +109,7 @@ export type {
 	ObservationCapableMemory,
 	MemoryDescriptor,
 	MemoryConfig,
+	NewEpisodicMemoryCaptureCandidate,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
 	CheckpointStore,

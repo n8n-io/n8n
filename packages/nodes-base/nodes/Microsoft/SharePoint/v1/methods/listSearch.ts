@@ -46,12 +46,12 @@ export async function getFiles(
 		);
 	}
 
-	const items: IDriveItem[] = response.value;
+	const items: IDriveItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.filter((x) => x.file)
 		.map((g) => ({
-			name: g.name,
+			name: g.name ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -95,12 +95,12 @@ export async function getFolders(
 		);
 	}
 
-	const items: IDriveItem[] = response.value;
+	const items: IDriveItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
 		.map((g) => ({
-			name: g.name,
+			name: g.name ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -146,11 +146,11 @@ export async function getItems(
 		);
 	}
 
-	const items: IListItem[] = response.value;
+	const items: IListItem[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = items
 		.map((g) => ({
-			name: g.fields.Title ?? g.id,
+			name: g.fields?.Title ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -194,11 +194,11 @@ export async function getLists(
 		);
 	}
 
-	const lists: IList[] = response.value;
+	const lists: IList[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = lists
 		.map((g) => ({
-			name: g.displayName,
+			name: g.displayName ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>
@@ -235,11 +235,11 @@ export async function getSites(
 		response = await microsoftSharePointApiRequest.call(this, 'GET', '/sites', {}, qs);
 	}
 
-	const sites: ISite[] = response.value;
+	const sites: ISite[] = response.value ?? [];
 
 	const results: INodeListSearchItems[] = sites
 		.map((g) => ({
-			name: g.title,
+			name: g.title ?? g.id,
 			value: g.id,
 		}))
 		.sort((a, b) =>

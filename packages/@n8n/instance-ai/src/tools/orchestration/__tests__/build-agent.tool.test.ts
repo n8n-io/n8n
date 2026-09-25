@@ -1,3 +1,4 @@
+import type { BuiltTool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	type InstanceAiEvent,
@@ -22,10 +23,12 @@ import type * as AgentTargetBindingModule from '../agent-target-binding';
 import {
 	getSessionAgentByRef,
 	readPendingAgentTarget,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
+import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
 vi.mock('../agent-target-binding', async () => {
 	const actual = await vi.importActual<typeof AgentTargetBindingModule>('../agent-target-binding');
@@ -37,6 +40,7 @@ vi.mock('../agent-target-binding', async () => {
 		saveAgentBuilderTarget: vi.fn(),
 		getSessionAgentByRef: vi.fn(async () => await Promise.resolve(undefined)),
 		readPendingAgentTarget: vi.fn(async () => await Promise.resolve(undefined)),
+		rereadAgentBuilderTarget: vi.fn(async () => await Promise.resolve(undefined)),
 	};
 });
 
@@ -49,6 +53,7 @@ interface BuildAgentOutput {
 	agentRef?: string;
 	agentName?: string;
 	answers?: QuestionAnswer[];
+	requiredArtifacts?: BuilderRequiredArtifact[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -61,6 +66,14 @@ function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
 		})(),
 		text: Promise.resolve(text),
 	};
+}
+
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
 }
 
 /** A stream whose iteration rejects mid-consumption, instead of yielding an `error` chunk. */
@@ -219,6 +232,9 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	domainContext.threadMemory = undefined;
 	domainContext.threadId = undefined;
 	domainContext.agentBuilderTarget = undefined;
+	domainContext.agentPreviewSession = undefined;
+	domainContext.currentUserAttachments = undefined;
+	domainContext.resolvedUserDecisions = undefined;
 
 	const eventBus = mock<InstanceAiEventBus>();
 	eventBus.publish.mockImplementation((_threadId: string, event: InstanceAiEvent) => {
@@ -253,6 +269,8 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.claimSubAgentUsage = undefined;
 	// Telemetry-off is the default; product-telemetry tests set their own spy.
 	context.trackTelemetry = undefined;
+	// Deep mocks make currentUserMessage truthy; an empty handoff must stay empty.
+	context.currentUserMessage = undefined;
 
 	return { context, delegate, publishedEvents };
 }
@@ -276,6 +294,7 @@ describe('build-agent tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(getSessionAgentByRef).mockReset().mockResolvedValue(undefined);
+		vi.mocked(rereadAgentBuilderTarget).mockReset().mockResolvedValue(undefined);
 	});
 
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {
@@ -293,6 +312,44 @@ describe('build-agent tool', () => {
 			modelConfig: context.modelId,
 			abortSignal: context.abortSignal,
 		});
+	});
+
+	it('appends a host-injected aia-handoff envelope on the first-leg streamBuild', async () => {
+		const { context, delegate } = makeContext();
+		context.currentUserMessage = 'automatic';
+		context.domainContext!.resolvedUserDecisions = [
+			{ question: 'How should we set up the OpenAI credential?', answer: 'automatic' },
+		];
+		context.domainContext!.currentUserAttachments = [
+			{ type: 'file', fileName: 'brief.pdf', mimeType: 'application/pdf', data: 'QUJD' },
+		];
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+		await runTool(context, { message: 'Build a sarcastic chatbot', name: 'Chatbot' });
+
+		const outbound = vi.mocked(delegate.streamBuild).mock.calls[0]?.[1];
+		expect(outbound).toContain('Build a sarcastic chatbot');
+		expect(outbound).toContain('<aia-handoff>');
+		expect(outbound).toContain('automatic');
+		expect(outbound).toContain('How should we set up the OpenAI credential?');
+		expect(outbound).toContain('brief.pdf');
+		expect(outbound).toContain('application/pdf');
+		expect(outbound).not.toContain('QUJD');
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([]);
+	});
+
+	it('forwards the parent MCP tools to the initial builder turn', async () => {
+		const { context, delegate } = makeContext();
+		const mcpTools = fakeMcpTools();
+		context.mcpTools = mcpTools;
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+		await runTool(context, { message: 'Build me a support agent', name: 'Support Agent' });
+
+		const session = vi.mocked(delegate.streamBuild).mock.calls[0]?.[2];
+		expect(session?.mcpTools).toBe(mcpTools);
 	});
 
 	it('returns the accumulated builder reply on completion', async () => {
@@ -366,6 +423,7 @@ describe('build-agent tool', () => {
 		// stream is consumed. A call-time rejection (as this test used to simulate) cannot
 		// happen in production; see build-agent.tool.ts's `runBuilderConsumeLoop` catch.
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			throwingStream(
@@ -394,10 +452,14 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: friendlyMessage,
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when streamBuild throws an unknown error', async () => {
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
 
@@ -414,6 +476,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: 'boom',
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {
@@ -701,6 +766,51 @@ describe('build-agent tool', () => {
 				});
 			},
 		);
+
+		it('is true when update_skill returns the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', { ok: true, configMutated: true }),
+					],
+					'Updated the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(true);
+		});
+
+		it('is false when update_skill soft-fails without the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', {
+							ok: false,
+							errors: [{ message: 'Skill not found' }],
+						}),
+					],
+					'Could not update the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(false);
+		});
 
 		it('is false when no config-mutation tool succeeded', async () => {
 			const { context, delegate } = makeContext();
@@ -1137,7 +1247,51 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'Support Triage' });
 
-			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', 'aBcDeFgHiJkLmNoP');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', {
+				id: 'aBcDeFgHiJkLmNoP',
+				adoptOnCollision: true,
+			});
+		});
+
+		// The editor persisting the artifact deletes the pending marker and binds the
+		// agent. A turn that read its target before that must not create a second one.
+		it('continues an agent bound since the turn started instead of creating another', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue(undefined);
+			vi.mocked(rereadAgentBuilderTarget).mockResolvedValue({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'proj-1',
+				name: 'Support Triage',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Edited it.'));
+
+			const output = await runTool(context, { message: 'Build it', name: 'Support Triage' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'aBcDeFgHiJkLmNoP',
+				expect.any(String),
+				expect.anything(),
+			);
+			expect(output.agentId).toBe('aBcDeFgHiJkLmNoP');
+		});
+
+		it('still creates a second agent when createNew is explicit', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue(undefined);
+			vi.mocked(rereadAgentBuilderTarget).mockResolvedValue({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build it', name: 'Second', createNew: true });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Second', undefined);
 		});
 
 		it('ignores a pending artifact belonging to another project', async () => {
@@ -1475,9 +1629,23 @@ describe('build-agent tool', () => {
 		class FakeBuilderCheckpointUnavailableError extends UserError {
 			readonly code = BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 		}
+		const requiredArtifacts: BuilderRequiredArtifact[] = [
+			{
+				type: 'workflow',
+				name: 'WhatsApp Agent entrypoint',
+				purpose: 'Connect incoming WhatsApp messages to the Agent',
+				relationship: 'agent-entrypoint',
+				requirements: ['Trigger on incoming WhatsApp messages and invoke the Agent'],
+			},
+		];
 
 		function suspendPayloadWithCheckpoint(
-			overrides: Partial<{ runId: string; toolCallId: string; configUpdated: boolean }> = {},
+			overrides: Partial<{
+				runId: string;
+				toolCallId: string;
+				configUpdated: boolean;
+				requiredArtifacts: BuilderRequiredArtifact[];
+			}> = {},
 		) {
 			return {
 				...askQuestionsSuspendPayload(),
@@ -1536,6 +1704,61 @@ describe('build-agent tool', () => {
 				agentId: 'agent-1',
 				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
 			});
+		});
+
+		it('does not append an aia-handoff envelope on resume', async () => {
+			const { context, delegate } = makeContext();
+			context.currentUserMessage = 'automatic';
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			context.domainContext!.resolvedUserDecisions = [
+				{ question: 'How should we set up the OpenAI credential?', answer: 'automatic' },
+			];
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Slack.'));
+			const resumeData = {
+				approved: true,
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			};
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ resumeData, suspendPayload: suspendPayloadWithCheckpoint() },
+			);
+
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+			expect(delegate.resumeBuild).toHaveBeenCalledWith(
+				'agent-1',
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
+				expect.any(Object),
+			);
+		});
+
+		it('forwards the parent MCP tools to the resumed builder turn', async () => {
+			const { context, delegate } = makeContext();
+			const mcpTools = fakeMcpTools();
+			context.mcpTools = mcpTools;
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Notion.'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint(),
+				},
+			);
+
+			const suspensionSession = vi.mocked(delegate.findOpenSuspensions).mock.calls[0]?.[1];
+			const resumeSession = vi.mocked(delegate.resumeBuild).mock.calls[0]?.[2];
+			expect(suspensionSession?.mcpTools).toBe(mcpTools);
+			expect(resumeSession?.mcpTools).toBe(mcpTools);
 		});
 
 		it('does not attach answers when resuming a credential suspension', async () => {
@@ -1661,11 +1884,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('does not match');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 
@@ -1677,11 +1904,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('no longer open');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 
@@ -2143,7 +2374,11 @@ describe('build-agent tool', () => {
 				agentRole: 'agent-builder',
 				functionId: 'instance-ai.subagent.agent-builder',
 				executionMode: 'foreground',
-				metadata: { agent_id: 'agent-builder:agent-1', target_agent_id: 'agent-1' },
+				metadata: {
+					agent_id: 'agent-builder:agent-1',
+					target_agent_id: 'agent-1',
+					model_id: 'anthropic/claude-sonnet-host-resolved',
+				},
 			});
 			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
 			expect(sessionArg).toEqual(expect.objectContaining({ telemetry: sentinelTelemetry }));

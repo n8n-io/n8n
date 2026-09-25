@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { VIEWS } from '@/app/constants';
+import { isInstanceAiChatRoute } from '@/features/ai/instanceAi/constants';
 import {
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
@@ -563,8 +564,9 @@ const onSave = () => {
 
 const closeCallback = () => {
 	// In case the redirect to homepage for new users didn't happen
-	// we try again after closing the modal
-	if (route.name !== VIEWS.HOMEPAGE) {
+	// we try again after closing the modal. New owners land on the
+	// Instance AI homepage instead, so stay put there.
+	if (route.name !== VIEWS.HOMEPAGE && !isInstanceAiChatRoute(route.name)) {
 		void router.replace({ name: VIEWS.HOMEPAGE });
 	}
 };

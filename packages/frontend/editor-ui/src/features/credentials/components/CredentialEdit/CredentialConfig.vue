@@ -27,7 +27,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -58,6 +57,7 @@ import QuickConnectButton from '../../quickConnect/components/QuickConnectButton
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import type { ProjectType } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -78,11 +78,17 @@ type Props = {
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	/** Provider account of the caller's own connection, for end-user credentials. */
+	connectedAccountIdentifier?: string;
 	isNewCredential?: boolean;
+	/** Type of the project a new credential will be created in. */
+	newCredentialProjectType?: ProjectType;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
+	showAiGatewayErrorNudge?: boolean;
+	aiGatewayCreditsAreFree?: boolean;
 	hideAskAssistant?: boolean;
 	/** Instance AI credential setup-help behavior, supplied by whoever opened the
 	 *  modal (the editor capability, or the credentials list). Absent → no Instance
@@ -96,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	connectedAccountIdentifier: undefined,
 	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
@@ -107,6 +114,7 @@ const emit = defineEmits<{
 	disconnect: [];
 	quickConnect: [];
 	claimed: [];
+	useGatewayCredits: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -114,7 +122,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -233,13 +240,14 @@ const isConnectedOAuth = computed(
 // expired). In this state we promote Switch account over the plain Retry button.
 const isStale = computed(() => isConnectedOAuth.value && !!props.authError);
 
-// The connected account label: for end-user creds it's the current user's own
-// connection; for fixed creds it's the identifier derived from the stored token
-// (may be absent for providers that don't return one — then fall back to a
-// generic "Account connected" message).
+// The connected account label — always the provider account the token belongs to,
+// never the n8n account. For end-user creds it comes from the caller's own per-user
+// connection, for fixed creds from the token stored on the credential. Many
+// providers return no identity at all (Gmail asks for no identity scope), so an
+// absent value is normal and falls back to a generic "Account connected" message.
 const connectedAccountName = computed<string | undefined>(() => {
 	if (props.isResolvable) {
-		return usersStore.currentUser?.email ?? undefined;
+		return props.connectedAccountIdentifier;
 	}
 	const identifier = props.credentialData?.accountIdentifier;
 	return typeof identifier === 'string' && identifier ? identifier : undefined;
@@ -288,6 +296,14 @@ const canWrite = computed(() => {
 const canSelectEndUserType = computed(
 	() => canWrite.value && !!props.credentialPermissions.createEndUser,
 );
+
+// Only in team projects; an existing end-user credential keeps the selector
+// so it can be switched back to fixed.
+const isEndUserTypeAvailable = computed(() => {
+	if (props.isResolvable) return true;
+	if (props.isNewCredential) return props.newCredentialProjectType === ProjectTypes.Team;
+	return isHomeTeamProject.value;
+});
 
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
@@ -572,6 +588,44 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</template>
 				</Banner>
 
+				<N8nCallout
+					v-if="showAiGatewayErrorNudge"
+					:class="$style.aiGatewayErrorNudge"
+					theme="custom"
+					icon="sparkles"
+					icon-size="large"
+					data-test-id="gateway-credits-credential-error-nudge"
+				>
+					<span :class="$style.aiGatewayErrorNudgeCopy">
+						<strong>
+							{{ i18n.baseText('credentialEdit.credentialConfig.aiGatewayErrorNudge.title') }}
+						</strong>
+						<span>
+							{{
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description',
+								)
+							}}
+						</span>
+					</span>
+					<template #trailingContent>
+						<N8nButton
+							size="small"
+							:label="
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action',
+								)
+							"
+							data-test-id="gateway-credits-credential-error-nudge-action"
+							@click="$emit('useGatewayCredits')"
+						/>
+					</template>
+				</N8nCallout>
+
 				<!-- Type selection stays above the connection banners: the connect /
 					 connected banner always renders below the selector, so it keeps a
 					 stable position when the credential connects or the type changes. -->
@@ -582,7 +636,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isOAuthType &&
 						// Only users who can manage end-user credentials see the selector at all;
 						// it's disabled for them when they lack edit access to the credential.
-						!!credentialPermissions.createEndUser
+						!!credentialPermissions.createEndUser &&
+						// End-user credentials are not available in personal projects.
+						isEndUserTypeAvailable
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"
@@ -760,6 +816,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.aiGatewayErrorNudge {
+	--callout--border-color--info: light-dark(var(--color--purple-300), var(--color--purple-500));
+	--callout--color--text--info: var(--color--text--shade-1);
+	--callout--icon-color--info: var(--color--secondary);
+	padding: var(--spacing--sm);
+	background: linear-gradient(
+		110deg,
+		light-dark(
+			var(--color--orange-50),
+			color-mix(in srgb, var(--color--orange-500) 15%, var(--background--surface))
+		),
+		light-dark(
+			var(--color--purple-100),
+			color-mix(in srgb, var(--color--purple-500) 18%, var(--background--surface))
+		)
+	);
+	box-shadow: var(--shadow--xs);
+}
+
+.aiGatewayErrorNudgeCopy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 // Outline button tinted for the destructive "Disconnect" action so it reads as

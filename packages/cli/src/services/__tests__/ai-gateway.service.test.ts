@@ -121,7 +121,7 @@ describe('AiGatewayService', () => {
 			const result = await service.getGatewayConfig();
 
 			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({ method: 'GET', url: `${BASE_URL}/v1/gateway/config` }),
 			);
@@ -221,7 +221,7 @@ describe('AiGatewayService', () => {
 			const service = makeService({ aiGatewayEnabled: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
-			).rejects.toThrow('n8n Connect is not enabled on this instance.');
+			).rejects.toThrow('Gateway credits are not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -236,6 +236,35 @@ describe('AiGatewayService', () => {
 			const service = makeService();
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'openAiApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when the node type is not covered by the gateway, even for a served credential type', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					...MOCK_GATEWAY_CONFIG,
+					credentialTypes: [...MOCK_GATEWAY_CONFIG.credentialTypes, 'openAiApi'],
+					providerConfig: {
+						...MOCK_GATEWAY_CONFIG.providerConfig,
+						openAiApi: {
+							gatewayPath: '/v1/gateway/openai',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'openAiApi',
+					userId: USER_ID,
+					node: {
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.5,
+						parameters: {},
+					},
+				}),
 			).rejects.toThrow(UserError);
 		});
 
@@ -449,7 +478,7 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for n8n credits attribution.');
+			).rejects.toThrow('Failed to resolve user for Gateway credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
@@ -463,6 +492,66 @@ describe('AiGatewayService', () => {
 				workflowId: 'R9JFXwkUCL1jZBuw',
 			});
 
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
+		it('appends an explicit projectId to the workflow segment (| encoded as %7C)', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('derives projectId from workflow ownership when not explicitly provided', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-from-wf' }),
+			);
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cproject-from-wf/google`,
+			});
+		});
+
+		it('keeps workflow-only gateway URL when workflow ownership lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('Workflow not found'));
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
 			expect(result).toEqual({
 				apiKey: 'mock-jwt-token',
 				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
@@ -515,6 +604,57 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({
 				apiKey: 'mock-jwt-token',
 				host: `${BASE_URL}/v1/gateway/exec/exec%2Fwith%2Fslashes/wf%20with%20spaces/google`,
+			});
+		});
+
+		it('embeds agentId under the literal "agent" execution segment when no workflowId', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('embeds agentId without projectId when project is absent', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123/google`,
+			});
+		});
+
+		it('prefers workflowId over agentId when both are provided', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
 			});
 		});
 
@@ -583,6 +723,41 @@ describe('AiGatewayService', () => {
 				browserbaseApiKey: 'mock-jwt-token',
 				baseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbase`,
 				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbaseStagehand`,
+			});
+		});
+
+		it('embeds agent context in every routed gateway URL', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbaseStagehand`,
 			});
 		});
 
@@ -662,7 +837,18 @@ describe('AiGatewayService', () => {
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns budget and balance from gateway wallet', async () => {
+		it('returns budget, balance, and hasEverToppedUp from gateway wallet', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7, hasEverToppedUp: true }));
+			const service = makeService();
+
+			const result = await service.getWallet(USER_ID);
+
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: true });
+		});
+
+		it('defaults hasEverToppedUp to false when the gateway omits it', async () => {
 			requestMock
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
 				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
@@ -670,7 +856,7 @@ describe('AiGatewayService', () => {
 
 			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ budget: 10, balance: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: false });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {

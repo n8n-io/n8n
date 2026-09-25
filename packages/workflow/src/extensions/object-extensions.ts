@@ -6,6 +6,7 @@
 // splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
 // and a node-only VM entry (stubbed).
 import type { ExtensionMap } from './extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 function isEmpty(value: object): boolean {
@@ -73,21 +74,17 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 }
 
 export function compact(value: object): object {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const newObj: any = {};
-	for (const [key, val] of Object.entries(value)) {
+	const newObj: Record<string, unknown> = {};
+	for (const [key, val] of Object.entries(value) as Array<[string, unknown]>) {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
-				if (Object.keys(val as object).length === 0) continue;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-				newObj[key] = compact(val);
+				if (Object.keys(val).length === 0) continue;
+				defineField(newObj, key, compact(val));
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				newObj[key] = val;
+				defineField(newObj, key, val);
 			}
 		}
 	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return newObj;
 }
 

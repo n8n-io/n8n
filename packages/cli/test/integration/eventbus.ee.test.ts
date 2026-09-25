@@ -319,7 +319,7 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+					expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 					expect(webhookRequest).toHaveBeenCalledWith(
 						expect.objectContaining({
 							url: testWebhookDestination.url,

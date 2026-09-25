@@ -38,17 +38,9 @@ vi.mock('@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue', () =>
 	},
 }));
 
-vi.mock('@/features/shared/tags/components/WorkflowTagsDropdown.vue', () => ({
-	default: {
-		name: 'WorkflowTagsDropdown',
-		template: '<div data-test-id="executions-filter-tags-select"></div>',
-	},
-}));
-
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
-	tags: [],
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
