@@ -9,9 +9,6 @@ import { positiveIntSchema } from '../schemas';
  */
 const AUTH_SECRET_MIN_LENGTH = 32;
 
-const responseTransportSchema = z.enum(['memory', 'redis']);
-type ResponseTransport = z.infer<typeof responseTransportSchema>;
-
 const engineModeSchema = z.enum(['in-process', 'remote']);
 
 export type EngineMode = z.infer<typeof engineModeSchema>;
@@ -23,6 +20,9 @@ export class EngineConfig {
 	 * another process hosts it (`n8n engine`), and this main runs only the
 	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
 	 * `N8N_ENGINE_AUTH_SECRET`.
+	 *
+	 * The mode also sets how execution responses reach the control plane:
+	 * in memory for `in-process`, and over Redis for `remote`.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
@@ -78,16 +78,6 @@ export class EngineConfig {
 	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
-
-	/**
-	 * How an execution's responses travel from the data plane to whoever waits
-	 * for them.
-	 *
-	 * `memory` works only while both planes share a process, which is the case
-	 * today. Set `redis` once they do not.
-	 */
-	@Env('N8N_ENGINE_RESPONSE_TRANSPORT', responseTransportSchema)
-	responseTransport: ResponseTransport = 'memory';
 
 	/**
 	 * How long (in ms) the control plane waits for a run to answer before it

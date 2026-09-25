@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -18,7 +18,8 @@ import { randomBytes } from 'node:crypto';
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
  * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server and the client that dials the engine.
+ * only the control plane server, the client that dials the engine, and a Redis
+ * receiver for execution responses.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
@@ -45,20 +46,30 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
+		const logger = Container.get(Logger).scoped('engine-v2');
+		const { EngineV2WebhookResponder } = await import(
+			'@/services/engine-v2-webhook-responder.service.js'
+		);
+
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
 			// before `startExecution` returns, and responses are not replayed.
-			const { responseSender, responseReceiver } = await this.initResponseChannel(engineConfig);
-
-			const { EngineV2WebhookResponder } = await import(
-				'@/services/engine-v2-webhook-responder.service.js'
-			);
+			const { responseSender, responseReceiver } = await this.initInMemoryResponseChannel(logger);
 			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
 			this.responseSender = responseSender;
 			this.responseReceiver = responseReceiver;
 
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 			await Container.get(EngineV2Runtime).init(responseSender);
+		} else {
+			// The remote data plane publishes responses over Redis, so only the
+			// receiving end runs here.
+			const { startRedisExecutionResponseReceiver } = await import(
+				'./response-channel/redis-execution-response-channel.js'
+			);
+			const responseReceiver = await startRedisExecutionResponseReceiver(logger);
+			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			this.responseReceiver = responseReceiver;
 		}
 
 		const { EngineDataPlaneClient } = await import('./engine-data-plane-client.js');
@@ -68,47 +79,6 @@ export class EngineV2Module implements ModuleInterface {
 		Container.get(EngineDataPlaneProxyService).registerProvider(
 			Container.get(EngineDataPlaneClient),
 		);
-	}
-
-	private async initResponseChannel(engineConfig: EngineConfig) {
-		const logger = Container.get(Logger).scoped('engine-v2');
-		if (engineConfig.responseTransport === 'redis') {
-			return await this.initRedisResponseChannel(logger);
-		}
-
-		return await this.initInMemoryResponseChannel(logger);
-	}
-
-	private async initRedisResponseChannel(logger: Logger) {
-		const { RedisClientService } = await import('@/services/redis-client.service.js');
-		const { RedisExecutionResponseSender } = await import(
-			'./response-channel/redis-execution-response-sender.js'
-		);
-		const { RedisExecutionResponseReceiver } = await import(
-			'./response-channel/redis-execution-response-receiver.js'
-		);
-		const redisClientService = Container.get(RedisClientService);
-		const globalConfig = Container.get(GlobalConfig);
-		const channelPrefix = `${redisClientService.toValidPrefix(globalConfig.redis.prefix)}:engine-v2-responses`;
-		const getChannelName = (executionId: string) => `${channelPrefix}:${executionId}`;
-		const responseSender = new RedisExecutionResponseSender(
-			redisClientService.createClient({ type: 'publisher(n8n)' }),
-			getChannelName,
-			logger,
-		);
-		const responseReceiver = new RedisExecutionResponseReceiver(
-			redisClientService.createClient({ type: 'subscriber(n8n)' }),
-			getChannelName,
-			logger,
-		);
-		try {
-			await responseReceiver.start();
-		} catch (error) {
-			await Promise.all([responseSender.stop(), responseReceiver.stop()]);
-			throw error;
-		}
-
-		return { responseSender, responseReceiver };
 	}
 
 	private async initInMemoryResponseChannel(logger: Logger) {
@@ -131,15 +101,15 @@ export class EngineV2Module implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
-		if (Container.get(EngineConfig).mode === 'in-process') {
-			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			try {
+		try {
+			if (Container.get(EngineConfig).mode === 'in-process') {
+				const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 				await Container.get(EngineV2Runtime).shutdown();
-			} finally {
-				// After the engine, so a final response still has somewhere to go.
-				// A failed runtime shutdown must still release both endpoints.
-				await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
 			}
+		} finally {
+			// After the engine, so a final response still has somewhere to go.
+			// A failed runtime shutdown must still release both endpoints.
+			await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
 		}
 
 		// After the engine, so its final flush still has somewhere to land.

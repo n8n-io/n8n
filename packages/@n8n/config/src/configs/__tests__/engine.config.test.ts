@@ -59,21 +59,6 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
 	});
 
-	it('should accept the redis engine response transport', () => {
-		process.env.N8N_ENGINE_RESPONSE_TRANSPORT = 'redis';
-
-		expect(Container.get(EngineConfig).responseTransport).toEqual('redis');
-	});
-
-	it('should warn and fall back to default for an invalid engine response transport', () => {
-		process.env.N8N_ENGINE_RESPONSE_TRANSPORT = 'rediss';
-
-		expect(Container.get(EngineConfig).responseTransport).toEqual('memory');
-		expect(consoleWarnMock).toHaveBeenCalledWith(
-			expect.stringContaining('Invalid value for N8N_ENGINE_RESPONSE_TRANSPORT'),
-		);
-	});
-
 	it('should host the data plane in-process by default', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});
