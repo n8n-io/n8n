@@ -26,6 +26,9 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 		runOnTakeover: true,
 	};
 
+	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
+	readonly retryDelaySeconds = 30;
+
 	constructor(
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly cleanupService: WorkflowPublicationOutboxCleanupService,

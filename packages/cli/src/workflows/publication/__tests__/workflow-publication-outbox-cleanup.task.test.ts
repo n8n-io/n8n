@@ -14,6 +14,7 @@ describe('WorkflowPublicationOutboxCleanupTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
 		expect(task.effects).toBe('idempotent');
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.retryDelaySeconds).toBe(30);
 	});
 
 	it('should clean up the outbox on run, handing the pass its abort signal', async () => {
