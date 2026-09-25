@@ -299,7 +299,7 @@ describe('OwnershipService', () => {
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			userRepository.hasActiveInstanceOwner.mockResolvedValueOnce(true);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);
@@ -313,7 +313,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should throw a BadRequestError if the shell user is not found', async () => {
-			userRepository.hasActiveInstanceOwner.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
 			const execution = ownershipService.setupOwner(mock());
@@ -340,7 +340,7 @@ describe('OwnershipService', () => {
 			//	not quite perfect as we hash the password.
 			const expected = { ...user, ...payload, id: 'newUserId' };
 
-			userRepository.hasActiveInstanceOwner.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(expected);
 
@@ -367,7 +367,7 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			userRepository.hasActiveInstanceOwner.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(user);
 
@@ -391,7 +391,7 @@ describe('OwnershipService', () => {
 				{ overwriteExisting: true },
 			);
 
-			expect(userRepository.hasActiveInstanceOwner).not.toHaveBeenCalled();
+			expect(userRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
 		});
 
 		it('should use pre-hashed password when preHashed is true', async () => {

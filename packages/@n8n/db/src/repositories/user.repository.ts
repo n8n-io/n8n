@@ -126,11 +126,12 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
-	 * Whether an instance owner exists that has actually been claimed — has
-	 * logged in (`lastActiveAt` set) or has a password (PAY-4247) — as opposed
-	 * to the unclaimed "shell" owner created at first boot.
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
 	 */
-	async hasActiveInstanceOwner(): Promise<boolean> {
+	async hasClaimedInstanceOwner(): Promise<boolean> {
 		return await this.exists({
 			where: [
 				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
