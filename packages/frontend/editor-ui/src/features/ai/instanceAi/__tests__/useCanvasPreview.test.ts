@@ -1306,6 +1306,25 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 
+		test('shows a resource picked from the project in a new tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.selectTab('wf-1');
+
+			ctx.openTab({
+				type: 'agent',
+				id: 'agent-9',
+				name: 'Picked Agent',
+				icon: 'robot',
+				projectId: 'project-1',
+			});
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'agent-9']);
+			expect(ctx.activeAgentId.value).toBe('agent-9');
+			expect(ctx.activeAgentProjectId.value).toBe('project-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
 		test('waits for the stored tabs before it picks a tab, then shows the stored active tab', async () => {
 			let resolveLoad: (state: Awaited<ReturnType<ThreadTabsStorage['load']>>) => void = () => {};
 			const tabsStorage: ThreadTabsStorage = {
