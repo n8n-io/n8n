@@ -4,13 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import { UNUSED_WORKFLOW_THRESHOLD_DAYS } from './constants';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
@@ -172,6 +173,57 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
+	describe('how to fix panel', () => {
+		it('renders the recommendations as resolution steps', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const panel = await screen.findByTestId('migration-rule-how-to-fix');
+			expect(panel).toHaveTextContent('How to fix');
+			expect(panel).toHaveTextContent('Update the node');
+			expect(panel).toHaveTextContent('Please update to the latest version');
+			expect(screen.queryByTestId('migration-rule-how-to-fix-docs-link')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('migration-rule-how-to-fix-migratable')).not.toBeInTheDocument();
+		});
+
+		it('links to the rule documentation when there are no recommendations', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', 'https://docs.example.com/rule-1');
+			expect(link).toHaveTextContent('documentation');
+			expect(screen.getByTestId('migration-rule-how-to-fix')).toHaveTextContent(
+				'Follow the steps in the documentation to resolve this change.',
+			);
+		});
+
+		it('links to the general breaking-changes docs when the rule has no documentation', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [], ruleDocumentationUrl: undefined }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', expect.stringContaining('breaking-changes'));
+		});
+
+		it('mentions the Migrate action when the rule is migratable', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('migration-rule-how-to-fix-migratable')).toHaveTextContent(
+				'Use the Migrate action in the table',
+			);
+		});
+	});
+
 	describe('migration', () => {
 		it('should not render a Migrate button when the rule is not migratable', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
@@ -273,6 +325,74 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Webhook')).toBeInTheDocument();
 				expect(screen.getByText('Gmail')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('probably unused flag', () => {
+		const DAY_MS = 24 * 60 * 60 * 1000;
+
+		it('flags a workflow that never ran', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithIssue, lastExecutedAt: undefined }],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('workflow-probably-unused-badge')).toHaveTextContent(
+				'Probably unused',
+			);
+		});
+
+		it('flags a workflow whose last execution is older than the threshold', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							lastExecutedAt: new Date(Date.now() - (UNUSED_WORKFLOW_THRESHOLD_DAYS + 1) * DAY_MS),
+						},
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('workflow-probably-unused-badge')).toBeInTheDocument();
+		});
+
+		it('explains the threshold in the badge tooltip', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithIssue, lastExecutedAt: undefined }],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await hoverTooltipTrigger(await screen.findByTestId('workflow-probably-unused-badge'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent(
+					`This workflow hasn't run in the last ${UNUSED_WORKFLOW_THRESHOLD_DAYS} days.`,
+				),
+			);
+		});
+
+		it('does not flag a workflow that ran recently', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, lastExecutedAt: new Date(Date.now() - DAY_MS) },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
+			expect(screen.queryByTestId('workflow-probably-unused-badge')).not.toBeInTheDocument();
 		});
 	});
 
