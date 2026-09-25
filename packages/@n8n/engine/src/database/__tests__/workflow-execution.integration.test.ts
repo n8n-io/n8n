@@ -205,6 +205,37 @@ describe('workflow_execution table (integration)', () => {
 		expect(row.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it.each<ExecutionStatus>(['completed', 'queued'])(
+		'TypeOrmExecutionStore.finishExecution leaves a %j execution alone',
+		async (status) => {
+			// The write is a compare-and-set on the live statuses. Only a live
+			// execution can end: an ended one must not take a second outcome, and one
+			// that never started has none to record.
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = status === 'completed' ? new Date('2099-01-01T00:00:00.000Z') : null;
+			const created = await repo.save(
+				repo.create({
+					id: generateId(),
+					workflowId: 'wf-6',
+					status,
+					mode: 'production',
+					callerContext: { hostMode: 'trigger' },
+					graph: { nodes: [], edges: [] },
+					workflow: {},
+					triggerOutputs: null,
+					finishedAt,
+				}),
+			);
+
+			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+
+			expect(finished).toBe(false);
+			const row = await repo.findOneOrFail({ where: { id: created.id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
 	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
 		/** One execution with one step for each status given. */
 		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
