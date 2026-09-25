@@ -581,21 +581,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	/**
-	 * Where exact per-day values start, as UTC days (`YYYY-MM-DD`).
+	 * The UTC day (`YYYY-MM-DD`) from which insights holds exact per-day data:
+	 * the oldest hourly or daily row's day, but never before the Monday after the
+	 * newest weekly row. `null` when there are no rows.
 	 *
 	 * Compaction folds old days into one row per week, dated on the week's Monday.
 	 * A day-bucketed read puts such a row's whole week on its Monday, so a day is
 	 * exact only when no weekly row can hold it.
-	 *
-	 * - `firstExactDay`: the Monday after the newest weekly row, or `null` when no
-	 *   day was folded into a week yet. No day from here on is in a weekly row.
-	 * - `firstDataDay`: the oldest hourly or daily row's day, moved forward to
-	 *   `firstExactDay` when it is older, or `null` when there is no such row.
 	 */
-	async getDailyDataStart(): Promise<{
-		firstExactDay: string | null;
-		firstDataDay: string | null;
-	}> {
+	async getDailyDataStart(): Promise<string | null> {
 		const periodStart = this.escapeField('periodStart');
 		const periodUnit = this.escapeField('periodUnit');
 
@@ -631,12 +625,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			? periodStartParser.parse(oldestDaily.periodStart).slice(0, 10)
 			: null;
 
-		return {
-			firstExactDay,
-			firstDataDay:
-				oldestDailyDay && firstExactDay && firstExactDay > oldestDailyDay
-					? firstExactDay
-					: oldestDailyDay,
-		};
+		// Either no day was folded yet, or the oldest daily row comes after the folded weeks.
+		const oldestDailyIsExact =
+			oldestDailyDay !== null && (!firstExactDay || oldestDailyDay > firstExactDay);
+
+		return oldestDailyIsExact ? oldestDailyDay : firstExactDay;
 	}
 }

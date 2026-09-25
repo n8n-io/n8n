@@ -556,25 +556,19 @@ describe('InsightsByPeriodRepository', () => {
 			await truncateInsights();
 		});
 
-		test('returns no bounds without any data', async () => {
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: null,
-				firstDataDay: null,
-			});
+		test('returns null without any data', async () => {
+			await expect(repository.getDailyDataStart()).resolves.toBeNull();
 		});
 
-		test('starts at the oldest hourly or daily row when nothing was folded into weeks', async () => {
+		test('returns the oldest hourly or daily row when nothing was folded into weeks', async () => {
 			await seed('hour', '2026-02-10T13:00:00');
 			await seed('day', '2026-02-11');
 			await seed('hour', '2026-03-01T08:00:00');
 
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: null,
-				firstDataDay: '2026-02-10',
-			});
+			await expect(repository.getDailyDataStart()).resolves.toBe('2026-02-10');
 		});
 
-		test('starts at the Monday after the newest weekly row, skipping a partly folded week', async () => {
+		test('returns the Monday after the newest weekly row, skipping a partly folded week', async () => {
 			await seed('week', '2026-03-16');
 			// Compaction folded Monday to Thursday into this week and left the rest.
 			await seed('week', '2026-03-23');
@@ -582,41 +576,29 @@ describe('InsightsByPeriodRepository', () => {
 			await seed('day', '2026-03-28');
 			await seed('hour', '2026-06-01T10:00:00');
 
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: '2026-03-30',
-				firstDataDay: '2026-03-30',
-			});
+			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-30');
 		});
 
-		test('starts at the oldest daily row when it comes after the weekly rows', async () => {
+		test('returns the oldest daily row when it comes after the weekly rows', async () => {
 			await seed('week', '2026-03-23');
 			await seed('day', '2026-04-08');
 
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: '2026-03-30',
-				firstDataDay: '2026-04-08',
-			});
+			await expect(repository.getDailyDataStart()).resolves.toBe('2026-04-08');
 		});
 
-		test('starts after the newest weekly row even when an hourly row is older', async () => {
+		test('returns the Monday after the newest weekly row even when an hourly row is older', async () => {
 			await seed('hour', '2026-03-02T10:00:00');
 			await seed('week', '2026-03-16');
 			await seed('day', '2026-04-08');
 
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: '2026-03-23',
-				firstDataDay: '2026-03-23',
-			});
+			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-23');
 		});
 
-		test('returns only the weekly bound when every row was folded into weeks', async () => {
+		test('returns the Monday after the newest weekly row when every row was folded into weeks', async () => {
 			await seed('week', '2026-03-16');
 			await seed('week', '2026-03-23');
 
-			await expect(repository.getDailyDataStart()).resolves.toEqual({
-				firstExactDay: '2026-03-30',
-				firstDataDay: null,
-			});
+			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-30');
 		});
 	});
 

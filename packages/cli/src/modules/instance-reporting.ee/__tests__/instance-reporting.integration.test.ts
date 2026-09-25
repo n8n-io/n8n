@@ -418,7 +418,7 @@ describe('instance reporting retries', () => {
 
 	test('backfills a gap longer than 30 days and still reads every day on its own', async () => {
 		await seedDeliveredReport('2026-01-01');
-		await seedDailyExecutions({ '2026-02-24': 6, '2026-03-25': 8 });
+		await seedDailyExecutions({ '2026-01-10': 4, '2026-02-24': 6, '2026-03-25': 8 });
 
 		const harness = makeHarness([accepted()]);
 		harness.scheduler.start();
@@ -426,17 +426,17 @@ describe('instance reporting retries', () => {
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const points = dailyPoints(sentPayload(harness, 0));
-		// Every day from 01-02 to 03-25. A delivered report proves insights was
-		// collecting, so a day without data is a real 0.
-		expect(points).toHaveLength(83);
-		expect(points.at(0)).toEqual({ date: '2026-01-02', value: 0 });
+		// Every day from the first data on 01-10 to 03-25. Inside that range, a day
+		// without data is a real 0.
+		expect(points).toHaveLength(75);
+		expect(points.at(0)).toEqual({ date: '2026-01-10', value: 4 });
 		// Exact days, not weekly buckets, although the gap is longer than 30 days.
 		expect(points.find((point) => point.date === '2026-02-24')).toEqual({
 			date: '2026-02-24',
 			value: 6,
 		});
 		expect(points.at(-1)).toEqual({ date: '2026-03-25', value: 8 });
-		expect(points.filter((point) => point.value !== 0)).toHaveLength(2);
+		expect(points.filter((point) => point.value !== 0)).toHaveLength(3);
 	});
 
 	test('carries the exact insights history on the first report, but no day held in a weekly row', async () => {

@@ -80,18 +80,19 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
   row moves its start.
 - `InstanceReportingService.missedDays()` returns every day from the first
   owed day to yesterday. Yesterday is always included.
-- The first owed day depends on whether a report was ever delivered.
-  `InsightsService.getDailyDataStart()` supplies the bounds:
-  - **After a delivered report:** the day after the last delivered day. A
-    delivered report proves that `insights` was collecting, so a day without
-    data inside the window is reported as `0`.
-  - **Before the first delivered report:** the first day with `insights` data.
-    Days before it are not reported, because nothing shows that `insights` was
-    collecting then. Without any data, the report carries only yesterday, so a
-    new instance still shows up on the receiver.
-  - **In both cases:** never a day older than the Monday after the newest weekly
-    row. Compaction folds old days into one row per week, so those days have no
+- The first owed day is the day after the last delivered day, but never
+  before the first day with exact `insights` data. Before the first delivered
+  report, it is that first day. `InsightsService.getDailyDataStart()` supplies
+  it: the oldest hourly or daily row's day, but never before the Monday after
+  the newest weekly row.
+  - Compaction folds old days into one row per week, so those days have no
     exact value. With the default settings, that bound is about 180 days back.
+  - Days before the first data are not reported, not even as `0`. Inside the
+    window, a day without data is reported as `0`. `insights` writes rows only
+    for executions and never stores a `0`, so a day without executions and a
+    day without collected data look the same.
+  - Without any data, the report carries only yesterday, so a new instance
+    still shows up on the receiver.
 - The first report is no special case. It backfills the history that `insights`
   holds instead of sending yesterday alone.
 - A report carries at most `MAX_REPORT_DAYS` (730, the `insights` pruning cap).

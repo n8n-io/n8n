@@ -18,7 +18,8 @@ instance missed, and one `cumulative` point as always. Across a gap the `daily`
 series is the authoritative one: the two cumulative samples around the gap sit
 more than 24 hours apart, so their difference covers the whole outage. A missed
 day with no executions is reported as `0`, so a gap in the series always means
-"not reported", never "nothing ran".
+"not reported", never "nothing ran". The one exception: missed days before the
+first `insights` data are not reported at all.
 
 The first report works the same way: it carries a `daily` point for every day
 from the first `insights` data to yesterday. It carries no past `cumulative`

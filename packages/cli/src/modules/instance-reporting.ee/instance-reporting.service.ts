@@ -279,10 +279,11 @@ export class InstanceReportingService {
 	}
 
 	/**
-	 * The oldest day the next report can carry an exact daily point for.
+	 * The oldest day the next report can carry an exact daily point for: the day
+	 * after the last delivered one, but never before insights has exact data.
 	 *
-	 * Days that insights has folded into weekly totals have no exact value, so
-	 * they are never reported.
+	 * Days before that data are either folded into weekly totals, which have no
+	 * exact value, or have nothing that shows insights was collecting.
 	 */
 	private async firstOwedDay(lastCoveredDay: string | null, yesterday: string): Promise<string> {
 		const dayAfterCovered = lastCoveredDay ? addUtcDays(lastCoveredDay, 1) : null;
@@ -290,16 +291,11 @@ export class InstanceReportingService {
 		// Only yesterday is owed, which is the everyday case: skip the history read.
 		if (dayAfterCovered === yesterday) return yesterday;
 
-		const { firstExactDay, firstDataDay } = await this.insightsService.getDailyDataStart();
+		const dataStart = await this.insightsService.getDailyDataStart();
 
-		// A delivered report proves insights was collecting from then on, since this
-		// module cannot run without it. So a day without data there saw no executions.
-		if (dayAfterCovered) return maxDay(dayAfterCovered, firstExactDay);
-
-		// Nothing proves insights was collecting before its first data, so start
-		// there rather than report zeros. Without any data, still report yesterday,
-		// so that a new instance shows up on the receiver.
-		return firstDataDay ?? yesterday;
+		// Without any data, a first report still carries yesterday, so that a new
+		// instance shows up on the receiver.
+		return maxDay(dayAfterCovered ?? dataStart ?? yesterday, dataStart);
 	}
 
 	/**
