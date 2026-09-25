@@ -135,6 +135,11 @@ An imported workflow's destination ID must not appear in `--deleted-workflow-ids
 The command rejects this overlap before any writes, including with the `skip`
 policy. It checks the destination ID even if the workflow is absent or archived.
 
+The removed workflows are reported under `removedWorkflows` in the result, each
+with `deletion: archived` — selection import archives the workflows it removes,
+so they and their execution history stay recoverable; it never hard-deletes.
+Already-gone or already-archived IDs are skipped and are not listed.
+
 ```bash
 n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>
 n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>
