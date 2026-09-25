@@ -119,6 +119,62 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(await workflowRepository.findOneBy({ id: 'WFB' })).toBeNull();
 	});
 
+	it('archives a target workflow named in deletedWorkflowIds and returns 200', async () => {
+		const project = await createTeamProject('Target', owner);
+		const victim = await createWorkflow({ name: 'Victim' }, project);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.field('deletedWorkflowIds', JSON.stringify([victim.id]))
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.workflows).toHaveLength(1);
+		expect(response.body.workflows[0]).toMatchObject({
+			sourceWorkflowId: 'WFA',
+			status: 'created',
+		});
+		expect(response.body.removedWorkflows).toEqual([
+			expect.objectContaining({ workflowId: victim.id, deletion: 'archived' }),
+		]);
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		expect((await workflowRepository.findOneBy({ id: victim.id }))?.isArchived).toBe(true);
+		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
+	});
+
+	it('returns 409 for a conflicting import under workflowConflictPolicy=fail', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		// Seed WFA in the target under the default policy.
+		await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', tarBuffer, 'import.n8np');
+
+		// Re-importing the same id under `fail` is blocked as a conflict.
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.issues).toEqual([
+			expect.objectContaining({
+				type: 'workflow-conflict',
+				sourceWorkflowId: 'WFA',
+				existingWorkflowId: 'WFA',
+			}),
+		]);
+	});
+
 	it('rejects a request that omits selectedProjectId', async () => {
 		const project = await createTeamProject('Target', owner);
 		const tarBuffer = await buildProjectPackage(project.id);

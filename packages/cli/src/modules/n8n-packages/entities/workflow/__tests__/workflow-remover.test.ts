@@ -300,6 +300,36 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 		);
 	});
 
+	it('under overwrite, deletes only the explicit target and never reconciles siblings', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'target', name: 'Target', parentFolderId: null },
+			{ id: 'stale', name: 'Stale', parentFolderId: null },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['target'],
+		});
+
+		// Only the named target goes; the stale sibling the package omits is left untouched.
+		expect(plan.removals).toEqual([{ id: 'target', name: 'Target', parentFolderId: null }]);
+		expect(plan.failures).toEqual([]);
+		// Reconcile-by-absence never runs even under overwrite: placements are not read, and the
+		// permission query sees only the explicit id — not the stale sibling.
+		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
+		expect(
+			workflowFinderService.findOwnedWorkflowRemovalCandidates,
+		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target']);
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
+			['target'],
+			user,
+			['workflow:delete'],
+		);
+	});
+
 	it('reports a failure for a named workflow the caller may not delete', async () => {
 		const { remover } = makeRemover([{ id: 'target', name: 'Target', parentFolderId: null }], []);
 

@@ -321,6 +321,39 @@ describe('importPackageSelectionFromDirectory', () => {
 		expect((await findWorkflow('WFA'))?.name).toBe('wfa');
 	});
 
+	it('fails a conflicting re-import under workflowConflictPolicy=fail, changing nothing', async () => {
+		await importSelection(await packageDir(twoWorkflowPackage), {
+			selectedProjectId: 'P1',
+			selectedWorkflowIds: ['WFA'],
+		});
+
+		const renamedDir = await packageDir({
+			projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa renamed' }),
+				},
+			],
+		});
+
+		await expect(
+			importSelection(
+				renamedDir,
+				{ selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] },
+				{ workflowConflictPolicy: 'fail' },
+			),
+		).rejects.toMatchObject({
+			constructor: ConflictError,
+			meta: {
+				issues: [{ type: 'workflow-conflict', sourceWorkflowId: 'WFA', existingWorkflowId: 'WFA' }],
+			},
+		});
+
+		// The existing workflow is untouched: the blocked import writes nothing.
+		expect((await findWorkflow('WFA'))?.name).toBe('wfa');
+	});
+
 	it('imports an out-of-subset sub-workflow reference broken-but-preserved, soft-failing its publish', async () => {
 		const parent = serializedWorkflow({
 			id: 'CHEDDAR',
