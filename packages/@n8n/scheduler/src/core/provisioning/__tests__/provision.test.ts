@@ -41,6 +41,7 @@ describe('provision', () => {
 		const tx = mock<ProvisionTransaction>();
 		tx.findExisting.mockResolvedValue(existing);
 		tx.insert.mockResolvedValue([]);
+		tx.readJobs.mockResolvedValue({ now: new Date(), jobs: [] });
 		return tx;
 	};
 

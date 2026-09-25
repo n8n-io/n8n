@@ -45,6 +45,7 @@ export type {
 	ExistingJob,
 	ProvisionedJob,
 	ProvisionSummary,
+	StoredJobs,
 } from './provisioning';
 export { createDispatchReporter, backoff } from './executor';
 export type {
@@ -56,7 +57,6 @@ export type {
 } from './executor';
 export {
 	DEFAULT_MATERIALIZER_OPTIONS,
-	materialize,
 	totalDiscarded,
 	ownerKeyFor,
 	withOwnerKeys,

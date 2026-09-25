@@ -32,6 +32,7 @@ describe('createJobProvisioner', () => {
 		const tx = mock<ProvisionTransaction>();
 		tx.findExisting.mockResolvedValue([]);
 		tx.insert.mockResolvedValue([1]);
+		tx.readJobs.mockResolvedValue({ now: new Date(), jobs: [] });
 		const runInProvision: RunInProvisionTransaction = async (work) => await work(tx);
 		const provisionTransaction = vi.fn().mockReturnValue(runInProvision);
 		const provisioner = createJobProvisioner({

@@ -1,4 +1,5 @@
-import type { DesiredJob, ExistingJob, ScheduleDefinition } from './types';
+import type { DesiredJob, ExistingJob, ScheduleDefinition, StoredJobs } from './types';
+import type { MaterializerTransaction } from '../materializer';
 
 /**
  * The writes one provision performs, all bound to one transaction. The storage
@@ -6,7 +7,8 @@ import type { DesiredJob, ExistingJob, ScheduleDefinition } from './types';
  * these calls but never opens the transaction itself (mirrors the materializer's
  * {@link RunInTransaction}).
  */
-export interface ProvisionTransaction {
+export interface ProvisionTransaction
+	extends Pick<MaterializerTransaction, 'recordOccurrences' | 'retireSuperseded' | 'advanceJobs'> {
 	/** Every job currently in the scope, so provisioning can diff by name. */
 	findExisting(): Promise<ExistingJob[]>;
 	/**
@@ -20,6 +22,8 @@ export interface ProvisionTransaction {
 	withdrawPendingTasks(jobIds: number[]): Promise<void>;
 	/** Delete jobs no longer desired; their tasks cascade away. */
 	deleteJobs(jobIds: number[]): Promise<void>;
+	/** The jobs with these ids as this transaction sees them, and the database time now. */
+	readJobs(jobIds: number[]): Promise<StoredJobs>;
 }
 
 export type RunInProvisionTransaction = <T>(
