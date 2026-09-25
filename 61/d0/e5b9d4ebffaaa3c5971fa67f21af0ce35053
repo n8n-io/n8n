@@ -1,0 +1,29 @@
+demo-report-backfilling/env.sh
+  s_088272d4812bff::t_27bfd672a96bad 26-28
+demo-report-backfilling/show-insights.sh
+  s_088272d4812bff::t_08bf981a8224d2 6,8,13-14,18,20-32,34-41
+demo-report-backfilling/README.md
+  s_088272d4812bff::t_17ad7c1b0ebe19 71,74-75,78,81
+  s_088272d4812bff::t_5f86f3b66f06cc 46-47,50-57,60-62
+  s_088272d4812bff::t_993160a5cccb4a 97,103
+  s_088272d4812bff::t_0b8026613ad38c 130-135,138
+  s_088272d4812bff::t_31c24dbc074df5 36-37
+  s_088272d4812bff::t_0ff99bb973f867 3-6
+  s_088272d4812bff::t_44e6123b067683 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "61d0e5b9d4ebffaaa3c5971fa67f21af0ce35053",
+  "prompts": {},
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
