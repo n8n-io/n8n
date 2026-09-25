@@ -137,7 +137,7 @@ const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seco
  * Rejects a task that declares an option the schedulers cannot honor.
  *
  * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
- * @throws {UnexpectedError} when an instance task declares an interval that is not positive
+ * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
 export function validateSystemTask(task: SystemTask): void {
 	resolveSystemTaskRunOptions(task);
@@ -160,11 +160,14 @@ export function validateSystemTask(task: SystemTask): void {
 	if (
 		placement.scope === 'instance' &&
 		schedule.kind === 'interval' &&
-		!(schedule.intervalSeconds > 0)
+		!(schedule.intervalSeconds > 0 && Number.isFinite(schedule.intervalSeconds))
 	) {
-		throw new UnexpectedError('A system task declares an interval that is not positive', {
-			extra: { name: task.name, intervalSeconds: schedule.intervalSeconds },
-		});
+		throw new UnexpectedError(
+			'A system task declares an interval that is not positive and finite',
+			{
+				extra: { name: task.name, intervalSeconds: schedule.intervalSeconds },
+			},
+		);
 	}
 }
 

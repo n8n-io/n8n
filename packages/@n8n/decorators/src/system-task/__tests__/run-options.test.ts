@@ -107,7 +107,7 @@ it('should accept the longest retry delay a timeout honors', () => {
 	).not.toThrow();
 });
 
-it.each([0, -1, NaN])(
+it.each([0, -1, NaN, Infinity])(
 	'should reject an instance task interval of %s seconds',
 	(intervalSeconds) => {
 		expect(() =>
@@ -120,7 +120,7 @@ it.each([0, -1, NaN])(
 			),
 		).toThrowError(
 			expect.objectContaining({
-				message: 'A system task declares an interval that is not positive',
+				message: 'A system task declares an interval that is not positive and finite',
 				extra: { name: 'test-task', intervalSeconds },
 			}),
 		);
