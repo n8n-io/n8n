@@ -56,6 +56,7 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -174,6 +175,7 @@ export class SourceControlImportService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -914,6 +916,16 @@ export class SourceControlImportService {
 			},
 			{ policyCleared: cleared },
 		);
+
+		// The upsert emits no `workflow-saved` event, so index the draft here.
+		// Re-read to get the `versionCounter` that the database trigger set.
+		const importedDraft = await this.workflowRepository.findOne({
+			where: { id },
+			select: ['id', 'name', 'versionCounter', 'nodes', 'settings'],
+		});
+		if (importedDraft) {
+			await this.workflowIndexService.updateIndexForDraft(importedDraft);
+		}
 
 		if (archivedByPull) {
 			// A pull is a system mutation: no acting user to attribute the archive to.
