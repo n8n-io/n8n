@@ -75,7 +75,7 @@ describe('useNodeTypesStore', () => {
 
 		it('should return false for a vetted community node type that is not installed', async () => {
 			vi.spyOn(useSettingsStore(), 'isCommunityNodesFeatureEnabled', 'get').mockReturnValue(true);
-			vi.mocked(nodeTypesApi.fetchCommunityNodeTypes).mockResolvedValue([
+			vi.mocked(nodeTypesApi.fetchCommunityNodeTypes).mockResolvedValueOnce([
 				{ name: 'n8n-nodes-vetted.node', nodeDescription: { name: 'n8n-nodes-vetted.node' } },
 			] as CommunityNodeType[]);
 			await store.fetchCommunityNodePreviews();
