@@ -1396,6 +1396,45 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
+		test('marks a tab the agent opened by reading a workflow as fetched, not built', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							// A small `get` returns the document itself.
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'workflows',
+								args: { action: 'get', workflowId: 'wf-read' },
+								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
+							}),
+							// A version read carries a workflowId like a build result does.
+							makeToolCall({
+								toolCallId: 'tc-version',
+								toolName: 'workflows',
+								args: { action: 'get', workflowId: 'wf-version', versionId: 'v1' },
+								result: { workflowId: 'wf-version', name: 'Leads', versionId: 'v1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-edited' },
+								result: { success: true, workflowName: 'Invoices' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-read': 'fetched',
+				'wf-version': 'fetched',
+				'wf-edited': 'built',
+			});
+		});
+
 		test('keeps the first intake when the agent later edits an attached workflow', async () => {
 			const { messages, producedArtifactOrigins } = setup();
 			messages.value = [attachMessage('wf-1'), buildMessage('wf-1')];

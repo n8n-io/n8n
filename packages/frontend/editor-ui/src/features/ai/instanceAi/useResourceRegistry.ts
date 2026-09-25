@@ -36,11 +36,12 @@ export interface TransientWorkflowArtifactReference {
 
 /**
  * How a produced artifact first entered the thread: the agent built or edited
- * it (`built`), a message or the editor hand-off attached it (`attached`), or
- * the user mentioned it from the composer (`mentioned`). Telemetry only; the
- * panel does not show it.
+ * it (`built`), the agent read it in a lookup that opens a tab (`fetched`), a
+ * message or the editor hand-off attached it (`attached`), or the user
+ * mentioned it from the composer (`mentioned`). Telemetry only; the panel does
+ * not show it.
  */
-export type ArtifactOrigin = 'built' | 'attached' | 'mentioned';
+export type ArtifactOrigin = 'built' | 'fetched' | 'attached' | 'mentioned';
 
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
@@ -158,6 +159,26 @@ const ARTIFACT_TOOLS = new Set([
 	'delete-data-table-rows',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+// Actions that read without changing anything. Their results still register a
+// tab (a small `get` returns the document itself), but the tab is fetched, not built.
+const WORKFLOW_READ_ACTIONS = new Set([
+	'list',
+	'node-usage',
+	'get',
+	'get-as-code',
+	'validate',
+	'list-versions',
+]);
+const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
+
+/** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
+function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
+	const action = optionalString(tc.args?.action);
+	if (!action) return 'built';
+	if (tc.toolName === 'workflows' && WORKFLOW_READ_ACTIONS.has(action)) return 'fetched';
+	if (tc.toolName === 'data-tables' && DATA_TABLE_READ_ACTIONS.has(action)) return 'fetched';
+	return 'built';
+}
 function entryFromAgentBuilderTarget(
 	target: InstanceAiAgentNode['targetResource'],
 	existing?: ResourceEntry,
@@ -319,7 +340,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		const dataTableAction = optionalString(tc.args?.action);
 		const isReadOnlyLookup =
 			tc.toolName === 'data-tables' &&
-			(dataTableAction === 'schema' || dataTableAction === 'query');
+			dataTableAction !== undefined &&
+			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
 		recordProduced(
 			col,
 			{
@@ -360,11 +382,17 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
 	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity !== undefined;
+	// A sub-agent spawned onto a resource is there to work on it.
+	col.intake = 'built';
 	if (!deferAgentTarget) extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
+		col.intake = toolCallOrigin(tc);
 		extractFromToolCall(tc, col);
 	}
-	if (deferAgentTarget) extractFromTargetResource(node, col);
+	if (deferAgentTarget) {
+		col.intake = 'built';
+		extractFromTargetResource(node, col);
+	}
 	for (const child of node.children) {
 		collectFromAgentNode(child, col);
 	}
@@ -583,10 +611,10 @@ export function useResourceRegistry(
 
 			// Messages run in order, and within one turn the user's attachments
 			// precede the agent's work, so the first record of an id is its origin.
+			// The agent tree sets its own intake per tool call.
 			for (const msg of messages()) {
 				col.intake = 'attached';
 				collectFromMessageAttachments(msg, col);
-				col.intake = 'built';
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
 			col.intake = 'attached';

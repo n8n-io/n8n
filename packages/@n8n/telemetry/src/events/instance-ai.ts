@@ -588,10 +588,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
 			artifact_origin: z
-				.enum(['built', 'attached', 'mentioned'])
+				.enum(['built', 'fetched', 'attached', 'mentioned'])
 				.nullable()
 				.describe(
-					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'attached' is a message or the editor hand-off attaching it, 'mentioned' is an earlier pick in this picker. Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
+					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'fetched' is the assistant reading it in a lookup that opens a tab (even if it edits it later), 'attached' is a message or the editor hand-off attaching it, 'mentioned' is an earlier pick in this picker. Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
 				),
 		}),
 	},
