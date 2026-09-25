@@ -12,7 +12,7 @@ const V1_ID = z
 	.refine((id) => Number(id) <= 2147483647);
 
 /**
- * A cursor for a list merging engine 1.0 (integer ID) and engine 2.0 (UUID) rows, since
+ * A cursor for a list merging engine 1.0 (integer ID) and engine v2 (UUID) rows, since
  * the two ID spaces don't sort against each other and must each track their own position.
  */
 const Cursor = z

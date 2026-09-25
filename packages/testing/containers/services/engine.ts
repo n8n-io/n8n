@@ -1,5 +1,5 @@
 /**
- * How the stack runs engine 2.0.
+ * How the stack runs engine v2.
  *
  * `in-process` enables the `engine-v2` backend module, so the data plane runs
  * inside the main container. A separate data plane container is not supported
@@ -26,7 +26,7 @@ interface EngineEnvOptions {
 }
 
 /**
- * Refuses a stack that engine 2.0 cannot run on. `createN8NStack` calls this
+ * Refuses a stack that engine v2 cannot run on. `createN8NStack` calls this
  * before it starts a container, so the run fails in a second instead of after
  * a Postgres boot. No-op when `engine` is unset.
  */
@@ -38,16 +38,16 @@ export function assertEngineSupported({
 	if (!engine) return;
 
 	if (isQueueMode) {
-		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
+		throw new Error('Engine v2 does not support queue mode: use a single main and no workers');
 	}
 
 	if (!usePostgres) {
-		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
+		throw new Error('Engine v2 needs Postgres: set `postgres: true` on the stack config');
 	}
 }
 
 /**
- * Adds the env that turns on engine 2.0 to an n8n environment in place.
+ * Adds the env that turns on engine v2 to an n8n environment in place.
  *
  * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
  * so the caller never handles credentials. No-op when `engine` is unset.
@@ -64,7 +64,7 @@ export function applyEngineEnv(
 	// the URL as the literal `undefined` and fail at engine boot.
 	const missing = CONNECTION_KEYS.filter((key) => !env[key]);
 	if (missing.length > 0) {
-		throw new Error(`Engine 2.0 needs the Postgres connection env: missing ${missing.join(', ')}`);
+		throw new Error(`Engine v2 needs the Postgres connection env: missing ${missing.join(', ')}`);
 	}
 
 	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);

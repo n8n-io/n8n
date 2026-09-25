@@ -108,7 +108,7 @@ describe('attachResponseHooks', () => {
 		attachResponseHooks(additionalData, request);
 
 		await expect(additionalData.hooks?.runHook('sendResponse', [response])).rejects.toThrow(
-			/Engine 2.0 cannot/,
+			/Engine v2 cannot/,
 		);
 	});
 });

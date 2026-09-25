@@ -77,16 +77,16 @@ function hasBody(value: unknown): value is { body: unknown } {
 
 function assertCarriable(value: unknown): void {
 	if (Buffer.isBuffer(value)) {
-		throw new UserError('Engine 2.0 cannot send a binary webhook response yet.');
+		throw new UserError('Engine v2 cannot send a binary webhook response yet.');
 	}
 
 	if (typeof value === 'object' && value !== null) {
 		if (typeof (value as { pipe?: unknown }).pipe === 'function') {
-			throw new UserError('Engine 2.0 cannot stream a webhook response body yet.');
+			throw new UserError('Engine v2 cannot stream a webhook response body yet.');
 		}
 
 		if ('binaryData' in value) {
-			throw new UserError('Engine 2.0 cannot send a binary webhook response yet.');
+			throw new UserError('Engine v2 cannot send a binary webhook response yet.');
 		}
 	}
 }
