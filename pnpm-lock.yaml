@@ -965,7 +965,7 @@ overrides:
   baseline-browser-mapping: ^2.11.0
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
-  '@mistralai/mistralai': ^1.10.0
+  '@mistralai/mistralai': ^2.2.1
   mssql@12.7.0>tedious: 20.0.5
   '@opentelemetry/api': 1.9.1
   '@opentelemetry/core': 2.10.0
