@@ -204,8 +204,6 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-			formBaseUrl: orchestrationContext?.formBaseUrl,
 			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,

@@ -77,7 +77,6 @@ function collectAgents(): AgentEntry[] {
 					label:
 						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
 						computerUseState: {
 							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
@@ -92,7 +91,7 @@ function collectAgents(): AgentEntry[] {
 				{
 					file: 'default',
 					label:
-						'no options set — what a fresh OSS install sees (no webhook URL, no filesystem, no gateway, no browser, no tool search)',
+						'no options set — what a fresh OSS install sees (no filesystem, no gateway, no browser, no tool search)',
 					body: getSystemPrompt({}),
 				},
 				{
@@ -106,7 +105,6 @@ function collectAgents(): AgentEntry[] {
 					label:
 						"both Computer Use channels available but neither connected — renders the 'install Computer Use' pitch for both + menu entries",
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
 						computerUseState: {
 							localComputer: { status: 'disconnected' },
 							browser: { status: 'disconnected' },
@@ -118,7 +116,6 @@ function collectAgents(): AgentEntry[] {
 					label:
 						"local computer connected serving filesystem, browser channel available but not connected — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
 						computerUseState: {
 							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
