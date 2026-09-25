@@ -69,12 +69,14 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		// One round trip, not one instant. The probes below run once, so a step can
 		// change while the UPDATE waits for the row's lock. The status is a
 		// projection: the next suspension or settlement re-derives it.
+		// MATERIALIZED, because `live.runnable` is read three times. Without it
+		// PostgreSQL inlines the CTE and runs that probe once for each read.
 		// The `e.status` predicate is re-checked against the current row, so a
 		// refresh that lost a race with `finishExecution` writes nothing.
 		// The last predicate skips the write when the status already holds. A
 		// settling step then does not take the execution row's lock for nothing.
 		await this.repo.query(
-			`WITH live AS (
+			`WITH live AS MATERIALIZED (
 				SELECT
 					EXISTS (
 						SELECT 1 FROM workflow_step_execution
