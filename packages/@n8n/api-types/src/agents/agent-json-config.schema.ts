@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
-import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -15,6 +15,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
 import { jsonValueSchema } from '../schemas/json-value.schema';
+import { mcpToolPermissionsSchema } from '../schemas/mcp-tool-permissions.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -263,26 +264,11 @@ export const McpServerConfigSchema = z
 			.describe(
 				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
-		toolFilter: z
-			.discriminatedUnion('mode', [
-				z
-					.object({
-						mode: z.literal('allow'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-				z
-					.object({
-						mode: z.literal('exclude'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-			])
+		toolPermissions: mcpToolPermissionsSchema
 			.optional()
-			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: AgentApprovalSchema.optional().describe(
-			'Human-in-the-loop approval. Absent = no approval required',
-		),
+			.describe(
+				'Optional read/write category permissions with exact-name tool overrides. Omission allows all tools without approval',
+			),
 		connectionTimeoutMs: z
 			.number()
 			.int()

@@ -124,6 +124,9 @@ describe('useAgentCapabilitiesActions', () => {
 					url: 'https://mcp.example.com',
 					authentication: 'none',
 					transport: 'streamableHttp',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			],
 		} as Partial<AgentJsonConfig>);
@@ -223,6 +226,9 @@ describe('useAgentCapabilitiesActions', () => {
 			url: 'https://mcp.example.com',
 			authentication: 'none',
 			transport: 'streamableHttp',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 		const { actions, scheduleConfigUpdate } = makeActions({
 			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],

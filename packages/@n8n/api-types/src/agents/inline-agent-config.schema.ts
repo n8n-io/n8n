@@ -56,7 +56,16 @@ export const InlineAgentJsonConfigSchema = AgentJsonConfigBaseSchema.pick({
 		// don't support — same reason the tool variants above omit
 		// `requireApproval`.
 		mcpServers: AgentJsonConfigBaseSchema.shape.mcpServers.refine(
-			(servers) => (servers ?? []).every((server) => server.approval === undefined),
+			(servers) =>
+				(servers ?? []).every((server) => {
+					const permissions = server.toolPermissions;
+					return (
+						permissions === undefined ||
+						(permissions.categories.read !== 'require_approval' &&
+							permissions.categories.write !== 'require_approval' &&
+							!Object.values(permissions.tools ?? {}).includes('require_approval'))
+					);
+				}),
 			{ message: 'MCP tool approval is not available for inline agents' },
 		),
 	})

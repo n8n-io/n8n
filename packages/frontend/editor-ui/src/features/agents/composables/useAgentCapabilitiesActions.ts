@@ -220,6 +220,36 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const mcpServer = mcpServers[mcpServerIndex];
 		if (!mcpServer) return;
 
+		if (mcpServer.metadata?.nodeTypeName) {
+			const targetAgentId = agentId.value;
+			telemetry?.trackOpenedToolFromList?.('mcpServer');
+			uiStore.openModalWithData({
+				name: AGENT_TOOL_CONFIG_MODAL_KEY,
+				data: {
+					kind: 'registryMcpServer',
+					mcpServer,
+					supportsToolApproval,
+					existingToolNames: mcpServers
+						.filter((_, index) => index !== mcpServerIndex)
+						.map((server) => server.name),
+					onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+						nextMcpServers[mcpServerIndex] = updatedServer;
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+					onRemove: () => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
+							(_, index) => index !== mcpServerIndex,
+						);
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+				},
+			});
+			return;
+		}
+
 		const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
 		const nodeType =
 			nodeTypesStore.getNodeType(preferredNodeTypeName) ??

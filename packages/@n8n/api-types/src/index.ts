@@ -689,11 +689,17 @@ export type {
 } from './schemas/instance-ai.schema';
 
 export type {
+	McpRegistryDiscoveredConnection,
+	McpRegistryDiscoveredTool,
+	McpRegistryDiscoveryFailureReason,
+	McpRegistryDiscoveryRequest,
+	McpRegistryDiscoveryResponse,
 	McpRegistryServerStatus,
 	McpRegistryServerIconResponse,
 	McpRegistryServerToolResponse,
 	McpRegistryServerResponse,
 } from './schemas/mcp-registry.schema';
+export { mcpRegistryDiscoveryRequestSchema } from './schemas/mcp-registry.schema';
 
 export {
 	createInitialState,

@@ -92,6 +92,7 @@ function renderWith(
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
 		showSuggestionFooter: boolean;
+		groupSearchResults: boolean;
 		createAction: {
 			category: ToolCategoryKey;
 			label: string;
@@ -107,6 +108,7 @@ function renderWith(
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			showSuggestionFooter: props.showSuggestionFooter,
+			groupSearchResults: props.groupSearchResults,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -398,6 +400,25 @@ describe('ToolsConnectionModal', () => {
 		// Categories with no hits stay in the strip, reading zero.
 		expect(getByTestId('tab-workflows').textContent).toContain('(0)');
 		expect(getByTestId('tab-connected').textContent).toContain('(0)');
+	});
+
+	it('groups search matches from all categories under category headings', async () => {
+		const { getByPlaceholderText, getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all', 'mcp', 'app-action', 'workflows'],
+			groupSearchResults: true,
+		});
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), 'notion');
+
+		await waitFor(() => {
+			expect(getByTestId('tools-connection-search-category-mcp')).toHaveTextContent('Connectors');
+		});
+		expect(getByTestId('tools-connection-search-category-workflows')).toHaveTextContent(
+			'Workflows',
+		);
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+		expect(queryByTestId('tools-connection-tabs')).not.toBeInTheDocument();
 	});
 
 	it('filters the list down to the clicked category', async () => {

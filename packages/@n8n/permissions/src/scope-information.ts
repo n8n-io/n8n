@@ -144,6 +144,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows creating, updating, and deleting provider connections used by instance-level features. These connections are not available in workflows.',
 	},
+	'mcp:discover': {
+		displayName: 'Discover MCP tools',
+		description:
+			'Allows connecting to an MCP server temporarily to discover its available tools.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',

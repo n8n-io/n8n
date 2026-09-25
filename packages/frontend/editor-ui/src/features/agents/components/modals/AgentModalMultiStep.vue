@@ -79,6 +79,9 @@ watch(
 		@update:title="emit('update:title', $event)"
 		@back="emit('back')"
 	>
+		<template v-if="$slots.titlePrefix" #titlePrefix>
+			<slot name="titlePrefix" />
+		</template>
 		<template #headerActions>
 			<slot name="headerActions" />
 		</template>

@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type ToolConnectionCredentialAdapter,
 	type ToolConnectionItem,
 	type ToolCredentialRef,
 } from './types';
@@ -15,6 +16,7 @@ const props = withDefaults(
 		credentials: ToolCredentialRef[];
 		connectVariant?: 'solid' | 'outline';
 		teleported?: boolean;
+		adapter?: ToolConnectionCredentialAdapter | null;
 	}>(),
 	{
 		connectVariant: 'solid',
@@ -31,7 +33,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const adapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const injectedAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const adapter = computed(() => props.adapter ?? injectedAdapter);
 
 const isOpen = ref(false);
 const searchQuery = ref('');
@@ -48,9 +51,10 @@ const selectedCredentialIds = computed(() =>
 );
 
 const availableCredentials = computed(() => {
-	if (!adapter) return [];
+	const credentialAdapter = adapter.value;
+	if (!credentialAdapter) return [];
 	return props.credentials.flatMap((cred) =>
-		adapter.getCredentialsByType(cred.authType).map((c) => ({
+		credentialAdapter.getCredentialsByType(cred.authType).map((c) => ({
 			id: c.id,
 			name: c.name,
 			authType: cred.authType,
@@ -62,7 +66,7 @@ const availableCredentials = computed(() => {
 const selectedCredentialName = computed(() => {
 	for (const credentialRef of props.credentials) {
 		if (!credentialRef.credentialId) continue;
-		const credential = adapter
+		const credential = adapter.value
 			?.getCredentialsByType(credentialRef.authType)
 			.find(({ id }) => id === credentialRef.credentialId);
 		if (credential) return credential.name;
@@ -120,12 +124,12 @@ function createCredential(authType: string, source: 'direct' | 'dropdown') {
 			? creatableCredentials.value.map((credential) => credential.authType)
 			: undefined;
 
-	adapter?.openNewCredential(authType, props.item, credentialTypes);
+	adapter.value?.openNewCredential(authType, props.item, credentialTypes);
 	isOpen.value = false;
 }
 
 function editCredential(credentialId: string) {
-	adapter?.openExistingCredential(credentialId);
+	adapter.value?.openExistingCredential(credentialId);
 	isOpen.value = false;
 }
 </script>

@@ -299,6 +299,45 @@ describe('AgentToolConfigModal', () => {
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
+	it('disables Save while a registry MCP connection is unavailable', () => {
+		const AgentToolConfigContent = defineComponent({
+			setup(_, { expose }) {
+				expose({
+					headerItem: null,
+					saveDisabled: true,
+					titleError: '',
+				});
+				return {};
+			},
+			template: '<div />',
+		});
+		const renderRegistryModal = createComponentRenderer(AgentToolConfigModal, {
+			global: {
+				stubs: {
+					AgentModal: AgentModalTestStub,
+					AgentToolConfigContent,
+				},
+			},
+		});
+		const { container } = renderRegistryModal({
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					kind: 'registryMcpServer',
+					mcpServer: {
+						name: 'github',
+						authentication: 'githubMcpOAuth2Api',
+						credential: 'credential-1',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(getNativeTestId(container, 'agent-tool-config-save')).toBeDisabled();
+	});
+
 	it('enables Save once valid and round-trips the node back into the toolRef on confirm', async () => {
 		const onConfirm = vi.fn();
 		const initial = toolRef();
@@ -474,7 +513,7 @@ describe('AgentToolConfigModal', () => {
 		);
 	});
 
-	it('uses an explicit Remove workflow action', async () => {
+	it('uses the shared Remove action', async () => {
 		const onRemove = vi.fn();
 		const { container, getByText } = renderModal({
 			onRemove,
@@ -487,7 +526,7 @@ describe('AgentToolConfigModal', () => {
 			},
 		});
 
-		expect(getByText('agents.builder.tools.workflow.remove')).toBeInTheDocument();
+		expect(getByText('agents.builder.tools.remove')).toBeInTheDocument();
 		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
 
 		expect(onRemove).toHaveBeenCalledOnce();

@@ -83,6 +83,7 @@ const readTool = (name: string) => ({ name, category: 'read' as const });
 
 const makeServer = (slug: string): McpRegistryServerResponse => ({
 	slug,
+	nodeTypeName: `@n8n/mcp-registry.${slug}`,
 	name: `com.test/${slug}`,
 	title: slug,
 	description: `${slug} description`,

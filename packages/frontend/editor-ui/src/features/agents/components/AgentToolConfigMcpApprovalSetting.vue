@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import type { AgentApproval, McpToolPermissions } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodePropertyOptions } from 'n8n-workflow';
+import { computed, onMounted, ref } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentJsonMcpServerConfig } from '../types';
+
 import AgentApprovalSelector, { type ApprovalMode } from './AgentApprovalSelector.vue';
 
 const props = defineProps<{
-	modelValue?: AgentJsonMcpServerConfig['approval'];
+	modelValue: McpToolPermissions;
 	node: INode;
 	projectId?: string;
 }>();
 
 const emit = defineEmits<{
-	'update:modelValue': [value: AgentJsonMcpServerConfig['approval'] | undefined];
+	'update:modelValue': [value: McpToolPermissions];
 	'update:valid': [valid: boolean];
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-
 const tools = ref<INodePropertyOptions[]>([]);
 const isLoadingTools = ref(false);
 const loadingError = ref<string | null>(null);
@@ -44,7 +44,19 @@ const exposedToolNames = computed(() => {
 	return names;
 });
 
-const exposedToolOptions = computed(() => {
+const selectorValue = computed<AgentApproval | undefined>(() => {
+	const { categories, tools } = props.modelValue;
+	if (categories.read === 'require_approval' && categories.write === 'require_approval') {
+		return { mode: 'global' };
+	}
+
+	const selectedTools = Object.entries(tools ?? {}).flatMap(([name, permission]) =>
+		permission === 'require_approval' ? [name] : [],
+	);
+	return selectedTools.length > 0 ? { mode: 'selected', tools: selectedTools } : undefined;
+});
+
+const toolOptions = computed(() => {
 	const exposed = new Set(exposedToolNames.value);
 	return tools.value
 		.filter((tool) => exposed.has(String(tool.value)))
@@ -64,12 +76,6 @@ function toStringArray(value: unknown): string[] {
 	return Array.isArray(value)
 		? value.filter((item): item is string => typeof item === 'string')
 		: [];
-}
-
-function handleModeUpdate(mode: ApprovalMode) {
-	if (mode === 'selected' && tools.value.length === 0 && !isLoadingTools.value) {
-		void refreshTools();
-	}
 }
 
 async function refreshTools() {
@@ -94,19 +100,49 @@ async function refreshTools() {
 		isLoadingTools.value = false;
 	}
 }
+
+function handleModeUpdate(mode: ApprovalMode) {
+	if (mode === 'selected' && tools.value.length === 0 && !isLoadingTools.value) {
+		void refreshTools();
+	}
+}
+
+function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissions {
+	if (approval?.mode === 'global') {
+		return {
+			categories: {
+				read: 'require_approval',
+				write: 'require_approval',
+			},
+		};
+	}
+
+	const categories = {
+		read: 'always_allow' as const,
+		write: 'always_allow' as const,
+	};
+	if (approval?.mode !== 'selected' || approval.tools.length === 0) return { categories };
+
+	return {
+		categories,
+		tools: Object.fromEntries(
+			approval.tools.map((toolName) => [toolName, 'require_approval' as const]),
+		),
+	};
+}
 </script>
 
 <template>
 	<AgentApprovalSelector
-		:model-value="props.modelValue"
-		:options="exposedToolOptions"
+		:model-value="selectorValue"
+		:options="toolOptions"
 		:label="i18n.baseText('agents.toolConfig.mcpApproval.label')"
 		:hint="i18n.baseText('agents.toolConfig.mcpApproval.hint')"
 		:placeholder="i18n.baseText('agents.toolConfig.mcpApproval.tools.placeholder')"
 		:loading="isLoadingTools"
 		:error="loadingError ? i18n.baseText('agents.toolConfig.mcpApproval.loadError') : null"
 		test-id-prefix="agent-mcp-approval"
-		@update:model-value="emit('update:modelValue', $event)"
+		@update:model-value="emit('update:modelValue', toToolPermissions($event))"
 		@update:valid="emit('update:valid', $event)"
 		@update:mode="handleModeUpdate"
 	>

@@ -380,6 +380,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(getByText('Need another capability?')).toBeInTheDocument();
 		expect(getByText('Suggest a tool')).toBeInTheDocument();
 		expect(modalAttrs.persistentScrollbar ?? modalAttrs['persistent-scrollbar']).toBe(true);
+		expect(modalAttrs.groupSearchResults ?? modalAttrs['group-search-results']).toBe(true);
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
@@ -1024,6 +1025,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			url: 'https://mcp.example.com',
 			transport: 'streamableHttp',
 			authentication: 'none',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 
 		beforeEach(() => {
@@ -1033,6 +1037,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
 				[NodeConnectionTypes.AiTool]: [MCP_TOOL.name],
 			};
+		});
+
+		it('puts the MCP Client after existing connections in the Connectors category', async () => {
+			render([], vi.fn(), [SERVER]);
+			await flushPromises();
+
+			const connectorItems = getItems().filter((item) => item.category === 'mcp');
+
+			expect(connectorItems[0]?.id).toMatch(/^mcp:/);
+			expect(connectorItems[1]?.id).toBe(`nodeType:${AI_MCP_TOOL_NODE_TYPE}`);
 		});
 
 		it('commits an added MCP server to the host once its configure step saves', async () => {

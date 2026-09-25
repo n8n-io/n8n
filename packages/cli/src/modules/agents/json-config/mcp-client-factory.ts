@@ -5,14 +5,13 @@ import type {
 	McpConnectionFailedEvent,
 } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isRecord } from '@n8n/utils/is-record';
 import {
 	getMcpAuthHeaders,
 	isMcpOAuth2Authentication,
 	OperationalError,
-	shouldRefreshMcpOAuth2Token,
 } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
@@ -20,29 +19,11 @@ import {
 	prepareMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
-import type { OauthService } from '@/oauth/oauth.service';
 import {
-	type AuthFetchDomainPolicy,
-	createAuthFetch,
-	getBearerTokenRevision,
-	resolveAllowedDomains,
-} from '@/utils/auth-fetch';
-
-/**
- * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
- * field. The two representations carry the same semantics:
- *
- * - `undefined`            -> `undefined`   (no per-server approval)
- * - `{ mode: 'global' }`   -> `true`        (every tool requires approval)
- * - `{ mode: 'selected' }` -> `string[]`    (only listed tools require approval)
- */
-export function mapApprovalToSdk(
-	approval: AgentJsonMcpServerConfig['approval'],
-): McpServerConfig['requireApproval'] {
-	if (!approval) return undefined;
-	if (approval.mode === 'global') return true;
-	return approval.tools;
-}
+	createMcpAuthFetch,
+	resolveMcpAuthDomainPolicy,
+} from '@/modules/mcp-registry/mcp-auth-fetch';
+import type { OauthService } from '@/oauth/oauth.service';
 
 type DerivedAuth = {
 	headers: Record<string, string>;
@@ -85,33 +66,6 @@ async function deriveAuthHeaders(
 		};
 	} catch (error) {
 		return { headers: {}, credentialError: ensureError(error) };
-	}
-}
-
-function isNativeOAuth2Credential(authentication: string): boolean {
-	return (
-		isMcpOAuth2Authentication(authentication) &&
-		authentication !== 'mcpOAuth2Api' &&
-		!authentication.endsWith('McpOAuth2Api')
-	);
-}
-
-function resolveMcpDomainPolicy(
-	server: AgentJsonMcpServerConfig,
-	credentialData: ICredentialDataDecryptedObject,
-	mcpHostname: string | undefined,
-): AuthFetchDomainPolicy | undefined {
-	if (!isNativeOAuth2Credential(server.authentication) || !mcpHostname) {
-		return resolveAllowedDomains(credentialData);
-	}
-
-	switch (credentialData.allowedHttpRequestDomains) {
-		case 'domains':
-			return resolveAllowedDomains(credentialData);
-		case 'all':
-			return undefined;
-		default:
-			return { mode: 'domains', domains: mcpHostname };
 	}
 }
 
@@ -166,12 +120,9 @@ export async function buildMcpClientForServer(
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
-	const nativeMcpHostname =
-		isNativeOAuth2Credential(server.authentication) && URL.canParse(server.url)
-			? new URL(server.url).hostname
-			: undefined;
+	const mcpHostname = URL.canParse(server.url) ? new URL(server.url).hostname : undefined;
 	let allowedDomains = credentialData
-		? resolveMcpDomainPolicy(server, credentialData, nativeMcpHostname)
+		? resolveMcpAuthDomainPolicy(server.authentication, credentialData, mcpHostname)
 		: undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
@@ -205,39 +156,6 @@ export async function buildMcpClientForServer(
 		}
 	}
 
-	const oauthTokenData = isRecord(credentialData?.oauthTokenData)
-		? { ...credentialData.oauthTokenData }
-		: undefined;
-	const grantType = credentialData?.grantType;
-	const refreshAuthHeaders =
-		isMcpOAuth2Authentication(server.authentication) && server.credential
-			? async (currentHeaders: Record<string, string>) => {
-					const credentialId = server.credential;
-					if (!credentialId) return null;
-					const result = await oauthService.refreshOAuth2CredentialById(
-						credentialId,
-						projectId,
-						getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
-					);
-					if (!result) return null;
-
-					if (oauthTokenData) {
-						if (result.expiresAt === undefined) {
-							delete oauthTokenData.n8n_expires_at;
-						} else {
-							oauthTokenData.n8n_expires_at = String(result.expiresAt);
-						}
-						if (result.expiresInSeconds === undefined) {
-							delete oauthTokenData.expires_in;
-						} else {
-							oauthTokenData.expires_in = result.expiresInSeconds;
-						}
-					}
-
-					return result.headers;
-				}
-			: undefined;
-
 	// An unresolved credential fails at connect time so the real reason travels
 	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
 	// connecting unauthenticated returns an opaque 401/403 instead.
@@ -262,13 +180,14 @@ export async function buildMcpClientForServer(
 			}
 		: {
 				url: runtimeUrl,
-				fetch: createAuthFetch({
+				fetch: createMcpAuthFetch({
+					authentication: server.authentication,
 					baseFetch: proxyFetch,
+					credentialData: credentialData ?? {},
+					credentialId: server.credential,
 					initialHeaders,
-					onUnauthorized: refreshAuthHeaders,
-					...(refreshAuthHeaders
-						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData, grantType) }
-						: {}),
+					oauthService,
+					projectId,
 					allowedDomains,
 				}),
 			};
@@ -278,8 +197,7 @@ export async function buildMcpClientForServer(
 		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
-		toolFilter: server.toolFilter,
-		requireApproval: mapApprovalToSdk(server.approval),
+		configureTools: (tools) => compileMcpToolPermissions(server.toolPermissions, tools),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,

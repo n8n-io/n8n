@@ -1672,6 +1672,9 @@ export class McpAgentToolsService {
 				authentication: input.authentication,
 				credential: input.credential,
 				metadata: input.metadata,
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'always_allow' },
+				},
 				...(input.connectionTimeoutMs !== undefined
 					? { connectionTimeoutMs: input.connectionTimeoutMs }
 					: {}),

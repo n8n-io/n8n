@@ -96,8 +96,8 @@ describe('McpToolSettingsContent', () => {
 		expect(getByText('Can look things up')).toHaveTextContent(/^Can look things up$/);
 	});
 
-	it('renders both permission groups when one has no tools', () => {
-		const { getByTestId } = renderComponent({
+	it('disables a permission group that has no tools', () => {
+		const { getByLabelText, getByTestId } = renderComponent({
 			props: {
 				item: item({
 					availableTools: [{ id: 'search', name: 'Search issues', category: 'read' }],
@@ -107,6 +107,8 @@ describe('McpToolSettingsContent', () => {
 
 		expect(getByTestId('tools-connection-count-read')).toBeVisible();
 		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('0');
+		expect(getByTestId('tools-connection-permission-write').querySelector('input')).toBeDisabled();
+		expect(getByLabelText('Write and delete tools')).toBeDisabled();
 	});
 
 	it('uses actor-specific permission and confirmation copy', async () => {
@@ -139,6 +141,31 @@ describe('McpToolSettingsContent', () => {
 
 		expect(emitted().save).toEqual([
 			[{ categories: { read: 'blocked', write: 'require_approval' } }],
+		]);
+	});
+
+	it('preserves timeout settings when permissions change', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				item: item({
+					settings: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+						connectionTimeoutMs: 45_000,
+					},
+				}),
+			},
+		});
+
+		await selectPermission(getByTestId('tools-connection-permission-read'), 'Block');
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(emitted().save).toEqual([
+			[
+				{
+					categories: { read: 'blocked', write: 'require_approval' },
+					connectionTimeoutMs: 45_000,
+				},
+			],
 		]);
 	});
 

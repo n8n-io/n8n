@@ -95,7 +95,11 @@ function onOpenAutoFocus(event: Event) {
 	const autofocusTarget =
 		body.value?.querySelector<HTMLElement>(
 			'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
-		) ?? body.value?.querySelector<HTMLElement>('button:not([disabled])');
+		) ??
+		body.value?.querySelector<HTMLElement>('button:not([disabled])') ??
+		body.value?.parentElement?.querySelector<HTMLElement>(
+			'[data-testid="dialog-close-button"]:not([disabled])',
+		);
 	if (!autofocusTarget) return;
 
 	event.preventDefault();
@@ -129,6 +133,10 @@ function onOpenAutoFocus(event: Event) {
 					data-testid="agent-modal-back"
 					@click="onBack"
 				/>
+
+				<div v-if="$slots.titlePrefix" :class="$style.titlePrefix">
+					<slot name="titlePrefix" />
+				</div>
 
 				<N8nDialogTitle as-child>
 					<div :class="$style.titleGroup">
@@ -253,6 +261,12 @@ function onOpenAutoFocus(event: Event) {
 .backButton,
 .closeButton {
 	flex-shrink: 0;
+}
+
+.titlePrefix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 }
 
 .titleGroup {

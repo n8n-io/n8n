@@ -20,6 +20,7 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	projectId?: string;
 	contentTestId?: string;
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 }>();
@@ -61,6 +62,7 @@ defineExpose({
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
 		:hidden-operations="HIDDEN_AGENT_NODE_TOOL_OPERATIONS"
+		:hidden-parameters="props.hiddenParameters"
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 		:sync-node-to-ndv="true"

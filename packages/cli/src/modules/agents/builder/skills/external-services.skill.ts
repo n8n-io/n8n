@@ -252,15 +252,19 @@ ${mcpServerSchemaText}
 
 ### Tool exposure and approval
 
-- Expose every available MCP tool by default: omit \`toolFilter\` unless the user
-  explicitly asks to restrict which tools are exposed. Do not infer an allowlist
-  from the requested capability.
-- For an explicit filter or selected approval list, use only exact, unprefixed
-  \`name\` values from \`selectedResult.tools\` or a successful
-  \`verify_mcp_server\` result.
-- Never prepend the server name. Never invent MCP tool names. \`toolFilter.tools\`
-  and \`approval.tools\` match original MCP names; the SDK adds the server prefix
-  only when exposing tools to the model.
+- Omit \`toolPermissions\` unless the user explicitly asks to require approval
+  or block a tool or category. Omission allows all MCP tools without approval.
+- When the user asks for permission controls, set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\`. Use \`"always_allow"\` for categories
+  the user did not restrict.
+- Use \`"require_approval"\` when the user asks to approve a category or tool
+  before execution. Use \`"blocked"\` when the user asks to hide or disable it.
+- Use category policies for broad read/write rules. Add \`toolPermissions.tools\`
+  overrides only for exceptions to those category rules.
+- For an exact tool override, use only an unprefixed \`name\` from
+  \`selectedResult.tools\` or a successful \`verify_mcp_server\` result. Never
+  prepend the server name and never invent MCP tool names.
 
 ### Credential flow
 
@@ -304,7 +308,8 @@ setup later:
 - Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
   connect to), then \`read_config\` and \`patch_config\` the entry, preserving
   every other known field — \`name\`, \`transport\`, \`authentication\`, an
-  already-selected credential, and registry \`metadata\`.
+  already-selected credential, registry \`metadata\`, and any explicitly
+  configured \`toolPermissions\`.
 
 ### Selecting credentials
 

@@ -106,9 +106,10 @@ describe('useMcpServerAdapter', () => {
 				transport: 'streamableHttp',
 				authentication: 'githubEnterpriseOAuth2Api',
 				credential: 'UZscC4Mgs5EMeouw',
-				toolFilter: undefined,
 				description: undefined,
-				approval: undefined,
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				connectionTimeoutMs: 60001,
 				metadata: {
 					nodeTypeName: '@n8n/mcp-registry.gitHub',
@@ -142,6 +143,9 @@ describe('useMcpServerAdapter', () => {
 					transport: 'streamableHttp',
 					authentication: 'githubEnterpriseOAuth2Api',
 					credential: 'UZscC4Mgs5EMeouw',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 					connectionTimeoutMs: 60001,
 				},
 				nodeType,

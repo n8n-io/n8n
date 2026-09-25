@@ -490,9 +490,10 @@ export class EvalAgentExecutionService {
 	/**
 	 * Resolve canonical tool catalogs for configured MCP servers, so the mock
 	 * exposes the tools the real server would: registry entries carry the
-	 * server's declared catalog (matched by remote URL), and an allow-mode
-	 * toolFilter pins names even without a registry match. Best-effort —
-	 * without a match the mock's LLM-designed catalog applies.
+	 * server's declared catalog (matched by remote URL), and a policy with both
+	 * categories blocked pins its explicit non-blocked overrides even without a
+	 * registry match. Best-effort — without a match the mock's LLM-designed
+	 * catalog applies.
 	 */
 	private async resolveCanonicalMcpCatalogs(
 		mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
@@ -523,11 +524,15 @@ export class EvalAgentExecutionService {
 
 		for (const server of mcpServers) {
 			if (result[server.name]) continue;
-			if (server.toolFilter?.mode === 'allow' && server.toolFilter.tools.length > 0) {
-				result[server.name] = server.toolFilter.tools.map((name) => ({
-					name,
-					description: name,
-				}));
+			const permissions = server.toolPermissions;
+			if (
+				permissions?.categories.read === 'blocked' &&
+				permissions.categories.write === 'blocked'
+			) {
+				const allowedTools = Object.entries(permissions.tools ?? {})
+					.filter(([, permission]) => permission !== 'blocked')
+					.map(([name]) => ({ name, description: name }));
+				if (allowedTools.length > 0) result[server.name] = allowedTools;
 			}
 		}
 

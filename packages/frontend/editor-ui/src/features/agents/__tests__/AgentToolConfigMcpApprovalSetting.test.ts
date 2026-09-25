@@ -1,14 +1,14 @@
 import { createTestingPinia } from '@pinia/testing';
-import { flushPromises, mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { INode, INodePropertyOptions } from 'n8n-workflow';
 import type { TestingPinia } from '@pinia/testing';
+import type { McpToolPermissions } from '@n8n/api-types';
+import { flushPromises, mount } from '@vue/test-utils';
+import type { INode, INodePropertyOptions } from 'n8n-workflow';
+import { nextTick } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import AgentToolConfigMcpApprovalSetting from '../components/AgentToolConfigMcpApprovalSetting.vue';
-import type { AgentJsonMcpServerConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => {
 	const translations: Record<string, string> = {
@@ -96,6 +96,10 @@ const MCP_TOOLS: INodePropertyOptions[] = [
 	{ name: 'Delete', value: 'delete' },
 ];
 
+const allAllowed = (): McpToolPermissions => ({
+	categories: { read: 'always_allow', write: 'always_allow' },
+});
+
 let pinia: TestingPinia;
 
 function mcpNode(parameters: Partial<INode['parameters']> = {}): INode {
@@ -118,10 +122,10 @@ function mcpNode(parameters: Partial<INode['parameters']> = {}): INode {
 
 function renderComponent({
 	node = mcpNode(),
-	modelValue,
+	modelValue = allAllowed(),
 }: {
 	node?: INode;
-	modelValue?: AgentJsonMcpServerConfig['approval'];
+	modelValue?: McpToolPermissions;
 } = {}) {
 	return mount(AgentToolConfigMcpApprovalSetting, {
 		props: {
@@ -170,7 +174,7 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 		});
 	});
 
-	it('emits global and disabled approval values when the mode changes', async () => {
+	it('maps global and disabled modes to category permissions', async () => {
 		const wrapper = renderComponent();
 		await flushPromises();
 
@@ -179,18 +183,19 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 			.trigger('click');
 		await nextTick();
 
-		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ mode: 'global' }]);
-		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([true]);
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+			{ categories: { read: 'require_approval', write: 'require_approval' } },
+		]);
 
 		await wrapper
 			.find('[data-testid="agent-mcp-approval-mode"] [data-value="disabled"]')
 			.trigger('click');
 		await nextTick();
 
-		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([undefined]);
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([allAllowed()]);
 	});
 
-	it('requires at least one selected tool before selected approval is valid', async () => {
+	it('maps selected approval tools to exact-name overrides', async () => {
 		const wrapper = renderComponent();
 		await flushPromises();
 
@@ -199,7 +204,6 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 			.trigger('click');
 		await nextTick();
 
-		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ mode: 'selected', tools: [] }]);
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 
 		await wrapper
@@ -208,7 +212,10 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 		await nextTick();
 
 		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
-			{ mode: 'selected', tools: ['echo'] },
+			{
+				categories: { read: 'always_allow', write: 'always_allow' },
+				tools: { echo: 'require_approval' },
+			},
 		]);
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([true]);
 	});
@@ -230,7 +237,10 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 
 	it('only offers tools exposed by the node include filter', async () => {
 		const wrapper = renderComponent({
-			modelValue: { mode: 'selected', tools: ['echo'] },
+			modelValue: {
+				categories: { read: 'always_allow', write: 'always_allow' },
+				tools: { echo: 'require_approval' },
+			},
 			node: mcpNode({ include: 'selected', includeTools: ['echo', 'search'] }),
 		});
 		await flushPromises();
@@ -246,7 +256,10 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 
 	it('prunes selected approval tools when node filters stop exposing them', async () => {
 		const wrapper = renderComponent({
-			modelValue: { mode: 'selected', tools: ['echo', 'delete'] },
+			modelValue: {
+				categories: { read: 'always_allow', write: 'always_allow' },
+				tools: { echo: 'require_approval', delete: 'require_approval' },
+			},
 		});
 		await flushPromises();
 
@@ -256,7 +269,10 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 		await nextTick();
 
 		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
-			{ mode: 'selected', tools: ['echo'] },
+			{
+				categories: { read: 'always_allow', write: 'always_allow' },
+				tools: { echo: 'require_approval' },
+			},
 		]);
 	});
 });

@@ -99,9 +99,11 @@ export function resolveMcpToolPermission(
 }
 
 export function compileMcpToolPermissions(
-	policy: McpToolPermissions,
+	policy: McpToolPermissions | undefined,
 	tools: McpToolDescriptor[],
 ): CompiledMcpToolPermissions {
+	if (!policy) return {};
+
 	const blockedTools: string[] = [];
 	const approvalTools: string[] = [];
 	for (const tool of tools) {
