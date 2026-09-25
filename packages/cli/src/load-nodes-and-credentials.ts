@@ -636,6 +636,17 @@ export class LoadNodesAndCredentials {
 		this.known.nodes = Object.fromEntries(
 			Object.entries(this.known.nodes).filter(([name]) => !this.excludeNodes.includes(name)),
 		);
+		this.known.credentials = Object.fromEntries(
+			Object.entries(this.known.credentials).map(([name, credential]) => [
+				name,
+				{
+					...credential,
+					supportedNodes: credential.supportedNodes?.filter(
+						(node) => !this.excludeNodes.includes(node),
+					),
+				},
+			]),
+		);
 
 		this.injectCustomApiCallOptions();
 

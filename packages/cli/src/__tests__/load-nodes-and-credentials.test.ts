@@ -935,6 +935,15 @@ describe('LoadNodesAndCredentials', () => {
 						types.nodes.push({ name } as INodeTypeDescription);
 						known.nodes[name] = { className: 'TestNode', sourcePath: 'Test.node.js' };
 					}
+					known.credentials.testApi = {
+						className: 'TestApi',
+						sourcePath: 'TestApi.credentials.js',
+						supportedNodes: [
+							'test-package.testNode',
+							'test-package.testNodeTool',
+							'test-package.otherNodeTool',
+						],
+					};
 				},
 			);
 			instance.excludeNodes = ['test-package.testNodeTool'];
@@ -957,6 +966,10 @@ describe('LoadNodesAndCredentials', () => {
 				'test-package.otherNodeTool',
 			]);
 			expect(Object.keys(instance.knownNodes)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(instance.knownCredentials.testApi.supportedNodes).toEqual([
 				'test-package.testNode',
 				'test-package.otherNodeTool',
 			]);
