@@ -3,19 +3,19 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { AgentRepository } from '../../repositories/agent.repository';
-import { createAdapterLogger } from '../adapter-logger';
-import { credentialField, requireCredentialField } from '../credential-fields';
+import { AgentRepository } from '../../../repositories/agent.repository';
+import { createAdapterLogger } from '../../adapter-logger';
+import { credentialField, requireCredentialField } from '../../credential-fields';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
-} from '../agent-chat-integration';
-import { expandSelectsToButtons, type SuspendComponent } from '../component-mapper';
-import { assertCredentialNotClaimed } from '../credential-claim';
-import { loadTeamsAdapter } from '../esm-loader';
-import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+} from '../../agent-chat-integration';
+import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
+import { assertCredentialNotClaimed } from '../../credential-claim';
+import { loadTeamsAdapter } from '../../esm-loader';
+import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';

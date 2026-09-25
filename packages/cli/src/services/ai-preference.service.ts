@@ -4,6 +4,7 @@ import type {
 	AiPreferenceListDto,
 	AiPreferenceProjectDto,
 	AiPreferenceRequestDto,
+	AiPreferenceScope,
 	AiPreferenceSource,
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
@@ -20,6 +21,7 @@ import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -113,6 +115,17 @@ export type ApplicableAiPreferences = {
 };
 
 /** The settings CRUD and the prompt read share one set of rules. */
+/**
+ * The body of an update. `scope` absent keeps the row where it is, for a caller that holds
+ * an id but no scope it can trust, such as the chat card. Every other caller names one.
+ */
+export type AiPreferenceUpdateRequest = {
+	content: string;
+	scope?: AiPreferenceScope;
+	projectId?: string | null;
+	userId?: string | null;
+};
+
 @Service()
 export class AiPreferenceService {
 	constructor(
@@ -229,22 +242,38 @@ export class AiPreferenceService {
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
-	/** A move needs the delete right on the old target and the create right on the new one. */
-	async update(user: User, id: string, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
+	/**
+	 * A move needs the delete right on the old target and the create right on the new one.
+	 *
+	 * A request that names no scope keeps the row where it is. The kept target is read off
+	 * the row this write already loaded, never off an earlier read: a caller that passed a
+	 * target it read a moment ago would restate it here, and a move that landed in between
+	 * would be undone as if the caller had asked for it.
+	 */
+	async update(
+		user: User,
+		id: string,
+		request: AiPreferenceUpdateRequest,
+	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
-		const moved = this.isMove(user, row, request);
+		const resolved: AiPreferenceRequestDto =
+			request.scope === undefined
+				? this.keepTargetOf(row, request.content)
+				: { ...request, scope: request.scope };
+		this.assertEditNamesOwner(resolved);
+		const moved = this.isMove(user, row, resolved);
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
-		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
+		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
 		if (moved) await this.assertScopeHasRoom(target);
-		if (moved || row.content !== request.content) {
-			await this.assertNotDuplicate(target, request.content, row.id);
+		if (moved || row.content !== resolved.content) {
+			await this.assertNotDuplicate(target, resolved.content, row.id);
 		}
 
 		// `source` is not touched: it records the surface that created the row. An assistant
 		// edit of a row a person wrote does not make that row the assistant's.
-		row.content = request.content;
+		row.content = resolved.content;
 		row.userId = target.userId;
 		row.user = target.user;
 		row.projectId = target.projectId;
@@ -302,6 +331,13 @@ export class AiPreferenceService {
 		await this.assertCanWrite(user, row, 'delete', access);
 
 		await this.aiPreferenceRepository.delete({ id: row.id });
+		return this.toDto(row, await this.scopesFor(user, row, access));
+	}
+
+	/** One row the caller may see, with the rights the caller holds on it. A hidden row is a 404. */
+	async getById(user: User, id: string): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
@@ -372,7 +408,18 @@ export class AiPreferenceService {
 		}
 	}
 
-	/** Decided from the ids alone, before any permission check. */
+	/** The row's own target, as a request. Keeps a scope-less update exactly where it is. */
+	private keepTargetOf(row: AiPreference, content: string): AiPreferenceRequestDto {
+		return {
+			content,
+			scope: aiPreferenceTargetOf(row).scope,
+			projectId: row.projectId,
+			userId: row.userId,
+		};
+	}
+
+	/** Decided from the ids alone, before any permission check. On an edit `request.userId`
+	 *  is always set (see `assertEditNamesOwner`), so the `?? user.id` only serves a create. */
 	private isMove(user: User, row: AiPreference, request: AiPreferenceRequestDto): boolean {
 		const userId = request.scope === 'user' ? (request.userId ?? user.id) : null;
 		const projectId = request.scope === 'project' ? (request.projectId ?? null) : null;
@@ -424,6 +471,17 @@ export class AiPreferenceService {
 		}
 	}
 
+	/**
+	 * An edit names its target. A create with scope `user` and no `userId` targets the
+	 * caller, because there is no owner to lose. An edit must not default that way, or an
+	 * admin could move another user's row to themselves by leaving the field out.
+	 */
+	private assertEditNamesOwner(request: AiPreferenceRequestDto) {
+		if (request.scope === 'user' && !request.userId) {
+			throw new BadRequestError('An edit of a user preference must name the user');
+		}
+	}
+
 	/** A stray id must fail, not be dropped. */
 	private assertNoProject(request: AiPreferenceRequestDto) {
 		if (request.projectId !== null && request.projectId !== undefined) {
@@ -452,9 +510,10 @@ export class AiPreferenceService {
 		const scope = aiPreferenceTargetOf(target);
 		const saved = await this.aiPreferenceRepository.countForTarget(scope);
 		if (saved >= AI_PREFERENCE_MAX_PER_SCOPE) {
-			throw new BadRequestError(
-				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
-			);
+			throw new AiPreferenceScopeFullError(scope.scope, {
+				limit: AI_PREFERENCE_MAX_PER_SCOPE,
+				actual: saved,
+			});
 		}
 	}
 

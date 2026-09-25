@@ -7,6 +7,13 @@ import { useSettingsStore } from '../settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '../types/pageRedirection';
 import { useUsersStore } from '../users.store';
 import { useVersionsStore } from '../versions.store';
+import { useAssistantTopUpEligibility } from './useAssistantTopUpEligibility';
+
+/** Sources whose "upgrade" CTA is really a top-up for eligible cloud accounts. */
+const ASSISTANT_UPGRADE_SOURCES = new Set<string>(['ai-builder-sidebar', 'instance-ai']);
+
+/** Cloud dashboard path that carries the assistant top-up UI. */
+const ASSISTANT_TOP_UP_REDIRECT_PATH = '/manage/assistant';
 
 /**
  * Guard consulted before an upgrade redirect. Resolves `true` to proceed, `false`
@@ -32,6 +39,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirec
 	const versionsStore = useVersionsStore();
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
+	const { isEligible: isAssistantTopUpEligible } = useAssistantTopUpEligibility();
 
 	const canAutoLoginToCloudDashboard = () =>
 		usersStore.isInstanceOwner && settingsStore.isCloudDeployment;
@@ -133,8 +141,12 @@ export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirec
 		let upgradeLink = N8N_PRICING_PAGE_URL;
 
 		if (canAutoLoginToCloudDashboard()) {
+			const redirectionPath =
+				ASSISTANT_UPGRADE_SOURCES.has(source) && isAssistantTopUpEligible.value
+					? ASSISTANT_TOP_UP_REDIRECT_PATH
+					: '/account/change-plan';
 			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/account/change-plan',
+				redirectionPath,
 			});
 		}
 

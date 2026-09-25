@@ -73,4 +73,21 @@ describe('EngineConfig', () => {
 			expect.stringContaining('Invalid value for N8N_ENGINE_RESPONSE_TRANSPORT'),
 		);
 	});
+
+	it('should host the data plane in-process by default', () => {
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+	});
+
+	it('should read the remote mode', () => {
+		process.env.N8N_ENGINE_MODE = 'remote';
+
+		expect(Container.get(EngineConfig).mode).toBe('remote');
+	});
+
+	it('should reject an unknown mode and fall back to in-process', () => {
+		process.env.N8N_ENGINE_MODE = 'sidecar';
+
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_MODE'));
+	});
 });

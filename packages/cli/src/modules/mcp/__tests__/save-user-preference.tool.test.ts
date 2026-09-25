@@ -1,11 +1,12 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -52,10 +53,13 @@ const dto = (overrides: Partial<AiPreferenceDto> = {}): AiPreferenceDto => ({
 	...overrides,
 });
 
-const createMocks = () => {
+const admin = Object.assign(new User(), { id: 'user-1', role: GLOBAL_OWNER_ROLE });
+
+const createMocks = ({ as = user }: { as?: User } = {}) => {
 	const aiPreferenceService = mockInstance(AiPreferenceService, {
 		create: vi.fn().mockResolvedValue(dto()),
 		updateContent: vi.fn(),
+		update: vi.fn(),
 		undoWrite: vi.fn(),
 	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
@@ -63,7 +67,7 @@ const createMocks = () => {
 		getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 	});
 	const tool = createSaveUserPreferenceTool(
-		user,
+		as,
 		aiPreferenceService,
 		telemetry,
 		urlService,
@@ -246,7 +250,13 @@ describe('save_user_preference MCP tool', () => {
 	describe('refusals', () => {
 		test.each([
 			[new ConflictError('dup'), 'duplicate', 'dup'],
-			[new BadRequestError('cap'), 'scope_full', 'cap'],
+			[
+				new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 }),
+				'scope_full',
+				'A user cannot hold more than 50 preferences',
+			],
+			// Any other 4xx passes its message through as a failure.
+			[new BadRequestError('no project'), 'failed', 'no project'],
 			[new ForbiddenError('no'), 'not_permitted', 'no'],
 			[new Error('db down'), 'failed', 'The preference could not be saved.'],
 		])(
@@ -309,6 +319,80 @@ describe('save_user_preference MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
 				{ surface: 'mcp', scope_type: 'user', text_length: TEXT.length },
+			);
+		});
+
+		// A project needs an id, which a flat form cannot supply, so the form offers two scopes.
+		test('offers the instance scope only to a user who may write it', async () => {
+			const asMember = await createMocks().tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true }),
+			);
+			const asAdmin = await createMocks({ as: admin }).tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true }),
+			);
+
+			if (!isInputRequired(asMember) || !isInputRequired(asAdmin)) throw new Error('no form');
+			const propertiesOf = (result: InputRequiredResult) =>
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(result.inputRequests?.review as any).params.requestedSchema.properties;
+			expect(propertiesOf(asMember)).not.toHaveProperty('scope');
+			expect(propertiesOf(asAdmin).scope).toMatchObject({
+				enum: ['user', 'instance'],
+				default: 'user',
+			});
+		});
+
+		test('moves the row when the review picks another scope, and reports the move', async () => {
+			const { aiPreferenceService, telemetry, tool } = createMocks({ as: admin });
+			aiPreferenceService.update.mockResolvedValue(dto({ userId: null }));
+
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({
+					elicitation: true,
+					review: { action: 'accept', content: { text: TEXT, scope: 'instance' } },
+				}),
+			);
+
+			expect(aiPreferenceService.update).toHaveBeenCalledWith(admin, ID, {
+				content: TEXT,
+				scope: 'instance',
+				userId: null,
+				projectId: null,
+			});
+			expect(structured(result)).toMatchObject({ saved: true });
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+				{
+					surface: 'mcp',
+					offered_scope: 'user',
+					accepted_scope: 'instance',
+					scope_changed: true,
+				},
+			);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
+				{ scope_type: 'instance', text_length: TEXT.length, scope_changed: true, surface: 'mcp' },
+			);
+		});
+
+		test('keeps the row where it is when the review returns the user scope', async () => {
+			const { aiPreferenceService, telemetry, tool } = createMocks({ as: admin });
+
+			await tool.handler(
+				{ content: TEXT },
+				ctx({
+					elicitation: true,
+					review: { action: 'accept', content: { text: TEXT, scope: 'user' } },
+				}),
+			);
+
+			expect(aiPreferenceService.update).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+				expect.anything(),
 			);
 		});
 
@@ -385,9 +469,10 @@ describe('save_user_preference MCP tool', () => {
 					seconds_since_saved: 30,
 				},
 			);
-			expect(telemetry.track).not.toHaveBeenCalledWith(
+			// The removal closes the funnel the write opened with `accepted`.
+			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-				expect.anything(),
+				{ surface: 'mcp', outcome: 'rejected', scope_type: 'user', text_length: TEXT.length },
 			);
 		});
 

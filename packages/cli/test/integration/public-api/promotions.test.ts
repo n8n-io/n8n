@@ -14,7 +14,7 @@ import { PromotionProviderRepository } from '@/modules/promotions.ee/database/re
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
@@ -748,6 +748,118 @@ describe('Promotions in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not cloned');
+		});
+	});
+
+	describe('selective promote', () => {
+		const promoteResult = {
+			connectionId: 'conn1',
+			configId: 'config1',
+			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+		};
+
+		it('requires the push API-key scope', async () => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post('/promotions/projects/proj1/promote')
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects a user without the push grant', async () => {
+			// The key carries the push scope, but a member's role does not grant it.
+			const member = await createMemberWithApiKey({ scopes: ['gitConnection:push'] });
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/promotions/projects/proj1/promote')
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(403);
+		});
+
+		it('requires a licensed and active module', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			testServer.license.disable('feat:gitConnections');
+			expect(
+				(await agent.post('/promotions/projects/proj1/promote').send({ workflowIds: ['w1'] }))
+					.status,
+			).toBe(403);
+			testServer.license.enable('feat:gitConnections');
+			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+			try {
+				const project = await createTeamProject('Team project', owner);
+				expect(
+					(
+						await agent
+							.post(`/promotions/projects/${project.id}/promote`)
+							.send({ workflowIds: ['w1'] })
+					).status,
+				).toBe(503);
+			} finally {
+				active.mockRestore();
+			}
+		});
+
+		it('rejects an empty selection with 400', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ workflowIds: [] });
+			expect(response.status).toBe(400);
+		});
+
+		it('forwards the selection and the variable-list grant to the service', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const promote = vi
+				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
+				.mockResolvedValue(promoteResult);
+			try {
+				const withVars = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push', 'variable:list'] }),
+				);
+				const withoutVars = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+				);
+
+				const first = await withVars
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
+				expect(first.status, JSON.stringify(first.body)).toBe(200);
+				expect(first.body).toEqual(promoteResult);
+				expect(promote).toHaveBeenLastCalledWith(
+					project.id,
+					expect.objectContaining({ id: expect.any(String) }),
+					expect.objectContaining({
+						workflowIds: ['w1', 'w2'],
+						commitMessage: 'Promote checkout flow',
+						canExportVariableValues: true,
+					}),
+				);
+
+				const second = await withoutVars
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ workflowIds: ['w1'] });
+				expect(second.status, JSON.stringify(second.body)).toBe(200);
+				expect(promote).toHaveBeenLastCalledWith(
+					project.id,
+					expect.anything(),
+					// No commitMessage key when the client omits it; the service applies the default.
+					expect.objectContaining({ canExportVariableValues: false }),
+				);
+			} finally {
+				promote.mockRestore();
+			}
+		});
+
+		it('reaches the service and reports the missing instance connection with 404', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(404);
 		});
 	});
 
