@@ -49,10 +49,12 @@ Copy-to-clipboard fields exist in several places in the app (OAuth redirect URLs
 **Truncated secret that copies in full:**
 ```vue
 <script setup lang="ts">
+import { computed } from 'vue'
 import { N8nCopyInput } from '@n8n/design-system'
 
-const apiKey = 'n8n_api_3f9d2c1b8a7e6f5d4c3b2a1908f7e6d5c4b3a291'
-const apiKeyDisplay = `${apiKey.slice(0, 16)}...${apiKey.slice(-12)}`
+// The full key comes from the API response and is only ever held in memory.
+const props = defineProps<{ apiKey: string }>()
+const apiKeyDisplay = computed(() => `${props.apiKey.slice(0, 16)}...${props.apiKey.slice(-12)}`)
 </script>
 
 <template>
