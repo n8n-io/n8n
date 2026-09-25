@@ -550,6 +550,7 @@ export type {
 	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
+	InstanceAiQuestion,
 	InstanceAiCredentialRequest,
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,

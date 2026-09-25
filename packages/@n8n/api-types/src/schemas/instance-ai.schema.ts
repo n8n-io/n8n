@@ -763,6 +763,7 @@ export const instanceAiQuestionSchema = z.object({
 		.object({ questionId: z.string(), options: z.record(z.string(), z.array(z.string())) })
 		.optional(),
 });
+export type InstanceAiQuestion = z.infer<typeof instanceAiQuestionSchema>;
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),

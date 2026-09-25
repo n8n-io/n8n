@@ -9,22 +9,14 @@
  * Adapted from PlanQuestionsMessage.vue for the instance AI confirmation flow.
  */
 import { ref, computed, watch, nextTick } from 'vue';
+import type { InstanceAiQuestion } from '@n8n/api-types';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
-export interface QuestionItem {
-	id: string;
-	question: string;
-	type: 'single' | 'multi' | 'text';
-	options?: string[];
-	/** Hides Skip and blocks Next until the question has an answer. */
-	required?: boolean;
-	/** The option selected for `questionId` picks the list; otherwise `options` applies. */
-	optionsByAnswer?: { questionId: string; options: Record<string, string[]> };
-}
+export type QuestionItem = InstanceAiQuestion;
 
 export interface QuestionAnswer {
 	questionId: string;

@@ -33,7 +33,6 @@
     "assets/workflow-diagnostics.mts",
     "dist/**/*",
     "knowledge-base/**/*",
-    "onboarding/**/*",
     "skills/**/*"
   ],
   "exports": {

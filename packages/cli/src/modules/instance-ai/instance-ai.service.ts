@@ -201,7 +201,8 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
-import { loadOnboarding } from './onboarding';
+import { loadOnboardingSkill } from './onboarding';
+import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -3970,13 +3971,12 @@ export class InstanceAiService {
 			const unopenedOnboarding =
 				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
 			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
-			const onboarding = unopenedOnboarding ? await loadOnboarding() : undefined;
+			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
 
 			if (isOpeningTurn) {
-				const handoffTitle =
-					onboarding?.opening.title ??
-					contextAttachments.find(isNamedResourceAttachment)?.name ??
-					agentPreviewTitleFallback;
+				const handoffTitle = unopenedOnboarding
+					? ONBOARDING_OPENING.title
+					: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
 				await patchThread(memory, {
 					threadId,
@@ -4065,7 +4065,7 @@ export class InstanceAiService {
 				instanceContext?.block ?? '',
 				// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
 				// and stays in the history for the later turns.
-				onboarding ? buildOnboardingSkillBlock(onboarding.instructions) : undefined,
+				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
 				pastConversationsSection

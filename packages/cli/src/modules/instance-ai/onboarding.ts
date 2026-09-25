@@ -1,23 +1,19 @@
-import {
-	instanceAiQuestionSchema,
-	type InstanceAiConfirmRequest,
-	type InstanceAiEnsureThreadResponse,
-	type InstanceAiEvent,
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiEnsureThreadResponse,
+	InstanceAiEvent,
+	InstanceAiQuestion,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	ASK_USER_TOOL_ID,
-	INSTANCE_AI_ONBOARDING_OPENINGS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	orchestratorAgentId,
 } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -29,12 +25,11 @@ import {
 	type InstanceAiThreadLaunchMetadata,
 } from './instance-ai-memory.service';
 import { buildOnboardingAnswerMessage } from './internal-messages';
+import { ONBOARDING_OPENING } from './onboarding-opening';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 
 /** Folder id under `@n8n/instance-ai/skills` of the skill preloaded on onboarding threads. */
 export const ONBOARDING_SKILL_ID = 'suggest-automations';
-/** File under `@n8n/instance-ai/onboarding` (without `.yaml`) that opens every onboarding thread. */
-const OPENING_ID = 'cloud-form';
 
 /**
  * Marks the host-seeded card's confirmation request so the confirm endpoint can tell it from a
@@ -43,7 +38,7 @@ const OPENING_ID = 'cloud-form';
 const CARD_REQUEST_ID_PREFIX = 'onboarding-';
 /** Start of the `${N8N_*}` placeholders the sandbox materializer substitutes; split so the lint rule for interpolation does not fire. */
 const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
-type Question = z.infer<typeof instanceAiQuestionSchema>;
+type Question = InstanceAiQuestion;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
 /** One answer in the `ask-user` result shape: the wire answer plus the question text. */
 type Answer = GivenAnswer & { question: string };
@@ -57,7 +52,7 @@ const surveySchema = z.object({ what_team_are_you_on: z.string().optional() });
 type Survey = z.infer<typeof surveySchema>;
 const launchContextSchema = z.object({ survey: surveySchema.optional() });
 /** Card question id -> the survey key that answers it. */
-// ponytail: one pair; move it into the opening YAML when a second survey-backed question shows up.
+// ponytail: one pair; move it into the opening when a second survey-backed question shows up.
 const SURVEY_KEY_BY_QUESTION: Partial<Record<string, keyof Survey>> = {
 	team: 'what_team_are_you_on',
 };
@@ -107,16 +102,6 @@ function applySurvey(questions: Question[], survey: Survey) {
 	return { questions: filled, shown, answered };
 }
 
-/** `onboarding/cloud-form.yaml` in `@n8n/instance-ai`: the copy shown before the agent's first turn. */
-const openingSchema = z.object({
-	title: z.string().min(1),
-	greeting: z.string().min(1),
-	/** Steps of the one `ask-user` card shown before the agent's first turn, in this order. */
-	questions: z.array(instanceAiQuestionSchema).min(1),
-	/** Assistant text posted when the card is answered. `{{apps}}` becomes the picked apps. */
-	followUp: z.string().min(1),
-});
-
 /** "Gmail", "Gmail and Slack", or "Gmail, Slack, and your other tools" for the follow-up text. */
 function mentionApps(apps: string[]): string {
 	if (apps.length === 0) return 'your tools';
@@ -124,33 +109,20 @@ function mentionApps(apps: string[]): string {
 	return `${apps[0]}, ${apps[1]}, and your other tools`;
 }
 
-interface Onboarding {
-	/** Body of the preloaded skill, sent with the opening turn. */
-	instructions: string;
-	opening: z.infer<typeof openingSchema>;
-}
-
 /**
- * The opening file is read every time, so an edit shows on the next new thread. The skill body
- * goes to the model as is. The sandbox materializer substitutes `${N8N_*}` placeholders only in
- * the skills it writes to the workspace, so a placeholder here would reach the shell as an unset
- * variable. Fail here, at thread creation, instead of in the agent's first command.
+ * Body of the preloaded skill, sent with the opening turn as is. The sandbox materializer
+ * substitutes `${N8N_*}` placeholders only in the skills it writes to the workspace, so a
+ * placeholder here would reach the shell as an unset variable.
  */
-export async function loadOnboarding(): Promise<Onboarding> {
-	const [skill, openingFile] = await Promise.all([
-		loadInstanceAiRuntimeSkillSource().loadSkill(ONBOARDING_SKILL_ID),
-		readFile(join(INSTANCE_AI_ONBOARDING_OPENINGS_DIR, `${OPENING_ID}.yaml`), 'utf-8'),
-	]);
+export async function loadOnboardingSkill(): Promise<string> {
+	const skill = await loadInstanceAiRuntimeSkillSource().loadSkill(ONBOARDING_SKILL_ID);
 	if (!skill) throw new UnexpectedError(`Runtime skill "${ONBOARDING_SKILL_ID}" not found`);
 	if (skill.instructions.includes(PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX)) {
 		throw new UnexpectedError(
 			`Runtime skill "${ONBOARDING_SKILL_ID}" is preloaded and must not use \${N8N_*} placeholders`,
 		);
 	}
-	return {
-		instructions: skill.instructions,
-		opening: openingSchema.parse(parseYaml(openingFile)),
-	};
+	return skill.instructions;
 }
 
 /**
@@ -176,20 +148,24 @@ export class InstanceAiOnboardingService {
 		projectId: string,
 		launchMetadata: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
-		// Load the opening and read the survey before the thread exists, so a broken opening file
-		// or a bad survey creates nothing.
-		const { opening } = await loadOnboarding();
-		const { shown } = applySurvey(opening.questions, surveyOf(launchMetadata.sourceContext));
+		// Read the survey before the thread exists, so a bad survey creates nothing.
+		const { shown } = applySurvey(
+			ONBOARDING_OPENING.questions,
+			surveyOf(launchMetadata.sourceContext),
+		);
 		const response = await this.memoryService.ensureThread(
 			user.id,
 			threadId,
 			projectId,
 			launchMetadata,
-			opening.title,
+			ONBOARDING_OPENING.title,
 		);
 		if (!response.created) return response;
 
-		const greeting = opening.greeting.replace('{{firstName}}', user.firstName?.trim() || 'there');
+		const greeting = ONBOARDING_OPENING.greeting.replace(
+			'{{firstName}}',
+			user.firstName?.trim() || 'there',
+		);
 		// The LLM history needs the greeting as an assistant turn; the card lives in the event log.
 		const { userMessageId } = await this.memoryService.seedOpeningMessages(
 			threadId,
@@ -201,7 +177,7 @@ export class InstanceAiOnboardingService {
 			userId: user.id,
 			messageId: userMessageId,
 			text: greeting,
-			card: { title: opening.title, questions: shown },
+			card: { title: ONBOARDING_OPENING.title, questions: shown },
 		});
 		return response;
 	}
@@ -225,12 +201,9 @@ export class InstanceAiOnboardingService {
 		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
 		if (!row?.toolCallId) return undefined;
 
-		const [{ opening }, metadata] = await Promise.all([
-			loadOnboarding(),
-			this.memoryService.getThreadMetadata(userId, row.threadId),
-		]);
+		const metadata = await this.memoryService.getThreadMetadata(userId, row.threadId);
 		const { questions, shown, answered } = applySurvey(
-			opening.questions,
+			ONBOARDING_OPENING.questions,
 			surveyOf(metadata?.sourceContext),
 		);
 		const given = request.kind === 'questions' ? request.answers : [];
@@ -270,7 +243,7 @@ export class InstanceAiOnboardingService {
 		// The LLM history reads the answers as the hidden user turn under the follow-up, so the
 		// task the user types next is a normal first turn.
 		const apps = answers.find((answer) => answer.questionId === 'apps')?.selectedOptions ?? [];
-		const followUp = opening.followUp.replace('{{apps}}', mentionApps(apps));
+		const followUp = ONBOARDING_OPENING.followUp.replace('{{apps}}', mentionApps(apps));
 		const { userMessageId } = await this.memoryService.seedOpeningMessages(
 			row.threadId,
 			userId,
