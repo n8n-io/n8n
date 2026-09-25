@@ -386,6 +386,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							<N8nCopyInput
 								id="teams-messaging-endpoint-url"
 								:value="messagingEndpointUrl"
+								:label="i18n.baseText('agents.channels.teams.messagingEndpointUrl.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -571,6 +572,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 				<N8nCopyInput
 					id="teams-messaging-endpoint-url"
 					:value="messagingEndpointUrl"
+					:label="i18n.baseText('agents.channels.teams.messagingEndpointUrl.label')"
 					size="large"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
