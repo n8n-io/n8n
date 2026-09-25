@@ -33,15 +33,13 @@ const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS 
 const isContactAdminOpen = ref(false);
 // Tabbing from the trigger into the (teleported) content moves focus out of the
 // caller's own focus-within, so `active` alone would close this before it's reached.
-// Once the contact-admin action opens its own dialog, its lingering focus on the
-// button no longer needs to keep this open.
+// The contact-admin dialog closes this: the popover stacks above modals, so it would
+// otherwise float over the dialog while the pointer or focus is still on it.
 const { focused: contentFocused } = useFocusWithin(contentRef);
 const open = computed(
 	() =>
-		anchorHovered.value ||
-		contentHovered.value ||
-		(contentFocused.value && !isContactAdminOpen.value) ||
-		props.active,
+		!isContactAdminOpen.value &&
+		(anchorHovered.value || contentHovered.value || contentFocused.value || props.active),
 );
 
 const scopeKey = computed<BaseTextKey>(
@@ -53,6 +51,7 @@ const scopeKey = computed<BaseTextKey>(
 
 <template>
 	<span :class="$style.root">
+		<!-- The tool pickers render this inside a modal, so the default z-index puts it behind the backdrop. -->
 		<N8nPopover
 			:open="open"
 			side="left"
@@ -62,6 +61,7 @@ const scopeKey = computed<BaseTextKey>(
 			:suppress-auto-focus="true"
 			:content-class="$style.card"
 			width="254px"
+			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
 				<N8nIcon
