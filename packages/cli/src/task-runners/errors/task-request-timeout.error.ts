@@ -6,12 +6,35 @@ export class TaskRequestTimeoutError extends OperationalError {
 	constructor({
 		elapsedSeconds,
 		isSelfHosted,
+		requestId,
+		workflowId,
+		executionId,
+		nodeId,
+		taskType,
 	}: {
 		elapsedSeconds: number;
 		isSelfHosted: boolean;
+		requestId: string;
+		workflowId?: string;
+		executionId?: string;
+		nodeId?: string;
+		taskType?: string;
 	}) {
 		// Keep the message static so Sentry groups all occurrences as one issue.
-		super('Task request timed out', { extra: { elapsedSeconds } });
+		// level 'error' + shouldReport so ErrorReporter.beforeSend does not drop this
+		// (OperationalError defaults to warning / non-reportable).
+		super('Task request timed out', {
+			level: 'error',
+			shouldReport: true,
+			extra: {
+				elapsedSeconds,
+				requestId,
+				workflowId,
+				executionId,
+				nodeId,
+				taskType,
+			},
+		});
 
 		const description = [
 			`Your Code node task was not matched to a runner within the timeout period (waited ${elapsedSeconds} ${elapsedSeconds === 1 ? 'second' : 'seconds'}). This indicates that the task runner is currently down, or not ready, or at capacity, so it cannot service your task.`,
