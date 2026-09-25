@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	createDataTableColumnFieldDocs,
 	createDataTableFieldDocs,
 	dataTableColumnFieldDocs,
 	dataTableFieldDocs,
@@ -47,12 +48,15 @@ export class DataTableListPublicDto extends Z.class({
 const createDataTableColumnPublicSchema = z.object({
 	name: dataTableColumnNameSchema.openapi(dataTableColumnFieldDocs.name),
 	type: dataTableColumnTypeSchema.openapi(dataTableColumnFieldDocs.type),
+	csvColumnName: z.string().optional().openapi(createDataTableColumnFieldDocs.csvColumnName),
 });
 
 export class CreateDataTablePublicDto extends Z.class({
 	name: dataTableNameSchema.openapi(createDataTableFieldDocs.name),
 	columns: z.array(createDataTableColumnPublicSchema).openapi(createDataTableFieldDocs.columns),
 	projectId: z.string().optional().openapi(createDataTableFieldDocs.projectId),
+	fileId: z.string().optional().openapi(createDataTableFieldDocs.fileId),
+	hasHeaders: z.boolean().optional().openapi(createDataTableFieldDocs.hasHeaders),
 }) {}
 
 export class UpdateDataTablePublicDto extends Z.class({

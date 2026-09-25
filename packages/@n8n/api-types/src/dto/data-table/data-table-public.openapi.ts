@@ -35,6 +35,15 @@ export const dataTableListFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+export const createDataTableColumnFieldDocs = {
+	csvColumnName: {
+		description:
+			'Name of the CSV column to read the values from. If you do not set it, n8n maps the ' +
+			'CSV columns by position.',
+		example: 'Email Address',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
 export const createDataTableFieldDocs = {
 	name: { description: 'Name of the data table', example: 'customers' },
 	columns: { description: 'Column definitions for the table' },
@@ -42,6 +51,17 @@ export const createDataTableFieldDocs = {
 		description:
 			"ID of the project to create the table in. When omitted, the table is created in the user's personal project.",
 		example: 'a1b2c3d4',
+	},
+	fileId: {
+		description:
+			'ID of a CSV file that you uploaded in the n8n editor. If you set it, n8n fills the new ' +
+			'table with the rows from that file. Only a session-authenticated caller can upload a ' +
+			'file, so an API-key caller cannot use this field.',
+	},
+	hasHeaders: {
+		description:
+			'Set to true if the first row of the CSV file holds the column names. Applies only when ' +
+			'you set `fileId`. The default is true.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 

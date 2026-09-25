@@ -152,6 +152,8 @@ export class DataTablesPublicController {
 			const dataTable = await this.dataTableService.createDataTable(owningProjectId, {
 				name: body.name,
 				columns: body.columns,
+				fileId: body.fileId,
+				hasHeaders: body.hasHeaders,
 			});
 
 			return await this.withSize(dataTable);

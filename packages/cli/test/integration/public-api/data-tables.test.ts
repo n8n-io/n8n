@@ -515,6 +515,40 @@ describe('POST /data-tables', () => {
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toHaveProperty('message');
 	});
+
+	test('forwards fileId to the import', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'csv-table',
+			columns: [{ name: 'email', type: 'string', csvColumnName: 'Email Address' }],
+			fileId: 'no-such-file',
+			hasHeaders: true,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Error uploading file');
+	});
+
+	test('does not keep the table when the import fails', async () => {
+		await authOwnerAgent.post('/data-tables').send({
+			name: 'csv-table',
+			columns: [{ name: 'email', type: 'string' }],
+			fileId: 'no-such-file',
+		});
+
+		const response = await authOwnerAgent.get('/data-tables');
+
+		expect(response.body.data).toHaveLength(0);
+	});
+
+	test('accepts csvColumnName on a create that has no fileId', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'plain-table',
+			columns: [{ name: 'email', type: 'string', csvColumnName: 'Email Address' }],
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body.columns).toHaveLength(1);
+	});
 });
 
 describe('GET /data-tables/:dataTableId', () => {
