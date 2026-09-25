@@ -81,6 +81,9 @@ export interface IRunExecutionDataV1 {
 		| 'evaluationRunId'
 		| 'source'
 		| 'suppressErrorWorkflow'
+		// A run of a single tool node carries the agent request that supplies the
+		// tool's arguments. Without it a worker runs the tool on empty arguments.
+		| 'agentRequest'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

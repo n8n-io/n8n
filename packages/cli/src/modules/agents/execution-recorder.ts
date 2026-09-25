@@ -329,7 +329,9 @@ export class ExecutionRecorder {
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
 		backgroundJobSignal?: AgentBackgroundJobSignal,
+		startedAt: Date = new Date(),
 	) {
+		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
 		if (backgroundJobSignal) {
 			this.timeline.push({
@@ -377,7 +379,7 @@ export class ExecutionRecorder {
 
 	private error: string | null = null;
 
-	private readonly startTime = Date.now();
+	private readonly startTime: number;
 
 	private childTraceChars = new Map<string, number>();
 

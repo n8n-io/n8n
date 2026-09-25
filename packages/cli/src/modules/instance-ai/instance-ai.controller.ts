@@ -146,7 +146,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
 			);
 		}
 	}

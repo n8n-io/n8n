@@ -23,12 +23,12 @@ import {
 	USER_TYPED_MESSAGE,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillType,
-	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
-type SuggestionPromptPayload =
+export type SuggestionPromptPayload =
 	| {
 			promptKey: BaseTextKey;
 			prompt?: never;
@@ -37,13 +37,18 @@ type SuggestionPromptPayload =
 			prompt: string;
 			promptKey?: never;
 	  };
-type SuggestionSelectionPayload = SuggestionPromptPayload & {
+export type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 	telemetryPayload?: ITelemetryTrackProperties;
 	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
 	prefillType: InstanceAiPrefillType;
+	/**
+	 * Catalog this row belongs to. A host-triggered submit (agent templates)
+	 * is not the home-screen catalog mounted on this input.
+	 */
+	suggestionCatalogVersion?: string;
 };
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
@@ -55,12 +60,7 @@ type SuggestionsCyclePayload = {
 	telemetryPayload?: ITelemetryTrackProperties;
 };
 type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
-type ActivePrefill = {
-	/** The text as the pre-fill wrote it, so an edit can be detected. */
-	text: string;
-	prefillType: InstanceAiPrefillTypeReported;
-	prefillId?: string;
-};
+type ActivePrefill = InstanceAiPrefillPayload;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
@@ -204,11 +204,7 @@ function setTextIfEmpty(text: string) {
  * rather than `setText` so the submit can attribute them; `setText` and
  * friends stay for restoring a draft the user wrote.
  */
-function setPrefill(prefill: {
-	text: string;
-	prefillType: InstanceAiPrefillTypeReported;
-	prefillId?: string;
-}) {
+function setPrefill(prefill: InstanceAiPrefillPayload) {
 	inputText.value = prefill.text;
 	activePrefill.value = { ...prefill };
 }
@@ -604,6 +600,8 @@ function trackSelectedSuggestionSubmitted(message: string) {
 
 	promptSuggestionsTelemetry.trackSuggestionSubmitted({
 		...getTelemetryContext(selectedSuggestion.telemetryPayload),
+		suggestionCatalogVersion:
+			selectedSuggestion.suggestionCatalogVersion ?? resolvedSuggestionCatalogVersion.value,
 		suggestionId: selectedSuggestion.suggestionId,
 		suggestionKind: selectedSuggestion.suggestionKind,
 		position: selectedSuggestion.position,

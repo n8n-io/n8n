@@ -575,14 +575,15 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 
 ## ci-master.yml
 
-Runs on push to `master` or `1.x`:
+Runs on push to `master`:
 
 ```
-Push to master/1.x
-├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+Push to master
+├─ build-and-format (Blacksmith: build, then format check; populate master cache)
+├─ unit-test (matrix: Node 24.18.1, 26.5.1)
 │   └─ Coverage only on 24.18.1
 ├─ lint
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -682,6 +683,24 @@ that start after the save use the cached executable. Windows keeps the standard
 `pnpm/setup` path because its runner cannot activate the cached POSIX home path.
 The existing `actions/setup-node` cache continues to store the pnpm package
 store.
+
+### CI toolchain image
+
+`build-ci-toolchain-image.yml` publishes one Node, pnpm, SafeChain and Chromium
+image to GHCR on `master`. The build does not install n8n dependencies. A
+Blacksmith job pulls the image to seed the shared container cache. A job in
+the image then checks its tools, browser, Docker access, SafeChain and a
+lockfile-driven root install. Manual dispatch runs the smoke job without
+republishing the image, so it can check a warm pull. Update the image tag in
+the publish workflow when a tool pin changes. No PR test job uses this image.
+
+Build and check the image locally with:
+
+```bash
+docker buildx build --load -t n8n-ci-toolchain:local -f .github/ci-toolchain/Dockerfile .
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock n8n-ci-toolchain:local \
+  bash -lc 'node --version && pnpm --version && /opt/ci-toolchain/safe-chain -v && docker info && docker buildx version && node /opt/ci-playwright/node_modules/playwright/cli.js install --dry-run chromium'
+```
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per

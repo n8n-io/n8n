@@ -22,6 +22,7 @@ import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
@@ -45,6 +46,10 @@ mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
 mockInstance(Push);
+// `SystemTaskMetadata` is a process-wide registry and the runner rejects a task
+// name it already routed, so the second boot in this file would throw
+// "A system task name is registered more than once".
+mockInstance(SystemTaskRunner);
 
 const command = setupTestCommand(Worker);
 

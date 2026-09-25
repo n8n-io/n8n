@@ -1,5 +1,10 @@
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -18,6 +23,8 @@ import * as utils from './shared/utils/';
 let owner: User;
 let otherUser: User;
 let ownerAgent: SuperAgentTest;
+let project: Project;
+let readOnlyProject: Project;
 
 /** A thread owned by `owner`. `otherUser` must not reach it. */
 const THREAD_ID = '8f2f0d1c-6c8a-4a25-9f6b-1b8d1f0a1111';
@@ -25,7 +32,8 @@ const RUN_ID = 'run_card_1';
 const TOOL_CALL_ID = 'tc-1';
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['instance-ai'],
+	// `ai-preferences` is the settings page. A card edit must not undo a move made there.
+	endpointGroups: ['instance-ai', 'ai-preferences'],
 	modules: ['instance-ai'],
 });
 
@@ -49,11 +57,21 @@ beforeAll(async () => {
 	otherUser = await createMember();
 	ownerAgent = testServer.authAgentFor(owner);
 
-	const project = await getPersonalProject(owner);
-	await Container.get(InstanceAiMemoryService).ensureThread(owner.id, THREAD_ID, project.id, {
-		source: 'assistant_page',
-		origin: 'internal',
-	});
+	const personalProject = await getPersonalProject(owner);
+	await Container.get(InstanceAiMemoryService).ensureThread(
+		owner.id,
+		THREAD_ID,
+		personalProject.id,
+		{
+			source: 'assistant_page',
+			origin: 'internal',
+		},
+	);
+
+	project = await createTeamProject('Marketing');
+	await linkUserToProject(owner, project, 'project:editor');
+	readOnlyProject = await createTeamProject('Sales');
+	await linkUserToProject(owner, readOnlyProject, 'project:viewer');
 });
 
 beforeEach(async () => {
@@ -140,7 +158,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 		await testServer
 			.authAgentFor(otherUser)
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: owner.id,
+			})
 			.expect(403);
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
@@ -154,7 +178,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 			.post(
 				`/instance-ai/threads/2e0a1d2b-0000-4000-8000-000000000000/preferences/${preference.id}/edit`,
 			)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: owner.id,
+			})
 			.expect(404);
 	});
 
@@ -166,7 +196,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 
 		await ownerAgent
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: owner.id,
+			})
 			.expect(403);
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
@@ -178,7 +214,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 
 		await ownerAgent
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: otherUser.id,
+			})
 			.expect(404);
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
@@ -193,7 +235,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 
 		await ownerAgent
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: owner.id,
+			})
 			.expect(409);
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
@@ -205,7 +253,13 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 
 		const response = await ownerAgent
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
-			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID, content: 'Use American English.' })
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+				userId: owner.id,
+			})
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -218,10 +272,145 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 					preferenceId: preference.id,
 					state: 'edited',
 					content: 'Use American English.',
+					scope: 'user',
+					projectId: null,
 				},
 			},
 		});
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
 		expect(row?.content).toBe('Use American English.');
+	});
+
+	test('moves the row into a project the caller may write, and the fact names it', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		const response = await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use British English.',
+				scope: 'project',
+				projectId: project.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.event.payload).toMatchObject({
+			state: 'edited',
+			scope: 'project',
+			projectId: project.id,
+		});
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({ userId: null, projectId: project.id });
+	});
+
+	test('refuses a move into a project the caller may only read', async () => {
+		// Review focus 2: the chat gets the same answer the settings page gets.
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use British English.',
+				scope: 'project',
+				projectId: readOnlyProject.id,
+			})
+			.expect(403);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({ userId: owner.id, projectId: null });
+	});
+
+	test('refuses a move to the instance from a member', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use British English.',
+				scope: 'instance',
+			})
+			.expect(403);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({ userId: owner.id, projectId: null });
+	});
+
+	// The card knows only the scope of its own last write. A move made on the settings page
+	// leaves that memory stale, and a text-only edit that restated it would undo the move.
+	test('keeps a move made on the settings page when the card edits only the text', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		// The settings page moves the row into the project.
+		await ownerAgent
+			.patch(`/ai-preferences/${preference.id}`)
+			.send({ content: 'Use British English.', scope: 'project', projectId: project.id })
+			.expect(200);
+
+		// The card still remembers `user`, so a text-only edit names no scope at all.
+		const response = await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+			})
+			.expect(200);
+
+		// The text changed and the row stayed in the project.
+		expect(response.body.data.event.payload).toMatchObject({
+			state: 'edited',
+			content: 'Use American English.',
+			scope: 'project',
+			projectId: project.id,
+		});
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({
+			content: 'Use American English.',
+			userId: null,
+			projectId: project.id,
+		});
+	});
+
+	test('keeps the owner of a user row when the card edits only the text', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+			})
+			.expect(200);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({
+			content: 'Use American English.',
+			userId: owner.id,
+			projectId: null,
+		});
+	});
+
+	test('refuses a user-scope edit that names no owner', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		const response = await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+				scope: 'user',
+			})
+			.expect(400);
+
+		expect(response.body.message).toBe('An edit of a user preference must name the user');
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row?.content).toBe('Use British English.');
 	});
 });

@@ -23,6 +23,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 7 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -198,6 +199,8 @@ erDiagram
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
@@ -583,6 +586,15 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_message_queue" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  bigint id
+  json payload
+  varchar_32_ source
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_definition" {
   varchar_36_ agentId FK

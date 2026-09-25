@@ -10,6 +10,7 @@ import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -105,6 +106,7 @@ export function onceStatusHandle(
 
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	slackThreadContext?: SlackThreadContext;
 	/** Allow-listed metadata from the current platform message. */
 	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
@@ -123,6 +125,8 @@ export type BridgeResumeExecutionContext = Pick<
 >;
 
 export interface BridgeMessageContextParams {
+	/** Capture durable input without showing processing status while it waits. */
+	startStatus?: boolean;
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
@@ -491,6 +495,7 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		logger: Logger;
 		agentId: string;
+		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 	}): Promise<BridgeResumeExecutionContext>;
 
 	/**
