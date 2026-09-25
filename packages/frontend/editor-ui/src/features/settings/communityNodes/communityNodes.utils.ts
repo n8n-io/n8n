@@ -1,4 +1,17 @@
+import type { CommunityNodeType } from '@n8n/api-types';
 import semver from 'semver';
+
+export async function findVettedCommunityNodeAttributes(
+	nodeTypes: string[],
+	getCommunityNodeAttributes: (nodeType: string) => Promise<CommunityNodeType | null>,
+) {
+	for (const nodeType of nodeTypes) {
+		const attributes = await getCommunityNodeAttributes(nodeType);
+		if (attributes) return attributes;
+	}
+
+	return null;
+}
 
 interface CommunityPackageUpdateAvailability {
 	installedVersion: string;

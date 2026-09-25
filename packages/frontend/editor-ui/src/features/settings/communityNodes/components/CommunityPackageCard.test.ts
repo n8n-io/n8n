@@ -9,7 +9,11 @@ import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 const communityPackage: PublicInstalledPackage = {
 	packageName: 'n8n-nodes-test',
 	installedVersion: '1.0.0',
-	installedNodes: [{ name: 'TestNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode],
+	installedNodes: [
+		{ name: 'OldNode', type: 'n8n-nodes-test.oldNode' } as PublicInstalledNode,
+		{ name: 'TestNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode,
+		{ name: 'OtherNode', type: 'n8n-nodes-test.otherNode' } as PublicInstalledNode,
+	],
 	createdAt: new Date(0),
 	updatedAt: new Date(0),
 };
@@ -47,14 +51,11 @@ describe('CommunityPackageCard', () => {
 		nodeTypesStore = useNodeTypesStore();
 	});
 
-	it('uses the installed node type to load the verified package version', async () => {
-		Object.defineProperty(nodeTypesStore, 'visibleNodeTypes', {
-			get: () => [{ name: 'n8n-nodes-test-parser.parse' }, { name: 'n8n-nodes-test.testNode' }],
-		});
+	it('skips stale node types when loading the verified package version', async () => {
 		nodeTypesStore.getCommunityNodeAttributes = vi
 			.fn()
 			.mockImplementation(async (nodeType) =>
-				nodeType === 'n8n-nodes-test.testNode' ? { npmVersion: '2.0.0' } : { npmVersion: '1.0.0' },
+				nodeType === 'n8n-nodes-test.testNode' ? { npmVersion: '2.0.0' } : null,
 			);
 
 		const { getByText } = renderComponent({
@@ -65,9 +66,15 @@ describe('CommunityPackageCard', () => {
 
 		await flushPromises();
 
-		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith(
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			1,
+			'n8n-nodes-test.oldNode',
+		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			2,
 			'n8n-nodes-test.testNode',
 		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledTimes(2);
 		expect(getByText('Update')).toBeInTheDocument();
 	});
 

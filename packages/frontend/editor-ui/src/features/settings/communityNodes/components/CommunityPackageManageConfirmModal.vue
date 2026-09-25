@@ -6,7 +6,7 @@ import {
 } from '../communityNodes.constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { isNodesApiVersionError } from '../communityNodes.utils';
+import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -196,11 +196,11 @@ const onUpdate = async () => {
 };
 
 async function fetchPackageInfo() {
-	const nodeType = communityStorePackage.value?.installedNodes[0]?.type;
-	const communityNodeAttributes = nodeType
-		? await nodeTypesStore.getCommunityNodeAttributes(nodeType)
-		: null;
-
+	const nodeTypes = communityStorePackage.value?.installedNodes.map((node) => node.type) ?? [];
+	const communityNodeAttributes = await findVettedCommunityNodeAttributes(
+		nodeTypes,
+		nodeTypesStore.getCommunityNodeAttributes,
+	);
 	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 

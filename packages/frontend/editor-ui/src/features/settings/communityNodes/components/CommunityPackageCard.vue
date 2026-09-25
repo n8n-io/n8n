@@ -9,7 +9,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, ref, watch } from 'vue';
-import { isCommunityPackageUpdateAvailable } from '../communityNodes.utils';
+import {
+	findVettedCommunityNodeAttributes,
+	isCommunityPackageUpdateAvailable,
+} from '../communityNodes.utils';
 
 import {
 	N8nActionToggle,
@@ -95,9 +98,12 @@ function onUpdateClick() {
 }
 
 watch(
-	() => props.communityPackage?.installedNodes[0]?.type,
-	async (nodeType) => {
-		const attributes = nodeType ? await nodeTypesStore.getCommunityNodeAttributes(nodeType) : null;
+	() => props.communityPackage?.installedNodes.map((node) => node.type) ?? [],
+	async (nodeTypes) => {
+		const attributes = await findVettedCommunityNodeAttributes(
+			nodeTypes,
+			nodeTypesStore.getCommunityNodeAttributes,
+		);
 		latestVerifiedVersion.value = attributes?.npmVersion;
 	},
 	{ immediate: true },
