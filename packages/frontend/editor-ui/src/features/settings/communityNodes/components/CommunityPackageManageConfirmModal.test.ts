@@ -107,7 +107,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 			.fn()
 			.mockImplementation(async (nodeType) =>
 				nodeType === 'n8n-nodes-test.test'
-					? { npmVersion: '2.0.0', checksum: 'correct-checksum' }
+					? { npmVersion: '2.0.5', checksum: 'correct-checksum' }
 					: null,
 			);
 
@@ -124,7 +124,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 
 		expect(communityNodesStore.updatePackage).toHaveBeenCalledWith(
 			'n8n-nodes-test',
-			'2.0.0',
+			'2.0.5',
 			'correct-checksum',
 		);
 	});
