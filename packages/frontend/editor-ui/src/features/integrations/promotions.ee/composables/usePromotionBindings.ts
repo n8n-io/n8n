@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { PromotionBindingConsumer, ContinueApplyPackageDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
 	CreatedPromotionBinding,
@@ -33,6 +33,9 @@ type PromotionBindingsError =
 	| { kind: 'creationMismatch' }
 	// The UI uses the cause to show why Continue failed.
 	| { kind: 'continue'; cause: unknown };
+
+// Set when the paused apply came from a workflow selection, not a whole branch.
+type ContinueSelection = { projectId: string; workflowIds: string[] };
 
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
@@ -71,6 +74,7 @@ export function usePromotionBindings() {
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
 	let connectionId: string | undefined;
+	let continueSelection: ContinueSelection | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
 		if (missingKeys.value.has(key)) return 'missing';
@@ -139,10 +143,11 @@ export function usePromotionBindings() {
 		);
 	}
 
-	function start(result: BlockedApplyResult) {
+	function start(result: BlockedApplyResult, continueWith?: ContinueSelection) {
 		session++;
 		originalResult.value = result;
 		connectionId = result.connectionId;
+		continueSelection = continueWith;
 		expectedSource = { configId: result.configId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
@@ -197,9 +202,19 @@ export function usePromotionBindings() {
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
-				expectedSource: { ...expectedSource },
-			});
+			// A selection continues through the project endpoint; a whole branch through the connection.
+			const result = continueSelection
+				? await continueApplyProjectSelection(
+						rootStore.publicApiContext,
+						continueSelection.projectId,
+						{
+							workflowIds: continueSelection.workflowIds,
+							expectedSource: { ...expectedSource },
+						},
+					)
+				: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
+						expectedSource: { ...expectedSource },
+					});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
 			if (result.status === 'source-changed') sourceChanged.value = true;

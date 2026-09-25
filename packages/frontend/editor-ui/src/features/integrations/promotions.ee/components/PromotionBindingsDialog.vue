@@ -25,6 +25,8 @@ const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
 	createBinding: CreatePromotionBinding;
+	// Present when the apply resumes a workflow selection instead of a whole branch.
+	continueWith?: { projectId: string; workflowIds: string[] };
 }>();
 
 const emit = defineEmits<{
@@ -54,7 +56,7 @@ const {
 watch(
 	() => props.open,
 	(open) => {
-		if (open) bindings.start(props.blockedResult);
+		if (open) bindings.start(props.blockedResult, props.continueWith);
 		else bindings.end();
 	},
 	{ immediate: true },

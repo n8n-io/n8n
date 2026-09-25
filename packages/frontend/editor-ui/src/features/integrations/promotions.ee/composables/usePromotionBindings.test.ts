@@ -2,7 +2,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
 import { promotionBindingKey, usePromotionBindings } from './usePromotionBindings';
-import { continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
@@ -173,6 +173,48 @@ it('submits once with the original source and allows warnings', async () => {
 	expect(session.canContinue.value).toBe(false);
 	await session.continueApply();
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+});
+
+it('continues a selection through the project endpoint', async () => {
+	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
+	const session = usePromotionBindings();
+	const result = blocked({ missingBindings: [] });
+	session.start(result, { projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] });
+	expect(session.canContinue.value).toBe(true);
+	expect(await session.continueApply()).toBe(applied);
+	expect(continueApplyProjectSelection).toHaveBeenCalledTimes(1);
+	expect(continueApplyProjectSelection).toHaveBeenCalledWith(
+		{ baseUrl: '/custom/api/v1' },
+		'team-a',
+		{
+			workflowIds: ['wf-a', 'wf-b'],
+			expectedSource: { configId: result.configId, ...result.git },
+		},
+	);
+	expect(continueApplyPromotion).not.toHaveBeenCalled();
+	expect(session.canContinue.value).toBe(false);
+});
+
+it('reconciles a blocked selection result and stops on a source change', async () => {
+	const session = usePromotionBindings();
+	const initial = blocked({ missingBindings: [] });
+	session.start(initial, { projectId: 'team-a', workflowIds: ['wf-a'] });
+	const next = blocked({ missingBindings: [credential] });
+	vi.mocked(continueApplyProjectSelection).mockResolvedValueOnce(next);
+	await session.continueApply();
+	expect(session.preflight.value).toBe(next.preflight);
+	expect(session.unresolvedCount.value).toBe(1);
+	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
+	const changed = {
+		...initial,
+		status: 'source-changed' as const,
+		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
+	};
+	vi.mocked(continueApplyProjectSelection).mockResolvedValueOnce(changed);
+	expect(await session.continueApply()).toBe(changed);
+	expect(session.sourceChanged.value).toBe(true);
+	expect(continueApplyProjectSelection).toHaveBeenCalledTimes(2);
+	expect(continueApplyPromotion).not.toHaveBeenCalled();
 });
 
 it('replaces blockers and preserves saved rows after another blocked result', async () => {
