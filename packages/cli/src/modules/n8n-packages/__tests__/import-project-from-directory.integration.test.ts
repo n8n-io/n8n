@@ -19,6 +19,8 @@ import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
+import { DirectoryPackageReader } from '../io/directory/directory-package-reader';
+import { PackageDirectoryInventoryReader } from '../io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportRequest } from '../n8n-packages.types';
@@ -174,6 +176,63 @@ describe('importPackageFromDirectory', () => {
 			await Container.get(WorkflowRepository).findOneBy({ id: targetOnlyWorkflow.id }),
 		).toBeNull();
 		expect(await Container.get(FolderRepository).findOneBy({ id: targetOnlyFolder.id })).toBeNull();
+	});
+
+	it('round-trips a project with a nested folder hierarchy', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		const parentFolder = await createFolder(project, { name: 'Operations' });
+		const childFolder = await createFolder(project, { name: 'Orders', parentFolder });
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {}, parentFolder: childFolder },
+			project,
+		);
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id] },
+			{ targetDir: sourceDir },
+		);
+
+		// The apply-time preflight reads the package with the inventory reader. A
+		// workflow two folders deep sits at `folders/<a>/<b>/workflows/...`, so the
+		// reader must accept that location instead of rejecting the whole apply.
+		const reader = new DirectoryPackageReader(sourceDir, {
+			maxUncompressedBytes: 1e9,
+			maxEntryBytes: 1e9,
+			maxEntries: 1e6,
+			maxPathLength: 4096,
+		});
+		const inventory = await Container.get(PackageDirectoryInventoryReader).read(reader);
+		expect(inventory.workflows).toHaveLength(1);
+		expect(inventory.workflows[0].path).toMatch(
+			/\/folders\/operations-[^/]+\/orders-[^/]+\/workflows\/process-order-[^/]+\/workflow\.json$/,
+		);
+
+		// Force the create path (fresh target).
+		await testDb.truncate([
+			'Folder',
+			'WorkflowEntity',
+			'SharedWorkflow',
+			'ProjectRelation',
+			'Project',
+		]);
+
+		const result = await service.importPackageFromDirectory(
+			{ user: owner, ...importPolicy },
+			{ sourceDir },
+		);
+
+		expect(result.projects).toHaveLength(1);
+		expect(result.workflows.map((w) => w.name)).toEqual(['Process order']);
+
+		const importedParent = await Container.get(FolderRepository).findOneBy({ id: parentFolder.id });
+		const importedChild = await Container.get(FolderRepository).findOneBy({ id: childFolder.id });
+		expect(importedParent?.parentFolderId).toBeNull();
+		expect(importedChild?.parentFolderId).toBe(parentFolder.id);
+
+		const importedWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: { parentFolder: true },
+		});
+		expect(importedWorkflow?.parentFolder?.id).toBe(childFolder.id);
 	});
 
 	it('does not emit the user package-import event', async () => {
