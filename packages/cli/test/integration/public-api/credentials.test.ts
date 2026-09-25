@@ -1975,6 +1975,18 @@ describe('credential description', () => {
 		expect(await getStoredDescription(id)).toBeNull();
 	});
 
+	// Update has no service-level check, so the public DTO is the only guard.
+	test('should reject an update with a description over the maximum length', async () => {
+		const id = await createWithDescription();
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${id}`)
+			.send({ description: 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1) });
+
+		expect(response.statusCode).toBe(400);
+		expect(await getStoredDescription(id)).toBe(description);
+	});
+
 	test('should return the description from the get and list endpoints', async () => {
 		const id = await createWithDescription();
 
