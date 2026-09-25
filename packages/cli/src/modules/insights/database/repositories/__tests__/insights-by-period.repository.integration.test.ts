@@ -525,30 +525,13 @@ describe('InsightsByPeriodRepository', () => {
 		);
 	});
 
-	describe('getDailyDataStart', () => {
-		let repository: InsightsByPeriodRepository;
-		let workflow: WorkflowEntity;
-
+	describe('getEarliestDataDate', () => {
 		async function truncateInsights(): Promise<void> {
 			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
 		}
 
-		async function seed(periodUnit: InsightsByPeriod['periodUnit'], periodStart: string) {
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit,
-				periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
-			});
-		}
-
-		beforeAll(() => {
-			repository = Container.get(InsightsByPeriodRepository);
-		});
-
 		beforeEach(async () => {
 			await truncateInsights();
-			workflow = await createWorkflow({}, await createTeamProject());
 		});
 
 		// Later blocks query a recent window, so leave none of these rows.
@@ -556,49 +539,25 @@ describe('InsightsByPeriodRepository', () => {
 			await truncateInsights();
 		});
 
-		test('returns null without any data', async () => {
-			await expect(repository.getDailyDataStart()).resolves.toBeNull();
-		});
+		test('returns the oldest period start of any bucket size as a UTC instant', async () => {
+			const repository = Container.get(InsightsByPeriodRepository);
+			const workflow = await createWorkflow({}, await createTeamProject());
+			for (const [periodUnit, periodStart] of [
+				['hour', '2026-06-01T10:00:00'],
+				['day', '2026-04-08'],
+				['week', '2026-03-16'],
+			] as const) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit,
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+				});
+			}
 
-		test('returns the oldest hourly or daily row when nothing was folded into weeks', async () => {
-			await seed('hour', '2026-02-10T13:00:00');
-			await seed('day', '2026-02-11');
-			await seed('hour', '2026-03-01T08:00:00');
-
-			await expect(repository.getDailyDataStart()).resolves.toBe('2026-02-10');
-		});
-
-		test('returns the Monday after the newest weekly row, skipping a partly folded week', async () => {
-			await seed('week', '2026-03-16');
-			// Compaction folded Monday to Thursday into this week and left the rest.
-			await seed('week', '2026-03-23');
-			await seed('day', '2026-03-27');
-			await seed('day', '2026-03-28');
-			await seed('hour', '2026-06-01T10:00:00');
-
-			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-30');
-		});
-
-		test('returns the oldest daily row when it comes after the weekly rows', async () => {
-			await seed('week', '2026-03-23');
-			await seed('day', '2026-04-08');
-
-			await expect(repository.getDailyDataStart()).resolves.toBe('2026-04-08');
-		});
-
-		test('returns the Monday after the newest weekly row even when an hourly row is older', async () => {
-			await seed('hour', '2026-03-02T10:00:00');
-			await seed('week', '2026-03-16');
-			await seed('day', '2026-04-08');
-
-			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-23');
-		});
-
-		test('returns the Monday after the newest weekly row when every row was folded into weeks', async () => {
-			await seed('week', '2026-03-16');
-			await seed('week', '2026-03-23');
-
-			await expect(repository.getDailyDataStart()).resolves.toBe('2026-03-30');
+			await expect(repository.getEarliestDataDate()).resolves.toEqual(
+				new Date('2026-03-16T00:00:00.000Z'),
+			);
 		});
 	});
 

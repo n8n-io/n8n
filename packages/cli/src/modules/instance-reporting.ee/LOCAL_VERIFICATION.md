@@ -27,9 +27,8 @@ the test.
 - Keep the receiver's request log visible. You must see the raw body.
 - `sqlite3` is installed. The dev instance uses SQLite at
   `~/.n8n/database.sqlite` unless you set another database.
-- An n8n owner account exists on the instance (the report reads insights as the
-  instance owner). Complete the setup screen first if this is a fresh
-  `~/.n8n`.
+- An n8n owner account exists on the instance, so you can build the workflows
+  in step 2. Complete the setup screen first if this is a fresh `~/.n8n`.
 
 ```bash
 export N8N_DB=~/.n8n/database.sqlite   # used by the snippets below
@@ -164,9 +163,9 @@ yesterday's UTC date, not today's.
 "Exactly two entries" holds when `insights_by_period` has no rows older than
 yesterday, as on a fresh `~/.n8n`. The first report backfills the `insights`
 history. With an older database, it gives one `daily` point for every day from
-the oldest hourly or daily row to yesterday, oldest first. That range never
-starts before the Monday after the newest weekly row, and it holds at most 730
-days. Days without rows inside that range carry `0`.
+the oldest row to yesterday, oldest first, but for at most 179 days (the
+day-to-week compaction threshold minus one). Days without rows inside that
+range carry `0`.
 
 **n8n side.**
 

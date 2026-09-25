@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 import type { InsightsService } from '@/modules/insights/insights.service';
 
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
@@ -79,6 +80,7 @@ interface Harness {
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
+	insightsConfig: InsightsConfig;
 	license: Mocked<License>;
 	http: HttpRequestClient;
 	eventService: Mocked<EventService>;
@@ -100,7 +102,9 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	// The reported day held 42 executions.
 	insightsService.getDailyExecutionTotals.mockResolvedValue(totalsByDay({ [REPORT_DATE]: 42 }));
 	// No insights data: an instance that has not compacted anything yet.
-	insightsService.getDailyDataStart.mockResolvedValue(null);
+	insightsService.getEarliestDataDate.mockResolvedValue(null);
+
+	const insightsConfig = new InsightsConfig();
 
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
@@ -127,6 +131,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		config,
 		reportRepository,
 		insightsService,
+		insightsConfig,
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
 		licenseMetricsRepository,
 		license,
@@ -139,6 +144,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		service,
 		reportRepository,
 		insightsService,
+		insightsConfig,
 		license,
 		http,
 		eventService,
@@ -606,7 +612,7 @@ describe('InstanceReportingService', () => {
 			test('carries every day of insights history, oldest first, and one cumulative point', async () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getDailyDataStart.mockResolvedValue('2025-11-26');
+				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-11-26T00:00:00.000Z'));
 
 				await service.sendReport();
 
@@ -623,7 +629,7 @@ describe('InstanceReportingService', () => {
 			test('starts at the first day with data and sends no zeros before it', async () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getDailyDataStart.mockResolvedValue('2026-03-20');
+				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-20T00:00:00.000Z'));
 				insightsService.getDailyExecutionTotals.mockResolvedValue(
 					totalsByDay({ '2026-03-20': 4, [REPORT_DATE]: 42 }),
 				);
@@ -657,7 +663,7 @@ describe('InstanceReportingService', () => {
 			test('reports yesterday as 0 when the first insights data is from today', async () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getDailyDataStart.mockResolvedValue('2026-03-26');
+				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-26T00:00:00.000Z'));
 				insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
 
 				await service.sendReport();
@@ -670,7 +676,7 @@ describe('InstanceReportingService', () => {
 				// Skipped reports never count as delivered, so no day is covered yet.
 				reportRepository.findPending.mockResolvedValue(null);
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getDailyDataStart.mockResolvedValue('2026-03-22');
+				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-22T00:00:00.000Z'));
 
 				await service.sendReport();
 
@@ -697,7 +703,7 @@ describe('InstanceReportingService', () => {
 				await service.sendReport();
 
 				expect(points(http)).toEqual(measured);
-				expect(insightsService.getDailyDataStart).not.toHaveBeenCalled();
+				expect(insightsService.getEarliestDataDate).not.toHaveBeenCalled();
 				expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
 			});
 		});
@@ -705,7 +711,7 @@ describe('InstanceReportingService', () => {
 		test('backfills a gap longer than 30 days, reporting days without data as 0', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue('2026-01-01');
-			insightsService.getDailyDataStart.mockResolvedValue('2025-10-01');
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-10-01T00:00:00.000Z'));
 
 			await service.sendReport();
 
@@ -715,10 +721,10 @@ describe('InstanceReportingService', () => {
 			expect(daily.at(-1)).toEqual({ value: 42, date: REPORT_DATE });
 		});
 
-		test('starts a gap no earlier than the first day with exact insights data', async () => {
+		test('starts a gap no earlier than the first insights data', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue('2025-06-01');
-			insightsService.getDailyDataStart.mockResolvedValue('2025-10-08');
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-10-08T00:00:00.000Z'));
 
 			await service.sendReport();
 
@@ -728,7 +734,7 @@ describe('InstanceReportingService', () => {
 		test('reads the whole window in one day-bucketed read', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
-			insightsService.getDailyDataStart.mockResolvedValue('2025-12-21');
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-12-21T00:00:00.000Z'));
 
 			await service.sendReport();
 
@@ -740,20 +746,22 @@ describe('InstanceReportingService', () => {
 			expect(dailyPoints(http)).toHaveLength(95);
 		});
 
-		test('keeps the newest days when the window exceeds what one report carries', async () => {
-			const { service, reportRepository, insightsService, http, logger } = makeHarness();
+		test('carries no day older than the compaction threshold, minus one day of margin', async () => {
+			const { service, reportRepository, insightsService, insightsConfig, http, logger } =
+				makeHarness();
+			insightsConfig.compactionDailyToWeeklyThresholdDays = 30;
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
-			insightsService.getDailyDataStart.mockResolvedValue('2023-01-01');
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2023-01-01T00:00:00.000Z'));
 
 			await service.sendReport();
 
 			const daily = dailyPoints(http);
-			expect(daily).toHaveLength(730);
-			expect(daily.at(0)?.date).toBe('2024-03-26');
+			expect(daily).toHaveLength(29);
+			expect(daily.at(0)?.date).toBe('2026-02-25');
 			expect(daily.at(-1)?.date).toBe(REPORT_DATE);
 			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 				firstDroppedDay: '2023-01-01',
-				lastDroppedDay: '2024-03-25',
+				lastDroppedDay: '2026-02-24',
 			});
 		});
 
@@ -762,7 +770,7 @@ describe('InstanceReportingService', () => {
 
 			await service.sendReport();
 
-			expect(insightsService.getDailyDataStart).not.toHaveBeenCalled();
+			expect(insightsService.getEarliestDataDate).not.toHaveBeenCalled();
 		});
 
 		test('sends nothing when yesterday is already reported', async () => {

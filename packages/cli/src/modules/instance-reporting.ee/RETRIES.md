@@ -81,12 +81,14 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
 - `InstanceReportingService.missedDays()` returns every day from the first
   owed day to yesterday. Yesterday is always included.
 - The first owed day is the day after the last delivered day, but never
-  before the first day with exact `insights` data. Before the first delivered
-  report, it is that first day. `InsightsService.getDailyDataStart()` supplies
-  it: the oldest hourly or daily row's day, but never before the Monday after
-  the newest weekly row.
-  - Compaction folds old days into one row per week, so those days have no
-    exact value. With the default settings, that bound is about 180 days back.
+  before the first `insights` data (`InsightsService.getEarliestDataDate()`).
+  Before the first delivered report, it is that first day.
+  - A report never carries a day older than
+    `N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS` minus one: 179
+    days with the default settings. Compaction folds older days into one row
+    per week, so those days have no exact value. The day of margin covers
+    Postgres, which dates the threshold in the session's time zone. Older days
+    are dropped and logged.
   - Days before the first data are not reported, not even as `0`. Inside the
     window, a day without data is reported as `0`. `insights` writes rows only
     for executions and never stores a `0`, so a day without executions and a
@@ -95,9 +97,8 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
     still shows up on the receiver.
 - The first report is no special case. It backfills the history that `insights`
   holds instead of sending yesterday alone.
-- A report carries at most `MAX_REPORT_DAYS` (730, the `insights` pruning cap).
-  Older days are dropped and logged. 730 daily points come to less than 70 KB,
-  so a full report stays far below the receiver's size limit. If the receiver
+- With the default settings, a full report of 179 daily points comes to less
+  than 20 KB, far below the receiver's size limit. If the receiver
   still rejects a report with `413`, the row is skipped. The next report
   carries the same days, so the receiver can reject it again.
 - `collectDataPoints()` reads the whole window from `insights` in one query,

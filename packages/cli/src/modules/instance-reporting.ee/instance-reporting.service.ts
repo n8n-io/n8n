@@ -11,7 +11,7 @@ import { OperationalError } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { INSIGHTS_MAX_AGE_DAYS_CAP } from '@/modules/insights/insights.constants';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 import { InsightsService } from '@/modules/insights/insights.service';
 
 import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
@@ -51,13 +51,6 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
- * How many days one report may carry. Insights keeps no data for longer, so
- * this only bounds the payload, in case that limit changes. Older days are
- * dropped and the report still ends at yesterday.
- */
-const MAX_REPORT_DAYS = INSIGHTS_MAX_AGE_DAYS_CAP;
-
-/**
  * Measures and delivers one instance report. *When* that happens is
  * {@link InstanceReportingScheduler}'s concern.
  */
@@ -69,6 +62,7 @@ export class InstanceReportingService {
 		private readonly config: InstanceReportingConfig,
 		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly insightsService: InsightsService,
+		private readonly insightsConfig: InsightsConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly license: License,
@@ -261,10 +255,16 @@ export class InstanceReportingService {
 		if (lastCoveredDay && lastCoveredDay >= yesterday) return [];
 
 		const firstDay = minDay(await this.firstOwedDay(lastCoveredDay, yesterday), yesterday);
-		const oldestAllowedDay = utcDayBefore(now, MAX_REPORT_DAYS);
+		// Compaction folds days older than this threshold into weekly totals, which
+		// have no per-day value. One day of margin, since Postgres dates that
+		// threshold in the session's time zone rather than in UTC.
+		const oldestAllowedDay = utcDayBefore(
+			now,
+			Math.max(1, this.insightsConfig.compactionDailyToWeeklyThresholdDays - 1),
+		);
 
 		if (firstDay < oldestAllowedDay) {
-			this.logger.warn('Dropping the oldest days, which exceed what one instance report carries', {
+			this.logger.warn('Dropping the oldest days, which insights no longer holds per day', {
 				firstDroppedDay: firstDay,
 				lastDroppedDay: addUtcDays(oldestAllowedDay, -1),
 			});
@@ -279,11 +279,9 @@ export class InstanceReportingService {
 	}
 
 	/**
-	 * The oldest day the next report can carry an exact daily point for: the day
-	 * after the last delivered one, but never before insights has exact data.
-	 *
-	 * Days before that data are either folded into weekly totals, which have no
-	 * exact value, or have nothing that shows insights was collecting.
+	 * The oldest day the next report owes: the day after the last delivered one,
+	 * but never before the first insights data, since nothing before it shows
+	 * that insights was collecting.
 	 */
 	private async firstOwedDay(lastCoveredDay: string | null, yesterday: string): Promise<string> {
 		const dayAfterCovered = lastCoveredDay ? addUtcDays(lastCoveredDay, 1) : null;
@@ -291,7 +289,8 @@ export class InstanceReportingService {
 		// Only yesterday is owed, which is the everyday case: skip the history read.
 		if (dayAfterCovered === yesterday) return yesterday;
 
-		const dataStart = await this.insightsService.getDailyDataStart();
+		const earliest = await this.insightsService.getEarliestDataDate();
+		const dataStart = earliest ? earliest.toISOString().slice(0, 10) : null;
 
 		// Without any data, a first report still carries yesterday, so that a new
 		// instance shows up on the receiver.

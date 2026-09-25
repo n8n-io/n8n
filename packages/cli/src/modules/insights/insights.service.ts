@@ -305,9 +305,9 @@ export class InsightsService {
 		}));
 	}
 
-	/** See {@link InsightsByPeriodRepository.getDailyDataStart}. */
-	async getDailyDataStart() {
-		return await this.insightsByPeriodRepository.getDailyDataStart();
+	/** The start of the oldest insights period of any bucket size, or `null` without data. */
+	async getEarliestDataDate() {
+		return await this.insightsByPeriodRepository.getEarliestDataDate();
 	}
 
 	/**

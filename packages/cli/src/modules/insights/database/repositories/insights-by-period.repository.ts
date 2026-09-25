@@ -577,58 +577,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const result = await this.createQueryBuilder('ibp')
 			.select('MIN(ibp.periodStart)', 'minDate')
 			.getRawOne<{ minDate: Date | string | null }>();
-		return result?.minDate ? new Date(result.minDate) : null;
-	}
-
-	/**
-	 * The UTC day (`YYYY-MM-DD`) from which insights holds exact per-day data:
-	 * the oldest hourly or daily row's day, but never before the Monday after the
-	 * newest weekly row. `null` when there are no rows.
-	 *
-	 * Compaction folds old days into one row per week, dated on the week's Monday.
-	 * A day-bucketed read puts such a row's whole week on its Monday, so a day is
-	 * exact only when no weekly row can hold it.
-	 */
-	async getDailyDataStart(): Promise<string | null> {
-		const periodStart = this.escapeField('periodStart');
-		const periodUnit = this.escapeField('periodUnit');
-
-		// ORDER BY with LIMIT rather than MIN: the unique index leads with
-		// periodStart, so the read stops at the first matching row.
-		const oldestDailyQuery = this.createQueryBuilder('daily')
-			.select(`daily.${periodStart}`, 'periodStart')
-			.where(`daily.${periodUnit} IN (:...dailyUnits)`, {
-				dailyUnits: [PeriodUnitToNumber.hour, PeriodUnitToNumber.day],
-			})
-			.orderBy(`daily.${periodStart}`, 'ASC')
-			.limit(1);
-
-		// Not bounded by the oldest daily row, so the result does not depend on
-		// the order in which compaction folds rows.
-		const newestWeeklyQuery = this.createQueryBuilder('weekly')
-			.select(`weekly.${periodStart}`, 'periodStart')
-			.where(`weekly.${periodUnit} = :weekUnit`, { weekUnit: PeriodUnitToNumber.week })
-			.orderBy(`weekly.${periodStart}`, 'DESC')
-			.limit(1);
-
-		const [oldestDaily, newestWeekly] = await Promise.all([
-			oldestDailyQuery.getRawOne<{ periodStart: Date | string }>(),
-			newestWeeklyQuery.getRawOne<{ periodStart: Date | string }>(),
-		]);
-
-		const firstExactDay = newestWeekly
-			? DateTime.fromISO(periodStartParser.parse(newestWeekly.periodStart), { zone: 'utc' })
-					.plus({ weeks: 1 })
-					.toISODate()
-			: null;
-		const oldestDailyDay = oldestDaily
-			? periodStartParser.parse(oldestDaily.periodStart).slice(0, 10)
-			: null;
-
-		// Either no day was folded yet, or the oldest daily row comes after the folded weeks.
-		const oldestDailyIsExact =
-			oldestDailyDay !== null && (!firstExactDay || oldestDailyDay > firstExactDay);
-
-		return oldestDailyIsExact ? oldestDailyDay : firstExactDay;
+		// SQLite returns a UTC datetime string without a zone, which `new Date()`
+		// would read as local time.
+		return result?.minDate ? new Date(periodStartParser.parse(result.minDate)) : null;
 	}
 }

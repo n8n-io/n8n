@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 import { InsightsService } from '@/modules/insights/insights.service';
 
 import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
@@ -138,6 +139,7 @@ describe('instance reporting retries', () => {
 			Container.get(InstanceReportingConfig),
 			repository,
 			Container.get(InsightsService),
+			Container.get(InsightsConfig),
 			instanceSettings,
 			Container.get(LicenseMetricsRepository),
 			mock<License>({ loadCertStr: async () => 'license-cert' }),
@@ -439,9 +441,16 @@ describe('instance reporting retries', () => {
 		expect(points.filter((point) => point.value !== 0)).toHaveLength(3);
 	});
 
-	test('carries the exact insights history on the first report, but no day held in a weekly row', async () => {
-		// Compaction folded the week of 01-19 up to Thursday into one weekly row,
-		// and left Friday and Saturday as daily rows.
+	test('carries the insights history on the first report, but no day older than the compaction threshold', async () => {
+		// With a threshold of 62 days, compaction folded everything before 01-23
+		// into weekly rows: the week of 01-19 up to Thursday.
+		const insightsConfig = Container.get(InsightsConfig);
+		const { compactionDailyToWeeklyThresholdDays } = insightsConfig;
+		insightsConfig.compactionDailyToWeeklyThresholdDays = 62;
+		onTestFinished(() => {
+			insightsConfig.compactionDailyToWeeklyThresholdDays = compactionDailyToWeeklyThresholdDays;
+		});
+
 		await seedCompactedExecutions('week', { '2026-01-19': 700 });
 		await seedCompactedExecutions('day', {
 			'2026-01-23': 5,
@@ -461,10 +470,11 @@ describe('instance reporting retries', () => {
 		await armed(harness, 1);
 
 		const points = dailyPoints(sentPayload(harness, 0));
-		// From the Monday after the weekly row to yesterday.
-		expect(points).toHaveLength(59);
-		expect(points.at(0)).toEqual({ date: '2026-01-26', value: 7 });
+		// From 61 days back to yesterday. 01-23 falls in the one day of margin.
+		expect(points).toHaveLength(61);
+		expect(points.at(0)).toEqual({ date: '2026-01-24', value: 6 });
 		expect(points.filter((point) => point.value !== 0)).toEqual([
+			{ date: '2026-01-24', value: 6 },
 			{ date: '2026-01-26', value: 7 },
 			{ date: '2026-02-24', value: 8 },
 			{ date: '2026-02-25', value: 9 },

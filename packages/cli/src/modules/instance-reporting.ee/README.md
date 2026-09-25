@@ -24,8 +24,9 @@ first `insights` data are not reported at all.
 The first report works the same way: it carries a `daily` point for every day
 from the first `insights` data to yesterday. It carries no past `cumulative`
 values, since those are unknown. Days before the first `insights` data are not
-sent. `insights` folds days older than about 180 days into weekly totals, so
-those days are never sent. Inside the sent range, a day without data is `0`.
+sent. `insights` folds days older than 180 days (by default) into weekly
+totals, so a report never carries a day older than 179 days. Inside the sent
+range, a day without data is `0`.
 [RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
 
 Known limits:
