@@ -128,9 +128,10 @@ export class CredentialsPermissionChecker {
 	}
 
 	/** The ids among `credentialIds` that `userId` personally cannot use. */
-	private async resolveInaccessibleCredentialIdsForUser(
+	async resolveInaccessibleCredentialIdsForUser(
 		userId: string,
 		credentialIds: string[],
+		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
@@ -153,17 +154,22 @@ export class CredentialsPermissionChecker {
 
 		// A user who may use any credential on the instance needs no further check for the rest —
 		// except a credential that no longer exists at all, which nobody can use, owner included.
-		if (hasGlobalScope(user, 'credential:use')) {
+		if (!ignoreGlobalUseScope && hasGlobalScope(user, 'credential:use')) {
 			const existingIds = new Set(await this.credentialsRepository.findExistingIds(remainingIds));
 			const deletedIds = remainingIds.filter((id) => !existingIds.has(id));
 			return [...unavailableIds, ...deletedIds];
 		}
 
-		const accessibleSet = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
-			remainingIds,
-			user,
-			['credential:read'],
-		);
+		const accessibleSet = ignoreGlobalUseScope
+			? await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+					remainingIds,
+					user,
+					['credential:read'],
+					{ ignoreGlobalOverride: true },
+				)
+			: await this.credentialsFinderService.findCredentialIdsWithScopeForUser(remainingIds, user, [
+					'credential:read',
+				]);
 		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
 		return [...unavailableIds, ...stillInaccessible];
@@ -298,6 +304,32 @@ export class CredentialsPermissionChecker {
 				return memberProjectIds?.some((id) => projectIdSet.has(id)) ?? false;
 			})
 			.map(([credentialId]) => credentialId);
+	}
+
+	/**
+	 * The ids of the credentials actively referenced by `nodes` — filtered to
+	 * the credential type actually selected on each node's current
+	 * configuration, same as `mapCredIdsToNodes` — deduplicated.
+	 *
+	 * Unlike `mapCredIdsToNodes`, this never throws on a credential reference
+	 * with no id: it is used on the read path for past executions (redaction),
+	 * where a malformed or legacy reference must be skipped, not treated as a
+	 * validation failure worth failing the request over.
+	 */
+	getCredentialIdsForNodes(nodes: INode[]): string[] {
+		const ids = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled || !node.credentials) continue;
+
+			const activeCredTypes = this.getActiveCredentialTypes(node);
+
+			for (const [credType, cred] of Object.entries(node.credentials)) {
+				if (!cred.id) continue;
+				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;
+				ids.add(cred.id);
+			}
+		}
+		return [...ids];
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {

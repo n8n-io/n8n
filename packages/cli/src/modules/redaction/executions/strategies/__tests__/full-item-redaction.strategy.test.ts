@@ -11,6 +11,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	redactExecutionData: undefined,
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
+	enforceCredentialUsabilityRedaction: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -217,6 +218,49 @@ describe('FullItemRedactionStrategy', () => {
 
 			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
 			expect(item.redaction?.reason).toBe('dynamic_credentials');
+			expect(execution.data.redactionInfo?.reason).toBe('dynamic_credentials');
+		});
+
+		it('sets reason "credential_inaccessible" when enforceCredentialUsabilityRedaction is true', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { x: 1 } }]] },
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext({ enforceCredentialUsabilityRedaction: true }));
+
+			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+			expect(item.redaction?.reason).toBe('credential_inaccessible');
+			expect(execution.data.redactionInfo?.reason).toBe('credential_inaccessible');
+		});
+
+		it('prefers "dynamic_credentials" over "credential_inaccessible" when both are set', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { x: 1 } }]] },
+					},
+				],
+			});
+
+			await strategy.apply(
+				execution,
+				makeContext({ enforceDynCredRedaction: true, enforceCredentialUsabilityRedaction: true }),
+			);
+
 			expect(execution.data.redactionInfo?.reason).toBe('dynamic_credentials');
 		});
 	});

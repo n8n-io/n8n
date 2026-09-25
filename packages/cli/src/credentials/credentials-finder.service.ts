@@ -320,7 +320,7 @@ export class CredentialsFinderService {
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { visibilityOnly?: boolean } = {},
+		options: { visibilityOnly?: boolean; ignoreGlobalOverride?: boolean } = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
@@ -329,7 +329,10 @@ export class CredentialsFinderService {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
+		if (
+			options.ignoreGlobalOverride ||
+			!this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+		) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),

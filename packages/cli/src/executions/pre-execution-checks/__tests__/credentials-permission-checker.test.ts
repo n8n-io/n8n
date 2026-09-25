@@ -714,6 +714,59 @@ describe('CredentialsPermissionChecker', () => {
 				expect.arrayContaining([activeCredentialId, staleCredentialId]),
 			);
 		});
+
+		describe('getCredentialIdsForNodes', () => {
+			it('only returns the credential type actively used by the current configuration', () => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						credentials: [
+							{
+								name: 'httpSslAuth',
+								required: true,
+								displayOptions: { show: { provideSslCertificates: [true] } },
+							},
+						],
+					},
+				} as never);
+
+				expect(permissionChecker.getCredentialIdsForNodes([httpRequestNode])).toEqual([
+					activeCredentialId,
+				]);
+			});
+
+			it('returns every referenced credential when the node type cannot be resolved', () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(() => {
+					throw new Error('Unknown node type');
+				});
+
+				expect(permissionChecker.getCredentialIdsForNodes([httpRequestNode])).toEqual(
+					expect.arrayContaining([activeCredentialId, staleCredentialId]),
+				);
+			});
+		});
+	});
+
+	describe('getCredentialIdsForNodes', () => {
+		it('returns the ids of credentials referenced by the given nodes, deduplicated', () => {
+			const nodeB: INode = { ...node, name: 'Node B' };
+
+			expect(permissionChecker.getCredentialIdsForNodes([node, nodeB])).toEqual([credentialId]);
+		});
+
+		it('skips disabled nodes', () => {
+			const disabledNode: INode = { ...node, disabled: true };
+
+			expect(permissionChecker.getCredentialIdsForNodes([disabledNode])).toEqual([]);
+		});
+
+		it('skips a credential reference with no id instead of throwing', () => {
+			const nodeWithNoId: INode = {
+				...node,
+				credentials: { someCredential: { id: null as unknown as string, name: 'No id' } },
+			};
+
+			expect(permissionChecker.getCredentialIdsForNodes([nodeWithNoId])).toEqual([]);
+		});
 	});
 
 	describe('checkForUser', () => {
@@ -992,6 +1045,51 @@ describe('CredentialsPermissionChecker', () => {
 				{ id: credentialId, name: 'Test Credential', exists: true },
 			]);
 			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalled();
+		});
+	});
+
+	describe('resolveInaccessibleCredentialIdsForUser', () => {
+		const userId = 'user-123';
+
+		it('skips the check for a global-use user by default', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+			credentialsRepository.findExistingIds.mockResolvedValueOnce([credentialId]);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId]),
+			).resolves.toEqual([]);
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('does not skip a global-use user when ignoreGlobalUseScope is true', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+			// No personal grant on this credential: the finder reports it inaccessible.
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(new Set());
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([credentialId]);
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
+				[credentialId],
+				expect.objectContaining({ role: GLOBAL_OWNER_ROLE }),
+				['credential:read'],
+				{ ignoreGlobalOverride: true },
+			);
+		});
+
+		it('still allows a global-use user who is personally granted the credential, even with ignoreGlobalUseScope', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
+				new Set([credentialId]),
+			);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([]);
 		});
 	});
 });

@@ -7,6 +7,7 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -15,6 +16,7 @@ import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
@@ -45,6 +47,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async init(): Promise<void> {
@@ -96,24 +99,29 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		);
 		if (processable.length === 0) return;
 
-		// Single DB call shared by both the reveal and redact paths.
 		// Only executions where policy doesn't already grant access need a scope check.
+		// Shared by both the reveal and redact paths, and resolved concurrently with
+		// the credential-usability check below since neither depends on the other.
 		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
-		let revealableIds = new Set<string>();
-		if (needsCheck.length > 0) {
-			const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
-			revealableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-				uniqueWorkflowIds,
-				options.user,
-				['execution:reveal'],
-			);
-		}
+		const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
+
+		const [revealableIds, credentialInaccessibleExecutions] = await Promise.all([
+			needsCheck.length > 0
+				? this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+						uniqueWorkflowIds,
+						options.user,
+						['execution:reveal'],
+					)
+				: Promise.resolve(new Set<string>()),
+			this.resolveCredentialInaccessibleExecutions(processable, options.user.id),
+		]);
 
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
 			// Dynamic credential executions are only revealable to the user the
-			// execution ran as — the `execution:reveal` scope deliberately does
-			// not bypass this check.
+			// execution ran as, and executions referencing a credential the viewer
+			// cannot use are never revealable to them — the `execution:reveal`
+			// scope deliberately does not bypass either check.
 			for (const execution of processable) {
 				if (
 					this.hasDynamicCredentials(execution) &&
@@ -127,6 +135,18 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						userAgent: options.userAgent ?? '',
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'Not the executing user of a private-credential execution',
+					});
+					throw new ForbiddenError();
+				}
+				if (credentialInaccessibleExecutions.has(execution)) {
+					this.eventService.emit('execution-data-reveal-failure', {
+						user: options.user,
+						executionId: execution.id ?? '',
+						workflowId: execution.workflowId,
+						ipAddress: options.ipAddress ?? '',
+						userAgent: options.userAgent ?? '',
+						redactionPolicy: this.resolvePolicy(execution),
+						rejectionReason: 'User cannot use a credential referenced by this execution',
 					});
 					throw new ForbiddenError();
 				}
@@ -172,25 +192,22 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const isOwnDynCreds =
 				hasDynCreds && this.isOwnDynamicCredentialsExecution(execution, options.user.id);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
-			// On dyncred executions, only the executing user may see unredacted data,
-			// and the `execution:reveal` scope does not grant a bypass.
-			const userCanReveal = hasDynCreds
-				? isOwnDynCreds
-				: policyAllowsReveal || revealableIds.has(execution.workflowId);
+			const enforceCredentialUsabilityRedaction = credentialInaccessibleExecutions.has(execution);
+			const userCanReveal = enforceCredentialUsabilityRedaction
+				? false
+				: hasDynCreds
+					? isOwnDynCreds
+					: policyAllowsReveal || revealableIds.has(execution.workflowId);
 			const enforceDynCredRedaction = hasDynCreds && !isOwnDynCreds;
 			const context: RedactionContext = {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
 				enforceDynCredRedaction,
+				enforceCredentialUsabilityRedaction,
 				memo: new Map(),
 			};
-			const pipeline = this.buildPipeline(
-				execution,
-				context,
-				policyAllowsReveal,
-				enforceDynCredRedaction,
-			);
+			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
 
 			// `runtimeData.credentials` carries encrypted credential context that
 			// must be stripped from any API response, including for the owner
@@ -241,7 +258,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *
 	 * - `FullItemRedactionStrategy` is included when items should be cleared:
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
-	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
+	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials,
+	 *   or a credential the viewer cannot use.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
 	 *
 	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
@@ -254,7 +272,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		execution: RedactableExecution,
 		context: RedactionContext,
 		policyAllowsReveal: boolean,
-		enforceDynCredRedaction: boolean,
 	): IExecutionRedactionStrategy[] {
 		const pipeline: IExecutionRedactionStrategy[] = [];
 
@@ -262,7 +279,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		const shouldClearItems =
 			context.redactExecutionData !== false &&
 			(context.redactExecutionData === true ||
-				enforceDynCredRedaction ||
+				context.enforceDynCredRedaction ||
+				context.enforceCredentialUsabilityRedaction ||
 				(!policyAllowsReveal &&
 					(policy === 'all' ||
 						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
@@ -273,6 +291,54 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		return pipeline;
+	}
+
+	/**
+	 * Batched, single-call check for whether the viewer can use every credential
+	 * each execution's workflow references, independent of dynamic credentials.
+	 * Gated behind {@link isCredSharingEnabled}: while the flag is off this makes
+	 * no DB call and returns an empty set, so redaction behaves exactly as before.
+	 *
+	 * Returns the subset of `executions` that reference at least one credential
+	 * the viewer cannot use. Such executions must always be redacted with
+	 * canReveal = false — mirroring the dynamic-credentials rule, neither an
+	 * `execution:reveal` scope nor an instance-wide `credential:use` scope (e.g.
+	 * Owner/Admin) grants a bypass: `ignoreGlobalUseScope` asks for the viewer's
+	 * actual personal access to each credential, the same question a colleague
+	 * with no elevated scopes would be asked.
+	 */
+	private async resolveCredentialInaccessibleExecutions(
+		executions: RedactableExecution[],
+		userId: string,
+	): Promise<Set<RedactableExecution>> {
+		if (!isCredSharingEnabled()) return new Set();
+
+		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
+		const allCredentialIds = new Set<string>();
+		for (const execution of executions) {
+			const credentialIds = this.credentialsPermissionChecker.getCredentialIdsForNodes(
+				execution.workflowData.nodes,
+			);
+			if (credentialIds.length === 0) continue;
+			credentialIdsByExecution.set(execution, credentialIds);
+			for (const id of credentialIds) allCredentialIds.add(id);
+		}
+		if (allCredentialIds.size === 0) return new Set();
+
+		const inaccessibleIds = new Set(
+			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
+				userId,
+				[...allCredentialIds],
+				{ ignoreGlobalUseScope: true },
+			),
+		);
+		if (inaccessibleIds.size === 0) return new Set();
+
+		const result = new Set<RedactableExecution>();
+		for (const [execution, credentialIds] of credentialIdsByExecution) {
+			if (credentialIds.some((id) => inaccessibleIds.has(id))) result.add(execution);
+		}
+		return result;
 	}
 
 	/**

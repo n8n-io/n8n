@@ -902,6 +902,45 @@ describe('CredentialsFinderService', () => {
 			});
 		});
 
+		test('ignoreGlobalOverride forces role-based filtering even for a global owner', async () => {
+			const ids = ['cred-1', 'cred-2'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
+				ids,
+				owner,
+				['credential:read'],
+				{ ignoreGlobalOverride: true },
+			);
+
+			expect(result).toEqual(new Set(['cred-1']));
+			// Owner now goes through role resolution, same as a regular member would.
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
+			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+				select: { credentialsId: true },
+				where: {
+					credentialsId: In(ids),
+					credentials: { usageScope: 'project' },
+					role: In(['credential:owner', 'credential:user']),
+					project: {
+						projectRelations: {
+							role: In([
+								PROJECT_ADMIN_ROLE_SLUG,
+								PROJECT_OWNER_ROLE_SLUG,
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
+							]),
+							userId: owner.id,
+						},
+					},
+				},
+			});
+		});
+
 		test('should filter by roles for regular member', async () => {
 			const ids = ['cred-1', 'cred-2', 'cred-3'];
 			sharedCredentialsRepository.find.mockResolvedValueOnce([
