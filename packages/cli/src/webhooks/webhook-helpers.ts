@@ -635,7 +635,11 @@ export async function invokeWebhook({
 	}
 }
 
-/** Sends an immediate webhook response and reports whether execution must continue. */
+/**
+ * Sends the immediate webhook response unless a response was already sent. When the
+ * node answered the request itself (`noWebhookResponse`), it only reports that to the
+ * callback. Reports whether the workflow must run.
+ */
 export function handleImmediateWebhookResponse({
 	webhookResultData,
 	didSendResponse,
@@ -660,6 +664,8 @@ export function handleImmediateWebhookResponse({
 	}
 
 	if (!didSendResponse) {
+		// Only `undefined` selects the default message. A node can respond with `null`,
+		// which `??` would wrongly replace.
 		responseCallback(null, {
 			data:
 				webhookResultData.webhookResponse !== undefined
@@ -1102,8 +1108,8 @@ export async function executeWebhook(
 		didSendResponse = immediateResponse.didSendResponse;
 		if (!immediateResponse.shouldContinueWorkflowExecution) return;
 
-		// The node's output is the only place a file shows up, so this cannot run with
-		// the checks above.
+		// Engine 2.0 cannot receive files yet. A file exists only in the node's output,
+		// so this check runs after the node, unlike `engineV2Webhooks.assertSupported()`.
 		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
