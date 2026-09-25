@@ -31,6 +31,8 @@ import { useCredentialOAuth } from '@/features/credentials/composables/useCreden
 import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { groupCredentialSetupFields } from '@/features/credentials/credentialSetupFields';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 import TemplatedAuthSimpleView from '@/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -76,6 +78,7 @@ const toast = useToast();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const credentialsStore = useCredentialsStore();
+const { check: envFeatureFlag } = useEnvFeatureFlag();
 const oauth = useCredentialOAuth();
 const quickConnect = useQuickConnect();
 const gateway = useAiGateway();
@@ -256,8 +259,17 @@ watch(
 	{ immediate: true },
 );
 
+const credentialFields = computed(() =>
+	groupCredentialSetupFields(
+		props.item.credentialType,
+		form.parentTypes.value,
+		form.credentialProperties.value.filter(
+			(property) => !property.envFeatureFlag || envFeatureFlag.value(property.envFeatureFlag),
+		),
+	),
+);
 const helpFields = computed(() =>
-	form.credentialProperties.value.filter(
+	credentialFields.value.inline.filter(
 		(property) => property.type !== 'notice' && !property.typeOptions?.copyButton,
 	),
 );
@@ -271,7 +283,7 @@ const useAdvancedForm = computed(
 		!canQuickConnect.value &&
 		(isTemplated.value
 			? fieldTitles.value.length === 0
-			: form.credentialProperties.value.length === 0),
+			: credentialFields.value.inline.length === 0),
 );
 const advancedIsPrimary = computed(() => isTemplated.value && useAdvancedForm.value);
 const valueLabel = computed(() =>
@@ -812,7 +824,7 @@ onScopeDispose(() => {
 					v-else
 					compact
 					:credential-type="item.credentialType"
-					:credential-properties="form.credentialProperties.value"
+					:credential-properties="credentialFields.inline"
 					:credential-data="form.credentialData.value"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="form.showValidationWarning.value"
