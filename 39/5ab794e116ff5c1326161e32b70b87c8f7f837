@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_0073d29b57f205::t_8e0ed6d67e8ad3 3,50,53-55,57-72,117,129-130,134-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "395ab794e116ff5c1326161e32b70b87c8f7f837",
+  "prompts": {},
+  "sessions": {
+    "s_0073d29b57f205": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3e1-6bc2-7993-b114-f2f1046ffed9",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
