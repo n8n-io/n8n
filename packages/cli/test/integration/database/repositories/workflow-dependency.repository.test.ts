@@ -1,8 +1,10 @@
 import {
 	testDb,
 	createWorkflow,
+	createWorkflowHistory,
 	createTeamProject,
 	linkUserToProject,
+	setActiveVersion,
 } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import {
@@ -367,6 +369,100 @@ describe('WorkflowDependencyRepository', () => {
 			// ASSERT
 			//
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('removeStalePublishedDependencies()', () => {
+		const addDependencies = async (
+			workflowId: string,
+			publishedVersionId: string | null,
+			count = 1,
+		) => {
+			const dependencies = new WorkflowDependencies(workflowId, 1, publishedVersionId);
+			for (let i = 0; i < count; i++) {
+				dependencies.add({
+					dependencyType: 'credentialId',
+					dependencyKey: `cred-${i}`,
+					dependencyInfo: null,
+				});
+			}
+			// Small batches, because SQLite rejects a single insert of many rows.
+			for (let i = 0; i < dependencies.dependencies.length; i += 100) {
+				await workflowDependencyRepository.insert(
+					// TypeORM's insert typing does not accept the JSON column.
+					dependencies.dependencies.slice(i, i + 100) as Parameters<
+						WorkflowDependencyRepository['insert']
+					>[0],
+				);
+			}
+		};
+
+		const getLanes = async (workflowId: string) =>
+			[
+				...new Set(
+					(await workflowDependencyRepository.findBy({ workflowId })).map(
+						(dep) => dep.publishedVersionId,
+					),
+				),
+			].sort();
+
+		const createPublishedWorkflow = async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			return workflow;
+		};
+
+		it('should remove published rows that do not match the active version', async () => {
+			const workflow = await createPublishedWorkflow();
+			await addDependencies(workflow.id, null);
+			await addDependencies(workflow.id, workflow.versionId);
+			await addDependencies(workflow.id, 'older-version');
+
+			const removed = await workflowDependencyRepository.removeStalePublishedDependencies(
+				workflow.id,
+			);
+
+			expect(removed).toBe(1);
+			expect(await getLanes(workflow.id)).toEqual([null, workflow.versionId].sort());
+		});
+
+		it('should remove all published rows of an unpublished workflow', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			await addDependencies(workflow.id, null);
+			await addDependencies(workflow.id, 'unpublished-version', 3);
+
+			const removed = await workflowDependencyRepository.removeStalePublishedDependencies(
+				workflow.id,
+			);
+
+			expect(removed).toBe(3);
+			expect(await getLanes(workflow.id)).toEqual([null]);
+		});
+
+		it('should only clean up the given workflow', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const otherWorkflow = await createWorkflow({ nodes: [] });
+			await addDependencies(workflow.id, 'unpublished-version');
+			await addDependencies(otherWorkflow.id, 'unpublished-version');
+
+			await workflowDependencyRepository.removeStalePublishedDependencies(workflow.id);
+
+			expect(await getLanes(workflow.id)).toEqual([]);
+			expect(await getLanes(otherWorkflow.id)).toEqual(['unpublished-version']);
+		});
+
+		it('should clean up all workflows in chunks when no workflow is given', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const publishedWorkflow = await createPublishedWorkflow();
+			await addDependencies(workflow.id, 'unpublished-version', 1200);
+			await addDependencies(publishedWorkflow.id, publishedWorkflow.versionId, 2);
+
+			const removed = await workflowDependencyRepository.removeStalePublishedDependencies();
+
+			expect(removed).toBe(1200);
+			expect(await getLanes(workflow.id)).toEqual([]);
+			expect(await getLanes(publishedWorkflow.id)).toEqual([publishedWorkflow.versionId]);
 		});
 	});
 });

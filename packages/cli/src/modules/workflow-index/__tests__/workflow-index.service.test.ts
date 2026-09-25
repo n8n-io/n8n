@@ -739,16 +739,61 @@ describe('WorkflowIndexService', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(5);
+			expect(mockEventService.on).toHaveBeenCalledTimes(6);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith(
+				'workflow-deactivated',
+				expect.any(Function),
+			);
+		});
+	});
+
+	describe('removeStalePublishedDependencies()', () => {
+		it('should remove the stale published dependencies of one workflow', async () => {
+			mockWorkflowDependencyRepository.removeStalePublishedDependencies.mockResolvedValue(3);
+
+			await service.removeStalePublishedDependencies('workflow-123');
+
+			expect(
+				mockWorkflowDependencyRepository.removeStalePublishedDependencies,
+			).toHaveBeenCalledWith('workflow-123');
+		});
+
+		it('should report errors and not throw', async () => {
+			const error = new Error('database unavailable');
+			mockWorkflowDependencyRepository.removeStalePublishedDependencies.mockRejectedValue(error);
+
+			await expect(
+				service.removeStalePublishedDependencies('workflow-123'),
+			).resolves.toBeUndefined();
+
+			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
 		});
 	});
 
 	describe('buildIndex()', () => {
+		it('should remove stale published dependencies of all workflows before the published backfill', async () => {
+			mockWorkflowRepository.findWorkflowsNeedingIndexing.mockResolvedValue([]);
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
+
+			await service.buildIndex();
+
+			expect(
+				mockWorkflowDependencyRepository.removeStalePublishedDependencies,
+			).toHaveBeenCalledWith(undefined);
+			expect(
+				mockWorkflowDependencyRepository.removeStalePublishedDependencies.mock
+					.invocationCallOrder[0],
+			).toBeLessThan(
+				mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mock
+					.invocationCallOrder[0],
+			);
+		});
+
 		it('should skip published index when workflow has activeVersionId but no activeVersion nodes', async () => {
 			mockWorkflowRepository.findWorkflowsNeedingIndexing.mockResolvedValue([]);
 

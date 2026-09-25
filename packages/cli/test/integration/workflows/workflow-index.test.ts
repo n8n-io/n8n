@@ -254,6 +254,151 @@ describe('WorkflowIndexService Integration', () => {
 		});
 	});
 
+	describe('stale published dependencies', () => {
+		const nodeWithCredential = (credentialId: string): INode => ({
+			id: 'node-1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [250, 300],
+			parameters: {},
+			credentials: { httpAuth: { id: credentialId, name: credentialId } },
+		});
+
+		const getCredentialDependencies = async (workflowId: string) =>
+			(await workflowDependencyRepository.findBy({ workflowId, dependencyType: 'credentialId' }))
+				.map((dep) => ({ key: dep.dependencyKey, publishedVersionId: dep.publishedVersionId }))
+				.sort((a, b) => a.key.localeCompare(b.key));
+
+		/** Creates a workflow that uses `old-credential`, and indexes its draft and its published version. */
+		async function createPublishedWorkflow() {
+			const workflow = await createWorkflow({ nodes: [nodeWithCredential('old-credential')] });
+			await workflowDependencyRepository.delete({ workflowId: workflow.id });
+			await workflowIndexService.updateIndexForDraft(workflow);
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await workflowIndexService.updateIndexForPublished(
+				workflow,
+				workflow.versionId,
+				workflow.nodes,
+			);
+
+			expect(await getCredentialDependencies(workflow.id)).toEqual([
+				{ key: 'old-credential', publishedVersionId: null },
+				{ key: 'old-credential', publishedVersionId: workflow.versionId },
+			]);
+
+			return workflow;
+		}
+
+		it('should remove published dependencies when a workflow is unpublished', async () => {
+			const owner = await createOwner();
+			const workflow = await createPublishedWorkflow();
+
+			await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+			eventService.emit('workflow-deactivated', {
+				user: createUserPayload(owner),
+				workflowId: workflow.id,
+				workflow: { ...workflow, active: false, activeVersionId: null },
+				publicApi: false,
+				deactivatedVersionId: workflow.versionId,
+			});
+
+			await workflowRepository.update(workflow.id, {
+				nodes: [nodeWithCredential('new-credential')],
+			});
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			eventService.emit('workflow-saved', {
+				user: createUserPayload(owner),
+				workflow: saved,
+				publicApi: false,
+			});
+
+			await retryUntil(async () => {
+				expect(await getCredentialDependencies(workflow.id)).toEqual([
+					{ key: 'new-credential', publishedVersionId: null },
+				]);
+			});
+		});
+
+		it('should remove dependencies of the previous published version when another version is published', async () => {
+			const owner = await createOwner();
+			const workflow = await createPublishedWorkflow();
+
+			// Publishing a version from history does not change the draft, so the version counter stays the same.
+			const newVersion = {
+				...workflow,
+				versionId: uuid(),
+				nodes: [nodeWithCredential('new-credential')],
+			};
+			await createWorkflowHistory(newVersion);
+			await setActiveVersion(workflow.id, newVersion.versionId);
+			eventService.emit('workflow-activated', {
+				user: createUserPayload(owner),
+				workflowId: workflow.id,
+				workflow: { ...newVersion, activeVersionId: newVersion.versionId },
+				publicApi: false,
+			});
+
+			await retryUntil(async () => {
+				expect(await getCredentialDependencies(workflow.id)).toEqual([
+					{ key: 'new-credential', publishedVersionId: newVersion.versionId },
+					{ key: 'old-credential', publishedVersionId: null },
+				]);
+			});
+		});
+
+		it('should keep dependencies of the current published version when an older version is unpublished late', async () => {
+			const owner = await createOwner();
+			const workflow = await createPublishedWorkflow();
+
+			const newVersion = {
+				...workflow,
+				versionId: uuid(),
+				nodes: [nodeWithCredential('new-credential')],
+			};
+			await createWorkflowHistory(newVersion);
+			await setActiveVersion(workflow.id, newVersion.versionId);
+			await workflowIndexService.updateIndexForPublished(
+				workflow,
+				newVersion.versionId,
+				newVersion.nodes,
+			);
+
+			eventService.emit('workflow-deactivated', {
+				user: createUserPayload(owner),
+				workflowId: workflow.id,
+				workflow,
+				publicApi: false,
+				deactivatedVersionId: workflow.versionId,
+			});
+
+			await retryUntil(async () => {
+				expect(await getCredentialDependencies(workflow.id)).toEqual([
+					{ key: 'new-credential', publishedVersionId: newVersion.versionId },
+					{ key: 'old-credential', publishedVersionId: null },
+				]);
+			});
+		});
+
+		it('should remove published dependencies of unpublished workflows on server startup', async () => {
+			const unpublished = await createPublishedWorkflow();
+			const stillPublished = await createPublishedWorkflow();
+			// A system unpublish, e.g. after repeated crashes, emits no event.
+			await workflowRepository.update(unpublished.id, { active: false, activeVersionId: null });
+
+			await workflowIndexService.buildIndex();
+
+			expect(await getCredentialDependencies(unpublished.id)).toEqual([
+				{ key: 'old-credential', publishedVersionId: null },
+			]);
+			expect(await getCredentialDependencies(stillPublished.id)).toEqual([
+				{ key: 'old-credential', publishedVersionId: null },
+				{ key: 'old-credential', publishedVersionId: stillPublished.versionId },
+			]);
+		});
+	});
+
 	describe('buildIndex (server startup re-indexing)', () => {
 		const httpRequestNode: INode = {
 			id: 'node-1',

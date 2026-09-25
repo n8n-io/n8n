@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import {
 	DataSource,
 	EntityManager,
+	In,
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
@@ -286,6 +287,47 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 				deleteResult.affected > 0
 			);
 		});
+	}
+
+	/**
+	 * Remove published dependencies whose version is not the active version of the workflow.
+	 *
+	 * Published writes only replace rows from an older workflow version, and some unpublish paths
+	 * emit no event. This compares the rows with the stored `activeVersionId`, not with an event
+	 * payload, so a late call cannot remove the rows of a version that was published after it.
+	 *
+	 * @param workflowId Limit the cleanup to one workflow. Omit to clean up all workflows.
+	 * @returns The number of removed rows
+	 */
+	async removeStalePublishedDependencies(workflowId?: string): Promise<number> {
+		// Keeps each delete below the bind-parameter limit of SQLite.
+		const chunkSize = 500;
+		let removedCount = 0;
+		let ids: number[];
+
+		do {
+			const query = this.createQueryBuilder('dependency')
+				.select('dependency.id', 'id')
+				.leftJoin(
+					WorkflowEntity,
+					'workflow',
+					'workflow.id = dependency.workflowId AND workflow.activeVersionId = dependency.publishedVersionId',
+				)
+				.where('dependency.publishedVersionId IS NOT NULL')
+				.andWhere('workflow.id IS NULL')
+				.limit(chunkSize);
+			if (workflowId) {
+				query.andWhere('dependency.workflowId = :workflowId', { workflowId });
+			}
+
+			ids = (await query.getRawMany<{ id: number }>()).map((row) => row.id);
+			if (ids.length > 0) {
+				await this.delete({ id: In(ids) });
+				removedCount += ids.length;
+			}
+		} while (ids.length === chunkSize);
+
+		return removedCount;
 	}
 
 	private async acquireLockAndCheckForExistingData(
