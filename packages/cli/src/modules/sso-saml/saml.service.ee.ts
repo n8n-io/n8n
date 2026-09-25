@@ -19,8 +19,6 @@ import type {
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 import {
@@ -30,6 +28,7 @@ import {
 	isSsoJustInTimeProvisioningEnabled,
 	reloadAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { SsoProvisioningHooks } from '@/sso.ee/sso-provisioning-hooks';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
@@ -99,7 +98,7 @@ export class SamlService {
 		private readonly userRepository: UserRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly provisioningService: ProvisioningService,
+		private readonly provisioningHooks: SsoProvisioningHooks,
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
 		private readonly outboundHttp: OutboundHttp,
@@ -377,10 +376,11 @@ export class SamlService {
 		);
 
 		// Deny a blocked login before any account is created or session issued
-		await this.provisioningService.assertSsoLoginAllowed(
-			buildSamlClaimsContext(rawAttributes),
-			attributes.n8nInstanceRole,
-		);
+		await this.provisioningHooks.assertLoginAllowed({
+			provider: 'saml',
+			rawAttributes,
+			instanceRole: attributes.n8nInstanceRole,
+		});
 
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
@@ -447,19 +447,12 @@ export class SamlService {
 		attributes: SamlPreferencesAttributeMapping,
 		rawAttributes: Record<string, unknown>,
 	): Promise<void> {
-		if (await this.provisioningService.isExpressionMappingEnabled()) {
-			const context = buildSamlClaimsContext(rawAttributes);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
-			return;
-		}
-		// Called even when the attribute is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
-		if (attributes?.n8nProjectRoles) {
-			await this.provisioningService.provisionProjectRolesForUser(
-				user.id,
-				attributes.n8nProjectRoles,
-			);
-		}
+		await this.provisioningHooks.provisionRoles(user, {
+			provider: 'saml',
+			rawAttributes,
+			instanceRole: attributes?.n8nInstanceRole,
+			projectRoles: attributes?.n8nProjectRoles,
+		});
 	}
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
@@ -764,10 +757,7 @@ export class SamlService {
 		const { attributes, missingAttributes, rawAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,
 			this._samlPreferences.mapping,
-			{
-				instanceRole: await this.provisioningService.getInstanceRoleClaimName(),
-				projectRoles: await this.provisioningService.getProjectsRolesClaimName(),
-			},
+			await this.provisioningHooks.getSamlRoleClaimNames(),
 		);
 		if (!attributes) {
 			throw new AuthError('SAML Authentication failed. Invalid SAML response.');
