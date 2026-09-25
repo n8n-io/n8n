@@ -154,6 +154,19 @@ export function useOpenArtifactTabs({
 		};
 	}
 
+	/** Move an open tab to a new position in the tab order. */
+	function moveTab(tabId: string, toIndex: number) {
+		const tabs = [...openTabs.value];
+		const fromIndex = tabs.findIndex((tab) => tab.id === tabId);
+		if (fromIndex === -1) return;
+		const target = Math.max(0, Math.min(toIndex, tabs.length - 1));
+		if (target === fromIndex) return;
+
+		const [moved] = tabs.splice(fromIndex, 1);
+		tabs.splice(target, 0, moved);
+		layout.value = { tabs: tabs.map(toStoredTab), closedTabs: currentLayout().closedTabs };
+	}
+
 	// --- Storage ---
 
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -224,6 +237,7 @@ export function useOpenArtifactTabs({
 		closeTab,
 		reopenTab,
 		openTab,
+		moveTab,
 		saveTabs,
 	};
 }
