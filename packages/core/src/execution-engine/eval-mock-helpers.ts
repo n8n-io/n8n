@@ -9,6 +9,7 @@
 
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
+import { STATUS_CODES } from 'node:http';
 import { Readable } from 'node:stream';
 
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
@@ -122,7 +123,7 @@ export function serializeMockToHttpResponse(
 	const common = {
 		headers: mock.headers,
 		statusCode: mock.statusCode,
-		statusMessage: 'OK',
+		statusMessage: STATUS_CODES[mock.statusCode] ?? 'OK',
 	};
 
 	const bytes = () =>
@@ -164,7 +165,7 @@ export function serializeMockToHttpResponse(
  * slots: `body`, `formData` (multipart), and `form` (URL-encoded) — fold them
  * all into `body` so the mock layer sees the payload regardless of transport
  * encoding (the binary redactor reduces multipart to part metadata before the
- * LLM).
+ * LLM). `simple: false` becomes `ignoreHttpStatusErrors`.
  */
 export function normalizeLegacyRequest(
 	uriOrObject: string | IRequestOptions,
@@ -177,6 +178,7 @@ export function normalizeLegacyRequest(
 			headers: options?.headers,
 			body: (options?.body ?? options?.formData ?? options?.form) as IHttpRequestOptions['body'],
 			qs: options?.qs,
+			...(options?.simple === false ? { ignoreHttpStatusErrors: true } : {}),
 		};
 	}
 	return {
@@ -187,6 +189,7 @@ export function normalizeLegacyRequest(
 			uriOrObject.formData ??
 			uriOrObject.form) as IHttpRequestOptions['body'],
 		qs: uriOrObject.qs,
+		...(uriOrObject.simple === false ? { ignoreHttpStatusErrors: true } : {}),
 	};
 }
 
@@ -195,7 +198,8 @@ export function normalizeLegacyRequest(
  * When `returnFullResponse` is true, serializes to `{ body: Buffer, headers, statusCode }`
  * matching the shape that nodes expect from real HTTP responses.
  * For error responses (status >= 400), throws an error matching the HTTP library's
- * error shape so nodes handle it identically to real HTTP failures.
+ * error shape so nodes handle it identically to real HTTP failures, unless the
+ * request set `ignoreHttpStatusErrors`.
  * Returns `undefined` if the handler did not produce a response.
  */
 export async function callEvalMockHandler(
@@ -208,11 +212,24 @@ export async function callEvalMockHandler(
 	const response = await handler(requestOptions, node);
 	if (!response) return undefined;
 
-	if (response.statusCode >= 400) {
+	if (
+		response.statusCode >= 400 &&
+		!ignoresStatusError(requestOptions.ignoreHttpStatusErrors, response.statusCode)
+	) {
 		throwHttpError(response, httpLibrary);
 	}
 
 	return returnFullResponse ? serializeMockToHttpResponse(response, requestOptions) : response.body;
+}
+
+// Same rule as @n8n/backend-network: `true` ignores every status, the config form all but `except`.
+function ignoresStatusError(
+	option: IHttpRequestOptions['ignoreHttpStatusErrors'],
+	statusCode: number,
+): boolean {
+	if (option === true) return true;
+	if (typeof option === 'object' && option.ignore) return !option.except.includes(statusCode);
+	return false;
 }
 
 /**

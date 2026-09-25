@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
+import { decodeBufferBody } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -46,7 +47,7 @@ export class EngineV2WebhookResponder {
 	/** The host calls this once with the receiver for execution responses. */
 	useReceiver(receiver: ExecutionResponseReceiver): void {
 		if (this.receiver) {
-			throw new UnexpectedError('Engine 2.0 webhook response receiver is already set');
+			throw new UnexpectedError('Engine v2 webhook response receiver is already set');
 		}
 		this.receiver = receiver;
 	}
@@ -57,19 +58,30 @@ export class EngineV2WebhookResponder {
 	 *
 	 * @param executionId The caller must mint this ID, use it here, and pass it to
 	 * `StartExecution`.
-	 * @throws {UnexpectedError} If the execution response receiver is not set.
+	 * @throws {UnexpectedError} If the execution response receiver is not set, or
+	 * if the service already waits for this execution.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
+	async waitForResponse(
+		executionId: ExecutionIdV2,
+		acceptsResponse = false,
+	): Promise<PendingWebhookResponse> {
 		const { receiver } = this;
 		if (!receiver) {
-			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
+			throw new UnexpectedError('Engine v2 cannot wait for a response without a receiver');
 		}
 
 		if (this.pendingWebhooks.size >= MAX_PENDING_WEBHOOKS) {
 			throw new OperationalError(
-				`Engine 2.0 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
+				`Engine v2 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
 			);
+		}
+
+		// A second entry would take over the first one's slot and release.
+		if (this.pendingWebhooks.has(executionId)) {
+			throw new UnexpectedError('Engine 2.0 already waits for a response for this execution', {
+				extra: { executionId },
+			});
 		}
 
 		const response = new PendingWebhookResponse({
@@ -78,7 +90,7 @@ export class EngineV2WebhookResponder {
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
-		const unsubscribe = receiver.receive(executionId, (received) =>
+		const unsubscribe = await receiver.receive(executionId, (received) =>
 			this.handle(received, response),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });
@@ -90,7 +102,7 @@ export class EngineV2WebhookResponder {
 		try {
 			this.route(received, response);
 		} catch (error) {
-			this.logger.error('Failed to relay an engine 2.0 response', {
+			this.logger.error('Failed to relay an engine v2 response', {
 				executionId: received.executionId,
 				type: received.type,
 				error,
@@ -108,7 +120,8 @@ export class EngineV2WebhookResponder {
 				return;
 
 			case 'response':
-				response.resolveResponse(received.payload);
+				// A Buffer body arrives base64-encoded, because the channel is JSON.
+				response.resolveResponse(decodeBufferBody(received.payload));
 				return;
 
 			case 'ended':

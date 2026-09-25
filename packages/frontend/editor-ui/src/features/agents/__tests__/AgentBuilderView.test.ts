@@ -642,11 +642,14 @@ const commonStubs = {
 			'<div data-testid="stub-ai-chat-panel" :data-subject-id="subject?.id" :data-thread-id="threadId">' +
 			'<button data-testid="ai-panel-emit-thread-id" @click="$emit(\'update:threadId\', \'thread-99\')" />' +
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
+			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
+			'<button data-testid="ai-panel-emit-processing" @click="$emit(\'update:processing\', true)" />' +
+			'<button data-testid="ai-panel-stop-processing" @click="$emit(\'update:processing\', false)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
 			'<slot name="empty" />' +
 			'</div>',
 		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
-		emits: ['update:threadId', 'update:building', 'close'],
+		emits: ['update:threadId', 'update:building', 'update:processing', 'close'],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -3443,17 +3446,25 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('locks editing and shows the building indicator while the embedded assistant builds', async () => {
+	it('shows processing activity and locks editing only while the embedded assistant builds', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('canEditAgent')).toBe(true);
 		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
 
-		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
-
-		expect(editor.props('canEditAgent')).toBe(false);
+		await wrapper.find('[data-testid="ai-panel-emit-processing"]').trigger('click');
 		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+		expect(editor.props('canEditAgent')).toBe(true);
+
+		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
+		expect(editor.props('canEditAgent')).toBe(false);
+		await wrapper.find('[data-testid="ai-panel-stop-processing"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
+		expect(editor.props('canEditAgent')).toBe(true);
 	});
 
 	it('writes the panel thread id to the assistantThread query param', async () => {

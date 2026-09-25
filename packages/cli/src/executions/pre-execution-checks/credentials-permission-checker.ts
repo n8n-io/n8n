@@ -73,6 +73,65 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length > 0) {
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[inaccessibleIds[0]][0]);
+		}
+	}
+
+	/**
+	 * Non-throwing, named-credential sibling of `checkForUser`, for publish validation. Gated
+	 * behind {@link isCredSharingEnabled}, same as the personal route inside `findInaccessible`.
+	 */
+	async findInaccessibleForUser(
+		userId: string,
+		nodes: INode[],
+	): Promise<Array<{ id: string; name: string; exists: boolean }>> {
+		if (!isCredSharingEnabled()) return [];
+
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return [];
+
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length === 0) return [];
+
+		const dbNames = await this.credentialsRepository.findNamesByIds(inaccessibleIds);
+		const nameById = new Map(dbNames.map((c) => [c.id, c.name]));
+
+		return inaccessibleIds.map((id) => {
+			const dbName = nameById.get(id);
+			return {
+				id,
+				name: dbName ?? this.cachedCredentialName(id, credIdsToNodes),
+				exists: dbName !== undefined,
+			};
+		});
+	}
+
+	/** Best-effort name for a credential id from the node's own cached reference, for when the credential row is gone. */
+	private cachedCredentialName(
+		credentialId: string,
+		credIdsToNodes: { [id: string]: INode[] },
+	): string {
+		for (const cred of Object.values(credIdsToNodes[credentialId]?.[0]?.credentials ?? {})) {
+			if (cred.id === credentialId) return cred.name;
+		}
+		return credentialId;
+	}
+
+	/** The ids among `credentialIds` that `userId` personally cannot use. */
+	private async resolveInaccessibleCredentialIdsForUser(
+		userId: string,
+		credentialIds: string[],
+	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -80,27 +139,34 @@ export class CredentialsPermissionChecker {
 		});
 		if (!user) {
 			// Cannot resolve the triggering user - fail closed.
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[workflowCredIds[0]][0]);
+			return credentialIds;
 		}
+
 		const unavailableCredentials =
-			await this.credentialsRepository.findNonProjectCredentialsByIds(workflowCredIds);
-		if (unavailableCredentials.length > 0) {
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[unavailableCredentials[0].id][0]);
+			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
+		const unavailableIds = unavailableCredentials.map((c) => c.id);
+		const unavailableSet = new Set(unavailableIds);
+		const remainingIds = credentialIds.filter((id) => !unavailableSet.has(id));
+
+		// Nothing left to check once every id is already unavailable outright.
+		if (remainingIds.length === 0) return unavailableIds;
+
+		// A user who may use any credential on the instance needs no further check for the rest —
+		// except a credential that no longer exists at all, which nobody can use, owner included.
+		if (hasGlobalScope(user, 'credential:use')) {
+			const existingIds = new Set(await this.credentialsRepository.findExistingIds(remainingIds));
+			const deletedIds = remainingIds.filter((id) => !existingIds.has(id));
+			return [...unavailableIds, ...deletedIds];
 		}
 
-		// A user who may use any credential on the instance needs no further check.
-		if (hasGlobalScope(user, 'credential:use')) return;
+		const accessibleSet = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+			remainingIds,
+			user,
+			['credential:read'],
+		);
+		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
-		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
-
-		for (const credentialsId of workflowCredIds) {
-			if (!accessibleSet.has(credentialsId)) {
-				throw new InaccessibleCredentialForUserError(credIdsToNodes[credentialsId][0]);
-			}
-		}
+		return [...unavailableIds, ...stillInaccessible];
 	}
 
 	/**

@@ -382,6 +382,35 @@ export const optionsProperty: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'OAuth2 Client',
+			name: 'oauthClient',
+			type: 'options',
+			options: [
+				{
+					name: 'Auto-Detect',
+					value: 'auto',
+					description:
+						'Redirect browser navigations through the n8n login; require a bearer token from everything else',
+				},
+				{
+					name: 'Bearer Token Only',
+					value: 'bearer',
+					description: 'Always require a bearer token, never redirect',
+				},
+				{
+					name: 'Browser (Virtual Client)',
+					value: 'browser',
+					description: 'Always redirect GET requests without a bearer token through the n8n login',
+				},
+			],
+			default: 'auto',
+			displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
+			// The resolvers read the raw value to grant `isFirstParty`, so it must be static.
+			noDataExpression: true,
+			description:
+				'How a request without a bearer token is handled when using n8n User Auth (OAuth2). Only GET requests can be redirected.',
+		},
+		{
 			displayName: 'Raw Body',
 			name: 'rawBody',
 			type: 'boolean',

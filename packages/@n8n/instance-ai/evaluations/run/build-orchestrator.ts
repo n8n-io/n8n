@@ -163,6 +163,7 @@ export interface LaneState {
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
 		testCaseName?: string;
+		seedContext?: ScenarioSeedContext;
 	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 }
 

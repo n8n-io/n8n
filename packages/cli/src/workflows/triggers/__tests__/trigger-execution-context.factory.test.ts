@@ -947,7 +947,7 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
-		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine 2.0', async () => {
+		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine v2', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 			workflowExecutionService.runPolledWorkflowV2.mockResolvedValue('exec-v2');
 			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
@@ -972,7 +972,7 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
-		test('refuses a migrated poll that carries a file, and commits no cursor, on engine 2.0', async () => {
+		test('refuses a migrated poll that carries a file, and commits no cursor, on engine v2', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
 			const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
 			const fileData: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
@@ -980,7 +980,7 @@ describe('TriggerExecutionContextFactory', () => {
 			await context.__runPoll(async () => {
 				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
 				expect(() => context.__emit(fileData)).toThrow(
-					'Engine 2.0 cannot receive files from a trigger yet.',
+					'Engine v2 cannot receive files from a trigger yet.',
 				);
 			});
 
@@ -1729,7 +1729,7 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 	});
 
-	describe('on engine 2.0', () => {
+	describe('on engine v2', () => {
 		/** An attachment already written to storage, so it has an id to delete. */
 		const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
 
@@ -1794,7 +1794,7 @@ describe('TriggerExecutionContextFactory', () => {
 				// Attached before the flush, as the nodes do: they await the promise on the
 				// line after `emit`, so the rejection is never unhandled.
 				const refused = expect(donePromise.promise).rejects.toThrow(
-					'Engine 2.0 cannot run a trigger that waits for its execution to finish yet',
+					'Engine v2 cannot run a trigger that waits for its execution to finish yet',
 				);
 
 				await sleep(0);
@@ -1838,7 +1838,7 @@ describe('TriggerExecutionContextFactory', () => {
 				triggerContext().emit([[{ json: {} }]], responsePromise, donePromise);
 				const refused = Promise.all([
 					expect(responsePromise.promise).rejects.toThrow(
-						'Engine 2.0 cannot run a trigger that waits for its execution to finish yet',
+						'Engine v2 cannot run a trigger that waits for its execution to finish yet',
 					),
 					expect(donePromise.promise).rejects.toThrow(UserError),
 				]);
@@ -1868,7 +1868,7 @@ describe('TriggerExecutionContextFactory', () => {
 				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
 
 				expect(() => pollContext().__emit(data)).toThrow(
-					'Engine 2.0 cannot receive files from a trigger yet.',
+					'Engine v2 cannot receive files from a trigger yet.',
 				);
 				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
@@ -1885,11 +1885,11 @@ describe('TriggerExecutionContextFactory', () => {
 				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
 			});
 
-			test('re-checks the payload against fresh data when the registration snapshot missed the transition to engine 2.0', async () => {
+			test('re-checks the payload against fresh data when the registration snapshot missed the transition to engine v2', async () => {
 				const staleWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const freshWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				// The registration snapshot still says v1; only the fresh read reflects
-				// the workflow having since been republished onto engine 2.0.
+				// the workflow having since been republished onto engine v2.
 				engineV2Dispatcher.handlesWorkflow.mockImplementation((wf) => wf === freshWorkflowData);
 
 				const getPollFunctions = factory.getExecutePollFunctions(

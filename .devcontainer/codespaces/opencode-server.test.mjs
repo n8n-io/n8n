@@ -40,7 +40,8 @@ function fixture(t) {
 		'git',
 		`
 if (args.includes('show-ref')) process.exit(fs.existsSync(file('branch-exists')) ? 0 : 1);
-fs.mkdirSync(args.includes('-b') ? args.at(-1) : args.at(-2), { recursive: true });
+if (args.includes('fetch')) process.exit(0);
+fs.mkdirSync(args.at(-2), { recursive: true });
 `,
 	);
 	bin(
@@ -151,6 +152,23 @@ test(
 		const f = fixture(t);
 		const first = await f.prepare({ name: 'fix-flaky' });
 		assert.equal(first.directory, join(f.dir, 'wt-fix-flaky'));
+		const git = f.commands().filter((entry) => entry.command === 'git');
+		assert.deepEqual(
+			git.map((entry) => entry.args.slice(2)),
+			[
+				['show-ref', '--verify', '--quiet', 'refs/heads/session/fix-flaky'],
+				['fetch', 'origin', 'master'],
+				[
+					'worktree',
+					'add',
+					'--no-track',
+					'-b',
+					'session/fix-flaky',
+					first.directory,
+					'origin/master',
+				],
+			],
+		);
 		assert.equal(first.sessionID, 'ses_1');
 		assert.deepEqual(await f.prepare({ name: 'fix-flaky' }), first);
 		const second = await f.prepare({ name: 'another-task' });

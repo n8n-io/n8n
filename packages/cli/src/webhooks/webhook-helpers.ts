@@ -901,16 +901,11 @@ export async function executeWebhook(
 		return toWebhookUser(user);
 	};
 
-	additionalData.beginN8nOAuth2Flow = async (
-		resourceUrl: string,
-		metadata?: Record<string, string>,
-	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
-
-	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
-		await Container.get(OAuth2FlowProxy).complete(code, state);
-
-	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
-		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
+	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
+	additionalData.beginN8nOAuth2Flow = oauth2FlowProxy.begin.bind(oauth2FlowProxy);
+	additionalData.completeN8nOAuth2Flow = oauth2FlowProxy.complete.bind(oauth2FlowProxy);
+	additionalData.refreshN8nOAuth2Flow =
+		oauth2FlowProxy.refreshVirtualClientToken.bind(oauth2FlowProxy);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
@@ -1224,7 +1219,7 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && responseMode !== 'onReceived') {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = Container.get(EngineV2WebhookResponder).waitForResponse(
+			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
 				responseMode === 'responseNode',
 			);
@@ -1336,7 +1331,7 @@ export async function executeWebhook(
 				const outcome = await waiting.settled;
 				if (outcome.status === 'response') {
 					if (!isHttpFullResponse(outcome.response)) {
-						throw new UnexpectedError('Engine 2.0 produced an invalid webhook response');
+						throw new UnexpectedError('Engine v2 produced an invalid webhook response');
 					}
 
 					didSendResponse = true;
