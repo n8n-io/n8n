@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
+import { decodeBufferBody } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -46,7 +47,7 @@ export class EngineV2WebhookResponder {
 	/** The host calls this once with the receiver for execution responses. */
 	useReceiver(receiver: ExecutionResponseReceiver): void {
 		if (this.receiver) {
-			throw new UnexpectedError('Engine 2.0 webhook response receiver is already set');
+			throw new UnexpectedError('Engine v2 webhook response receiver is already set');
 		}
 		this.receiver = receiver;
 	}
@@ -60,20 +61,21 @@ export class EngineV2WebhookResponder {
 	 * @throws {UnexpectedError} If the execution response receiver is not set.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(executionId: ExecutionIdV2): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
-			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
+			throw new UnexpectedError('Engine v2 cannot wait for a response without a receiver');
 		}
 
 		if (this.pendingWebhooks.size >= MAX_PENDING_WEBHOOKS) {
 			throw new OperationalError(
-				`Engine 2.0 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
+				`Engine v2 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
 			);
 		}
 
 		const response = new PendingWebhookResponse({
 			executionId,
+			acceptsResponse,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
@@ -87,13 +89,33 @@ export class EngineV2WebhookResponder {
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
-			this.onEnded(received, response);
+			this.route(received, response);
 		} catch (error) {
-			this.logger.error('Failed to relay an engine 2.0 response', {
+			this.logger.error('Failed to relay an engine v2 response', {
 				executionId: received.executionId,
 				type: received.type,
 				error,
 			});
+		}
+	}
+
+	private route(received: ExecutionResponse, response: PendingWebhookResponse): void {
+		switch (received.type) {
+			case 'undeliverable':
+				response.resolve({
+					status: 'undeliverable',
+					error: { name: received.error.code, message: received.error.message },
+				});
+				return;
+
+			case 'response':
+				// A Buffer body arrives base64-encoded, because the channel is JSON.
+				response.resolveResponse(decodeBufferBody(received.payload));
+				return;
+
+			case 'ended':
+				this.onEnded(received, response);
+				return;
 		}
 	}
 

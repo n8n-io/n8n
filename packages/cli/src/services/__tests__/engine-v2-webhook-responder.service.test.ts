@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse } from '@n8n/engine';
+import { ENCODED_BUFFER_KEY } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
@@ -136,6 +137,70 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
+	it('reports the response produced by the Respond node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'response',
+			response: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+	});
+
+	it('restores a Buffer body the data plane sent as a base64 envelope', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+		const bytes = Buffer.from([0x00, 0xff, 0x10]);
+		const headers = { 'content-type': 'application/octet-stream', 'content-length': 3 };
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: {
+				body: { [ENCODED_BUFFER_KEY]: bytes.toString('base64') },
+				headers,
+				statusCode: 201,
+			},
+		});
+
+		const outcome = await pending.settled;
+		expect(outcome).toEqual({
+			status: 'response',
+			response: { body: bytes, headers, statusCode: 201 },
+		});
+		expect(Buffer.isBuffer((outcome as { response: { body: unknown } }).response.body)).toBe(true);
+	});
+
+	it('keeps the first terminal outcome', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'response' });
+	});
+
+	it('ignores a Respond node result when the response mode waits for the last node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+	});
+
 	it('reports a failure with the node that caused it', async () => {
 		const pending = responder.waitForResponse(createExecutionIdV2());
 
@@ -156,6 +221,21 @@ describe('EngineV2WebhookResponder', () => {
 			status: 'failed',
 			nodeName: 'C',
 			error: { name: 'NodeOperationError', message: 'it broke' },
+		});
+	});
+
+	it('reports a response failure without attributing it to a node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'undeliverable',
+			executionId: pending.executionId,
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'undeliverable',
+			error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
 	});
 

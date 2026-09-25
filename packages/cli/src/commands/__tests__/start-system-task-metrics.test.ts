@@ -26,6 +26,7 @@ import { Push } from '@/push';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
+import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskJobRegistrar } from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
@@ -40,6 +41,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { Start } from '../start';
 
 vi.mock('@/scheduling/system-tasks/main-system-tasks');
+vi.mock('@/scheduling/system-tasks/instance-system-tasks');
 vi.mock('@/public-api', () => ({
 	loadPublicApiVersions: async () => ({
 		apiRouters: [(_req: Request, _res: Response, next: NextFunction) => next()],
@@ -119,6 +121,7 @@ describe('Start system task metrics', () => {
 		dummy = new DummySystemTask();
 		Container.set(DummySystemTask, dummy);
 		vi.mocked(mainSystemTasks).mockResolvedValue([DummySystemTask]);
+		vi.mocked(instanceSystemTasks).mockResolvedValue([]);
 		runner = Container.get(SystemTaskRunner);
 	});
 

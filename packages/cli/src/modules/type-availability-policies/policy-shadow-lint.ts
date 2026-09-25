@@ -1,4 +1,8 @@
-import { nodeTypePackageResolver, type PackageResolver } from './policy-evaluator';
+import {
+	nodeTypePackageResolver,
+	type PackageResolver,
+	type PolicedType,
+} from './policy-evaluator';
 import type { PolicyRule } from './policy-rule.types';
 
 /**
@@ -44,10 +48,11 @@ function resolvePackageOrUndefined(
  * Finds rules in an ordered rule list that can never match, because an earlier rule in the
  * same list already matches every type the later rule would match.
  *
- * A name selector matches exactly one type, so it is shadowed only by an earlier, identical
- * name selector. A package selector matches every type in that package, so it also shadows a
- * later name selector scoped to that same package. A name selector never shadows a package
- * selector: one type can't cover a whole package.
+ * A name selector is shadowed by an earlier, identical name selector, or by an earlier name
+ * selector for the base node it is a synthetic tool variant of — `gmail` matches `gmailTool`
+ * too, so a later `gmailTool` rule is dead. A package selector matches every type in that
+ * package, so it also shadows a later name selector scoped to that same package. A name
+ * selector never shadows a package selector: one type can't cover a whole package.
  *
  * Runs in one O(n) pass: instead of comparing each rule against every rule before it, it
  * keeps, per selector kind, only the earliest rule seen so far for each selector value, and
@@ -56,13 +61,15 @@ function resolvePackageOrUndefined(
  * Pure and synchronous, like `evaluateType` — it never throws and never blocks the write.
  * Callers decide what to do with the warnings (e.g. return them alongside the saved policy).
  *
- * `resolvePackage` must resolve the same way `evaluateType` will for this policy's `kind`
- * (see `packageResolverFor` in `package-resolver.ts`), so a shadow this lint warns about is
- * exactly one evaluation would also produce. Defaults to the `node-types` convention.
+ * `resolvePackage` and `policedType` must resolve the same way `evaluateType` will for this
+ * policy's `kind` (see `package-resolver.ts`), so a shadow this lint warns about is exactly
+ * one evaluation would also produce. Both default to the `node-types` convention, with no
+ * knowledge of which names are synthetic variants.
  */
 export function lintRulesForShadowing(
 	rules: readonly PolicyRule[],
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	policedType: (name: string) => PolicedType = (name) => ({ name, baseName: name }),
 ): ShadowWarning[] {
 	const warnings: ShadowWarning[] = [];
 
@@ -77,7 +84,10 @@ export function lintRulesForShadowing(
 			selector.kind === 'package'
 				? firstByPackage.get(selector.value)
 				: earlierOccurrence(
-						firstByName.get(selector.value),
+						earlierOccurrence(
+							firstByName.get(selector.value),
+							firstByName.get(policedType(selector.value).baseName),
+						),
 						resolvePackageOrUndefined(firstByPackage, resolvePackage, selector.value),
 					);
 

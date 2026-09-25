@@ -45,6 +45,14 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Project',
+		name: 'project',
+		type: 'string',
+		description:
+			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
+		default: '',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',

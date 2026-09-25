@@ -456,6 +456,7 @@ jobs:
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$MODEL_API_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
+              -e N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true \
               "${SANDBOX_ARGS[@]}" \
               "${MODEL_ARGS[@]}" \
               -e LANGSMITH_TRACING=true \

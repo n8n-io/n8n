@@ -6,7 +6,6 @@ import type {
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
-	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
 	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
@@ -205,15 +204,6 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
-}
-
-// ----------------------------------
-//        /settings/security-policy
-// ----------------------------------
-
-export declare namespace SecurityPolicyRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }
 
 export declare namespace LogStreamingRequest {

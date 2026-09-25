@@ -1,7 +1,10 @@
 import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
+// The Wait node's source pulls in Webhook utils that fail this package's tsconfig, so it comes from dist.
+import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type {
 	CloseFunction,
 	IConnections,
@@ -185,6 +188,70 @@ class ReturnsEngineRequest extends Node {
 	}
 }
 
+/**
+ * Calls `putExecutionToWait` with any date, including invalid dates and
+ * sentinels, and with or without the resume flag. The real Wait node cannot do
+ * this without a resume URL. The return value is marked, so a test can tell it
+ * from the input.
+ */
+class WaitsUntil implements INodeType {
+	description = {
+		displayName: 'Waits Until',
+		name: 'waitsUntil',
+		group: ['transform'],
+		version: 1,
+		description: 'Puts the execution to wait until a date',
+		defaults: { name: 'Waits Until' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+			{
+				displayName: 'Accepts Resume Request',
+				name: 'acceptsResumeRequest',
+				type: 'options',
+				options: [
+					{ name: 'Omitted', value: 'omitted' },
+					{ name: 'True', value: 'true' },
+					{ name: 'False', value: 'false' },
+				],
+				default: 'omitted',
+			},
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const waitTill = new Date(this.getNodeParameter('waitTill', 0) as string);
+		const flag = this.getNodeParameter('acceptsResumeRequest', 0) as string;
+		if (flag === 'omitted') {
+			await this.putExecutionToWait(waitTill);
+		} else {
+			await this.putExecutionToWait(waitTill, { acceptsResumeRequest: flag === 'true' });
+		}
+		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
+	}
+}
+
+/** Runs a sub-workflow through the host, as the Execute Workflow node does. */
+class RunsSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow',
+		name: 'runsSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its input',
+		defaults: { name: 'Runs Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'child' }, this.getInputData());
+		return [this.getInputData()];
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
@@ -195,6 +262,9 @@ const registry = new Map<string, INodeType>([
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
+	['test.waitsUntil', new WaitsUntil()],
+	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
 export const testNodeTypes: INodeTypes = {
@@ -261,6 +331,7 @@ export const stepRequest = (
 		iteration: 0,
 		callerContext: { hostMode: 'manual' },
 	},
+	respond: noopResponseEmitter,
 });
 
 export const testStepExecutor = (
