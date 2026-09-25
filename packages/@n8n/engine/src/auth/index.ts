@@ -14,3 +14,5 @@ export {
 	SharedSecretIdentityVerifier,
 } from './identity-token';
 export type { AuthenticatedCaller, IdentityVerifier } from './identity.types';
+export { mintResumeToken, RESUME_TOKEN, verifyResumeToken } from './resume-token';
+export type { ResumeSecrets } from './resume-token';

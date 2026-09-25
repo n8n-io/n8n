@@ -10,10 +10,11 @@ export {
 	InvalidIdentityTokenError,
 	mintActionToken,
 	mintIdentityToken,
+	mintResumeToken,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
-export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
+export type { AuthenticatedCaller, ActionScope, IdentityVerifier, ResumeSecrets } from './auth';
 
 export type {
 	CancelExecutionResponse,
