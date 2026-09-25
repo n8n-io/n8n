@@ -441,16 +441,20 @@ describe('Kafka (versioned entry point)', () => {
 		expect(kafka.nodeVersions[2]).toBeInstanceOf(KafkaV2);
 	});
 
-	// One credential test per credential type, not per node version. Adding
-	// `methods.credentialTest.kafkaConnectionTest` to v2 wouldn't add a second test — it is
-	// resolved newest-version-first, so it would take over v1's test for everyone. Until it
-	// moves, the test exercises v1's kafkajs path while v2 connects through librdkafka.
-	it('should leave the kafka credential test to v1', () => {
-		const v2 = kafka.nodeVersions[2];
+	// One credential test per credential type, not per node version: the name is resolved
+	// oldest-version-first and the implementation newest-version-first, so v2's is the one
+	// that runs — for v1 users too. Both versions must therefore keep declaring the same
+	// name, or the lookup lands back on v1's kafkajs implementation.
+	it('should own the kafka credential test', () => {
+		const [v1, v2] = [kafka.nodeVersions[1], kafka.nodeVersions[2]];
 
-		expect(v2.methods?.credentialTest).toBeUndefined();
-		expect(v2.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBeUndefined();
-		expect(kafka.nodeVersions[1].methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
+		expect(v2.methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
+		expect(v2.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBe(
+			'kafkaConnectionTest',
+		);
+		expect(v1.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBe(
+			'kafkaConnectionTest',
+		);
 	});
 
 	it('should resolve v1 by default', () => {
