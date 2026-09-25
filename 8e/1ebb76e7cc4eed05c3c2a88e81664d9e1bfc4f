@@ -1,0 +1,28 @@
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_5ecaefedce388e::t_ac461324b97a57 132,157,200,319,384,431,454
+  s_2b0f424052c8dd::t_370fc9f03e12e4 406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e1ebb76e7cc4eed05c3c2a88e81664d9e1bfc4f",
+  "prompts": {},
+  "sessions": {
+    "s_2b0f424052c8dd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c8e7-9dc7-7202-9936-e153aacd379d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_5ecaefedce388e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c3cf-b397-74e0-bc27-eb0b63cf5de3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
