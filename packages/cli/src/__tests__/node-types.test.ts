@@ -462,10 +462,11 @@ describe('NodeTypes', () => {
 			).toThrow(UnrecognizedNodeTypeError);
 		});
 
-		it('should still map the excluded tool variant to its base name for policies', () => {
-			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool').baseName).toBe(
-				'n8n-nodes-base.testNode',
-			);
+		it('should resolve the excluded tool variant to itself', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNodeTool',
+				isSyntheticTool: false,
+			});
 		});
 	});
 

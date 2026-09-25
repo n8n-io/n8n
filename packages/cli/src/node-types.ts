@@ -28,27 +28,19 @@ export class NodeTypes implements INodeTypes {
 	 * A "synthetic tool" has no implementation of its own: workflows persist
 	 * names like `gmailTool`, and the registry fabricates that node on demand by
 	 * converting the `gmail` base node into an agent tool.
+	 *
+	 * A tool name listed in `NODES_EXCLUDE` is never synthetic. It resolves to
+	 * itself, so loading it fails as an unrecognized type.
 	 */
 	resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
 		const isSyntheticTool =
-			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+			nodeTypeName.endsWith('Tool') &&
+			!this.loadNodesAndCredentials.recognizesNode(nodeTypeName) &&
+			!this.loadNodesAndCredentials.excludeNodes.includes(nodeTypeName);
 		return {
 			baseName: isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName,
 			isSyntheticTool,
 		};
-	}
-
-	/** `resolveBaseName` that refuses generated tool variants listed in `NODES_EXCLUDE`. */
-	private resolveLoadableBaseName(nodeTypeName: string) {
-		const resolved = this.resolveBaseName(nodeTypeName);
-		if (
-			resolved.isSyntheticTool &&
-			this.loadNodesAndCredentials.excludeNodes.includes(nodeTypeName)
-		) {
-			const [packageName, nodeType] = nodeTypeName.split('.');
-			throw new UnrecognizedNodeTypeError(packageName, nodeType);
-		}
-		return resolved;
 	}
 
 	/**
@@ -108,7 +100,7 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeType);
+		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeType);
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
 		if (nodeType.endsWith('Tool') && !isSyntheticTool) {
@@ -186,7 +178,7 @@ export class NodeTypes implements INodeTypes {
 		// prototype-chain values that throw at any of the reads below. Fold any
 		// such failure into "unknown type" instead of failing the caller.
 		try {
-			const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeTypeName);
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
 
 			const { type } = this.loadNodesAndCredentials.getNode(baseName);
 
@@ -257,7 +249,7 @@ export class NodeTypes implements INodeTypes {
 
 	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
 		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
-			const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeTypeName);
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
 
 			const nodeType = this.loadNodesAndCredentials.getNode(baseName);
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
