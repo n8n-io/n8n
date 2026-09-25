@@ -1,0 +1,19 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_0059aef72f3440::t_71dcb906ed1245 138-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8523edf60dea8bfdd8413c89afb5c3c1b5bc7ce7",
+  "prompts": {},
+  "sessions": {
+    "s_0059aef72f3440": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7817fc3b-49c5-4ff5-bb00-c6333d2512b3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
