@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue';
-import { useFocusWithin } from '@vueuse/core';
 import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
@@ -101,12 +100,10 @@ const isDisabled = computed(() => Boolean(props.item.disabled));
 const restriction = computed(() =>
 	props.item.kind === 'node' ? props.item.restriction : undefined,
 );
-const isRestricted = computed(() => restriction.value !== undefined);
 
 // The popover anchors to the whole row and opens while the row has keyboard focus, so the main
 // button stays focusable and only its click is inert.
 const rowRef = ref<HTMLElement | null>(null);
-const { focused: rowFocused } = useFocusWithin(rowRef);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -123,13 +120,12 @@ const hasDirectAction = computed(
 
 function handleRowClick() {
 	if (props.item.disabled) return;
-	if (isRestricted.value) return;
+	if (restriction.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
 
 function handleConnect() {
-	if (isRestricted.value) return;
 	emit('connect', props.item);
 	if (props.item.credentials?.length) {
 		emit('first-credential-connect', props.item);
@@ -143,7 +139,7 @@ function handleConnect() {
 		:class="[
 			$style.row,
 			$style[`row--${item.kind}`],
-			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: isRestricted },
+			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
 		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
@@ -152,7 +148,7 @@ function handleConnect() {
 			type="button"
 			:class="$style.mainAction"
 			:disabled="isDisabled || item.status === 'connecting'"
-			:aria-disabled="isRestricted || undefined"
+			:aria-disabled="!!restriction || undefined"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -219,7 +215,6 @@ function handleConnect() {
 				:node-type-name="item.title"
 				:scope="restriction.scope"
 				:anchor="rowRef"
-				:active="rowFocused"
 			/>
 			<N8nTooltip
 				v-else-if="isDisabled"

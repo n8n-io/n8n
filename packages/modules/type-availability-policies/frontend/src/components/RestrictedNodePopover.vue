@@ -12,7 +12,10 @@ const props = defineProps<{
 	scope?: NodeTypeAvailabilityScope;
 	/** The list row the popover explains. It opens beside this element, not beside the lock. */
 	anchor?: MaybeElement;
-	/** The row is the keyboard-active item, which opens the popover like a hover does. */
+	/**
+	 * The row is the keyboard-active item without holding DOM focus (a virtual list selection),
+	 * which opens the popover like a hover does. Real focus inside `anchor` is tracked here.
+	 */
 	active?: boolean;
 }>();
 
@@ -31,15 +34,19 @@ const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
 const isContactAdminOpen = ref(false);
-// Tabbing from the trigger into the (teleported) content moves focus out of the
-// caller's own focus-within, so `active` alone would close this before it's reached.
+// Content is teleported, so tabbing into it leaves the anchor's focus-within; track both.
 // The contact-admin dialog closes this: the popover stacks above modals, so it would
 // otherwise float over the dialog while the pointer or focus is still on it.
+const { focused: anchorFocused } = useFocusWithin(anchorElement);
 const { focused: contentFocused } = useFocusWithin(contentRef);
 const open = computed(
 	() =>
 		!isContactAdminOpen.value &&
-		(anchorHovered.value || contentHovered.value || contentFocused.value || props.active),
+		(anchorHovered.value ||
+			contentHovered.value ||
+			anchorFocused.value ||
+			contentFocused.value ||
+			props.active),
 );
 
 const scopeKey = computed<BaseTextKey>(

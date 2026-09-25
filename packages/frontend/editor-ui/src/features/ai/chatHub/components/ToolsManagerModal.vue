@@ -34,6 +34,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
 	getNodeItemRestriction,
+	isNodeItemRestricted,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -228,7 +229,7 @@ const matchingAvailableTools = computed(() => {
 
 /** Restricted tools stay findable but sit after every usable tool. */
 const filteredAvailableTools = computed(() =>
-	partitionLast(matchingAvailableTools.value, (nodeType) => restrictionFor(nodeType) !== undefined),
+	partitionLast(matchingAvailableTools.value, (nodeType) => isNodeItemRestricted(nodeType.name)),
 );
 
 function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
@@ -326,7 +327,7 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
-	if (restrictionFor(nodeType)) return;
+	if (isNodeItemRestricted(nodeType.name)) return;
 
 	if (isCommunityPreviewTool(nodeType)) {
 		const packageName = communityPackageNameFor(nodeType);

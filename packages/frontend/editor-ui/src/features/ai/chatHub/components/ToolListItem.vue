@@ -5,7 +5,6 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/des
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
-import { useFocusWithin } from '@vueuse/core';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 
@@ -56,11 +55,8 @@ const actionDisabled = computed(
 	() => props.communityPreview && (props.installing || props.installDisabled),
 );
 
-const isRestricted = computed(() => props.mode === 'available' && props.restriction !== undefined);
-
 // The popover anchors to the whole row and opens while the lock has keyboard focus.
 const rowRef = ref<HTMLElement | null>(null);
-const { focused: rowFocused } = useFocusWithin(rowRef);
 </script>
 
 <template>
@@ -68,7 +64,7 @@ const { focused: rowFocused } = useFocusWithin(rowRef);
 		ref="rowRef"
 		:class="[
 			$style.item,
-			{ [$style.configured]: mode === 'configured', [$style.restricted]: isRestricted },
+			{ [$style.configured]: mode === 'configured', [$style.restricted]: !!restriction },
 		]"
 	>
 		<div :class="$style.iconWrapper">
@@ -138,7 +134,7 @@ const { focused: rowFocused } = useFocusWithin(rowRef);
 
 			<template v-else>
 				<span
-					v-if="isRestricted && restriction"
+					v-if="restriction"
 					:class="$style.restrictedMarker"
 					tabindex="0"
 					role="img"
@@ -149,7 +145,6 @@ const { focused: rowFocused } = useFocusWithin(rowRef);
 						:node-type-name="nodeType.displayName"
 						:scope="restriction.scope"
 						:anchor="rowRef"
-						:active="rowFocused"
 					/>
 				</span>
 				<N8nTooltip

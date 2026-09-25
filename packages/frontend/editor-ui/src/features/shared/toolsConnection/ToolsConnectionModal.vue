@@ -191,12 +191,7 @@ function isRestrictedItem(item: ToolConnectionItem): boolean {
 	return item.kind === 'node' && item.restriction !== undefined;
 }
 
-/** Restricted tools stay findable but sit after every usable tool, on every tab. */
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
-	return partitionLast(unrankedItemsForCategory(category), isRestrictedItem);
-}
-
-function unrankedItemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
@@ -230,10 +225,11 @@ function tabCount(category: ToolCategoryKey): string {
 
 type ListRow = FlattenedRow | { key: 'suggestion' };
 
+/** Restricted tools stay findable but sit after every usable tool, on every tab. */
 const toolRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
+	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
+		(item) => ({ key: `item:${item.id}`, item }),
+	),
 );
 
 const flattenedRows = computed<ListRow[]>(() =>
