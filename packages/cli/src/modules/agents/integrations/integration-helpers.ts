@@ -83,11 +83,25 @@ export function isDefined<T>(value: T | undefined): value is T {
 }
 
 /**
+ * One extra HMAC layer over the instance encryption key, so the verify token
+ * below never uses that key directly. The encryption key protects stored
+ * credentials; this key only ever signs a value handed to Meta on an
+ * unauthenticated endpoint — keeping the two apart means a weakness in one
+ * derivation can't reach the other's trust boundary.
+ */
+function deriveWhatsAppVerifyTokenSigningKey(encryptionKey: string): Buffer {
+	return createHmac('sha256', encryptionKey)
+		.update('n8n:agents:whatsapp:verify-token-key')
+		.digest();
+}
+
+/**
  * Meta requires pasting this token by hand into the webhook config, so it must
  * be shown before a credential exists — derived from `agentId` alone, not `credentialId`.
  */
 export function deriveWhatsAppVerifyToken(encryptionKey: string, agentId: string): string {
-	return createHmac('sha256', encryptionKey).update(`whatsapp:verify:${agentId}`).digest('hex');
+	const signingKey = deriveWhatsAppVerifyTokenSigningKey(encryptionKey);
+	return createHmac('sha256', signingKey).update(`whatsapp:verify:${agentId}`).digest('hex');
 }
 
 export function hasUpdateIssueField(input: {

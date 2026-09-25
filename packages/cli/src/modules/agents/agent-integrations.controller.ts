@@ -195,7 +195,11 @@ export class AgentIntegrationsController {
 			if (earlyResponse) {
 				res.status(earlyResponse.status);
 				if (earlyResponse.raw) {
-					res.send(String(earlyResponse.body));
+					// `body` can be caller-controlled (Meta's hub.challenge echoes
+					// back whatever the request's own query string carried).
+					// Express defaults a string res.send() to text/html, which would
+					// let that value be interpreted as markup — force plain text.
+					res.type('text/plain').send(String(earlyResponse.body));
 				} else {
 					res.json(earlyResponse.body);
 				}

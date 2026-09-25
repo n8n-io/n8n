@@ -430,6 +430,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
 		const res = {
 			status: vi.fn().mockReturnThis(),
+			type: vi.fn().mockReturnThis(),
 			json: vi.fn(),
 			send: vi.fn(),
 		};
@@ -464,6 +465,10 @@ describe('AgentIntegrationsController integration management', () => {
 			body: {},
 		});
 		expect(res.status).toHaveBeenCalledWith(200);
+		// A caller-controlled challenge value must never be sent as text/html —
+		// Express defaults a string res.send() to html, which would let it be
+		// interpreted as markup instead of an inert plain-text echo.
+		expect(res.type).toHaveBeenCalledWith('text/plain');
 		expect(res.send).toHaveBeenCalledWith('the-challenge');
 		expect(res.json).not.toHaveBeenCalled();
 	});
