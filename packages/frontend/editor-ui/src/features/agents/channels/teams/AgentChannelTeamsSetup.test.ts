@@ -5,6 +5,7 @@ import { configure, fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import type { TeamsCredentialCheck } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
@@ -15,6 +16,11 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			options?.interpolate ? `${key} ${Object.values(options.interpolate).join(' ')}` : key,
 	}),
+}));
+
+const { trackMock } = vi.hoisted(() => ({ trackMock: vi.fn() }));
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
 }));
 
 vi.mock('file-saver', () => ({
@@ -628,6 +634,162 @@ describe('AgentChannelTeamsSetup', () => {
 		await waitFor(() => {
 			expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(
 				'http://localhost:5678/rest/projects/p/agents/v2/a/webhooks/teams',
+			);
+		});
+	});
+
+	describe('telemetry', () => {
+		const withBot = () =>
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: CLIENT_ID,
+				deployToAzureUrl: DEPLOY_URL,
+				credentialClaimedBy: null,
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
+			});
+
+		it('tracks a credential that checks out', async () => {
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+					expect.objectContaining({ agent_id: 'a', trigger: 'auto', status: 'ok' }),
+				),
+			);
+		});
+
+		it('tracks a failed check with its reason', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+					expect.objectContaining({ agent_id: 'a', status: 'failed', reason: 'rejected' }),
+				),
+			);
+		});
+
+		it('tracks a recheck as one the user asked for', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-credential-recheck')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-credential-recheck'));
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+					expect.objectContaining({ trigger: 'recheck', status: 'failed', reason: 'rejected' }),
+				),
+			);
+		});
+
+		it('tracks a failed n8n request apart from Microsoft being unreachable', async () => {
+			vi.mocked(checkTeamsCredential).mockRejectedValue(new Error('500'));
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+					expect.objectContaining({ status: 'failed', reason: 'request_failed' }),
+				),
+			);
+			expect(getByTestId('teams-credential-problem')).toHaveTextContent(
+				'setup.install.failed.unreachable',
+			);
+		});
+
+		it('keeps a check in flight when the setup state reloads', async () => {
+			let release: ((value: TeamsCredentialCheck) => void) | undefined;
+			vi.mocked(checkTeamsCredential).mockImplementationOnce(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(1));
+
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(2));
+			release?.({ status: 'ok' });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+					expect.objectContaining({ status: 'ok' }),
+				),
+			);
+			expect(() => getByTestId('teams-credential-checking')).toThrow();
+		});
+
+		it('does not track an answer for a credential that is no longer selected', async () => {
+			let releaseFirst: ((value: TeamsCredentialCheck) => void) | undefined;
+			vi.mocked(checkTeamsCredential)
+				.mockImplementationOnce(
+					async () => await new Promise((resolve) => (releaseFirst = resolve)),
+				)
+				.mockResolvedValueOnce({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await rerender(props({ modelValue: 'cred-2' }));
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			releaseFirst?.({ status: 'ok' });
+			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+
+			const checks = trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
+			);
+			expect(checks).toHaveLength(1);
+			expect(checks[0][1]).toMatchObject({ status: 'failed', reason: 'rejected' });
+		});
+
+		it('tracks a successful package download', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_DOWNLOADED_TEAMS_APP_PACKAGE,
+					expect.objectContaining({ agent_id: 'a', status: 'success' }),
+				),
+			);
+		});
+
+		it('tracks a failed package download', async () => {
+			withBot();
+			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
+			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.USER_DOWNLOADED_TEAMS_APP_PACKAGE,
+					expect.objectContaining({ agent_id: 'a', status: 'error' }),
+				),
+			);
+		});
+
+		it('tracks a click on Deploy to Azure', async () => {
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-deploy-to-azure')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-deploy-to-azure'));
+
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL,
+				expect.objectContaining({ agent_id: 'a' }),
 			);
 		});
 	});

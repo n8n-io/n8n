@@ -3,7 +3,7 @@ import type { AgentApproval } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import {
 	agentChannelPlatforms,
@@ -18,6 +18,7 @@ import type {
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
@@ -99,6 +101,44 @@ const selectedChannelType = computed(() => {
 
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
+
+/** The channel whose setup view is on screen, so the close event fires once per start. */
+let trackedSetupType: string | null = null;
+
+function endSetupTracking(completed: boolean) {
+	if (!trackedSetupType) return;
+	agentTelemetry.trackClosedChannelSetup({
+		agentId: props.agentId,
+		channelType: trackedSetupType,
+		completed,
+	});
+	trackedSetupType = null;
+}
+
+watch(
+	() => (props.open && isSetupMode.value ? selectedChannelType.value : null),
+	(channelType) => {
+		if (channelType === trackedSetupType) return;
+		endSetupTracking(false);
+		if (!channelType) return;
+		trackedSetupType = channelType;
+		agentTelemetry.trackStartedChannelSetup({ agentId: props.agentId, channelType });
+	},
+	{ immediate: true },
+);
+
+onUnmounted(() => endSetupTracking(false));
+
+function trackSetupFailure(channelType: string, stage: 'persist' | 'before_save' | 'connect') {
+	// Only setup feeds the funnel; a failed save from the edit view is not part of it.
+	if (!isSetupMode.value) return;
+	agentTelemetry.trackFailedToConnectChannel({
+		agentId: props.agentId,
+		channelType,
+		stage,
+		conflict: stage === 'connect' && (errorIsConflict.value[channelType] ?? false),
+	});
+}
 
 const currentIntegration = computed(() => {
 	if (!selectedChannelType.value) return null;
@@ -368,8 +408,14 @@ async function saveChannelConfig() {
 
 	channelActionInFlight.value = true;
 	try {
-		if (!(await persistAgent())) return;
-		if (!(await runBeforeSave())) return;
+		if (!(await persistAgent())) {
+			trackSetupFailure(channelType, 'persist');
+			return;
+		}
+		if (!(await runBeforeSave())) {
+			trackSetupFailure(channelType, 'before_save');
+			return;
+		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
 			// Only the edit view shows the approval control, so only it may carry one.
@@ -378,11 +424,13 @@ async function saveChannelConfig() {
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
+		trackSetupFailure(channelType, 'connect');
 		return;
 	} finally {
 		channelActionInFlight.value = false;
 	}
 
+	endSetupTracking(true);
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	completeAndClose();
@@ -391,6 +439,7 @@ async function saveChannelConfig() {
 function handlePlatformConnected() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
+	endSetupTracking(true);
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	completeAndClose();
