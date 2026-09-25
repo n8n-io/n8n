@@ -24,7 +24,7 @@ import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
-import type { ReaperOptions, ReaperTaskStore } from './reaper';
+import type { ReaperOptions, ReaperTaskStore, RetiredTask } from './reaper';
 import { DEFAULT_RECONCILIATION_OPTIONS, reconcile } from './reconciliation';
 import type {
 	ReconciliationCursor,
@@ -122,6 +122,13 @@ export interface SchedulerDeps {
 	now?: () => Promise<Date>;
 
 	onEvent?: (event: SchedulerEvent) => void;
+
+	/**
+	 * Called when the reaper retires tasks whose job was at its concurrency limit at
+	 * their deadline. The host decides what to report. Errors from this listener are
+	 * ignored.
+	 */
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 
 	/** Host tracer; defaults to a no-op. */
 	tracer?: Tracer;
@@ -464,6 +471,12 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						emit('error', 'Scheduler could not retire stale pending occurrences', {
 							error: described(error),
 						});
+					},
+					onHeldByConcurrencyLimit: (tasks) => {
+						emit('debug', 'Scheduler retired tasks their job had no free slot for', {
+							count: tasks.length,
+						});
+						deps.onHeldByConcurrencyLimit?.(tasks);
 					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
