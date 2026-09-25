@@ -270,6 +270,8 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
+export { mergeUsage } from './runtime/loop/runtime-helpers';
+export { toTokenUsage } from './runtime/streaming/stream';
 export type {
 	ProviderCatalog,
 	ProviderInfo,

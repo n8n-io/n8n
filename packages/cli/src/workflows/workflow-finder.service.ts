@@ -12,6 +12,7 @@ export type FindWorkflowsForUserOptions = {
 	filters?: {
 		name?: string;
 		active?: boolean;
+		isArchived?: boolean;
 		tagNames?: string[];
 		folderId?: string;
 		projectId?: string;
@@ -421,7 +422,7 @@ export class WorkflowFinderService {
 			includeProjects = false,
 			includeActiveVersion = false,
 		} = options;
-		const { name, active, tagNames, folderId, projectId } = filters;
+		const { name, active, isArchived, tagNames, folderId, projectId } = filters;
 
 		const [projectRoles, workflowRoles] = await Promise.all([
 			this.roleService.rolesWithScope('project', scopes),
@@ -463,6 +464,7 @@ export class WorkflowFinderService {
 				filter: {
 					...(name !== undefined && { name }),
 					...(active !== undefined && { active }),
+					...(isArchived !== undefined && { isArchived }),
 					...(tagNames?.length && { tags: tagNames }),
 					...(projectId && { projectId }),
 					...(parentFolderIds && { parentFolderIds }),

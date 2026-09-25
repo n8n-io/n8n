@@ -42,6 +42,7 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "spike:preferences": "node packages/cli/scripts/preference-mining/run.mjs",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",

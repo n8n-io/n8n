@@ -1,0 +1,33 @@
+[
+	{
+		"id": "team-notifications",
+		"purpose": "team notifications",
+		"nodeTypes": [
+			"n8n-nodes-base.slack",
+			"n8n-nodes-base.microsoftTeams",
+			"n8n-nodes-base.discord",
+			"n8n-nodes-base.telegram"
+		]
+	},
+	{
+		"id": "issue-tracking",
+		"purpose": "issue tracking",
+		"nodeTypes": [
+			"n8n-nodes-base.linear",
+			"n8n-nodes-base.jira",
+			"n8n-nodes-base.asana",
+			"n8n-nodes-base.trello"
+		]
+	},
+	{
+		"id": "chat-model-provider",
+		"purpose": "chat model selection",
+		"nodeTypes": [
+			"@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+			"@n8n/n8n-nodes-langchain.lmChatOllama"
+		]
+	}
+]

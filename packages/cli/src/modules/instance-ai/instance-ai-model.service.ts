@@ -61,8 +61,13 @@ export class InstanceAiModelService {
 	 *
 	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
 	 * proxied model call when set (run-less callers like verification omit it).
+	 * `modelName` selects a model for this call without changing the connection or settings.
 	 */
-	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
+	async resolveAgentModelConfig(
+		user: User,
+		proxyContext?: ProxyContext,
+		modelName?: string,
+	): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -72,10 +77,18 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
+			return await this.resolveProxyModel(
+				user,
+				proxyBaseUrl,
+				tokenManager,
+				proxyContext,
+				modelName,
+			);
 		}
-		const httpProxyModel = await this.resolveHttpProxyModel(user);
+		const httpProxyModel = await this.resolveHttpProxyModel(user, modelName);
 		if (httpProxyModel) return httpProxyModel;
+		if (modelName)
+			return await this.settingsService.resolveModelConfigForVerification(user, modelName);
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
@@ -92,10 +105,13 @@ export class InstanceAiModelService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 		proxyContext?: ProxyContext,
+		modelName?: string,
 	): Promise<ModelConfig> {
 		const configuredModelId = this.settingsService.getConfiguredModelId();
 		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
-		const modelId = isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user);
+		const modelId = isExactKimi
+			? configuredModelId
+			: (modelName ?? this.settingsService.resolveModelName(user));
 		return await createProxyLanguageModel({
 			proxyBaseUrl,
 			modelId,
@@ -112,18 +128,23 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(
+		user: User,
+		modelName?: string,
+	): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
 		const hasHttpProxy = Boolean(process.env.HTTPS_PROXY || process.env.HTTP_PROXY);
 		if (!hasHttpProxy) return undefined;
 
-		const config = await this.settingsService.resolveModelConfig(user);
+		const config = modelName
+			? await this.settingsService.resolveModelConfigForVerification(user, modelName)
+			: await this.settingsService.resolveModelConfig(user);
 		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
 		if (!modelId) return undefined;
 
-		const { provider, model: modelName } = splitModelId(modelId);
+		const { provider, model: resolvedModelName } = splitModelId(modelId);
 		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
 		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
 		if (provider !== 'anthropic') return undefined;
@@ -133,7 +154,7 @@ export class InstanceAiModelService {
 			apiKey,
 			baseURL: baseURL || undefined,
 			fetch: createAiProxyFetch(this.outboundHttp),
-		})(modelName);
+		})(resolvedModelName);
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
