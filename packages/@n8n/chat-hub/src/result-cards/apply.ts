@@ -24,7 +24,11 @@ import type { JevAnswers, JevQuestions, NodeRunFacts } from './types';
  * unknown keys, wrong types, primitives, `null`, free text — is ignored, never thrown on.
  */
 
-/** Validated `choice` answer for `key`, or `undefined` when it was not asked / not offered. */
+/**
+ * Validated `choice` answer for `key`, or `undefined` when it was not asked / not offered.
+ * `confidence` falls back to the probability Jev assigned to the chosen option and then to 0,
+ * so an answer that carries no confidence at all cannot pass a confidence gate.
+ */
 function choiceAnswer(
 	answers: JevAnswers,
 	key: string,
@@ -36,7 +40,13 @@ function choiceAnswer(
 	const value = answer.choice;
 	if (typeof value !== 'string' || !Object.keys(question.criteria).includes(value))
 		return undefined;
-	const confidence = typeof answer.confidence === 'number' ? answer.confidence : 1;
+	const probability = isPlainObject(answer.probabilities) ? answer.probabilities[value] : undefined;
+	const confidence =
+		typeof answer.confidence === 'number'
+			? answer.confidence
+			: typeof probability === 'number'
+				? probability
+				: 0;
 	return { value, confidence };
 }
 

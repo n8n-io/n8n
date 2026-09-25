@@ -9,10 +9,11 @@ const props = defineProps<{ card: MetricCardData; skin: ResultCardSkin }>();
 const breakdown = computed(() => {
 	const rows = props.card.breakdown ?? [];
 	const max = Math.max(...rows.map((row) => row.value), 0) || 1;
-	return rows.map((row) => ({
-		...row,
-		width: `${Math.round((row.share ?? row.value / max) * 100)}%`,
-	}));
+	return rows.map((row) => {
+		// Negative values and out-of-range shares must not overflow or invert the bar.
+		const ratio = Math.min(1, Math.max(0, row.share ?? row.value / max));
+		return { ...row, width: `${Math.round(ratio * 100)}%` };
+	});
 });
 
 const sparkline = computed(() => {

@@ -283,7 +283,7 @@ function tryParseWholeMessageJson(content: string): ChatMessageContentChunk[] | 
 
 	const buttons = chatHubMessageWithButtonsSchema.safeParse(parsed);
 	if (buttons.success) {
-		return [
+		const chunks: ChatMessageContentChunk[] = [
 			{
 				type: 'with-buttons',
 				content: buttons.data.text,
@@ -291,6 +291,10 @@ function tryParseWholeMessageJson(content: string): ChatMessageContentChunk[] | 
 				blockUserInput: buttons.data.blockUserInput,
 			},
 		];
+		for (const card of buttons.data.cards ?? []) {
+			chunks.push({ type: 'card', content: JSON.stringify(card), card, isIncomplete: false });
+		}
+		return chunks;
 	}
 
 	const cards = chatHubMessageCardsSchema.safeParse(parsed);

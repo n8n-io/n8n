@@ -5,6 +5,14 @@ import { mock } from 'vitest-mock-extended';
 import { ResultCardFactsExtractor } from '@/modules/chat-hub/result-cards/facts-extractor';
 import type { NodeTypes } from '@/node-types';
 
+const resolveNodeParametersFromRun = vi.hoisted(() => vi.fn());
+vi.mock('@/executions/resolve-node-parameters-from-run', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/executions/resolve-node-parameters-from-run')>();
+	resolveNodeParametersFromRun.mockImplementation(actual.resolveNodeParametersFromRun);
+	return { resolveNodeParametersFromRun };
+});
+
 // A real-shaped mini description: `new Workflow()` runs `NodeHelpers.getNodeParameters` with these
 // properties, which KEEPS the listed parameters and ADDS the defaults (resource/operation). An empty
 // `properties: []` would wipe the parameters instead — so list every parameter the test relies on.
@@ -65,6 +73,7 @@ describe('ResultCardFactsExtractor', () => {
 
 	beforeEach(() => {
 		logger.debug.mockClear();
+		resolveNodeParametersFromRun.mockClear();
 	});
 
 	const workflow = {
@@ -220,6 +229,119 @@ describe('ResultCardFactsExtractor', () => {
 		);
 		const facts = await extractor.extract(workflowWithSummary, mixed);
 		expect(facts.map((f) => f.nodeName)).toEqual(['Gmail', 'Summary']);
+	});
+
+	describe('generic candidate scope', () => {
+		// responseNodes mode: the last node is the Chat node whose output is the trigger passthrough.
+		const workflowWithChat = {
+			...workflow,
+			nodes: [
+				...workflow.nodes,
+				{
+					id: '6',
+					name: 'Respond',
+					type: '@n8n/n8n-nodes-langchain.chat',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		} as unknown as IWorkflowBase;
+		const chatPassthrough = {
+			sessionId: 'abc',
+			action: 'sendMessage',
+			chatInput: 'reply to anna',
+		};
+
+		it('never treats the Chat node as a generic candidate, even as the final node', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const facts = await extractor.extract(
+				workflowWithChat,
+				runWith({ ...runData, Respond: [taskData([chatPassthrough])] }, 'Respond'),
+			);
+			expect(facts.map((f) => f.nodeName)).toEqual(['Gmail']);
+		});
+
+		it('never treats the Chat Trigger as a generic candidate', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const facts = await extractor.extract(
+				workflow,
+				runWith(
+					{ 'When chat message received': [taskData([chatPassthrough])] },
+					'When chat message received',
+				),
+			);
+			expect(facts).toEqual([]);
+		});
+
+		it('skips generic candidates when allowGenericCandidate is false but keeps registry facts', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const structured = runWith(
+				{ ...runData, Summary: [taskData([{ total: 12, bySource: { LinkedIn: 7 } }])] },
+				'Summary',
+			);
+			expect(
+				(await extractor.extract(workflowWithSummary, structured)).map((f) => f.nodeName),
+			).toEqual(['Gmail', 'Summary']);
+			expect(
+				(
+					await extractor.extract(workflowWithSummary, structured, {
+						allowGenericCandidate: false,
+					})
+				).map((f) => f.nodeName),
+			).toEqual(['Gmail']);
+		});
+	});
+
+	describe('registry cap and already-carded runs', () => {
+		const fiveGmailRuns = runWith(
+			{
+				...runData,
+				Gmail: Array.from({ length: 5 }, (_, index) =>
+					taskData([{ id: `19a${index}`, threadId: `19a${index}` }], [{ previousNode: 'Extract' }]),
+				),
+			},
+			'Reply',
+		);
+
+		it('collects at most MAX_RESULT_CARDS_PER_MESSAGE registry runs and replays only their parameters', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const facts = await extractor.extract(workflow, fiveGmailRuns);
+			expect(facts.map((f) => f.runIndex)).toEqual([0, 1, 2]);
+			expect(resolveNodeParametersFromRun).toHaveBeenCalledTimes(3);
+		});
+
+		it('neither replays nor counts runs that were already carded', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const facts = await extractor.extract(workflow, fiveGmailRuns, {
+				alreadyCarded: ['Gmail#0', 'Gmail#1'],
+			});
+			expect(facts.map((f) => f.runIndex)).toEqual([2, 3, 4]);
+			expect(resolveNodeParametersFromRun).toHaveBeenCalledTimes(3);
+			expect(resolveNodeParametersFromRun).not.toHaveBeenCalledWith(
+				expect.objectContaining({ runIndex: 0 }),
+			);
+		});
+
+		it('keeps the generic final candidate independent of the registry cap', async () => {
+			const extractor = new ResultCardFactsExtractor(logger, nodeTypes);
+			const facts = await extractor.extract(
+				workflowWithSummary,
+				runWith(
+					{
+						...fiveGmailRuns.data.resultData.runData,
+						Summary: [taskData([{ total: 12, bySource: { LinkedIn: 7 } }])],
+					},
+					'Summary',
+				),
+			);
+			expect(facts.map((f) => `${f.nodeName}#${f.runIndex}`)).toEqual([
+				'Gmail#0',
+				'Gmail#1',
+				'Gmail#2',
+				'Summary#0',
+			]);
+		});
 	});
 
 	it('falls back to the description default when a parameter is an unresolved expression', async () => {

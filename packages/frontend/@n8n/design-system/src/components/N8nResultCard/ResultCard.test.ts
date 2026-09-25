@@ -144,6 +144,30 @@ describe('N8nResultCard', () => {
 		expect(getByText('+1 more')).toBeInTheDocument();
 	});
 
+	it('labels the card region with its title', () => {
+		const { getByTestId } = render(ResultCard, { props: { card: DEMO_CARDS.email } });
+		expect(getByTestId('result-card')).toHaveAttribute('aria-label', DEMO_CARDS.email.title);
+	});
+
+	it('clamps metric breakdown bar widths to 0–100%', () => {
+		const { container } = render(ResultCard, {
+			props: {
+				card: {
+					...DEMO_CARDS.metric,
+					breakdown: [
+						{ label: 'Refunds', value: -4 },
+						{ label: 'Sales', value: 8 },
+						{ label: 'Over', value: 5, share: 1.5 },
+					],
+				},
+			},
+		});
+		const widths = Array.from(container.querySelectorAll('li span span')).map(
+			(fill) => (fill as HTMLElement).style.width,
+		);
+		expect(widths).toEqual(['0%', '100%', '100%']);
+	});
+
 	it('caps key/value pairs at 6', () => {
 		const pairs = Array.from({ length: 8 }, (_, index) => ({
 			key: `Key ${index + 1}`,

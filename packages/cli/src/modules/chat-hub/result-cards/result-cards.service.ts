@@ -1,12 +1,15 @@
 import { MAX_RESULT_CARDS_PER_MESSAGE, type ResultCard } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { buildCandidateSet } from '@n8n/chat-hub';
+import { buildCandidateSet, type CandidateSet } from '@n8n/chat-hub';
 import { ChatHubConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { IRun, IWorkflowBase } from 'n8n-workflow';
 
+import type { NonStreamingResponseMode } from '../chat-hub.types';
 import { ResultCardChooser } from './chooser';
-import { ResultCardFactsExtractor } from './facts-extractor';
+import { nodeRunKey, ResultCardFactsExtractor } from './facts-extractor';
+
+export { nodeRunKey } from './facts-extractor';
 
 export interface ResultCardsForRun {
 	cards: ResultCard[];
@@ -14,8 +17,13 @@ export interface ResultCardsForRun {
 	cardedNodeRuns: string[];
 }
 
-/** Identity of one node run within an execution, stable across resumes. */
-export const nodeRunKey = (nodeName: string, runIndex: number) => `${nodeName}#${runIndex}`;
+export interface BuildForRunOptions {
+	/**
+	 * How the chat reply is produced. In `responseNodes` mode the last node executed is the
+	 * Chat node, whose output is not the reply, so no generic card is built from it.
+	 */
+	responseMode?: NonStreamingResponseMode;
+}
 
 /**
  * Builds the result cards for one segment of a chat reply: extracts the node
@@ -35,32 +43,41 @@ export class ResultCardsService {
 	/**
 	 * Cards for everything this run produced that was not carded in an earlier
 	 * message segment (`alreadyCarded`). At most `MAX_RESULT_CARDS_PER_MESSAGE`
-	 * node runs are considered per call. Never throws — a failure here must not
-	 * break the reply.
+	 * node runs are considered per call; their chooser calls run concurrently so
+	 * the reply is delayed by one Jev round trip, not one per card. Never throws —
+	 * a failure here must not break the reply.
 	 */
 	async buildForRun(
 		workflow: IWorkflowBase,
 		run: IRun,
 		alreadyCarded: string[] = [],
+		options?: BuildForRunOptions,
 	): Promise<ResultCardsForRun> {
 		const empty: ResultCardsForRun = { cards: [], cardedNodeRuns: [] };
 		if (!this.config.resultCards.enabled) return empty;
 
 		try {
-			const facts = (await this.factsExtractor.extract(workflow, run)).filter(
-				(fact) => !alreadyCarded.includes(nodeRunKey(fact.nodeName, fact.runIndex)),
-			);
+			const facts = (
+				await this.factsExtractor.extract(workflow, run, {
+					alreadyCarded,
+					allowGenericCandidate: options?.responseMode !== 'responseNodes',
+				})
+			).filter((fact) => !alreadyCarded.includes(nodeRunKey(fact.nodeName, fact.runIndex)));
 
-			const cards: ResultCard[] = [];
+			const includeSamples = this.config.resultCards.jevSendSamples;
+			const candidates: CandidateSet[] = [];
 			const cardedNodeRuns: string[] = [];
 			for (const fact of facts) {
-				if (cards.length >= MAX_RESULT_CARDS_PER_MESSAGE) break;
+				if (cardedNodeRuns.length >= MAX_RESULT_CARDS_PER_MESSAGE) break;
 				cardedNodeRuns.push(nodeRunKey(fact.nodeName, fact.runIndex));
-				const candidate = buildCandidateSet(fact);
-				if (!candidate) continue;
-				const card = await this.chooser.choose(candidate);
-				if (card) cards.push(card);
+				const candidate = buildCandidateSet(fact, { includeSamples });
+				if (candidate) candidates.push(candidate);
 			}
+
+			const chosen = await Promise.all(
+				candidates.map(async (candidate) => await this.chooser.choose(candidate)),
+			);
+			const cards = chosen.filter((card): card is ResultCard => card !== null);
 			return { cards, cardedNodeRuns };
 		} catch (error) {
 			this.logger.warn('Result cards could not be built for this run', { error });

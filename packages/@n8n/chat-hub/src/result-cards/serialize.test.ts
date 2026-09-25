@@ -1,11 +1,22 @@
 import type { ResultCard } from '@n8n/api-types';
 
+import { parseMessage } from '../parser';
 import { appendCardsToMessage, normalizeDeclaredCards, toCardCommand } from './serialize';
 
 const card: ResultCard = {
 	type: 'keyValue',
 	title: 'Weekly summary',
 	pairs: [{ key: 'Total', value: '12 </command:card>' }],
+};
+
+const buttons = {
+	type: 'with-buttons',
+	text: 'Approve the refund?',
+	blockUserInput: true,
+	buttons: [
+		{ text: 'Yes', link: 'https://example.com/yes', type: 'primary' },
+		{ text: 'No', link: 'https://example.com/no', type: 'secondary' },
+	],
 };
 
 describe('toCardCommand', () => {
@@ -36,6 +47,83 @@ describe('appendCardsToMessage', () => {
 
 	it('emits only commands when there is no text', () => {
 		expect(appendCardsToMessage(undefined, [card])).toBe(toCardCommand(card));
+	});
+
+	describe('whole-message JSON replies', () => {
+		it('merges cards into a with-buttons message so the client still parses it', () => {
+			const out = appendCardsToMessage(JSON.stringify(buttons), [card]);
+
+			expect(out).not.toContain('<command:card>');
+			expect(JSON.parse(out)).toEqual({ ...buttons, cards: [card] });
+			expect(parseMessage({ type: 'ai', content: out })).toEqual([
+				{
+					type: 'with-buttons',
+					content: buttons.text,
+					buttons: buttons.buttons,
+					blockUserInput: true,
+				},
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+			]);
+		});
+
+		it('appends to the cards a with-buttons message already carries, up to the cap', () => {
+			const declared: ResultCard = { ...card, title: 'Declared', source: 'declared' };
+			const out = appendCardsToMessage(
+				JSON.stringify({ ...buttons, cards: [declared, declared, declared] }),
+				[card],
+			);
+			const parsed = JSON.parse(out) as { cards: ResultCard[] };
+			expect(parsed.cards).toEqual([declared, declared, declared]);
+		});
+
+		it('merges cards into a cards envelope and keeps the envelope text', () => {
+			// Keys in schema order: the envelope is re-serialized after validation.
+			const declared: ResultCard = {
+				type: 'keyValue',
+				title: 'Declared',
+				source: 'declared',
+				pairs: card.pairs,
+			};
+			const envelope = { type: 'cards', text: 'This week', cards: [declared] };
+			const out = appendCardsToMessage(JSON.stringify(envelope), [card]);
+
+			expect(out).not.toContain('<command:card>');
+			expect(JSON.parse(out)).toEqual({ ...envelope, cards: [declared, card] });
+			expect(parseMessage({ type: 'ai', content: out })).toEqual([
+				{ type: 'text', content: 'This week' },
+				{ type: 'card', content: JSON.stringify(declared), card: declared, isIncomplete: false },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+			]);
+		});
+
+		it('respects the per-message cap when merging into a cards envelope', () => {
+			const declared: ResultCard = { ...card, title: 'Declared', source: 'declared' };
+			const out = appendCardsToMessage(
+				JSON.stringify({ type: 'cards', cards: [declared, declared, declared] }),
+				[card],
+			);
+			const parsed = JSON.parse(out) as { cards: ResultCard[] };
+			expect(parsed.cards).toHaveLength(3);
+			expect(parsed.cards.every((c) => c.title === 'Declared')).toBe(true);
+		});
+
+		it('does not touch the cards themselves when merging', () => {
+			const jev: ResultCard = { ...card, source: 'jev' };
+			const out = appendCardsToMessage(JSON.stringify(buttons), [jev]);
+			expect((JSON.parse(out) as { cards: ResultCard[] }).cards[0].source).toBe('jev');
+		});
+
+		it('keeps the text form for JSON that is not a whole-message reply', () => {
+			const out = appendCardsToMessage('{"output":"Done."}', [card]);
+			expect(out).toBe(`{"output":"Done."}\n\n${toCardCommand(card)}`);
+			const broken = appendCardsToMessage('{not json', [card]);
+			expect(broken).toBe(`{not json\n\n${toCardCommand(card)}`);
+		});
+
+		it('leaves a whole-message JSON reply unchanged when there are no cards', () => {
+			const json = JSON.stringify(buttons);
+			expect(appendCardsToMessage(json, [])).toBe(json);
+		});
 	});
 });
 

@@ -142,12 +142,13 @@ export class ChatHubExecutionWatcherService {
 
 		let message = this.chatHubExecutionService.extractMessage(runData, context.responseMode);
 
-		// Result cards for the node runs of this segment, appended after the text so both the
+		// Result cards for the node runs of this segment, merged into the reply so both the
 		// waiting and the final message carry them. Resumed executions skip runs already carded.
 		const { cards, cardedNodeRuns } = await this.resultCardsService.buildForRun(
 			ctx.workflow,
 			runData,
 			context.cardedNodeRuns ?? [],
+			{ responseMode: context.responseMode },
 		);
 		if (cards.length > 0) {
 			message = appendCardsToMessage(message, cards);

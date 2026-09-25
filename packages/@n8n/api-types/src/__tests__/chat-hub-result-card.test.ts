@@ -1,3 +1,4 @@
+import { chatHubMessageWithButtonsSchema } from '../chat-hub';
 import { chatHubMessageCardsSchema, resultCardSchema } from '../chat-hub-result-card';
 
 /** Valid baseline; each negative records test below overrides exactly one field. */
@@ -68,6 +69,38 @@ describe('resultCardSchema', () => {
 		expect(
 			chatHubMessageCardsSchema.safeParse({ type: 'cards', cards: [card, card, card, card] })
 				.success,
+		).toBe(false);
+	});
+});
+
+describe('chatHubMessageWithButtonsSchema', () => {
+	const buttons = {
+		type: 'with-buttons',
+		text: 'Approve?',
+		blockUserInput: true,
+		buttons: [{ text: 'Yes', link: 'https://example.com/yes', type: 'primary' }],
+	};
+	const card = { type: 'keyValue', title: 't', pairs: [{ key: 'k', value: 'v' }] };
+
+	it('still accepts a buttons message without cards', () => {
+		const result = chatHubMessageWithButtonsSchema.safeParse(buttons);
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.cards).toBeUndefined();
+	});
+
+	it('accepts up to 3 result cards alongside the buttons', () => {
+		const result = chatHubMessageWithButtonsSchema.safeParse({ ...buttons, cards: [card, card] });
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.cards).toHaveLength(2);
+		expect(
+			chatHubMessageWithButtonsSchema.safeParse({ ...buttons, cards: [card, card, card, card] })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects cards that do not match the result card schema', () => {
+		expect(
+			chatHubMessageWithButtonsSchema.safeParse({ ...buttons, cards: [{ type: 'email' }] }).success,
 		).toBe(false);
 	});
 });

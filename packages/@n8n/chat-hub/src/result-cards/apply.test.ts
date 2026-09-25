@@ -91,6 +91,28 @@ describe('applyAnswers — answer validation', () => {
 		expect(set.apply('nope' as unknown as JevAnswers)).toEqual(set.defaultCard);
 	});
 
+	it('keeps the default archetype when the choice carries neither confidence nor probabilities', () => {
+		const set = buildCandidateSet(CODE_SUMMARY)!;
+		expect(set.defaultCard.type).toBe('metric');
+		expect(offered(set.questions.archetype)).toContain('keyValue');
+
+		expect(set.apply({ archetype: { choice: 'keyValue' } })).toMatchObject({ type: 'metric' });
+	});
+
+	it('falls back to the probability of the chosen archetype when confidence is missing', () => {
+		const set = buildCandidateSet(CODE_SUMMARY)!;
+		expect(
+			set.apply({
+				archetype: { choice: 'keyValue', probabilities: { keyValue: 0.9, metric: 0.1 } },
+			}),
+		).toMatchObject({ type: 'keyValue', source: 'jev' });
+		expect(
+			set.apply({
+				archetype: { choice: 'keyValue', probabilities: { keyValue: 0.1, metric: 0.9 } },
+			}),
+		).toMatchObject({ type: 'metric' });
+	});
+
 	it('stamps source: jev only when a validated answer was applied', () => {
 		const set = buildCandidateSet(CODE_SUMMARY)!;
 		expect(set.apply({ title: { choice: 'nonsense', confidence: 1 } })?.source).toBe('mapped');

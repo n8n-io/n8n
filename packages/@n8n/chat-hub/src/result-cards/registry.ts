@@ -181,10 +181,15 @@ const describeTelegram: Describer = (facts) => {
 	};
 };
 
+/**
+ * Write operations only: reading rows is an input to whatever the workflow does next, not an
+ * outcome a reader wants a card for. `read` is also the node's default, so an omitted
+ * `operation` means the same thing and falls through to `null`.
+ */
 const SHEETS_OPERATIONS: Record<
 	string,
 	{
-		operation: 'append' | 'update' | 'upsert' | 'read' | 'delete';
+		operation: 'append' | 'update' | 'upsert' | 'delete';
 		verb: string;
 		action: string;
 		label: string;
@@ -198,15 +203,13 @@ const SHEETS_OPERATIONS: Record<
 		action: 'Rows synced',
 		label: 'Synced',
 	},
-	read: { operation: 'read', verb: 'read from', action: 'Rows read', label: 'Read' },
 	delete: { operation: 'delete', verb: 'deleted from', action: 'Rows deleted', label: 'Deleted' },
 	clear: { operation: 'delete', verb: 'cleared from', action: 'Rows cleared', label: 'Cleared' },
 };
 
 const describeGoogleSheets: Describer = (facts) => {
 	if (facts.resource && facts.resource !== 'sheet') return null;
-	// `read` is the node's default operation, so it is what an omitted `operation` means.
-	const op = SHEETS_OPERATIONS[facts.operation ?? 'read'];
+	const op = facts.operation === undefined ? undefined : SHEETS_OPERATIONS[facts.operation];
 	if (!op) return null;
 	const p = facts.params;
 	const target = truncate(rlcLabel(p.sheetName) || rlcLabel(p.documentId) || 'Google Sheet', 120);

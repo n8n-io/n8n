@@ -64,6 +64,7 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 		:style="{ '--result-card--accent': skin.accent }"
 		:data-skin="skin.id"
 		:data-archetype="card.type"
+		:aria-label="card.title"
 		data-test-id="result-card"
 	>
 		<header :class="$style.header">

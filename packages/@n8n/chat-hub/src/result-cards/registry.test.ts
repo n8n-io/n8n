@@ -150,24 +150,41 @@ describe('describeNodeRun', () => {
 		});
 	});
 
-	it("falls back to the node's default operation (read) when Sheets facts carry none", () => {
-		const card = describeNodeRun(
-			makeFacts({
-				nodeName: 'Google Sheets',
-				nodeType: 'n8n-nodes-base.googleSheets',
-				resource: 'sheet',
-				items: [{ Name: 'Marta' }, { Name: 'Jonas' }],
-				params: {
-					sheetName: { __rl: true, mode: 'list', value: 'gid=0', cachedResultName: 'Leads 2026' },
-				},
-			}),
-		);
-		expect(card).toMatchObject({
-			type: 'records',
-			operation: 'read',
-			eyebrow: 'Google Sheets · Rows read',
-			statusLabel: 'Read',
-			title: '2 rows read from Leads 2026',
+	it('returns null for Sheets read — reading rows is not an outcome worth a card', () => {
+		const sheetsRead = {
+			nodeName: 'Google Sheets',
+			nodeType: 'n8n-nodes-base.googleSheets',
+			resource: 'sheet',
+			items: [{ Name: 'Marta' }, { Name: 'Jonas' }],
+			params: {
+				sheetName: { __rl: true, mode: 'list', value: 'gid=0', cachedResultName: 'Leads 2026' },
+			},
+		};
+		expect(describeNodeRun(makeFacts({ ...sheetsRead, operation: 'read' }))).toBeNull();
+		// `read` is the node's default operation, so omitted facts mean the same thing.
+		expect(describeNodeRun(makeFacts(sheetsRead))).toBeNull();
+	});
+
+	it('still maps the Sheets write operations', () => {
+		const base = {
+			nodeName: 'Google Sheets',
+			nodeType: 'n8n-nodes-base.googleSheets',
+			resource: 'sheet',
+			items: [{ Name: 'Marta' }],
+		};
+		expect(describeNodeRun(makeFacts({ ...base, operation: 'append' }))).toMatchObject({
+			operation: 'append',
+		});
+		expect(describeNodeRun(makeFacts({ ...base, operation: 'appendOrUpdate' }))).toMatchObject({
+			operation: 'upsert',
+		});
+		expect(describeNodeRun(makeFacts({ ...base, operation: 'delete' }))).toMatchObject({
+			operation: 'delete',
+			statusLabel: 'Deleted',
+		});
+		expect(describeNodeRun(makeFacts({ ...base, operation: 'clear' }))).toMatchObject({
+			operation: 'delete',
+			statusLabel: 'Cleared',
 		});
 	});
 });

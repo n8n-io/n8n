@@ -180,6 +180,25 @@ This is a test.
 				{ type: 'text', content: command },
 			]);
 		});
+
+		it('emits a with-buttons chunk followed by one card chunk per merged card', () => {
+			const buttons = [
+				{ text: 'Yes', link: 'https://example.com/yes', type: 'primary' },
+				{ text: 'No', link: 'https://example.com/no', type: 'secondary' },
+			];
+			const content = JSON.stringify({
+				type: 'with-buttons',
+				text: 'Approve?',
+				blockUserInput: true,
+				buttons,
+				cards: [card, card],
+			});
+			expect(parseMessage({ type: 'ai', content })).toEqual([
+				{ type: 'with-buttons', content: 'Approve?', buttons, blockUserInput: true },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+			]);
+		});
 	});
 });
 

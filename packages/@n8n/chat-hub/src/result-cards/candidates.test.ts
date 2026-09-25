@@ -205,6 +205,73 @@ describe('buildCandidateSet', () => {
 		).toEqual({ path: 'total', type: 'number' });
 	});
 
+	describe('includeSamples: false', () => {
+		const SAMPLE_VALUES = ['Marta Nowak', 'Allegro', 'LinkedIn', '12'];
+
+		function jevPayload(set: NonNullable<ReturnType<typeof buildCandidateSet>>): string {
+			return JSON.stringify({
+				state: set.buildState({ includeSamples: false }),
+				questions: set.questions,
+			});
+		}
+
+		it('keeps every sample value out of the state and the questions', () => {
+			for (const facts of [SHEETS_APPEND, CODE_SUMMARY]) {
+				const set = buildCandidateSet(facts, { includeSamples: false })!;
+				const payload = jevPayload(set);
+				for (const value of SAMPLE_VALUES) {
+					expect(payload).not.toContain(value);
+				}
+			}
+		});
+
+		it('still sends samples by default', () => {
+			const sheets = buildCandidateSet(SHEETS_APPEND)!;
+			expect(JSON.stringify(sheets.questions)).toContain('Marta Nowak');
+			const summary = buildCandidateSet(CODE_SUMMARY)!;
+			expect(JSON.stringify(summary.questions)).toContain('LinkedIn');
+			expect(JSON.stringify(summary.buildState())).toContain('12');
+		});
+
+		it('describes fields by path and type and keeps the same question keys', () => {
+			const withSamples = buildCandidateSet(CODE_SUMMARY)!;
+			const set = buildCandidateSet(CODE_SUMMARY, { includeSamples: false })!;
+			expect(Object.keys(set.questions)).toEqual(Object.keys(withSamples.questions));
+			expect(set.questions.title).toMatchObject({
+				type: 'choice',
+				criteria: {
+					node: 'Weekly summary',
+					workflow: 'Leads log',
+					'field:topSource': 'field:topSource',
+				},
+			});
+			expect(set.questions.metric_label).toMatchObject({
+				criteria: expect.objectContaining({
+					'field:topSource': expect.stringContaining('topSource'),
+				}),
+			});
+			expect(JSON.stringify(set.questions.metric_label)).not.toContain('use this value');
+
+			const sheets = buildCandidateSet(SHEETS_APPEND, { includeSamples: false })!;
+			expect(sheets.questions.col_0).toMatchObject({
+				type: 'score',
+				instructions: expect.stringContaining('"Name"'),
+			});
+			expect(sheets.questions.col_0.instructions).not.toContain('e.g.');
+		});
+
+		it('still resolves the real title value when Jev picks a field title', () => {
+			const set = buildCandidateSet(CODE_SUMMARY, { includeSamples: false })!;
+			expect(set.apply({ title: { choice: 'field:topSource', confidence: 0.9 } })).toMatchObject({
+				title: 'LinkedIn',
+				source: 'jev',
+			});
+			expect(
+				set.apply({ metric_label: { choice: 'field:topSource', confidence: 0.9 } }),
+			).toMatchObject({ type: 'metric', label: 'LinkedIn' });
+		});
+	});
+
 	it('ignores non-object items instead of throwing', () => {
 		const items = [null, 'text', 42, { total: 12, topSource: 'LinkedIn' }] as unknown as Array<
 			Record<string, unknown>

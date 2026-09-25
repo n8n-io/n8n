@@ -9,7 +9,11 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { ResultCard } from './chat-hub-result-card';
+import {
+	MAX_RESULT_CARDS_PER_MESSAGE,
+	resultCardSchema,
+	type ResultCard,
+} from './chat-hub-result-card';
 import { TimeZoneSchema } from './schemas/timezone.schema';
 import { Z } from './zod-class';
 
@@ -704,6 +708,8 @@ export const chatHubMessageWithButtonsSchema = z.object({
 	text: z.string(),
 	blockUserInput: z.boolean(),
 	buttons: z.array(chatHubMessageButtonSchema).min(1),
+	/** Result cards merged into the reply; the whole-message JSON form cannot carry `<command:card>` */
+	cards: z.array(resultCardSchema).max(MAX_RESULT_CARDS_PER_MESSAGE).optional(),
 });
 
 export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;

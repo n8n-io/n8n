@@ -3,7 +3,7 @@ import { resultCardSchema, type ResultCard, type ResultCardArchetype } from '@n8
 import { applyAnswers } from './apply';
 import { applicableArchetypes, buildGenericCard } from './generic';
 import { schemaHash } from './hash';
-import { buildQuestions } from './questions';
+import { buildQuestions, type QuestionOptions } from './questions';
 import { describeNodeRun } from './registry';
 import type { CandidateSet, JevState, NodeRunFacts } from './types';
 
@@ -26,7 +26,15 @@ export function buildState(facts: NodeRunFacts, options?: { includeSamples?: boo
 	};
 }
 
-export function buildCandidateSet(facts: NodeRunFacts): CandidateSet | null {
+/**
+ * Builds the candidate set for one node run. `options.includeSamples` (default true) controls
+ * whether the Jev questions may quote sample values; the caller applies the same setting to
+ * `buildState`, so with `false` nothing from the data leaves the process.
+ */
+export function buildCandidateSet(
+	facts: NodeRunFacts,
+	options?: QuestionOptions,
+): CandidateSet | null {
 	const registryCard = describeNodeRun(facts);
 	let archetypes: ResultCardArchetype[];
 	let defaultCard: ResultCard;
@@ -52,7 +60,7 @@ export function buildCandidateSet(facts: NodeRunFacts): CandidateSet | null {
 	defaultCard = validated.data;
 
 	const isRegistryCard = registryCard !== null;
-	const questions = buildQuestions(facts, archetypes, isRegistryCard, defaultCard);
+	const questions = buildQuestions(facts, archetypes, isRegistryCard, defaultCard, options);
 
 	return {
 		facts,
