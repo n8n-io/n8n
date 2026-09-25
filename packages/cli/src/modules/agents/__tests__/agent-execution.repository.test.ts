@@ -39,4 +39,37 @@ describe('AgentExecutionRepository', () => {
 			expect(result).toBeNull();
 		});
 	});
+
+	describe('incrementCost', () => {
+		it('is a no-op for zero or negative cost and never issues an UPDATE', async () => {
+			const createQueryBuilderSpy = vi
+				.spyOn(repository, 'createQueryBuilder')
+				.mockReturnValue({} as never);
+
+			await repository.incrementCost('execution-1', 0);
+			await repository.incrementCost('execution-1', -1);
+
+			expect(createQueryBuilderSpy).not.toHaveBeenCalled();
+		});
+
+		it('issues an atomic cost increment UPDATE for a positive cost', async () => {
+			const execute = vi.fn().mockResolvedValue(undefined);
+			const qb = {
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				setParameters: vi.fn().mockReturnThis(),
+				execute,
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(qb as never);
+
+			await repository.incrementCost('execution-1', 0.00125);
+
+			expect(qb.update).toHaveBeenCalledWith(AgentExecution);
+			expect(qb.set).toHaveBeenCalledWith({ cost: expect.any(Function) });
+			expect(qb.where).toHaveBeenCalledWith('id = :executionId', { executionId: 'execution-1' });
+			expect(qb.setParameters).toHaveBeenCalledWith({ cost: 0.00125 });
+			expect(execute).toHaveBeenCalledTimes(1);
+		});
+	});
 });

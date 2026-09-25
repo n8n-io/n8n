@@ -109,7 +109,10 @@ describe('observation-log observer defaults', () => {
 			executionCounter: counter,
 		});
 
-		expect(result).toContain('CRITICAL');
+		// The default observe fn returns { text, usage, model }; bare-string returns
+		// stay supported for custom observe fns.
+		const observeText = typeof result === 'string' ? result : result.text;
+		expect(observeText).toContain('CRITICAL');
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();

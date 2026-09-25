@@ -78,6 +78,8 @@ export type {
 	SmoothStreamOptions,
 	TokenUsage,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
@@ -369,6 +371,7 @@ export {
 export type {
 	RunEpisodicMemoryCandidateProcessorOpts,
 	RunEpisodicMemoryCandidateProcessorResult,
+	EpisodicMemoryUsageReport,
 } from './runtime/memory/episodic-memory-capture';
 export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,

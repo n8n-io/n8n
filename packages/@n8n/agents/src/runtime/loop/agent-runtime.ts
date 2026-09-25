@@ -775,6 +775,8 @@ export class AgentRuntime {
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
 			executionCounter: options.executionCounter,
+			onSideCallUsage: options.onSideCallUsage,
+			promptCaching: this.config.promptCaching,
 		});
 		this.backgroundTasks.track(titlePromise);
 		if (this.config.titleGeneration.sync) {

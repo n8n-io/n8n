@@ -577,7 +577,12 @@ describe('agent-directed episodic capture', () => {
 				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 				now: new Date('2026-05-12T11:00:00.000Z'),
 			}),
-		).resolves.toEqual({ status: 'ran', entriesWritten: 1, candidatesProcessed: 1 });
+		).resolves.toEqual({
+			status: 'ran',
+			entriesWritten: 1,
+			candidatesProcessed: 1,
+			usageReports: expect.any(Array),
+		});
 
 		// Reflection only runs for corrections; a plain preference must not pay for it.
 		expect(reflect).not.toHaveBeenCalled();

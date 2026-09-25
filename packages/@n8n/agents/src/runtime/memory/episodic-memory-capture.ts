@@ -26,7 +26,11 @@ import type {
 	EpisodicMemoryScope,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
-import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
+import type {
+	AgentExecutionCounter,
+	AgentPersistenceOptions,
+	TokenUsage,
+} from '../../types/sdk/agent';
 import type { AgentDbMessage, Message } from '../../types/sdk/message';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
@@ -155,9 +159,21 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	agentName?: string;
 }
 
+export type EpisodicMemoryUsageReport = {
+	task: 'episodic';
+	model: string;
+	usage: TokenUsage;
+};
+
 export type RunEpisodicMemoryCandidateProcessorResult =
 	| { status: 'skipped' }
-	| { status: 'ran'; entriesWritten: number; candidatesProcessed: number };
+	| {
+			status: 'ran';
+			entriesWritten: number;
+			candidatesProcessed: number;
+			/** One usage report per embed/reflect model call, so each is priced separately. */
+			usageReports: EpisodicMemoryUsageReport[];
+	  };
 
 /**
  * Flagged candidates become entries as written: the agent already phrased the
@@ -177,9 +193,12 @@ export async function runEpisodicMemoryCandidateProcessor(
 
 	const now = opts.now ?? new Date();
 	const candidateIds = candidates.map((candidate) => candidate.id);
+	const usageReports: EpisodicMemoryUsageReport[] = [];
 	let savedEntries: EpisodicMemoryEntry[];
 	try {
-		savedEntries = await saveCandidateEntries(opts, config, candidates, now);
+		const saved = await saveCandidateEntries(opts, config, candidates, now);
+		savedEntries = saved.entries;
+		if (saved.usageReport) usageReports.push(saved.usageReport);
 		await opts.memory.episodic.completeCaptureCandidates(candidateIds);
 	} catch (error) {
 		await opts.memory.episodic.recordCaptureCandidateFailure(
@@ -194,12 +213,20 @@ export async function runEpisodicMemoryCandidateProcessor(
 		config.reflect &&
 		candidates.some((candidate) => candidate.kind === 'correction')
 	) {
-		await runEpisodicMemoryReflection(opts, config, savedEntries, candidates, now);
+		const reflectReports = await runEpisodicMemoryReflection(
+			opts,
+			config,
+			savedEntries,
+			candidates,
+			now,
+		);
+		usageReports.push(...reflectReports);
 	}
 	return {
 		status: 'ran',
 		entriesWritten: savedEntries.length,
 		candidatesProcessed: candidates.length,
+		usageReports,
 	};
 }
 
@@ -284,13 +311,25 @@ async function embedTexts(
 	config: NormalizedEpisodicMemoryConfig,
 	values: string[],
 	executionCounter: AgentExecutionCounter | undefined,
-): Promise<number[][]> {
+): Promise<{ embeddings: number[][]; report?: EpisodicMemoryUsageReport }> {
 	const { embedMany } = await import('ai');
 	const { embeddings, usage } = await withEmbeddingErrorContext(
 		async () => await embedMany({ model: config.embedder, values }),
 	);
 	incrementTokenCountFromUsage(executionCounter, usage);
-	return embeddings;
+	// Embedding model usage only reports a single `tokens` count (no
+	// input/output split), so build the TokenUsage directly instead of
+	// routing through `toTokenUsage`, which expects a chat-model usage shape.
+	const tokenUsage: TokenUsage | undefined = usage
+		? { promptTokens: usage.tokens, completionTokens: 0, totalTokens: usage.tokens }
+		: undefined;
+	return {
+		embeddings,
+		report:
+			tokenUsage !== undefined
+				? { task: 'episodic', model: config.embeddingModel, usage: tokenUsage }
+				: undefined,
+	};
 }
 
 async function saveCandidateEntries(
@@ -298,8 +337,9 @@ async function saveCandidateEntries(
 	config: NormalizedEpisodicMemoryConfig,
 	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
-): Promise<EpisodicMemoryEntry[]> {
+): Promise<{ entries: EpisodicMemoryEntry[]; usageReport?: EpisodicMemoryUsageReport }> {
 	const savedEntries: EpisodicMemoryEntry[] = [];
+	let usageReport: EpisodicMemoryUsageReport | undefined;
 	await withMemorySpan(
 		'save_memory',
 		opts.agentName ?? 'agent',
@@ -310,11 +350,13 @@ async function saveCandidateEntries(
 			...inferMemoryStoreAttributes(opts.memory),
 		}),
 		async () => {
-			const embeddings = await embedTexts(
+			const embedded = await embedTexts(
 				config,
 				candidates.map((candidate) => candidate.content),
 				opts.executionCounter,
 			);
+			usageReport = embedded.report;
+			const embeddings = embedded.embeddings;
 			for (const [index, candidate] of candidates.entries()) {
 				const saved = await opts.memory.episodic.saveEntryWithSources(
 					{
@@ -346,7 +388,7 @@ async function saveCandidateEntries(
 			};
 		},
 	);
-	return savedEntries;
+	return { entries: savedEntries, usageReport };
 }
 
 async function runEpisodicMemoryReflection(
@@ -355,43 +397,57 @@ async function runEpisodicMemoryReflection(
 	savedEntries: EpisodicMemoryEntry[],
 	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
-): Promise<void> {
-	if (!config.reflect) return;
+): Promise<EpisodicMemoryUsageReport[]> {
+	if (!config.reflect) return [];
 	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
-	if (cluster.length === 0) return;
+	if (cluster.length === 0) return [];
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
-	const reflection = normalizeEpisodicMemoryReflection(
-		cluster,
-		await config.reflect({
-			scope: opts.scope,
-			now,
-			seedEntryIds: savedEntries.map((entry) => entry.id),
-			entries: cluster,
-			sources,
-			executionCounter: opts.executionCounter,
-		}),
-	);
-	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
+	const reflectResult = await config.reflect({
+		scope: opts.scope,
+		now,
+		seedEntryIds: savedEntries.map((entry) => entry.id),
+		entries: cluster,
+		sources,
+		executionCounter: opts.executionCounter,
+	});
+	const reflectionResult =
+		'reflection' in reflectResult
+			? reflectResult
+			: { reflection: reflectResult, usage: undefined, model: '' };
+	const reports: EpisodicMemoryUsageReport[] = [];
+	if (reflectionResult.usage !== undefined) {
+		reports.push({
+			task: 'episodic',
+			model: reflectionResult.model,
+			usage: reflectionResult.usage,
+		});
+	}
+	const reflection = normalizeEpisodicMemoryReflection(cluster, reflectionResult.reflection);
+	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;
 
 	const mergeContents = reflection.merge.map((entry) => entry.content);
-	const mergeEmbeddings =
-		mergeContents.length > 0 ? await embedTexts(config, mergeContents, opts.executionCounter) : [];
-	await opts.memory.episodic.applyReflection(opts.scope, {
-		drop: reflection.drop,
-		merge: reflection.merge.map((merge, index) => ({
-			supersedes: merge.supersedes,
-			entry: {
-				...opts.scope,
-				content: merge.content,
-				contentHash: hashEpisodicMemoryContent(merge.content),
-				embedding: mergeEmbeddings[index],
-				embeddingModel: config.embeddingModel,
-				createdAt: now,
-				lastSeenAt: now,
-			},
-		})),
-	});
+	if (mergeContents.length > 0) {
+		const mergeEmbedded = await embedTexts(config, mergeContents, opts.executionCounter);
+		if (mergeEmbedded.report) reports.push(mergeEmbedded.report);
+		const mergeEmbeddings = mergeEmbedded.embeddings;
+		await opts.memory.episodic.applyReflection(opts.scope, {
+			drop: reflection.drop,
+			merge: reflection.merge.map((merge, index) => ({
+				supersedes: merge.supersedes,
+				entry: {
+					...opts.scope,
+					content: merge.content,
+					contentHash: hashEpisodicMemoryContent(merge.content),
+					embedding: mergeEmbeddings[index],
+					embeddingModel: config.embeddingModel,
+					createdAt: now,
+					lastSeenAt: now,
+				},
+			})),
+		});
+	}
+	return reports;
 }
 
 async function buildReflectionCluster(

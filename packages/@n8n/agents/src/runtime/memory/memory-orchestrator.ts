@@ -30,10 +30,18 @@ import type {
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
-import type { AgentPersistenceOptions, ExecutionOptions, RunOptions } from '../../types/sdk/agent';
+import type {
+	AgentPersistenceOptions,
+	ExecutionOptions,
+	RunOptions,
+	SideCallTask,
+	SideCallUsageReport,
+	TokenUsage,
+} from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
+import { computeSideCallCost } from '../loop/side-call-cost';
 import type { AgentMessageList } from '../model/message-list';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -50,6 +58,9 @@ const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 /** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
 const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
 const logger = createFilteredLogger();
+
+/** Host callback that receives a priced side-call usage report to add to the session total. */
+type OnSideCallUsage = (report: SideCallUsageReport) => void | Promise<void>;
 
 function stringifyForBudget(value: unknown): string {
 	try {
@@ -222,7 +233,12 @@ export class MemoryOrchestrator {
 		this.resetRunState();
 		if (this.config.memory && options?.persistence?.threadId) {
 			const telemetry = this.runtimeTelemetry.resolve(options);
-			this.scheduleEpisodicMemoryJob(options.persistence, options.executionCounter, telemetry);
+			this.scheduleEpisodicMemoryJob(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+				options.onSideCallUsage,
+			);
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
@@ -434,9 +450,15 @@ export class MemoryOrchestrator {
 			options.persistence,
 			options.executionCounter,
 			telemetry,
+			options.onSideCallUsage,
 		);
 		if (hasSuccessfulMemoryFlag(list)) {
-			this.scheduleEpisodicMemoryJob(options.persistence, options.executionCounter, telemetry);
+			this.scheduleEpisodicMemoryJob(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+				options.onSideCallUsage,
+			);
 		}
 	}
 
@@ -550,6 +572,7 @@ export class MemoryOrchestrator {
 				options.persistence,
 				options.executionCounter,
 				telemetry,
+				options.onSideCallUsage,
 			);
 			if (!handle) return;
 			const result = await handle.done;
@@ -566,6 +589,7 @@ export class MemoryOrchestrator {
 			options.persistence,
 			options.executionCounter,
 			telemetry,
+			options.onSideCallUsage,
 		);
 		if (!handle) return;
 		const entry: MidRunObserverTask = { handle };
@@ -645,6 +669,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
+		onSideCallUsage?: OnSideCallUsage,
 	): ScopedMemoryTaskHandle<RunObservationLogObserverResult> | undefined {
 		const run = this.observerRun;
 		if (run.disabled) return undefined;
@@ -672,6 +697,9 @@ export class MemoryOrchestrator {
 					telemetry,
 				});
 				if (result.status === 'ran' && !result.cursorAdvanced) run.disabled = true;
+				if (result.status === 'ran') {
+					await this.forwardSideCallUsage(onSideCallUsage, 'observer', result.model, result.usage);
+				}
 				return result;
 			},
 		);
@@ -686,6 +714,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
+		onSideCallUsage?: OnSideCallUsage,
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
@@ -705,7 +734,7 @@ export class MemoryOrchestrator {
 			void midRunTask.handle.done.then(() => {
 				if (this.midRunObserverTask === midRunTask) this.midRunObserverTask = undefined;
 			});
-			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+			this.scheduleObserverTask(persistence, executionCounter, telemetry, onSideCallUsage);
 		} else if (
 			this.cursorAdvancedThisRun ||
 			(midRunTask?.result !== undefined && didAdvanceCursor(midRunTask.result))
@@ -713,29 +742,29 @@ export class MemoryOrchestrator {
 			// Mid-run advanced the cursor this run — either activated at a boundary
 			// or settled after the last one: observe the tail regardless of the
 			// visible-window budget, which the mask shrank below threshold.
-			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+			this.scheduleObserverTask(persistence, executionCounter, telemetry, onSideCallUsage);
 		} else if (await this.shouldScheduleObserver(list, persistence.threadId)) {
-			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+			this.scheduleObserverTask(persistence, executionCounter, telemetry, onSideCallUsage);
 		}
 
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
-			void this.scheduleMemoryTask(
-				runner,
-				scope,
-				'reflector',
-				async () =>
-					await runObservationLogReflector({
-						memory,
-						...scope,
-						reflectorThresholdTokens,
-						reflect,
-						tokenCounter: this.tokenCounter,
-						executionCounter,
-						telemetry,
-					}),
-			);
+			void this.scheduleMemoryTask(runner, scope, 'reflector', async () => {
+				const result = await runObservationLogReflector({
+					memory,
+					...scope,
+					reflectorThresholdTokens,
+					reflect,
+					tokenCounter: this.tokenCounter,
+					executionCounter,
+					telemetry,
+				});
+				if (result.status === 'ran') {
+					await this.forwardSideCallUsage(onSideCallUsage, 'reflector', result.model, result.usage);
+				}
+				return result;
+			});
 		}
 	}
 
@@ -763,6 +792,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
+		onSideCallUsage?: OnSideCallUsage,
 	): void {
 		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
 		if (!capture) return;
@@ -776,6 +806,16 @@ export class MemoryOrchestrator {
 					telemetry,
 					agentName: this.config.name,
 				});
+				if (result.status === 'ran') {
+					for (const report of result.usageReports) {
+						await this.forwardSideCallUsage(
+							onSideCallUsage,
+							'episodic',
+							report.model,
+							report.usage,
+						);
+					}
+				}
 			} while (result.status === 'ran');
 		});
 	}
@@ -883,5 +923,26 @@ export class MemoryOrchestrator {
 		return {
 			observationScopeId: persistence.threadId,
 		};
+	}
+
+	/**
+	 * Price a side-call model turn and forward it to the host so it can add the
+	 * USD cost to the execution and thread totals. Best-effort: a catalog
+	 * lookup or host failure is logged and never fails the memory task.
+	 */
+	private async forwardSideCallUsage(
+		onSideCallUsage: OnSideCallUsage | undefined,
+		task: SideCallTask,
+		model: string | undefined,
+		usage: TokenUsage | undefined,
+	): Promise<void> {
+		if (!onSideCallUsage || !usage || !model) return;
+		try {
+			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
+			if (cost === undefined) return;
+			await onSideCallUsage({ task, model, usage, cost, reportId: crypto.randomUUID() });
+		} catch (error) {
+			logger.warn('Failed to report side-call usage', { error, task });
+		}
 	}
 }

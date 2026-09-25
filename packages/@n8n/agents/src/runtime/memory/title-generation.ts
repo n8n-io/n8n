@@ -1,12 +1,21 @@
 import type { LanguageModel } from 'ai';
 
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../../types';
-import type { AgentExecutionCounter, ModelConfig } from '../../types/sdk/agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	PromptCachingConfig,
+	SideCallUsageReport,
+	TokenUsage,
+} from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
+import { getModelIdString } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { computeSideCallCost } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
+import { toTokenUsage } from '../streaming/stream';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 const logger = createFilteredLogger();
@@ -150,7 +159,7 @@ export async function generateTitleAndEmojiFromMessage(
 	model: LanguageModel,
 	userMessage: string,
 	opts?: { instructions?: string; executionCounter?: AgentExecutionCounter },
-): Promise<{ title: string; emoji?: string } | null> {
+): Promise<{ title: string; emoji?: string; usage?: TokenUsage } | null> {
 	const trimmed = userMessage.trim();
 	if (!trimmed) return null;
 
@@ -170,6 +179,7 @@ ${trimmed}
 		messages: [{ role: 'user', content: wrappedMessage }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
+	const usage = toTokenUsage(result.usage, result.providerMetadata);
 
 	let text = result.text?.trim();
 	if (!text) return null;
@@ -199,7 +209,7 @@ ${trimmed}
 	const title = sanitizeTitle(rawTitle);
 	if (!title) return null;
 
-	return { title, emoji };
+	return { title, emoji, usage };
 }
 
 /**
@@ -221,6 +231,13 @@ export async function generateThreadTitle(opts: {
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Host callback that receives the priced title-generation usage so it can
+	 * add the USD cost to the execution and thread totals. Best-effort.
+	 */
+	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Agent prompt-caching config, used to resolve Anthropic cache-write pricing for the title model. */
+	promptCaching?: PromptCachingConfig;
 }): Promise<void> {
 	try {
 		const thread = await opts.memory.getThread(opts.threadId);
@@ -243,7 +260,7 @@ export async function generateThreadTitle(opts: {
 		});
 		if (!generated) return;
 
-		const { title, emoji } = generated;
+		const { title, emoji, usage } = generated;
 
 		// Store emoji in thread metadata
 		const metadata = { ...(thread?.metadata ?? {}), ...(emoji && { emoji }) };
@@ -254,7 +271,43 @@ export async function generateThreadTitle(opts: {
 			title,
 			metadata,
 		});
+
+		// Price the title model turn and forward it to the host so it adds the
+		// cost to the execution and thread totals. Best-effort: never block on this.
+		if (usage && opts.onSideCallUsage) {
+			void reportTitleUsage(
+				opts.onSideCallUsage,
+				getModelIdString(titleModelId),
+				usage,
+				opts.promptCaching,
+			);
+		}
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
+	}
+}
+
+/**
+ * Price a title-generation model turn and forward it to the host. Best-effort:
+ * a catalog lookup or host failure is logged and never breaks title generation.
+ */
+async function reportTitleUsage(
+	onSideCallUsage: (report: SideCallUsageReport) => void | Promise<void>,
+	modelId: string,
+	usage: TokenUsage,
+	promptCaching?: PromptCachingConfig,
+): Promise<void> {
+	try {
+		const cost = await computeSideCallCost(modelId, usage, promptCaching);
+		if (cost === undefined) return;
+		await onSideCallUsage({
+			task: 'title',
+			model: modelId,
+			usage,
+			cost,
+			reportId: crypto.randomUUID(),
+		});
+	} catch (error) {
+		logger.warn('Failed to report title generation usage', { error });
 	}
 }

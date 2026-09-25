@@ -134,6 +134,67 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('recordSideCallUsage', () => {
+		it('increments the execution cost and thread totalCost by the report cost', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.00125,
+				reportId: 'report-1',
+			});
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith('execution-1', 0.00125);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+				'thread-1',
+				0,
+				0,
+				0.00125,
+				0,
+			);
+		});
+
+		it('does not apply the same reportId twice (idempotent)', async () => {
+			const report = { task: 'observer', model: 'openai/gpt-4o', cost: 0.0007, reportId: 'dup-1' };
+
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies two different reportIds separately', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'report-a',
+			});
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.002,
+				reportId: 'report-b',
+			});
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('swallows repository errors so a side-call cost failure never breaks the run', async () => {
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', {
+					task: 'title',
+					model: 'openai/gpt-4o',
+					cost: 0.001,
+					reportId: 'report-err',
+				}),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	describe('startExecutionRecording', () => {
 		it('stores the signal before publishing the execution update', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({

@@ -142,6 +142,13 @@ export class AgentExecutionService {
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
 
+	/**
+	 * Side-call cost report ids already applied to an execution+thread in this
+	 * process. Used to keep the title/observer/reflector/episodic cost
+	 * increments idempotent when a report is delivered more than once.
+	 */
+	private readonly appliedSideCallReportIds = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -871,6 +878,38 @@ export class AgentExecutionService {
 					error: result.reason,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Apply a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto its execution row
+	 * and thread totals. The SDK prices the call and sends `{ task, model,
+	 * usage, cost, reportId }`; the host only adds `cost`. Idempotent per
+	 * `reportId` so a replayed report does not double-count. Best-effort: a
+	 * failure logs a warning and never breaks the run.
+	 */
+	async recordSideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		if (this.appliedSideCallReportIds.has(report.reportId)) return;
+		this.appliedSideCallReportIds.add(report.reportId);
+
+		try {
+			await Promise.all([
+				this.agentExecutionRepository.incrementCost(executionId, report.cost),
+				this.agentExecutionThreadRepository.incrementUsage(threadId, 0, 0, report.cost, 0),
+			]);
+		} catch (error) {
+			this.logger.warn('Failed to record agent side-call usage', {
+				executionId,
+				threadId,
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
 		}
 	}
 

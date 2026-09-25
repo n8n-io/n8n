@@ -2,14 +2,16 @@ import { z } from 'zod';
 
 import type {
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryReflection,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflectorInput,
 	EpisodicMemoryReflectFn,
 	ModelConfig,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
+import { getModelIdString } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { createModel } from '../model/model-factory';
+import { toTokenUsage } from '../streaming/stream';
 
 export const DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 export const DEFAULT_EPISODIC_MEMORY_TOP_K = 5;
@@ -65,7 +67,7 @@ export function createEpisodicMemoryReflectFn(
 	model: ModelConfig,
 	options: CreateEpisodicMemoryReflectFnOptions = {},
 ): EpisodicMemoryReflectFn {
-	return async (input): Promise<EpisodicMemoryReflection> => {
+	return async (input): Promise<EpisodicMemoryReflectResult> => {
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
 			model: createModel(model),
@@ -74,7 +76,11 @@ export function createEpisodicMemoryReflectFn(
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
-		return response.output;
+		return {
+			reflection: response.output,
+			usage: toTokenUsage(response.usage, response.providerMetadata),
+			model: getModelIdString(model),
+		};
 	};
 }
 

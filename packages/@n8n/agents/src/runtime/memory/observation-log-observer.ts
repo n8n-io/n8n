@@ -2,7 +2,7 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { redactText } from '../../sdk/guardrails';
-import type { AgentExecutionCounter } from '../../types/sdk/agent';
+import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { ObservationCursor } from '../../types/sdk/observation';
@@ -93,6 +93,10 @@ export type RunObservationLogObserverResult =
 			cursorAdvanced: boolean;
 			tokenCount: number;
 			skippedLines: string[];
+			/** Normalized token usage from the observer LLM call, when the provider reports it. */
+			usage?: TokenUsage;
+			/** Stable model id string of the model that produced the observations. */
+			model?: string;
 	  };
 
 export function parseObservationLogMarkdown(markdown: string): ParseObservationLogMarkdownResult {
@@ -217,7 +221,7 @@ export async function runObservationLogObserver(
 	).reverse();
 	const now = opts.now ?? new Date();
 	const renderedObservationLogTail = renderObservationLog(observationLogTail);
-	const markdown = await opts.observe({
+	const observeResult = await opts.observe({
 		observationScopeId,
 		now,
 		deltaMessages: observable,
@@ -228,6 +232,9 @@ export async function runObservationLogObserver(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
+	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
+	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
+	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
 
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations
@@ -248,6 +255,8 @@ export async function runObservationLogObserver(
 			cursorAdvanced: false,
 			tokenCount,
 			skippedLines: parsed.skippedLines,
+			usage: observeUsage,
+			model: observeModel,
 		};
 	}
 
@@ -298,6 +307,8 @@ export async function runObservationLogObserver(
 		cursorAdvanced,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
+		usage: observeUsage,
+		model: observeModel,
 	};
 }
 
