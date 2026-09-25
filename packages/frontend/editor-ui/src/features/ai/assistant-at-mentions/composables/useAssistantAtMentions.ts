@@ -202,7 +202,7 @@ export function useAssistantAtMentions(options: {
 		if (
 			!range ||
 			range.origin !== 'typed' ||
-			text[range.start] !== '@' ||
+			!isMentionTrigger(text[range.start]) ||
 			text.slice(range.queryStart, range.end).trim() !== ''
 		) {
 			return false;
