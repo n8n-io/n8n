@@ -684,24 +684,6 @@ that start after the save use the cached executable. Windows keeps the standard
 The existing `actions/setup-node` cache continues to store the pnpm package
 store.
 
-### CI toolchain image
-
-`build-ci-toolchain-image.yml` publishes one Node, pnpm, SafeChain and Chromium
-image to GHCR on `master`. The build does not install n8n dependencies. A
-Blacksmith job pulls the image to seed the shared container cache. A job in
-the image then checks its tools, browser, Docker access, SafeChain and a
-lockfile-driven root install. Manual dispatch runs the smoke job without
-republishing the image, so it can check a warm pull. Update the image tag in
-the publish workflow when a tool pin changes. No PR test job uses this image.
-
-Build and check the image locally with:
-
-```bash
-docker buildx build --load -t n8n-ci-toolchain:local -f .github/ci-toolchain/Dockerfile .
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock n8n-ci-toolchain:local \
-  bash -lc 'node --version && pnpm --version && /opt/ci-toolchain/safe-chain -v && docker info && docker buildx version && node /opt/ci-playwright/node_modules/playwright/cli.js install --dry-run chromium'
-```
-
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
 image would avoid that, but Blacksmith currently never populates a
@@ -709,15 +691,6 @@ newly created sticky disk - it stays at 0 bytes however many runs commit to it,
 while the build reports a successful commit. Every job therefore shares the
 `n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
 once new-disk retention works.
-
-`ci-seed-pnpm-sticky-disk.yml` fills the pilot pnpm store on a separate sticky
-disk. Dispatch it manually on `master` before rerunning the container pilot PR.
-The workflow mounts `/pnpm-sticky-store` under key
-`n8n-io-n8n-pnpm-pilot-linux-amd64-v11`, then installs the lockfile without
-lifecycle scripts. The seed runs on the host so the sticky-disk action can read
-the runner diagnostics before it commits. Blacksmith branch protection permits
-this default-branch dispatch to commit the store. Pull request jobs can read it,
-but cannot commit their changes. This workflow does not run during regular CI.
 
 ### run-workflow-script
 
