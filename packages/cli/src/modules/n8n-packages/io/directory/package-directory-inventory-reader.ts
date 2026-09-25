@@ -256,19 +256,12 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/**
- * `workflows/<entry>/workflow.json`, optionally nested below folders. The export
- * writes deeper folder levels as bare slugs under the first `folders/` segment
- * (`folders/<a>/<b>/workflows/...`), not as repeated `folders/<slug>` pairs, so
- * accept any folder-chain depth before the `workflows/<entry>/` leaf.
- */
+/** `workflows/<entry>/workflow.json`, at the root or under a `folders/<a>/<b>/…` chain of bare slugs. */
 function isWorkflowLocation(segments: string[]): boolean {
 	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
 	const container = segments.slice(0, -3);
-	// Either a project/root workflow (no container), or one under a folder chain.
-	// A folder chain is `folders/<slug>(/<slug>)*`, so it needs at least one slug
-	// after `folders/` — reject a bare `folders/` with no folder entry.
-	if (container.length === 0) return true;
+	if (container.length === 0) return true; // root workflow
+	// A folder chain needs a slug after `folders/`.
 	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
 }
 
