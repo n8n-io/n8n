@@ -399,13 +399,61 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           use-pnpm-sticky-disk: 'true'
-          install-command: pnpm install --frozen-lockfile --ignore-scripts
           build-command: ''
 
       - name: Report host setup time
         run: |
           echo "Host pilot setup, including checkout and disk mount: $(($(date +%s) - CI_FIRST_STEP))s" >> "$GITHUB_STEP_SUMMARY"
           echo "Store size: $(du -sh /pnpm-sticky-store)" >> "$GITHUB_STEP_SUMMARY"
+
+  host-actions-cache-pnpm-probe:
+    name: Pilot host pnpm Actions cache
+    if: github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Start probe timer
+        run: echo "CI_FIRST_STEP=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+
+      - name: Install with Actions cache
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Report Actions cache setup time
+        run: |
+          echo "Host Actions cache setup, including checkout: $(($(date +%s) - CI_FIRST_STEP))s" >> "$GITHUB_STEP_SUMMARY"
+
+  host-cold-pnpm-probe:
+    name: Pilot host cold pnpm store
+    if: github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Start probe timer
+        run: echo "CI_FIRST_STEP=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+
+      - name: Install without pnpm store cache
+        uses: ./.github/actions/setup-nodejs
+        with:
+          cache-pnpm-store: 'false'
+          build-command: ''
+
+      - name: Report cold setup time
+        run: |
+          echo "Host cold store setup, including checkout: $(($(date +%s) - CI_FIRST_STEP))s" >> "$GITHUB_STEP_SUMMARY"
 
   unit-test:
     name: Unit tests
