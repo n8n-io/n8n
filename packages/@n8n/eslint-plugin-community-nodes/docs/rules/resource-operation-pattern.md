@@ -6,7 +6,7 @@
 
 ## Rule Details
 
-Warns when a regular node has no operation action. An action makes the node visible in node search and usable by AI. Even a node with one action needs an Operation. The Resource field is optional when the node has one resource.
+Warns when a regular node has no Operation field or an operation option has no action label. The rule checks only inline properties and options. It skips triggers and AI-only sub-nodes. A node with one operation still needs an Operation field. A node with one resource can omit the Resource field.
 
 Warns when a node has more than 5 operations without organizing them into resources. Group related operations to make complex nodes easier to navigate.
 
