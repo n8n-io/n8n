@@ -7,7 +7,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PackageImportSelection extends BaseCommand {
 	static override description =
-		'Import a chosen subset of workflows from an n8n package (.n8np) into a project';
+		'Import a chosen subset of workflows from an n8n project package (.n8np)';
 
 	static override examples = [
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>',
@@ -17,7 +17,7 @@ export default class PackageImportSelection extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
-		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
+		file: Flags.string({ description: 'Path to the .n8np project package file', required: true }),
 		selectedProjectId: Flags.string({
 			description: 'Source project ID the selection is scoped to',
 			required: true,
@@ -32,7 +32,7 @@ export default class PackageImportSelection extends BaseCommand {
 		}),
 		deletedWorkflowIds: Flags.string({
 			description:
-				'Target workflow IDs to delete (comma-separated, or repeat the flag). Only these are removed',
+				'Target workflow IDs to archive (comma-separated, or repeat the flag). Already absent or archived workflows are ignored.',
 			multiple: true,
 			delimiter: ',',
 			aliases: ['deleted-workflow-ids'],
