@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nBadge, N8nHoverCard, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nHoverCard, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -246,10 +246,9 @@ async function handleCopyLink(tab: ArtifactTab) {
 							<TimeAgo :date="hoveredSummary.updatedAt" />
 						</span>
 					</div>
-					<N8nBadge
+					<span
 						v-if="hoveredSummary"
-						:variant="hoveredSummary.published ? 'success' : 'filled'"
-						:class="$style.statusBadge"
+						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredSummary.published }]"
 						data-test-id="instance-ai-tab-hover-card-status"
 					>
 						{{
@@ -257,7 +256,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 								? i18n.baseText('workflows.published')
 								: i18n.baseText('instanceAi.previewTabBar.draft')
 						}}
-					</N8nBadge>
+					</span>
 				</div>
 			</template>
 		</N8nHoverCard>
@@ -431,8 +430,21 @@ async function handleCopyLink(tab: ArtifactTab) {
 	font-size: var(--font-size--2xs);
 }
 
-.hoverCard .statusBadge {
+// N8nBadge always renders a medium-weight label, but the design uses regular weight.
+.statusTag {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius);
+	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-700));
+	color: light-dark(var(--color--neutral-800), var(--color--neutral-white));
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+	white-space: nowrap;
+}
+
+.statusTagPublished {
+	background-color: light-dark(var(--color--green-100), var(--color--green-800));
+	color: light-dark(var(--color--green-800), var(--color--neutral-white));
 }
 
 .contextMenu {
