@@ -66,7 +66,13 @@ describe('AgentExecutionRepository', () => {
 			await repository.incrementCost('execution-1', 0.00125);
 
 			expect(qb.update).toHaveBeenCalledWith(AgentExecution);
-			expect(qb.set).toHaveBeenCalledWith({ cost: expect.any(Function) });
+			expect(qb.set).toHaveBeenCalledTimes(1);
+			// The cost value is a SQL-fragment function; invoke it to verify the
+			// accumulating expression. `COALESCE` keeps a nullable `cost` from
+			// collapsing to `NULL + :cost = NULL` when no main-turn usage is priced.
+			const setArg = qb.set.mock.calls[0][0] as { cost: () => string };
+			expect(typeof setArg.cost).toBe('function');
+			expect(setArg.cost()).toBe('COALESCE(cost, 0) + :cost');
 			expect(qb.where).toHaveBeenCalledWith('id = :executionId', { executionId: 'execution-1' });
 			expect(qb.setParameters).toHaveBeenCalledWith({ cost: 0.00125 });
 			expect(execute).toHaveBeenCalledTimes(1);

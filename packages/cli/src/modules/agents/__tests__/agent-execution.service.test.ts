@@ -1120,6 +1120,47 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
+		it('applies the terminal main-loop cost additively so in-flight side-call increments survive', async () => {
+			// A side-call `incrementCost` that lands before the terminal write must
+			// not be overwritten by `cost = record.totalCost`. The terminal write
+			// therefore omits `cost` from `updateIfRunning` and adds the main-loop
+			// cost through the same additive `incrementCost` path the side calls use.
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const [, terminalPayload] = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			expect(terminalPayload).not.toHaveProperty('cost');
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith('execution-1', 0.05);
+			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.incrementCost.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not issue a cost increment when the terminal run has no priced usage', async () => {
+			const record = makeMessageRecord({ totalCost: null });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(

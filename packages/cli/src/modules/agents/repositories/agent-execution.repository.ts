@@ -260,14 +260,16 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/**
 	 * Atomically add a side-call model cost (title generation, observation-log
 	 * observer/reflector, episodic-memory model calls) onto an execution row.
-	 * Side calls settle after the terminal row write, so this is an
-	 * unconditional increment — not gated on `status = 'running'`.
+	 * Side calls can settle before or after the terminal row write, so this is
+	 * an unconditional increment — not gated on `status = 'running'`. `cost` is
+	 * nullable (an execution may have no priced main-turn usage yet), so
+	 * `COALESCE` keeps the increment from collapsing to `NULL + :cost = NULL`.
 	 */
 	async incrementCost(executionId: string, cost: number): Promise<void> {
 		if (cost <= 0) return;
 		await this.createQueryBuilder()
 			.update(AgentExecution)
-			.set({ cost: () => 'cost + :cost' })
+			.set({ cost: () => 'COALESCE(cost, 0) + :cost' })
 			.where('id = :executionId', { executionId })
 			.setParameters({ cost })
 			.execute();

@@ -772,6 +772,10 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
+		// Cost is applied additively (below) rather than assigned here, so a
+		// side-call `incrementCost` that lands before this terminal write is not
+		// overwritten by `cost = record.totalCost`. `record.totalCost` is the
+		// main-loop cost only; side calls price themselves onto the same column.
 		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 			status,
 			stoppedAt,
@@ -780,7 +784,6 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
 			storedAt: 'db',
 			error: record.error,
@@ -791,6 +794,12 @@ export class AgentExecutionService {
 			throw new OperationalError('Agent execution is no longer running', {
 				extra: { executionId },
 			});
+		}
+		// Add the main-loop cost onto whatever side-call increments already
+		// settled. `incrementCost` no-ops for zero/null and is not gated on
+		// `status = 'running'`, so this also covers the finalized row.
+		if (record.totalCost) {
+			await this.agentExecutionRepository.incrementCost(executionId, record.totalCost);
 		}
 	}
 
