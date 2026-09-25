@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { IDataObject } from 'n8n-workflow';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { OperationalError, type IDataObject } from 'n8n-workflow';
 
 import type { CollectedTrace, MlflowSpan } from './types';
 import { MLFLOW_ATTRIBUTE, MLFLOW_TRACE_METADATA } from './types';
@@ -17,6 +18,7 @@ const uploadCredentialsPath = (traceId: string) =>
 	`/api/2.0/mlflow/traces/${encodeURIComponent(traceId)}/credentials-for-data-upload`;
 
 const MAX_PREVIEW_CHARS = 1_000;
+const MAX_FAILURE_DETAIL_CHARS = 500;
 
 export interface MlflowResponse {
 	status: number;
@@ -55,13 +57,13 @@ function describeFailure(body: unknown): string {
 	if (!isRecord(body)) return '';
 	const code = typeof body.error_code === 'string' ? body.error_code : '';
 	const message = typeof body.message === 'string' ? body.message : '';
-	return [code, message].filter(Boolean).join(': ').slice(0, 500);
+	return sanitizeErrorDetail([code, message].filter(Boolean).join(': '), MAX_FAILURE_DETAIL_CHARS);
 }
 
 function assertOk(response: MlflowResponse, what: string): unknown {
 	if (response.status < 200 || response.status >= 300) {
 		const detail = describeFailure(response.body);
-		throw new Error(
+		throw new OperationalError(
 			`Databricks ${what} failed with HTTP ${response.status}${detail ? ` (${detail})` : ''}`,
 		);
 	}
@@ -133,7 +135,7 @@ export async function ensureExperiment(
 	if (isRecord(created) && typeof created.experiment_id === 'string') {
 		return created.experiment_id;
 	}
-	throw new Error('Databricks did not return an experiment id');
+	throw new OperationalError('Databricks did not return an experiment id');
 }
 
 /**
@@ -225,7 +227,7 @@ export async function writeTrace(
 			? credentials.credential_info.signed_uri
 			: undefined;
 	if (typeof signedUri !== 'string' || signedUri.length === 0) {
-		throw new Error('Databricks did not return an upload URL for the trace data');
+		throw new OperationalError('Databricks did not return an upload URL for the trace data');
 	}
 
 	await upload({
