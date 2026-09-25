@@ -51,6 +51,8 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -175,6 +177,8 @@ beforeEach(async () => {
 		projectService,
 		packagesService,
 		Container.get(PromotionBindingPreflightService),
+		Container.get(PackageDirectoryInventoryReader),
+		Container.get(PackageImportConfig),
 		logger,
 	);
 	Container.set(PromotionsService, service);
