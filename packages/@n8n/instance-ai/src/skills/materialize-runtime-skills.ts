@@ -106,10 +106,26 @@ function toFrontmatterSection<T>(
 	return isNonEmptyRecord(output) ? output : undefined;
 }
 
+/**
+ * Materialized locations keyed by skill id. A reference ships inside its
+ * owner's directory as a linked file, so it resolves to that file.
+ */
 function materializedSkillById(
 	materialized: MaterializedRuntimeSkill[],
+	registry: RuntimeSkillRegistry,
 ): Map<string, MaterializedRuntimeSkill> {
-	return new Map(materialized.map((skill) => [skill.id, skill]));
+	const byId = new Map(materialized.map((skill) => [skill.id, skill]));
+	for (const entry of registry.skills) {
+		const owner = entry.reference ? byId.get(entry.reference.owner) : undefined;
+		if (!entry.reference || !owner) continue;
+		byId.set(entry.id, {
+			id: entry.id,
+			name: entry.name,
+			path: posixJoin(owner.directory, entry.reference.path),
+			directory: owner.directory,
+		});
+	}
+	return byId;
 }
 
 function safeSkillDirectory(entry: RuntimeSkillRegistryEntry): string {
@@ -280,7 +296,7 @@ function materializedRegistry(
 	registry: RuntimeSkillRegistry,
 	materialized: MaterializedRuntimeSkill[],
 ): RuntimeSkillRegistry {
-	const materializedById = materializedSkillById(materialized);
+	const materializedById = materializedSkillById(materialized, registry);
 
 	return {
 		...registry,
@@ -307,7 +323,7 @@ function createMaterializedRuntimeSkillSource(
 	workspaceRoot: string,
 	skillsRoot: string,
 ): RuntimeSkillSource {
-	const materializedById = materializedSkillById(materialized);
+	const materializedById = materializedSkillById(materialized, registry);
 	const loadFile = source.loadFile;
 
 	return {
@@ -431,8 +447,9 @@ export async function buildRuntimeSkillWorkspaceBundle({
 
 	const files = new Map<string, string>();
 
+	const ownSkillEntries = source.registry.skills.filter((entry) => !entry.reference);
 	const materialized = await Promise.all(
-		source.registry.skills.map(async (entry): Promise<MaterializedRuntimeSkill> => {
+		ownSkillEntries.map(async (entry): Promise<MaterializedRuntimeSkill> => {
 			const skill = await source.loadSkill(entry.id);
 			if (!skill) {
 				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
@@ -462,19 +479,34 @@ export async function buildRuntimeSkillWorkspaceBundle({
 						entry,
 						linkedFile,
 					);
-					const content = await source.loadFile?.(entry.id, relativePath);
-					if (!content) {
+					const referenceEntry = source.registry.skills.find(
+						(candidate) =>
+							candidate.reference?.owner === entry.id && candidate.reference.path === relativePath,
+					);
+					// Render references from skill content so prompt variants reach the file too.
+					const reference = referenceEntry ? await source.loadSkill(referenceEntry.id) : null;
+					const content = reference ? null : await source.loadFile?.(entry.id, relativePath);
+					if (!reference && !content) {
 						throw new Error(
 							`Runtime skill "${entry.name}" linked file is registered but cannot be loaded: ${linkedFile.path}`,
 						);
 					}
 
-					const materializedContent = substituteRuntimeSkillVars(
-						content.content,
-						directory,
-						workspaceRoot,
-						skillsRoot,
-					);
+					const materializedContent =
+						reference && referenceEntry
+							? renderRuntimeSkillMarkdown(
+									reference,
+									referenceEntry,
+									directory,
+									workspaceRoot,
+									skillsRoot,
+								)
+							: substituteRuntimeSkillVars(
+									content?.content ?? '',
+									directory,
+									workspaceRoot,
+									skillsRoot,
+								);
 					warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
 					files.set(materializedPath, materializedContent);
 				}),
