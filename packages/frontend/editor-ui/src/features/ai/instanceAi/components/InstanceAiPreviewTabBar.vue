@@ -406,7 +406,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .tab {
-	--tab--background--hover: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
+	--tab--background--hover: var(--background--hover);
 	--tab--background--active: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 
 	flex: 0 1 auto;
