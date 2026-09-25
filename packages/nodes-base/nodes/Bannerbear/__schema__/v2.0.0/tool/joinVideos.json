@@ -1,0 +1,39 @@
+{
+	"type": "object",
+	"properties": {
+		"completed_at": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"error_message": {
+			"type": "string"
+		},
+		"inputs": {
+			"type": "object"
+		},
+		"metadata": {
+			"type": "string"
+		},
+		"outputs": {
+			"type": "object"
+		},
+		"progress": {
+			"type": "integer"
+		},
+		"self": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"tool": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		}
+	},
+	"version": 2
+}

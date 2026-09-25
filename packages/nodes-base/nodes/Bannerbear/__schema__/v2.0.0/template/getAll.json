@@ -1,0 +1,39 @@
+{
+	"type": "object",
+	"properties": {
+		"adaptive": {
+			"type": "boolean"
+		},
+		"config": {
+			"type": "object"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"height": {
+			"type": "integer"
+		},
+		"name": {
+			"type": "string"
+		},
+		"preview": {
+			"type": "string"
+		},
+		"tags": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"uid": {
+			"type": "string"
+		},
+		"width": {
+			"type": "integer"
+		}
+	},
+	"version": 2
+}
