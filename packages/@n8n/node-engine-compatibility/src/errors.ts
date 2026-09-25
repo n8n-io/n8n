@@ -89,15 +89,15 @@ export class EngineRequestNotSupportedError extends UserError {
 
 /**
  * A wait that only a resume request or a child execution can end. Neither path
- * exists on engine 2.0 yet, so the step fails instead of completing as if the
+ * exists on engine v2 yet, so the step fails instead of completing as if the
  * wait had ended.
  */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a resume request' | 'a sub-execution') {
 		super(
 			waitsFor === 'a resume request'
-				? `Node "${nodeName}" waits with no time limit, and engine 2.0 cannot end that wait yet. Set a time limit on the node.`
-				: `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.`,
+				? `Node "${nodeName}" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.`
+				: `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`,
 		);
 	}
 }

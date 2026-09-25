@@ -50,7 +50,7 @@ import {
  * step emits that input at the deadline, not what the node returned before it
  * paused.
  *
- * A sentinel wait fails the step. Engine 2.0 has no resume route and no
+ * A sentinel wait fails the step. Engine v2 has no resume route and no
  * sub-workflow steps yet. A declaration replaces each failure when its path
  * exists.
  */

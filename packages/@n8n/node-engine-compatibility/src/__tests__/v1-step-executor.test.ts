@@ -401,7 +401,7 @@ describe('V1StepExecutor', () => {
 			const execution = executor.execute(stepRequest(graph, 'n', input));
 
 			await expect(execution).rejects.toThrow(
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.',
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
 			);
 		});
 
@@ -449,12 +449,12 @@ describe('V1StepExecutor', () => {
 			[
 				'WAIT_INDEFINITELY',
 				WAIT_INDEFINITELY,
-				'Node "Subject" waits with no time limit, and engine 2.0 cannot end that wait yet. Set a time limit on the node.',
+				'Node "Subject" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.',
 			],
 			[
 				'WAIT_FOR_SUB_EXECUTION',
 				WAIT_FOR_SUB_EXECUTION,
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.',
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
 			],
 		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
 			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
