@@ -10,6 +10,7 @@ export {
 	InvalidIdentityTokenError,
 	mintActionToken,
 	mintIdentityToken,
+	mintResumeToken,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
