@@ -1,6 +1,7 @@
 import type {
 	ActionCreateElement,
 	ActionTypeDescription,
+	CommandCreateElement,
 	INodeCreateElement,
 	LinkCreateElement,
 	NodeCreateElement,
@@ -61,6 +62,10 @@ const NODE_CREATOR_COMMAND_SEARCH_KEYS = [
 	{ key: 'properties.description', weight: 0.8 },
 ];
 
+function isCommandCreateElement(item: { type: string }): item is CommandCreateElement {
+	return item.type === 'command';
+}
+
 export function transformNodeType(
 	node: SimplifiedNodeType,
 	subcategory?: string,
@@ -91,10 +96,7 @@ export function getNodeCreatorSearchItems(
 	nodes: SimplifiedNodeType[],
 	items: ReadonlyArray<{ type: string }>,
 ): INodeCreateElement[] {
-	return [
-		...nodes.map((node) => transformNodeType(node)),
-		...(items.filter((item) => item.type === 'command') as INodeCreateElement[]),
-	];
+	return [...nodes.map((node) => transformNodeType(node)), ...items.filter(isCommandCreateElement)];
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {

@@ -19,6 +19,7 @@ import {
 import type { CommandCreateElement, NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
@@ -317,6 +318,22 @@ describe('NodesMode', () => {
 			expect(emitted('emptyGroupSelected')).toBeUndefined();
 		},
 	);
+
+	it('does not render the Group item during node replacement', async () => {
+		useNodeCreatorStore().openingContext = 'replacement';
+		useViewStacks().pushViewStack({
+			title: 'Replace node',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.queryByText('Group')).not.toBeInTheDocument();
+	});
 
 	it.each(['group', 'organisational', 'container'])(
 		'shows the Group item when searching for %s',
