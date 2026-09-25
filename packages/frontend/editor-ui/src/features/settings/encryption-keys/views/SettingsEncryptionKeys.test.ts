@@ -48,16 +48,6 @@ describe('SettingsEncryptionKeys', () => {
 		});
 	});
 
-	it('links to the encryption key rotation guide', () => {
-		seedStore();
-		renderComponent(SettingsEncryptionKeys);
-
-		expect(screen.getByRole('link', { name: /Learn more in documentation/i })).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/rotate-encryption-keys',
-		);
-	});
-
 	it('renders a row for each item with a masked id', async () => {
 		seedStore({
 			items: [
