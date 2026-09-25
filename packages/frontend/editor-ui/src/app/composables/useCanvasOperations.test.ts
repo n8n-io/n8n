@@ -1928,8 +1928,8 @@ describe('useCanvasOperations', () => {
 				nodesById.delete(id);
 			});
 
-			const { deleteNode } = useCanvasOperations();
-			deleteNode(node.id, { trackHistory: true });
+			const { deleteNodes } = useCanvasOperations();
+			deleteNodes([node.id], { trackHistory: true, deleteWholeGroupIds: ['other-group'] });
 
 			expect(workflowDocumentStoreInstance.addNode).toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.replaceNodeInGroup).toHaveBeenCalled();
@@ -1967,7 +1967,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { deleteNodes } = useCanvasOperations();
-			deleteNodes([node.id], { trackHistory: true, preserveEmptyGroupAnchor: false });
+			deleteNodes([node.id], { trackHistory: true, deleteWholeGroupIds: [group.id] });
 
 			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);

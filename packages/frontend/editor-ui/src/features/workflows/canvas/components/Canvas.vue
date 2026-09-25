@@ -152,7 +152,7 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
-	'delete:nodes': [ids: string[], deleteWholeGroups?: boolean];
+	'delete:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
@@ -1156,7 +1156,11 @@ function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
 	// Expand selected groups to their member nodes before deletion.
 	if (ids.length > 0) {
-		emit('delete:nodes', ids, selectedNodesAndGroups.value.some(isCanvasGroupNode));
+		const deleteWholeGroupIds = selectedNodesAndGroups.value
+			.filter(isCanvasGroupNode)
+			.map((node) => parseCanvasGroupNodeId(node.id))
+			.filter(isPresent);
+		emit('delete:nodes', ids, deleteWholeGroupIds);
 	}
 }
 
@@ -1659,12 +1663,17 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('create:sticky');
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
-		case 'delete':
-			return emit(
-				'delete:nodes',
-				nodeIds,
-				Boolean(groupId) || selectedNodesAndGroups.value.some(isCanvasGroupNode),
+		case 'delete': {
+			const deleteWholeGroupIds = new Set(
+				selectedNodesAndGroups.value
+					.filter(isCanvasGroupNode)
+					.map((node) => parseCanvasGroupNodeId(node.id))
+					.filter(isPresent),
 			);
+			if (groupId) deleteWholeGroupIds.add(groupId);
+
+			return emit('delete:nodes', nodeIds, [...deleteWholeGroupIds]);
+		}
 		case 'select_all':
 			return onSelectAllNodes();
 		case 'deselect_all':
