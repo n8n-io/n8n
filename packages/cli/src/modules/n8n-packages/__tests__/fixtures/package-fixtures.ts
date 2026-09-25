@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
 
 import { DirectoryPackageWriter } from '../../io/directory/directory-package-writer';
+import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
@@ -263,11 +264,12 @@ export async function buildImportPackageBuffer(
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	workflows.forEach((wf, idx) => {
 		const { content, metadata } = workflowFiles(wf);
-		writer.writeDirectory(`workflows/wf-${idx}`);
-		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
+		const target = `workflows/wf-${idx}`;
+		writer.writeDirectory(target);
+		writer.writeFile(entityFilePath('workflows', target), JSON.stringify(content));
 		if (options.workflowMetadata !== 'omit') {
 			writer.writeFile(
-				`workflows/wf-${idx}/workflow-metadata.json`,
+				workflowMetadataFilePath(target),
 				JSON.stringify(options.workflowMetadata ?? metadata),
 			);
 		}
@@ -434,24 +436,24 @@ async function writeEntityPackage(
 	for (const { target, workflow } of workflows) {
 		const { content, metadata } = workflowFiles(workflow);
 		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
-		await writer.writeFile(`${target}/workflow-metadata.json`, JSON.stringify(metadata));
+		await writer.writeFile(entityFilePath('workflows', target), JSON.stringify(content));
+		await writer.writeFile(workflowMetadataFilePath(target), JSON.stringify(metadata));
 	}
 	for (const { target, folder } of folders) {
 		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/folder.json`, JSON.stringify(folder));
+		await writer.writeFile(entityFilePath('folders', target), JSON.stringify(folder));
 	}
 	for (const { target, project } of projects) {
 		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/project.json`, JSON.stringify(project));
+		await writer.writeFile(entityFilePath('projects', target), JSON.stringify(project));
 	}
 	for (const { target, dataTable } of dataTables) {
 		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/data-table.json`, JSON.stringify(dataTable));
+		await writer.writeFile(entityFilePath('dataTables', target), JSON.stringify(dataTable));
 	}
 	for (const { target, variable } of variables) {
 		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/variable.json`, JSON.stringify(variable));
+		await writer.writeFile(entityFilePath('variables', target), JSON.stringify(variable));
 	}
 }
 
