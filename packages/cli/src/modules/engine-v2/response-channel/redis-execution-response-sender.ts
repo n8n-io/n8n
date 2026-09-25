@@ -26,7 +26,7 @@ export interface RedisResponsePublisher {
 export class RedisExecutionResponseSender implements ExecutionResponseSender {
 	private stopped = false;
 
-	private readonly inFlightPublishes = new Set<Promise<void>>();
+	private readonly inFlightPublishes = new Set<Promise<unknown>>();
 
 	constructor(
 		private readonly publisher: RedisResponsePublisher,
@@ -41,19 +41,16 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 
 		const frameResult = serializeExecutionResponse(response, this.logger);
 
-		const publish: Promise<void> = this.publisher
+		const publishTask: Promise<unknown> = this.publisher
 			.publish(this.getChannelName(response.executionId), frameResult.frame)
-			.then(
-				() => {},
-				(error: unknown) => {
-					this.logger.error('Failed to publish an execution response', {
-						executionId: response.executionId,
-						error,
-					});
-				},
-			)
-			.finally(() => this.inFlightPublishes.delete(publish));
-		this.inFlightPublishes.add(publish);
+			.catch((error: unknown) => {
+				this.logger.error('Failed to publish an execution response', {
+					executionId: response.executionId,
+					error,
+				});
+			})
+			.finally(() => this.inFlightPublishes.delete(publishTask));
+		this.inFlightPublishes.add(publishTask);
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
 	}
@@ -64,7 +61,6 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 		};
 	}
 
-	/** Gives in-flight publishes a bounded time to reach Redis before it disconnects. */
 	async stop(): Promise<void> {
 		if (this.stopped) return;
 
@@ -73,6 +69,7 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 		this.publisher.disconnect();
 	}
 
+	/** Gives in-flight publishes a bounded time to reach Redis before it disconnects. */
 	private async drainInFlightPublishes(): Promise<void> {
 		if (this.inFlightPublishes.size === 0) return;
 
@@ -81,7 +78,7 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 			timer = setTimeout(resolve, SHUTDOWN_DRAIN_TIMEOUT_MS);
 		});
 		try {
-			await Promise.race([Promise.allSettled([...this.inFlightPublishes]), timeout]);
+			await Promise.race([Promise.allSettled(this.inFlightPublishes), timeout]);
 		} finally {
 			clearTimeout(timer);
 		}

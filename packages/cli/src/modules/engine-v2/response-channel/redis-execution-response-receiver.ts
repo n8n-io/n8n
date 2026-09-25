@@ -19,7 +19,7 @@ type ExecutionSubscription = {
 };
 
 export interface RedisResponseSubscriber {
-	subscribe(channel: string): Promise<unknown>;
+	subscribe(...channels: string[]): Promise<unknown>;
 	unsubscribe(channel: string): Promise<unknown>;
 	on(event: 'close' | 'ready', handler: RedisConnectionHandler): unknown;
 	on(event: 'message', handler: RedisMessageHandler): unknown;
@@ -101,10 +101,6 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		};
 	}
 
-	/**
-	 * Closing the connection ends every Redis subscription, so there is nothing to
-	 * unsubscribe. Waiting for Redis here could hold shutdown open while it is down.
-	 */
 	async stop(): Promise<void> {
 		if (this.stopped) return;
 
@@ -113,6 +109,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		this.subscriber.off('message', this.handleMessage);
 		this.subscriber.off('close', this.handleClose);
 		this.subscriber.off('ready', this.handleReady);
+		// Closing the connection ends every Redis subscription, so there is nothing to
+		// unsubscribe. Waiting for Redis here could hold shutdown open while it is down.
 		this.subscriber.disconnect();
 	}
 
@@ -133,11 +131,11 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 	};
 
 	private async resubscribe(): Promise<void> {
-		const channels = [...this.subscriptionsByChannel.keys()];
+		const channels = Array.from(this.subscriptionsByChannel.keys());
 		if (channels.length === 0) return;
 
 		try {
-			await Promise.all(channels.map(async (channel) => await this.subscriber.subscribe(channel)));
+			await this.subscriber.subscribe(...channels);
 		} catch (error) {
 			this.lostConnection = true;
 			this.logger.error('Failed to resubscribe to execution responses after Redis reconnect', {
