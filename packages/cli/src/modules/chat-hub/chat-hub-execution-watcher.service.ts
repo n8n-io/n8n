@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { appendCardsToMessage } from '@n8n/chat-hub';
 import { type IExecutionResponse } from '@n8n/db';
 import {
 	OnLifecycleEvent,
@@ -18,6 +19,7 @@ import {
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatStreamService } from './chat-stream.service';
+import { ResultCardsService } from './result-cards/result-cards.service';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
 
 /**
@@ -37,6 +39,7 @@ export class ChatHubExecutionWatcherService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly chatStreamService: ChatStreamService,
 		private readonly executionManager: ChatExecutionManager,
+		private readonly resultCardsService: ResultCardsService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -137,7 +140,23 @@ export class ChatHubExecutionWatcherService {
 			return;
 		}
 
-		const message = this.chatHubExecutionService.extractMessage(runData, context.responseMode);
+		let message = this.chatHubExecutionService.extractMessage(runData, context.responseMode);
+
+		// Result cards for the node runs of this segment, appended after the text so both the
+		// waiting and the final message carry them. Resumed executions skip runs already carded.
+		const { cards, cardedNodeRuns } = await this.resultCardsService.buildForRun(
+			ctx.workflow,
+			runData,
+			context.cardedNodeRuns ?? [],
+		);
+		if (cards.length > 0) {
+			message = appendCardsToMessage(message, cards);
+		}
+		if (cardedNodeRuns.length > 0) {
+			await this.executionStore.update(executionId, {
+				cardedNodeRuns: [...(context.cardedNodeRuns ?? []), ...cardedNodeRuns],
+			});
+		}
 
 		if (runData.status === 'waiting') {
 			await this.handleWaitingExecution(context, executionId, message);

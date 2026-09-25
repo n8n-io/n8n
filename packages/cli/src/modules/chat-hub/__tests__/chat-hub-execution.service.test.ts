@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -199,6 +199,69 @@ describe('ChatHubExecutionService', () => {
 				});
 
 				expect(service.extractMessage(runData, 'lastNode')).toBe('Text wins');
+			});
+		});
+
+		describe('declared cards', () => {
+			it('passes a declared card through as a cards envelope', () => {
+				const runData = createRunData('Code', {
+					Code: [
+						{
+							data: {
+								main: [
+									[{ json: { type: 'metric', title: 'Leads', value: '12', label: 'new leads' } }],
+								],
+							},
+						},
+					],
+				});
+
+				const message = service.extractMessage(runData, 'lastNode');
+
+				expect(jsonParse(message!)).toEqual({
+					type: 'cards',
+					cards: [
+						{ type: 'metric', title: 'Leads', value: '12', label: 'new leads', source: 'declared' },
+					],
+				});
+			});
+
+			it('passes a declared cards envelope through with its text', () => {
+				const card = { type: 'metric', title: 'Leads', value: '12', label: 'new leads' };
+				const envelope = { type: 'cards', text: 'Here is the summary', cards: [card] };
+				const runData = createRunData('Code', {
+					Code: [{ data: { main: [[{ json: envelope }]] } }],
+				});
+
+				const message = service.extractMessage(runData, 'lastNode');
+
+				expect(jsonParse(message!)).toEqual({
+					type: 'cards',
+					text: 'Here is the summary',
+					cards: [{ ...card, source: 'declared' }],
+				});
+			});
+
+			it('passes a declared card sent by a response node through', () => {
+				const card = { type: 'metric', title: 'Leads', value: '12', label: 'new leads' };
+				const runData = createRunData('Respond', {
+					Respond: [{ data: { main: [[{ json: {}, sendMessage: card }]] } }],
+				});
+
+				const message = service.extractMessage(runData, 'responseNodes');
+
+				expect(jsonParse(message!)).toEqual({
+					type: 'cards',
+					cards: [{ ...card, source: 'declared' }],
+				});
+			});
+
+			it('does not treat a plain object with an output field as a card', () => {
+				const runData = createRunData('Code', {
+					Code: [{ data: { main: [[{ json: { type: 'metric', output: 'Just text' } }]] } }],
+				});
+
+				expect(service.extractMessage(runData, 'lastNode')).toBe('Just text');
 			});
 		});
 

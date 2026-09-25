@@ -36,6 +36,8 @@ export interface ChatHubExecutionContext {
 	createMessageOnResume: boolean;
 	/** Workflow ID (for cleanup of temporary workflows) */
 	workflowId?: string;
+	/** `${nodeName}#${runIndex}` of node runs whose result cards were already sent (resumed executions) */
+	cardedNodeRuns?: string[];
 }
 
 /**

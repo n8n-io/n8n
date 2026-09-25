@@ -1,7 +1,8 @@
+import type { ResultCard } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '@n8n/decorators';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
@@ -14,6 +15,7 @@ import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-exec
 import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
 import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository';
 import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
+import type { ResultCardsService } from '@/modules/chat-hub/result-cards/result-cards.service';
 
 const EXECUTION_ID = '12345678';
 const SESSION_ID = 'bbbbbbbb-2222-4000-8000-000000000002';
@@ -38,6 +40,7 @@ describe('ChatHubExecutionWatcherService', () => {
 	const executionPersistence = mock<ExecutionPersistence>();
 	const chatStreamService = mock<ChatStreamService>();
 	const executionManager = mock<ChatExecutionManager>();
+	const resultCardsService = mock<ResultCardsService>();
 
 	let service: ChatHubExecutionWatcherService;
 
@@ -57,6 +60,7 @@ describe('ChatHubExecutionWatcherService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resultCardsService.buildForRun.mockResolvedValue({ cards: [], cardedNodeRuns: [] });
 
 		service = new ChatHubExecutionWatcherService(
 			logger,
@@ -66,6 +70,7 @@ describe('ChatHubExecutionWatcherService', () => {
 			executionPersistence,
 			chatStreamService,
 			executionManager,
+			resultCardsService,
 		);
 	});
 
@@ -171,8 +176,14 @@ describe('ChatHubExecutionWatcherService', () => {
 				...overrides,
 			}) as IRun;
 
+		const workflow = {
+			id: WORKFLOW_ID,
+			name: 'Test workflow',
+			nodes: [],
+		} as unknown as IWorkflowBase;
+
 		const createAfterContext = (executionId: string, runData: IRun): WorkflowExecuteAfterContext =>
-			({ executionId, runData }) as WorkflowExecuteAfterContext;
+			({ executionId, runData, workflow }) as WorkflowExecuteAfterContext;
 
 		it('should skip if context not found', async () => {
 			executionStore.get.mockResolvedValue(null);
@@ -470,6 +481,95 @@ describe('ChatHubExecutionWatcherService', () => {
 			);
 
 			expect(executionStore.remove).not.toHaveBeenCalled();
+		});
+
+		describe('result cards', () => {
+			const card: ResultCard = {
+				type: 'keyValue',
+				title: 'Weekly summary',
+				pairs: [{ key: 'Total', value: '12' }],
+			};
+
+			it('appends result cards to the final message and remembers the carded node runs', async () => {
+				const context = createContext();
+				executionStore.get.mockResolvedValue(context);
+				chatHubExecutionService.extractMessage.mockReturnValue('Sent.');
+				resultCardsService.buildForRun.mockResolvedValue({
+					cards: [card],
+					cardedNodeRuns: ['Weekly summary#0'],
+				});
+
+				const runData = createRunData();
+				await service.handleWorkflowExecuteAfter(createAfterContext(EXECUTION_ID, runData));
+
+				expect(resultCardsService.buildForRun).toHaveBeenCalledWith(workflow, runData, []);
+				const sent = chatStreamService.sendChunk.mock.calls[0][2];
+				expect(sent.startsWith('Sent.\n\n<command:card>')).toBe(true);
+				expect(sent).toContain('"title":"Weekly summary"');
+				expect(executionStore.update).toHaveBeenCalledWith(EXECUTION_ID, {
+					cardedNodeRuns: ['Weekly summary#0'],
+				});
+				expect(messageRepository.updateChatMessage).toHaveBeenCalledWith(MESSAGE_ID, {
+					content: sent,
+					status: 'success',
+				});
+			});
+
+			it('sends cards alone when there is no text and skips already carded node runs', async () => {
+				const context = createContext({ cardedNodeRuns: ['Gmail#0'] });
+				executionStore.get.mockResolvedValue(context);
+				chatHubExecutionService.extractMessage.mockReturnValue(undefined);
+				resultCardsService.buildForRun.mockResolvedValue({
+					cards: [card],
+					cardedNodeRuns: ['Gmail#1'],
+				});
+
+				const runData = createRunData();
+				await service.handleWorkflowExecuteAfter(createAfterContext(EXECUTION_ID, runData));
+
+				expect(resultCardsService.buildForRun).toHaveBeenCalledWith(workflow, runData, ['Gmail#0']);
+				const sent = chatStreamService.sendChunk.mock.calls[0][2];
+				expect(sent.startsWith('<command:card>')).toBe(true);
+				expect(executionStore.update).toHaveBeenCalledWith(EXECUTION_ID, {
+					cardedNodeRuns: ['Gmail#0', 'Gmail#1'],
+				});
+			});
+
+			it('carries cards into the waiting message as well', async () => {
+				const context = createContext();
+				executionStore.get.mockResolvedValue(context);
+				chatHubExecutionService.extractMessage.mockReturnValue('Please wait...');
+				resultCardsService.buildForRun.mockResolvedValue({
+					cards: [card],
+					cardedNodeRuns: ['Weekly summary#0'],
+				});
+
+				await service.handleWorkflowExecuteAfter(
+					createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
+				);
+
+				const sent = chatStreamService.sendChunk.mock.calls[0][2];
+				expect(sent.startsWith('Please wait...\n\n<command:card>')).toBe(true);
+				expect(messageRepository.updateChatMessage).toHaveBeenCalledWith(MESSAGE_ID, {
+					content: sent,
+					status: 'waiting',
+				});
+			});
+
+			it('leaves the message and store untouched when no cards are built', async () => {
+				const context = createContext();
+				executionStore.get.mockResolvedValue(context);
+				chatHubExecutionService.extractMessage.mockReturnValue('Hello world');
+
+				await service.handleWorkflowExecuteAfter(createAfterContext(EXECUTION_ID, createRunData()));
+
+				expect(chatStreamService.sendChunk).toHaveBeenCalledWith(
+					SESSION_ID,
+					MESSAGE_ID,
+					'Hello world',
+				);
+				expect(executionStore.update).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

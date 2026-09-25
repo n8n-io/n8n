@@ -5,6 +5,7 @@ import {
 	chatHubMessageWithButtonsSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { normalizeDeclaredCards } from '@n8n/chat-hub';
 import { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -753,6 +754,12 @@ export class ChatHubExecutionService {
 				return sendMessage;
 			}
 
+			// Tier 1: the node returned a result card (or a `cards` envelope) as its message
+			const declared = normalizeDeclaredCards(sendMessage);
+			if (declared) {
+				return jsonStringify(declared);
+			}
+
 			const result = chatHubMessageWithButtonsSchema.safeParse(sendMessage);
 			if (result.success) {
 				return jsonStringify(result.data);
@@ -762,6 +769,13 @@ export class ChatHubExecutionService {
 
 		if (responseMode === 'lastNode') {
 			const response: Record<string, unknown> = entry.json ?? {};
+
+			// Tier 1: the last node returned a result card (or a `cards` envelope) as its output
+			const declared = normalizeDeclaredCards(response);
+			if (declared) {
+				return jsonStringify(declared);
+			}
+
 			const message = response.output ?? response.text ?? response.message ?? '';
 			return typeof message === 'string' ? message : jsonStringify(message);
 		}
