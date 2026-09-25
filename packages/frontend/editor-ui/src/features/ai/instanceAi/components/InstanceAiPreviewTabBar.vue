@@ -390,7 +390,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--xs) 0 var(--spacing--2xs);
+	// With the header gap, this leaves 8px between the preview toggle and the first tab.
+	padding: 0 var(--spacing--xs) 0 var(--spacing--4xs);
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
@@ -419,7 +420,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	border: none;
 	border-radius: var(--radius--2xs);
 	background-color: transparent;
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
@@ -455,10 +456,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 .icon {
 	flex-shrink: 0;
-
-	.tab:not([data-state='active']) & {
-		opacity: 0.6;
-	}
 }
 
 .hoverCard {
