@@ -1,5 +1,5 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
@@ -9,16 +9,13 @@ export class WorkflowSuggestionActivityEntity extends WithTimestampsAndStringId 
 	@Column({ type: 'varchar' })
 	suggestionId: string;
 
-	@ManyToOne(() => WorkflowSuggestion, { onDelete: 'CASCADE' })
+	@ManyToOne(() => WorkflowSuggestion, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'suggestionId' })
-	suggestion: WorkflowSuggestion;
+	suggestion: Relation<WorkflowSuggestion>;
 
 	@Column({ type: 'varchar', length: 16 })
 	action: 'submitted';
 
 	@Column({ type: 'varchar', length: 16 })
 	author: 'assistant';
-
-	@Column({ type: 'int' })
-	revision: number;
 }

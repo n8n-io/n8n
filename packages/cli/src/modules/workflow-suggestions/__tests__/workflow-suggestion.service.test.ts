@@ -1,8 +1,9 @@
-import type { WorkflowSuggestionSource } from '@n8n/api-types';
+import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	WorkflowEntity,
 	type OperationContext,
+	type Transaction,
 	type TransactionRunner,
 	type User,
 	type UserRepository,
@@ -26,7 +27,7 @@ const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
 const modules = mock<ModuleRegistry>();
 const tx = mock<TransactionRunner>();
-const ctx: OperationContext = {};
+const ctx: OperationContext = { trx: mock<Transaction>() };
 const service = new WorkflowSuggestionService(
 	suggestions,
 	candidates,
@@ -37,7 +38,20 @@ const service = new WorkflowSuggestionService(
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
-let source: WorkflowSuggestionSource;
+const graph: WorkflowSuggestionGraph = {
+	nodes: [
+		{
+			id: 'n',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			parameters: {},
+			position: [0, 0],
+		},
+	],
+	connections: {},
+};
+let baseline: WorkflowSuggestionBaseline;
 let workflow: WorkflowEntity;
 let suggestion: WorkflowSuggestion;
 
@@ -55,46 +69,42 @@ beforeEach(async () => {
 		versionId,
 		activeVersionId: versionId,
 		isArchived: false,
-		settings: {},
+		settings: { executionTimeout: 30 },
 		nodeGroups: [],
 	});
-	source = {
-		sourceKey: 'investigation-1',
+	baseline = {
 		workflowId: workflow.id,
+		projectId: 'project',
 		backgroundUserId: user.id,
 		expectedBaseline: {
 			savedVersionId: versionId,
 			publishedVersionId: versionId,
 			checksum: await calculateWorkflowChecksum(workflow),
 		},
+		original: {
+			name: workflow.name,
+			nodes: [],
+			connections: {},
+			settings: { executionTimeout: 30 },
+			isArchived: false,
+			activeVersionId: versionId,
+			nodeGroups: [],
+		},
 	};
 	suggestion = Object.assign(new WorkflowSuggestion(), {
 		id: 'suggestion',
-		...source,
-		projectId: 'project',
-		state: 'preparing',
-		revision: 2,
-		submittedRevision: null,
+		workflowId: baseline.workflowId,
+		projectId: baseline.projectId,
+		backgroundUserId: baseline.backgroundUserId,
+		expectedBaseline: baseline.expectedBaseline,
+		state: 'pending',
 		closedReason: null,
 		payload: {
-			original: { name: workflow.name, nodes: [], connections: {} },
-			candidate: {
-				nodes: [
-					{
-						id: 'n',
-						name: 'Node',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						parameters: {},
-						position: [0, 0],
-					},
-				],
-				connections: {},
-			},
+			original: structuredClone(baseline.original),
+			candidate: structuredClone(graph),
 			explanation: 'Fix',
 			errorContext: null,
 			validation: {
-				revision: 2,
 				requiredChecks: 'passed',
 				configuration: { status: 'not_run' },
 				execution: { status: 'not_run' },
@@ -102,203 +112,210 @@ beforeEach(async () => {
 		},
 	});
 	suggestions.getSuggestion.mockResolvedValue(suggestion);
-	suggestions.findBySourceKey.mockResolvedValue(null);
+	suggestions.createPending.mockResolvedValue(suggestion);
 	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'project' });
-	suggestions.loadForSubmission.mockResolvedValue({ suggestion, workflow, projectId: 'project' });
+	suggestions.getActivity.mockResolvedValue([]);
+	candidates.prepare.mockImplementation(async (_user, _workflow, _project, _original, candidate) =>
+		structuredClone(candidate),
+	);
 	publication.getStatus.mockResolvedValue({
 		status: 'published',
 		liveVersionId: versionId,
 		pendingVersionId: null,
 		triggers: [],
 	});
-	suggestions.markPendingIfCurrent.mockImplementation(async () =>
-		Object.assign(suggestion, { state: 'pending', submittedRevision: 2 }),
-	);
-	suggestions.closeAsOutdated.mockImplementation(async () =>
-		Object.assign(suggestion, { state: 'closed', closedReason: 'outdated' }),
-	);
-	suggestions.getActivity.mockResolvedValue([]);
 });
 
-it('captures a separate baseline without validation or workflow writes', async () => {
-	await service.createSuggestion(source);
-	expect(suggestions.createOnce).toHaveBeenCalledWith(
-		source,
-		'project',
-		expect.objectContaining({
-			validation: null,
-			original: expect.objectContaining({ name: 'Example' }),
-		}),
-	);
+it('captures a detached baseline without creating a suggestion', async () => {
+	const captured = await service.captureBaseline(workflow.id, user.id);
+	expect(captured).toEqual(baseline);
+	captured.original.settings!.executionTimeout = 60;
+	expect(workflow.settings?.executionTimeout).toBe(30);
+	expect(suggestions.createPending).not.toHaveBeenCalled();
 	expect(candidates.prepare).not.toHaveBeenCalled();
-	expect(publication.getStatus).toHaveBeenCalledWith('wf', ctx);
+	expect(tx.run).toHaveBeenCalledWith({}, expect.any(Function));
+	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
 });
 
-it.each(['settings', 'version', 'published', 'archived', 'publication'] as const)(
-	'rejects a changed %s baseline at creation',
-	async (change) => {
-		if (change === 'settings') workflow.settings = { executionTimeout: 12 };
-		if (change === 'version') workflow.versionId = 'new';
-		if (change === 'published') workflow.activeVersionId = 'new';
-		if (change === 'archived') workflow.isArchived = true;
-		if (change === 'publication')
+it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
+	'rejects baseline capture when the workflow is %s',
+	async (state) => {
+		if (state === 'unpublished') workflow.activeVersionId = null;
+		if (state === 'saved changes') workflow.versionId = 'new-version';
+		if (state === 'archived') workflow.isArchived = true;
+		if (state === 'publishing')
 			publication.getStatus.mockResolvedValue({
 				status: 'in_progress',
 				liveVersionId: versionId,
 				pendingVersionId: versionId,
 				triggers: [],
 			});
-		await expect(service.createSuggestion(source)).rejects.toThrow('baseline');
-		expect(suggestions.createOnce).not.toHaveBeenCalled();
+		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow();
+		expect(suggestions.createPending).not.toHaveBeenCalled();
 	},
 );
 
-it('binds a source retry to its original identity and baseline', async () => {
-	suggestions.findBySourceKey.mockResolvedValue(suggestion);
-	expect(await service.createSuggestion(source)).toBe(suggestion);
-	await expect(
-		service.createSuggestion({
-			...source,
-			expectedBaseline: { ...source.expectedBaseline, checksum: 'a'.repeat(64) },
-		}),
-	).rejects.toThrow('source');
-});
-
-it('stores the exact prepared candidate with validation for the new revision', async () => {
-	const graph = suggestion.payload!.candidate;
-	const prepared = { nodes: [], connections: {} };
-	candidates.prepare.mockResolvedValue(prepared);
-	await service.reviseSuggestion(source, {
-		suggestionId: suggestion.id,
-		expectedRevision: 2,
+it('stores the prepared final graph and activity in the caller transaction', async () => {
+	const preparedGraph = {
+		...graph,
+		nodes: graph.nodes.map((node) => ({ ...node, id: 'prepared' })),
+	};
+	const errorContext = { summary: 'A node failed', evidenceReference: 'evidence-1' };
+	candidates.prepare.mockResolvedValue(preparedGraph);
+	const prepared = await service.prepareSuggestion(baseline, {
 		graph,
-		explanation: 'Prepared fix',
+		explanation: '  Prepared fix  ',
+		errorContext,
 	});
-	expect(suggestions.reviseIfCurrent).toHaveBeenCalledWith(
-		suggestion.id,
-		2,
-		expect.objectContaining({
-			candidate: prepared,
-			validation: expect.objectContaining({ revision: 3 }),
-		}),
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+	expect(tx.run).not.toHaveBeenCalled();
+	const result = await service.createSuggestion(prepared, ctx);
+	expect(result).toBe(suggestion);
+	expect(candidates.prepare).toHaveBeenCalledWith(
+		user,
+		workflow.id,
+		'project',
+		baseline.original,
+		graph,
 	);
+	expect(suggestions.createPending).toHaveBeenCalledWith(
+		baseline,
+		{
+			original: baseline.original,
+			candidate: preparedGraph,
+			explanation: 'Prepared fix',
+			errorContext,
+			validation: {
+				requiredChecks: 'passed',
+				configuration: { status: 'not_run' },
+				execution: { status: 'not_run' },
+			},
+		},
+		ctx,
+	);
+	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
+	expect(suggestions.readWorkflowTarget).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, ctx);
 });
 
-it('keeps the previous candidate when validation fails', async () => {
-	candidates.prepare.mockRejectedValue(new Error('Credential access required'));
-	await expect(
-		service.reviseSuggestion(source, {
-			suggestionId: suggestion.id,
-			expectedRevision: 2,
-			graph: suggestion.payload!.candidate,
-			explanation: 'Fix',
-		}),
-	).rejects.toThrow('Credential');
-	expect(suggestions.reviseIfCurrent).not.toHaveBeenCalled();
+it('keeps prepared content separate from later changes to the input', async () => {
+	const candidate = structuredClone(graph);
+	const prepared = await service.prepareSuggestion(baseline, {
+		graph: candidate,
+		explanation: 'Fix',
+	});
+	baseline.original.name = 'Changed';
+	candidate.nodes[0].name = 'Changed';
+	expect(prepared.payload.original.name).toBe('Example');
+	expect(prepared.payload.candidate.nodes[0].name).toBe('Node');
+	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
+
+it.each(['credential access', 'workflow policy'])(
+	'saves nothing when %s validation fails',
+	async (reason) => {
+		candidates.prepare.mockRejectedValue(new Error(reason));
+		await expect(
+			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+		).rejects.toThrow(reason);
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
+	},
+);
 
 it('rejects unsupported graph fields', async () => {
-	const graph = { ...suggestion.payload!.candidate, settings: {} };
 	await expect(
-		service.reviseSuggestion(source, {
-			suggestionId: suggestion.id,
-			expectedRevision: 2,
-			graph,
+		service.prepareSuggestion(baseline, {
+			graph: { ...graph, settings: {} } as WorkflowSuggestionGraph,
 			explanation: 'Fix',
 		}),
 	).rejects.toThrow();
 	expect(candidates.prepare).not.toHaveBeenCalled();
+	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it('submits once and returns the same frozen result on retry', async () => {
-	const first = await service.submitSuggestion(source, suggestion.id, 2);
-	expect(await service.submitSuggestion(source, suggestion.id, 2)).toEqual(first);
-	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledTimes(1);
-	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, 2, ctx);
-	expect(candidates.assertStillAllowed).toHaveBeenCalledTimes(1);
+it.each([' ', 'x'.repeat(20_001)])('rejects an invalid explanation', async (explanation) => {
+	await expect(service.prepareSuggestion(baseline, { graph, explanation })).rejects.toThrow();
+	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it.each(['unchecked', 'wrong revision', 'unchanged'] as const)(
-	'does not submit an %s candidate',
-	async (failure) => {
-		if (failure === 'unchecked') suggestion.payload!.validation = null;
-		if (failure === 'wrong revision') suggestion.payload!.validation!.revision = 1;
-		if (failure === 'unchanged') suggestion.payload!.candidate = { nodes: [], connections: {} };
-		await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow();
-		expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
+it('rejects a prepared graph with no changes', async () => {
+	candidates.prepare.mockResolvedValue({ nodes: [], connections: {} });
+	await expect(
+		service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+	).rejects.toThrow();
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+});
+
+it('rejects changes to the captured original snapshot', async () => {
+	baseline.original.settings!.executionTimeout = 60;
+	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
+		'captured workflow baseline',
+	);
+	expect(candidates.prepare).not.toHaveBeenCalled();
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+});
+
+it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] as const)(
+	'rejects a %s change after final preparation without saving a suggestion',
+	async (change) => {
+		const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
+		if (change === 'settings') workflow.settings = { executionTimeout: 60 };
+		if (change === 'version') workflow.versionId = 'new';
+		if (change === 'published') workflow.activeVersionId = 'new';
+		if (change === 'archived') workflow.isArchived = true;
+		if (change === 'project')
+			suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'other' });
+		if (change === 'deleted')
+			suggestions.readWorkflowTarget.mockResolvedValue({ workflow: null, projectId: undefined });
+		await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
 	},
 );
 
-it('requires the preflight revision again inside the transaction', async () => {
-	candidates.assertStillAllowed.mockImplementation(async () => {
-		suggestion.revision = 3;
-	});
-	await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow('revision');
-	expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
-});
-
-it('closes a changed baseline without creating a submission activity', async () => {
-	workflow.settings = { executionTimeout: 10 };
-	expect(await service.submitSuggestion(source, suggestion.id, 2)).toMatchObject({
-		state: 'closed',
-		closedReason: 'outdated',
-	});
-	expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
-});
-
-it('rejects changed credential access at submission', async () => {
-	candidates.assertStillAllowed.mockRejectedValue(new Error('Credential access changed'));
-	await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow('Credential');
-	expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
-});
-
 it.each(['disabled', 'no edit access'] as const)(
-	'blocks background and review reads for a user with %s',
+	'blocks capture, final preparation, and review for a user with %s',
 	async (failure) => {
 		if (failure === 'disabled')
 			users.findByIdWithRole.mockResolvedValue(mock<User>({ id: user.id, disabled: true }));
 		else vi.mocked(userHasScopes).mockResolvedValue(false);
-		await expect(service.readSuggestion(source, suggestion.id)).rejects.toThrow('edit access');
+		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
+		await expect(
+			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+		).rejects.toThrow('edit access');
 		await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow(
 			'edit access',
 		);
+		expect(suggestions.createPending).not.toHaveBeenCalled();
 	},
 );
 
-it('allows another current editor to review without publish permission', async () => {
-	suggestion.submittedRevision = 2;
-	suggestion.state = 'pending';
+it('lets another current editor review without publish permission', async () => {
 	const viewer = mock<User>({ id: 'another-editor', disabled: false });
 	users.findByIdWithRole.mockResolvedValue(viewer);
 	const detail = await service.getProposal(viewer, 'project', suggestion.id);
-	expect(detail.payload?.proposed.nodes).toEqual(suggestion.payload!.candidate.nodes);
+	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
+	expect(detail.backgroundUserId).toBe(user.id);
 	expect(userHasScopes).toHaveBeenCalledWith(viewer, ['workflow:read', 'workflow:update'], false, {
 		workflowId: 'wf',
 	});
 });
 
-it('rejects a wrong project and an unsubmitted suggestion', async () => {
+it('rejects review from a different project or after ownership changes', async () => {
 	await expect(service.getProposal(user, 'other', suggestion.id)).rejects.toThrow('not found');
+	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'other' });
 	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not found');
 });
 
-it('retains a lifecycle receipt after content expires and background access is lost', async () => {
-	Object.assign(suggestion, {
-		state: 'closed',
-		submittedRevision: 2,
-		closedReason: 'discarded',
-		payload: null,
-	});
-	suggestions.findBySourceKey.mockResolvedValue(suggestion);
-	vi.mocked(userHasScopes).mockResolvedValue(false);
-	expect(await service.getLifecycleResult(source)).toMatchObject({
-		content: 'expired',
-		submittedRevision: 2,
-	});
-	expect(users.findByIdWithRole).not.toHaveBeenCalled();
-});
-
 it('blocks operations when the module is disabled', async () => {
+	const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
 	modules.isActive.mockReturnValue(false);
-	await expect(service.createSuggestion(source)).rejects.toThrow('not enabled');
+	await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('not enabled');
+	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
+		'not enabled',
+	);
+	await expect(service.createSuggestion(prepared)).rejects.toThrow('not enabled');
+	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not enabled');
 });

@@ -8,7 +8,6 @@
 | author | varchar(16) |  | false |  |  | Authorship, separate from the background user |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar |  | false |  |  |  |
-| revision | integer |  | false |  |  |  |
 | suggestionId | varchar |  | false |  | [public.workflow_suggestion](public.workflow_suggestion.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -24,7 +23,6 @@
 | workflow_suggestion_activity_author_not_null | n | NOT NULL author |
 | workflow_suggestion_activity_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_suggestion_activity_id_not_null | n | NOT NULL id |
-| workflow_suggestion_activity_revision_not_null | n | NOT NULL revision |
 | workflow_suggestion_activity_suggestionId_not_null | n | NOT NULL "suggestionId" |
 | workflow_suggestion_activity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -47,7 +45,6 @@ erDiagram
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
   varchar id
-  integer revision
   varchar suggestionId FK
   timestamp_3__with_time_zone updatedAt
 }
@@ -60,10 +57,7 @@ erDiagram
   varchar id
   json payload
   varchar_36_ projectId FK
-  integer revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  integer submittedRevision
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }

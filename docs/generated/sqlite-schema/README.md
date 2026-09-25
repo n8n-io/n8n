@@ -149,8 +149,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
-| [workflow_suggestion](workflow_suggestion.md) | 14 |  | table |
-| [workflow_suggestion_activity](workflow_suggestion_activity.md) | 7 |  | table |
+| [workflow_suggestion](workflow_suggestion.md) | 11 |  | table |
+| [workflow_suggestion_activity](workflow_suggestion_activity.md) | 6 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
 ## Relations
@@ -1787,10 +1787,7 @@ erDiagram
   varchar id PK
   TEXT payload
   varchar_36_ projectId FK
-  INTEGER revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  INTEGER submittedRevision
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
 }
@@ -1799,7 +1796,6 @@ erDiagram
   varchar_16_ author
   datetime_3_ createdAt
   varchar id PK
-  INTEGER revision
   varchar suggestionId FK
   datetime_3_ updatedAt
 }

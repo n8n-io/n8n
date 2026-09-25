@@ -89,17 +89,6 @@ it('uses the captured baseline for credential protection and returns the prepare
 	expect(graph.nodes).toHaveLength(1);
 });
 
-it('requires a new revision when current credential rules would change the candidate', async () => {
-	license.isSharingLicensed.mockReturnValue(true);
-	enterprise.validateWorkflowCredentialUsage.mockImplementation((candidate) => {
-		candidate.nodes = [];
-		return candidate;
-	});
-	await expect(service.assertStillAllowed(user, 'wf', 'project', baseline, graph)).rejects.toThrow(
-		'new revision',
-	);
-});
-
 it('rejects a credential binding restriction', async () => {
 	validation.validateCredentialNodeRestrictions.mockReturnValue({
 		isValid: false,

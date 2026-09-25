@@ -1,8 +1,4 @@
-import type {
-	WorkflowSuggestionContent,
-	WorkflowSuggestionLifecycleResult,
-	WorkflowSuggestionSource,
-} from '@n8n/api-types';
+import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -11,24 +7,19 @@ import {
 	WorkflowEntity,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 @Entity('workflow_suggestion')
 @Index(['workflowId'], { unique: true, where: "state = 'pending'" })
-@Index(['state', 'updatedAt'])
 @Index(['state', 'closedAt'])
 export class WorkflowSuggestion extends WithTimestampsAndStringId {
-	@Index({ unique: true })
-	@Column({ type: 'varchar', length: 255 })
-	sourceKey: string;
-
 	@Index()
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;
 
 	@ManyToOne(() => WorkflowEntity, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'workflowId' })
-	workflow: WorkflowEntity;
+	workflow: Relation<WorkflowEntity>;
 
 	@Index()
 	@Column({ type: 'varchar', length: 36 })
@@ -36,7 +27,7 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 
 	@ManyToOne(() => Project, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })
-	project: Project;
+	project: Relation<Project>;
 
 	@Index()
 	@Column({ type: 'uuid' })
@@ -44,26 +35,20 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 
 	@ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'backgroundUserId' })
-	backgroundUser: User;
+	backgroundUser: Relation<User>;
 
 	@JsonColumn()
-	expectedBaseline: WorkflowSuggestionSource['expectedBaseline'];
+	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
 
 	@Column({ type: 'varchar', length: 16 })
-	state: WorkflowSuggestionLifecycleResult['state'];
-
-	@Column({ type: 'int' })
-	revision: number;
-
-	@Column({ type: 'int', nullable: true })
-	submittedRevision: number | null;
+	state: 'pending' | 'closed';
 
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	closedReason: WorkflowSuggestionLifecycleResult['closedReason'];
+	closedReason: 'outdated' | 'applied' | 'discarded' | null;
 
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
 
-	@JsonColumn({ nullable: true })
-	payload: WorkflowSuggestionContent | null;
+	@JsonColumn()
+	payload: WorkflowSuggestionContent;
 }

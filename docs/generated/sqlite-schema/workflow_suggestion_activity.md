@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion_activity" ("id" varchar PRIMARY KEY NOT NULL, "suggestionId" varchar NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "revision" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_suggestion_activity" ("id" varchar PRIMARY KEY NOT NULL, "suggestionId" varchar NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -19,7 +19,6 @@ CREATE TABLE "workflow_suggestion_activity" ("id" varchar PRIMARY KEY NOT NULL, 
 | author | varchar(16) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar |  | false |  |  |  |
-| revision | INTEGER |  | false |  |  |  |
 | suggestionId | varchar |  | false |  | [workflow_suggestion](workflow_suggestion.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -52,7 +51,6 @@ erDiagram
   varchar_16_ author
   datetime_3_ createdAt
   varchar id PK
-  INTEGER revision
   varchar suggestionId FK
   datetime_3_ updatedAt
 }
@@ -65,10 +63,7 @@ erDiagram
   varchar id PK
   TEXT payload
   varchar_36_ projectId FK
-  INTEGER revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  INTEGER submittedRevision
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
 }

@@ -2,11 +2,9 @@ import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/a
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import isEqual from 'lodash/isEqual';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -60,17 +58,5 @@ export class WorkflowSuggestionCandidateService {
 			projectId,
 		});
 		return { nodes: candidate.nodes, connections: candidate.connections };
-	}
-
-	async assertStillAllowed(
-		user: User,
-		workflowId: string,
-		projectId: string,
-		baseline: WorkflowSuggestionSnapshot,
-		graph: WorkflowSuggestionGraph,
-	) {
-		const prepared = await this.prepare(user, workflowId, projectId, baseline, graph);
-		if (!isEqual(prepared, graph))
-			throw new ConflictError('Suggestion permissions changed. Prepare a new revision.');
 	}
 }

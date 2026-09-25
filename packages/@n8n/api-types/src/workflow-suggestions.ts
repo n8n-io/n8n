@@ -4,15 +4,15 @@ export type WorkflowSuggestionGraph = { nodes: INode[]; connections: IConnection
 export type WorkflowSuggestionSnapshot = WorkflowSnapshot &
 	WorkflowSuggestionGraph & { name: string };
 
-export type WorkflowSuggestionSource = {
-	sourceKey: string;
+export type WorkflowSuggestionBaseline = {
 	workflowId: string;
+	projectId: string;
 	backgroundUserId: string;
 	expectedBaseline: { savedVersionId: string; publishedVersionId: string; checksum: string };
+	original: WorkflowSuggestionSnapshot;
 };
 
 export type WorkflowSuggestionValidation = {
-	revision: number;
 	requiredChecks: 'passed';
 	configuration: { status: 'not_run' };
 	execution: { status: 'not_run' };
@@ -22,31 +22,26 @@ export type WorkflowSuggestionContent = {
 	original: WorkflowSuggestionSnapshot;
 	candidate: WorkflowSuggestionGraph;
 	explanation: string;
-	validation: WorkflowSuggestionValidation | null;
+	validation: WorkflowSuggestionValidation;
 	errorContext: { summary: string; evidenceReference: string | null } | null;
-};
-
-export type WorkflowSuggestionLifecycleResult = {
-	source: WorkflowSuggestionSource;
-	suggestionId: string;
-	state: 'preparing' | 'pending' | 'closed';
-	submittedRevision: number | null;
-	closedReason: 'outdated' | 'abandoned' | 'applied' | 'discarded' | null;
-	content: 'available' | 'expired';
 };
 
 export type WorkflowSuggestionActivity = {
 	id: string;
 	action: 'submitted';
 	author: 'assistant';
-	revision: number;
 	createdAt: string;
 };
 
-export type WorkflowSuggestionProposalDetail = WorkflowSuggestionLifecycleResult & {
+export type WorkflowSuggestionProposalDetail = {
+	suggestionId: string;
+	workflowId: string;
 	projectId: string;
-	revision: number;
+	backgroundUserId: string;
+	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
+	state: 'pending' | 'closed';
+	closedReason: 'outdated' | 'applied' | 'discarded' | null;
 	author: 'assistant';
-	payload: (WorkflowSuggestionContent & { proposed: WorkflowSuggestionSnapshot }) | null;
+	payload: WorkflowSuggestionContent & { proposed: WorkflowSuggestionSnapshot };
 	activity: WorkflowSuggestionActivity[];
 };

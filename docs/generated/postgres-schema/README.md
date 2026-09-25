@@ -150,8 +150,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
-| [public.workflow_suggestion](public.workflow_suggestion.md) | 14 |  | BASE TABLE |
-| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 11 |  | BASE TABLE |
+| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -1807,10 +1807,7 @@ erDiagram
   varchar id
   json payload
   varchar_36_ projectId FK
-  integer revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  integer submittedRevision
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
@@ -1819,7 +1816,6 @@ erDiagram
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
   varchar id
-  integer revision
   varchar suggestionId FK
   timestamp_3__with_time_zone updatedAt
 }

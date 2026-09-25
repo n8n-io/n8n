@@ -332,10 +332,7 @@ erDiagram
   varchar id PK
   TEXT payload
   varchar_36_ projectId FK
-  INTEGER revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  INTEGER submittedRevision
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
 }

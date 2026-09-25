@@ -341,10 +341,7 @@ erDiagram
   varchar id
   json payload
   varchar_36_ projectId FK
-  integer revision
-  varchar_255_ sourceKey
   varchar_16_ state
-  integer submittedRevision
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }

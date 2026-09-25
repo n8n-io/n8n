@@ -9,9 +9,6 @@ export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMi
 		await createTable('workflow_suggestion')
 			.withColumns(
 				column('id').varchar().primary,
-				column('sourceKey')
-					.varchar(255)
-					.notNull.comment('Stable investigation key. Retained after payload cleanup'),
 				column('workflowId').varchar(36).notNull.comment('Target workflow'),
 				column('projectId').varchar(36).notNull.comment('Original owner project'),
 				column('backgroundUserId').uuid.notNull.comment('User who enabled the investigation'),
@@ -20,26 +17,22 @@ export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMi
 				),
 				column('state')
 					.varchar(16)
-					.notNull.withEnumCheck(['preparing', 'pending', 'closed'])
+					.notNull.withEnumCheck(['pending', 'closed'])
 					.comment('Suggestion lifecycle state'),
-				column('revision').int.notNull,
-				column('submittedRevision').int,
 				column('closedReason')
 					.varchar(16)
-					.withEnumCheck(['outdated', 'abandoned', 'applied', 'discarded'])
+					.withEnumCheck(['outdated', 'applied', 'discarded'])
 					.comment('Reason the suggestion closed'),
 				column('closedAt').timestampTimezone(),
-				column('payload').json.comment(
-					'Independent baseline, graph, explanation, validation, and error context. Removed on expiry',
+				column('payload').json.notNull.comment(
+					'Independent baseline, graph, explanation, validation, and error context',
 				),
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
 			)
-			.withIndexOn('sourceKey', true)
 			.withIndexOn('workflowId')
 			.withIndexOn('projectId')
 			.withIndexOn('backgroundUserId')
-			.withIndexOn(['state', 'updatedAt'])
 			.withIndexOn(['state', 'closedAt'])
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
@@ -75,7 +68,6 @@ export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMi
 					.varchar(16)
 					.notNull.withEnumCheck(['assistant'])
 					.comment('Authorship, separate from the background user'),
-				column('revision').int.notNull,
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
 			)
