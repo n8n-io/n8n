@@ -5,7 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { TestRun, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
@@ -453,14 +453,11 @@ describe('POST /workflows/:workflowId/test-runs', () => {
 	});
 });
 
-describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
+describe('POST /workflows/:workflowId/test-runs/:runId/cancel', () => {
 	beforeEach(() => {
 		testRunner.cancelTestRun.mockReset();
 		testRunner.canBeCancelled.mockReset();
-		// Mirror the real (terminal-state) implementation.
-		testRunner.canBeCancelled.mockImplementation(
-			(run: TestRun) => run.status !== 'running' && run.status !== 'new',
-		);
+		testRunner.canBeCancelled.mockImplementation(TestRunnerService.prototype.canBeCancelled);
 		testServer.license.setQuota(
 			LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT,
 			UNLIMITED_LICENSE_QUOTA,
@@ -476,7 +473,7 @@ describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 		);
 
 		expect(response.statusCode).toBe(202);
-		expect(response.body).toEqual({ id: run.id, status: 'cancelled' });
+		expect(response.body).toStrictEqual({ id: run.id, status: 'cancelled' });
 		expect(testRunner.cancelTestRun).toHaveBeenCalledWith(run.id);
 	});
 
