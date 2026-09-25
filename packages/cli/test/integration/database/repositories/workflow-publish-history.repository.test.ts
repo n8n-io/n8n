@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
@@ -98,7 +99,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +108,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -151,7 +152,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: user1.id,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -227,7 +228,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			});
 
 			// Keep `createdAt` ordering deterministic, as the tests above do.
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -312,7 +313,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			});
 
 			// Keep `createdAt` ordering deterministic, as the tests above do.
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,

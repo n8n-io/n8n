@@ -62,6 +62,19 @@ describe('WorkflowPublisherService', () => {
 		},
 	);
 
+	// Attribution is metadata, not a precondition: the caller is mid-emit, and
+	// rejecting here would drop a trigger that would otherwise have run.
+	it('leaves the run unattributed, and warns, when the lookup fails', async () => {
+		publishHistoryRepository.findPublisherUserId.mockRejectedValue(new Error('connection lost'));
+
+		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBeUndefined();
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to resolve the publishing user for a triggered execution',
+			{ workflowId, error: 'connection lost' },
+		);
+	});
+
 	// The single gate for this behaviour, so every call site stays unconditional.
 	it('reads nothing at all while the feature flag is off', async () => {
 		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(false);

@@ -378,6 +378,32 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
 			});
 
+			// A retry and an evaluation are started by a person and have carried a
+			// `userId` since long before publisher attribution existed, so narrowing
+			// the gate to manual/chat would have quietly changed them — and outside
+			// the feature flag, which never touches these modes.
+			it.each(['retry', 'evaluation'] as const)(
+				'checks against the acting user for an inline sub-workflow in a %s run',
+				async (executionMode) => {
+					await executeWorkflow(
+						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+						mock<IWorkflowExecuteAdditionalData>({
+							userId: 'user-1',
+							rootExecutionMode: undefined,
+						}),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: subWorkflowData(),
+							doNotWaitToFinish: false,
+							parentWorkflowId: 'parent-1',
+							executionMode,
+						}),
+					);
+
+					expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+					expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+				},
+			);
+
 			it('checks credentials against the project for a database sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),

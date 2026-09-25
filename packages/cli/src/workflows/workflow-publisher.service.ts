@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
 
@@ -53,10 +54,23 @@ export class WorkflowPublisherService {
 			return undefined;
 		}
 
-		const publisherUserId = await this.publishHistoryRepository.findPublisherUserId(
-			workflowId,
-			executedVersionId,
-		);
+		let publisherUserId: string | undefined;
+		try {
+			publisherUserId = await this.publishHistoryRepository.findPublisherUserId(
+				workflowId,
+				executedVersionId,
+			);
+		} catch (error) {
+			// Attribution is metadata, not a precondition. A transient lookup failure
+			// must not drop a trigger that would otherwise run, and running
+			// unattributed grants nothing: it falls back to the project-scoped checks
+			// the run would have had anyway.
+			this.logger.warn('Failed to resolve the publishing user for a triggered execution', {
+				workflowId,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
 
 		if (!publisherUserId) {
 			// A deleted publisher, or a workflow that arrived without an activation

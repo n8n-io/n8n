@@ -578,11 +578,7 @@ async function startExecution(
 		// `credentials-helper`.
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
 
-		if (
-			isInlineSubworkflow &&
-			additionalData.userId &&
-			isManualOrChatExecution(rootExecutionMode)
-		) {
+		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
 			// never vetted against that user (they live only in the parameter JSON),
 			// so validate them against the user rather than the parent's project.
@@ -793,6 +789,23 @@ export function sendDataToUI(
  * param currentNodeParameters - The parameters of the currently executing node
  * param executionTimeoutTimestamp - The timestamp (in ms) when the execution should time out
  */
+/**
+ * Whether a person asked for this run. Anything outside this set either carries
+ * no user at all, or carries the publishing user that `WorkflowPublisherService`
+ * attaches for attribution — and a stand-in for "who owns this workflow" must
+ * not be read as "who asked for this".
+ *
+ * Deliberately broader than {@link isManualOrChatExecution}: a retry and an
+ * evaluation are started by a real user too, and both carried a `userId` long
+ * before any of this existed.
+ */
+function isUserInitiated(executionMode: WorkflowExecuteMode | undefined): boolean {
+	if (!executionMode) return false;
+	return (['manual', 'chat', 'retry', 'evaluation'] as WorkflowExecuteMode[]).includes(
+		executionMode,
+	);
+}
+
 export async function getBase({
 	userId,
 	workflowId,
