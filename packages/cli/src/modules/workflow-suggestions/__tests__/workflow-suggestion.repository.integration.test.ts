@@ -1,7 +1,12 @@
 import type { WorkflowSuggestionContent, WorkflowSuggestionSource } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
+	type Project,
+	ProjectRepository,
 	TransactionRunner,
+	type User,
+	UserRepository,
+	type WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	wrapMigration,
@@ -12,15 +17,20 @@ import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { randomUUID } from 'node:crypto';
 
+import { createUser } from '@test-integration/db/users';
+
 import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 
 let suggestions: WorkflowSuggestionRepository;
 let tx: TransactionRunner;
+let workflow: WorkflowEntity;
+let project: Project;
+let backgroundUser: User;
 const source = (): WorkflowSuggestionSource => ({
 	sourceKey: randomUUID(),
-	workflowId: 'workflow',
-	backgroundUserId: randomUUID(),
+	workflowId: workflow.id,
+	backgroundUserId: backgroundUser.id,
 	expectedBaseline: {
 		savedVersionId: randomUUID(),
 		publishedVersionId: randomUUID(),
@@ -41,6 +51,11 @@ beforeAll(async () => {
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	tx = Container.get(TransactionRunner);
 });
+beforeEach(async () => {
+	backgroundUser = await createUser();
+	project = await createTeamProject();
+	workflow = await createWorkflow({}, project);
+});
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
 	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
@@ -50,18 +65,19 @@ afterEach(async () => {
 it('resolves simultaneous creation to one source identity', async () => {
 	const identity = source();
 	const results = await Promise.all([
-		suggestions.createOnce(identity, 'project', payload()),
-		suggestions.createOnce(identity, 'project', payload()),
+		suggestions.createOnce(identity, project.id, payload()),
+		suggestions.createOnce(identity, project.id, payload()),
 	]);
 	expect(results[0].id).toBe(results[1].id);
 	expect(await suggestions.count()).toBe(1);
+	const otherUser = await createUser();
 	await expect(
-		suggestions.createOnce({ ...identity, backgroundUserId: randomUUID() }, 'project', payload()),
+		suggestions.createOnce({ ...identity, backgroundUserId: otherUser.id }, project.id, payload()),
 	).rejects.toThrow('source');
 });
 
 it('accepts only one concurrent revision', async () => {
-	const suggestion = await suggestions.createOnce(source(), 'project', payload());
+	const suggestion = await suggestions.createOnce(source(), project.id, payload());
 	const results = await Promise.allSettled([
 		suggestions.reviseIfCurrent(suggestion.id, 1, { ...payload(), explanation: 'first' }),
 		suggestions.reviseIfCurrent(suggestion.id, 1, { ...payload(), explanation: 'second' }),
@@ -72,8 +88,8 @@ it('accepts only one concurrent revision', async () => {
 });
 
 it('keeps submission and activity atomic and enforces one pending proposal', async () => {
-	const first = await suggestions.createOnce(source(), 'project', payload());
-	const second = await suggestions.createOnce(source(), 'project', payload());
+	const first = await suggestions.createOnce(source(), project.id, payload());
+	const second = await suggestions.createOnce(source(), project.id, payload());
 	await tx.run({}, async (ctx) => {
 		await suggestions.markPendingIfCurrent(first.id, 1, ctx);
 		await suggestions.appendSubmittedActivity(first.id, 1, ctx);
@@ -92,7 +108,7 @@ it('keeps submission and activity atomic and enforces one pending proposal', asy
 });
 
 it('rolls back a state transition if its activity fails', async () => {
-	const suggestion = await suggestions.createOnce(source(), 'project', payload());
+	const suggestion = await suggestions.createOnce(source(), project.id, payload());
 	await expect(
 		tx.run({}, async (ctx) => {
 			await suggestions.markPendingIfCurrent(suggestion.id, 1, ctx);
@@ -105,9 +121,9 @@ it('rolls back a state transition if its activity fails', async () => {
 it('retains pending content and receipts while expiring old payloads in bounded batches', async () => {
 	const old = new Date('2026-01-01T00:00:00Z');
 	const now = new Date('2026-03-01T00:00:00Z');
-	const preparing = await suggestions.createOnce(source(), 'project', payload());
-	const pending = await suggestions.createOnce(source(), 'project', payload());
-	const closed = await suggestions.createOnce(source(), 'project', payload());
+	const preparing = await suggestions.createOnce(source(), project.id, payload());
+	const pending = await suggestions.createOnce(source(), project.id, payload());
+	const closed = await suggestions.createOnce(source(), project.id, payload());
 	await suggestions.update(preparing.id, { updatedAt: old });
 	await suggestions.update(pending.id, { state: 'pending', submittedRevision: 1, updatedAt: old });
 	await suggestions.update(closed.id, {
@@ -138,7 +154,7 @@ it('retains pending content and receipts while expiring old payloads in bounded 
 			backgroundUserId: closed.backgroundUserId,
 			expectedBaseline: closed.expectedBaseline,
 		},
-		'project',
+		project.id,
 		payload(),
 	);
 	expect(retry.id).toBe(closed.id);
@@ -147,17 +163,50 @@ it('retains pending content and receipts while expiring old payloads in bounded 
 
 it('keeps recent activity and recently closed content', async () => {
 	const now = new Date();
-	const preparing = await suggestions.createOnce(source(), 'project', payload());
-	const closed = await suggestions.createOnce(source(), 'project', payload());
+	const preparing = await suggestions.createOnce(source(), project.id, payload());
+	const closed = await suggestions.createOnce(source(), project.id, payload());
 	await suggestions.update(closed.id, { state: 'closed', closedReason: 'outdated', closedAt: now });
 	await suggestions.cleanup(now);
 	expect((await suggestions.getSuggestion(preparing.id)).payload).not.toBeNull();
 	expect((await suggestions.getSuggestion(closed.id)).payload).not.toBeNull();
 });
 
+it.each([
+	{
+		parent: 'workflow',
+		remove: async () => await Container.get(WorkflowRepository).delete(workflow.id),
+	},
+	{
+		parent: 'project',
+		remove: async () => await Container.get(ProjectRepository).delete(project.id),
+	},
+	{
+		parent: 'background user',
+		remove: async () => await Container.get(UserRepository).delete(backgroundUser.id),
+	},
+])(
+	'deletes the suggestion and activity with its $parent and rejects a late save',
+	async ({ remove }) => {
+		const identity = source();
+		const suggestion = await suggestions.createOnce(identity, project.id, payload());
+		await tx.run({}, async (ctx) => {
+			await suggestions.markPendingIfCurrent(suggestion.id, 1, ctx);
+			await suggestions.appendSubmittedActivity(suggestion.id, 1, ctx);
+		});
+		expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
+
+		await remove();
+
+		expect(await suggestions.findBySourceKey(identity.sourceKey)).toBeNull();
+		expect(await suggestions.getActivity(suggestion.id)).toHaveLength(0);
+		await expect(suggestions.createOnce(identity, project.id, payload())).rejects.toThrow(
+			/foreign key/i,
+		);
+		expect(await suggestions.count()).toBe(0);
+	},
+);
+
 it('leaves workflow and history unchanged and reads current saves at the guarded boundary', async () => {
-	const project = await createTeamProject();
-	const workflow = await createWorkflow({}, project);
 	const workflows = Container.get(WorkflowRepository);
 	const histories = Container.get(WorkflowHistoryRepository);
 	const before = await workflows.findOneByOrFail({ id: workflow.id });
@@ -181,8 +230,6 @@ it('leaves workflow and history unchanged and reads current saves at the guarded
 });
 
 it('holds a concurrent workflow save until the submission boundary commits', async () => {
-	const project = await createTeamProject();
-	const workflow = await createWorkflow({}, project);
 	const suggestion = await suggestions.createOnce(
 		{ ...source(), workflowId: workflow.id },
 		project.id,

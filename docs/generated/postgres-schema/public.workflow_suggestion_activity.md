@@ -52,20 +52,20 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_suggestion" {
-  uuid backgroundUserId
+  uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
   timestamp_3__with_time_zone createdAt
   json expectedBaseline
   varchar id
   json payload
-  varchar_36_ projectId
+  varchar_36_ projectId FK
   integer revision
   varchar_255_ sourceKey
   varchar_16_ state
   integer submittedRevision
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId
+  varchar_36_ workflowId FK
 }
 ```
 

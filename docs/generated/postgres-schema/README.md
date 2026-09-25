@@ -380,6 +380,9 @@ erDiagram
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
@@ -1796,20 +1799,20 @@ erDiagram
   varchar_128_ workflowName
 }
 "public.workflow_suggestion" {
-  uuid backgroundUserId
+  uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
   timestamp_3__with_time_zone createdAt
   json expectedBaseline
   varchar id
   json payload
-  varchar_36_ projectId
+  varchar_36_ projectId FK
   integer revision
   varchar_255_ sourceKey
   varchar_16_ state
   integer submittedRevision
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId
+  varchar_36_ workflowId FK
 }
 "public.workflow_suggestion_activity" {
   varchar_16_ action

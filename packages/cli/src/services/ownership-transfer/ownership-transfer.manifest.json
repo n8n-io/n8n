@@ -97,7 +97,7 @@
 		{
 			"name": "WorkflowSuggestion",
 			"path": "packages/cli/src/modules/workflow-suggestions/database/workflow-suggestion.entity.ts",
-			"reason": "Keeps the original project and baseline. A workflow transfer makes the proposal ineligible. Retain the source receipt for delayed retries."
+			"reason": "Keeps the original project and baseline. A workflow transfer makes the proposal ineligible. Deleted with its activity via FK cascade when the original project, workflow, or background user is deleted."
 		}
 	]
 }

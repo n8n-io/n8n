@@ -57,20 +57,20 @@ erDiagram
   datetime_3_ updatedAt
 }
 "workflow_suggestion" {
-  varchar backgroundUserId
+  varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason
   datetime_3_ createdAt
   TEXT expectedBaseline
   varchar id PK
   TEXT payload
-  varchar_36_ projectId
+  varchar_36_ projectId FK
   INTEGER revision
   varchar_255_ sourceKey
   varchar_16_ state
   INTEGER submittedRevision
   datetime_3_ updatedAt
-  varchar_36_ workflowId
+  varchar_36_ workflowId FK
 }
 ```
 

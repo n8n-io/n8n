@@ -12,16 +12,9 @@ export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMi
 				column('sourceKey')
 					.varchar(255)
 					.notNull.comment('Stable investigation key. Retained after payload cleanup'),
-				// Historical identities have no FK. A delayed retry must survive target deletion.
-				column('workflowId')
-					.varchar(36)
-					.notNull.comment('Original workflow identity. Retained after deletion'),
-				column('projectId')
-					.varchar(36)
-					.notNull.comment('Original owner project identity. Retained after deletion'),
-				column('backgroundUserId').uuid.notNull.comment(
-					'Original enabling user identity. Retained after deletion',
-				),
+				column('workflowId').varchar(36).notNull.comment('Target workflow'),
+				column('projectId').varchar(36).notNull.comment('Original owner project'),
+				column('backgroundUserId').uuid.notNull.comment('User who enabled the investigation'),
 				column('expectedBaseline').json.notNull.comment(
 					'Original saved and published version IDs and checksum',
 				),
@@ -43,8 +36,26 @@ export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMi
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
 			)
 			.withIndexOn('sourceKey', true)
+			.withIndexOn('workflowId')
+			.withIndexOn('projectId')
+			.withIndexOn('backgroundUserId')
 			.withIndexOn(['state', 'updatedAt'])
-			.withIndexOn(['state', 'closedAt']);
+			.withIndexOn(['state', 'closedAt'])
+			.withForeignKey('workflowId', {
+				tableName: 'workflow_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('projectId', {
+				tableName: 'project',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('backgroundUserId', {
+				tableName: 'user',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			});
 		await createIndex(
 			'workflow_suggestion',
 			['workflowId'],

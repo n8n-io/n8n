@@ -16,7 +16,7 @@ Use `WorkflowSuggestionService` from trusted backend code. The caller supplies t
 4. Call `submitSuggestion(source, suggestionId, revision)` to freeze that exact revision.
 5. Call `getLifecycleResult(source)` to recover the recorded result after a restart or content expiry. This internal method does not require the background user to retain access.
 
-A source key identifies one investigation. Reuse the same key, user, workflow, version IDs, and checksum on retries. A key cannot create another proposal after cleanup.
+A source key identifies one investigation. Reuse the same key, user, workflow, version IDs, and checksum on retries. A key cannot create another proposal after content cleanup while its parent records exist.
 
 The service checks structure, credential rules, node groups, and workflow-save policies. It records configuration diagnostics and execution verification as `not_run`. INS-1479 adds diagnostic integration. M2 must validate its final result before it accepts Fix ready.
 
@@ -30,7 +30,9 @@ The response includes the original snapshot and the proposed snapshot. Expired p
 
 ## Storage and cleanup
 
-The suggestion table stores its own content. It does not reference workflow history or Assistant threads. Historical user, project, and workflow identities intentionally have no foreign keys. This keeps retry identity after deletion. The activity table belongs to the suggestion and has a cascading foreign key.
+The suggestion table stores its own content. It does not reference workflow history or Assistant threads. Foreign keys delete the suggestion when its workflow, original project, or background user is deleted. This also deletes its activity, including for pending proposals. A later insert cannot reference a deleted parent. Investigation callers must stop when a required parent is missing.
+
+Content cleanup keeps the lifecycle result and submission activity while the parent records exist. Parent deletion removes the whole suggestion, so lifecycle lookup then returns no result.
 
 A workflow transfer does not transfer its suggestions. Submission rejects a changed owner project. INS-1516 owns actions and pending-proposal supersession.
 
