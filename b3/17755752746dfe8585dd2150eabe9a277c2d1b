@@ -6,6 +6,7 @@ packages/frontend/editor-ui/src/features/agents/components/timeline-items/Sessio
   s_22d7afc0db9243::t_2b37bb099a0ebd 4,6-7,9-10,14,17-18,57-65,81,83-86,91-111,120-124,133-140,148-149,160-199
   s_22d7afc0db9243::t_3508a7841d78ae 200
   s_22d7afc0db9243::t_99c5b245763fce 23,142-147
+  s_daad5ab54f0b0c::t_ace4e3a840d0be 2-3,31-36,39-44,87-90,150-158
 packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
   s_0b18cdb0768028::t_4ae641fb5cc653 1-12
 packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionExecutionErrorItem.vue
@@ -40,6 +41,7 @@ packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vu
   s_0fc3d4a43a7609::t_1ef509c9372a80 38-39,50,56
   s_baf56886bb628c::t_985e10278061a9 33,37,40
   s_0b18cdb0768028::t_96ff85b6e49b0a 44-48,51
+  s_daad5ab54f0b0c::t_7305b0ef7eaf17 22
 packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
   s_baf56886bb628c::t_b9390325bbf5ad 394-395,451,455,457-460
 ---
@@ -94,6 +96,14 @@ packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineP
         "tool": "pi",
         "id": "01a0a53f-ee05-705f-9aae-79a20bff72d1",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_daad5ab54f0b0c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d84d-8092-7182-92c0-bd61ec558cec",
+        "model": "gpt-6-astra"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
