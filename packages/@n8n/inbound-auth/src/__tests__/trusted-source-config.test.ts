@@ -1,3 +1,5 @@
+import { UnexpectedError } from 'n8n-workflow';
+
 import {
 	configMigrations,
 	migrateToLatest,
@@ -342,20 +344,24 @@ describe('migrateToLatest', () => {
 	});
 
 	test('throws on a version without a migration', () => {
-		expect(() =>
-			migrateToLatest(asConfig({ ...trustedSourceConfigV1Fixture, version: 0 })),
-		).toThrow('No migration from trusted source config version 0');
+		const v0 = asConfig({ ...trustedSourceConfigV1Fixture, version: 0 });
+
+		expect(() => migrateToLatest(v0, {})).toThrow(UnexpectedError);
+		expect(() => migrateToLatest(v0, {})).toThrow(
+			'No migration from trusted source config version 0',
+		);
 	});
 
 	test('throws when a migration step does not advance the version', () => {
-		configMigrations[0] = (config) => config;
-		try {
-			expect(() =>
-				migrateToLatest(asConfig({ ...trustedSourceConfigV1Fixture, version: 0 })),
-			).toThrow('did not advance the version');
-		} finally {
-			delete configMigrations[0];
-		}
+		const v0 = asConfig({ ...trustedSourceConfigV1Fixture, version: 0 });
+		const stuck = { 0: (config: TrustedSourceConfig) => config };
+
+		expect(() => migrateToLatest(v0, stuck)).toThrow(UnexpectedError);
+		expect(() => migrateToLatest(v0, stuck)).toThrow('did not advance the version');
+	});
+
+	test('the shipped migration map is empty while v1 is the only version', () => {
+		expect(configMigrations).toEqual({});
 	});
 
 	test.each([{ name: 'v1', fixture: trustedSourceConfigV1Fixture }])(

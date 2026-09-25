@@ -1,4 +1,5 @@
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 /**
@@ -283,27 +284,37 @@ export type TrustedSourceConfigLatest = Extract<
 const isLatest = (config: TrustedSourceConfig): config is TrustedSourceConfigLatest =>
 	config.version === LATEST_VERSION;
 
-export function migrateToLatest(config: TrustedSourceConfig): TrustedSourceConfigLatest {
+/**
+ * Every throw here is a programming error, not bad input: the union parse already rejected
+ * unknown versions, so a missing or non-advancing step means the chain itself is wrong.
+ * `migrations` is injectable so tests seed a local map instead of mutating the module one.
+ */
+export function migrateToLatest(
+	config: TrustedSourceConfig,
+	migrations: Readonly<Record<number, ConfigMigration>> = configMigrations,
+): TrustedSourceConfigLatest {
 	let current: TrustedSourceConfig = config;
 	// A plain number, not `current.version`: comparing the discriminant would narrow `current` to
 	// `never` while the union has one member.
 	let version: number = current.version;
 	while (version !== LATEST_VERSION) {
-		const migrate: ConfigMigration | undefined = configMigrations[version];
+		const migrate: ConfigMigration | undefined = migrations[version];
 		if (!migrate) {
-			throw new Error(`No migration from trusted source config version ${version}`);
+			throw new UnexpectedError(`No migration from trusted source config version ${version}`);
 		}
 		current = migrate(current);
 		// A step must advance the version, or the chain would never end.
 		if (current.version <= version) {
-			throw new Error(
+			throw new UnexpectedError(
 				`Migration from trusted source config version ${version} did not advance the version`,
 			);
 		}
 		version = current.version;
 	}
 	if (!isLatest(current)) {
-		throw new Error('Migration chain did not reach the latest trusted source config version');
+		throw new UnexpectedError(
+			'Migration chain did not reach the latest trusted source config version',
+		);
 	}
 	return current;
 }
