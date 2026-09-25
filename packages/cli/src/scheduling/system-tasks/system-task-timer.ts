@@ -55,9 +55,7 @@ export class SystemTaskTimer {
 	private arm(after: Date, isFirst: boolean): number {
 		let next: Date | null;
 		try {
-			next = isFirst
-				? computeFirstRunAt(this.schedule, after)
-				: computeNextRunAt(this.schedule, after);
+			next = this.nextOccurrence(after, isFirst);
 		} catch (error) {
 			this.timer = undefined;
 			this.onPlanError(ensureError(error));
@@ -92,6 +90,23 @@ export class SystemTaskTimer {
 		this.waitFor(next, delayMs);
 		this.onPlan(next);
 		return 0;
+	}
+
+	/**
+	 * An interval is planned here rather than by the scheduler, which only
+	 * accepts whole seconds: an instance task may run more than once a second.
+	 */
+	private nextOccurrence(after: Date, isFirst: boolean): Date | null {
+		if (this.schedule.kind === 'interval') {
+			const intervalMs = this.schedule.intervalSeconds * Time.seconds.toMilliseconds;
+			if (!(intervalMs > 0)) {
+				throw new UnexpectedError('A system task interval is not positive');
+			}
+			return new Date(after.getTime() + intervalMs);
+		}
+		return isFirst
+			? computeFirstRunAt(this.schedule, after)
+			: computeNextRunAt(this.schedule, after);
 	}
 
 	/**
