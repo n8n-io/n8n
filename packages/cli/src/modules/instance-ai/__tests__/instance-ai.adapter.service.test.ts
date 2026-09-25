@@ -7611,6 +7611,8 @@ describe('createContext: aiPreferenceService', () => {
 		aiPreferenceService.create.mockResolvedValue({
 			id: 'pref-1',
 			content: 'Keep replies short.',
+			userId: 'user-1',
+			projectId: null,
 		} as never);
 		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
@@ -7626,7 +7628,14 @@ describe('createContext: aiPreferenceService', () => {
 		);
 		expect(result).toEqual({
 			ok: true,
-			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+			// The owner travels with the result: an edit from the card must name it.
+			preference: {
+				id: 'pref-1',
+				content: 'Keep replies short.',
+				scope: 'user',
+				userId: 'user-1',
+				projectId: null,
+			},
 		});
 	});
 
@@ -7768,7 +7777,7 @@ describe('createContext: aiPreferenceService', () => {
 			const { service, aiPreferenceService, telemetry } = buildService();
 			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
-			context.aiPreferenceService!.recordRejection(reason, 19);
+			context.aiPreferenceService!.recordRejection(reason, 19, 'user');
 
 			expect(telemetry.track).toHaveBeenCalledTimes(1);
 			expect(telemetry.track).toHaveBeenCalledWith(

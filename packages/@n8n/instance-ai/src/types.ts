@@ -1079,7 +1079,11 @@ export type InstanceAiPreferenceWriteRejection =
 export interface InstanceAiSavedPreference {
 	id: string;
 	content: string;
-	scope: 'user';
+	/** The tool writes `user`. A later fact from the card can move the row, so the type is wide. */
+	scope: 'user' | 'project' | 'instance';
+	projectId?: string | null;
+	/** The owner of a user-scoped row. An edit from the card must name it. */
+	userId?: string | null;
 }
 
 /** A cap refusal always carries the cap and the measured value, so the model can fit under it. */
@@ -1104,7 +1108,11 @@ export type InstanceAiPreferenceWriteResult =
 export interface InstanceAiPreferenceService {
 	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
 	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
-	recordRejection(reason: InstanceAiPreferenceWriteRejection, textLength: number): void;
+	recordRejection(
+		reason: InstanceAiPreferenceWriteRejection,
+		textLength: number,
+		scope: 'user',
+	): void;
 }
 
 export interface InstanceAiDataTableService {

@@ -55,7 +55,7 @@ const checkpoint = mock<SerializableAgentState>({
 	},
 });
 
-function makeService() {
+function makeService(isMultiMain = true) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -67,7 +67,7 @@ function makeService() {
 		executionService,
 		checkpointStorage,
 		publisher,
-		mock<InstanceSettings>({ isMultiMain: true }),
+		mock<InstanceSettings>({ isMultiMain }),
 		updates,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
@@ -126,6 +126,28 @@ it('relays Stop to the owning main and leaves other and later executions running
 	await mainA.service.handleCancel(context);
 	expect(next.signal.aborted).toBe(false);
 });
+
+it.each(['local', 'remote', 'during validation'] as const)(
+	'applies an early %s Stop when the execution registers',
+	async (arrival) => {
+		const { service, repository } = makeService(arrival !== 'local');
+		const controller = new AbortController();
+		if (arrival === 'during validation') {
+			repository.findOneBy.mockImplementationOnce(async () => {
+				service.register(context, controller);
+				return running;
+			});
+		}
+		if (arrival === 'local') expect(await service.requestCancel(context)).toBe(true);
+		else await service.handleCancel(context);
+		if (arrival !== 'during validation') service.register(context, controller);
+		expect(controller.signal.aborted).toBe(true);
+		await service.settle(context.executionId, async () => {});
+		const next = new AbortController();
+		service.register({ ...context, executionId: 'execution-2' }, next);
+		expect(next.signal.aborted).toBe(false);
+	},
+);
 
 it.each([false, true])(
 	'cleans a raced suspension before releasing control, finalization failed=%s',
