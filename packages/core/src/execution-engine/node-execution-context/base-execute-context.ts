@@ -132,6 +132,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
+	}
+
 	async putExecutionToWait(
 		waitTill: Date,
 		options?: { acceptsResumeRequest?: boolean },
