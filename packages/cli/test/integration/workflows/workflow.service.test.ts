@@ -369,14 +369,17 @@ describe('activateWorkflow()', () => {
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
-			workflow: {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: expect.any(Array),
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					nodes: expect.any(Array),
+				},
+				projectId: expect.any(String),
 			},
-			projectId: expect.any(String),
-		});
+			{ kind: 'user', user: expect.objectContaining({ id: owner.id }) },
+		);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 
