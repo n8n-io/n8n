@@ -18,7 +18,7 @@ export class ExampleChatModel implements INodeType {
 			name: 'Example Chat Model',
 		},
 		codex: {
-			categories: ['assistant'],
+			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
