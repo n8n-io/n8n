@@ -1,7 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
-import type { AiPreferenceDto } from './ai-preference.schema';
+import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -1176,12 +1176,15 @@ export const setupItemsPayloadSchema = z.object({
 
 /** A later fact about a preference the `save_user_preference` tool saved in this run:
  *  the user edited it or undid it from the card. Appended by the card endpoints, not
- *  by the tool, and only while the card is on the latest turn. */
+ *  by the tool, and only while the card is on the latest turn. An edit names the scope
+ *  and project the row now has, so the card shows a move after a reload. */
 export const preferenceCardPayloadSchema = z.object({
 	toolCallId: z.string(),
 	preferenceId: z.string(),
 	state: z.enum(['edited', 'undone']),
 	content: z.string().optional(),
+	scope: aiPreferenceScopeSchema.optional(),
+	projectId: z.string().nullable().optional(),
 });
 export type PreferenceCardPayload = z.infer<typeof preferenceCardPayloadSchema>;
 
@@ -1896,6 +1899,8 @@ export interface InstanceAiToolCallState {
 	args: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
+	/** True when the run ended with the call in flight, so its effect is unverified. */
+	interrupted?: true;
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
@@ -1909,7 +1914,12 @@ export interface InstanceAiToolCallState {
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	/** Set by a `preference-card` fact; absent means the tool result is the state. */
-	preferenceCard?: { state: 'edited' | 'undone'; content?: string };
+	preferenceCard?: {
+		state: 'edited' | 'undone';
+		content?: string;
+		scope?: AiPreferenceScope;
+		projectId?: string | null;
+	};
 	startedAt?: string;
 	completedAt?: string;
 }

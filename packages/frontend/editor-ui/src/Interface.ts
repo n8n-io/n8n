@@ -1,3 +1,5 @@
+import type { ICredentialsDecrypted } from 'n8n-workflow';
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
@@ -704,6 +706,12 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
+	notice?: () => string;
+	initialName?: string;
+	initialData?: Record<string, unknown>;
+	destination?: ResourceEditorDestination;
+	createCredential?: (details: ICredentialsDecrypted, projectId: string) => Promise<string>;
+	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;

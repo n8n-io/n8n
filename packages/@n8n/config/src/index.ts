@@ -81,6 +81,7 @@ export {
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
+export type { EngineMode } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';

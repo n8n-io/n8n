@@ -2,6 +2,8 @@ import { LicenseState, Logger, ModuleRegistry, ModulesConfig } from '@n8n/backen
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
+import { SystemTaskMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -12,7 +14,10 @@ import {
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
+import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+import { TelemetryBufferFlushTask } from '@/telemetry/telemetry-buffer-flush.task';
 
 import { BaseCommand } from '../base-command';
 
@@ -28,7 +33,10 @@ class TestCommand extends BaseCommand {
 	}
 }
 
-mockInstance(GlobalConfig, { generic: { gracefulShutdownTimeout: 30 } });
+mockInstance(GlobalConfig, {
+	diagnostics: { enabled: true },
+	generic: { gracefulShutdownTimeout: 30 },
+});
 mockInstance(InstanceSettings);
 mockInstance(ShutdownService);
 mockInstance(ModulesConfig);
@@ -109,5 +117,45 @@ describe('logError', () => {
 			'Something went wrong',
 			'the stack',
 		]);
+	});
+});
+
+describe('initSystemTasks', () => {
+	const diagnostics = Container.get(GlobalConfig).diagnostics;
+	const originalDiagnosticsEnabled = diagnostics.enabled;
+
+	const setDiagnostics = (enabled: boolean) => {
+		diagnostics.enabled = enabled;
+	};
+
+	afterEach(() => {
+		diagnostics.enabled = originalDiagnosticsEnabled;
+	});
+
+	it('should register the shared tasks and the own tasks, then start the runner', async () => {
+		setDiagnostics(true);
+		const metadata = mockInstance(SystemTaskMetadata);
+		const runner = mockInstance(SystemTaskRunner);
+
+		// @ts-expect-error Protected method
+		await new TestCommand().initSystemTasks([DummySystemTask]);
+
+		expect(metadata.register.mock.calls.flat()).toEqual([
+			TelemetryBufferFlushTask,
+			DummySystemTask,
+		]);
+		expect(runner.init).toHaveBeenCalledTimes(1);
+	});
+
+	it('should leave out the telemetry buffer flush when diagnostics are off', async () => {
+		setDiagnostics(false);
+		const metadata = mockInstance(SystemTaskMetadata);
+		const runner = mockInstance(SystemTaskRunner);
+
+		// @ts-expect-error Protected method
+		await new TestCommand().initSystemTasks([DummySystemTask]);
+
+		expect(metadata.register.mock.calls.flat()).toEqual([DummySystemTask]);
+		expect(runner.init).toHaveBeenCalledTimes(1);
 	});
 });

@@ -90,37 +90,52 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
 		});
 
-		it('should not attach project custom attributes to node spans', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-node-no-tags',
-				workflow: defaultWorkflow,
-				project: {
-					id: 'proj-tags',
-					customAttributes: { env: 'staging' },
-				},
-			});
+		const runSingleNodeExecution = (
+			executionId: string,
+			project?: { id: string; customAttributes?: Record<string, string> },
+		) => {
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
 			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
-			tracer.startNode({ executionId: 'exec-node-no-tags', node });
-			tracer.endNode({
-				executionId: 'exec-node-no-tags',
-				node,
-				inputItemCount: 1,
-				outputItemCount: 1,
-			});
-			tracer.endWorkflow({
-				executionId: 'exec-node-no-tags',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
+			tracer.startNode({ executionId, node });
+			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
 
 			const spans = otel.getFinishedSpans();
-			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
-			// No project custom attributes should appear on the node span
-			const projectCustomKeys = Object.keys(nodeSpan.attributes).filter((k) =>
-				k.startsWith('n8n.project.custom.'),
+			return {
+				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+			};
+		};
+
+		const projectCustomKeys = (attributes: Record<string, unknown>) =>
+			Object.keys(attributes).filter((k) => k.startsWith('n8n.project.custom.'));
+
+		it('should attach project id and custom attributes to node spans', () => {
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-node-tags', {
+				id: 'proj-tags',
+				customAttributes: { env: 'staging' },
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-tags');
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe('staging');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe(workflowSpan.attributes['n8n.project.id']);
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe(
+				workflowSpan.attributes['n8n.project.custom.env'],
 			);
-			expect(projectCustomKeys).toHaveLength(0);
+		});
+
+		it('should attach only project id to node spans when the project has no custom attributes', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-tags', { id: 'proj-no-tags' });
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-no-tags');
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
+		});
+
+		it('should omit project attributes on node spans when project is not provided', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-project');
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBeUndefined();
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
 		});
 
 		it('should omit project id attribute when project is not provided', () => {

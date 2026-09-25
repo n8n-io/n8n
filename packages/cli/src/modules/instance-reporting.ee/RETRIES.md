@@ -58,6 +58,11 @@ next slot has passed, the retry stops: the row is marked
   and no new row for today.
 - A response of `201` flips the row to `delivered`. A `409` means the receiver
   already holds this `batchId`, so the row is marked `delivered` as well.
+- A response of `400` (the report fails the receiver's schema) or `413` (the
+  report is over the receiver's size limit) flips the row to
+  `skipped_after_max_retries` at once and logs an error. The payload of a
+  pending row does not change between attempts, so a retry cannot succeed.
+  The next slot measures its days again in a new report.
 
 Type 1 alone decides whether the row lands. Because the budget and the
 pacing live on the row, a restart resumes them. A fresh process does not get
@@ -92,7 +97,9 @@ flowchart TD
         A["Newest row is pending\n+ measured data points"] --> B["POST attempt"]
         B -->|"201 / 409"| C["delivered"]
         B -->|"failure"| D["attempts++\nlastAttemptAt, lastError"]
-        D --> E{"attempts >= 3?"}
+        D --> R{"400 / 413?"}
+        R -- yes --> G
+        R -- no --> E{"attempts >= 3?"}
         E -- no --> F["wait 5 min"] --> B
         E -- yes --> G["skipped_after_max_retries"]
     end

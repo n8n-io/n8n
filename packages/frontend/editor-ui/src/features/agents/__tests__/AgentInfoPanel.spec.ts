@@ -260,13 +260,13 @@ describe('AgentInfoPanel', () => {
 		},
 	);
 
-	it('renders instructions as a ghost markdown editor with a floating toolbar', function rendersInstructions() {
+	it('renders instructions as a contained markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'ghost',
+			variant: 'contained',
 			showToolbar: 'floating',
 			maxHeight: undefined,
 			placeholder: 'agents.builder.agent.instructions.placeholder',
