@@ -164,7 +164,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
-const mentionTelemetry = useAssistantAtMentionsTelemetry();
+const mentionTelemetry = useAssistantAtMentionsTelemetry({
+	threadId: () => props.currentThreadId || undefined,
+});
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
@@ -345,6 +347,11 @@ const mentions = useAssistantAtMentions({
 	enabled: canUseMentions,
 	getInputElement: () => inputElement.value ?? undefined,
 	onOpened: mentionTelemetry.trackPickerOpened,
+	onClosed: (info) => {
+		// Synchronous on purpose: the picker still shows what the user looked at.
+		const metrics = mentionPickerRef.value?.getOpenMetrics();
+		if (metrics) mentionTelemetry.trackPickerDismissed(info, metrics);
+	},
 });
 const mentionMenuOpen = mentions.menuOpen;
 const mentionQuery = mentions.query;
@@ -360,7 +367,7 @@ const mentionAttachments = useAssistantMentionAttachments({
 	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
 	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
-	onCleared: mentions.close,
+	onCleared: () => mentions.close(false, 'unavailable'),
 });
 
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {

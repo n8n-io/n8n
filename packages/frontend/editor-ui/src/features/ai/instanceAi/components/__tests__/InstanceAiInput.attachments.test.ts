@@ -223,14 +223,23 @@ const nodeMentionSelection: AssistantMentionSelection = {
 	telemetry: { mode: 'search', resultPosition: 2, queryLength: 3 },
 };
 
+const stubOpenMetrics = {
+	mode: 'search',
+	queryLength: 3,
+	resultCount: 4,
+	ambiguousResultCount: 2,
+	submenuOpenCount: 1,
+} as const;
+
 const MentionPickerStub = defineComponent({
 	name: 'AssistantAtMentionPicker',
 	props: {
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
 	},
-	emits: ['select'],
-	setup(props, { emit }) {
+	emits: ['select', 'update:modelValue'],
+	setup(props, { emit, expose }) {
+		expose({ getOpenMetrics: () => stubOpenMetrics, handleExternalKeydown: () => false });
 		return () =>
 			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
 				h(
@@ -248,6 +257,14 @@ const MentionPickerStub = defineComponent({
 						onClick: () => emit('select', nodeMentionSelection),
 					},
 					'Select node',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-dismiss',
+						onClick: () => emit('update:modelValue', false),
+					},
+					'Dismiss',
 				),
 			]);
 	},
@@ -276,7 +293,47 @@ describe('InstanceAiInput — mention attachments', () => {
 
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
+		);
+	});
+
+	it('tracks a dismissed picker with the list snapshot and thread id', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@ord');
+
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				reason: 'closed_menu',
+				mode: 'search',
+				query_length: 3,
+				result_count: 4,
+				ambiguous_result_count: 2,
+				submenu_open_count: 1,
+				duration_ms: expect.any(Number),
+			},
+		);
+	});
+
+	it('does not track a dismissal when a mention is selected', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@');
+
+		await userEvent.click(getByTestId('mention-picker-select'));
+		// The menu reports its own close after the selection landed.
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+			expect.objectContaining({ kind: 'workflow' }),
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			expect.anything(),
 		);
 	});
 
@@ -303,7 +360,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
 		);
 	});
 
@@ -320,6 +377,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'workflow',
 				mode: 'browse',
 				source: 'workflows',
@@ -381,7 +439,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 
@@ -405,6 +463,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'node',
 				mode: 'search',
 				source: 'artifacts',
@@ -423,7 +482,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 });
