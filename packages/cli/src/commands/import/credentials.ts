@@ -71,6 +71,21 @@ type ImportableCredentialProperty = Exclude<
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
 	typeof data === 'object' && data !== null && !Array.isArray(data);
 
+/**
+ * A credential export always carries a `type` and a `data` field. `data` is the
+ * encrypted string, or the decrypted object that `--decrypted` writes. The import
+ * directory usually also holds the workflow files that `export:workflow --backup`
+ * writes, and those must be skipped rather than inserted as credentials. Any other
+ * `data` shape cannot satisfy the credential data column, so it is skipped too.
+ */
+const isExportedCredential = (content: unknown): content is Partial<CredentialsEntity> => {
+	if (typeof content !== 'object' || content === null || Array.isArray(content)) return false;
+
+	const { type, data } = content as { type?: unknown; data?: unknown };
+
+	return typeof type === 'string' && (typeof data === 'string' || isCredentialData(data));
+};
+
 @Command({
 	name: 'import:credentials',
 	description: 'Import credentials',
@@ -368,9 +383,23 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				absolute: true,
 			});
 
-			credentials = files.map((file) =>
-				jsonParse<Partial<CredentialsEntity>>(fs.readFileSync(file, { encoding: 'utf8' })),
-			);
+			credentials = [];
+
+			for (const file of files) {
+				// A file that does not hold JSON is one more file to skip, not a reason to
+				// abort the import and leave the credentials beside it unimported. `null`
+				// fails the check below, so it takes the same skip path.
+				const content = jsonParse<unknown>(fs.readFileSync(file, { encoding: 'utf8' }), {
+					fallbackValue: null,
+				});
+
+				if (!isExportedCredential(content)) {
+					this.logger.warn(`Skipping invalid credential file: ${file}`);
+					continue;
+				}
+
+				credentials.push(content);
+			}
 		} else {
 			const credentialsUnchecked = jsonParse<Array<Partial<CredentialsEntity>>>(
 				fs.readFileSync(inputPath, { encoding: 'utf8' }),
