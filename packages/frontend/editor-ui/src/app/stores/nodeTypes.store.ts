@@ -507,7 +507,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// True for types the instance does not load (NODES_EXCLUDE, NODES_INCLUDE). Vetted community
 	// types stay available: the node creator offers them for installation.
 	function isNodeTypeUnavailable(nodeTypeName: string): boolean {
-		return !getNodeType.value(nodeTypeName) && !communityNodeType.value(nodeTypeName);
+		return (
+			!getNodeType.value(removePreviewToken(nodeTypeName)) && !communityNodeType.value(nodeTypeName)
+		);
 	}
 
 	const getIsNodeInstalled = computed(() => {

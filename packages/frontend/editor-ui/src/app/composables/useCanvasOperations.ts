@@ -3710,6 +3710,7 @@ export function useCanvasOperations() {
 				'Skipped adding node types this instance does not load:',
 				unavailable.map((node) => node.type),
 			);
+			uiStore.resetLastInteractedWith();
 			return { addedNodes: [] };
 		}
 

@@ -437,6 +437,27 @@ describe('CommunityNodeTypesService', () => {
 			expect(result).toEqual([]);
 		});
 
+		it('should keep the AI tool version when NODES_INCLUDE lists its base node type', async () => {
+			globalConfigMock.nodes = { exclude: [], include: ['n8n-nodes-test.test'] };
+			(getCommunityNodeTypes as Mock).mockResolvedValueOnce([
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			]);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.map((n) => n.name)).toEqual(['n8n-nodes-test.test', 'n8n-nodes-test.testTool']);
+		});
+
 		it('should create AI tool versions for nodes with usableAsTool flag', async () => {
 			const mockNodeTypes = [
 				{
@@ -984,6 +1005,14 @@ describe('CommunityNodeTypesService', () => {
 
 		it('should return null for unknown node', async () => {
 			const result = await service.getCommunityNodeType('nonexistent');
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null for a node type the loader would skip', async () => {
+			globalConfigMock.nodes = { exclude: ['package-1.node1'], include: [] };
+
+			const result = await service.getCommunityNodeType('package-1.node1');
 
 			expect(result).toBeNull();
 		});

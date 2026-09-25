@@ -7,12 +7,14 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { mockActionCreateElement, mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import {
 	REGULAR_NODE_CREATOR_VIEW,
 	DEBOUNCE_TIME,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	CUSTOM_API_CALL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
 } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -683,6 +685,38 @@ describe('NodesListPanel', () => {
 			// Context should still be 'replacement' after search
 			expect(nodeCreatorStore.openingContext).toBe('replacement');
 		});
+	});
+
+	describe('custom API call hint', () => {
+		it.each([
+			[false, true],
+			[true, false],
+		])(
+			'should set hint visibility when HTTP Request unavailable is %s (visible: %s)',
+			async (httpUnavailable, hintVisible) => {
+				getWrapperComponent(() => {
+					vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+						(type) => httpUnavailable && type === HTTP_REQUEST_NODE_TYPE,
+					);
+					return {};
+				});
+				await nextTick();
+
+				useViewStacks().pushViewStack({
+					title: 'Slack',
+					subcategory: 'Slack',
+					mode: 'actions',
+					hasSearch: true,
+					items: [
+						mockActionCreateElement('Slack'),
+						mockActionCreateElement('Slack', { actionKey: CUSTOM_API_CALL_KEY }),
+					],
+				});
+				await nextTick();
+
+				expect(screen.queryByText(/custom Slack API call/) !== null).toBe(hintVisible);
+			},
+		);
 	});
 
 	describe('restricted node types', () => {

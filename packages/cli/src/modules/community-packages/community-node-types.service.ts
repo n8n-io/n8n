@@ -36,11 +36,20 @@ export class CommunityNodeTypesService {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	/** Same rule the node loader applies, so the editor never offers a type that would not load. */
+	/**
+	 * Same rule the node loader applies, so nothing offers a type that would not load.
+	 * The loader builds AI tool copies from loaded base nodes, so a copy follows its base node.
+	 */
 	private isLoadable(nodeTypeName: string) {
+		const baseName = nodeTypeName.slice(0, -'Tool'.length);
+		const isToolCopy =
+			nodeTypeName.endsWith('Tool') &&
+			this.communityNodeTypes.get(baseName)?.nodeDescription.usableAsTool === true;
+		const loaderName = isToolCopy ? baseName : nodeTypeName;
+
 		const { exclude, include } = this.globalConfig.nodes;
-		if (exclude.includes(nodeTypeName)) return false;
-		return include.length === 0 || include.includes(nodeTypeName);
+		if (exclude.includes(loaderName)) return false;
+		return include.length === 0 || include.includes(loaderName);
 	}
 
 	private async detectUpdates(
@@ -169,7 +178,6 @@ export class CommunityNodeTypesService {
 			(nodeType) =>
 				nodeType.nodeDescription.usableAsTool &&
 				!isToolType(nodeType.name) &&
-				this.isLoadable(nodeType.name) &&
 				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
@@ -248,7 +256,7 @@ export class CommunityNodeTypesService {
 	async getCommunityNodeType(type: string): Promise<CommunityNodeType | null> {
 		const nodeType = this.communityNodeTypes.get(type);
 		const isInstalled = await this.createIsInstalled();
-		if (!nodeType) return null;
+		if (!nodeType || !this.isLoadable(nodeType.name)) return null;
 		return { ...nodeType, isInstalled: isInstalled(nodeType) };
 	}
 
