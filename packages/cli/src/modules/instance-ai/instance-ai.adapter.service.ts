@@ -2052,20 +2052,7 @@ export class InstanceAiAdapterService {
 					user,
 					sharingOptions,
 					...(options?.workflowId ? { workflowId: options.workflowId } : {}),
-					...(options?.status
-						? {
-								status: [options.status] as Array<
-									| 'running'
-									| 'success'
-									| 'error'
-									| 'waiting'
-									| 'unknown'
-									| 'canceled'
-									| 'crashed'
-									| 'new'
-								>,
-							}
-						: {}),
+					...(options?.status ? { status: [options.status] } : {}),
 				};
 
 				const executions = await executionRepository.findManyByRangeQuery(query);
@@ -4755,6 +4742,7 @@ export async function extractExecutionOutcome(
 	return {
 		result: {
 			executionId,
+			workflowId: execution.workflowId,
 			status,
 			data:
 				Object.keys(resultData).length > 0

@@ -1,4 +1,4 @@
-import type { BuiltTool } from '@n8n/agents';
+import { type BuiltTool, zodToJsonSchema } from '@n8n/agents';
 import { z } from 'zod';
 
 import { createToolRegistry } from '../../tool-registry';
@@ -526,6 +526,28 @@ describe('sanitizeMcpToolSchemas', () => {
 			]);
 
 			expect(() => sanitizeZodType(union, true)).not.toThrow();
+		});
+
+		it('should keep descriptions on nested objects, arrays and optional fields', () => {
+			const schema = z.object({
+				hints: z
+					.array(
+						z
+							.object({
+								template: z.object({ header: z.string() }).describe('Template'),
+								docsUrl: z.string().optional().describe('Docs URL'),
+							})
+							.describe('One hint'),
+					)
+					.optional()
+					.describe('Hints'),
+			});
+
+			const json = JSON.stringify(zodToJsonSchema(sanitizeInputSchema(schema)));
+
+			for (const description of ['Hints', 'One hint', 'Template', 'Docs URL']) {
+				expect(json).toContain(`"description":"${description}"`);
+			}
 		});
 
 		it('should merge conflicting descriptions in non-strict mode', () => {
