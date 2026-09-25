@@ -22,6 +22,11 @@ const meta = {
 			options: ['horizontal', 'vertical'],
 			description: 'Layout orientation of the buttons',
 		},
+		variant: {
+			control: 'select',
+			options: ['default', 'toolbar'],
+			description: 'Visual style of the button group',
+		},
 	},
 } satisfies Meta<typeof N8nButtonList>;
 
@@ -83,5 +88,25 @@ export const Vertical: Story = {
 	}),
 	args: {
 		orientation: 'vertical',
+	},
+};
+
+export const Toolbar: Story = {
+	render: (args) => ({
+		components: { N8nButtonList, N8nIconButton },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nButtonList v-bind="args">
+				<N8nIconButton variant="ghost" size="large" icon="maximize" aria-label="Zoom to fit" />
+				<N8nIconButton variant="ghost" size="large" icon="zoom-in" aria-label="Zoom in" />
+				<N8nIconButton variant="ghost" size="large" icon="zoom-out" aria-label="Zoom out" />
+			</N8nButtonList>
+		`,
+	}),
+	args: {
+		orientation: 'horizontal',
+		variant: 'toolbar',
 	},
 };
