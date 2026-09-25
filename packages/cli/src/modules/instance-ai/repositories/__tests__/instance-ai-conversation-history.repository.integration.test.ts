@@ -427,6 +427,34 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		});
 	});
 
+	it('uses the same id tie-break for search, opening messages, and windows', async () => {
+		const threadId = await createThread({ withOpeningMessage: false });
+		const createdAt = at(9000);
+		for (const id of ['msg-bbb', 'msg-ccc', 'msg-aaa']) {
+			await createMessage({ threadId, id, role: 'user', content: userContent('deploy'), createdAt });
+		}
+
+		const matches = await repository.findSearchMatchRows([threadId], 'deploy', 2);
+		const first = await repository.findFirstUserMessages([threadId]);
+		const tail = await repository.getConversationWindow({
+			threadId,
+			before: 2,
+			after: 0,
+			project: (row) => row,
+		});
+		const head = await repository.getConversationWindow({
+			threadId,
+			before: 0,
+			after: 2,
+			project: (row) => row,
+		});
+
+		expect(matches.get(threadId)?.map((row) => row.id)).toEqual(['msg-ccc', 'msg-bbb']);
+		expect(first.get(threadId)?.id).toBe('msg-aaa');
+		expect(tail.rows.map((row) => row.id)).toEqual(['msg-bbb', 'msg-ccc']);
+		expect(head.rows.map((row) => row.id)).toEqual(['msg-aaa', 'msg-bbb']);
+	});
+
 	describe('findMessageInThread', () => {
 		it('finds a conversation row and ignores rows of other threads', async () => {
 			const threadId = await createThread({ title: 'Anchors' });
