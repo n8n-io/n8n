@@ -366,7 +366,7 @@ describe('PromotionSelectModal', () => {
 
 			// The confirmation names the additive copy, not the destructive whole-branch copy.
 			expect(confirm).toHaveBeenCalledWith(
-				'Only the selected workflows are applied to this project. Everything else is left as is.',
+				'This applies only the selected workflows to this project. It does not change or remove anything else.',
 				'Apply the selected workflows?',
 				expect.objectContaining({ confirmButtonText: 'Apply' }),
 			);
