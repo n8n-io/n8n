@@ -292,8 +292,7 @@ function handleRecovery() {
 								:aria-label="group.title"
 								:aria-expanded="expandedCategory === group.category"
 								@click="
-									expandedCategory =
-										expandedCategory === group.category ? null : group.category
+									expandedCategory = expandedCategory === group.category ? null : group.category
 								"
 							>
 								<N8nIcon
