@@ -9,6 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { parseExtraBody } from '../shared/extra-body';
 import { setupApiKeyAuthentication } from './credentials/api-key';
 import { setupOAuth2Authentication } from './credentials/oauth2';
 import { searchModels } from './methods/searchModels';
@@ -87,7 +88,18 @@ export class LmChatAzureOpenAi implements INodeType {
 				itemIndex,
 			) as AuthenticationType;
 			const modelName = this.getNodeParameter('model', itemIndex) as string;
-			const options = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
+			const allOptions = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
+			// Held back from the spread below: both clients take it as `modelKwargs`, and spreading the
+			// raw JSON string would put an `extraBody` field on the constructor.
+			const { extraBody, ...options } = allOptions;
+
+			// `responseFormat` and `extraBody` both end up in the request body. Extra Body is the
+			// escape hatch, so it wins on a key collision.
+			const modelKwargs: Record<string, unknown> = {
+				...(options.responseFormat ? { response_format: { type: options.responseFormat } } : {}),
+				...(extraBody ? parseExtraBody(this, extraBody, itemIndex) : {}),
+			};
+			const hasModelKwargs = Object.keys(modelKwargs).length > 0;
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
@@ -135,11 +147,7 @@ export class LmChatAzureOpenAi implements INodeType {
 					maxRetries: options.maxRetries ?? 2,
 					configuration,
 					callbacks: [new N8nLlmTracing(this)],
-					modelKwargs: options.responseFormat
-						? {
-								response_format: { type: options.responseFormat },
-							}
-						: undefined,
+					modelKwargs: hasModelKwargs ? modelKwargs : undefined,
 					onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 				});
 
@@ -176,11 +184,7 @@ export class LmChatAzureOpenAi implements INodeType {
 						),
 					},
 				},
-				modelKwargs: options.responseFormat
-					? {
-							response_format: { type: options.responseFormat },
-						}
-					: undefined,
+				modelKwargs: hasModelKwargs ? modelKwargs : undefined,
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			});
 
