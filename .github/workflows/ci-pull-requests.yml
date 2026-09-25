@@ -254,13 +254,8 @@ jobs:
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
-          if [ "$GITHUB_HEAD_REF" = 'ci/pilot-toolchain-pr' ]; then
-            # Workflow-only changes have no impact-map specs. Exercise one real E2E shard.
-            MATRIX='[{"shard":1,"specs":"tests/e2e/node-creator/navigation.spec.ts","images":""}]'
-          else
-            FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-            MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
-          fi
+          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
@@ -437,7 +432,6 @@ jobs:
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
-      use-toolchain-pilot: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
     secrets: inherit
 
   # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes
@@ -461,7 +455,6 @@ jobs:
       test-command: pnpm --filter=n8n-playwright test:container:engine-v2:e2e
       workers: '1'
       artifact-prefix: e2e-engine
-      use-toolchain-pilot: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
     secrets: inherit
 
   # Boots the editor-ui against the Vite dev server and fails on any console
@@ -512,8 +505,6 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'run-perf-tests')) &&
       github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
-    with:
-      use-toolchain-pilot: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
     secrets: inherit
 
   security-checks:

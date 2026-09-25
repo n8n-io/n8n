@@ -62,15 +62,14 @@ on:
         required: false
         default: 'standard'
         type: string
-      use-toolchain-pilot:
-        description: 'Use the CI toolchain image on all shards.'
-        required: false
-        default: false
-        type: boolean
 
 env:
-  NODE_OPTIONS: ${{ inputs.use-toolchain-pilot && (contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144 --dns-result-order=ipv4first' || '--dns-result-order=ipv4first') || (contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '') }}
+  NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
+  # Browser cache location - must match install-browsers script.
+  # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
+  # re-resolve a relative path against the package's INIT_CWD and double it.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/testing/playwright/.playwright-browsers
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
@@ -80,31 +79,16 @@ env:
 jobs:
   test:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
-    container: ${{ inputs.use-toolchain-pilot && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
-      packages: read
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(inputs.pre-generated-matrix) }}
     name: Shard ${{ matrix.shard }}
-    env:
-      # Use the image browser in pilot jobs and the package cache path otherwise.
-      PLAYWRIGHT_BROWSERS_PATH: ${{ inputs.use-toolchain-pilot && '/ms-playwright' || format('{0}/packages/testing/playwright/.playwright-browsers', github.workspace) }}
 
     steps:
-      - name: Mark first pilot step
-        if: inputs.use-toolchain-pilot
-        run: |
-          {
-            echo "CI_FIRST_STEP=$(date +%s)"
-            echo 'GIT_CONFIG_COUNT=1'
-            echo 'GIT_CONFIG_KEY_0=safe.directory'
-            echo "GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE"
-          } >> "$GITHUB_ENV"
-
       - name: Checkout
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -113,25 +97,13 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        with:
-          preinstalled-toolchain: ${{ inputs.use-toolchain-pilot }}
         env:
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Install Browsers
-        if: ${{ !inputs.use-toolchain-pilot }}
         run: pnpm turbo run install-browsers --filter=n8n-playwright
-
-      - name: Verify pilot browser, Turbo cache and Docker
-        if: ${{ inputs.use-toolchain-pilot }}
-        working-directory: packages/testing/playwright
-        run: |
-          node -e 'const { chromium } = require("@playwright/test"); const fs = require("node:fs"); const path = chromium.executablePath(); if (!path.startsWith(process.env.PLAYWRIGHT_BROWSERS_PATH + "/") || !fs.existsSync(path)) process.exit(1); console.log(path)'
-          test -n "$TURBO_API"
-          docker info --format '{{.ServerVersion}}'
-          docker buildx version
 
       - name: Load n8n image from cache
         if: ${{ inputs.test-mode == 'docker-artifact' }}
@@ -182,9 +154,6 @@ jobs:
       - name: Run Tests
         if: steps.shard-args.outputs.skip != 'true'
         run: |
-          if [ -n "${CI_FIRST_STEP:-}" ]; then
-            echo "Time from first step to tests: $(($(date +%s) - CI_FIRST_STEP))s" >> "$GITHUB_STEP_SUMMARY"
-          fi
           # --pass-with-no-tests makes Playwright exit 0 when the selected specs
           # resolve to zero runnable tests. Covers the impact-map vs current-suite
           # skew window: a spec the committed coverage map points at may have been

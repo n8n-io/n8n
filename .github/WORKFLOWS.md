@@ -699,16 +699,13 @@ SHA-keyed Actions cache. `zstd` lets host and container jobs read the same
 archive format.
 
 The `ci/pilot-toolchain-pr` branch tests the image in the PR Node jobs: build,
-format, unit, lint, typecheck, packaging, declarations, workflow scripts,
-dev-server smoke and E2E. Other PRs use their current setup. Database tests,
-Docker image preparation and small gate jobs keep their host runners. The image
-jobs keep checkout, lockfile installation and build steps. The pilot selects one
-E2E spec because workflow changes have no impact-map specs. E2E uses Chromium
-in the image and checks browser lookup, Turbo cache setup and Docker access
-before tests.
+format, unit, lint, typecheck, packaging, declarations, workflow scripts and
+dev-server smoke. Other PRs use their current setup. Database and E2E tests,
+Docker image preparation, security scans and small gate jobs keep their host
+runners. The image jobs keep checkout, lockfile installation and build steps.
 Compare `Initialize containers` in the job timeline and time to Format check
-or E2E tests in the job summary. Remove the branch condition before a wider
-rollout.
+or build completion in the job summary. Remove the branch condition before a
+wider rollout.
 
 Build and check the image locally with:
 
