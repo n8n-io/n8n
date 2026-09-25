@@ -70,6 +70,7 @@ Container.set(LicenseState, licenseMock);
 
 mockInstance(ExternalSecretsConfig, {
 	externalSecretsForProjects: true,
+	configFilePath: '',
 });
 
 describe('Secret Providers Connections API', () => {

@@ -519,6 +519,30 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
+		it('rejects before any mutation when a config-file-managed connection references the project', async () => {
+			const transaction = vi.fn();
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 20,
+					secretsProviderConnection: { providerKey: 'vault-prod', managedBy: 'config-file' },
+					project: { name: 'Payments' },
+				}),
+			]);
+
+			await expect(service.cleanupConnectionsForProjectDeletion('project-1')).rejects.toThrow(
+				/Cannot delete project "Payments".*"vault-prod"/,
+			);
+			expect(transaction).not.toHaveBeenCalled();
+			expect(mockExternalSecretsManager.syncProviderConnection).not.toHaveBeenCalled();
+		});
+
 		it('does not delete credential dependencies when there are no owner connections', async () => {
 			const entityManager = {
 				delete: vi.fn().mockResolvedValue(undefined),

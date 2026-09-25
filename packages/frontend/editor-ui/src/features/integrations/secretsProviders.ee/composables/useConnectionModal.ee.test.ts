@@ -529,6 +529,43 @@ describe('useConnectionModal', () => {
 		});
 	});
 
+	describe('config-file-managed connections', () => {
+		it('should be read-only when the loaded connection is managed by the config file', async () => {
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				managedBy: 'config-file',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(modal.isReadOnly.value).toBe(true);
+			expect(modal.isConfigFileManaged.value).toBe(true);
+		});
+
+		it('should not be read-only for an api-managed connection with update permission', async () => {
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				managedBy: 'api',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(modal.isReadOnly.value).toBe(false);
+		});
+	});
+
 	describe('error handling', () => {
 		it('should handle error when loading connection', async () => {
 			const error = new Error('Failed to load');

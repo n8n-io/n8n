@@ -24,11 +24,12 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		const { ExternalSecretsConfig } = await import('./external-secrets.config.js');
 		const config = Container.get(ExternalSecretsConfig);
+
 		const { InstanceSettings } = await import('n8n-core');
 
-		// In multi-main setups, only the leader reconciles the config file — every instance
-		// shares one DB, so a non-leader would otherwise race the leader on the same rows.
-		if (config.configFilePath && Container.get(InstanceSettings).isLeader) {
+		// Every main instance validates and applies the file. The reconciler serializes the
+		// instances with an advisory lock. Workers and webhook processes only read connections.
+		if (config.configFilePath && Container.get(InstanceSettings).instanceType === 'main') {
 			const { ExternalSecretsConfigFileLoader } = await import(
 				'./config-file/external-secrets-config-file-loader.js'
 			);

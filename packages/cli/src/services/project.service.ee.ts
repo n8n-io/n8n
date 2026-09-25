@@ -189,6 +189,12 @@ export class ProjectService {
 			);
 		}
 
+		// Checked before anything moves, because deleteProject is not a transaction.
+		if (this.moduleRegistry.isActive('external-secrets')) {
+			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
+			await secretsProvidersConnectionsService.assertProjectDeletable(project.id);
+		}
+
 		const ownedCredentials = await this.sharedCredentialsRepository.find({
 			where: { projectId: project.id, role: 'credential:owner' },
 			relations: { credentials: true },

@@ -52,6 +52,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const isSaving = ref(false);
 	const didSave = ref(false);
 	const parameterValidationStates = ref<Record<string, boolean>>({});
+	const isConfigFileManaged = ref(false);
 
 	// Connection composable (low-level API operations)
 	const connection = useSecretsProviderConnection(options.projectId);
@@ -257,6 +258,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	});
 
 	const canSave = computed(() => {
+		if (isConfigFileManaged.value) return false;
 		if (!isValidName.value) return false;
 		if (!selectedProviderType.value) return false;
 
@@ -317,8 +319,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, state, settings, projects, secretsCount, scopes } =
+			const { name, type, state, settings, projects, secretsCount, scopes, managedBy } =
 				await connection.getConnection(providerKey.value);
+
+			isConfigFileManaged.value = managedBy === 'config-file';
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
@@ -516,6 +520,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	}
 
 	const isReadOnly = computed(() => {
+		// The backend rejects every change to a config-file-managed connection.
+		if (isConfigFileManaged.value) return true;
 		return isScopedMode.value && isEditMode.value && !canUpdate.value;
 	});
 
@@ -542,6 +548,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		canShareGlobally,
 		isScopedMode,
 		isReadOnly,
+		isConfigFileManaged,
 		setScopeState,
 
 		// Computed

@@ -71,6 +71,7 @@ const mockConnectionModal = {
 	canShareGlobally: { value: true },
 	isScopedMode: { value: false },
 	isReadOnly: { value: false },
+	isConfigFileManaged: { value: false },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
 	selectProviderType: vi.fn(),
@@ -182,6 +183,7 @@ describe('SecretsProviderConnectionModal', () => {
 		mockConnectionModal.isSharedGlobally.value = false;
 		mockConnectionModal.isScopedMode.value = false;
 		mockConnectionModal.isReadOnly.value = false;
+		mockConnectionModal.isConfigFileManaged.value = false;
 	});
 
 	it('should load connection data', async () => {
@@ -626,6 +628,31 @@ describe('SecretsProviderConnectionModal', () => {
 			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
 			expect(notice).toBeInTheDocument();
 			expect(notice?.textContent).toContain('Contact your instance admin');
+		});
+	});
+
+	describe('read-only mode for config-file-managed connections', () => {
+		it('should show the config file notice and hide the save button', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+			mockConnectionModal.isConfigFileManaged.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
+			expect(notice?.textContent).toContain('managed by the external secrets config file');
+			expect(
+				container.querySelector('[data-test-id="secrets-provider-connection-save-button"]'),
+			).not.toBeInTheDocument();
 		});
 	});
 });

@@ -59,6 +59,21 @@ export class ExternalSecretsConfigFileLoader {
 				continue;
 			}
 
+			// Redaction only knows the provider's declared fields, so an undeclared key (e.g. a
+			// typo of a password field) would come back unredacted from the connection API.
+			const declaredSettings = new Set(
+				new (this.providers.getProvider(entry.type))().properties.map((p) => p.name),
+			);
+			const unknownSettings = Object.keys(entry.settings).filter(
+				(name) => !declaredSettings.has(name),
+			);
+			if (unknownSettings.length > 0) {
+				errors.push(
+					`${context}: unknown setting(s) for provider type "${entry.type}": ${unknownSettings.join(', ')}. Valid settings: ${[...declaredSettings].join(', ')}`,
+				);
+				continue;
+			}
+
 			const missingProjectIds: string[] = [];
 			for (const projectId of entry.projectIds) {
 				const project = await this.projectRepository.findOne({ where: { id: projectId } });

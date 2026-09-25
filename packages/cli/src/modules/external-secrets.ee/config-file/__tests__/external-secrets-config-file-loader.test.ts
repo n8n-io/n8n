@@ -121,4 +121,22 @@ describe('ExternalSecretsConfigFileLoader', () => {
 		// settings.url: fails the .strict() object variant (fromEnv object with an extra key)
 		expect(thrown?.message).toContain("Unrecognized key(s) in object: 'extra'");
 	});
+
+	test('rejects a settings key that the provider type does not declare', async () => {
+		const filePath = writeConfigFile({
+			connections: [
+				{
+					key: 'vaultTypo',
+					type: 'vault',
+					settings: { url: 'https://vault.example.com', authMethod: 'appRole', secretID: 'x' },
+				},
+			],
+		});
+
+		const loader = Container.get(ExternalSecretsConfigFileLoader);
+
+		await expect(loader.load(filePath)).rejects.toThrow(
+			/connection "vaultTypo": unknown setting\(s\) for provider type "vault": secretID/,
+		);
+	});
 });
