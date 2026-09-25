@@ -45,7 +45,7 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 					</a>
 					<span v-else>{{ item.publisher.name }}</span>
 				</span>
-				<span v-if="item.publisher && item.version" aria-hidden="true"> · </span>
+				<span v-if="item.publisher && item.version" aria-hidden="true">&nbsp;·&nbsp;</span>
 				<span v-if="item.version" :class="$style.version">
 					{{
 						i18n.baseText('tools.connection.detail.versionValue', {
@@ -63,8 +63,6 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 		>
 			{{ item.longDescription }}
 		</p>
-
-		<div :class="$style.divider" />
 	</div>
 </template>
 
@@ -126,10 +124,5 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--md);
-}
-
-.divider {
-	height: 1px;
-	background: var(--color--foreground--shade-1);
 }
 </style>

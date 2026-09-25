@@ -1,5 +1,8 @@
 import type { ElSelect } from 'element-plus';
 
+/** Controls the visual treatment of the select trigger. */
+export type SelectTheme = 'default' | 'ghost';
+
 /**
  * The wrapped element-plus instance, exposed by N8nSelect so callers can reach
  * APIs we do not proxy (`handleClose`, `$refs`, …).

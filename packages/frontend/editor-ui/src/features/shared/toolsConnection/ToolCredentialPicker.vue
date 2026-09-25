@@ -283,7 +283,7 @@ function editCredential(credentialId: string) {
 	gap: var(--spacing--4xs);
 	min-height: var(--height--xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 }

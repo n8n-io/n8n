@@ -111,7 +111,7 @@ describe('McpToolSettingsContent', () => {
 
 	it('uses actor-specific permission and confirmation copy', async () => {
 		confirm.mockResolvedValue(MODAL_CONFIRM);
-		const { getByText, getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				item: item({
 					settings: { categories: { read: 'always_allow', write: 'require_approval' } },
@@ -120,7 +120,6 @@ describe('McpToolSettingsContent', () => {
 			},
 		});
 
-		expect(getByText('Choose when the agent can use these tools')).toBeVisible();
 		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
 		await flushPromises();
 

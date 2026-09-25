@@ -3,7 +3,7 @@ import { ElSelect } from 'element-plus';
 import type { ComponentPublicInstance, PropType, Ref } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
-import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
+import type { InnerSelectRef, N8nSelectExposed, SelectTheme } from './Select.types';
 import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
 
@@ -28,6 +28,11 @@ const props = defineProps({
 	size: {
 		type: String as PropType<SelectSize>,
 		default: 'large',
+	},
+	/** Controls the visual treatment of the select trigger. */
+	theme: {
+		type: String as PropType<SelectTheme>,
+		default: 'default',
 	},
 	placeholder: {
 		type: String,
@@ -73,6 +78,10 @@ const props = defineProps({
 
 const attrs = useAttrs();
 const innerSelect: Ref<InnerSelectRef | null> = ref(null);
+const forwardedProps = computed(() => {
+	const { theme: _theme, ...rest } = props;
+	return rest;
+});
 
 /**
  * Assigned via a function ref rather than `ref="innerSelect"`. A string ref
@@ -165,13 +174,13 @@ defineExpose<N8nSelectExposed>({
 			<slot name="prepend" />
 		</div>
 		<ElSelect
-			v-bind="{ ...$props, ...listeners }"
+			v-bind="{ ...forwardedProps, ...listeners }"
 			:ref="setInnerSelect"
 			:multiple-limit="props.multipleLimit"
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
 			:popper-class="props.popperClass"
-			:class="$style[classes]"
+			:class="[$style[classes], { [$style.ghost]: props.theme === 'ghost' }]"
 		>
 			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />
@@ -195,6 +204,17 @@ defineExpose<N8nSelectExposed>({
 	--input--font-size: var(--font-size--md);
 	input {
 		height: 48px;
+	}
+}
+
+.ghost {
+	--input--border-color--disabled: transparent;
+	--input--border-color--focus: transparent;
+	--input--color--background: transparent;
+	--input--border-color: transparent;
+
+	:global(.el-input__inner:hover) {
+		border-color: var(--border-color);
 	}
 }
 
