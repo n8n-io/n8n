@@ -431,7 +431,13 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		const threadId = await createThread({ withOpeningMessage: false });
 		const createdAt = at(9000);
 		for (const id of ['msg-bbb', 'msg-ccc', 'msg-aaa']) {
-			await createMessage({ threadId, id, role: 'user', content: userContent('deploy'), createdAt });
+			await createMessage({
+				threadId,
+				id,
+				role: 'user',
+				content: userContent('deploy'),
+				createdAt,
+			});
 		}
 
 		const matches = await repository.findSearchMatchRows([threadId], 'deploy', 2);
