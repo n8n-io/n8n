@@ -66,12 +66,10 @@ export class WorkflowIndexService {
 			}
 			// At activation time, the draft nodes are the published nodes.
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
-			// Publishing a version from history keeps the version counter, so the write above
-			// does not replace the rows of the previously published version.
-			await this.removeStalePublishedDependencies(workflow.id);
+			await this.removeDependenciesOfUnpublishedVersions(workflow.id);
 		});
 		this.eventService.on('workflow-deactivated', async ({ workflowId }) => {
-			await this.removeStalePublishedDependencies(workflowId);
+			await this.removeDependenciesOfUnpublishedVersions(workflowId);
 		});
 	}
 
@@ -85,8 +83,7 @@ export class WorkflowIndexService {
 					'draft',
 				);
 
-				// Some unpublish paths emit no event, so their published rows are removed here.
-				await this.removeStalePublishedDependencies();
+				await this.removeDependenciesOfUnpublishedVersions();
 
 				const publishedCount = await this.buildIndexInternal(
 					async (batchSize) =>
@@ -196,38 +193,12 @@ export class WorkflowIndexService {
 		);
 	}
 
-	/**
-	 * Remove published dependencies that do not belong to the active version of the workflow.
-	 * Omit `workflowId` to clean up all workflows.
-	 */
-	async removeStalePublishedDependencies(workflowId?: string) {
-		return await this.tracing.startSpan(
-			{
-				name: 'WorkflowIndex remove stale published',
-				op: 'workflow-index.remove-stale-published',
-				attributes: workflowId ? this.tracing.pickWorkflowAttributes({ id: workflowId }) : {},
-			},
-			async (span) => {
-				try {
-					const removedCount =
-						await this.dependencyRepository.removeStalePublishedDependencies(workflowId);
-					if (removedCount > 0) {
-						this.logger.debug(`Removed ${removedCount} stale published dependency rows`, {
-							workflowId,
-						});
-					}
-					span.setStatus({ code: SpanStatus.ok });
-				} catch (e) {
-					const error = ensureError(e);
-					this.logger.error(
-						`Failed to remove stale published dependencies: ${error.message}`,
-						workflowId ? { workflowId } : {},
-					);
-					this.errorReporter.error(error);
-					span.setStatus({ code: SpanStatus.error });
-				}
-			},
-		);
+	private async removeDependenciesOfUnpublishedVersions(workflowId?: string) {
+		try {
+			await this.dependencyRepository.removeDependenciesOfUnpublishedVersions(workflowId);
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
 	}
 
 	/**

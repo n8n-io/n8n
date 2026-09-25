@@ -429,7 +429,7 @@ describe('SourceControlImportService', () => {
 			folderRepository.find.mockResolvedValue([]);
 			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsertImportedContent.mockResolvedValue('1');
-			workflowRepository.findOne.mockResolvedValue(storedWorkflow);
+			workflowRepository.findOneByOrFail.mockResolvedValue(storedWorkflow);
 			fsReadFile.mockResolvedValue(JSON.stringify(workflowData));
 
 			await service.importWorkflowFromWorkFolder(
@@ -437,9 +437,7 @@ describe('SourceControlImportService', () => {
 				'user-id-123',
 			);
 
-			expect(workflowRepository.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: '1' } }),
-			);
+			expect(workflowRepository.findOneByOrFail).toHaveBeenCalledWith({ id: '1' });
 			expect(workflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(storedWorkflow);
 			expect(workflowRepository.upsertImportedContent.mock.invocationCallOrder[0]).toBeLessThan(
 				workflowIndexService.updateIndexForDraft.mock.invocationCallOrder[0],

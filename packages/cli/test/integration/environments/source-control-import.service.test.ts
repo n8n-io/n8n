@@ -1861,15 +1861,18 @@ describe('SourceControlImportService', () => {
 					.filter((dep) => dep.publishedVersionId === null)
 					.map((dep) => dep.dependencyKey);
 
+			const reindexDraftFromScratch = async (workflow: WorkflowEntity) => {
+				await Container.get(WorkflowDependencyRepository).delete({ workflowId: workflow.id });
+				await Container.get(WorkflowIndexService).updateIndexForDraft(workflow);
+			};
+
 			it('should index the draft of an updated workflow', async () => {
 				const importingUser = await getGlobalOwner();
 				const workflow = await createWorkflowWithHistory(
 					{ nodes: [nodeWithCredential('old-credential')] },
 					importingUser,
 				);
-				// The fixture indexes only node types, so replace its rows with a full index.
-				await Container.get(WorkflowDependencyRepository).delete({ workflowId: workflow.id });
-				await Container.get(WorkflowIndexService).updateIndexForDraft(workflow);
+				await reindexDraftFromScratch(workflow);
 				expect(await getDraftCredentialIds(workflow.id)).toEqual(['old-credential']);
 
 				const imported = makeWorkflowImport({

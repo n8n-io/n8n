@@ -917,15 +917,8 @@ export class SourceControlImportService {
 			{ policyCleared: cleared },
 		);
 
-		// The upsert emits no `workflow-saved` event, so index the draft here.
-		// Re-read to get the `versionCounter` that the database trigger set.
-		const importedDraft = await this.workflowRepository.findOne({
-			where: { id },
-			select: ['id', 'name', 'versionCounter', 'nodes', 'settings'],
-		});
-		if (importedDraft) {
-			await this.workflowIndexService.updateIndexForDraft(importedDraft);
-		}
+		const workflowWithNewVersionCounter = await this.workflowRepository.findOneByOrFail({ id });
+		await this.workflowIndexService.updateIndexForDraft(workflowWithNewVersionCounter);
 
 		if (archivedByPull) {
 			// A pull is a system mutation: no acting user to attribute the archive to.

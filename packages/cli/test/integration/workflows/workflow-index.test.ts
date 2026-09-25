@@ -270,11 +270,14 @@ describe('WorkflowIndexService Integration', () => {
 				.map((dep) => ({ key: dep.dependencyKey, publishedVersionId: dep.publishedVersionId }))
 				.sort((a, b) => a.key.localeCompare(b.key));
 
-		/** Creates a workflow that uses `old-credential`, and indexes its draft and its published version. */
-		async function createPublishedWorkflow() {
-			const workflow = await createWorkflow({ nodes: [nodeWithCredential('old-credential')] });
+		async function reindexDraftFromScratch(workflow: IWorkflowDb) {
 			await workflowDependencyRepository.delete({ workflowId: workflow.id });
 			await workflowIndexService.updateIndexForDraft(workflow);
+		}
+
+		async function createPublishedWorkflowUsingOldCredential() {
+			const workflow = await createWorkflow({ nodes: [nodeWithCredential('old-credential')] });
+			await reindexDraftFromScratch(workflow);
 			await createWorkflowHistory(workflow);
 			await setActiveVersion(workflow.id, workflow.versionId);
 			await workflowIndexService.updateIndexForPublished(
@@ -293,7 +296,7 @@ describe('WorkflowIndexService Integration', () => {
 
 		it('should remove published dependencies when a workflow is unpublished', async () => {
 			const owner = await createOwner();
-			const workflow = await createPublishedWorkflow();
+			const workflow = await createPublishedWorkflowUsingOldCredential();
 
 			await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
 			eventService.emit('workflow-deactivated', {
@@ -321,11 +324,10 @@ describe('WorkflowIndexService Integration', () => {
 			});
 		});
 
-		it('should remove dependencies of the previous published version when another version is published', async () => {
+		it('should remove dependencies of the previous published version when a version from history is published', async () => {
 			const owner = await createOwner();
-			const workflow = await createPublishedWorkflow();
+			const workflow = await createPublishedWorkflowUsingOldCredential();
 
-			// Publishing a version from history does not change the draft, so the version counter stays the same.
 			const newVersion = {
 				...workflow,
 				versionId: uuid(),
@@ -350,7 +352,7 @@ describe('WorkflowIndexService Integration', () => {
 
 		it('should keep dependencies of the current published version when an older version is unpublished late', async () => {
 			const owner = await createOwner();
-			const workflow = await createPublishedWorkflow();
+			const workflow = await createPublishedWorkflowUsingOldCredential();
 
 			const newVersion = {
 				...workflow,
@@ -381,10 +383,9 @@ describe('WorkflowIndexService Integration', () => {
 			});
 		});
 
-		it('should remove published dependencies of unpublished workflows on server startup', async () => {
-			const unpublished = await createPublishedWorkflow();
-			const stillPublished = await createPublishedWorkflow();
-			// A system unpublish, e.g. after repeated crashes, emits no event.
+		it('should remove published dependencies of workflows unpublished without an event on server startup', async () => {
+			const unpublished = await createPublishedWorkflowUsingOldCredential();
+			const stillPublished = await createPublishedWorkflowUsingOldCredential();
 			await workflowRepository.update(unpublished.id, { active: false, activeVersionId: null });
 
 			await workflowIndexService.buildIndex();
