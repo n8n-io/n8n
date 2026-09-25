@@ -8,11 +8,11 @@ const meta = {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['dots', 'ring'],
+			options: ['dots', 'ring', 'blocks'],
 		},
 		size: {
 			control: 'select',
-			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'],
 		},
 	},
 	parameters: {
@@ -42,36 +42,33 @@ export const Default: Story = {
 	},
 };
 
-export const Variants = {
-	render: () => ({
+const sizes = ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'] as const;
+
+function renderSizes(type: 'dots' | 'ring' | 'blocks') {
+	return {
 		components: { N8nSpinner },
+		setup() {
+			return { sizes };
+		},
 		template: `
 			<div style="display: flex; align-items: center; gap: var(--spacing--lg); flex-wrap: wrap;">
-				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
-					<N8nSpinner type="dots" size="medium" />
-					<span>dots</span>
-				</div>
-				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
-					<N8nSpinner type="ring" size="medium" />
-					<span>ring</span>
+				<div v-for="size in sizes" :key="size" style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
+					<N8nSpinner :type="'${type}'" :size="size" />
+					<span>{{ size }}</span>
 				</div>
 			</div>
 		`,
-	}),
-} satisfies Story;
+	};
+}
 
-export const Sizes = {
-	render: () => ({
-		components: { N8nSpinner },
-		template: `
-			<div style="display: flex; align-items: center; gap: var(--spacing--sm); flex-wrap: wrap;">
-				<N8nSpinner type="dots" size="small" />
-				<N8nSpinner type="dots" size="medium" />
-				<N8nSpinner type="dots" size="large" />
-				<N8nSpinner type="ring" size="small" />
-				<N8nSpinner type="ring" size="medium" />
-				<N8nSpinner type="ring" size="large" />
-			</div>
-		`,
-	}),
-} satisfies Story;
+export const Dots: Story = {
+	render: () => renderSizes('dots'),
+};
+
+export const Ring: Story = {
+	render: () => renderSizes('ring'),
+};
+
+export const Blocks: Story = {
+	render: () => renderSizes('blocks'),
+};

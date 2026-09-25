@@ -78,7 +78,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	background: transparent;
 	width: 16px;
 	height: 16px;
-	border-radius: var(--radius);
+	border-radius: var(--radius--3xs);
 	display: flex;
 	align-items: center;
 	justify-content: center;
