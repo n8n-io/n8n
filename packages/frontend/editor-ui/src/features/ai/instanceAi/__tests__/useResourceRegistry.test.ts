@@ -6,7 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry } from '../useResourceRegistry';
+import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -53,6 +53,7 @@ function setup(
 	pendingWorkflowAttachment?: () =>
 		| { type: 'workflow'; id: string; name?: string; executionId?: string }
 		| undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -63,6 +64,7 @@ function setup(
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
+		transientWorkflowReferences,
 		agentBuilderTargets,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
@@ -262,6 +264,54 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — message attachments', () => {
+		test('registers the parent workflow from a nodes attachment with display metadata', async () => {
+			const { messages, producedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toMatchObject({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Orders',
+			});
+		});
+
+		test('keeps transient workflow references produced but not linkable', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{
+					referenceId: 'draft-1',
+					workflowId: 'wf-1',
+					workflowName: 'Orders',
+				},
+			]);
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				() => 'Canonical Orders',
+				undefined,
+				undefined,
+				undefined,
+				() => transient.value,
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
+			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
+
+			transient.value = [];
+			await nextTick();
+			expect(producedArtifacts.has('wf-1')).toBe(false);
+		});
 		test('keeps a pending new-agent attachment produced but not linkable', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
@@ -651,6 +701,7 @@ describe('useResourceRegistry', () => {
 				undefined,
 				undefined,
 				undefined,
+				undefined,
 				() => [{ agentId: 'agent-1', projectId: 'project-1' }],
 			);
 
@@ -731,6 +782,7 @@ describe('useResourceRegistry', () => {
 			const { messages, producedArtifacts } = setup(
 				undefined,
 				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Second Agent' }),
+				undefined,
 				undefined,
 				undefined,
 				() => [

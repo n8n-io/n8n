@@ -431,6 +431,8 @@ export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.d
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
@@ -569,6 +571,7 @@ export {
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,

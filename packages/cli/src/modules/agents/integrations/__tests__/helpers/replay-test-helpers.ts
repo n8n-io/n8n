@@ -1,7 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { Logger } from 'n8n-workflow';
+import { deepCopy, type Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,6 +18,9 @@ import type {
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
 import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
+import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
+import type { AgentMessageQueue } from '../../../entities/agent-message-queue.entity';
+import type { QueuedIntegrationMessage } from '../../../types/agent-queued-message';
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
@@ -86,7 +89,7 @@ export function toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	})();
 }
 
-export async function sendJsonWebhook(
+async function sendJsonWebhook(
 	handler: (
 		request: Request,
 		options?: { waitUntil?: (task: Promise<unknown>) => void },
@@ -186,6 +189,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
@@ -194,6 +198,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	nextStream: (chunks: StreamChunk[]) => void;
+	sendJsonWebhook: typeof sendJsonWebhook;
 	shutdown: () => Promise<void>;
 }
 
@@ -227,10 +232,20 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 			selectedContext = config.messageContext ?? undefined;
 			return toStream(stream);
 		}),
+		// Mirrors how production wires the gate. It admits every run by default,
+		// so a test that wants the stale branch resolves it to false.
+		isResumable: vi.fn(async () => true),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
+	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
+	const queue = mock<AgentMessageQueueService>();
+	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
+		if (payload.kind !== 'integration') throw new Error('Expected integration input');
+		pending.push({ payload: deepCopy(payload), threadId });
+		return mock<AgentMessageQueue>();
+	});
 
-	new AgentChatBridge(
+	const bridge = new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
 		agentExecutor,
@@ -239,6 +254,9 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		'project-1',
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
+		undefined,
+		undefined,
+		queue,
 	);
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
@@ -261,6 +279,20 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		latestThreadId: () => selectedThreadId,
 		nextStream: (chunks: StreamChunk[]) => {
 			stream = chunks;
+		},
+		sendJsonWebhook: async (...args) => {
+			const response = await sendJsonWebhook(...args);
+			// Consume after ingress returns. Database ownership has separate integration tests.
+			for (const item of pending.splice(0)) {
+				await bridge.consumeQueuedMessage(
+					item.payload,
+					item.threadId,
+					{ executionId: 'execution-1', startedAt: new Date() },
+					new AbortController().signal,
+					params.integration,
+				);
+			}
+			return response;
 		},
 		shutdown: async () => {
 			await params.chat.shutdown();

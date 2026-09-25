@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
@@ -45,6 +46,17 @@ interface UseCanvasPreviewOptions {
 interface LinkedAgentTarget {
 	agentId: string;
 	projectId: string;
+}
+
+/**
+ * The artifact a message attachment refers to, if any. A nodes attachment refers
+ * to its parent workflow only when it carries the workflow name, which marks that
+ * workflow as a thread artifact.
+ */
+function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undefined {
+	if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+	if (attachment.type === 'nodes' && attachment.workflowName) return attachment.workflowId;
+	return undefined;
 }
 
 export function useCanvasPreview({
@@ -172,16 +184,23 @@ export function useCanvasPreview({
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
+	const isPreviewVisible = computed(
+		() =>
+			isPreviewOpen.value &&
+			activeTabId.value !== undefined &&
+			allArtifactTabs.value.some((tab) => tab.id === activeTabId.value),
+	);
 
 	// --- Resource attachments (workflow or agent hand-offs) ---
 	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
 	const firstAttachedArtifactId = computed(() => {
+		const tabIds = new Set(allArtifactTabs.value.map(({ id }) => id));
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+				const artifactId = getAttachedArtifactId(attachment);
+				if (artifactId && tabIds.has(artifactId)) return artifactId;
 			}
 		}
 		return undefined;

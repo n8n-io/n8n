@@ -157,7 +157,12 @@ export class InstanceReportingScheduler {
 
 		if (pending) {
 			if (pendingIsStale(pending, reportTime, now)) {
-				await this.reportingService.skip(pending.id, pending.attempts, 'slot-passed');
+				await this.reportingService.skip(
+					pending.id,
+					pending.attempts,
+					'slot-passed',
+					pending.lastError,
+				);
 			} else {
 				return await this.trySend();
 			}
