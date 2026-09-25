@@ -10,6 +10,7 @@ import {
 } from '../src/expressions/native-evaluation';
 import { Expression } from '../src/expression';
 import { Workflow } from '../src/workflow';
+import { DateTime } from 'luxon';
 
 // Parity corpus for fast native expression evaluation.
 //
@@ -103,8 +104,16 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	'={{ $json.item.names === $json.item.names }}',
 	'={{ -$json.item.names }}',
 	'=Name: {{ $json.item.my_object }}',
-	// A result above MAX_RESULT_LENGTH goes to the engine's limits.
+	// A result above MAX_RESULT_LENGTH goes to the engine's limits, whether
+	// it shows in the result or in the pre-flight bound.
 	"={{ $json.item.name.replaceAll('', $json.item.filler).replaceAll('', $json.item.filler).replaceAll('', $json.item.filler) }}",
+	"={{ $json.item.big.replaceAll('', $json.item.filler) }}",
+	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
+	// Object arguments to string methods: a RegExp value in data would run as
+	// a live pattern here, while the engines never see it as a regex.
+	"={{ $json.item.name.replace($json.item.re, 'X') }}",
+	'={{ $json.item.name.includes($json.item.re) }}',
+	'={{ $json.item.name.slice($json.item.my_object) }}',
 ];
 
 const DECLINED_CORPUS: string[] = [
@@ -138,6 +147,8 @@ const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.name.toUpperCase($json.item[$json.item.name]) }}',
 	// Syntax errors go to the engine for its error reporting.
 	'={{ $json.item. }}',
+	// Deep enough to overflow the recursive re-parse: declined, never thrown.
+	`={{ $json${'.a'.repeat(5000)} }}`,
 ];
 
 // Both paths must throw the same error.
@@ -193,6 +204,9 @@ describe('Expression - fast native evaluation parity', () => {
 				my_object: { addresses: { primary: '123 Main St' } },
 				names: ['bar', 'baz'],
 				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
+				big: 'y'.repeat(20_000),
+				manyEmpty: new Array<string>(20_000).fill(''),
+				re: /o/g,
 			},
 		},
 	});
@@ -298,6 +312,40 @@ describe('Expression - fast native evaluation parity', () => {
 
 		(result as { addresses: { primary: string } }).addresses.primary = 'changed';
 		expect(fresh.json.item.my_object.addresses.primary).toBe('123 Main St');
+	});
+
+	// Divergences accepted on purpose, all against the legacy engine only:
+	// native evaluation sides with the vm/quickjs engines, which the parity
+	// assertions below confirm. Both need data only a Code node can produce.
+	// Pinned so a change in either direction is visible.
+	describe('known divergences from the legacy engine on non-JSON data', () => {
+		const exotic = {
+			json: { item: { fn: () => 1, dt: DateTime.fromISO('2026-01-02T03:04:05Z') } },
+		};
+		const exoticRunData = runDataFor([exotic as never]);
+		const evaluateExotic = (expr: string, native: boolean) =>
+			evaluate(expr, native, exoticRunData, [exotic as never]);
+		// Read per test: the engine is only initialised once the suite runs.
+		const isLegacy = () => Expression.getActiveImplementation() === 'legacy';
+
+		test('a function-valued read is undefined natively; legacy throws', () => {
+			const legacy = isLegacy();
+			expect(evaluateExotic('={{ $json.item.fn }}', true)).toBeUndefined();
+			if (legacy)
+				expect(() => evaluateExotic('={{ $json.item.fn }}', false)).toThrow('this is a function');
+			else expect(evaluateExotic('={{ $json.item.fn }}', false)).toBeUndefined();
+		});
+
+		test('a whole-value DateTime read is a copy natively; legacy returns the instance', () => {
+			const legacy = isLegacy();
+			const native = evaluateExotic('={{ $json.item.dt }}', true);
+			const viaEngine = evaluateExotic('={{ $json.item.dt }}', false);
+			expect(native).not.toBeInstanceOf(DateTime);
+			expect(viaEngine instanceof DateTime).toBe(legacy);
+			if (!legacy) expect(native).toStrictEqual(viaEngine);
+			// Member reads keep working on both paths.
+			expect(evaluateExotic('={{ $json.item.dt.year }}', true)).toBe(2026);
+		});
 	});
 
 	// extendSyntax rewrites calls to extension-named methods into extend()

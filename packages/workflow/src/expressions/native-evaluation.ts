@@ -281,9 +281,9 @@ function parseSimple(node: unknown): SimpleNode | null {
 // (a whitelisted string method on a non-string receiver, an operator on an
 // object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
 // abandoned and the caller re-runs the expression through the regular engine
-// pipeline. A nested `$parameter` expression evaluated before the bail is
-// then evaluated again by the engine; expressions are pure, so the only cost
-// is the repeated work.
+// pipeline. Anything evaluated before the bail runs again in the engine: a
+// nested `$parameter` expression, or a getter on a data object. Expressions
+// are pure and workflow data is JSON, so the only cost is the repeated work.
 class EngineFallbackError extends Error {}
 
 // Property lookup on a non-nullish primitive is well-defined and side-effect
@@ -371,7 +371,25 @@ function evalCall(
 	const method: unknown = Reflect.get(proto, node.method);
 	if (typeof method !== 'function') throw new EngineFallbackError();
 	const args = node.args.map((argument) => evalNode(argument, data));
+	// String and number methods only take primitives here. An object argument
+	// could be a RegExp (a live pattern with no isolate timeout, and one the
+	// engines never see as a regex) or trigger a coercion hook. Array methods
+	// keep object arguments: concat needs them and none invokes a protocol.
+	if (proto !== Array.prototype && !args.every(isPrimitive)) throw new EngineFallbackError();
+	preflightSize(receiver, node.method, args);
 	return bounded(method.apply(receiver, args) as unknown);
+}
+
+// The two amplifying methods can allocate far beyond MAX_RESULT_LENGTH before
+// bounded() gets to see the result. Bail on a cheap upper bound first.
+function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
+	let upperBound = 0;
+	if (method === 'replaceAll' && typeof receiver === 'string') {
+		upperBound = (receiver.length + 1) * (String(args[1] ?? '').length + 1);
+	} else if (method === 'join' && Array.isArray(receiver)) {
+		upperBound = receiver.length * String(args[0] ?? ',').length;
+	}
+	if (upperBound > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 }
 
 function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
@@ -462,7 +480,15 @@ function compile(expression: string): CompiledExpression | null {
 		if (body.length !== 1) return null;
 		const statement = body[0];
 		if (!isObj(statement) || statement.type !== 'ExpressionStatement') return null;
-		const node = parseSimple(statement.expression);
+		let node: SimpleNode | null;
+		try {
+			node = parseSimple(statement.expression);
+		} catch {
+			// parseSimple recurses per member; a chain deep enough to overflow
+			// the stack here is the engine's to evaluate. A throw during
+			// compilation must always mean "declined", never escape.
+			return null;
+		}
 		if (node === null) return null;
 		chunks.push({ type: 'code', node });
 	}
