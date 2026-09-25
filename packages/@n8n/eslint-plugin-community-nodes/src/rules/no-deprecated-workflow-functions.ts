@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
 import { createRule, isThisHelpersAccess } from '../utils/index.js';
 
@@ -14,6 +14,20 @@ const DEPRECATED_FUNCTIONS = {
 const DEPRECATED_TYPES = {
 	IRequestOptions: 'IHttpRequestOptions',
 } as const;
+
+const EXECUTION_CONTEXT_TYPES = new Set([
+	'IAllExecuteFunctions',
+	'ICredentialTestFunctions',
+	'IExecuteFunctions',
+	'IExecutePaginationFunctions',
+	'IExecuteSingleFunctions',
+	'IHookFunctions',
+	'ILoadOptionsFunctions',
+	'IPollFunctions',
+	'ISupplyDataFunctions',
+	'ITriggerFunctions',
+	'IWebhookFunctions',
+]);
 
 function isDeprecatedFunctionName(name: string): name is keyof typeof DEPRECATED_FUNCTIONS {
 	return name in DEPRECATED_FUNCTIONS;
@@ -46,6 +60,93 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 	defaultOptions: [],
 	create(context) {
 		const n8nWorkflowTypes = new Set<string>();
+		const executionContextTypes = new Set<string>();
+
+		const isExecutionContextIdentifier = (node: TSESTree.Identifier): boolean => {
+			const type = node.typeAnnotation?.typeAnnotation;
+			return (
+				type?.type === AST_NODE_TYPES.TSTypeReference &&
+				type.typeName.type === AST_NODE_TYPES.Identifier &&
+				executionContextTypes.has(type.typeName.name)
+			);
+		};
+
+		const isExecutionContextReference = (node: TSESTree.Identifier): boolean => {
+			const scope = context.sourceCode.getScope(node);
+			const reference = scope.references.find(({ identifier }) => identifier === node);
+
+			return (
+				reference?.resolved?.defs.some(
+					({ name }) =>
+						name.type === AST_NODE_TYPES.Identifier && isExecutionContextIdentifier(name),
+				) ?? false
+			);
+		};
+
+		const isTypedThisExpression = (node: TSESTree.ThisExpression): boolean => {
+			let parent: TSESTree.Node | undefined = node.parent;
+			while (parent) {
+				if (
+					parent.type === AST_NODE_TYPES.FunctionDeclaration ||
+					parent.type === AST_NODE_TYPES.FunctionExpression
+				) {
+					return parent.params.some(
+						(parameter) =>
+							parameter.type === AST_NODE_TYPES.Identifier &&
+							parameter.name === 'this' &&
+							isExecutionContextIdentifier(parameter),
+					);
+				}
+				parent = parent.parent;
+			}
+			return false;
+		};
+
+		const isExecutionContextExpression = (node: TSESTree.Expression): boolean =>
+			(node.type === AST_NODE_TYPES.Identifier && isExecutionContextReference(node)) ||
+			(node.type === AST_NODE_TYPES.ThisExpression && isTypedThisExpression(node));
+
+		const isDestructuredHelpersReference = (node: TSESTree.Identifier): boolean => {
+			const scope = context.sourceCode.getScope(node);
+			const reference = scope.references.find(({ identifier }) => identifier === node);
+
+			return (
+				reference?.resolved?.defs.some(({ node: definition }) => {
+					if (
+						definition.type !== AST_NODE_TYPES.VariableDeclarator ||
+						definition.id.type !== AST_NODE_TYPES.ObjectPattern ||
+						!definition.init ||
+						!isExecutionContextExpression(definition.init)
+					) {
+						return false;
+					}
+
+					return definition.id.properties.some(
+						(property) =>
+							property.type === AST_NODE_TYPES.Property &&
+							property.key.type === AST_NODE_TYPES.Identifier &&
+							property.key.name === 'helpers' &&
+							property.value.type === AST_NODE_TYPES.Identifier &&
+							property.value.name === node.name,
+					);
+				}) ?? false
+			);
+		};
+
+		const isHelpersAccess = (node: TSESTree.MemberExpression): boolean => {
+			if (isThisHelpersAccess(node)) return true;
+
+			if (node.object.type === AST_NODE_TYPES.Identifier) {
+				return isDestructuredHelpersReference(node.object);
+			}
+
+			return (
+				node.object.type === AST_NODE_TYPES.MemberExpression &&
+				node.object.property.type === AST_NODE_TYPES.Identifier &&
+				node.object.property.name === 'helpers' &&
+				isExecutionContextExpression(node.object.object)
+			);
+		};
 
 		return {
 			ImportDeclaration(node) {
@@ -56,6 +157,9 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 							specifier.imported.type === AST_NODE_TYPES.Identifier
 						) {
 							n8nWorkflowTypes.add(specifier.local.name);
+							if (EXECUTION_CONTEXT_TYPES.has(specifier.imported.name)) {
+								executionContextTypes.add(specifier.local.name);
+							}
 						}
 					});
 				}
@@ -66,7 +170,7 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 					node.property.type === AST_NODE_TYPES.Identifier &&
 					isDeprecatedFunctionName(node.property.name)
 				) {
-					if (!isThisHelpersAccess(node)) {
+					if (!isHelpersAccess(node)) {
 						return;
 					}
 
