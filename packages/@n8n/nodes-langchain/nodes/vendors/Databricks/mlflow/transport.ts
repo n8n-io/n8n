@@ -1,5 +1,5 @@
 import { proxyFetch } from '@n8n/ai-utilities';
-import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError, OperationalError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { createDatabricksAuthFetch } from '@utils/databricks/auth-fetch';
 import { assertHttpsHost } from '@utils/databricks/constants';
@@ -82,7 +82,9 @@ export function createMlflowTransport(
 			headers: { 'Content-Type': 'application/json' },
 		});
 		if (!response.ok) {
-			throw new Error(`Databricks trace data upload failed with HTTP ${response.status}`);
+			throw new OperationalError(
+				`Databricks trace data upload failed with HTTP ${response.status}`,
+			);
 		}
 	};
 

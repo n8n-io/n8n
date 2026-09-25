@@ -99,10 +99,37 @@ export async function ensureExperiment(
 	// must not be mistaken for a missing experiment and answered with a create.
 	if (found.status !== 404) assertOk(found, 'experiment lookup');
 
-	const created = assertOk(
-		await request({ method: 'POST', path: EXPERIMENT_CREATE, body: { name: experimentName } }),
-		'experiment create',
-	);
+	const createResponse = await request({
+		method: 'POST',
+		path: EXPERIMENT_CREATE,
+		body: { name: experimentName },
+	});
+
+	// Two first runs of the same workflow can both see 404 above and race to
+	// create the shared experiment. The loser gets this error rather than a
+	// missing experiment, so look up the id the winner created instead of
+	// failing the run.
+	if (
+		createResponse.status >= 400 &&
+		isRecord(createResponse.body) &&
+		createResponse.body.error_code === 'RESOURCE_ALREADY_EXISTS'
+	) {
+		const afterRace = await request({
+			method: 'GET',
+			path: EXPERIMENT_GET_BY_NAME,
+			qs: { experiment_name: experimentName },
+		});
+		if (
+			afterRace.status === 200 &&
+			isRecord(afterRace.body) &&
+			isRecord(afterRace.body.experiment)
+		) {
+			const id = afterRace.body.experiment.experiment_id;
+			if (typeof id === 'string') return id;
+		}
+	}
+
+	const created = assertOk(createResponse, 'experiment create');
 	if (isRecord(created) && typeof created.experiment_id === 'string') {
 		return created.experiment_id;
 	}

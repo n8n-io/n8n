@@ -138,6 +138,30 @@ describe('ensureExperiment', () => {
 		);
 	});
 
+	it('recovers from a concurrent create race by looking up the winner', async () => {
+		let createCalls = 0;
+		let lookupCalls = 0;
+		const request: MlflowRequest = async (options) => {
+			if (options.path === '/api/2.0/mlflow/experiments/get-by-name') {
+				lookupCalls++;
+				if (lookupCalls === 1) return NOT_FOUND;
+				return {
+					status: 200,
+					body: { experiment: { experiment_id: '999', name: '/Shared/x' } },
+				};
+			}
+			createCalls++;
+			return {
+				status: 400,
+				body: { error_code: 'RESOURCE_ALREADY_EXISTS', message: 'already exists' },
+			};
+		};
+
+		expect(await ensureExperiment(request, '/Shared/x')).toBe('999');
+		expect(createCalls).toBe(1);
+		expect(lookupCalls).toBe(2);
+	});
+
 	it('fails clearly when no id comes back', async () => {
 		const { request } = workspace({
 			'/api/2.0/mlflow/experiments/get-by-name': NOT_FOUND,
