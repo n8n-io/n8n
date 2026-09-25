@@ -21,7 +21,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		runOnTakeover: true,
 	};
 

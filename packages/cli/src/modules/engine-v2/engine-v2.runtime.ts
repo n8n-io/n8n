@@ -6,6 +6,7 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
@@ -60,7 +61,7 @@ export class EngineV2Runtime {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
-	async init(responseSender: ExecutionResponseSender): Promise<void> {
+	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
 		try {
 			await this.initDb();
 

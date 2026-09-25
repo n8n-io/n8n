@@ -136,35 +136,46 @@ function bundleSpec(sourcePath, distPath) {
 }
 
 function copyAgentIntegrationAssets() {
-	const sourceDir = path.resolve(
+	// tsc emits no non-TS files, so every platform's assets are copied here.
+	// Discovered rather than listed: a platform that adds an assets directory
+	// otherwise works in dev, where they are read from src, and ships without
+	// them.
+	const platformsRoot = path.resolve(
 		ROOT_DIR,
 		'src',
 		'modules',
 		'agents',
 		'integrations',
 		'platforms',
-		'slack',
-		'assets',
 	);
-	const destinationDir = path.resolve(
-		ROOT_DIR,
-		'dist',
-		'modules',
-		'agents',
-		'integrations',
-		'platforms',
-		'slack',
-		'assets',
-	);
+	const sourceDirs = glob.sync('*/assets', {
+		cwd: platformsRoot,
+		onlyDirectories: true,
+		absolute: false,
+	});
 
-	if (!existsSync(sourceDir)) {
-		throw new Error(`Agent integration assets directory not found: ${sourceDir}`);
+	if (sourceDirs.length === 0) {
+		throw new Error(`No agent integration assets directories found under: ${platformsRoot}`);
 	}
-	shell.rm('-rf', destinationDir);
-	shell.mkdir('-p', path.dirname(destinationDir));
-	shell.cp('-R', sourceDir, destinationDir);
-	if (!existsSync(destinationDir)) {
-		throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
+
+	for (const relativeDir of sourceDirs) {
+		const sourceDir = path.resolve(platformsRoot, relativeDir);
+		const destinationDir = path.resolve(
+			ROOT_DIR,
+			'dist',
+			'modules',
+			'agents',
+			'integrations',
+			'platforms',
+			relativeDir,
+		);
+
+		shell.rm('-rf', destinationDir);
+		shell.mkdir('-p', path.dirname(destinationDir));
+		shell.cp('-R', sourceDir, destinationDir);
+		if (!existsSync(destinationDir)) {
+			throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
+		}
 	}
 }
 

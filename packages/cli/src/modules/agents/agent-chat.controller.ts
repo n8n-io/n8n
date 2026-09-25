@@ -24,7 +24,8 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionRecordingError } from './agent-execution-recording.error';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import {
 	AgentChatExecutionService,
 	AgentTurnAlreadyRunningError,
@@ -58,6 +59,8 @@ export class AgentChatController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly messageQueue: AgentMessageQueueService,
+		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 	) {}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -66,15 +69,10 @@ export class AgentChatController {
 		const abandon = () => requestController.abort();
 		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
 		if (delivery.abortSignal.aborted) abandon();
-		let executionId: string | undefined;
 		return {
 			send: delivery.send,
 			abortSignal: requestController.signal,
-			get executionId() {
-				return executionId;
-			},
 			onExecutionStarted: (id: string, sessionId: string) => {
-				executionId = id;
 				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId });
 			},
@@ -155,9 +153,10 @@ export class AgentChatController {
 			agentId,
 		);
 
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
-		let executionId: string | undefined;
+		const delivery = initSseStream(res);
+		const { send, abortSignal } = delivery;
+		let accepted = false;
+		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
@@ -194,34 +193,31 @@ export class AgentChatController {
 			});
 			abortSignal.throwIfAborted();
 
-			const result = await this.agentTestRunService.executePreparedDraftRun({
-				agentId,
-				projectId,
-				message,
-				attachments: storedAttachments,
-				user: req.user,
-				sessionId: threadId,
-				sessionMode: prepared.sessionMode,
-				previewChat: true,
-				errorMode: 'forward',
-				onChunk,
-				onExecutionStarted,
-				onExecutionRecorded: (id) => {
-					executionId = id;
+			await this.messageQueue.enqueue(
+				{
+					agentId,
+					projectId,
+					threadId,
+					sessionMode: prepared.sessionMode,
+					source: 'chat',
+					payload: {
+						kind: 'preview',
+						message,
+						attachments: storedAttachments,
+						userId: req.user.id,
+						resourceId: draftChatMemoryResourceId(req.user.id),
+					},
 				},
-				abortSignal,
-			});
-			executionId = result.executionId ?? executionId;
-			if (result.status === 'completed') {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-			}
+				(queueId) => {
+					subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				},
+			);
+			accepted = true;
+			subscription?.accepted();
+			await subscription?.done;
 		} catch (error) {
-			executionId ??= execution.executionId;
-			if (error instanceof AgentExecutionRecordingError) executionId ??= error.executionId;
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
+			// Committed messages own their attachments, including after a disconnect.
+			if (!accepted && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
@@ -235,7 +231,8 @@ export class AgentChatController {
 					: {}),
 			});
 		} finally {
-			execution.close();
+			subscription?.close();
+			delivery.close();
 		}
 	}
 

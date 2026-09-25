@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nActionDropdown, N8nTooltip } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -47,23 +47,29 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 <template>
 	<div :class="$style.chips" data-test-id="canvas-node-agent-chips">
-		<span
+		<N8nTooltip
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]"
+			as-child
+			:show-after="500"
+			placement="top"
 		>
-			<AgentChipButton
-				:icon="chip.nodeTypeDescription ? undefined : chip.icon"
-				:clickable="false"
-				:aria-busy="isChipActive(chip)"
-				data-test-id="canvas-node-agent-chip"
-			>
-				<template v-if="chip.nodeTypeDescription" #icon>
-					<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
-				</template>
-				{{ chip.label }}
-			</AgentChipButton>
-		</span>
+			<span :class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]">
+				<AgentChipButton
+					:class="$style.chipButton"
+					:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+					:clickable="false"
+					:aria-busy="isChipActive(chip)"
+					data-test-id="canvas-node-agent-chip"
+				>
+					<template v-if="chip.nodeTypeDescription" #icon>
+						<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+					</template>
+					{{ chip.label }}
+				</AgentChipButton>
+			</span>
+			<template #content>{{ chip.label }}</template>
+		</N8nTooltip>
 		<span
 			v-if="overflowChips.length && isReadOnly"
 			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
@@ -108,6 +114,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 .chips {
 	display: flex;
 	flex-wrap: wrap;
+	min-width: 0;
 	gap: var(--spacing--2xs);
 }
 
@@ -119,7 +126,14 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	display: inline-flex;
 	position: relative;
 	isolation: isolate;
+	max-width: 100%;
+	min-width: 0;
 	border-radius: var(--radius--full);
+}
+
+.chipButton {
+	max-width: 100%;
+	min-width: 0;
 }
 
 /* stylelint-disable */
