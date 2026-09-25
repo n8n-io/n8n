@@ -709,8 +709,9 @@ wider rollout.
 
 The pilot also runs an independent `Pilot pnpm sticky disk` job on Blacksmith.
 It mounts a pnpm store inside the container and installs without lifecycle
-scripts. Run it twice in sequence to check that the second run reuses packages.
-Compare the mount and install time with the container job's cold install.
+scripts. Blacksmith branch protection discards writes from pull request jobs.
+Seed the disk from a trusted default-branch job before measuring package reuse
+on the pilot PR. Compare mount and install time with the cold container install.
 
 Build and check the image locally with:
 
