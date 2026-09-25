@@ -11,6 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
+    description: The unique key of the external secrets provider connection.
     name: providerKey
     in: path
 responses:

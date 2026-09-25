@@ -161,6 +161,7 @@ export {
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionProviderIdParamSchema,
+	providerKeyParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,

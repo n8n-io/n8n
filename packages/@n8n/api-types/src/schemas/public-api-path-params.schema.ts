@@ -59,3 +59,6 @@ export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 export const nodeTypePolicyScopeIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy scope.',
 );
+export const providerKeyParamSchema = stringIdParamSchema(
+	'The unique key of the external secrets provider connection.',
+);

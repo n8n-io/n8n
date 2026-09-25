@@ -4,6 +4,7 @@ import {
 	ListExternalSecretsConnectionsQueryDto,
 	ReloadExternalSecretsConnectionPublicDto,
 	TestExternalSecretsConnectionPublicDto,
+	providerKeyParamSchema,
 	type ExternalSecretsConnectionPublic,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -72,7 +73,7 @@ export class ExternalSecretsConnectionsPublicController {
 	async getConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') providerKey: string,
+		@Param('providerKey', providerKeyParamSchema) providerKey: string,
 	): Promise<ExternalSecretsConnectionPublic> {
 		const connection = await this.connectionsService.getConnection(providerKey);
 		return toConnectionPublic(connection, this.connectionsService);
@@ -88,7 +89,7 @@ export class ExternalSecretsConnectionsPublicController {
 	async testConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') providerKey: string,
+		@Param('providerKey', providerKeyParamSchema) providerKey: string,
 	) {
 		return await this.connectionsService.testConnection(
 			providerKey,
@@ -107,7 +108,7 @@ export class ExternalSecretsConnectionsPublicController {
 	async reloadConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') providerKey: string,
+		@Param('providerKey', providerKeyParamSchema) providerKey: string,
 	) {
 		return await this.connectionsService.reloadConnectionSecrets(
 			providerKey,
