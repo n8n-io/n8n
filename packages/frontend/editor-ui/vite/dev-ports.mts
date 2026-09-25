@@ -1,4 +1,4 @@
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 
 export const DEFAULT_BACKEND_PORT = 5678;
 export const DEFAULT_EDITOR_PORT = 8080;
@@ -34,19 +34,24 @@ export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
  * `apply: 'serve'` skips builds; the mode/isPreview check skips `vite preview`
  * (serve/production) and vitest (serve/test).
  */
-export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
+export const devServerPlugin = (env: NodeJS.ProcessEnv, envDir?: string): Plugin => ({
 	name: 'n8n-dev-server-topology',
 	apply: 'serve',
-	config: (_config, { mode, isPreview }) => {
+	config: (userConfig, { mode, isPreview }) => {
 		if (mode !== 'development' || isPreview) return;
 
 		const { backendPort, editorPort } = resolveDevPorts(env);
 		const backendOrigin = `http://localhost:${backendPort}`;
 
+		const modeEnv = loadEnv(mode, envDir ?? userConfig.envDir ?? process.cwd(), '');
+		const configuredBase = env.VUE_APP_URL_BASE_API ?? modeEnv.VUE_APP_URL_BASE_API;
+
 		// Normalize an empty or whitespace-only REST base to '/' so relative
 		// URLs on nested routes resolve to '/rest' rather than a route-relative path.
-		if (!env.VUE_APP_URL_BASE_API?.trim()) {
+		if (!configuredBase?.trim()) {
 			env.VUE_APP_URL_BASE_API = '/';
+		} else if (!env.VUE_APP_URL_BASE_API && configuredBase) {
+			env.VUE_APP_URL_BASE_API = configuredBase;
 		}
 
 		return {

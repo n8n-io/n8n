@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { ConfigEnv, UserConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
 
@@ -90,6 +93,25 @@ describe('devServerPlugin', () => {
 		runConfigHook(env, DEV);
 
 		expect(env.VUE_APP_URL_BASE_API).toBe('/');
+	});
+
+	it('preserves VUE_APP_URL_BASE_API defined in mode-specific .env files', () => {
+		const tempDir = mkdtempSync(path.join(tmpdir(), 'vite-env-test-'));
+		writeFileSync(
+			path.join(tempDir, '.env.development'),
+			'VUE_APP_URL_BASE_API=https://mode-env.example/\n',
+		);
+
+		try {
+			const env: NodeJS.ProcessEnv = {};
+			const plugin = devServerPlugin(env, tempDir);
+			const hook = plugin.config as (c: UserConfig, e: ConfigEnv) => UserConfig | undefined;
+			hook({}, DEV);
+
+			expect(env.VUE_APP_URL_BASE_API).toBe('https://mode-env.example/');
+		} finally {
+			rmSync(tempDir, { recursive: true, force: true });
+		}
 	});
 
 	// A build that inherits VUE_APP_URL_BASE_API would ship a localhost REST base
