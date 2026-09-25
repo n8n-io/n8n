@@ -30,12 +30,14 @@ import type {
 import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
 	stashPendingComposerDraft,
@@ -72,6 +74,7 @@ const slots = defineSlots<{
 }>();
 
 const i18n = useI18n();
+const { isCtrlKeyPressed } = useDeviceSupport();
 const toast = useToast();
 const router = useRouter();
 const store = useInstanceAiStore();
@@ -447,10 +450,33 @@ const ThreadScope = defineComponent({
 			);
 	},
 });
+
+/** Handle shortcuts locally instead of useKeybindings because ChatInput has canvas paste protection. */
+function handleCloseShortcut(event: KeyboardEvent) {
+	if (
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.shiftKey ||
+		event.altKey ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]'))
+	) {
+		return;
+	}
+
+	const isEscape = event.key === 'Escape' && !event.ctrlKey && !event.metaKey;
+	const isToggleShortcut = event.key.toLowerCase() === 'j' && isCtrlKeyPressed(event);
+	if (!isEscape && !isToggleShortcut) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('close');
+}
 </script>
 
 <template>
-	<div :class="$style.panel" data-test-id="instance-ai-embed-panel">
+	<div :class="$style.panel" data-test-id="instance-ai-embed-panel" @keydown="handleCloseShortcut">
 		<InstanceAiViewHeader
 			:thread-id="activeThreadId"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
@@ -494,21 +520,21 @@ const ThreadScope = defineComponent({
 						@click="openFullAssistant"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.embed.close')"
+				<KeyboardShortcutTooltip
 					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
+					:label="i18n.baseText('generic.close')"
+					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 				>
 					<N8nIconButton
 						icon="x"
 						variant="ghost"
 						size="small"
 						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.embed.close')"
+						:aria-label="i18n.baseText('generic.close')"
 						data-test-id="instance-ai-embed-close"
 						@click="emit('close')"
 					/>
-				</N8nTooltip>
+				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
 		<div :class="$style.body">

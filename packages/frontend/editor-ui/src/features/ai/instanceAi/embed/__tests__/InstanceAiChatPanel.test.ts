@@ -86,6 +86,7 @@ const InstanceAiConversationStub = defineComponent({
 		submitSuggestion: submitSuggestionMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
+		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
 		<slot name="empty" />
 	</div>`,
@@ -655,6 +656,87 @@ describe('InstanceAiChatPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-embed-close'));
 
 		expect(emitted('close')).toEqual([[]]);
+	});
+
+	it.each(['instance-ai-embed-new-thread', 'conversation-input'])(
+		'closes on Escape from focused %s',
+		async function (testId) {
+			const { findByTestId, emitted } = renderPanel({
+				props: { subject, launch, threadId: 't-match' },
+			});
+			const element = await findByTestId(testId);
+			element.focus();
+			expect(document.activeElement).toBe(element);
+
+			const event = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				code: 'Escape',
+				bubbles: true,
+				cancelable: true,
+			});
+			await fireEvent(element, event);
+
+			expect(emitted('close')).toEqual([[]]);
+			expect(event.defaultPrevented).toBe(true);
+		},
+	);
+
+	it('does not close on Escape from outside the panel', async function () {
+		const { container, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const outside = document.createElement('button');
+		container.append(outside);
+		outside.focus();
+		expect(document.activeElement).toBe(outside);
+
+		await fireEvent.keyDown(outside, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('leaves Escape to a nested dialog', async function () {
+		const { findByTestId, getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		getByTestId('conversation-stub').setAttribute('role', 'dialog');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it.each([
+		{ isComposing: true },
+		{ shiftKey: true },
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+	])('does not close on Escape with %j', async function (options) {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape', ...options });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('does not close when a child handles Escape', async function () {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+		input.addEventListener('keydown', (event) => event.preventDefault(), { once: true });
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
 	});
 
 	it('disposes the runtime on thread change and unmount', async () => {

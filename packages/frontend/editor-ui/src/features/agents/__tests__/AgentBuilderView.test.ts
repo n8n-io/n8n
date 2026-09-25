@@ -47,6 +47,7 @@ const pushListeners = new Set<(event: PushMessage) => void>();
 const handoffMock = vi.fn();
 const setPrefillMock = vi.fn();
 const submitSuggestionMock = vi.fn();
+const trackMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -123,7 +124,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: vi.fn() }),
+	useTelemetry: () => ({ track: trackMock }),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -3102,6 +3103,122 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe('true');
 	});
+
+	describe('AI panel shortcut', function () {
+		afterEach(function restoreUserAgent() {
+			vi.restoreAllMocks();
+		});
+
+		const platforms = [
+			{ userAgent: 'Windows', modifier: 'ctrlKey' },
+			{ userAgent: 'Macintosh', modifier: 'metaKey' },
+		] as const;
+
+		function pressToggle(modifier: 'ctrlKey' | 'metaKey') {
+			const event = new KeyboardEvent('keydown', {
+				key: 'j',
+				code: 'KeyJ',
+				[modifier]: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			return event;
+		}
+
+		it.each(platforms)(
+			'toggles with $modifier and tracks only opening',
+			async function ({ userAgent, modifier }) {
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				const wrapper = await renderView();
+				trackMock.mockClear();
+
+				expect(pressToggle(modifier).defaultPrevented).toBe(true);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+				expect(trackMock).toHaveBeenCalledExactlyOnceWith('Instance AI opened from editor', {
+					source: 'agent_builder_page',
+					agent_id: 'a1',
+					workflow_id: null,
+					execution_id: null,
+				});
+
+				pressToggle(modifier);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(trackMock).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(platforms)(
+			'disables $modifier when availability changes',
+			async function ({ userAgent, modifier }) {
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				const wrapper = await renderView();
+				instanceAiAvailableRef.value = false;
+				instanceAiReadyRef.value = false;
+				await nextTick();
+				trackMock.mockClear();
+
+				expect(pressToggle(modifier).defaultPrevented).toBe(false);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(routerPush).not.toHaveBeenCalled();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(platforms)(
+			'routes $modifier to unfinished setup without opening',
+			async function ({ userAgent, modifier }) {
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				instanceAiReadyRef.value = false;
+				const wrapper = await renderView();
+				trackMock.mockClear();
+
+				pressToggle(modifier);
+				await nextTick();
+
+				expect(routerPush).toHaveBeenCalledExactlyOnceWith({ name: 'InstanceAi' });
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	it.each([
+		{ savedWidth: null, expectedWidth: 400 },
+		{ savedWidth: '560', expectedWidth: 560 },
+	])(
+		'starts the AI resize wrapper at $expectedWidth with saved width $savedWidth',
+		async function ({ savedWidth, expectedWidth }) {
+			if (savedWidth !== null) localStorage.setItem('N8N_AGENT_AI_PANEL_WIDTH', savedWidth);
+			const wrapper = await renderView();
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			const dock = wrapper.get('[data-testid="agent-ai-dock"]');
+			const resizer = dock.getComponent({ name: 'ResizeWrapper' });
+
+			expect(resizer.props('width')).toBe(expectedWidth);
+			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
+				`${expectedWidth}px`,
+			);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe(String(expectedWidth));
+
+			await resizer.get('[data-dir="right"]').trigger('dblclick');
+			await flushPromises();
+
+			expect(resizer.props('width')).toBe(460);
+			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
+				'460px',
+			);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('460');
+		},
+	);
 
 	it('closes the AI panel by default after switching to a different, non-pending agent', async () => {
 		// `useStorage`'s default is captured once and reused for every later key
