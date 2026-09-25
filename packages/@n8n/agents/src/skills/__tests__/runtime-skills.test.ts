@@ -743,3 +743,177 @@ Use the workflow SDK.`,
 		);
 	});
 });
+
+describe('reference skills', () => {
+	let root: string;
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), 'n8n-reference-skills-'));
+	});
+
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	function writeSkill(dir: string, frontmatter: string, body: string) {
+		mkdirSync(join(root, dir, 'references'), { recursive: true });
+		writeFileSync(join(root, dir, 'SKILL.md'), `---\n${frontmatter}\n---\n\n${body}`);
+	}
+
+	function writeReference(dir: string, file: string, frontmatter: string, body: string) {
+		writeFileSync(join(root, dir, 'references', file), `---\n${frontmatter}\n---\n\n${body}`);
+	}
+
+	function writeBuilderWithReferences() {
+		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
+		writeReference(
+			'builder',
+			'models.md',
+			'name: models\ndescription: Load before choosing a model.\ndependencies:\n  tools:\n    - searchModels',
+			'Model rules.',
+		);
+		writeFileSync(join(root, 'builder', 'references', 'notes.md'), 'Plain notes.');
+		writeSkill(
+			'agents',
+			'name: agents\ndescription: Build agents.\nshared_references:\n  - models',
+			'Agent steps.',
+		);
+	}
+
+	it('loads references with frontmatter as hidden skills of their owner and sharers', () => {
+		writeBuilderWithReferences();
+
+		const source = loadRuntimeSkillSourceFromDirectory(root);
+		const models = source.registry.skills.find((skill) => skill.id === 'models');
+
+		expect(models).toMatchObject({
+			description: 'Load before choosing a model.',
+			parents: ['builder', 'agents'],
+			reference: { owner: 'builder', path: 'references/models.md' },
+			dependencies: { tools: ['searchModels'] },
+		});
+		expect(source.registry.skills.map((skill) => skill.id)).not.toContain('notes');
+
+		const catalog = renderSkillCatalogPrompt(source.registry);
+		expect(catalog).not.toContain('name: "builder"');
+		expect(catalog).toContain('id: "builder"');
+		expect(catalog).toContain('id: "agents"');
+		expect(catalog).not.toContain('id: "models"');
+		expect(catalog).toContain('Load a reference with');
+	});
+
+	it('does not change the catalog protocol when no references exist', () => {
+		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
+
+		const catalog = renderSkillCatalogPrompt(loadRuntimeSkillSourceFromDirectory(root).registry);
+
+		expect(catalog).not.toContain('Load a reference with');
+	});
+
+	it('lists references with descriptions when a parent skill loads', async () => {
+		writeBuilderWithReferences();
+		const loadTool = createSkillLoadTool(loadRuntimeSkillSourceFromDirectory(root));
+
+		const builder = skillLoadText(await loadTool.handler?.({ skillId: 'builder' }, {}));
+		expect(builder).toContain('[References');
+		expect(builder).toContain('- "models": "Load before choosing a model."');
+		expect(builder).toContain(
+			'[Linked files — load via load_skill with filePath: "references/notes.md"]',
+		);
+		expect(builder).not.toContain('filePath: "references/models.md"');
+
+		const agents = skillLoadText(await loadTool.handler?.({ skillId: 'agents' }, {}));
+		expect(agents).toContain('- "models": "Load before choosing a model."');
+	});
+
+	it('records references with descriptions in the activation result', async () => {
+		writeBuilderWithReferences();
+		const source = loadRuntimeSkillSourceFromDirectory(root);
+		const loadTool = createSkillLoadTool(source);
+
+		const result = await loadTool.handler?.(
+			{ skillId: 'builder' },
+			{ loadSkill: async (skillId: string) => await source.loadSkill(skillId) },
+		);
+
+		expect(result).toMatchObject({
+			success: true,
+			skillId: 'builder',
+			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
+			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
+		});
+	});
+
+	it('loads a reference by id or by its owner file path', async () => {
+		writeBuilderWithReferences();
+		const loadTool = createSkillLoadTool(loadRuntimeSkillSourceFromDirectory(root));
+
+		const byId = skillLoadText(await loadTool.handler?.({ skillId: 'models' }, {}));
+		expect(byId).toContain('[Reference of: "builder", "agents"]');
+		expect(byId).toContain('Model rules.');
+		expect(byId).not.toContain('name: models');
+
+		const byPath = skillLoadText(
+			await loadTool.handler?.({ skillId: 'builder', filePath: 'references/models.md' }, {}),
+		);
+		expect(byPath).toBe(byId);
+	});
+
+	it('hides references whose parents are all filtered out', async () => {
+		writeBuilderWithReferences();
+		const source = loadRuntimeSkillSourceFromDirectory(root);
+
+		const withoutAgents = filterRuntimeSkillSource(source, ['agents']);
+		expect(withoutAgents.registry.skills.find((skill) => skill.id === 'models')?.parents).toEqual([
+			'builder',
+		]);
+
+		const withoutBoth = filterRuntimeSkillSource(source, ['agents', 'builder']);
+		expect(withoutBoth.registry.skills).toEqual([]);
+		await expect(withoutBoth.loadSkill('models')).resolves.toBeNull();
+	});
+
+	it('hides a filtered reference from its parent listing', async () => {
+		writeBuilderWithReferences();
+		const filtered = filterRuntimeSkillSource(loadRuntimeSkillSourceFromDirectory(root), [
+			'models',
+		]);
+
+		const loadTool = createSkillLoadTool(filtered);
+		const builder = skillLoadText(await loadTool.handler?.({ skillId: 'builder' }, {}));
+		expect(builder).not.toContain('[References');
+		expect(builder).not.toContain('references/models.md');
+		await expect(filtered.loadFile?.('builder', 'references/models.md')).resolves.toBeNull();
+		await expect(
+			loadTool.handler?.({ skillId: 'builder', filePath: 'references/models.md' }, {}),
+		).resolves.toMatchObject({ success: false });
+	});
+
+	it('rejects references with a name that does not match the file', () => {
+		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
+		writeReference('builder', 'models.md', 'name: other\ndescription: Wrong name.', 'Body.');
+
+		expect(() => loadRuntimeSkillSourceFromDirectory(root)).toThrow(
+			'Reference at builder/references/models.md must be named "models", got "other"',
+		);
+	});
+
+	it('rejects references without a description', () => {
+		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
+		writeReference('builder', 'models.md', 'name: models', 'Body.');
+
+		expect(() => loadRuntimeSkillSourceFromDirectory(root)).toThrow(InvalidRuntimeSkillError);
+	});
+
+	it('rejects shared references that do not exist', () => {
+		writeSkill(
+			'agents',
+			'name: agents\ndescription: Build agents.\nshared_references:\n  - missing',
+			'Agent steps.',
+		);
+
+		expect(() => loadRuntimeSkillSourceFromDirectory(root)).toThrow(
+			'Skill "agents" shares unknown reference "missing"',
+		);
+	});
+});
