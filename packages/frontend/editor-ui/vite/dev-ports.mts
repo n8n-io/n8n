@@ -1,4 +1,4 @@
-import { loadEnv, type Plugin } from 'vite';
+import type { Plugin } from 'vite';
 
 export const DEFAULT_BACKEND_PORT = 5678;
 export const DEFAULT_EDITOR_PORT = 8080;
@@ -18,9 +18,8 @@ const assertDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): 
 };
 
 /**
- * N8N_PORT is the backend's own listen-port var. It moves both the injected
- * BASE_PATH and the REST base URL, so the pair relocates a whole dev instance
- * next to the default one.
+ * N8N_PORT is the backend's own listen-port var. It moves the proxy target, so
+ * the pair relocates a whole dev instance next to the default one.
  */
 export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
 	backendPort: assertDevPort(env, 'N8N_PORT', DEFAULT_BACKEND_PORT),
@@ -28,31 +27,30 @@ export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
 });
 
 /**
+ * Backend route prefixes the dev server forwards. The trailing `(/|$)` stops a
+ * prefix from also matching editor routes such as `/restore` or `/formatting`.
+ */
+export const BACKEND_PROXY_PATTERN =
+	'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)(/|$)';
+
+/**
  * Dev-server topology, kept out of the `serve` script so the env vars work on
  * Windows too (`cross-env` cannot expand `${N8N_PORT:-5678}`).
+ *
+ * The editor and the backend share one origin through the proxy. The Host
+ * header stays the editor's (no `changeOrigin`), so the push origin check
+ * matches the browser's Origin.
  *
  * `apply: 'serve'` skips builds; the mode/isPreview check skips `vite preview`
  * (serve/production) and vitest (serve/test).
  */
-export const devServerPlugin = (env: NodeJS.ProcessEnv, envDir?: string): Plugin => ({
+export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 	name: 'n8n-dev-server-topology',
 	apply: 'serve',
-	config: (userConfig, { mode, isPreview }) => {
+	config: (_config, { mode, isPreview }) => {
 		if (mode !== 'development' || isPreview) return;
 
 		const { backendPort, editorPort } = resolveDevPorts(env);
-		const backendOrigin = `http://localhost:${backendPort}`;
-
-		const modeEnv = loadEnv(mode, envDir ?? userConfig.envDir ?? process.cwd(), '');
-		const configuredBase = env.VUE_APP_URL_BASE_API ?? modeEnv.VUE_APP_URL_BASE_API;
-
-		// Normalize an empty or whitespace-only REST base to '/' so relative
-		// URLs on nested routes resolve to '/rest' rather than a route-relative path.
-		if (!configuredBase?.trim()) {
-			env.VUE_APP_URL_BASE_API = '/';
-		} else if (!env.VUE_APP_URL_BASE_API && configuredBase) {
-			env.VUE_APP_URL_BASE_API = configuredBase;
-		}
 
 		return {
 			server: {
@@ -60,12 +58,7 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv, envDir?: string): Plugin
 				port: editorPort,
 				strictPort: true,
 				proxy: {
-					'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)':
-						{
-							target: backendOrigin,
-							changeOrigin: true,
-							ws: true,
-						},
+					[BACKEND_PROXY_PATTERN]: { target: `http://localhost:${backendPort}`, ws: true },
 				},
 			},
 		};
