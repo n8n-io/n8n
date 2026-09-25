@@ -58,10 +58,14 @@ export class EngineV2WebhookResponder {
 	 *
 	 * @param executionId The caller must mint this ID, use it here, and pass it to
 	 * `StartExecution`.
-	 * @throws {UnexpectedError} If the execution response receiver is not set.
+	 * @throws {UnexpectedError} If the execution response receiver is not set, or
+	 * if the service already waits for this execution.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
+	async waitForResponse(
+		executionId: ExecutionIdV2,
+		acceptsResponse = false,
+	): Promise<PendingWebhookResponse> {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine v2 cannot wait for a response without a receiver');
@@ -73,13 +77,20 @@ export class EngineV2WebhookResponder {
 			);
 		}
 
+		// A second entry would take over the first one's slot and release.
+		if (this.pendingWebhooks.has(executionId)) {
+			throw new UnexpectedError('Engine 2.0 already waits for a response for this execution', {
+				extra: { executionId },
+			});
+		}
+
 		const response = new PendingWebhookResponse({
 			executionId,
 			acceptsResponse,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
-		const unsubscribe = receiver.receive(executionId, (received) =>
+		const unsubscribe = await receiver.receive(executionId, (received) =>
 			this.handle(received, response),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });

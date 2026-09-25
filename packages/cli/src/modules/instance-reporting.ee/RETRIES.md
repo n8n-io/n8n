@@ -117,3 +117,13 @@ flowchart TD
 
     I --> K
 ```
+
+## Known limitations
+
+- **A lost response on the last attempt.** The receiver stores the report, but
+  n8n does not get the response. Possible causes: a locked database on the
+  receiver, an update, or a proxy that drops the response. n8n marks the row
+  as skipped. The next report sends the same days again under a new
+  `batchId`, so the receiver holds those days two times. On attempts 1 and 2
+  this does not occur: the retry uses the same `batchId`, and the receiver
+  answers `409`.

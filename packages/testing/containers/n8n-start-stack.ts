@@ -50,7 +50,7 @@ ${colors.yellow}Options:${colors.reset}
   --services-only   Start services only (no n8n containers), write .env for local dev
   --services <list> Comma-separated services (e.g. postgres,redis,mailpit,proxy,kafka)
   --postgres        Use PostgreSQL instead of SQLite
-  --engine          Run engine v2 in the main process (implies --postgres, not for --services-only)
+  --engine          Run engine v2 in its own container (implies --postgres, not for --services-only)
   --queue           Enable queue mode (requires PostgreSQL)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
@@ -197,7 +197,7 @@ async function main() {
 	// Build configuration
 	const config: N8NConfig = {
 		postgres: Boolean(values.postgres || values.engine),
-		...(values.engine ? { engine: 'in-process' as const } : {}),
+		...(values.engine ? { engine: 'container' as const } : {}),
 		services,
 		projectName:
 			values.name ??

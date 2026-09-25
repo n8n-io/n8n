@@ -65,6 +65,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -81,6 +82,7 @@ import {
 	executeWebhook,
 	_privateGetWebhookErrorMessage,
 	invokeWebhook,
+	handleImmediateWebhookResponse,
 } from '../webhook-helpers';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
@@ -1199,6 +1201,7 @@ const engineV2Dispatcher = mockInstance(EngineV2Dispatcher);
 const engineDataPlaneProxy = mockInstance(EngineDataPlaneProxyService);
 const executionContextService = mockInstance(ExecutionContextService);
 const userRepository = mockInstance(UserRepository);
+const oauth2FlowProxy = mockInstance(OAuth2FlowProxy);
 mockInstance(AuthService);
 mockInstance(EventService);
 const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
@@ -1323,6 +1326,92 @@ describe('invokeWebhook', () => {
 			'nodeFetchedData',
 			expect.any(Object),
 		);
+	});
+});
+
+describe('handleImmediateWebhookResponse', () => {
+	it.each([
+		{ name: 'continues with workflow data', workflowData: [[{ json: {} }]], shouldContinue: true },
+		{ name: 'stops without workflow data', workflowData: undefined, shouldContinue: false },
+	])('reports a no-response result once and $name', ({ workflowData, shouldContinue }) => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData: { noWebhookResponse: true, workflowData },
+			didSendResponse: false,
+			responseCode: 200,
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledOnce();
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: shouldContinue,
+		});
+	});
+
+	it.each([
+		{ name: 'the default response', webhookResultData: {}, shouldContinue: false },
+		{
+			name: 'a no-response result',
+			webhookResultData: { noWebhookResponse: true, workflowData: [[{ json: {} }]] },
+			shouldContinue: true,
+		},
+	])(
+		'does not call back for $name when a response was already sent',
+		({ webhookResultData, shouldContinue }) => {
+			const responseCallback = vi.fn();
+
+			const result = handleImmediateWebhookResponse({
+				webhookResultData,
+				didSendResponse: true,
+				responseCode: 200,
+				responseCallback,
+			});
+
+			expect(responseCallback).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				didSendResponse: true,
+				shouldContinueWorkflowExecution: shouldContinue,
+			});
+		},
+	);
+
+	it.each([
+		{
+			name: 'a custom response',
+			webhookResultData: { webhookResponse: { ok: true } },
+			expectedData: { ok: true },
+		},
+		{
+			name: 'the default response',
+			webhookResultData: {},
+			expectedData: { message: 'Webhook call received' },
+		},
+		{
+			name: 'an explicit null response',
+			webhookResultData: { webhookResponse: null },
+			expectedData: null,
+		},
+	])('sends $name and stops execution', ({ webhookResultData, expectedData }) => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData,
+			didSendResponse: false,
+			responseCode: 201,
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: expectedData,
+			responseCode: 201,
+		});
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: false,
+		});
 	});
 });
 
@@ -1820,12 +1909,12 @@ describe('executeWebhook establishTriggerIdentity', () => {
 	});
 });
 
-describe('executeWebhook getUserById', () => {
+describe('executeWebhook additional data', () => {
 	/**
 	 * Drives `executeWebhook` far enough for the node's `webhook()` to be called, and
-	 * hands back the lookup the webhook layer wired onto `additionalData`.
+	 * hands back the `additionalData` that the webhook layer extended.
 	 */
-	const resolveGetUserById = async () => {
+	const resolveAdditionalData = async () => {
 		resourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -1885,8 +1974,7 @@ describe('executeWebhook getUserById', () => {
 			{},
 		);
 
-		expect(additionalData.getUserById).toBeDefined();
-		return additionalData.getUserById!;
+		return additionalData;
 	};
 
 	beforeEach(() => {
@@ -1908,9 +1996,9 @@ describe('executeWebhook getUserById', () => {
 			}),
 		);
 
-		const getUserById = await resolveGetUserById();
+		const { getUserById } = await resolveAdditionalData();
 
-		await expect(getUserById('user-1')).resolves.toEqual({
+		await expect(getUserById!('user-1')).resolves.toEqual({
 			id: 'user-1',
 			email: 'user@example.com',
 			firstName: 'Test',
@@ -1922,9 +2010,26 @@ describe('executeWebhook getUserById', () => {
 	it('resolves undefined for an id that no longer maps to a user', async () => {
 		userRepository.findByIdWithRole.mockResolvedValue(null);
 
-		const getUserById = await resolveGetUserById();
+		const { getUserById } = await resolveAdditionalData();
 
-		await expect(getUserById('gone')).resolves.toBeUndefined();
+		await expect(getUserById!('gone')).resolves.toBeUndefined();
+	});
+
+	it('returns the OAuth flow proxy promises without replacement', async () => {
+		const beginPromise = new Promise<never>(() => {});
+		const completePromise = new Promise<never>(() => {});
+		const refreshPromise = new Promise<never>(() => {});
+		oauth2FlowProxy.begin.mockReturnValue(beginPromise);
+		oauth2FlowProxy.complete.mockReturnValue(completePromise);
+		oauth2FlowProxy.refreshVirtualClientToken.mockReturnValue(refreshPromise);
+
+		const additionalData = await resolveAdditionalData();
+
+		expect(additionalData.beginN8nOAuth2Flow!('resource-url')).toBe(beginPromise);
+		expect(additionalData.completeN8nOAuth2Flow!('code', 'state')).toBe(completePromise);
+		expect(additionalData.refreshN8nOAuth2Flow!('refresh-token', 'resource-url')).toBe(
+			refreshPromise,
+		);
 	});
 });
 
@@ -2144,7 +2249,10 @@ describe('executeWebhook response-mode callback contract', () => {
 	 * One case per self-responding mode, so the next mode that forgets is caught
 	 * here rather than in production memory.
 	 */
-	const startWebhook = async (responseMode: string) => {
+	const startWebhook = async (
+		responseMode: string,
+		webhookResult: IWebhookResponseData = { workflowData: [[{ json: {} }]] },
+	) => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
@@ -2154,7 +2262,7 @@ describe('executeWebhook response-mode callback contract', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
-		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+		webhookService.runWebhook.mockResolvedValue(webhookResult);
 		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
 		activeExecutions.getPostExecutePromise.mockReturnValue(
 			createDeferredPromise<IRun | undefined>().promise,
@@ -2211,6 +2319,16 @@ describe('executeWebhook response-mode callback contract', () => {
 
 	it('invokes the response callback exactly once in formPage mode', async () => {
 		const { responseCallback } = await startWebhook('formPage');
+
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	it('invokes the response callback exactly once when the node answered itself in onReceived mode', async () => {
+		const { responseCallback } = await startWebhook('onReceived', {
+			noWebhookResponse: true,
+			workflowData: [[{ json: {} }]],
+		});
 
 		expect(responseCallback).toHaveBeenCalledTimes(1);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
@@ -2333,7 +2451,7 @@ describe('executeWebhook on engine v2', () => {
 		// handler is how a test plays the data plane answering.
 		Container.get(EngineV2WebhookResponder).useReceiver(
 			mock<ExecutionResponseReceiver>({
-				receive: vi.fn((executionId: string, handler: (r: ExecutionResponse) => void) => {
+				receive: vi.fn(async (executionId: string, handler: (r: ExecutionResponse) => void) => {
 					dataPlane.set(executionId, handler);
 					return vi.fn();
 				}),
@@ -2440,7 +2558,7 @@ describe('executeWebhook on engine v2', () => {
 		it('answers with a timeout when the run does not send an ended message', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({ status: 'timeout' });
@@ -2458,7 +2576,7 @@ describe('executeWebhook on engine v2', () => {
 		it('answers with the channel error when the response is undeliverable', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({
@@ -2552,7 +2670,7 @@ describe('executeWebhook on engine v2', () => {
 		it('answers with a timeout when no terminal outcome arrives', async () => {
 			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const pending = waitForResponse.mock.results[0]?.value;
+			const pending = await waitForResponse.mock.results[0]?.value;
 
 			expect(pending).toBeDefined();
 			pending?.resolve({ status: 'timeout' });

@@ -1,0 +1,56 @@
+name: 'CI: Seed pnpm Sticky Disk'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-seed-pnpm-sticky-disk
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: Seed pnpm store
+    if: github.repository == 'n8n-io/n8n' && github.ref == 'refs/heads/master'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+
+      - name: Set up pinned tools without installing dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: ''
+          build-command: ''
+
+      - name: Mount pnpm store
+        uses: useblacksmith/stickydisk@94697d49e77d0dd78b77deb85ad3de63a28b4b8a # v1
+        with:
+          key: n8n-io-n8n-pnpm-pilot-linux-amd64-v11
+          path: /pnpm-sticky-store
+          commit: on-change
+
+      - name: Verify mounted store and pinned tools
+        run: |
+          mountpoint -q /pnpm-sticky-store
+          test "$(node --version)" = v26.5.1
+          test "$(pnpm --version)" = 12.4.2
+          test "$(pnpm --store-dir /pnpm-sticky-store store path --silent)" = /pnpm-sticky-store/v11
+          du -sh /pnpm-sticky-store
+
+      - name: Verify SafeChain and fill store
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pnpm safe-chain-verify
+          pnpm --store-dir /pnpm-sticky-store install --frozen-lockfile --ignore-scripts --trust-lockfile --reporter=append-only
+
+      - name: Report seeded store
+        run: |
+          du -sh /pnpm-sticky-store
+          echo "Seeded pnpm store: $(du -sh /pnpm-sticky-store)" >> "$GITHUB_STEP_SUMMARY"
