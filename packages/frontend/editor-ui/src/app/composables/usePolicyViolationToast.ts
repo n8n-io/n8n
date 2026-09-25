@@ -2,10 +2,7 @@ import { h } from 'vue';
 import type { PolicyViolation } from '@n8n/api-types';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	getPolicyViolations,
-	PolicyViolationList,
-} from '@n8n/frontend-module-type-availability-policies';
+import { PolicyViolationList } from '@n8n/frontend-module-type-availability-policies';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -70,14 +67,11 @@ export function usePolicyViolationToast() {
 	}
 
 	function showPolicyViolationToast(
-		error: unknown,
+		violations: PolicyViolation[],
 		title: string,
 		refusedAction: PolicyRefusedAction,
-		documentId: WorkflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId),
-	): boolean {
-		const violations = getPolicyViolations(error);
-		if (!violations) return false;
-
+		documentId: WorkflowDocumentId,
+	) {
 		activeToast?.handle.close();
 		const handle = toast.showMessage(
 			{
@@ -101,11 +95,9 @@ export function usePolicyViolationToast() {
 			error_title: title,
 			error_message: violations.map(({ message }) => message).join('; '),
 			caused_by_credential: false,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: useWorkflowDocumentStore(documentId).workflowId,
 		});
 		activeToast = { handle, refusedAction };
-
-		return true;
 	}
 
 	/**

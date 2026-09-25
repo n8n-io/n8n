@@ -137,7 +137,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({ showError: mockShowError, showMessage: vi.fn() }),
 }));
 
-const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn(() => false));
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn());
 const mockClosePolicyViolationToast = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/usePolicyViolationToast', () => ({
@@ -246,18 +246,18 @@ describe('useWorkflowActivate', () => {
 		});
 
 		it('leaves a publish refused by policy to the policy violation toast', async () => {
+			const violations = [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }];
 			const refusal = Object.assign(new Error('Blocked by an instance policy'), {
-				meta: { violations: [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }] },
+				meta: { violations },
 			});
 			mockPublishWorkflow.mockRejectedValueOnce(refusal);
-			mockShowPolicyViolationToast.mockReturnValueOnce(true);
 
 			const { publishWorkflow } = useWorkflowActivate();
 			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
 
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
-				refusal,
+				violations,
 				expect.any(String),
 				'publish',
 				`${WORKFLOW_ID}@latest`,

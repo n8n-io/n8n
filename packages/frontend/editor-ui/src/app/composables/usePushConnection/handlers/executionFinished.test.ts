@@ -10,7 +10,11 @@ import {
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -57,7 +61,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
-const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn(() => false));
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/usePolicyViolationToast', () => ({
 	usePolicyViolationToast: () => ({ showPolicyViolationToast: mockShowPolicyViolationToast }),
@@ -997,25 +1001,24 @@ describe('manual execution stats tracking', () => {
 		it('leaves a run refused by policy to the policy violation toast for the document that ran', () => {
 			setActivePinia(createTestingPinia());
 			mockShowMessage.mockClear();
-			mockShowPolicyViolationToast.mockReturnValueOnce(true);
-
-			const error = {
-				message: 'Workflow start is blocked by a project policy',
-				violations: [{ kind: 'workflow-start-denied', checkId: 'c', message: 'Blocked' }],
-			};
-			const execution = mock<SimplifiedExecution>({
-				status: 'error',
-				data: { resultData: { error } },
-			});
+			const violations = [{ kind: 'workflow-start-denied', checkId: 'c', message: 'Blocked' }];
+			const error = Object.assign(
+				new WorkflowOperationError('Workflow start is blocked by a project policy'),
+				{ violations },
+			);
+			// A mock would turn the violation fields it lacks into functions, so the run data stays plain.
+			const runExecutionData = createRunExecutionData({ resultData: { error } });
+			const execution = mock<SimplifiedExecution>({ status: 'error' });
+			execution.data = runExecutionData;
 
 			handleExecutionFinishedWithErrorOrCanceled(
 				execution,
-				mock<IRunExecutionData>({ resultData: { error } }),
+				runExecutionData,
 				createWorkflowDocumentId(''),
 			);
 
 			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
-				error,
+				violations,
 				'Problem executing workflow',
 				'execute',
 				createWorkflowDocumentId(''),

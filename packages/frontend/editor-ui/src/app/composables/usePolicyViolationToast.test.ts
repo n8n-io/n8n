@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { PolicyViolation } from '@n8n/api-types';
-import { ResponseError } from '@n8n/rest-api-client';
 
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -45,13 +44,6 @@ const slackViolation: PolicyViolation = {
 	subjectType: 'nodeType',
 	scope: 'instance',
 };
-
-function refusedWith(violations: PolicyViolation[]) {
-	return new ResponseError('Blocked by an instance policy', {
-		httpStatusCode: 403,
-		meta: { violations },
-	});
-}
 
 function prepareWorkflowWithTwoSlackNodes() {
 	const workflow = createTestWorkflow({
@@ -94,8 +86,11 @@ describe('usePolicyViolationToast', () => {
 
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 
-		expect(showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save')).toBe(
-			true,
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w1'),
 		);
 		expect(showMessageSpy).toHaveBeenCalledTimes(1);
 
@@ -137,7 +132,7 @@ describe('usePolicyViolationToast', () => {
 
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 		showPolicyViolationToast(
-			refusedWith([
+			[
 				{
 					kind: 'credential-type-unavailable',
 					checkId: 'credential-type-availability',
@@ -146,9 +141,10 @@ describe('usePolicyViolationToast', () => {
 					subjectType: 'credentialType',
 					scope: 'instance',
 				},
-			]),
+			],
 			'Problem saving',
 			'save',
+			createWorkflowDocumentId(workflow.id),
 		);
 
 		const { getByTestId } = render(
@@ -166,9 +162,19 @@ describe('usePolicyViolationToast', () => {
 	it('closes the toast it showed before it shows the next one', () => {
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 
-		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w1'),
+		);
 		closeSpy.mockClear();
-		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w1'),
+		);
 
 		expect(closeSpy).toHaveBeenCalledTimes(1);
 	});
@@ -176,7 +182,12 @@ describe('usePolicyViolationToast', () => {
 	it('closes a save refusal once a save succeeds', () => {
 		const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
-		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w1'),
+		);
 		closeSpy.mockClear();
 		closePolicyViolationToast('save');
 
@@ -186,7 +197,12 @@ describe('usePolicyViolationToast', () => {
 	it('keeps a publish refusal open after a save succeeds', () => {
 		const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
-		showPolicyViolationToast(refusedWith([slackViolation]), 'Could not publish', 'publish');
+		showPolicyViolationToast(
+			[slackViolation],
+			'Could not publish',
+			'publish',
+			createWorkflowDocumentId('w1'),
+		);
 		closeSpy.mockClear();
 		closePolicyViolationToast('save');
 
@@ -198,8 +214,11 @@ describe('usePolicyViolationToast', () => {
 
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 
-		expect(showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save')).toBe(
-			true,
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w-empty'),
 		);
 
 		const { queryByTestId } = render(
@@ -218,7 +237,7 @@ describe('usePolicyViolationToast', () => {
 
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 		showPolicyViolationToast(
-			refusedWith([slackViolation]),
+			[slackViolation],
 			'Problem publishing',
 			'publish',
 			createWorkflowDocumentId('w1'),
@@ -232,9 +251,14 @@ describe('usePolicyViolationToast', () => {
 	});
 
 	it('reports the backend messages to error telemetry instead of the rendered list', () => {
-		useWorkflowsStore().setWorkflowId('w1');
+		useWorkflowsStore().setWorkflowId('w-on-canvas');
 		const { showPolicyViolationToast } = usePolicyViolationToast();
-		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
+		showPolicyViolationToast(
+			[slackViolation],
+			'Problem saving',
+			'save',
+			createWorkflowDocumentId('w1'),
+		);
 
 		expect(showMessageSpy).toHaveBeenCalledWith(expect.any(Object), false);
 		expect(trackSpy).toHaveBeenCalledWith('Instance FE emitted error', {
@@ -243,18 +267,5 @@ describe('usePolicyViolationToast', () => {
 			caused_by_credential: false,
 			workflow_id: 'w1',
 		});
-	});
-
-	it('leaves an error without violations to the caller', () => {
-		const { showPolicyViolationToast } = usePolicyViolationToast();
-
-		expect(
-			showPolicyViolationToast(
-				new ResponseError('Bad request', { httpStatusCode: 400 }),
-				'Oops',
-				'save',
-			),
-		).toBe(false);
-		expect(showMessageSpy).not.toHaveBeenCalled();
 	});
 });

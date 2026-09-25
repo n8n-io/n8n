@@ -45,6 +45,7 @@ import { useBackendConnectionStore } from '@/app/stores/backendConnection.store'
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
@@ -143,9 +144,23 @@ export function useWorkflowSaving({
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 	const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
-	function showSaveErrorToast(error: unknown, errorMessage: string, retryDelay?: number) {
+	function showSaveErrorToast(
+		error: unknown,
+		errorMessage: string,
+		savedWorkflowId: string,
+		retryDelay?: number,
+	) {
 		const title = i18n.baseText('workflowHelpers.showMessage.title');
-		if (showPolicyViolationToast(error, title, 'save')) return;
+		const violations = getPolicyViolations(error);
+		if (violations) {
+			showPolicyViolationToast(
+				violations,
+				title,
+				'save',
+				createWorkflowDocumentId(savedWorkflowId),
+			);
+			return;
+		}
 
 		toast.showMessage({
 			title,
@@ -175,12 +190,16 @@ export function useWorkflowSaving({
 		}, retryDelay);
 	}
 
-	function handleAutoSaveFailure(error: unknown, errorMessage: string): false {
+	function handleAutoSaveFailure(
+		error: unknown,
+		errorMessage: string,
+		savedWorkflowId: string,
+	): false {
 		// Handle autosave failures with exponential backoff
 		if (!shouldRetryAutoSaveFailure(error)) {
 			saveStore.resetRetry();
 			saveStore.setLastError(errorMessage);
-			showSaveErrorToast(error, errorMessage);
+			showSaveErrorToast(error, errorMessage, savedWorkflowId);
 
 			return false;
 		}
@@ -191,7 +210,7 @@ export function useWorkflowSaving({
 		// Schedule retry with exponential backoff
 		const retryDelay = saveStore.getRetryDelay();
 		scheduleAutoSaveRetry(retryDelay);
-		showSaveErrorToast(error, errorMessage, retryDelay);
+		showSaveErrorToast(error, errorMessage, savedWorkflowId, retryDelay);
 
 		return false;
 	}
@@ -252,7 +271,7 @@ export function useWorkflowSaving({
 
 		// For autosaves, use retry logic so we still communicate autosave stopped working.
 		if (autosaved) {
-			return handleAutoSaveFailure(error, errorMessage);
+			return handleAutoSaveFailure(error, errorMessage, currentWorkflow);
 		}
 
 		return false;
@@ -525,10 +544,10 @@ export function useWorkflowSaving({
 				}
 
 				if (autosaved) {
-					return handleAutoSaveFailure(error, errorMessage);
+					return handleAutoSaveFailure(error, errorMessage, currentWorkflow);
 				}
 
-				showSaveErrorToast(error, errorMessage);
+				showSaveErrorToast(error, errorMessage, currentWorkflow);
 
 				return false;
 			}
@@ -573,10 +592,11 @@ export function useWorkflowSaving({
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
 		let createRequestFailed = false;
+		const currentWorkflowId = workflowId.value;
 
 		try {
 			const currentDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowId.value),
+				createWorkflowDocumentId(currentWorkflowId),
 			);
 
 			if (!data) {
@@ -769,7 +789,7 @@ export function useWorkflowSaving({
 				return null;
 			}
 
-			showSaveErrorToast(e, getErrorMessage(e));
+			showSaveErrorToast(e, getErrorMessage(e), currentWorkflowId);
 
 			return null;
 		}

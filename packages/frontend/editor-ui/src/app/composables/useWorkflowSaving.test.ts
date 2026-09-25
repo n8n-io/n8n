@@ -57,7 +57,7 @@ vi.mock('@/app/composables/useMessage', () => {
 });
 
 const showMessageSpy = vi.hoisted(() => vi.fn());
-const showPolicyViolationToastSpy = vi.hoisted(() => vi.fn(() => false));
+const showPolicyViolationToastSpy = vi.hoisted(() => vi.fn());
 const closePolicyViolationToastSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/usePolicyViolationToast', () => ({
@@ -933,20 +933,21 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			setDocumentStoreActive(workflow.id);
 
+			const violations = [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }];
 			const refusal = new ResponseError('Blocked by an instance policy', {
 				httpStatusCode: 403,
-				meta: { violations: [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }] },
+				meta: { violations },
 			});
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(refusal);
-			showPolicyViolationToastSpy.mockReturnValueOnce(true);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 
 			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
 			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
-				refusal,
+				violations,
 				'Problem saving workflow',
 				'save',
+				createWorkflowDocumentId(workflow.id),
 			);
 			expect(showMessageSpy).not.toHaveBeenCalled();
 		});
@@ -976,11 +977,7 @@ describe('useWorkflowSaving', () => {
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 
 			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
-			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
-				refusal,
-				'Problem saving workflow',
-				'save',
-			);
+			expect(showPolicyViolationToastSpy).not.toHaveBeenCalled();
 			expect(showMessageSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					title: 'Problem saving workflow',

@@ -30,6 +30,7 @@ import {
 	clearPendingActivationModal,
 } from '@/app/composables/workflowPublicationConfirmation';
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -279,15 +280,16 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				});
 				const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.publishTitle');
+				const violations = getPolicyViolations(error);
 
-				const isPolicyRefusal = showPolicyViolationToast(
-					error,
-					policyTitle,
-					'publish',
-					createWorkflowDocumentId(workflowId),
-				);
-
-				if (!isPolicyRefusal) {
+				if (violations) {
+					showPolicyViolationToast(
+						violations,
+						policyTitle,
+						'publish',
+						createWorkflowDocumentId(workflowId),
+					);
+				} else {
 					activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
 					toast.showError(error, title, {
 						message: activationErrorMessage.value,
@@ -295,7 +297,7 @@ export function useWorkflowActivate() {
 					});
 				}
 
-				if (!error.meta?.validationError && !isPolicyRefusal) {
+				if (!error.meta?.validationError && !violations) {
 					workflowsStore.setWorkflowInactive(workflowId);
 					workflowDocumentStore.setActiveState({
 						activeVersionId: null,
