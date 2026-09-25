@@ -707,6 +707,11 @@ Compare `Initialize containers` in the job timeline and time to Format check
 or build completion in the job summary. Remove the branch condition before a
 wider rollout.
 
+The pilot also runs an independent `Pilot pnpm sticky disk` job on Blacksmith.
+It mounts a pnpm store inside the container and installs without lifecycle
+scripts. Run it twice in sequence to check that the second run reuses packages.
+Compare the mount and install time with the container job's cold install.
+
 Build and check the image locally with:
 
 ```bash
