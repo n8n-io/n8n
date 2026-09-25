@@ -58,8 +58,6 @@ export declare namespace PackageRequest {
 		{},
 		{},
 		{
-			projectId?: string;
-			folderId?: string;
 			selectedProjectId?: string;
 			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
 			selectedWorkflowIds?: string;
