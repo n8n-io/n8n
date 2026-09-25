@@ -5,6 +5,11 @@
  * inside the main container. `container` starts a separate `n8n engine`
  * container as the data plane and runs the main in remote mode. The engine
  * container has no control plane database access.
+ *
+ * Two functions build the env, one per plane:
+ * - `applyEngineEnv`: the main (control plane), in both modes.
+ * - `engineContainerEnv`: the `n8n engine` container (data plane), in
+ *   `container` mode only.
  */
 export type EngineMode = 'in-process' | 'container';
 
@@ -97,6 +102,9 @@ function resolveEngineDatabaseUrl(env: Record<string, string>): string {
 
 /**
  * Adds the env that turns on engine v2 to the main's environment in place.
+ * Control plane only: in `in-process` mode the main also hosts the data plane
+ * and gets its database URL; in `container` mode the main gets remote mode and
+ * the address of the engine container, which `engineContainerEnv` configures.
  *
  * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
  * so the caller never handles credentials. No-op when `engine` is unset.
@@ -132,8 +140,9 @@ export function applyEngineEnv(
 }
 
 /**
- * The environment of the engine container: the shared env without control
- * plane database access, plus what the data plane needs to run alone.
+ * The environment of the engine container (data plane, `container` mode only):
+ * the shared env without control plane database access, plus what the data
+ * plane needs to run alone.
  *
  * Takes the shared env *before* `applyEngineEnv` removes the engine URL from
  * the main. A dedicated database service supplies that URL.
