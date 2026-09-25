@@ -985,13 +985,14 @@ describe('utils', () => {
 		});
 
 		describe('httpStreamable session cleanup', () => {
-			const connectHttpClient = async () => {
+			const connectHttpClient = async (signal?: AbortSignal) => {
 				const result = await connectMcpClient({
 					serverTransport: 'httpStreamable',
 					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
+					signal,
 				});
 
 				expect(result.ok).toBe(true);
@@ -1042,6 +1043,22 @@ describe('utils', () => {
 				} finally {
 					vi.useRealTimers();
 				}
+			});
+
+			it('should terminate the session when execution is aborted', async () => {
+				const abort = new AbortController();
+				const originalClose = mockClient.close;
+				const { transport } = await connectHttpClient(abort.signal);
+				const terminateSession = vi.mocked(transport.terminateSession);
+				terminateSession.mockResolvedValue(undefined);
+
+				abort.abort();
+
+				await vi.waitFor(() => expect(originalClose).toHaveBeenCalledTimes(1));
+				expect(terminateSession).toHaveBeenCalledTimes(1);
+				expect(terminateSession.mock.invocationCallOrder[0]).toBeLessThan(
+					originalClose.mock.invocationCallOrder[0],
+				);
 			});
 
 			it('should terminate and close only once', async () => {
