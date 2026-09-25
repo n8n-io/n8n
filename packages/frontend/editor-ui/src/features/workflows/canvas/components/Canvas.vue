@@ -831,15 +831,14 @@ const {
 	selectedElementCount,
 	selectionBoxBounds,
 	explicitlySelectedGroupIds,
-} =
-	useCanvasNodeGroupSelection({
-		canvasId: props.id,
-		isEnabled: () => props.showNodeGroups,
-		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
-		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
-		isEmptyGroup,
-		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
-	});
+} = useCanvasNodeGroupSelection({
+	canvasId: props.id,
+	isEnabled: () => props.showNodeGroups,
+	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+	isEmptyGroup,
+	isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+});
 
 // VueFlow sizes its selection box to the selected VueFlow nodes, but a group
 // node is only the title bar — its expanded frame overflows the box. Feed the
