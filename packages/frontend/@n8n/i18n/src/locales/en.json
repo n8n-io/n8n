@@ -7116,6 +7116,7 @@
 	"instanceAi.threads.actions": "Conversation actions",
 	"instanceAi.threads.rename": "Rename conversation",
 	"instanceAi.threads.renameError": "Couldn't rename the chat. Try again.",
+	"instanceAi.threads.renameSuccess": "Chat renamed",
 	"instanceAi.threads.loading": "Loading chats…",
 	"instanceAi.threads.loadError": "Couldn't load chats. Try again.",
 	"instanceAi.threads.viewAll": "View all",
