@@ -7,6 +7,16 @@ interface MentionRange {
 	end: number;
 }
 
+/**
+ * Characters that open the mention picker when typed. Japanese IMEs, and CJK
+ * IMEs in full-width mode, emit the fullwidth `＠` (U+FF20) for the `@` key.
+ */
+const MENTION_TRIGGER_CHARACTERS = new Set(['@', '＠']);
+
+export function isMentionTrigger(character: string | undefined): boolean {
+	return character !== undefined && MENTION_TRIGGER_CHARACTERS.has(character);
+}
+
 export function useAssistantAtMentions(options: {
 	text: Ref<string>;
 	enabled: MaybeRefOrGetter<boolean>;
@@ -69,14 +79,14 @@ export function useAssistantAtMentions(options: {
 		savedSelection.value = { start: caret, end: caret };
 		const triggerIndex = caret - 1;
 		const followsWhitespace = triggerIndex === 0 || /\s/.test(value[triggerIndex - 1] ?? '');
-		if (value[triggerIndex] === '@' && followsWhitespace) {
+		if (isMentionTrigger(value[triggerIndex]) && followsWhitespace) {
 			openTypedRange(triggerIndex, caret);
 			return;
 		}
 
 		const range = activeRange.value;
 		if (range) {
-			const triggerExists = range.origin === 'button' || value[range.start] === '@';
+			const triggerExists = range.origin === 'button' || isMentionTrigger(value[range.start]);
 			const beforeRange = range.origin === 'typed' ? caret <= range.start : caret < range.start;
 			if (!triggerExists || beforeRange) {
 				close();

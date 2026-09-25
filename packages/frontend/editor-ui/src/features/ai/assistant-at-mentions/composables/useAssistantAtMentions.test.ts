@@ -32,6 +32,17 @@ describe('useAssistantAtMentions', () => {
 		expect(mentions.menuOpen.value).toBe(true);
 	});
 
+	it('opens the picker for a fullwidth at sign', async () => {
+		const { text, input, mentions } = setup();
+		input.value = 'Compare ＠';
+		input.setSelectionRange(9, 9);
+		await mentions.handleTextChange('Compare ＠');
+		expect(mentions.menuOpen.value).toBe(true);
+
+		await mentions.replaceActiveRange('Orders');
+		expect(text.value).toBe('Compare "Orders"');
+	});
+
 	it('does not open for an email-like value', async () => {
 		const { input, mentions } = setup();
 		input.value = 'user@';
