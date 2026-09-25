@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_89ffeedfd03265::t_d8d8e275551fdf 548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c9d7e55b4d1ed04d75b650fe8b39ef5f7ec60fca",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
