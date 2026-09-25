@@ -10,6 +10,9 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.build-agent': 'Working with agent',
 				'instanceAi.tools.build-agent.exploring': 'Exploring agent',
+				'instanceAi.tools.agent-context': 'Exploring agent context',
+				'instanceAi.tools.agent-context.config': 'Reading agent config',
+				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
 				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
@@ -177,6 +180,14 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
+	});
+
+	test('getToolLabel uses the agent-context lookup label when available', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('agent-context', { type: 'config' })).toBe('Reading agent config');
+		expect(getToolLabel('agent-context', { type: 'sessions' })).toBe('Checking agent sessions');
+		expect(getToolLabel('agent-context', { type: 'unknown' })).toBe('Exploring agent context');
+		expect(getToolLabel('agent-context')).toBe('Exploring agent context');
 	});
 
 	test('getToolLabel shows skill script commands cleanly', () => {

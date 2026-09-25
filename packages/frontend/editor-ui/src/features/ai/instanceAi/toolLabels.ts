@@ -165,6 +165,11 @@ export function useToolLabel() {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
 		}
+		if (toolName === 'agent-context' && typeof args?.type === 'string') {
+			const lookupKey = `instanceAi.tools.agent-context.${args.type}` as BaseTextKey;
+			const lookupLabel = i18n.baseText(lookupKey);
+			if (lookupLabel !== lookupKey) return lookupLabel;
+		}
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
