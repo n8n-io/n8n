@@ -7,6 +7,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { CREDENTIAL_TYPES_KIND } from '../constants';
@@ -85,6 +86,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const eventService = mock<EventService>();
 	const cacheService = mock<CacheService>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const nodeTypes = mock<NodeTypes>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -94,6 +96,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		eventService,
 		cacheService,
 		loadNodesAndCredentials,
+		nodeTypes,
 		mockLogger(),
 	);
 
@@ -111,6 +114,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
+		nodeTypes.resolveBaseName.mockImplementation((name) => ({
+			baseName: name,
+			isSyntheticTool: false,
+		}));
 	});
 
 	describe('getEffectivePolicy', () => {
@@ -285,6 +292,18 @@ describe('TypeAvailabilityPolicyService', () => {
 				origin: 'document-api',
 				after: { rules: created.rules, version: created.version },
 			});
+		});
+
+		it('tags the audit event with the credential-types kind for a credential policy write', async () => {
+			const created = makePolicy({ kind: CREDENTIAL_TYPES_KIND });
+			policyRepository.createPolicy.mockResolvedValue(created);
+
+			await service.createPolicyDocument(CREDENTIAL_TYPES_KIND, [RULE], 'user-1');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-document-created',
+				expect.objectContaining({ kind: CREDENTIAL_TYPES_KIND }),
+			);
 		});
 
 		it('surfaces shadow-lint warnings without rejecting the write', async () => {
@@ -549,6 +568,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		it('rejects a duplicate policyId before any repository call', async () => {
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -558,13 +578,14 @@ describe('TypeAvailabilityPolicyService', () => {
 				),
 			).rejects.toThrow('Duplicate policyId');
 
-			expect(scopeRepository.findScopeById).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByIdAndKind).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
 		it('rejects a duplicate (isFloor, priority) pair before any repository call', async () => {
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -578,10 +599,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('throws NotFoundError when the scope does not exist', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(null);
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
 
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'missing',
 					[{ policyId: 'p1', priority: 0, isFloor: false }],
 					'user-1',
@@ -589,22 +611,42 @@ describe('TypeAvailabilityPolicyService', () => {
 			).rejects.toThrow(NotFoundError);
 		});
 
+		it('throws NotFoundError when the scope belongs to another kind, even with no attachments to check', async () => {
+			// A scope of another kind must read as "not found" here, the same way a foreign-kind
+			// policy document does — an empty attachment list would otherwise sail past
+			// `assertAttachableToScope`, which only compares an attached document's kind to the
+			// scope's, and never learns the caller's own intended kind.
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
+
+			await expect(
+				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 'user-1'),
+			).rejects.toThrow(NotFoundError);
+
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(
+				'scope-1',
+				CREDENTIAL_TYPES_KIND,
+				ROOT,
+				true,
+			);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
 		it('replaces attachments, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
-			scopeRepository.findScopeById
-				.mockResolvedValueOnce(scope)
-				.mockResolvedValueOnce(makeScope({ version: 2 }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(makeScope({ version: 2 }));
 			attachmentRepository.listAttachmentsForScope
 				.mockResolvedValueOnce([])
 				.mockResolvedValueOnce([{ policyId: 'p1', rules: [RULE], priority: 0, isFloor: false }]);
 
 			const result = await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
 				'user-1',
 			);
 
-			expect(scopeRepository.findScopeById).toHaveBeenNthCalledWith(1, scope.id, ROOT, true);
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
 			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalledWith(
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
@@ -628,10 +670,12 @@ describe('TypeAvailabilityPolicyService', () => {
 
 		it('falls back to computing the version when the re-read finds no row', async () => {
 			const scope = makeScope({ version: 1 });
-			scopeRepository.findScopeById.mockResolvedValueOnce(scope).mockResolvedValueOnce(null);
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(null);
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
 
 			const result = await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
 				'user-1',
@@ -641,7 +685,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: 'project-1' }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ projectId: 'project-1' }));
 			policyRepository.findManyByIds.mockResolvedValue([
 				makePolicy({ id: 'p1', rules: [RULE] }),
 				makePolicy({ id: 'p2', rules: [DELEGATE_RULE] }),
@@ -649,6 +693,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			await expect(
 				service.replaceAttachments(
+					KIND,
 					'scope-1',
 					[
 						{ policyId: 'p1', priority: 0, isFloor: false },
@@ -666,10 +711,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 
 		it('does not inspect the documents when attaching to instance scope', async () => {
-			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: null }));
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ projectId: null }));
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
 
 			await service.replaceAttachments(
+				KIND,
 				'scope-1',
 				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
 				'user-1',
@@ -1373,6 +1419,48 @@ describe('TypeAvailabilityPolicyService', () => {
 					matchedRuleId: null,
 					optInAvailable: true,
 				});
+			});
+		});
+
+		describe('tool variants', () => {
+			const GMAIL = 'n8n-nodes-base.gmail';
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+
+			beforeEach(() => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+					{
+						policyId: 'p1',
+						rules: [{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } }],
+						priority: 0,
+						isFloor: false,
+					},
+				]);
+			});
+
+			it('judges a node type by the base name the registry resolves it to', async () => {
+				nodeTypes.resolveBaseName.mockImplementation((name) => ({
+					baseName: name === GMAIL_TOOL ? GMAIL : name,
+					isSyntheticTool: name === GMAIL_TOOL,
+				}));
+
+				const result = await service.evaluateComposedTypesFor(KIND, null, [GMAIL_TOOL]);
+
+				expect(result.verdicts).toEqual([
+					{
+						name: GMAIL_TOOL,
+						action: 'deny',
+						scope: 'instance',
+						matchedRuleId: 'deny-gmail',
+						optInAvailable: false,
+					},
+				]);
+			});
+
+			it('does not resolve a base name for a credential type', async () => {
+				await service.evaluateComposedTypesFor(CREDENTIAL_TYPES_KIND, null, ['gmailApi']);
+
+				expect(nodeTypes.resolveBaseName).not.toHaveBeenCalled();
 			});
 		});
 	});

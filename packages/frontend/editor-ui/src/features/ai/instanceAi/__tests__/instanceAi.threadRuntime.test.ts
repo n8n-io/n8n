@@ -251,6 +251,54 @@ describe('cancelRun', () => {
 	});
 });
 
+describe('transient workflow references', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	it('keeps draft artifacts thread-scoped and removes the final reference', async () => {
+		const registry = createRuntimeRegistry();
+		const first = registry.getOrCreateRuntime('thread-1');
+		const second = registry.getOrCreateRuntime('thread-2');
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-2',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		await nextTick();
+
+		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
+		expect(second.producedArtifacts.has('wf-1')).toBe(false);
+
+		first.removeTransientWorkflowReference('draft-1');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(true);
+
+		first.removeTransientWorkflowReference('draft-2');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(false);
+	});
+
+	it('clears transient references when the runtime resets', async () => {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-1');
+		runtime.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		runtime.resetState();
+		await nextTick();
+
+		expect(runtime.transientWorkflowReferences.size).toBe(0);
+		expect(runtime.producedArtifacts.has('wf-1')).toBe(false);
+	});
+});
+
 const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
@@ -319,6 +367,46 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('applyEvent folds a preference-card fact onto its tool call before the stream delivers it', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					result: {
+						ok: true,
+						preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+					},
+				},
+			}),
+		);
+
+		// The endpoint returned the fact; the card applies it without waiting for SSE.
+		activeRuntime(registry).applyEvent({
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		});
+
+		const toolCall = activeRuntime(registry).messages[0].agentTree?.toolCalls.find(
+			(tc) => tc.toolCallId === 'tc-1',
+		);
+		expect(toolCall?.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
 	test('setup-items SSE events fold last-wins per workflowId', () => {
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 		capturedOnMessage!(
@@ -359,6 +447,98 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
 		expect(items).toHaveLength(1);
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
+	});
+
+	test('preferences-applied SSE events replace the applied payload, empty included', () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.appliedPreferences).toBeNull();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'pref-1', scope: 'user' }],
+					renderedLength: 40,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			}),
+		);
+		// An empty payload is an answer: the turn applied none.
+		expect(runtime.appliedPreferences).toEqual({
+			preferences: [],
+			renderedLength: 0,
+			injectedThisTurn: false,
+		});
+	});
+
+	test('the applied payload survives thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 40,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-0',
+			},
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+	});
+
+	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {
+		let resolveMessages!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveMessages = resolve;
+			}),
+		);
+		// The SSE mock is wired to the active thread, so hydrate that one.
+		const runtime = activeRuntime(registry);
+		const hydration = runtime.loadHistoricalMessages();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-9',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'live', scope: 'user' }],
+					renderedLength: 12,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		resolveMessages({
+			threadId: activeThreadId,
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'stale', scope: 'user' }],
+				renderedLength: 12,
+				injectedThisTurn: true,
+			},
+		});
+		await hydration;
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['live']);
 	});
 
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
@@ -1182,6 +1362,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1195,12 +1380,153 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
 			),
+		);
+		warnSpy.mockRestore();
+	});
+
+	describe('setup context on message telemetry', () => {
+		type SetupReader = Parameters<ThreadRuntime['registerSetupChatTelemetryContext']>[0];
+		const setupContext: ReturnType<SetupReader> = {
+			workflow_id: 'workflow-1',
+			pending_credential_count: 1,
+			pending_parameter_count: 2,
+			session_id: 'setup-session',
+			variant: 'variant',
+			'$feature/118_instance_ai_setup_overhaul': 'variant',
+		};
+
+		test('reads current setup context for human sends, including a refused send', async () => {
+			const runtime = activeRuntime(registry);
+			const nextContext = {
+				...setupContext,
+				workflow_id: 'workflow-2',
+				pending_parameter_count: 0,
+			};
+			const reader = vi
+				.fn<SetupReader>()
+				.mockReturnValueOnce(setupContext)
+				.mockReturnValueOnce(nextContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage
+				.mockRejectedValueOnce(new Error('post failed'))
+				.mockResolvedValue({ runId: 'run-1' });
+			expect(reader).not.toHaveBeenCalled();
+
+			await expect(runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE })).resolves.toBe(
+				false,
+			);
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...setupContext, thread_id: activeThreadId, prefill_type: null }),
+			);
+
+			await runtime.sendMessage('Use this suggestion', {
+				authorship: { kind: 'prefill', prefillType: 'suggestion_catalog' },
+			});
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...nextContext, prefill_type: 'suggestion_catalog' }),
+			);
+			expect(reader).toHaveBeenCalledTimes(2);
+		});
+
+		test('omits setup context from the automatic Execute notification', async () => {
+			const runtime = activeRuntime(registry);
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('Workflow execution finished.', {
+				authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+			});
+
+			expect(reader).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				{
+					thread_id: activeThreadId,
+					instance_id: 'instance-1',
+					is_first_message: true,
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					prefill_type: 'handoff_setup_panel_execute',
+					prefill_id: null,
+					prompt_modified: false,
+					mention_count: 0,
+					workflow_mention_count: 0,
+					node_mention_count: 0,
+					group_mention_count: 0,
+					attachment_count: 0,
+				},
+			);
+		});
+
+		test('keeps the replacement reader when the older reader unregisters and clears it on release', async () => {
+			const runtime = activeRuntime(registry);
+			const olderReader = vi.fn<SetupReader>().mockReturnValue({ workflow_id: 'old-workflow' });
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			const releaseOlder = runtime.registerSetupChatTelemetryContext(olderReader);
+			const release = runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			releaseOlder();
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+			expect(olderReader).not.toHaveBeenCalled();
+			expect(reader).toHaveBeenCalledOnce();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining(setupContext),
+			);
+
+			release();
+			await runtime.sendMessage('after closing setup', { authorship: USER_TYPED_MESSAGE });
+			expect(reader).toHaveBeenCalledOnce();
+			for (const property of Object.keys(setupContext))
+				expect(mockTelemetryTrack.mock.lastCall?.[1]).not.toHaveProperty(property);
+		});
+	});
+
+	test('sendMessage reports mention and outbound attachment counts', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				mentionCount: 3,
+				workflowMentionCount: 1,
+				nodeMentionCount: 1,
+				groupMentionCount: 1,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				mention_count: 3,
+				workflow_mention_count: 1,
+				node_mention_count: 1,
+				group_mention_count: 1,
+				attachment_count: 2,
+			}),
 		);
 		warnSpy.mockRestore();
 	});
@@ -1227,6 +1553,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
@@ -1255,6 +1586,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1288,6 +1624,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		warnSpy.mockRestore();

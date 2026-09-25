@@ -6,14 +6,19 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	decodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import { checkpointExecutionId } from '../types/agent-queued-message';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
@@ -47,6 +52,10 @@ export class N8NCheckpointStorage {
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly txRunner: TransactionRunner,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly queueRepository: AgentMessageQueueRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -57,7 +66,12 @@ export class N8NCheckpointStorage {
 			load: async (key) => await this.load(key, agentId),
 			claimForResume: async (key: string, state: SerializableAgentState) =>
 				await this.claimForResume(key, state, agentId),
-			delete: async (key) => await this.delete(key, agentId),
+			delete: async (key, state) => {
+				if (!state) return await this.delete(key, agentId);
+				await this.withExecutionOwnership(state, async (ctx) => {
+					await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId, ctx);
+				});
+			},
 		};
 	}
 
@@ -90,26 +104,51 @@ export class N8NCheckpointStorage {
 
 	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const existing = await this.agentCheckpointRepository.findByRunId(key);
-
-		if (existing) {
-			if (existing.agentId !== agentId) {
+		await this.withExecutionOwnership(state, async (ctx) => {
+			const existing = await this.agentCheckpointRepository.findByRunId(key, ctx);
+			if (existing && existing.agentId !== agentId) {
 				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
 			}
-			existing.state = JSON.stringify(state);
-			existing.threadId = state.persistence?.threadId ?? null;
-			existing.expired = false;
-			await this.agentCheckpointRepository.save(existing);
-		} else {
 			const checkpoint = this.agentCheckpointRepository.create({
+				...existing,
 				runId: key,
 				agentId,
 				threadId: state.persistence?.threadId ?? null,
 				state: JSON.stringify(state),
 				expired: false,
 			});
-			await this.agentCheckpointRepository.save(checkpoint);
-		}
+			await this.agentCheckpointRepository.saveCheckpoint(checkpoint, ctx);
+		});
+	}
+
+	private async withExecutionOwnership(
+		state: SerializableAgentState,
+		write: (ctx: OperationContext) => Promise<void>,
+	): Promise<void> {
+		const executionId = checkpointExecutionId(state);
+		if (!executionId) return await write({});
+		await this.txRunner.run({}, async (ctx) => {
+			const threadId = state.persistence?.threadId;
+			if (!threadId || !(await this.threadRepository.lockById(threadId, ctx))) {
+				throw new OperationalError('Agent execution no longer owns this session');
+			}
+			const execution = await this.executionRepository.findExecution(executionId, ctx);
+			const active = await this.queueRepository.findActive(threadId, ctx);
+			if (
+				execution?.status !== 'running' ||
+				execution.threadId !== threadId ||
+				(active && active.executionId !== executionId)
+			) {
+				throw new OperationalError('Agent execution no longer owns this session');
+			}
+			await write(ctx);
+		});
+	}
+
+	private expiryCutoff(): Date {
+		return new Date(
+			Date.now() - this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+		);
 	}
 
 	async load(key: string, agentId: string): Promise<SerializableAgentState | undefined> {
@@ -117,7 +156,11 @@ export class N8NCheckpointStorage {
 
 		if (!checkpoint) return undefined;
 
-		if (checkpoint.expired || checkpoint.state === null) {
+		if (
+			checkpoint.expired ||
+			checkpoint.state === null ||
+			checkpoint.updatedAt < this.expiryCutoff()
+		) {
 			throw new UserError('This action has expired and cannot be resumed');
 		}
 
@@ -140,6 +183,7 @@ export class N8NCheckpointStorage {
 			agentId,
 			JSON.stringify(state),
 			JSON.stringify({ ...state, status: 'running' }),
+			this.expiryCutoff(),
 		);
 	}
 
@@ -149,11 +193,25 @@ export class N8NCheckpointStorage {
 		agentId: string,
 	): Promise<boolean> {
 		if (state.status !== 'suspended') return false;
-		return await this.agentCheckpointRepository.cancelSuspended(
-			key,
-			agentId,
-			JSON.stringify(state),
-		);
+		const executionId = checkpointExecutionId(state);
+		if (!executionId)
+			return await this.agentCheckpointRepository.cancelSuspended(
+				key,
+				agentId,
+				JSON.stringify(state),
+			);
+		return await this.txRunner.run({}, async (ctx) => {
+			const threadId = state.persistence?.threadId;
+			if (!threadId || !(await this.threadRepository.lockById(threadId, ctx))) return false;
+			const running = await this.executionRepository.findRunningByThread(threadId, ctx);
+			if (running.some(({ id }) => id !== executionId)) return false;
+			return await this.agentCheckpointRepository.cancelSuspended(
+				key,
+				agentId,
+				JSON.stringify(state),
+				ctx,
+			);
+		});
 	}
 
 	/**
@@ -165,13 +223,38 @@ export class N8NCheckpointStorage {
 	async findSuspendedForThread(
 		agentId: string,
 		threadId: string,
+		ctx: OperationContext = {},
 	): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.findActiveForThread(agentId, threadId);
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+			ctx,
+		);
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
 			if (checkpoint) return checkpoint;
 		}
 		return null;
+	}
+
+	async hasNoConflictingThreadResource(
+		agentId: string,
+		threadId: string,
+		resourceId: string,
+	): Promise<boolean> {
+		const rows = await this.agentCheckpointRepository.findRetainedByThreadId(threadId);
+		for (const row of rows) {
+			if (!row.state) continue;
+			const state = jsonParse<SerializableAgentState | null>(row.state, { fallbackValue: null });
+			if (
+				state?.persistence?.threadId === threadId &&
+				(row.agentId !== agentId || state.persistence.resourceId !== resourceId)
+			) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private parseSuspendedState(
@@ -190,12 +273,21 @@ export class N8NCheckpointStorage {
 		return parsed;
 	}
 
-	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {
-		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
+	async getStatus(
+		key: string,
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<CheckpointStatus> {
+		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(
+			key,
+			agentId,
+			ctx,
+		);
 		if (!checkpoint) return { status: 'not-found' };
 		if (checkpoint.state === null) return { status: 'expired' };
 		const state = jsonParse<SerializableAgentState>(checkpoint.state);
-		if (checkpoint.expired) return { status: 'expired', checkpoint: state };
+		if (checkpoint.expired || checkpoint.updatedAt < this.expiryCutoff())
+			return { status: 'expired', checkpoint: state };
 		return { status: 'active', checkpoint: state };
 	}
 

@@ -24,7 +24,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface TelegramUserFixture {
@@ -93,6 +92,7 @@ export interface TelegramReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	apiCalls: TelegramApiCall[];
@@ -230,6 +230,7 @@ export async function createTelegramReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { telegram: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration = options.integration ?? {
@@ -252,7 +253,7 @@ export async function createTelegramReplayContext(
 	const sendTelegramWebhook = async (payload: unknown) => {
 		const headers = new Headers();
 		headers.set('x-telegram-bot-api-secret-token', TELEGRAM_SECRET_TOKEN);
-		return await sendJsonWebhook(
+		return await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.telegram(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/telegram',
 			payload,

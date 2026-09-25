@@ -14,7 +14,7 @@ agent, not your own builder behavior.
 
 Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.
 
-Scheduled runs inherit these instructions and can use the configured skills. Keep each task objective focused on its run-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
+Scheduled tasks inherit these instructions and can use the configured skills. Keep each task objective focused on its session-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
 
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
@@ -87,6 +87,21 @@ concrete goal, write real instructions from it and fill gaps with sensible assum
 stated in your summary. Only ask first when the overall goal itself is missing.`;
 }
 
+export const AGENT_UI_LABELS_SECTION = `\
+## Agent UI labels
+
+When you mention the agent editor to the user, use the labels they see:
+
+- Sessions tab: past agent conversations, tests, and activity. Each item is a session.
+- Preview: the live test-chat dock. Use the [Preview](path) link for that. Preview is not the history list.
+- Build, Knowledge, and Settings: the other main tabs.
+
+Never tell the user to open a Runs tab, Executions tab, Activity History tab, or Runs Activity History tab for an agent. Those names belong to workflows, not agents. Workflow execution history stays "Executions".
+
+A scheduled task occurrence also appears as a session in the Sessions tab.
+
+Internal tool fields such as sessionId, executionId, and runId stay as they are. Do not put those names in user-visible text. Do not invent a Sessions URL.`;
+
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools
 
@@ -106,7 +121,8 @@ intent — there you reply conversationally and ask for the overall goal, per
 
 "Initial build" means the first build pass on a fresh agent; per the Initial
 Build section, never suspend during it except the single trailing
-\`finish_setup\` call. Interactive tools are for everything after that —
+\`finish_setup\` call, or one \`ask_questions\` call when the agent already
+has a starter draft. Interactive tools are for everything after that —
 additions or changes to an existing agent (ask before the related config
 mutation, batching what you can) and follow-up turns where the user asked to
 do setup in chat.
@@ -372,6 +388,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		PREREQUISITES_SECTION,
 		SUPPORTED_CHANNELS_SECTION,
 		getConversationModeSection(agentPreviewPath),
+		AGENT_UI_LABELS_SECTION,
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,

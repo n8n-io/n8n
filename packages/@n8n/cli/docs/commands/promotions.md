@@ -225,6 +225,50 @@ Personal projects are not included. Clone the `promote` direction first. This
 command works on the `instance` connection only. The API key also needs
 `variable:list` when the workflows reference variables.
 
+## `promotion-connection list-changes`
+
+List the workflows that differ between a project and the branch of its
+promotion configuration, in one direction.
+
+```bash
+n8n-cli promotion-connection list-changes proj-abc promote
+n8n-cli promotion-connection list-changes proj-abc apply
+```
+
+| Flag | Description |
+|------|-------------|
+| `--search` | List only the workflows whose name matches this text. |
+| `--sort` | Sort by `name`, `updatedAt`, or `status`. The default is `name`. |
+| `--order` | Sort order: `asc` or `desc`. The default is `asc`. |
+
+For `promote` the rows are what a promotion would send to the branch, and the
+API key needs `gitConnection:push`. For `apply` the rows are what applying the
+branch would change on this instance, and the key needs `gitConnection:pull`.
+`commitSha` is the commit the rows were read from. Table output shows the rows
+only. Use `--json` to get the rows and `commitSha` together. Clone the direction
+first. Use the `id` of each row to build a selective promote.
+
+## `promotion-connection promote-selection`
+
+Read a chosen set of a project's workflows now, and push their current state to
+the `instance` connection's Promote branch.
+
+```bash
+n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -w wf-2
+n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
+```
+
+| Flag | Description |
+|------|-------------|
+| `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
+| `-m, --message` | Commit message. A default is used when omitted. |
+
+Archived workflows stay on the branch as archived. A selected workflow that was
+deleted or moved to another project leaves this project's branch. The request
+fails before any write if the branch does not hold that workflow under this
+project. Clone the `promote` direction first. The API key also needs
+`variable:list` when the workflows reference variables.
+
 ## `promotion-connection apply`
 
 Reset the local checkout to the tip of the configured branch, and import the
@@ -232,10 +276,68 @@ package. This overwrites the instance to match the branch.
 
 ```bash
 n8n-cli promotion-connection apply conn-1
+n8n-cli promotion-connection apply conn-1 \
+  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
+| Flag | Description |
+|------|-------------|
+| `--expected-config-id` | ID of the apply configuration that you reviewed (`configs.apply.id`). |
+| `--expected-branch` | Branch that you reviewed. |
+| `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
+
+Without the `--expected-*` flags, the command applies the branch tip. With them,
+the command applies only the source that you reviewed. Pass all three flags or
+none.
+
+| Result | Exit code | What happened |
+|--------|-----------|---------------|
+| `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
+| `source-changed` | `3` | The configuration, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
+| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+
+With `--json`, the output is the full result for each status. For `blocked`, the
+`preflight` object lists each missing project, missing binding, access
+requirement, and conflict. Existing variable values on this instance are kept.
+
 Clone the `apply` direction first. This command works on the `instance`
-connection only.
+connection only. The API key needs `gitConnection:pull`.
+
+## `promotion-connection apply-continue`
+
+Continue an Apply that was `blocked`, after you resolve the missing bindings, access requirements, or conflicts.
+
+```bash
+n8n-cli promotion-connection apply-continue conn-1 \
+  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+```
+
+The three `--expected-*` flags are required. Use the `configId`,
+`git.branchName`, and `git.commitSha` that the blocked Apply reported. The
+command runs the preflight again. The results and exit codes are the same as
+for `apply`: `blocked` again means that something still blocks, and
+`source-changed` means that you must review again. The server keeps no session,
+so run the command again when it exits `4`.
+
+## Apply a reviewed commit
+
+```bash
+# 1. Review the changes. Take the commit SHA from the same response as the rows:
+#    a second request can read a newer commit.
+n8n-cli promotion-connection list-changes proj-abc apply --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
+
+# 2. Read the apply configuration ID and branch of the connection.
+n8n-cli promotion-connection get conn-1 --jq '.configs.apply.id'
+n8n-cli promotion-connection get conn-1 --jq '.configs.apply.settings.branchName'
+
+# 3. Apply that commit only.
+n8n-cli promotion-connection apply conn-1 \
+  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
+
+# 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
+#    Then run the apply-continue command that step 3 printed.
+```
 
 ## `promotion-connection list-projects` / `add-project` / `remove-project`
 

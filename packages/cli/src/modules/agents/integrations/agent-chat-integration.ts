@@ -10,6 +10,7 @@ import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -17,12 +18,12 @@ import {
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-	IntegrationMessageContext,
+	IntegrationContextQueryParams,
 	IntegrationPlatformMessageContext,
-	IntegrationToolConnectionDescriptor,
 	ReplyExpectation,
 } from './integration-tools';
 
@@ -103,8 +104,33 @@ export function onceStatusHandle(
 	};
 }
 
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	slackThreadContext?: SlackThreadContext;
 	/** Allow-listed metadata from the current platform message. */
 	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
@@ -123,6 +149,8 @@ export type BridgeResumeExecutionContext = Pick<
 >;
 
 export interface BridgeMessageContextParams {
+	/** Capture durable input without showing processing status while it waits. */
+	startStatus?: boolean;
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
@@ -246,6 +274,14 @@ export abstract class AgentChatIntegration {
 
 	/** Whether action messages are deleted before the agent resumes. */
 	readonly deleteActionMessageBeforeResume: boolean = true;
+
+	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
 
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single
@@ -491,6 +527,7 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		logger: Logger;
 		agentId: string;
+		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 	}): Promise<BridgeResumeExecutionContext>;
 
 	/**
@@ -514,22 +551,17 @@ export abstract class AgentChatIntegration {
 }
 
 /** Per-platform context-query execution params. */
-export interface PlatformContextQueryParams {
+export interface PlatformContextQueryParams
+	extends Omit<IntegrationContextQueryParams, 'persistence'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	query: IntegrationContextQuery;
-	input: Record<string, unknown>;
 }
 
 /** Per-platform action-execution params. */
-export interface PlatformActionParams {
+export interface PlatformActionParams
+	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**

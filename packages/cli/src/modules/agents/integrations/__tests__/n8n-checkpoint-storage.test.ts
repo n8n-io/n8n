@@ -1,6 +1,10 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
+import type { TransactionRunner } from '@n8n/db';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
+import type { AgentMessageQueueRepository } from '../../repositories/agent-message-queue.repository';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -31,10 +35,15 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
+	repository.create.mockImplementation((data) => Object.assign(mock<AgentCheckpoint>(), data));
 	const service = new N8NCheckpointStorage(
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
+		mock<TransactionRunner>(),
+		mock<AgentExecutionRepository>(),
+		mock<AgentExecutionThreadRepository>(),
+		mock<AgentMessageQueueRepository>(),
 	);
 
 	return { service, repository };
@@ -61,7 +70,7 @@ describe('N8NCheckpointStorage', () => {
 			expired: false,
 			state: JSON.stringify(suspendedState),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+		expect(repository.saveCheckpoint).toHaveBeenCalledWith(checkpoint, {});
 	});
 
 	it.each(['thread-1', undefined])('replaces the saved thread key with %s', async (threadId) => {
@@ -81,13 +90,18 @@ describe('N8NCheckpointStorage', () => {
 
 		await service.getStorage('agent-1').save('run-1', state);
 
-		expect(checkpoint).toMatchObject({
-			agentId: 'agent-1',
-			threadId: threadId ?? null,
-			expired: false,
-			state: JSON.stringify(state),
-		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+		expect(repository.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId: 'agent-1',
+				threadId: threadId ?? null,
+				expired: false,
+				state: JSON.stringify(state),
+			}),
+		);
+		expect(repository.saveCheckpoint).toHaveBeenCalledWith(
+			expect.objectContaining({ expired: false }),
+			{},
+		);
 	});
 
 	it.each(['agent-2', null])(
@@ -104,7 +118,7 @@ describe('N8NCheckpointStorage', () => {
 			await expect(service.getStorage('agent-1').save('run-1', suspendedState)).rejects.toThrow(
 				'owned by a different agent',
 			);
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.saveCheckpoint).not.toHaveBeenCalled();
 		},
 	);
 
@@ -134,6 +148,7 @@ describe('N8NCheckpointStorage', () => {
 			'agent-1',
 			JSON.stringify(suspendedState),
 			JSON.stringify({ ...suspendedState, status: 'running' }),
+			expect.any(Date),
 		);
 		await expect(storage.claimForResume?.('run-1', suspendedState)).resolves.toBe(false);
 	});
@@ -164,7 +179,7 @@ describe('N8NCheckpointStorage', () => {
 			checkpoint: suspendedState,
 		});
 
-		expect(repository.findByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
+		expect(repository.findByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1', {});
 	});
 
 	it('retains an expired checkpoint state while cancellation cleanup is pending', async () => {
@@ -249,6 +264,47 @@ describe('N8NCheckpointStorage', () => {
 		);
 	});
 
+	describe('hasNoConflictingThreadResource', () => {
+		const checkpoint = (overrides: Partial<AgentCheckpoint> = {}) =>
+			mock<AgentCheckpoint>({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				state: JSON.stringify(suspendedState),
+				...overrides,
+			});
+
+		it.each([
+			{ name: 'allows an unused thread ID', rows: [], expected: true },
+			{ name: 'allows a matching checkpoint', rows: [checkpoint()], expected: true },
+			{
+				name: 'rejects another agent',
+				rows: [checkpoint({ agentId: 'agent-2' })],
+				expected: false,
+			},
+			{
+				name: 'rejects another resource',
+				rows: [
+					checkpoint({
+						state: JSON.stringify({
+							...suspendedState,
+							persistence: { threadId: 'thread-1', resourceId: 'resource-2' },
+						}),
+					}),
+				],
+				expected: false,
+			},
+			{ name: 'ignores malformed state', rows: [checkpoint({ state: '{' })], expected: true },
+			{ name: 'ignores cleared state', rows: [checkpoint({ state: null })], expected: true },
+		])('$name', async ({ rows, expected }) => {
+			const { service, repository } = makeService();
+			repository.findRetainedByThreadId.mockResolvedValue(rows);
+
+			await expect(
+				service.hasNoConflictingThreadResource('agent-1', 'thread-1', 'resource-1'),
+			).resolves.toBe(expected);
+		});
+	});
+
 	describe('findSuspendedForThread', () => {
 		const row = (runId: string, state: SerializableAgentState) =>
 			({
@@ -279,7 +335,12 @@ describe('N8NCheckpointStorage', () => {
 			const result = await service.findSuspendedForThread('agent-1', 'thread-target');
 
 			expect(result).toEqual(parent);
-			expect(repository.findActiveForThread).toHaveBeenCalledWith('agent-1', 'thread-target');
+			expect(repository.findActiveForThread).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-target',
+				expect.any(Date),
+				{},
+			);
 		});
 
 		// A delegated child suspends under its parent's thread; the parent run

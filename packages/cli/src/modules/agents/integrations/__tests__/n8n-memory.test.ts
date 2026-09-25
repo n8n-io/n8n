@@ -20,7 +20,7 @@ import type { AgentMessageRepository } from '../../repositories/agent-message.re
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
-import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
+import { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
@@ -85,6 +85,9 @@ describe('N8nMemory', () => {
 			execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
 		};
 		resourceRepository.createQueryBuilder.mockReturnValue(resourceInsertQueryBuilder as never);
+		resourceRepository.ensureExists.mockImplementation(
+			AgentResourceRepository.prototype.ensureExists.bind(resourceRepository),
+		);
 		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = vi.fn().mockResolvedValue([]);

@@ -45,6 +45,8 @@ jobs:
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          # Include recent history so the PR filter can reuse the checkout.
+          fetch-depth: 200
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha
@@ -88,6 +90,7 @@ jobs:
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+              .github/workflows/test-unit-reusable.yml
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
@@ -123,15 +126,15 @@ jobs:
               packages/frontend/@n8n/chat/**
               packages/frontend/@n8n/frontend-vite-config/**
               turbo.json
-              .github/workflows/ci-pull-requests.yml
               .github/workflows/test-frontend-declarations-reusable.yml
               .github/actions/setup-nodejs/**
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
-              .devcontainer/codespaces/agent-worker*.mjs
+              .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
+              scripts/cloud-session*.mjs
               scripts/codespace-env.mjs
               scripts/codespace-preview/**
               scripts/licenses/**
@@ -143,17 +146,20 @@ jobs:
               packages/testing/playwright/utils/performance-helper.ts
               packages/testing/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
-            # Whole directories, not the `engine-*` files alone. Engine 2.0
+            # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
             # and the webhook and trigger paths decide whether a run reaches the
             # data plane, and the executions code merges v1 and v2 rows. A path
             # this list misses skips `e2e-engine`, and `required-checks` counts
             # a skipped job as a pass, so the gap would be silent.
+            # Use force-engine-e2e when changing the engine job in this workflow.
             engine-e2e:
               packages/@n8n/engine/**
               packages/@n8n/node-engine-compatibility/**
               packages/@n8n/config/src/configs/engine.config.ts
               packages/cli/src/modules/engine-v2/**
+              packages/cli/src/commands/engine.ts
+              packages/cli/src/commands/base-command.ts
               packages/cli/src/services/engine-*
               packages/cli/src/executions/**
               packages/cli/src/webhooks/**
@@ -161,7 +167,6 @@ jobs:
               packages/cli/src/workflow-runner.ts
               packages/testing/containers/**
               packages/testing/playwright/**
-              .github/workflows/ci-pull-requests.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
@@ -222,13 +227,9 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run format check
-        if: fromJSON(steps.ci-filter.outputs.results).ci
-        run: pnpm format:check
-
       - name: Generate shard matrix
         id: generate-matrix
-        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
+        if: github.event_name != 'merge_group' && (fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e)
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
@@ -260,11 +261,34 @@ jobs:
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
+  format-check:
+    name: Format check
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+
+      - name: Install format tools
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --ignore-scripts
+          build-command: ''
+          # Keep the partial pnpm store separate from the full install cache.
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            package.json
+
+      - name: Run format check
+        run: pnpm format:check
+
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
@@ -276,7 +300,7 @@ jobs:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     env:
       # Inherited by every worker turbo spawns, so the real budget is
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
@@ -297,7 +321,7 @@ jobs:
     name: Lint
     if: needs.install-and-build.outputs.ci == 'true'
     uses: ./.github/workflows/test-linting-reusable.yml
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -305,7 +329,7 @@ jobs:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -324,7 +348,7 @@ jobs:
   # cache hit instead of racing to rebuild.
   prepare-docker:
     name: Prepare Docker
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: >-
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
@@ -363,13 +387,13 @@ jobs:
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
     secrets: inherit
 
-  # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes
+  # Engine v2 parity: runs the `@engine:*` specs against a main that routes
   # every workflow to the new engine. Runs, and blocks, when engine code changes
   # or when the PR carries the `force-engine-e2e` label; skipped otherwise. One
   # shard is enough while the tagged set is small. Internal PRs only: this
   # project has no fork variant yet.
   e2e-engine:
-    name: E2E on engine 2.0
+    name: E2E on engine v2
     needs: [install-and-build, prepare-docker]
     if: >-
       needs.prepare-docker.result == 'success' &&
@@ -392,7 +416,7 @@ jobs:
   # the production-bundle e2e job bundles around.
   dev-server-smoke:
     name: Dev-server boot smoke
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
     uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
     with:
@@ -405,7 +429,7 @@ jobs:
   # release.
   frontend-declarations:
     name: Frontend declarations
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.frontend_declarations == 'true'
     uses: ./.github/workflows/test-frontend-declarations-reusable.yml
     with:
@@ -413,7 +437,7 @@ jobs:
 
   db-tests:
     name: DB Tests
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
@@ -438,7 +462,7 @@ jobs:
 
   security-checks:
     name: Security Checks
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.workflows == 'true'
     uses: ./.github/workflows/sec-ci-reusable.yml
     with:
@@ -447,7 +471,7 @@ jobs:
 
   workflow-scripts:
     name: Workflow scripts
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: needs.install-and-build.outputs.workflow_scripts == 'true'
     uses: ./.github/workflows/test-workflow-scripts-reusable.yml
     with:
@@ -459,10 +483,11 @@ jobs:
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
   instance-ai-discovery-evals:
     name: Instance AI Discovery Evals
-    needs: install-and-build
+    needs: [install-and-build, format-check]
     if: >-
       !cancelled() &&
       needs.install-and-build.result == 'success' &&
+      needs.format-check.result == 'success' &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
@@ -479,6 +504,7 @@ jobs:
     needs:
       [
         install-and-build,
+        format-check,
         unit-test,
         typecheck,
         lint,

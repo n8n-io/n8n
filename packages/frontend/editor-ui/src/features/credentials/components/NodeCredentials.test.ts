@@ -1636,6 +1636,7 @@ describe('NodeCredentials', () => {
 				hideAskAssistant: true,
 				appendToBody: true,
 				workflowId: '1',
+				contextNode: httpNode,
 			});
 		});
 	});

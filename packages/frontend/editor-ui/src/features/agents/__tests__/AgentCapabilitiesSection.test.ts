@@ -40,6 +40,16 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataSpy }),
 }));
 
+const createAgentSpy = vi.fn();
+vi.mock('../composables/useCreateAgent', () => ({
+	useCreateAgent: () => ({ createAgent: createAgentSpy }),
+}));
+
+const canCreateAgentRef = ref(true);
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({ canCreate: canCreateAgentRef }),
+}));
+
 const showErrorSpy = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
@@ -164,6 +174,7 @@ describe('AgentCapabilitiesSection', () => {
 		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		integrationsCatalogRef.value = [];
+		canCreateAgentRef.value = true;
 	});
 
 	it('renders web search and forwards its config updates', () => {
@@ -390,16 +401,44 @@ describe('AgentCapabilitiesSection', () => {
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
 					agents: [
-						{ id: 'agent-3', name: 'Research Agent' },
-						{ id: 'agent-4', name: 'Draft Agent' },
+						{
+							id: 'agent-2',
+							name: 'Helper Agent',
+							added: true,
+							useWhen: 'Use for billing support requests.',
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-2',
+						},
+						{
+							id: 'agent-3',
+							name: 'Research Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-3',
+						},
+						{
+							id: 'agent-4',
+							name: 'Draft Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-4',
+						},
 					],
 				}),
 			}),
 		);
 
 		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
-			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
+			data: {
+				onCreateAgent?: () => void;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+			};
 		};
+		modalCall.data.onCreateAgent?.();
+		expect(createAgentSpy).toHaveBeenCalledWith('button', 'project-id');
+
 		modalCall.data.onConfirm({
 			agentId: 'agent-4',
 			useWhen: 'Use for draft research requests.',
@@ -416,6 +455,20 @@ describe('AgentCapabilitiesSection', () => {
 				},
 			},
 		]);
+	});
+
+	it('omits agent creation when the project does not allow it', async () => {
+		canCreateAgentRef.value = false;
+		const wrapper = mountSection([], {}, null, [], [makeAgent()]);
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').trigger('click');
+		await flushPromises();
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: { onCreateAgent?: () => void };
+		};
+		expect(modalCall.data.onCreateAgent).toBeUndefined();
 	});
 
 	it('refreshes a stale project-agent cache and renders only the sub-agent name', async () => {
@@ -694,14 +747,12 @@ describe('AgentCapabilitiesSection', () => {
 			},
 		]);
 
-		// Reka's DropdownMenuTrigger — not the read-only chip inside it — is what
-		// actually gates opening the menu, so assert its own disabled state.
 		const trigger = wrapper.find('[aria-haspopup="menu"]');
-		expect(trigger.attributes('disabled')).toBe('false');
+		expect(trigger.element).toBeEnabled();
 
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
+		expect(wrapper.find('[aria-haspopup="menu"]').element).toBeDisabled();
 	});
 
 	describe('validation issues', () => {

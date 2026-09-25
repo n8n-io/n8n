@@ -75,4 +75,21 @@ describe('@n8n/node-cli eslint config', () => {
 		const ruleIds = result.messages.map((m) => m.ruleId);
 		expect(ruleIds).toContain('@n8n/community-nodes/no-overrides-field');
 	});
+
+	for (const [name, eslintConfig] of [
+		['config', config],
+		['configWithoutCloudSupport', configWithoutCloudSupport],
+	] as const) {
+		tmpdirTest(`${name} rejects unsupported categories in .node.json files`, async ({ tmpdir }) => {
+			const codexPath = path.join(tmpdir, 'Example.node.json');
+			await fs.writeFile(codexPath, '{ "categories": ["Marketing", "Bananas"] }');
+
+			const result = await lintFile(codexPath, eslintConfig);
+
+			expect(result.messages.map((message) => message.ruleId)).toEqual([
+				'@n8n/community-nodes/valid-node-categories',
+				'@n8n/community-nodes/valid-node-categories',
+			]);
+		});
+	}
 });

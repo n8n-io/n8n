@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 
-const REASON = 'Engine 2.0 cannot receive files from a trigger yet.';
+const REASON = 'Engine v2 cannot receive files from a trigger yet.';
 
 /** A file the control plane wrote to storage, so it has an id to delete. */
 const stored = (id: string): IBinaryData => mock<IBinaryData>({ id, mimeType: 'text/plain' });
@@ -80,7 +80,7 @@ describe('EngineV2PayloadGuard', () => {
 			expect(() => guard.assertNoFiles(slots, REASON)).toThrow(REASON);
 			await vi.waitFor(() =>
 				expect(logger.error).toHaveBeenCalledWith(
-					'Failed to delete the files of a rejected engine 2.0 payload',
+					'Failed to delete the files of a rejected engine v2 payload',
 					expect.objectContaining({ error: expect.any(Error) }),
 				),
 			);

@@ -79,6 +79,10 @@ export interface DialogProps {
 	 * Render above another open dialog
 	 */
 	stacked?: boolean;
+	/**
+	 * Custom class for the dialog container
+	 */
+	containerClass?: string;
 }
 
 export interface DialogEmits {
@@ -122,6 +126,7 @@ const handleOpenChange = (value: boolean) => {
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"
 				:stacked="stacked"
+				:class="containerClass"
 				@escape-key-down="emit('escapeKeyDown', $event)"
 				@interact-outside="emit('interactOutside', $event)"
 				@open-auto-focus="emit('openAutoFocus', $event)"

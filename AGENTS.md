@@ -64,6 +64,11 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 
 ## Essential Commands
 
+For full-repo lint and typecheck, use `pnpm agent:lint` and
+`pnpm agent:typecheck`. They save full logs and return compact results.
+For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
+Run each command with `--help` for its package, script, and file options.
+
 ### Fresh checkout / agent setup
 
 For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
@@ -101,18 +106,6 @@ by default) for a fast recovery: it cleans build outputs and force-rebuilds
 use `pnpm reset --full`, which also wipes untracked files and reinstalls
 dependencies.
 
-### Testing
-- `pnpm test` - Run all tests
-- `pnpm test:affected` - Runs tests based on what has changed since the last
-  commit
-
-Running a particular test file requires going to the directory of that test
-and running: `pnpm test <test-file>`.
-
-When changing directories, use `pushd` to navigate into the directory and
-`popd` to return to the previous directory. When in doubt, use `pwd` to check
-your current directory.
-
 ### Seeding a local instance
 
 An empty instance is a bad place to test anything that reads a user's work.
@@ -132,22 +125,6 @@ unauthenticated and serves the whole table: keep it on loopback.
 
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
-
-### Code Quality
-- `pnpm lint` - Lint code
-- `pnpm typecheck` - Run type checks
-- `pnpm knip` - Report declared dependencies that no file in the package uses.
-  CI runs it on every PR as the "Unused Dependencies" check. To resolve a
-  finding, remove the dependency from the manifest. If the dependency is used
-  in a way knip cannot see, add an `ignoreDependencies` entry for the package
-  in `knip.ts` with a one-line reason
-
-Always run lint and typecheck before committing code to ensure quality.
-Execute these commands from within the specific package directory you're
-working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
-check only when preparing the final PR. When your changes affect type
-definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
-build the system before running lint and typecheck.
 
 ## Architecture Overview
 
@@ -307,8 +284,8 @@ extends one of those layers):
 - `Cipher` does not expose the legacy or explicit-key methods.
 - The raw AES classes stay inside `packages/core/src/encryption/`.
 - **Deployment keys are never deleted** — data encrypted with a key becomes
-  unreadable without it. Deactivate keys instead; the repository's delete
-  surface throws at runtime and the lint rule rejects call sites.
+  unreadable without it. Deactivate keys instead; the repository does not expose
+  deletion and database triggers reject direct deletion.
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package
@@ -326,37 +303,24 @@ extends one of those layers):
 - **data-testid must be a single value** (no spaces or multiple values)
 - Always use the `design-system` skill in reviews
 
-### Testing and Local Development
+### Verify changes
 
-Choose the smallest runner that owns the behavior:
+- Run focused tests from the owning package: `pnpm test <test-file>`.
+- Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
+  Build first when shared types or cross-package dependencies change.
+- Use Vitest for unit tests. Use
+  [Playwright](packages/testing/playwright/AGENTS.md) when a test needs its
+  browser, fixtures, or managed containers.
+- For Vitest packages with `@n8n/di` decorators, use
+  `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
+- Check import and mock side effects before running tests. Keep tests out of
+  user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
+  importing n8n settings. Clean up only paths that the test created.
+- CI runs [`@n8n/code-health`](packages/testing/code-health/README.md) static
+  analysis on PRs. It checks monorepo rules, including dependency hygiene and
+  encryption-boundary coverage.
 
-| Need | Use |
-|------|-----|
-| Unit or component behavior | Vitest from the owning package |
-| UI, API, lifecycle, topology, or performance orchestration | Playwright; read `packages/testing/playwright/AGENTS.md` |
-| Add a test service, capability, or managed stack | Read `packages/testing/containers/README.md` |
-
-Testing rules:
-
-- Run tests and `pnpm typecheck` from the owning package.
-- Confirm unit test cases with the user before you write them.
-- Mock external dependencies. Use `nock` for HTTP services.
-- Trace side effects from imports, constructors, hooks, and mocked branches before
-  you run a new or changed test.
-- Do not let tests read from or write to the developer's home directory,
-  `~/.n8n`, or other user-owned locations.
-- Use a test-owned temporary directory for filesystem tests. Set
-+  `N8N_USER_FOLDER` before you import modules that resolve it. n8n writes to `${N8N_USER_FOLDER}/.n8n`, so expect the `.n8n` subfolder there.
-- When a mock changes a state check such as `existsSync()`, inspect the branch
-  that it activates. Mock every reachable filesystem mutation unless filesystem
-  behavior is under test.
-- Run tests that can initialize n8n settings with an isolated
-  `N8N_USER_FOLDER` first. Clean up only paths that the test created.
-- Reuse immutable hoisted `mock<T>(...)` fixtures. Do not replace typed entity mocks with `as unknown as T`.
-- Use `createVitestConfigWithDecorators` for Vitest packages that use `@n8n/di` decorators.
-- Check for unused computed properties after you change a Pinia store.
-
-Choose a local development path:
+### Local development
 
 | Goal | Command |
 |------|---------|
@@ -380,7 +344,6 @@ When implementing features:
    frontend feature module, obey
    `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
-6. Run `pnpm typecheck` to verify types
 
 ## Design Principles
 

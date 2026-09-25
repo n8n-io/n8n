@@ -16,6 +16,35 @@ const renderComponent = createComponentRenderer(ProjectCardBadge, {
 });
 
 describe('ProjectCardBadge', () => {
+	it('shows a border by default and can suppress it with breadcrumbs', async function testBadgeBorder() {
+		const { getByTestId, rerender } = renderComponent({
+			props: {
+				resource: {} as WorkflowResource,
+				resourceType: ResourceType.Workflow,
+				resourceTypeLabel: 'workflow',
+				personalProject: null,
+			},
+			slots: {
+				default: '<span data-test-id="breadcrumbs">Folder / Workflow</span>',
+			},
+		});
+
+		const badge = getByTestId('card-badge');
+		expect(badge).toHaveClass('n8n-badge', 'outline');
+		expect(badge).toContainElement(getByTestId('breadcrumbs'));
+
+		await rerender({ showBadgeBorder: false });
+
+		expect(badge).toHaveClass('ghost');
+		expect(badge).not.toHaveClass('outline');
+		expect(getByTestId('breadcrumbs')).toBeVisible();
+
+		await rerender({ showBadgeBorder: true });
+
+		expect(badge).toHaveClass('outline');
+		expect(badge).not.toHaveClass('ghost');
+	});
+
 	it('should show "Personal" badge if there is no homeProject', () => {
 		const { getByText } = renderComponent({
 			props: {

@@ -1,3 +1,4 @@
+import { AI_PREFERENCES_MAX_IDS_FILTER } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -60,6 +61,38 @@ describe('context.store', () => {
 
 		expect(store.preferences).toHaveLength(1);
 		expect(store.count).toBe(1);
+	});
+
+	it('looks rows up by id in one request, without touching the paged list', async () => {
+		const store = useContextStore();
+		list.mockResolvedValueOnce({ count: 2, data: [row({ id: 'a' }), row({ id: 'b' })] });
+
+		const rows = await store.fetchPreferencesByIds(['a', 'b']);
+
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledWith(expect.anything(), { ids: ['a', 'b'], take: 2 });
+		expect(rows.map(({ id }) => id)).toEqual(['a', 'b']);
+		expect(store.preferences).toEqual([]);
+		expect(store.count).toBe(0);
+	});
+
+	it('splits a long id list into page-sized requests and joins the answers', async () => {
+		const store = useContextStore();
+		const ids = Array.from({ length: AI_PREFERENCES_MAX_IDS_FILTER + 1 }, (_, i) => `id-${i}`);
+		list.mockImplementation(async (_context: unknown, query: { ids: string[] }) => ({
+			count: query.ids.length,
+			data: query.ids.map((id) => row({ id })),
+		}));
+
+		const rows = await store.fetchPreferencesByIds(ids);
+
+		expect(list).toHaveBeenCalledTimes(2);
+		expect(list.mock.calls[0][1]).toEqual({
+			ids: ids.slice(0, AI_PREFERENCES_MAX_IDS_FILTER),
+			take: AI_PREFERENCES_MAX_IDS_FILTER,
+		});
+		expect(list.mock.calls[1][1]).toEqual({ ids: [ids[AI_PREFERENCES_MAX_IDS_FILTER]], take: 1 });
+		expect(rows.map(({ id }) => id)).toEqual(ids);
 	});
 
 	it('reads the total without holding a page', async () => {
@@ -172,5 +205,135 @@ describe('context.store', () => {
 
 		expect(result.deleted).toEqual([]);
 		expect(result.failed).toHaveLength(2);
+	});
+
+	// The settings page and a chat card read the same row. A write on one must not leave the
+	// other painting the state it replaced.
+	describe('settings writes and the lookup cache', () => {
+		it('records the row an update returned', async () => {
+			const store = useContextStore();
+			update.mockResolvedValue(row({ id: 'a', userId: null, projectId: 'p-1' }));
+
+			await store.updatePreference('a', { content: 'Rule.', scope: 'project', projectId: 'p-1' });
+
+			expect(store.rowById.get('a')).toMatchObject({ projectId: 'p-1' });
+		});
+
+		it('records the row a create returned', async () => {
+			const store = useContextStore();
+			create.mockResolvedValue(row({ id: 'a' }));
+
+			await store.createPreference({ content: 'Rule.', scope: 'user' });
+
+			expect(store.rowById.get('a')?.id).toBe('a');
+		});
+
+		it('drops a row a delete removed', async () => {
+			const store = useContextStore();
+			store.setRow(row({ id: 'a' }));
+
+			await store.deletePreference('a');
+
+			expect(store.rowById.has('a')).toBe(false);
+		});
+
+		it('drops every row a bulk delete removed, and keeps the ones that failed', async () => {
+			const store = useContextStore();
+			store.setRow(row({ id: 'a' }));
+			store.setRow(row({ id: 'b' }));
+			remove.mockImplementation(async (_ctx: unknown, id: string) => {
+				if (id === 'b') throw new Error('gone');
+			});
+
+			await store.deletePreferences(['a', 'b']);
+
+			expect(store.rowById.has('a')).toBe(false);
+			expect(store.rowById.has('b')).toBe(true);
+		});
+	});
+
+	describe('resolveRows', () => {
+		it('turns every ask in the same tick into one read', async () => {
+			const store = useContextStore();
+			list.mockResolvedValueOnce({ count: 2, data: [row({ id: 'a' }), row({ id: 'b' })] });
+
+			await Promise.all([store.resolveRows(['a']), store.resolveRows(['b'])]);
+
+			expect(list).toHaveBeenCalledTimes(1);
+			expect(list).toHaveBeenCalledWith(expect.anything(), { ids: ['a', 'b'], take: 2 });
+			expect(store.rowById.get('a')?.id).toBe('a');
+			expect(store.rowById.get('b')?.id).toBe('b');
+		});
+
+		it('leaves an id the read did not return unresolved', async () => {
+			const store = useContextStore();
+			// 'gone' is deleted or invisible, so the read answers without it.
+			list.mockResolvedValueOnce({ count: 1, data: [row({ id: 'a' })] });
+
+			await store.resolveRows(['a', 'gone']);
+
+			expect(store.rowById.has('a')).toBe(true);
+			expect(store.rowById.has('gone')).toBe(false);
+		});
+
+		it('resolves nothing and throws nothing when the read fails', async () => {
+			const store = useContextStore();
+			list.mockRejectedValueOnce(new Error('offline'));
+
+			await expect(store.resolveRows(['a'])).resolves.toBeUndefined();
+
+			expect(store.rowById.size).toBe(0);
+		});
+
+		it('keeps rows already resolved when a later read fails', async () => {
+			const store = useContextStore();
+			list.mockResolvedValueOnce({ count: 1, data: [row({ id: 'a' })] });
+			await store.resolveRows(['a']);
+			list.mockRejectedValueOnce(new Error('offline'));
+
+			await store.resolveRows(['b']);
+
+			expect(store.rowById.get('a')?.id).toBe('a');
+		});
+
+		// A read begun before a write must not put back what the write replaced.
+		it('does not let a read in flight undo a save that landed while it ran', async () => {
+			const store = useContextStore();
+			const { promise, settle } = deferred<{ count: number; data: Preference[] }>();
+			list.mockReturnValueOnce(promise);
+
+			const reading = store.resolveRows(['a']);
+			// The save lands first, with the row in its new project.
+			store.setRow(row({ id: 'a', userId: null, projectId: 'p-1' }));
+			// The read answers with the row as it was before that save.
+			settle({ count: 1, data: [row({ id: 'a', userId: 'user-1', projectId: null })] });
+			await reading;
+
+			expect(store.rowById.get('a')).toMatchObject({ userId: null, projectId: 'p-1' });
+		});
+
+		it('does not let a read in flight bring back a row a removal deleted', async () => {
+			const store = useContextStore();
+			const { promise, settle } = deferred<{ count: number; data: Preference[] }>();
+			list.mockReturnValueOnce(promise);
+
+			const reading = store.resolveRows(['a']);
+			// Nothing is cached yet, so the removal has no entry to drop, only a write to record.
+			store.forgetRow('a');
+			settle({ count: 1, data: [row({ id: 'a' })] });
+			await reading;
+
+			expect(store.rowById.has('a')).toBe(false);
+		});
+
+		it('records a row a write returned and drops one a write removed', () => {
+			const store = useContextStore();
+
+			store.setRow(row({ id: 'a', projectId: 'p-1', userId: null }));
+			expect(store.rowById.get('a')?.projectId).toBe('p-1');
+
+			store.forgetRow('a');
+			expect(store.rowById.has('a')).toBe(false);
+		});
 	});
 });

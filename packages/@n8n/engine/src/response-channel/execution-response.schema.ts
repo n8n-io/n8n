@@ -6,11 +6,24 @@ import { jsonValueSchema } from '../common';
 import { SETTLED_STEP_STATUSES } from '../execution/execution.types';
 
 /**
- * The one definition of a response's shape. A transport can cross a process
- * boundary, so a frame that arrives is parsed against this before a subscriber
- * ever sees it.
+ * The one definition of a response's shape. A frame can cross a process
+ * boundary, so it is parsed against this before a handler sees it.
  */
 export const executionResponseSchema = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('undeliverable'),
+		executionId: z.string().min(1),
+		error: z.object({
+			code: z.string().min(1),
+			message: z.string().min(1),
+		}),
+	}),
+	z.object({
+		type: z.literal('response'),
+		executionId: z.string().min(1),
+		// A missing or undefined payload means an empty response.
+		payload: jsonValueSchema.optional(),
+	}),
 	z.object({
 		type: z.literal('ended'),
 		executionId: z.string().min(1),

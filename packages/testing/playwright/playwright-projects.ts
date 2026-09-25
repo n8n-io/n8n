@@ -240,21 +240,22 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		// Engine 2.0 parity: the same e2e specs against a main that routes every
-		// workflow to the new engine. Opt-in by tag while the engine matures: any
-		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
-		// or expects failure by bucket. Drop the grep once the suite is triaged.
-		// The CI job e2e-engine blocks merges, so a spec this grep selects fails the
-		// PR when it misses the outcome its bucket asks for.
+		// Engine v2 parity: the same e2e specs against a main that routes every
+		// workflow to the new engine, which runs in its own container with no
+		// control plane database access. Opt-in by tag while the engine matures:
+		// any `@engine:*` tag selects the spec, and the parity fixture then runs,
+		// skips or expects failure by bucket. Drop the grep once the suite is
+		// triaged. The CI job e2e-engine blocks merges, so a spec this grep selects
+		// fails the PR when it misses the outcome its bucket asks for.
 		projects.push({
 			name: 'engine-v2:e2e',
 			testDir: './tests/e2e',
 			grep: new RegExp(ENGINE_TAG_PREFIX),
 			timeout: 180000,
-			// One worker, one stack. Every worker boots its own Postgres and main,
-			// and the CI job asks for one worker anyway.
+			// One worker, one stack. Every worker boots its own Postgres, main and
+			// engine, and the CI job asks for one worker anyway.
 			workers: 1,
-			use: { containerConfig: { postgres: true, engine: 'in-process' } },
+			use: { containerConfig: { postgres: true, engine: 'container' } },
 		});
 
 		projects.push({

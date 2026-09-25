@@ -233,6 +233,8 @@ export interface WorkflowTestCase {
 	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;
+	/** Harness drives compaction, and reports the case not judged if it never ran. */
+	requiresMemoryCompaction?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -375,6 +377,8 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** Main run plus any resumes — the join key for this turn's token usage. */
+	runIds?: string[];
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

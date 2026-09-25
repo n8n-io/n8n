@@ -2,20 +2,23 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
 import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
 } from '../utils/delegated-child-checkpoints';
+import { PREVIEW_THREAD_SOURCES, type AgentSessionMode } from '../utils/agent-thread-access';
 
-const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 const CHECKPOINT_BATCH_SIZE = 400;
 
 export interface AgentExecutionThreadMetadata {
@@ -39,76 +42,95 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
+	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(AgentExecutionThread, {
+			where: { id: threadId },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
 	/**
 	 * Find an existing thread or create a new one.
-	 * On creation, assigns a stable sessionNumber scoped to the project.
+	 * Assign a display number on creation. Concurrent sessions can share a number.
 	 */
 	async findOrCreate(
 		threadId: string,
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
+		ctx: OperationContext,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
+		sessionMode: AgentSessionMode = 'new',
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		for (let attempt = 0; ; attempt++) {
-			try {
-				return await this.findOrCreateInSerializableTransaction(
-					threadId,
-					agentId,
-					agentName,
-					projectId,
-					metadata,
-					taskId,
-					taskVersionId,
-				);
-			} catch (error) {
-				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
-					throw error;
-				}
+		const manager = this.managerFor(ctx);
+		const repository = manager.getRepository(AgentExecutionThread);
+		if (metadata?.parentThreadId) {
+			const parent = await repository.findOneBy({
+				id: metadata.parentThreadId,
+				projectId,
+				agentId: metadata.parentAgentId ?? IsNull(),
+			});
+			if (parent) {
+				access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+			} else if (await repository.existsBy({ id: metadata.parentThreadId })) {
+				throw new UserError('Session not found');
 			}
 		}
-	}
+		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
 
-	private async findOrCreateInSerializableTransaction(
-		threadId: string,
-		agentId: string,
-		agentName: string,
-		projectId: string,
-		metadata?: AgentExecutionThreadMetadata,
-		taskId?: string | null,
-		taskVersionId?: string | null,
-	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
-			const repository = entityManager.getRepository(AgentExecutionThread);
-			const existing = await repository.findOneBy({ id: threadId });
-			if (existing) {
-				return { thread: existing, created: false };
-			}
-
-			const maxResult = await repository
-				.createQueryBuilder('t')
-				.select('MAX(t.sessionNumber)', 'max')
-				.where('t.projectId = :projectId', { projectId })
-				.getRawOne<{ max: number | null }>();
-
-			const sessionNumber = (maxResult?.max ?? 0) + 1;
-
-			const thread = repository.create({
-				id: threadId,
-				agentId,
-				agentName,
-				projectId,
-				taskId: taskId ?? null,
-				taskVersionId: taskVersionId ?? null,
-				sessionNumber,
-				parentThreadId: metadata?.parentThreadId ?? null,
-				parentAgentId: metadata?.parentAgentId ?? null,
+		const isPostgres = manager.connection.options.type === 'postgres';
+		const findSession = async () =>
+			await repository.findOne({
+				where: {
+					id: threadId,
+					agentId,
+					projectId,
+					...access,
+					ownerId: access.ownerId ?? IsNull(),
+				},
+				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
 			});
-			const saved = await repository.save(thread);
-			return { thread: saved, created: true };
-		});
+		const existing = await findSession();
+		if (existing) return { thread: existing, created: false };
+		if (sessionMode === 'existing') throw new UserError('Session not found');
+
+		// ponytail: display numbers can repeat; add allocation coordination only if labels need uniqueness.
+		const maxResult = await repository
+			.createQueryBuilder('t')
+			.select('MAX(t.sessionNumber)', 'max')
+			.where('t.projectId = :projectId', { projectId })
+			.getRawOne<{ max: number | null }>();
+		const thread = {
+			id: threadId,
+			agentId,
+			agentName,
+			projectId,
+			...access,
+			taskId: taskId ?? null,
+			taskVersionId: taskVersionId ?? null,
+			sessionNumber: (maxResult?.max ?? 0) + 1,
+			parentThreadId: metadata?.parentThreadId ?? null,
+			parentAgentId: metadata?.parentAgentId ?? null,
+		};
+		const insert = repository
+			.createQueryBuilder()
+			.insert()
+			.values(thread)
+			.orIgnore()
+			.updateEntity(false);
+		if (isPostgres) insert.returning('id');
+		const result = await insert.execute();
+		const persisted = await findSession();
+		if (!persisted) throw new UserError('Session not found');
+		return {
+			thread: persisted,
+			created: !isPostgres || (Array.isArray(result.raw) && result.raw.length > 0),
+		};
 	}
 
 	/**
@@ -119,6 +141,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	async findByProjectIdPaginated(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -126,12 +149,31 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				{ userId },
+			)
 			.orderBy('thread.updatedAt', 'DESC')
 			.take(limit + 1);
 
 		if (cursor) {
 			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
 		}
+		this.applyListFilters(query, filters);
+		const threads = await query.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+
+		return {
+			threads,
+			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+		};
+	}
+
+	private applyListFilters(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		filters: AgentSessionQueryFilters,
+	) {
 		if (filters.updatedAfter) {
 			query.andWhere('thread.updatedAt >= :updatedAfter', {
 				updatedAfter: filters.updatedAfter,
@@ -143,34 +185,40 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			});
 		}
 		if (filters.status) {
-			const latestStatus = this.latestExecutionStatusSubquery(query);
-			const failureExists = this.failureExistsSubquery(query);
-			if (filters.status === 'succeeded') {
-				query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
-			} else if (filters.status === 'error') {
-				query.andWhere(
-					`((${latestStatus}) = 'error' OR ` +
-						`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
-				);
-			} else {
-				query.andWhere(`(${latestStatus}) = :sessionStatus`, {
-					sessionStatus: filters.status,
-				});
-			}
+			this.applyStatusFilter(query, filters.status);
 		}
 		if (filters.origin) {
 			this.applyOriginFilter(query, filters.origin);
 		}
+		if (filters.previewOnly) this.applyPreviewFilter(query);
+	}
 
-		const threads = await query.getMany();
+	private applyStatusFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		status: NonNullable<AgentSessionQueryFilters['status']>,
+	) {
+		const latestStatus = this.latestExecutionStatusSubquery(query);
+		const failureExists = this.failureExistsSubquery(query);
+		if (status === 'succeeded') {
+			query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
+		} else if (status === 'error') {
+			query.andWhere(
+				`((${latestStatus}) = 'error' OR ` +
+					`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
+			);
+		} else {
+			query.andWhere(`(${latestStatus}) = :sessionStatus`, { sessionStatus: status });
+		}
+	}
 
-		const hasMore = threads.length > limit;
-		if (hasMore) threads.pop();
-
-		return {
-			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
-		};
+	private applyPreviewFilter(query: SelectQueryBuilder<AgentExecutionThread>) {
+		query
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL')
+			.andWhere('thread.taskId IS NULL')
+			.andWhere(`${this.normalizedFirstSource(query)} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 	}
 
 	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
@@ -195,10 +243,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.getQuery();
 	}
 
-	private applyOriginFilter(
-		query: SelectQueryBuilder<AgentExecutionThread>,
-		origin: AgentSessionOrigin,
-	): void {
+	private normalizedFirstSource(query: SelectQueryBuilder<AgentExecutionThread>): string {
 		const firstSource = query
 			.subQuery()
 			.select('sourceExecution.source')
@@ -209,7 +254,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.addOrderBy('sourceExecution.id', 'ASC')
 			.limit(1)
 			.getQuery();
-		const normalizedSource = `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+		return `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+	}
+
+	private applyOriginFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		origin: AgentSessionOrigin,
+	): void {
+		const normalizedSource = this.normalizedFirstSource(query);
 		const isSubAgent =
 			'(thread."parentThreadId" IS NOT NULL OR ' +
 			`${normalizedSource} IN ('subagent', 'sub-agent'))`;
@@ -222,7 +274,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		} else if (origin === 'schedule') {
 			query.andWhere(isSchedule);
 		} else if (origin === 'preview') {
-			query.andWhere(`${isDirect} AND ${normalizedSource} IN ('', 'chat', 'n8n_chat')`);
+			query.andWhere(`${isDirect} AND ${normalizedSource} IN (:...previewThreadSources)`, {
+				previewThreadSources: [...PREVIEW_THREAD_SOURCES],
+			});
 		} else {
 			query.andWhere(`${isDirect} AND ${normalizedSource} = :sessionOrigin`, {
 				sessionOrigin: origin,
@@ -241,8 +295,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
-	async bumpUpdatedAt(threadId: string): Promise<void> {
-		await this.update(threadId, { updatedAt: new Date() });
+	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });
 	}
 
 	/** Atomically increment token and cost counters on a thread in a single UPDATE. */
@@ -282,15 +336,23 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		projectId: string,
 		agentId: string,
 		threadId: string,
+		userId: string,
 		ctx: OperationContext,
-	): Promise<AgentSessionDeletionRefs | null> {
+	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
-		const thread = await manager.findOneBy(AgentExecutionThread, {
-			id: threadId,
-			projectId,
-			agentId,
+		const thread = await manager.findOne(AgentExecutionThread, {
+			where: [
+				{ id: threadId, projectId, agentId, accessScope: 'project' },
+				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+			],
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});
 		if (!thread) return null;
+		const hasRunningWork = await manager.exists(AgentExecution, {
+			where: { threadId, status: 'running' },
+		});
+		if (hasRunningWork) return { status: 'busy' };
 
 		const { attachments, executionLogs } = await this.findExternalRefs(
 			manager,
@@ -309,8 +371,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
 		return {
-			executionLogs,
-			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+			status: 'deleted',
+			refs: {
+				executionLogs,
+				attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+			},
 		};
 	}
 
@@ -406,18 +471,4 @@ function collectUnvisitedChildCheckpoints(
 
 function checkpointKey(agentId: string, runId: string): string {
 	return `${agentId}\0${runId}`;
-}
-
-function isRetriableWriteError(error: unknown): boolean {
-	if (!(error instanceof Error) || !('driverError' in error)) return false;
-	const { driverError } = error;
-	if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
-		return false;
-	}
-
-	const { code } = driverError;
-	return (
-		typeof code === 'string' &&
-		(code === '40001' || code === '40P01' || code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED')
-	);
 }

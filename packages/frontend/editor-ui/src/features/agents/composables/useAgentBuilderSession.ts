@@ -9,6 +9,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
+import type { AgentExecutionThread } from './useAgentThreadsApi';
 import { CONTINUE_SESSION_ID_PARAM, NEW_SESSION_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
 
@@ -42,111 +43,47 @@ interface AgentBuilderSessionOptions {
  * Plus the session-picker dropdown menu and titles, all driven off the
  * `agentSessionsStore` thread list.
  */
-export function useAgentBuilderSession({
-	routeBacked,
-	projectId,
-	agentId,
-}: AgentBuilderSessionOptions) {
+export function useAgentBuilderSession(options: AgentBuilderSessionOptions) {
+	const selection = useSessionSelection(options.routeBacked);
+	return {
+		...selection,
+		...useSessionMetadata(options, selection.effectiveSessionId),
+		...useSessionDeletion(options, selection),
+	};
+}
+
+function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 	const route = useRoute();
 	const router = useRouter();
-	const i18n = useI18n();
-	const message = useMessage();
-	const toast = useToast();
-	const sessionsStore = useAgentSessionsStore();
-	const threadTitleOf = useThreadTitle();
-	let isDisposed = false;
-	if (getCurrentScope()) onScopeDispose(() => (isDisposed = true));
-
 	const activeChatSessionId = ref<string | null>(null);
-	const isDeletingSession = ref(false);
-	const pendingRouteSessionId = ref<string | null>(null);
 	const ephemeralSessionId = ref<string | null>(null);
-	const continueSessionId = computed(() => {
-		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
-		// Picking the first string defends against duplicate query params
-		// (`?session=a&session=b` → array) and unset/null values.
-		const raw = route.query[CONTINUE_SESSION_ID_PARAM];
-		const value = Array.isArray(raw) ? raw[0] : raw;
-		return typeof value === 'string' && value.length > 0 ? value : undefined;
-	});
+	const locallyMintedSessionId = ref<string | null>(null);
+	const { continueSessionId, pendingRouteSessionId } = useSessionRoute(
+		routeBacked,
+		activeChatSessionId,
+		ephemeralSessionId,
+		locallyMintedSessionId,
+	);
 	const effectiveSessionId = computed<string | undefined>(
 		() =>
 			(routeBacked.value ? (pendingRouteSessionId.value ?? continueSessionId.value) : undefined) ??
 			activeChatSessionId.value ??
 			undefined,
 	);
-
-	watch(
-		[routeBacked, continueSessionId],
-		([isRouteBacked, routeSessionId]) => {
-			if (!isRouteBacked) {
-				pendingRouteSessionId.value = null;
-				return;
-			}
-			if (routeSessionId && routeSessionId !== ephemeralSessionId.value) {
-				ephemeralSessionId.value = null;
-			}
-			if (pendingRouteSessionId.value !== null) {
-				// Setting the pending id does not trigger this watcher. Any later
-				// route change is authoritative, whether it confirms the replace or
-				// comes from back/forward navigation.
-				pendingRouteSessionId.value = null;
-			}
-			if (routeSessionId) activeChatSessionId.value = routeSessionId;
-		},
-		{ immediate: true },
-	);
-
-	watch(activeChatSessionId, (sessionId) => {
-		if (sessionId === null) {
-			pendingRouteSessionId.value = null;
-			ephemeralSessionId.value = null;
-		} else {
-			if (ephemeralSessionId.value !== null && sessionId !== ephemeralSessionId.value) {
-				ephemeralSessionId.value = null;
-			}
-			if (routeBacked.value && sessionId !== continueSessionId.value) {
-				pendingRouteSessionId.value = sessionId;
-			}
-		}
-	});
 	const currentSessionIsEphemeral = computed(
 		() =>
 			ephemeralSessionId.value !== null && ephemeralSessionId.value === effectiveSessionId.value,
 	);
+	const currentSessionIsLocallyMinted = computed(
+		() =>
+			locallyMintedSessionId.value !== null &&
+			locallyMintedSessionId.value === effectiveSessionId.value,
+	);
 
-	/**
-	 * The current session is "empty" until it's been persisted as a thread —
-	 * a freshly minted `activeChatSessionId` doesn't show up in `threads` until
-	 * the user sends the first message.
-	 */
-	const currentSessionHasMessages = computed(() => {
-		const id = effectiveSessionId.value;
-		if (!id) return false;
-		return (sessionsStore.threads ?? []).some((t) => t.id === id);
-	});
-
-	const currentSessionTitle = computed(() => {
-		const id = effectiveSessionId.value;
-		if (!id) return '';
-		const thread = (sessionsStore.threads ?? []).find((t) => t.id === id);
-		if (!thread) return i18n.baseText('agents.builder.chat.newChat.label');
-		return truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS);
-	});
-
-	const sessionMenu = computed<SessionMenuItem[]>(() => {
-		const threads = sessionsStore.threads ?? [];
-		return threads.map((thread) => ({
-			id: thread.id,
-			title: threadTitleOf(thread),
-			label: truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS),
-			updatedAt: thread.updatedAt,
-		}));
-	});
-
-	function selectSession(id: string, ephemeral = false) {
+	function selectSession(id: string, ephemeral = id === ephemeralSessionId.value) {
 		activeChatSessionId.value = id;
 		ephemeralSessionId.value = ephemeral ? id : null;
+		locallyMintedSessionId.value = ephemeral ? id : null;
 		if (!routeBacked.value) return;
 		pendingRouteSessionId.value = id;
 		const query: LocationQueryRaw = { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id };
@@ -172,6 +109,142 @@ export function useAgentBuilderSession({
 	function onNewChat() {
 		selectSession(crypto.randomUUID(), true);
 	}
+
+	function markSessionCreated(sessionId: string) {
+		if (ephemeralSessionId.value === sessionId) ephemeralSessionId.value = null;
+	}
+
+	return {
+		activeChatSessionId,
+		continueSessionId,
+		effectiveSessionId,
+		currentSessionIsEphemeral,
+		currentSessionIsLocallyMinted,
+		setSessionInUrl,
+		clearContinueSessionParam,
+		onSessionPick,
+		onNewChat,
+		markSessionCreated,
+	};
+}
+
+function useSessionRoute(
+	routeBacked: Readonly<Ref<boolean>>,
+	activeChatSessionId: Ref<string | null>,
+	ephemeralSessionId: Ref<string | null>,
+	locallyMintedSessionId: Ref<string | null>,
+) {
+	const route = useRoute();
+	const pendingRouteSessionId = ref<string | null>(null);
+	const continueSessionId = computed(() => {
+		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
+		// Picking the first string defends against duplicate query params
+		// (`?session=a&session=b` → array) and unset/null values.
+		const raw = route.query[CONTINUE_SESSION_ID_PARAM];
+		const value = Array.isArray(raw) ? raw[0] : raw;
+		return typeof value === 'string' && value.length > 0 ? value : undefined;
+	});
+
+	watch(
+		[routeBacked, continueSessionId],
+		([isRouteBacked, routeSessionId]) => {
+			if (!isRouteBacked) {
+				pendingRouteSessionId.value = null;
+				return;
+			}
+			if (routeSessionId && routeSessionId !== locallyMintedSessionId.value) {
+				ephemeralSessionId.value = null;
+				locallyMintedSessionId.value = null;
+			}
+			if (pendingRouteSessionId.value !== null) {
+				// Setting the pending id does not trigger this watcher. Any later
+				// route change is authoritative, whether it confirms the replace or
+				// comes from back/forward navigation.
+				pendingRouteSessionId.value = null;
+			}
+			if (routeSessionId) activeChatSessionId.value = routeSessionId;
+		},
+		{ immediate: true },
+	);
+
+	watch(activeChatSessionId, (sessionId) => {
+		if (sessionId === null) {
+			pendingRouteSessionId.value = null;
+			ephemeralSessionId.value = null;
+			locallyMintedSessionId.value = null;
+		} else {
+			if (locallyMintedSessionId.value !== null && sessionId !== locallyMintedSessionId.value) {
+				ephemeralSessionId.value = null;
+				locallyMintedSessionId.value = null;
+			}
+			if (routeBacked.value && sessionId !== continueSessionId.value) {
+				pendingRouteSessionId.value = sessionId;
+			}
+		}
+	});
+	return { continueSessionId, pendingRouteSessionId };
+}
+
+function useSessionMetadata(
+	{ projectId, agentId }: AgentBuilderSessionOptions,
+	effectiveSessionId: Readonly<Ref<string | undefined>>,
+) {
+	const sessionsStore = useAgentSessionsStore();
+	const i18n = useI18n();
+	const threadTitleOf = useThreadTitle();
+	const previewThreads = computed(() =>
+		sessionsStore.previewThreads.filter(
+			(thread) =>
+				thread.canContinueInPreview &&
+				thread.projectId === projectId.value &&
+				thread.agentId === agentId.value,
+		),
+	);
+	const isCurrentSession = (thread: AgentExecutionThread | undefined) =>
+		thread?.id === effectiveSessionId.value &&
+		thread?.projectId === projectId.value &&
+		thread?.agentId === agentId.value;
+	// Keep the selected detail when a refresh replaces the first page.
+	const currentSession = computed<AgentExecutionThread | undefined>(
+		(previous) =>
+			previewThreads.value.find(isCurrentSession) ??
+			sessionsStore.threads.find(isCurrentSession) ??
+			(isCurrentSession(previous) ? previous : undefined),
+	);
+	const currentSessionHasMessages = computed(() => Boolean(currentSession.value));
+	const currentSessionTitle = computed(() => {
+		if (!effectiveSessionId.value) return '';
+		if (!currentSession.value) return i18n.baseText('agents.builder.chat.newChat.label');
+		return truncate(threadTitleOf(currentSession.value), SESSION_TITLE_MAX_CHARS);
+	});
+	const sessionMenu = computed<SessionMenuItem[]>(() =>
+		previewThreads.value.map((thread) => ({
+			id: thread.id,
+			title: threadTitleOf(thread),
+			label: truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS),
+			updatedAt: thread.updatedAt,
+		})),
+	);
+	return {
+		previewThreads,
+		currentSession,
+		currentSessionHasMessages,
+		currentSessionTitle,
+		sessionMenu,
+	};
+}
+
+function useSessionDeletion(
+	{ projectId, agentId }: AgentBuilderSessionOptions,
+	{ effectiveSessionId, onNewChat }: ReturnType<typeof useSessionSelection>,
+) {
+	const sessionsStore = useAgentSessionsStore();
+	const i18n = useI18n();
+	const message = useMessage();
+	const toast = useToast();
+	const isDeletingSession = ref(false);
+	let isDisposed = false;
+	if (getCurrentScope()) onScopeDispose(() => (isDisposed = true));
 
 	async function deleteSession(sessionId: string): Promise<boolean> {
 		if (isDisposed || isDeletingSession.value || !sessionId) return false;
@@ -215,19 +288,5 @@ export function useAgentBuilderSession({
 		}
 	}
 
-	return {
-		activeChatSessionId,
-		isDeletingSession,
-		continueSessionId,
-		effectiveSessionId,
-		currentSessionHasMessages,
-		currentSessionTitle,
-		currentSessionIsEphemeral,
-		sessionMenu,
-		setSessionInUrl,
-		clearContinueSessionParam,
-		onSessionPick,
-		onNewChat,
-		deleteSession,
-	};
+	return { isDeletingSession, deleteSession };
 }

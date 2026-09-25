@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -17,7 +18,9 @@ import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
+	InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -52,6 +55,12 @@ import {
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
+import type {
+	AssistantMentionArtifactReference,
+	AssistantMentionCounts,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -84,6 +93,8 @@ const props = defineProps<{
 	subject?: InstanceAiEmbedSubject;
 	/** Extra scroll space for a panel that overlays messages above the input. */
 	aboveInputOverlapHeight?: number;
+	/** Enables the dormant mention integration after the rollout gate resolves true. */
+	mentionsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +105,8 @@ const emit = defineEmits<{
 defineSlots<{
 	'above-input'?: () => unknown;
 	'inline-offers'?: () => unknown;
+	/** A host's welcome state, rendered until the thread has its first message. */
+	empty?: () => unknown;
 }>();
 
 const store = useInstanceAiStore();
@@ -105,6 +118,10 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -138,6 +155,37 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+const reservedComposerAttachmentCount = computed(
+	() =>
+		Number(Boolean(currentAgentAttachment.value)) +
+		Number(Boolean(thread.pendingWorkflowAttachment)),
+);
+const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
+	[...thread.producedArtifacts.values()]
+		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
+		.map(({ id, name }) => ({ id, name })),
+);
+const mentionActiveWorkflowId = computed(() => {
+	const activeArtifactId = thread.activeArtifactId;
+	return activeArtifactId && thread.producedArtifacts.get(activeArtifactId)?.type === 'workflow'
+		? activeArtifactId
+		: undefined;
+});
+
+function addMentionReference(reference: AssistantMentionArtifactReference): void {
+	thread.upsertTransientWorkflowReference({
+		...reference,
+		...(thread.projectId ? { projectId: thread.projectId } : {}),
+	});
+}
+
+function removeMentionReference(referenceId: string): void {
+	thread.removeTransientWorkflowReference(referenceId);
+}
+
+function openMentionWorkflow(workflowId: string): void {
+	void nextTick(() => openWorkflowPreview?.(workflowId));
+}
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -499,6 +547,8 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
+	acceptDraft: () => void = () => {},
+	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -530,6 +580,7 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Only an accepted request revises the plan. Tracking up front would
 			// also count a dropped or failed submit the run never saw.
 			telemetry.track('User finished providing input', {
@@ -582,13 +633,15 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
-			responseStartedAtEpochMs,
+			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+			...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
@@ -718,6 +771,24 @@ function isDirty(): boolean {
 	return chatInputRef.value?.isDirty() ?? false;
 }
 
+/**
+ * Puts n8n-authored text into the composer without sending it. The host owns
+ * the wording and the pre-fill tag; this just forwards to the input so the
+ * submit can attribute the message correctly.
+ */
+function setPrefill(prefill: InstanceAiPrefillPayload) {
+	chatInputRef.value?.setPrefill(prefill);
+}
+
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder template picker) owns the
+ * wording and the pre-fill tag.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	chatInputRef.value?.submitSuggestion(payload);
+}
+
 /** So a host-triggered send (e.g. the "fix with AI" offer) re-follows new messages. */
 function resetScroll() {
 	userScrolledUp.value = false;
@@ -728,6 +799,8 @@ defineExpose({
 	applyHandoff,
 	dismissPendingComposerContext,
 	resetScroll,
+	setPrefill,
+	submitSuggestion,
 	// Read by the host for panels that sit beside (not inside) the conversation.
 	pendingComposerContext,
 });
@@ -742,6 +815,9 @@ defineExpose({
 				:style="{ overflowAnchor: aboveInputOverlapHeight !== undefined ? 'none' : undefined }"
 			>
 				<div ref="messageList" :class="$style.messageList">
+					<!-- A host's welcome state (e.g. the agent builder's intro), shown
+						 until the conversation has its first message. -->
+					<slot v-if="!thread.hasMessages" name="empty" />
 					<!-- Mirrors the old empty opener: a user bubble with only the
 					     workflow chip, then the static assistant greeting. -->
 					<N8nChatMessage
@@ -858,9 +934,17 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:contextual-suggestion="thread.contextualSuggestion"
+										:mentions-enabled="props.mentionsEnabled"
+										:mention-project-id="thread.projectId"
+										:mention-artifacts="mentionArtifacts"
+										:mention-active-workflow-id="mentionActiveWorkflowId"
+										:reserved-attachment-count="reservedComposerAttachmentCount"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
+										@mention-reference-added="addMentionReference"
+										@mention-reference-removed="removeMentionReference"
+										@mention-workflow-open="openMentionWorkflow"
 									/>
 								</Transition>
 							</div>
@@ -920,7 +1004,7 @@ defineExpose({
 
 .messageList {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 800px;
+	max-width: min(800px, 100%);
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;

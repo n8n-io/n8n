@@ -11,6 +11,7 @@ import {
 	validateNodeSelectionForGrouping,
 } from 'n8n-workflow';
 
+import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -26,6 +27,7 @@ type GroupValidationOptions = {
 export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { allowTriggerInGroup, allowMultipleBoundaryNodes } = useNodeGroupRules();
 
 	/**
 	 * Expands a selection of node ids to include all sub-nodes (memory, tools,
@@ -73,6 +75,8 @@ export function useSelectionValidation() {
 		return validateNodeSelectionForGrouping({
 			...getValidationInput(nodeIds, connectionsBySourceNode),
 			existingNodeGroups,
+			allowTriggerInGroup: allowTriggerInGroup.value,
+			allowMultipleBoundaryNodes: allowMultipleBoundaryNodes.value,
 		});
 	}
 

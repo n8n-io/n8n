@@ -78,6 +78,69 @@ describe('N8nClient packages', () => {
 			});
 		});
 
+		const expectedSource = {
+			configId: 'cfg-2',
+			branchName: 'release',
+			commitSha: 'a'.repeat(40),
+		};
+
+		it.each([
+			{
+				title: 'posts apply with no body when no expected source is given',
+				send: async () => await client.applyPackage('conn-1'),
+				path: 'apply',
+				body: undefined,
+			},
+			{
+				title: 'posts apply with the expected source in the body',
+				send: async () => await client.applyPackage('conn-1', expectedSource),
+				path: 'apply',
+				body: { expectedSource },
+			},
+			{
+				title: 'posts continue to apply/continue with the expected source in the body',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource),
+				path: 'apply/continue',
+				body: { expectedSource },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/connections/conn-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
+		});
+
+		describe('list changes', () => {
+			beforeEach(() => {
+				fetchMock.mockResolvedValue(jsonResponse(200, { commitSha: null, changes: [] }));
+			});
+
+			it('sends no query parameters when no options are given', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'apply');
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/apply',
+				]);
+			});
+
+			it('sends search, sort, and order as query parameters', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'promote', {
+					search: 'checkout',
+					sort: 'updatedAt',
+					order: 'desc',
+				});
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/promote?search=checkout&sort=updatedAt&order=desc',
+				]);
+			});
+		});
+
 		it('clones and disconnects one direction of a connection', async () => {
 			const checkout = {
 				connectionId: 'conn-1',
