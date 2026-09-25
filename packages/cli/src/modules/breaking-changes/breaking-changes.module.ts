@@ -21,4 +21,15 @@ export class BreakingChangesModule implements ModuleInterface {
 
 		await import('./breaking-changes.controller.js');
 	}
+
+	// Registered even when `init()` skips: the tables exist regardless of the
+	// target version, and TypeORM needs the entities to map them.
+	async entities() {
+		const { MigrationFinding } = await import('./database/entities/migration-finding.entity.js');
+		const { MigrationFindingSync } = await import(
+			'./database/entities/migration-finding-sync.entity.js'
+		);
+
+		return [MigrationFinding, MigrationFindingSync];
+	}
 }

@@ -93,6 +93,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
+| [migration_finding](migration_finding.md) | 10 |  | table |
+| [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
@@ -285,6 +287,7 @@ erDiagram
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1243,6 +1246,23 @@ erDiagram
   varchar_50_ status
   datetime_3_ updatedAt
   varchar_50_ version
+}
+"migration_finding" {
+  datetime_3_ createdAt
+  INTEGER id
+  TEXT note
+  datetime_3_ notifiedAt
+  varchar_128_ ruleId
+  varchar_32_ status
+  datetime_3_ statusChangedAt
+  varchar_16_ targetVersion
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"migration_finding_sync" {
+  varchar_128_ ruleSetFingerprint
+  datetime_3_ syncedAt
+  varchar_16_ targetVersion PK
 }
 "oauth_access_tokens" {
   varchar clientId FK
