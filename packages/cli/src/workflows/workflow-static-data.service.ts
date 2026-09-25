@@ -23,25 +23,33 @@ export class WorkflowStaticDataService {
 		return workflowData?.staticData ?? {};
 	}
 
-	/** Saves the static data if it changed */
+	/**
+	 * Saves the static data if it changed. Write failures are reported but not
+	 * propagated, as callers such as workflow activation treat this as best-effort.
+	 */
 	async saveStaticData(workflow: Workflow): Promise<void> {
-		if (workflow.staticData.__dataChanged === true) {
-			// Static data of workflow changed and so has to be saved
-			if (isWorkflowIdValid(workflow.id)) {
-				// Workflow is saved so update in database
-				try {
-					await this.saveStaticDataById(workflow.id, workflow.staticData);
-					workflow.staticData.__dataChanged = false;
-				} catch (error) {
-					this.errorReporter.error(error);
-					this.logger.error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
-						{ workflowId: workflow.id },
-					);
-				}
-			}
+		try {
+			await this.saveStaticDataOrThrow(workflow);
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.error(
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				`There was a problem saving the workflow with id "${workflow.id}" to save changed Data: "${error.message}"`,
+				{ workflowId: workflow.id },
+			);
 		}
+	}
+
+	/** Saves the static data if it changed, propagating write failures to the caller */
+	async saveStaticDataOrThrow(workflow: Workflow): Promise<void> {
+		if (workflow.staticData.__dataChanged !== true) return;
+
+		// Workflow is not saved yet, so there is nothing to update
+		if (!isWorkflowIdValid(workflow.id)) return;
+
+		// Static data of workflow changed and so has to be saved
+		await this.saveStaticDataById(workflow.id, workflow.staticData);
+		workflow.staticData.__dataChanged = false;
 	}
 
 	/** Saves the given static data on workflow */
