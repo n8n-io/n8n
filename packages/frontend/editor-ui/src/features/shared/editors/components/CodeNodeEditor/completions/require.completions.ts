@@ -1,6 +1,7 @@
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES_JS } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { matchBeforeCursor } from './utils';
 
 export function useRequireCompletions() {
 	const settingsStore = useSettingsStore();
@@ -14,9 +15,8 @@ export function useRequireCompletions() {
 	 * Complete `req`	to `require('moduleName')` based on modules available in context.
 	 */
 	const requireCompletions = (context: CompletionContext): CompletionResult | null => {
-		const preCursor = context.matchBefore(/req.*/);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, /req.*/);
+		if (!preCursor) return null;
 
 		const options: Completion[] = [];
 
