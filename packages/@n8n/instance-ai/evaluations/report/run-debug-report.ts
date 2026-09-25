@@ -6,18 +6,22 @@
  */
 
 import type {
+	CacheBreakCause,
 	InstanceAiRunDebugResponse,
 	InstanceAiRunDebugStep,
 	InstanceAiRunDebugWorkflowCodeSnapshot,
 	ReadableContentBlock,
 	ReadableSegment,
+	StepCacheBreak,
 } from '@n8n/api-types';
 import {
 	formatDebugJson,
+	parseStepCacheBreaks,
 	parseInputExtras,
 	parseMessageBlocks,
 	parseOutputDisplayBlocks,
 	parseOutputExtras,
+	parseStepConfig,
 	parseStepSummary,
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
@@ -113,9 +117,62 @@ function renderWorkflowCodeSnapshot(snapshot: InstanceAiRunDebugWorkflowCodeSnap
 	</div>`;
 }
 
+function renderStepConfig(config: ReturnType<typeof parseStepConfig>): string {
+	if (!config) return '';
+
+	const settingsHtml = config.settings
+		.map(
+			(setting) =>
+				`<span class="meta-chip">${escapeHtml(setting.label)}: ${escapeHtml(setting.value)}</span>`,
+		)
+		.join('');
+	const toolsHtml = [...config.tools]
+		.sort((a, b) => b.estimatedTokens - a.estimatedTokens)
+		.map((tool) => {
+			const description = tool.description
+				? `<p class="segment-text">${escapeHtml(tool.description)}</p>`
+				: '';
+			const schema = tool.inputSchema ? renderJsonBlock(tool.inputSchema, 'Input schema') : '';
+			return `<details class="json-panel"><summary><code>${escapeHtml(tool.name)}</code> ≈${tool.estimatedTokens.toLocaleString('en-US')} tokens</summary>${description}${schema}</details>`;
+		})
+		.join('');
+
+	return `<div class="detail-subsection"><div class="detail-subsection-title">Step settings</div>
+		${settingsHtml ? `<div class="detail-meta">${settingsHtml}</div>` : ''}
+		${toolsHtml ? `<details class="json-panel"><summary>Tools (${config.tools.length}) · ≈${config.toolsEstimatedTokens.toLocaleString('en-US')} tokens</summary>${toolsHtml}</details>` : ''}
+	</div>`;
+}
+
+function renderUsage(
+	usage: NonNullable<ReturnType<typeof parseUsageSummary>>,
+	cacheBreak?: StepCacheBreak,
+): string {
+	const rowsHtml = usage.rows
+		.map((row) => {
+			const details = row.details
+				.map((detail) => `${escapeHtml(detail.label)} ${detail.tokens.toLocaleString('en-US')}`)
+				.join(' · ');
+			return `<span class="meta-chip">${escapeHtml(row.label)}: ${row.tokens.toLocaleString('en-US')}${details ? ` (${details})` : ''}</span>`;
+		})
+		.join('');
+	const settingsHtml = usage.settings
+		.map(
+			(setting) =>
+				`<span class="meta-chip">${escapeHtml(setting.label)}: ${escapeHtml(setting.value)}</span>`,
+		)
+		.join('');
+
+	return `<div class="detail-subsection"><div class="detail-subsection-title">Usage</div>
+		${cacheBreak ? `<p class="cache-break-note"><strong>Cache break:</strong> ${escapeHtml(describeCacheBreak(cacheBreak))}</p>` : ''}
+		${rowsHtml || settingsHtml ? `<div class="detail-meta">${rowsHtml}${settingsHtml}</div>` : ''}
+		${renderJsonBlock(usage.metadata, 'Raw usage')}
+	</div>`;
+}
+
 function renderStepDetail(
 	step: InstanceAiRunDebugStep,
 	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[],
+	cacheBreak?: StepCacheBreak,
 ): string {
 	const parsedSystem = parseSystemPromptForDisplay(stepInstructions(step.input));
 	const messageBlocks = parseMessageBlocks(step.input?.messages);
@@ -143,21 +200,42 @@ function renderStepDetail(
 		<div class="detail-section"><div class="detail-section-title">Input</div>
 			${systemHtml ? `<div class="detail-subsection"><div class="detail-subsection-title">System</div>${systemHtml}</div>` : ''}
 			${messageBlocks.length > 0 ? `<div class="detail-subsection"><div class="detail-subsection-title">Messages</div>${messageBlocks.map(renderContentBlock).join('')}</div>` : ''}
-			${inputExtras ? renderJsonBlock(inputExtras, 'Input extras') : ''}
+			${renderStepConfig(parseStepConfig(step.input))}
+			${inputExtras ? renderJsonBlock(inputExtras, 'Other step config') : ''}
 		</div>
 		<div class="detail-section"><div class="detail-section-title">Output</div>
 			${outputBlocks.length > 0 ? outputBlocks.map(renderContentBlock).join('') : '<div class="muted">No structured output</div>'}
-			${usage ? renderJsonBlock(usage.metadata, 'Usage') : ''}
+			${usage ? renderUsage(usage, cacheBreak) : ''}
 			${outputExtras ? renderJsonBlock(outputExtras, 'Output extras') : ''}
 		</div>
 		${workflowCodeHtml}
 	</div>`;
 }
 
-function renderStepSummaryChips(summary: ReturnType<typeof parseStepSummary>): string {
+const CACHE_BREAK_CAUSES: Record<CacheBreakCause, string> = {
+	tools: 'the tool list changed',
+	system: 'the system prompt changed',
+	settings: 'the model or request settings changed',
+	expired: 'more than 5 minutes passed, so the cache expired',
+	messages: 'an earlier message changed',
+};
+
+function describeCacheBreak(cacheBreak: StepCacheBreak): string {
+	return `${cacheBreak.lostTokens.toLocaleString('en-US')} of the ${cacheBreak.expectedReadTokens.toLocaleString('en-US')} tokens cached by the previous step were not read from cache. Likely cause: ${CACHE_BREAK_CAUSES[cacheBreak.cause]}.`;
+}
+
+function renderStepSummaryChips(
+	summary: ReturnType<typeof parseStepSummary>,
+	cacheBreak?: StepCacheBreak,
+): string {
 	const chips: string[] = [];
 	if (summary.finishReason) {
 		chips.push(`<span class="chip">${escapeHtml(summary.finishReason)}</span>`);
+	}
+	if (cacheBreak) {
+		chips.push(
+			`<span class="chip chip-cache-break" title="${escapeHtml(describeCacheBreak(cacheBreak))}">cache break</span>`,
+		);
 	}
 	for (const tool of summary.toolNames) {
 		chips.push(`<span class="chip chip-tool">${escapeHtml(tool)}</span>`);
@@ -179,13 +257,15 @@ function renderRunPanel(
 	const label = run.label;
 	const displayLabel = label ?? `Run ${String(runIndex + 1)}`;
 
+	const cacheBreaks = parseStepCacheBreaks(run.steps);
+
 	const stepsList = run.steps
 		.map((step, stepIndex) => {
 			const summary = parseStepSummary(step.input, step.output);
 			const active = stepIndex === 0 ? ' active' : '';
 			return `<button type="button" class="step-btn${active}" data-step-index="${String(stepIndex)}" onclick="selectStep(${String(caseIndex)}, ${String(runIndex)}, ${String(stepIndex)})">
 				<span class="step-num">#${String(step.stepNumber)}</span>
-				<span class="step-chips">${renderStepSummaryChips(summary)}</span>
+				<span class="step-chips">${renderStepSummaryChips(summary, cacheBreaks[stepIndex])}</span>
 			</button>`;
 		})
 		.join('');
@@ -193,7 +273,7 @@ function renderRunPanel(
 	const stepPanels = run.steps
 		.map((step, stepIndex) => {
 			const hidden = stepIndex === 0 ? '' : ' hidden';
-			return `<div class="step-panel${hidden}" data-step-index="${String(stepIndex)}">${renderStepDetail(step, run.workflowCode)}</div>`;
+			return `<div class="step-panel${hidden}" data-step-index="${String(stepIndex)}">${renderStepDetail(step, run.workflowCode, cacheBreaks[stepIndex])}</div>`;
 		})
 		.join('');
 
@@ -343,6 +423,8 @@ export function generateRunDebugReport(results: WorkflowTestCaseResult[]): strin
 	.run-meta { display: block; color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 	.step-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 	.chip { display: inline-block; padding: 1px 6px; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 10px; }
+	.chip-cache-break { background: var(--color-fail-bg); color: var(--color-fail); }
+	.cache-break-note { margin: 0 0 8px; padding: 6px 8px; border-left: 2px solid var(--color-fail); background: var(--color-fail-bg); font-size: 12px; }
 	.chip-tool { color: var(--color-info); }
 	.chip-muted { color: var(--text-muted); }
 	.chip-preview { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

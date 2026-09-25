@@ -1,6 +1,7 @@
 import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { Logger } from '../../logger';
 import {
@@ -111,6 +112,43 @@ describe('RunDebugBuffer', () => {
 			search: { description: 'search', inputSchema: { type: 'object', properties: { q: {} } } },
 		});
 		expect(sanitized).not.toHaveProperty('abortSignal');
+	});
+
+	it('drops step-start data that repeats other captured fields', () => {
+		const stepTools = [{ type: 'function', name: 'search', inputSchema: { type: 'object' } }];
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				instructions: 'system prompt',
+				messages: [{ role: 'user', content: 'hello' }],
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+				stepTools,
+				promptMessages: [{ role: 'system', content: 'system prompt' }],
+				steps: [],
+				runtimeContext: {},
+				toolsContext: {},
+				modelId: 'claude',
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.stepTools).toEqual(stepTools);
+		expect(sanitized.modelId).toBe('claude');
+		for (const key of ['tools', 'promptMessages', 'steps', 'runtimeContext', 'toolsContext']) {
+			expect(sanitized).not.toHaveProperty(key);
+		}
+	});
+
+	it('keeps tool descriptions without Zod internals when stepTools is missing', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.tools).toEqual({ search: { description: 'search' } });
 	});
 
 	it('does not truncate long captured strings', () => {

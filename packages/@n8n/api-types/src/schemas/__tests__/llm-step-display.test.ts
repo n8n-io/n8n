@@ -4,6 +4,8 @@ import {
 	parseInputExtras,
 	parseMessageBlocks,
 	parseOutputDisplayBlocks,
+	parseStepCacheBreaks,
+	parseStepConfig,
 	parseStepSummary,
 	parseSystemBlocks,
 	parseSystemPromptForDisplay,
@@ -239,29 +241,176 @@ describe('llm-step-display', () => {
 			parseInputExtras({
 				instructions: 'You are helpful',
 				messages: [],
-				tools: { search: { description: 'search' } },
+				callId: 'call-1',
 			}),
-		).toEqual({
-			tools: { search: { description: 'search' } },
-		});
+		).toEqual({ callId: 'call-1' });
 	});
 
-	it('includes full tools and config in input extras', () => {
+	it('leaves config, tools, duplicated prompts, and empty values out of input extras', () => {
 		expect(
 			parseInputExtras({
 				system: 'prompt',
 				messages: [],
+				modelId: 'claude',
+				provider: 'anthropic.messages',
+				providerOptions: { anthropic: { effort: 'medium' } },
 				tools: { search: { description: 'search' } },
+				stepTools: [{ name: 'search' }],
 				toolChoice: 'auto',
+				stepToolChoice: { type: 'auto' },
+				promptMessages: [{ role: 'system', content: 'prompt' }],
+				steps: [],
+				runtimeContext: {},
 				activeTools: ['search'],
 				stepNumber: 0,
 				sdkStepNumber: 0,
 			}),
-		).toEqual({
-			tools: { search: { description: 'search' } },
-			toolChoice: 'auto',
-			activeTools: ['search'],
+		).toEqual({ activeTools: ['search'] });
+	});
+
+	describe('parseStepConfig', () => {
+		it('returns model settings and the tools the model received', () => {
+			expect(
+				parseStepConfig({
+					modelId: 'claude-opus-5-5',
+					provider: 'anthropic.messages',
+					providerOptions: {
+						anthropic: {
+							thinking: { type: 'adaptive' },
+							effort: 'medium',
+							cacheControl: { type: 'ephemeral' },
+						},
+					},
+					stepToolChoice: { type: 'auto' },
+					stepTools: [
+						{
+							type: 'function',
+							name: 'search',
+							description: 'Search things',
+							inputSchema: { type: 'object' },
+						},
+					],
+				}),
+			).toEqual({
+				settings: [
+					{ label: 'model', value: 'claude-opus-5-5' },
+					{ label: 'provider', value: 'anthropic.messages' },
+					{ label: 'thinking.type', value: 'adaptive' },
+					{ label: 'effort', value: 'medium' },
+					{ label: 'cacheControl.type', value: 'ephemeral' },
+					{ label: 'tool choice', value: 'auto' },
+				],
+				tools: [
+					{
+						name: 'search',
+						description: 'Search things',
+						inputSchema: { type: 'object' },
+						estimatedTokens: 20,
+					},
+				],
+				toolsEstimatedTokens: 20,
+			});
 		});
+
+		it('keeps provider names when several provider namespaces are set', () => {
+			expect(
+				parseStepConfig({
+					providerOptions: { anthropic: { effort: 'high' }, openai: { store: false } },
+				})?.settings,
+			).toEqual([
+				{ label: 'anthropic.effort', value: 'high' },
+				{ label: 'openai.store', value: 'false' },
+			]);
+		});
+
+		it('names the forced tool in the tool choice', () => {
+			expect(
+				parseStepConfig({ toolChoice: { type: 'tool', toolName: 'search' } })?.settings,
+			).toEqual([{ label: 'tool choice', value: 'tool: search' }]);
+		});
+
+		it('falls back to the tool set and skips serialized Zod schemas', () => {
+			expect(
+				parseStepConfig({
+					tools: {
+						search: {
+							description: 'Search things',
+							inputSchema: { _def: { typeName: 'ZodObject' }, parse: '[function parse]' },
+						},
+						fetch: { description: 'Fetch a page', inputSchema: { type: 'object' } },
+					},
+				})?.tools,
+			).toEqual([
+				{
+					name: 'search',
+					description: 'Search things',
+					inputSchema: undefined,
+					estimatedTokens: 12,
+				},
+				{
+					name: 'fetch',
+					description: 'Fetch a page',
+					inputSchema: { type: 'object' },
+					estimatedTokens: 20,
+				},
+			]);
+		});
+
+		it('returns undefined when the step has no config', () => {
+			expect(parseStepConfig({ messages: [] })).toBeUndefined();
+			expect(parseStepConfig(undefined)).toBeUndefined();
+		});
+	});
+
+	it('breaks usage down into token rows and provider facts', () => {
+		const usage = {
+			inputTokens: 32437,
+			inputTokenDetails: { noCacheTokens: 4, cacheReadTokens: 0, cacheWriteTokens: 32433 },
+			outputTokens: 208,
+			outputTokenDetails: { textTokens: 78, reasoningTokens: 130 },
+			totalTokens: 32645,
+			raw: {
+				input_tokens: 4,
+				cache_creation: { ephemeral_5m_input_tokens: 32433 },
+				service_tier: 'standard',
+				inference_geo: 'global',
+			},
+		};
+
+		const summary = parseUsageSummary(usage);
+
+		expect(summary?.rows).toEqual([
+			{
+				label: 'input',
+				tokens: 32437,
+				details: [
+					{ label: 'uncached', tokens: 4 },
+					{ label: 'cache read', tokens: 0 },
+					{ label: 'cache write', tokens: 32433 },
+				],
+			},
+			{
+				label: 'output',
+				tokens: 208,
+				details: [
+					{ label: 'text', tokens: 78 },
+					{ label: 'reasoning', tokens: 130 },
+				],
+			},
+			{ label: 'total', tokens: 32645, details: [] },
+		]);
+		expect(summary?.settings).toEqual([
+			{ label: 'service tier', value: 'standard' },
+			{ label: 'inference geo', value: 'global' },
+		]);
+		expect(summary?.metadata).toBe(usage);
+	});
+
+	it('labels unknown token details from their key', () => {
+		expect(
+			parseUsageSummary({ inputTokens: 10, inputTokenDetails: { audioInputTokens: 3 } })?.rows[0]
+				?.details,
+		).toEqual([{ label: 'audio input', tokens: 3 }]);
 	});
 
 	it('summarizes usage tokens for inline display', () => {
@@ -330,6 +479,96 @@ describe('llm-step-display', () => {
 		it('still sizes a pre-v7 string system prompt', () => {
 			const summary = parseStepSummary({ system: 'x'.repeat(42) }, { finishReason: 'stop' });
 			expect(summary.systemCharCount).toBe(42);
+		});
+	});
+
+	describe('parseStepCacheBreaks', () => {
+		const baseInput = {
+			instructions: 'system prompt',
+			stepTools: [{ name: 'search' }],
+			modelId: 'claude',
+			providerOptions: { anthropic: { effort: 'medium' } },
+		};
+
+		function step(
+			cacheReadTokens: number,
+			cacheWriteTokens: number,
+			options: { input?: Record<string, unknown>; timestamp?: string } = {},
+		) {
+			return {
+				input: { ...baseInput, ...options.input },
+				output: {
+					usage: { inputTokenDetails: { cacheReadTokens, cacheWriteTokens } },
+					response: { timestamp: options.timestamp ?? '2026-01-01T00:00:00.000Z' },
+				},
+			};
+		}
+
+		it('reports no break when each step reads what the previous step cached', () => {
+			expect(parseStepCacheBreaks([step(0, 30000), step(30000, 2000), step(32000, 500)])).toEqual([
+				undefined,
+				undefined,
+				undefined,
+			]);
+		});
+
+		it('ignores a shortfall smaller than the minimum cacheable prefix', () => {
+			expect(parseStepCacheBreaks([step(0, 30000), step(29500, 2000)])).toEqual([
+				undefined,
+				undefined,
+			]);
+		});
+
+		it('reports a tool list change as the cause', () => {
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000),
+				step(0, 42000, { input: { stepTools: [{ name: 'search' }, { name: 'fetch' }] } }),
+			]);
+
+			expect(breaks[1]).toEqual({
+				expectedReadTokens: 30000,
+				readTokens: 0,
+				lostTokens: 30000,
+				cause: 'tools',
+			});
+		});
+
+		it('reports a system prompt change as the cause', () => {
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000),
+				step(12000, 20000, { input: { instructions: 'changed prompt' } }),
+			]);
+
+			expect(breaks[1]).toMatchObject({ lostTokens: 18000, cause: 'system' });
+		});
+
+		it('reports a request settings change as the cause', () => {
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000),
+				step(0, 30000, { input: { providerOptions: { anthropic: { effort: 'high' } } } }),
+			]);
+
+			expect(breaks[1]?.cause).toBe('settings');
+		});
+
+		it('reports cache expiry when more than five minutes pass between steps', () => {
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000, { timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { timestamp: '2026-01-01T00:06:00.000Z' }),
+			]);
+
+			expect(breaks[1]?.cause).toBe('expired');
+		});
+
+		it('falls back to a message change when the prompt prefix and timing did not change', () => {
+			expect(parseStepCacheBreaks([step(0, 30000), step(0, 30000)])[1]?.cause).toBe('messages');
+		});
+
+		it('skips steps without cache token details', () => {
+			expect(parseStepCacheBreaks([step(0, 30000), { input: baseInput, output: {} }])).toEqual([
+				undefined,
+				undefined,
+			]);
 		});
 	});
 });
