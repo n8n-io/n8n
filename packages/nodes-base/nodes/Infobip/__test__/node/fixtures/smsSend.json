@@ -1,0 +1,16 @@
+{
+	"bulkId": "bulk-1",
+	"messages": [
+		{
+			"messageId": "msg-1",
+			"destination": "41793026727",
+			"status": {
+				"groupId": 1,
+				"groupName": "PENDING",
+				"id": 26,
+				"name": "PENDING_ACCEPTED",
+				"description": "Message sent to next instance"
+			}
+		}
+	]
+}

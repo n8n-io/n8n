@@ -1,0 +1,16 @@
+{
+	"messages": [
+		{
+			"to": "441134960001",
+			"messageCount": 1,
+			"messageId": "wa-1",
+			"status": {
+				"groupId": 1,
+				"groupName": "PENDING",
+				"id": 7,
+				"name": "PENDING_ENROUTE"
+			}
+		}
+	],
+	"bulkId": "wa-bulk-1"
+}

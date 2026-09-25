@@ -1,0 +1,265 @@
+{
+	"name": "Infobip",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d5e372e3-ab0a-5ff1-bba7-ac4c69027197",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"to": "41793026727",
+				"text": "Hello from n8n",
+				"options": {
+					"sender": "InfoSMS"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.infobip",
+			"typeVersion": 1,
+			"position": [220, -400],
+			"id": "ed0ea844-b0cc-5c9e-a83f-dedd80d28fb2",
+			"name": "Send SMS",
+			"credentials": {
+				"infobipApi": {
+					"id": "ibCred00000001",
+					"name": "Infobip account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "getLogs",
+				"limit": 10,
+				"filters": {
+					"bulkId": "bulk-1",
+					"generalStatus": "DELIVERED"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.infobip",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"id": "e31ea40c-ed8e-5acc-9918-3746b5c8760d",
+			"name": "Get SMS logs",
+			"credentials": {
+				"infobipApi": {
+					"id": "ibCred00000001",
+					"name": "Infobip account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "whatsApp",
+				"operation": "sendTemplate",
+				"from": "441134960000",
+				"to": "441134960001",
+				"templateName": "order_update",
+				"language": "en",
+				"placeholders": {
+					"values": [
+						{
+							"value": "Ada"
+						},
+						{
+							"value": "#1234"
+						}
+					]
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.infobip",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "830b779d-e4b3-509e-b3a4-57b18a51d875",
+			"name": "Send WhatsApp template",
+			"credentials": {
+				"infobipApi": {
+					"id": "ibCred00000001",
+					"name": "Infobip account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "whatsApp",
+				"operation": "sendText",
+				"from": "441134960000",
+				"to": "441134960001",
+				"text": "See https://n8n.io",
+				"options": {
+					"previewUrl": true
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.infobip",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "582d64ab-bb44-5015-b4a8-ea94a04d7707",
+			"name": "Send WhatsApp text",
+			"credentials": {
+				"infobipApi": {
+					"id": "ibCred00000001",
+					"name": "Infobip account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "getBalance",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.infobip",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "1eb85865-8415-5f10-812d-42f5a2b3259c",
+			"name": "Get balance",
+			"credentials": {
+				"infobipApi": {
+					"id": "ibCred00000001",
+					"name": "Infobip account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Send SMS",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get SMS logs",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send WhatsApp template",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send WhatsApp text",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get balance",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Send SMS": [
+			{
+				"json": {
+					"bulkId": "bulk-1",
+					"messages": [
+						{
+							"messageId": "msg-1",
+							"destination": "41793026727",
+							"status": {
+								"groupId": 1,
+								"groupName": "PENDING",
+								"id": 26,
+								"name": "PENDING_ACCEPTED",
+								"description": "Message sent to next instance"
+							}
+						}
+					]
+				}
+			}
+		],
+		"Get SMS logs": [
+			{
+				"json": {
+					"sender": "InfoSMS",
+					"destination": "41793026727",
+					"bulkId": "bulk-1",
+					"messageId": "msg-1",
+					"sentAt": "2026-09-25T10:00:00.000+0000",
+					"doneAt": "2026-09-25T10:00:02.000+0000",
+					"status": {
+						"groupId": 3,
+						"groupName": "DELIVERED",
+						"id": 5,
+						"name": "DELIVERED_TO_HANDSET"
+					}
+				}
+			},
+			{
+				"json": {
+					"sender": "InfoSMS",
+					"destination": "41793026728",
+					"bulkId": "bulk-1",
+					"messageId": "msg-2",
+					"sentAt": "2026-09-25T10:00:00.000+0000",
+					"doneAt": "2026-09-25T10:00:03.000+0000",
+					"status": {
+						"groupId": 3,
+						"groupName": "DELIVERED",
+						"id": 5,
+						"name": "DELIVERED_TO_HANDSET"
+					}
+				}
+			}
+		],
+		"Send WhatsApp template": [
+			{
+				"json": {
+					"messages": [
+						{
+							"to": "441134960001",
+							"messageCount": 1,
+							"messageId": "wa-1",
+							"status": {
+								"groupId": 1,
+								"groupName": "PENDING",
+								"id": 7,
+								"name": "PENDING_ENROUTE"
+							}
+						}
+					],
+					"bulkId": "wa-bulk-1"
+				}
+			}
+		],
+		"Send WhatsApp text": [
+			{
+				"json": {
+					"to": "441134960001",
+					"messageCount": 1,
+					"messageId": "wa-2",
+					"status": {
+						"groupId": 1,
+						"groupName": "PENDING",
+						"id": 7,
+						"name": "PENDING_ENROUTE"
+					}
+				}
+			}
+		],
+		"Get balance": [
+			{
+				"json": {
+					"balance": 47.79134,
+					"currency": "EUR"
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"to": "441134960001",
+	"messageCount": 1,
+	"messageId": "wa-2",
+	"status": {
+		"groupId": 1,
+		"groupName": "PENDING",
+		"id": 7,
+		"name": "PENDING_ENROUTE"
+	}
+}
