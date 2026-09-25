@@ -1,3 +1,11 @@
+---
+name: trigger-input-data-shapes
+description: >-
+  Load before passing `inputData` to `verify-built-workflow` or
+  `executions(action="run")`, to use the shape that matches the workflow's
+  trigger type.
+---
+
 # Per-trigger `inputData` shape
 
 Used by `verify-built-workflow` and `executions(action="run")`. The pin-data

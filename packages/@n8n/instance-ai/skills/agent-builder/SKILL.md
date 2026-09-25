@@ -7,6 +7,8 @@ description: >-
   creation, faithful handoff, targeting, testing, and publishing. Use directly
   for routine Agent follow-ups; rerun intent-recognition only when the requested
   artifact is no longer clear.
+shared_references:
+  - credential-setup-with-computer-use
 recommended_tools:
   - build-agent
   - build-workflow

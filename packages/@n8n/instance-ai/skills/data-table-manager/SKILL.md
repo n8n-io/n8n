@@ -173,5 +173,5 @@ fit a wrong schema.
 
 ## More Detail
 
-Use [references/data-table-playbook.md](references/data-table-playbook.md) for
-tool recipes, schema patterns, import edge cases, and output examples.
+Load the `data-table-playbook` reference for tool recipes, schema patterns,
+import edge cases, and output examples.

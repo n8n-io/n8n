@@ -29,8 +29,8 @@ following them stays in the user's conversation language.
 
 For trigger `inputData` shapes, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md` in
-the sandbox workspace when available, or load this skill's
-`references/trigger-input-data-shapes.md` linked file.
+the sandbox workspace when available, or load the `trigger-input-data-shapes`
+reference.
 
 ## Setup panel
 

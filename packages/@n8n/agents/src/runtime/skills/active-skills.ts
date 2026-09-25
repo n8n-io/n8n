@@ -1,6 +1,6 @@
 import type { ModelMessage, ToolResultPart } from 'ai';
 
-import { formatActiveSkill } from '../../skills/tools';
+import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillContent,
@@ -246,7 +246,7 @@ export class ActiveSkills {
 	private formatSkill(skillId: string): string | undefined {
 		const skill = this.loaded.get(skillId);
 		const entry = this.source.registry.skills.find((candidate) => candidate.id === skillId);
-		return skill && entry ? formatActiveSkill(skill, entry) : undefined;
+		return skill && entry ? formatActiveSkill(skill, entry, this.source.registry) : undefined;
 	}
 
 	private recordedLoads(list: AgentMessageList): Map<string, string> {
@@ -269,14 +269,20 @@ export class ActiveSkills {
 					continue;
 				if (part.output.success !== true && part.output.type !== 'content') continue;
 				const { skillId, name, filePath } = part.input;
-				if (typeof filePath === 'string' && !['', '/', '.', 'SKILL.md'].includes(filePath.trim()))
-					continue;
 				const requested =
 					typeof skillId === 'string' ? skillId : typeof name === 'string' ? name : undefined;
 				if (!requested) continue;
 				const entry = this.source.registry.skills.find(
 					(skill) => skill.id === requested || skill.name === requested,
 				);
+				if (typeof filePath === 'string' && !['', '/', '.', 'SKILL.md'].includes(filePath.trim())) {
+					// Only a path to a reference skill is an activation; other linked files are plain reads.
+					const reference = entry
+						? findReferenceByPath(this.source.registry, entry.id, filePath)
+						: undefined;
+					if (reference) loads.set(part.toolCallId, reference.id);
+					continue;
+				}
 				loads.set(part.toolCallId, entry?.id ?? requested);
 			}
 		}

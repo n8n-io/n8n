@@ -71,8 +71,11 @@ describe('progressive workflow skill variants', () => {
 		if (!controlBundle || !progressiveBundle) throw new Error('Expected skill bundles');
 
 		expect(progressiveBundle.manifest.skillsHash).not.toBe(controlBundle.manifest.skillsHash);
-		for (const skillId of ['workflow-builder', 'post-build-flow']) {
-			const skillPath = `${root}/skills/${skillId}/SKILL.md`;
+		const skillPaths = {
+			'workflow-builder': `${root}/skills/workflow-builder/SKILL.md`,
+			'post-build-flow': `${root}/skills/workflow-builder/references/post-build-flow.md`,
+		};
+		for (const [skillId, skillPath] of Object.entries(skillPaths)) {
 			expect(progressiveBundle.files.get(skillPath)).toContain('# Progressive building');
 			expect(controlBundle.files.get(skillPath)).not.toContain('# Progressive building');
 			const loadTool = createSkillLoadTool(progressiveBundle.source);
@@ -80,7 +83,7 @@ describe('progressive workflow skill variants', () => {
 			expect(loaded).toHaveProperty('value.0.text', expect.stringContaining(policy.instructions));
 		}
 
-		const reference = `${root}/skills/post-build-flow/references/trigger-input-data-shapes.md`;
+		const reference = `${root}/skills/workflow-builder/references/trigger-input-data-shapes.md`;
 		expect(progressiveBundle.files.get(reference)).toBeTruthy();
 		expect(progressiveBundle.files.get(reference)).toBe(controlBundle.files.get(reference));
 		await expect(progressive.loadSkill('progressive-building')).resolves.toBeNull();

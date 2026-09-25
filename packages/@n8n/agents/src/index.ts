@@ -220,6 +220,8 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,

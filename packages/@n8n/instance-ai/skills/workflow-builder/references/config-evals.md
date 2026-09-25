@@ -116,5 +116,5 @@ relative to the request. Use `prompt` only to override the default judge prompt.
 
 ## More Detail
 
-Use [references/config-eval-playbook.md](references/config-eval-playbook.md) for
-tool-call recipes, worked examples, and output shapes.
+Load the `config-eval-playbook` reference for tool-call recipes, worked
+examples, and output shapes.
