@@ -254,6 +254,73 @@ describe('WorkflowIndexService Integration', () => {
 		});
 	});
 
+	it('removes published credential dependencies after unpublish and a draft save (ADO-5931)', async () => {
+		const owner = await createOwner();
+		const oldNode: INode = {
+			id: 'node-1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [250, 300],
+			parameters: {},
+			credentials: { httpAuth: { id: 'old-credential', name: 'Old credential' } },
+		};
+		const workflow = await createWorkflow({ nodes: [oldNode] });
+		await workflowIndexService.updateIndexForDraft(workflow);
+		await createWorkflowHistory(workflow);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		const published = await workflowRepository.findOneByOrFail({ id: workflow.id });
+
+		eventService.emit('workflow-activated', {
+			user: createUserPayload(owner),
+			workflow: published,
+			workflowId: workflow.id,
+			publicApi: false,
+		});
+		await retryUntil(async () => {
+			const dependencies = await workflowDependencyRepository.findBy({ workflowId: workflow.id });
+			expect(
+				dependencies.some(
+					(dep) => dep.publishedVersionId !== null && dep.dependencyKey === 'old-credential',
+				),
+			).toBe(true);
+		});
+
+		// ADO-5931: A later draft save must not retain the old published credential.
+		await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+		const unpublished = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		eventService.emit('workflow-deactivated', {
+			user: createUserPayload(owner),
+			workflowId: workflow.id,
+			workflow: unpublished,
+			publicApi: false,
+			deactivatedVersionId: published.activeVersionId,
+		});
+
+		await workflowRepository.update(workflow.id, {
+			nodes: [
+				{
+					...oldNode,
+					credentials: { httpAuth: { id: 'new-credential', name: 'New credential' } },
+				},
+			],
+		});
+		const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		eventService.emit('workflow-saved', {
+			user: createUserPayload(owner),
+			workflow: saved,
+			publicApi: false,
+		});
+
+		await retryUntil(async () => {
+			const dependencies = await workflowDependencyRepository.findBy({ workflowId: workflow.id });
+			const credentialDependencies = dependencies
+				.filter((dep) => dep.dependencyType === 'credentialId')
+				.map((dep) => dep.dependencyKey);
+			expect(credentialDependencies).toEqual(['new-credential']);
+		});
+	});
+
 	describe('buildIndex (server startup re-indexing)', () => {
 		const httpRequestNode: INode = {
 			id: 'node-1',
