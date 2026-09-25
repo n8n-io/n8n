@@ -138,14 +138,6 @@ export class InstanceReportingService {
 			const days = await this.missedDays(now);
 			if (days.length === 0) return;
 
-			if (days.length > 1) {
-				this.logger.info('Reporting days missed since the last delivered instance report', {
-					firstDay: days[0],
-					lastDay: days.at(-1),
-					count: days.length,
-				});
-			}
-
 			report = await this.reportRepository.createPending(await this.collectDataPoints(days));
 		}
 
@@ -263,16 +255,18 @@ export class InstanceReportingService {
 			Math.max(1, this.insightsConfig.compactionDailyToWeeklyThresholdDays - 1),
 		);
 
-		if (firstDay < oldestAllowedDay) {
-			this.logger.warn('Dropping the oldest days, which insights no longer holds per day', {
-				firstDroppedDay: firstDay,
-				lastDroppedDay: addUtcDays(oldestAllowedDay, -1),
-			});
-		}
-
 		const days: string[] = [];
 		for (let day = maxDay(firstDay, oldestAllowedDay); day <= yesterday; day = addUtcDays(day, 1)) {
 			days.push(day);
+		}
+
+		if (days.length > 1) {
+			this.logger.info(
+				lastCoveredDay
+					? 'Reporting days missed since the last delivered instance report'
+					: 'Reporting the insights history, since no instance report was delivered yet',
+				{ firstDay: days[0], lastDay: days.at(-1), count: days.length },
+			);
 		}
 
 		return days;

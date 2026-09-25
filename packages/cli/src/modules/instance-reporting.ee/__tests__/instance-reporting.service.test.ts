@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	HttpRequestClient,
 	HttpRequestClientOptions,
@@ -84,7 +84,6 @@ interface Harness {
 	license: Mocked<License>;
 	http: HttpRequestClient;
 	eventService: Mocked<EventService>;
-	logger: Mocked<Logger>;
 	clientOptions: HttpRequestClientOptions | undefined;
 }
 
@@ -125,8 +124,6 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 
 	const eventService = mock<EventService>();
 
-	const logger = mock<Logger>();
-
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
@@ -135,7 +132,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
 		licenseMetricsRepository,
 		license,
-		mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
+		mockLogger(),
 		eventService,
 		outboundHttp,
 	);
@@ -148,7 +145,6 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		license,
 		http,
 		eventService,
-		logger,
 		clientOptions,
 	};
 }
@@ -747,8 +743,7 @@ describe('InstanceReportingService', () => {
 		});
 
 		test('carries no day older than the compaction threshold, minus one day of margin', async () => {
-			const { service, reportRepository, insightsService, insightsConfig, http, logger } =
-				makeHarness();
+			const { service, reportRepository, insightsService, insightsConfig, http } = makeHarness();
 			insightsConfig.compactionDailyToWeeklyThresholdDays = 30;
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2023-01-01T00:00:00.000Z'));
@@ -759,10 +754,6 @@ describe('InstanceReportingService', () => {
 			expect(daily).toHaveLength(29);
 			expect(daily.at(0)?.date).toBe('2026-02-25');
 			expect(daily.at(-1)?.date).toBe(REPORT_DATE);
-			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
-				firstDroppedDay: '2023-01-01',
-				lastDroppedDay: '2026-02-24',
-			});
 		});
 
 		test('does not read the insights history when only yesterday is owed', async () => {
