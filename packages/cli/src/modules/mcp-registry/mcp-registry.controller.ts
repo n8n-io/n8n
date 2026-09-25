@@ -1,5 +1,4 @@
 import type { McpRegistryServerResponse } from '@n8n/api-types';
-import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
 import { Get, RestController } from '@n8n/decorators';
 
 import { resolveMcpRegistryConnection } from './mcp-registry-connection';
@@ -38,11 +37,8 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		websiteUrl: server.websiteUrl,
 		credentials: getMcpRegistryCredentialOptions(server),
 		tools: server.tools.map((tool) => ({
-			...tool,
-			category: classifyMcpTool({
-				name: tool.name,
-				annotations: tool.annotations,
-			}),
+			name: tool.name,
+			...(tool.title ? { title: tool.title } : {}),
 		})),
 		isOfficial: server.isOfficial,
 		status: server.status,

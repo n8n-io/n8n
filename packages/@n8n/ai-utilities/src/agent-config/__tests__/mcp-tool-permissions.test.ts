@@ -12,7 +12,7 @@ describe('MCP tool permissions', () => {
 			[{ name: 'getAccount' }, 'read'],
 			[{ name: 'anything', annotations: { readOnlyHint: false } }, 'write'],
 			[{ name: 'search_records', annotations: { destructiveHint: true } }, 'write'],
-			[{ name: 'create_record', annotations: { readOnlyHint: true } }, 'write'],
+			[{ name: 'get_run_record', annotations: { readOnlyHint: true } }, 'read'],
 			[{ name: 'create_record' }, 'write'],
 			[{ name: 'unknown_operation' }, 'write'],
 		] as const)('classifies %o as %s', (tool, expected) => {

@@ -30,7 +30,6 @@ import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
 	InstanceAiMcpConnectionToolResponse,
 	McpRegistryServerResponse,
-	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
@@ -102,8 +101,6 @@ const detailMode = computed<'detail' | 'settings'>(() =>
 	detailItem.value?.kind === 'mcp-server' ? 'settings' : 'detail',
 );
 
-type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
-
 const {
 	connectServer,
 	connectWithCredential,
@@ -134,13 +131,13 @@ onBeforeUnmount(() => {
 	}
 });
 
-function toMcpServerTool(tool: McpToolMetadata): McpServerTool {
+function toMcpServerTool(tool: InstanceAiMcpConnectionToolResponse): McpServerTool {
 	const out: McpServerTool = {
 		id: tool.name,
 		name: tool.name,
+		category: tool.category,
 	};
-	out.category = tool.category;
-	if ('description' in tool && tool.description) out.description = tool.description;
+	if (tool.description) out.description = tool.description;
 	return out;
 }
 
@@ -148,14 +145,11 @@ function settingsForConnection(connection: InstanceAiMcpConnection): McpToolSett
 	return connection.toolPermissions;
 }
 
-function availableToolsForServer(
-	server: McpRegistryServerResponse,
+function availableToolsForConnection(
 	connection: InstanceAiMcpConnection | undefined,
 ): McpServerTool[] {
 	const liveTools = connection ? mcpStore.connectionToolsById.get(connection.id) : undefined;
-	if (!liveTools) return server.tools.map((tool) => toMcpServerTool(tool));
-
-	return liveTools.map((tool) => toMcpServerTool(tool));
+	return liveTools?.map(toMcpServerTool) ?? [];
 }
 
 function buildItem(
@@ -179,7 +173,7 @@ function buildItem(
 				connection?.credentialType === credentialType ? connection.credentialId : undefined,
 			required: true,
 		})),
-		availableTools: availableToolsForServer(server, connection),
+		availableTools: availableToolsForConnection(connection),
 		isOfficial: server.isOfficial,
 		...(connection ? { settings: settingsForConnection(connection) } : {}),
 		publisher:

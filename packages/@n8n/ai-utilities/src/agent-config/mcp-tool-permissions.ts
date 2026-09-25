@@ -78,11 +78,11 @@ export function classifyMcpTool(tool: McpToolDescriptor): McpToolCategory {
 		return 'write';
 	}
 
-	if (hasWriteName) return 'write';
-
 	if (tool.annotations?.readOnlyHint === true) {
 		return 'read';
 	}
+
+	if (hasWriteName) return 'write';
 
 	return segments.some((segment) => READ_SEGMENTS.has(segment)) ? 'read' : 'write';
 }

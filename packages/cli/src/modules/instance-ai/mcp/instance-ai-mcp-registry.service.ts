@@ -67,18 +67,11 @@ function stripMcpServerPrefix(toolName: string, serverName: string): string {
 	return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
 }
 
-function toToolResponse(
-	tool: BuiltTool,
-	serverName: string,
-	registryTool?: McpRegistryServer['tools'][number],
-): InstanceAiMcpConnectionToolResponse {
+function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConnectionToolResponse {
 	const name = tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName);
 	const response: InstanceAiMcpConnectionToolResponse = {
 		name,
-		category: classifyMcpTool({
-			name,
-			annotations: tool.mcpAnnotations ?? registryTool?.annotations,
-		}),
+		category: classifyMcpTool({ name, annotations: tool.mcpAnnotations }),
 	};
 	if (tool.description) response.description = tool.description;
 	return response;
@@ -301,14 +294,7 @@ export class InstanceAiMcpRegistryService {
 		]);
 
 		try {
-			const tools = (await client.listTools()).map((tool) => {
-				const toolName = tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName);
-				return toToolResponse(
-					tool,
-					serverName,
-					server.tools.find((registryTool) => registryTool.name === toolName),
-				);
-			});
+			const tools = (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
 			if (client.getConnectionFailures().length > 0) {
 				return disconnectedToolsResponse(connection.id, failureReason);
 			}
