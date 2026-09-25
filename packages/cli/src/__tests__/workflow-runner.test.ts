@@ -842,7 +842,7 @@ describe('run', () => {
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
-	describe('engine 2.0 dispatch', () => {
+	describe('engine v2 dispatch', () => {
 		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
@@ -861,7 +861,7 @@ describe('run', () => {
 			expect(addSpy).not.toHaveBeenCalled();
 		});
 
-		it('leaves the v1 path alone when the run does not route to engine 2.0', async () => {
+		it('leaves the v1 path alone when the run does not route to engine v2', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
 			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);

@@ -652,6 +652,7 @@ export class AgentExecutionOrchestratorService {
 					this.streamWakeTurn(config, runtime, access, integrationType, messageContext),
 					abortSignal,
 					delivery,
+					messageContext?.interactingUserId,
 				),
 		);
 		for await (const _chunk of stream) {
@@ -663,6 +664,7 @@ export class AgentExecutionOrchestratorService {
 		stream: AsyncGenerator<StreamChunk>,
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
+		cardRecipientId?: string,
 	): AsyncGenerator<StreamChunk> {
 		const chunks: StreamChunk[] = [];
 		let runError: unknown;
@@ -677,7 +679,8 @@ export class AgentExecutionOrchestratorService {
 			throw new OperationalError('Background job wake failed', { cause: runError });
 		}
 		abortSignal.throwIfAborted();
-		if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
+		if (delivery)
+			await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks, cardRecipientId);
 	}
 
 	private async getWakeDelivery(

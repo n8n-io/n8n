@@ -51,6 +51,11 @@ export function isExpectedAiPreferenceRefusal(error: unknown): error is Response
 	return error instanceof ResponseError && error.httpStatusCode < 500;
 }
 
+/** Whole seconds between the write and now, for the undo-rate reading. */
+export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
+	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
+}
+
 export type AssistantPreferenceWrite = {
 	aiPreferenceService: AiPreferenceService;
 	telemetry: Telemetry;

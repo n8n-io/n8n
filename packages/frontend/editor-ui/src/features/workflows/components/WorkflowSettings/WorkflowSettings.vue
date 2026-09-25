@@ -1144,8 +1144,8 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
-					<ElRow>
+				<template v-if="isSharingEnabled">
+					<ElRow data-test-id="workflow-caller-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
@@ -1181,7 +1181,10 @@ onBeforeUnmount(() => {
 					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.callerIds') }}
+							<span :class="$style['caller-ids-connector']" aria-hidden="true">└─</span>
+							<span :class="$style['caller-ids-label']">{{
+								i18n.baseText('workflowSettings.callerIds')
+							}}</span>
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
@@ -1189,7 +1192,7 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14">
+						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nInput
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1200,7 +1203,7 @@ onBeforeUnmount(() => {
 							/>
 						</ElCol>
 					</ElRow>
-				</div>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timezone') }}
@@ -1847,6 +1850,15 @@ onBeforeUnmount(() => {
 
 .setting-name--disabled {
 	opacity: 0.5;
+}
+
+.caller-ids-connector {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.caller-ids-label {
+	min-width: 0;
 }
 
 .permission-notice-link {

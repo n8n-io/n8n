@@ -30,6 +30,12 @@ export { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error
 
 @Service()
 export class AgentChatExecutionService {
+	// Remote mains may never register the run. Retain early Stops beyond the recovery window.
+	private static readonly PENDING_CANCEL_TTL_MS = 5 * 60 * 1000;
+	private readonly pendingCancellations = new Map<
+		string,
+		{ context: ExecutionContext; timer: NodeJS.Timeout }
+	>();
 	private readonly executions = new Map<
 		string,
 		{ context: ExecutionContext; controller: AbortController }
@@ -47,6 +53,12 @@ export class AgentChatExecutionService {
 
 	register(context: ExecutionContext, controller: AbortController): void {
 		this.executions.set(context.executionId, { context, controller });
+		const pending = this.pendingCancellations.get(context.executionId);
+		if (pending) {
+			clearTimeout(pending.timer);
+			this.pendingCancellations.delete(context.executionId);
+			this.cancelLocal(pending.context);
+		}
 	}
 
 	async settle(
@@ -93,7 +105,8 @@ export class AgentChatExecutionService {
 				if (!execution) throw new NotFoundError('Execution not found');
 				if (this.cancelLocal(context)) return true;
 				if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
-				if (!this.instanceSettings.isMultiMain) return false;
+				this.cancelOrRemember(context);
+				if (!this.instanceSettings.isMultiMain) return true;
 				await this.publisher.publishCommand({
 					command: 'cancel-agent-chat-execution',
 					payload: context,
@@ -111,9 +124,23 @@ export class AgentChatExecutionService {
 			`agent-preview-turn:${context.threadId}`,
 			async () => {
 				if (this.cancelLocal(context)) return;
-				if (await this.getOwnedExecution(context)) await this.cancelRecordedSuspension(context);
+				const execution = await this.getOwnedExecution(context);
+				if (!execution) return;
+				if (execution.status === 'running') this.cancelOrRemember(context);
+				await this.cancelRecordedSuspension(context);
 			},
 		);
+	}
+
+	private cancelOrRemember(context: ExecutionContext): void {
+		// Registration can finish while ownership validation awaits the database.
+		if (this.cancelLocal(context) || this.pendingCancellations.has(context.executionId)) return;
+		const timer = setTimeout(
+			() => this.pendingCancellations.delete(context.executionId),
+			AgentChatExecutionService.PENDING_CANCEL_TTL_MS,
+		);
+		timer.unref();
+		this.pendingCancellations.set(context.executionId, { context, timer });
 	}
 
 	private cancelLocal(context: ExecutionContext): boolean {

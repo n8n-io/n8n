@@ -8,7 +8,7 @@ import { resolveCredentialRequestSchema } from './engine-credentials.contract';
 import { EngineCredentialsService } from './engine-credentials.service';
 
 /**
- * Serves `POST /internal/credentials/resolve` for the engine 2.0 data plane.
+ * Serves `POST /internal/credentials/resolve` for the engine v2 data plane.
  * Validates the body and writes the response. `EngineCredentialsService`
  * decides access and decrypts.
  */

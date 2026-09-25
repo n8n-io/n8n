@@ -67,6 +67,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -6987,6 +6989,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
@@ -7002,6 +7005,7 @@ describe('resolveExperimentGates', () => {
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
+			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
@@ -7058,8 +7062,20 @@ describe('resolveExperimentGates', () => {
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 		});
 	});
+
+	it.each([CANVAS_NODE_CONTEXT_FLAG, AI_ASSISTANT_AT_MENTIONS_FLAG])(
+		'enables node context with %s',
+		async (flag) => {
+			stubContainer({ [flag]: true });
+
+			await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+				nodeContextEnabled: true,
+			});
+		},
+	);
 
 	it('disables experiment gates for control variants', async () => {
 		stubContainer({
@@ -7068,6 +7084,8 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+			[CANVAS_NODE_CONTEXT_FLAG]: false,
+			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
@@ -7080,6 +7098,7 @@ describe('resolveExperimentGates', () => {
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7129,6 +7148,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7146,6 +7166,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7524,22 +7545,6 @@ describe('createContext — builder delegate wiring', () => {
 		});
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
 	});
-
-	it('passes listAgents through to the underlying delegate unchanged', async () => {
-		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
-		const delegate = mock<InstanceAiBuilderDelegate>();
-		const agents = [
-			{ agentId: 'agent-1', name: 'Agent', published: true, updatedAt: '2026-07-14T00:00:00.000Z' },
-		];
-		delegate.listAgents.mockResolvedValue(agents);
-		mockBuilderModuleActive(delegate);
-
-		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
-		const result = await context.builderDelegate?.listAgents();
-
-		expect(result).toEqual(agents);
-		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
-	});
 });
 
 // ---------------------------------------------------------------------------
@@ -7611,6 +7616,8 @@ describe('createContext: aiPreferenceService', () => {
 		aiPreferenceService.create.mockResolvedValue({
 			id: 'pref-1',
 			content: 'Keep replies short.',
+			userId: 'user-1',
+			projectId: null,
 		} as never);
 		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
@@ -7626,7 +7633,14 @@ describe('createContext: aiPreferenceService', () => {
 		);
 		expect(result).toEqual({
 			ok: true,
-			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+			// The owner travels with the result: an edit from the card must name it.
+			preference: {
+				id: 'pref-1',
+				content: 'Keep replies short.',
+				scope: 'user',
+				userId: 'user-1',
+				projectId: null,
+			},
 		});
 	});
 
@@ -7768,7 +7782,7 @@ describe('createContext: aiPreferenceService', () => {
 			const { service, aiPreferenceService, telemetry } = buildService();
 			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
-			context.aiPreferenceService!.recordRejection(reason, 19);
+			context.aiPreferenceService!.recordRejection(reason, 19, 'user');
 
 			expect(telemetry.track).toHaveBeenCalledTimes(1);
 			expect(telemetry.track).toHaveBeenCalledWith(

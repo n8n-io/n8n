@@ -10,7 +10,6 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
-	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -106,10 +105,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * Teams acknowledges an Adaptive Card action by editing the card in place, so
-	 * the answered card is settled rather than deleted.
+	 * A channel or group chat card goes out as a Teams targeted message, so the
+	 * rest of the channel never sees the approval. Delivery-scoped only: nothing
+	 * verifies who clicks.
+	 *
+	 * Deleting the answered card relies on
+	 * `patches/@chat-adapter__teams@4.37.0.patch`, because the adapter mutates a
+	 * targeted activity without `?isTargetedActivity=true` and Teams answers
+	 * 400. Drop the patch once upstream sends the flag (vercel/chat#950).
 	 */
-	readonly deleteActionMessageBeforeResume = false;
+	readonly targetSuspensionCardAtActingUser = true;
 
 	/**
 	 * Teams streams natively in 1:1 chats only, so the decision is made for each
@@ -205,7 +210,12 @@ export class TeamsIntegration extends AgentChatIntegration {
 		return {
 			platformAgentContext: {},
 			forceBuffered: !streamable,
-			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+			// A queued message is only captured here; the turn that would clear the
+			// indicator runs later, so starting one now leaves it refreshing alone.
+			statusHandle:
+				params.startStatus === false
+					? undefined
+					: this.startTyping(params.thread, params.logger, params.agentId),
 		};
 	}
 
@@ -232,18 +242,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 			platform: 'Microsoft Teams',
 			refreshMs: TEAMS_TYPING_REFRESH_MS,
 		});
-	}
-
-	formatActionDecisionMessage({
-		approved,
-		selectedLabel,
-		user,
-	}: ActionDecisionMessageParams): string {
-		const responder = user.fullName || user.userName || user.userId;
-		if (approved === undefined) {
-			return `✅ ${selectedLabel || 'Action'} selected by ${responder}`;
-		}
-		return approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
 	}
 
 	/**

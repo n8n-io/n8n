@@ -122,6 +122,10 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			const { AgentMessageQueueConsumer } = await import(
+				'./agent-message-queue-consumer.service.js'
+			);
+			Container.get(AgentMessageQueueConsumer).start();
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
 			await import('./background/agent-wake.service.js');

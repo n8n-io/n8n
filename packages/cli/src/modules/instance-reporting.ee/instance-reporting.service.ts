@@ -4,6 +4,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
@@ -27,6 +28,24 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
  * a fresh one.
  */
 const MAX_ATTEMPTS = 3;
+
+/** The receiver rejects the payload itself, which a pending report resends unchanged. */
+const PAYLOAD_REJECTED_STATUSES = new Set([400, 413]);
+
+class InstanceReportRejectedError extends OperationalError {
+	constructor(statusCode: number, body: unknown) {
+		const reason = isRecord(body) && typeof body.message === 'string' ? `: ${body.message}` : '';
+		super(`Instance report was rejected with status ${statusCode}${reason}`);
+	}
+}
+
+type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
+
+const SKIP_MESSAGES: Record<SkipReason, string> = {
+	'max-retries': 'Giving up on the instance report after repeated delivery failures',
+	'slot-passed': 'Giving up on the instance report because its slot has passed',
+	rejected: 'Giving up on the instance report because the receiver rejected its payload',
+};
 
 /** How long to wait before re-attempting a delivery that failed. */
 export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
@@ -99,7 +118,9 @@ export class InstanceReportingService {
 	 * bearer token is configured; then the token goes in the header and the
 	 * certificate is not sent at all.
 	 *
-	 * @throws when delivery fails, so the scheduler retries with backoff.
+	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
+	 *
+	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
@@ -119,7 +140,7 @@ export class InstanceReportingService {
 		// exhausted row pending, so the budget is re-checked before sending rather
 		// than only after. Settling it here also ends the day for the scheduler.
 		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts, 'max-retries');
+			await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
 			return;
 		}
 
@@ -165,6 +186,8 @@ export class InstanceReportingService {
 						batchId: report.id,
 					},
 				);
+			} else if (PAYLOAD_REJECTED_STATUSES.has(response.statusCode)) {
+				throw new InstanceReportRejectedError(response.statusCode, response.body);
 			} else if (response.statusCode !== 201) {
 				// The endpoint answers 201 on success. Anything else, including a 2xx or a
 				// 3xx (redirects are not followed), means the report did not land.
@@ -179,8 +202,15 @@ export class InstanceReportingService {
 			await this.reportRepository.recordFailure(report.id, message, new Date());
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
-			if (report.attempts + 1 >= MAX_ATTEMPTS) {
-				await this.skip(report.id, report.attempts + 1, 'max-retries');
+			const attempts = report.attempts + 1;
+
+			if (error instanceof InstanceReportRejectedError) {
+				await this.skip(report.id, attempts, 'rejected', message);
+				return;
+			}
+
+			if (attempts >= MAX_ATTEMPTS) {
+				await this.skip(report.id, attempts, 'max-retries', message);
 			}
 
 			throw error;
@@ -191,15 +221,15 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	async skip(id: string, attempts: number, reason: 'max-retries' | 'slot-passed'): Promise<void> {
+	async skip(
+		id: string,
+		attempts: number,
+		reason: SkipReason,
+		lastError: string | null,
+	): Promise<void> {
 		await this.reportRepository.markSkipped(id);
 
-		const message =
-			reason === 'max-retries'
-				? 'Giving up on the instance report after repeated delivery failures'
-				: 'Giving up on the instance report because its slot has passed';
-
-		this.logger.error(message, { batchId: id, attempts });
+		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
 	}
 
 	/**

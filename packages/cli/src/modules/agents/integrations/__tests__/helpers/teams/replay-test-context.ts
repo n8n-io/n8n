@@ -16,7 +16,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 import {
 	TEAMS_APP_ID,
@@ -46,6 +45,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	lastEdit: () => ReplayApiCall | undefined;
 	/** Every activity the adapter attempted, in order, refused ones included. */
 	activities: () => ReplayApiCall[];
+	lastDelete: () => ReplayApiCall | undefined;
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -163,6 +163,14 @@ function installTeamsApiStub(
 
 	nock(serviceUrl.origin)
 		.persist()
+		.delete(/\/v3\/conversations\/.+\/activities\/.+/)
+		.reply(function (uri) {
+			apiCalls.push({ method: 'deleteActivity', body: { uri } });
+			return [200, {}];
+		});
+
+	nock(serviceUrl.origin)
+		.persist()
 		.put(/\/v3\/conversations\/.+\/activities\/.+/)
 		.reply(function (_uri, body) {
 			apiCalls.push({
@@ -224,7 +232,7 @@ export async function createTeamsReplayContext(
 
 	const webhooks = chat.webhooks as unknown as Record<string, ReplayWebhookHandler>;
 	const post = async (payload: unknown, headers: Headers) =>
-		await sendJsonWebhook(
+		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.teams(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/teams',
 			payload,
@@ -250,6 +258,7 @@ export async function createTeamsReplayContext(
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
 		activities: () => stub.apiCalls.filter((call) => call.method === 'sendActivity'),
+		lastDelete: () => lastCall('deleteActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();
