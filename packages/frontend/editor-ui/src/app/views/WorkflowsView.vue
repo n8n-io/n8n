@@ -1290,6 +1290,19 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 	workflow.publicationStatus = undefined;
 };
 
+const onWorkflowPublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Refresh the item so activeVersionId reflects the newly published version.
+	// Publication status updates separately via the publication-status push.
+	const updated = await workflowsListStore.fetchWorkflow(data.id).catch(() => null);
+	if (!updated) return;
+	workflow.activeVersionId = updated.activeVersionId ?? null;
+};
+
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
 	return workflowsAndFolders.value.find(
 		(resource): resource is FolderListItem =>
@@ -2456,6 +2469,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:unpublished="onWorkflowUnpublished"
+					@workflow:published="onWorkflowPublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
