@@ -7472,7 +7472,7 @@
 	"instanceAi.debug.runDebug.cacheBreakCause.tools": "Likely cause: the tool list changed.",
 	"instanceAi.debug.runDebug.cacheBreakCause.system": "Likely cause: the system prompt changed.",
 	"instanceAi.debug.runDebug.cacheBreakCause.settings": "Likely cause: the model or request settings changed.",
-	"instanceAi.debug.runDebug.cacheBreakCause.expired": "Likely cause: more than 5 minutes passed since the previous step, so the cache expired.",
+	"instanceAi.debug.runDebug.cacheBreakCause.expired": "Likely cause: more than {minutes} minutes passed since the previous step, so the cache expired.",
 	"instanceAi.debug.runDebug.cacheBreakCause.messages": "Likely cause: an earlier message changed.",
 	"instanceAi.debug.runDebug.responseMessages": "Response",
 	"instanceAi.debug.runDebug.noStepDetail": "No step details captured",

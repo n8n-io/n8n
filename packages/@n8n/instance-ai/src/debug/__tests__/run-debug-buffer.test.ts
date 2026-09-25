@@ -124,9 +124,7 @@ describe('RunDebugBuffer', () => {
 				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
 				stepTools,
 				promptMessages: [{ role: 'system', content: 'system prompt' }],
-				steps: [],
-				runtimeContext: {},
-				toolsContext: {},
+				steps: [{ stepNumber: 0, text: 'earlier step' }],
 				modelId: 'claude',
 			} as unknown as GenerateTextStepStartEvent,
 			0,
@@ -134,9 +132,25 @@ describe('RunDebugBuffer', () => {
 
 		expect(sanitized.stepTools).toEqual(stepTools);
 		expect(sanitized.modelId).toBe('claude');
-		for (const key of ['tools', 'promptMessages', 'steps', 'runtimeContext', 'toolsContext']) {
+		for (const key of ['tools', 'promptMessages', 'steps']) {
 			expect(sanitized).not.toHaveProperty(key);
 		}
+	});
+
+	it('drops empty step-start containers and keeps populated ones', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				runtimeContext: {},
+				toolsContext: { search: { region: 'eu' } },
+				activeTools: [],
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized).not.toHaveProperty('runtimeContext');
+		expect(sanitized).not.toHaveProperty('activeTools');
+		expect(sanitized.toolsContext).toEqual({ search: { region: 'eu' } });
 	});
 
 	it('keeps tool descriptions without Zod internals when stepTools is missing', () => {

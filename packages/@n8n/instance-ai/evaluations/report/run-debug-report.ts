@@ -152,7 +152,7 @@ function renderUsage(
 			const details = row.details
 				.map((detail) => `${escapeHtml(detail.label)} ${detail.tokens.toLocaleString('en-US')}`)
 				.join(' · ');
-			return `<span class="meta-chip">${escapeHtml(row.label)}: ${row.tokens.toLocaleString('en-US')}${details ? ` (${details})` : ''}</span>`;
+			return `<tr><th scope="row">${escapeHtml(row.label)}</th><td class="usage-tokens">${row.tokens.toLocaleString('en-US')}</td><td class="usage-details">${details}</td></tr>`;
 		})
 		.join('');
 	const settingsHtml = usage.settings
@@ -164,7 +164,8 @@ function renderUsage(
 
 	return `<div class="detail-subsection"><div class="detail-subsection-title">Usage</div>
 		${cacheBreak ? `<p class="cache-break-note"><strong>Cache break:</strong> ${escapeHtml(describeCacheBreak(cacheBreak))}</p>` : ''}
-		${rowsHtml || settingsHtml ? `<div class="detail-meta">${rowsHtml}${settingsHtml}</div>` : ''}
+		${rowsHtml ? `<table class="usage-table"><tbody>${rowsHtml}</tbody></table>` : ''}
+		${settingsHtml ? `<div class="detail-meta">${settingsHtml}</div>` : ''}
 		${renderJsonBlock(usage.metadata, 'Raw usage')}
 	</div>`;
 }
@@ -212,16 +213,17 @@ function renderStepDetail(
 	</div>`;
 }
 
-const CACHE_BREAK_CAUSES: Record<CacheBreakCause, string> = {
-	tools: 'the tool list changed',
-	system: 'the system prompt changed',
-	settings: 'the model or request settings changed',
-	expired: 'more than 5 minutes passed, so the cache expired',
-	messages: 'an earlier message changed',
+const CACHE_BREAK_CAUSES: Record<CacheBreakCause, (cacheBreak: StepCacheBreak) => string> = {
+	tools: () => 'the tool list changed',
+	system: () => 'the system prompt changed',
+	settings: () => 'the model or request settings changed',
+	expired: ({ cacheTtlMinutes }) =>
+		`more than ${String(cacheTtlMinutes)} minutes passed, so the cache expired`,
+	messages: () => 'an earlier message changed',
 };
 
 function describeCacheBreak(cacheBreak: StepCacheBreak): string {
-	return `${cacheBreak.lostTokens.toLocaleString('en-US')} of the ${cacheBreak.expectedReadTokens.toLocaleString('en-US')} tokens cached by the previous step were not read from cache. Likely cause: ${CACHE_BREAK_CAUSES[cacheBreak.cause]}.`;
+	return `${cacheBreak.lostTokens.toLocaleString('en-US')} of the ${cacheBreak.expectedReadTokens.toLocaleString('en-US')} tokens cached by the previous step were not read from cache. Likely cause: ${CACHE_BREAK_CAUSES[cacheBreak.cause](cacheBreak)}.`;
 }
 
 function renderStepSummaryChips(
@@ -432,6 +434,11 @@ export function generateRunDebugReport(results: WorkflowTestCaseResult[]): strin
 	.step-panel.hidden { display: none; }
 	.detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 	.meta-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+	.usage-table { border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+	.usage-table th, .usage-table td { padding: 2px 12px 2px 0; vertical-align: baseline; }
+	.usage-table th { font-weight: 400; text-align: left; color: var(--text-muted); white-space: nowrap; }
+	.usage-tokens { font-family: monospace; text-align: right; color: var(--text-primary); white-space: nowrap; }
+	.usage-details { color: var(--text-muted); font-size: 11px; }
 	.detail-section { margin-bottom: 14px; }
 	.detail-section-title { color: var(--color-info); font-size: 12px; font-weight: 700; margin-bottom: 6px; }
 	.detail-subsection { margin: 8px 0; }

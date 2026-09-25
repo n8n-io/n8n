@@ -57,7 +57,8 @@ export interface ReadableStepConfig {
 /**
  * Most likely reason a step lost its prompt cache:
  * - `tools`, `system`, `settings`: that part of the request changed since the previous step.
- * - `expired`: more than the cache lifetime passed between the steps.
+ * - `expired`: more than the cache lifetime passed between the steps. Reported only
+ *   when the step requested a known cache lifetime.
  * - `messages`: none of the above, so an earlier message probably changed.
  */
 export type CacheBreakCause = 'tools' | 'system' | 'settings' | 'expired' | 'messages';
@@ -68,6 +69,8 @@ export interface StepCacheBreak {
 	readTokens: number;
 	lostTokens: number;
 	cause: CacheBreakCause;
+	/** Cache lifetime the previous step requested. Set only when `cause` is `expired`. */
+	cacheTtlMinutes?: number;
 }
 
 export interface ReadableUsageDetail {
@@ -1039,22 +1042,66 @@ export function parseStepSummary(
  */
 const CACHE_BREAK_MIN_LOST_TOKENS = 1024;
 
-/** Default lifetime of an ephemeral prompt cache entry. */
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** Anthropic `cacheControl.ttl` values. A marker without `ttl` uses the 5-minute default. */
+const ANTHROPIC_CACHE_TTL_MINUTES: Record<string, number> = { '5m': 5, '1h': 60 };
+const ANTHROPIC_DEFAULT_CACHE_TTL_MINUTES = 5;
+
+/** OpenAI `promptCacheRetention` values. `in_memory` has no fixed lifetime, so it is not listed. */
+const OPENAI_CACHE_RETENTION_MINUTES: Record<string, number> = { '24h': 24 * 60 };
 
 interface StepLike {
 	input?: Record<string, unknown>;
 	output?: Record<string, unknown>;
 }
 
+/** OpenAI reports cache reads but not cache writes, so one missing count means zero. */
 function readCacheTokens(output: Record<string, unknown> | undefined) {
 	const usage = output?.usage;
 	if (!isRecord(usage) || !isRecord(usage.inputTokenDetails)) return undefined;
 	const { cacheReadTokens, cacheWriteTokens } = usage.inputTokenDetails;
-	if (typeof cacheReadTokens !== 'number' || typeof cacheWriteTokens !== 'number') {
-		return undefined;
+	const hasRead = typeof cacheReadTokens === 'number';
+	const hasWrite = typeof cacheWriteTokens === 'number';
+	if (!hasRead && !hasWrite) return undefined;
+	return { read: hasRead ? cacheReadTokens : 0, write: hasWrite ? cacheWriteTokens : 0 };
+}
+
+function collectCacheTtls(value: unknown, ttls: number[]): void {
+	if (Array.isArray(value)) {
+		for (const item of value) collectCacheTtls(item, ttls);
+		return;
 	}
-	return { read: cacheReadTokens, write: cacheWriteTokens };
+	if (!isRecord(value)) return;
+
+	if (isRecord(value.cacheControl)) {
+		const { ttl } = value.cacheControl;
+		const minutes =
+			ttl === undefined
+				? ANTHROPIC_DEFAULT_CACHE_TTL_MINUTES
+				: typeof ttl === 'string'
+					? ANTHROPIC_CACHE_TTL_MINUTES[ttl]
+					: undefined;
+		if (minutes !== undefined) ttls.push(minutes);
+	}
+	if (typeof value.promptCacheRetention === 'string') {
+		const minutes = OPENAI_CACHE_RETENTION_MINUTES[value.promptCacheRetention];
+		if (minutes !== undefined) ttls.push(minutes);
+	}
+
+	for (const child of Object.values(value)) collectCacheTtls(child, ttls);
+}
+
+/**
+ * Longest cache lifetime the step requested, from Anthropic `cacheControl`
+ * markers and the OpenAI `promptCacheRetention` option. Undefined when the step
+ * requests no lifetime with a known length.
+ */
+function stepCacheTtlMinutes(step: StepLike): number | undefined {
+	const ttls: number[] = [];
+	collectCacheTtls(
+		[step.input?.providerOptions, stepInstructions(step.input), step.input?.messages],
+		ttls,
+	);
+	return ttls.length > 0 ? Math.max(...ttls) : undefined;
 }
 
 function responseTime(output: Record<string, unknown> | undefined): number | undefined {
@@ -1073,29 +1120,31 @@ function sameJson(a: unknown, b: unknown): boolean {
  * (tools, then system, then request settings). A change in one part discards
  * the cache from that point on.
  */
-function findCacheBreakCause(previous: StepLike, current: StepLike): CacheBreakCause {
+function findCacheBreakCause(
+	previous: StepLike,
+	current: StepLike,
+): Pick<StepCacheBreak, 'cause' | 'cacheTtlMinutes'> {
 	const toolsOf = (step: StepLike) => step.input?.stepTools ?? step.input?.tools;
-	if (!sameJson(toolsOf(previous), toolsOf(current))) return 'tools';
+	if (!sameJson(toolsOf(previous), toolsOf(current))) return { cause: 'tools' };
 	if (!sameJson(stepInstructions(previous.input), stepInstructions(current.input))) {
-		return 'system';
+		return { cause: 'system' };
 	}
 	const settingsOf = (step: StepLike) => ({
 		modelId: step.input?.modelId,
 		providerOptions: step.input?.providerOptions,
 		toolChoice: step.input?.stepToolChoice ?? step.input?.toolChoice,
 	});
-	if (!sameJson(settingsOf(previous), settingsOf(current))) return 'settings';
+	if (!sameJson(settingsOf(previous), settingsOf(current))) return { cause: 'settings' };
 
 	const previousTime = responseTime(previous.output);
 	const currentTime = responseTime(current.output);
-	if (
-		previousTime !== undefined &&
-		currentTime !== undefined &&
-		currentTime - previousTime > CACHE_TTL_MS
-	) {
-		return 'expired';
+	if (previousTime !== undefined && currentTime !== undefined) {
+		const cacheTtlMinutes = stepCacheTtlMinutes(previous);
+		if (cacheTtlMinutes !== undefined && currentTime - previousTime > cacheTtlMinutes * 60_000) {
+			return { cause: 'expired', cacheTtlMinutes };
+		}
 	}
-	return 'messages';
+	return { cause: 'messages' };
 }
 
 /**
@@ -1121,7 +1170,7 @@ export function parseStepCacheBreaks(steps: StepLike[]): Array<StepCacheBreak | 
 			expectedReadTokens,
 			readTokens: currentCache.read,
 			lostTokens,
-			cause: findCacheBreakCause(previous, step),
+			...findCacheBreakCause(previous, step),
 		};
 	});
 }

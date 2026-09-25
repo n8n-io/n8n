@@ -551,13 +551,69 @@ describe('llm-step-display', () => {
 			expect(breaks[1]?.cause).toBe('settings');
 		});
 
-		it('reports cache expiry when more than five minutes pass between steps', () => {
+		function cachedInstructions(cacheControl: Record<string, unknown>) {
+			return {
+				role: 'system',
+				content: 'system prompt',
+				providerOptions: { anthropic: { cacheControl } },
+			};
+		}
+
+		it('reports cache expiry when more than the default cache lifetime passes', () => {
+			const input = { instructions: cachedInstructions({ type: 'ephemeral' }) };
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { input, timestamp: '2026-01-01T00:06:00.000Z' }),
+			]);
+
+			expect(breaks[1]).toMatchObject({ cause: 'expired', cacheTtlMinutes: 5 });
+		});
+
+		it('uses the cache lifetime that the step requested', () => {
+			const input = { instructions: cachedInstructions({ type: 'ephemeral', ttl: '1h' }) };
+			const withinTtl = parseStepCacheBreaks([
+				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { input, timestamp: '2026-01-01T00:06:00.000Z' }),
+			]);
+			const pastTtl = parseStepCacheBreaks([
+				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { input, timestamp: '2026-01-01T01:01:00.000Z' }),
+			]);
+
+			expect(withinTtl[1]?.cause).toBe('messages');
+			expect(pastTtl[1]).toMatchObject({ cause: 'expired', cacheTtlMinutes: 60 });
+		});
+
+		it('uses the OpenAI prompt cache retention', () => {
+			const input = { providerOptions: { openai: { promptCacheRetention: '24h' } } };
+			const breaks = parseStepCacheBreaks([
+				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { input, timestamp: '2026-01-01T02:00:00.000Z' }),
+			]);
+
+			expect(breaks[1]?.cause).toBe('messages');
+		});
+
+		it('does not report expiry when the cache lifetime is unknown', () => {
 			const breaks = parseStepCacheBreaks([
 				step(0, 30000, { timestamp: '2026-01-01T00:00:00.000Z' }),
 				step(0, 30000, { timestamp: '2026-01-01T00:06:00.000Z' }),
 			]);
 
-			expect(breaks[1]?.cause).toBe('expired');
+			expect(breaks[1]?.cause).toBe('messages');
+		});
+
+		it('treats a missing cache write count as zero', () => {
+			const readOnly = (cacheReadTokens: number) => ({
+				input: baseInput,
+				output: { usage: { inputTokenDetails: { cacheReadTokens } } },
+			});
+
+			expect(parseStepCacheBreaks([readOnly(30000), readOnly(30000), readOnly(0)])).toEqual([
+				undefined,
+				undefined,
+				{ expectedReadTokens: 30000, readTokens: 0, lostTokens: 30000, cause: 'messages' },
+			]);
 		});
 
 		it('falls back to a message change when the prompt prefix and timing did not change', () => {

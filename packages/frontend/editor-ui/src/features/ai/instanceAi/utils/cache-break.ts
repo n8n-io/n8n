@@ -17,7 +17,9 @@ export function describeCacheBreak(
 		interpolate: {
 			lost: cacheBreak.lostTokens.toLocaleString(),
 			expected: cacheBreak.expectedReadTokens.toLocaleString(),
-			cause: i18n.baseText(CAUSE_KEYS[cacheBreak.cause]),
+			cause: i18n.baseText(CAUSE_KEYS[cacheBreak.cause], {
+				interpolate: { minutes: String(cacheBreak.cacheTtlMinutes ?? '') },
+			}),
 		},
 	});
 }

@@ -80,7 +80,7 @@ describe('InstanceAiLlmStepsModal', () => {
 		expect(container.innerHTML).toContain('instance-ai-llm-steps-modal-run');
 		const badges = getAllByTestId('instance-ai-llm-step-cache-break');
 		expect(badges).toHaveLength(1);
-		expect(badges[0].getAttribute('title')).toContain('67,500');
+		expect(badges[0].getAttribute('title')).toMatch(/67[.,\s\u202f]?500/);
 		expect(badges[0].textContent).toContain('67.5k');
 	});
 });
