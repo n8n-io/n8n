@@ -6,6 +6,7 @@ import type { ConnectionLineProps } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -24,6 +25,21 @@ const renderComponent = createComponentRenderer(CanvasConnectionLine, {
 	},
 });
 
+const renderComponentFromInputHandle = createComponentRenderer(CanvasConnectionLine, {
+	props: DEFAULT_PROPS,
+	global: {
+		provide: {
+			...createCanvasProvide({
+				connectingHandle: {
+					nodeId: 'group:g1',
+					handleId: `input/${NodeConnectionTypes.Main}/0`,
+					handleType: 'target',
+				},
+			}),
+		},
+	},
+});
+
 beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
@@ -38,6 +54,10 @@ describe('CanvasConnectionLine', () => {
 		const edge = container.querySelector('.vue-flow__edge-path');
 
 		expect(edge).toHaveAttribute('d', 'M0,0 C0,-62.5 100,162.5 100,100');
+		expect(edge).toHaveStyle({
+			strokeLinecap: 'round',
+			strokeLinejoin: 'round',
+		});
 	});
 
 	it('should render a correct smooth step path when the connection is backwards', () => {
@@ -63,6 +83,24 @@ describe('CanvasConnectionLine', () => {
 			'd',
 			'M-50 130L-90 130L -124,130Q -140,130 -140,114L -140,-84Q -140,-100 -124,-100L-100 -100',
 		);
+	});
+
+	it('should render a bezier path when the connection starts from an input handle', () => {
+		const { container } = renderComponentFromInputHandle({
+			props: {
+				...DEFAULT_PROPS,
+				sourceX: 100,
+				sourceY: 0,
+				sourcePosition: Position.Left,
+				targetX: -100,
+				targetY: -100,
+				targetPosition: Position.Left,
+			},
+		});
+
+		const edge = container.querySelector('.vue-flow__edge-path');
+
+		expect(edge).toHaveAttribute('d', 'M100,0 C0,0 -188.38834764831844,-100 -100,-100');
 	});
 
 	it('should show the connection line after a short delay', async () => {

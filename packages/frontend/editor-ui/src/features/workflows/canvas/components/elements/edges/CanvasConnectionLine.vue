@@ -5,6 +5,7 @@ import { BaseEdge } from '@vue-flow/core';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
+import { CanvasConnectionMode } from '../../../canvas.types';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { parseCanvasConnectionHandleString } from '../../../canvas.utils';
 
@@ -18,6 +19,14 @@ const connectionType = computed(
 	() => parseCanvasConnectionHandleString(connectingHandle.value?.handleId).type,
 );
 
+const isEmptyGroupInputDrag = computed(() => {
+	const handle = connectingHandle.value;
+	return (
+		handle?.handleType === 'target' &&
+		parseCanvasConnectionHandleString(handle.handleId).mode === CanvasConnectionMode.Output
+	);
+});
+
 const classes = computed(() => {
 	return {
 		[$style.edge]: true,
@@ -29,10 +38,15 @@ const edgeStyle = computed(() => ({
 	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '5,6' }),
 	strokeWidth: 2,
 	stroke: 'var(--color--foreground--shade-2)',
+	strokeLinecap: 'round',
+	strokeLinejoin: 'round',
 }));
 
 const renderData = computed(() =>
-	getEdgeRenderData(props, { connectionType: connectionType.value }),
+	getEdgeRenderData(props, {
+		connectionType: connectionType.value,
+		useBezierPath: isEmptyGroupInputDrag.value,
+	}),
 );
 
 const segments = computed(() => renderData.value.segments);

@@ -28,12 +28,20 @@ const viewportRef = { value: { x: 0, y: 0, zoom: 1 } };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
-		props: ['id', 'type', 'position', 'connectable'],
+		props: ['id', 'type', 'position', 'connectable', 'connectableStart', 'connectableEnd'],
 		render() {
+			const handle = this as unknown as {
+				id: string;
+				connectable: boolean;
+				connectableStart: boolean;
+				connectableEnd: boolean;
+			};
 			return h('div', {
 				class: 'vue-flow__handle',
-				'data-handle-id': (this as unknown as { id: string }).id,
-				'data-connectable': String((this as unknown as { connectable: boolean }).connectable),
+				'data-handle-id': handle.id,
+				'data-connectable': String(handle.connectable),
+				'data-connectable-start': String(handle.connectableStart),
+				'data-connectable-end': String(handle.connectableEnd),
 			});
 		},
 	},
@@ -152,7 +160,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	});
 
 	describe('empty-group connection handles', () => {
-		it('enables both title-bar handles only for a collapsed empty group', () => {
+		it('enables both directions on title-bar handles only for a collapsed empty group', () => {
 			const wrapper = render({
 				data: makeData({
 					isCollapsed: true,
@@ -162,6 +170,26 @@ describe('CanvasNodeGroupTitleBar', () => {
 			});
 
 			expect(wrapper.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(2);
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_INPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-start'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_INPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-end'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_OUTPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-start'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_OUTPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-end'),
+			).toBe('true');
 		});
 
 		it('does not enable handles for expanded or non-empty groups', () => {
