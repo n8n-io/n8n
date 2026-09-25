@@ -598,6 +598,17 @@ describe('InsightsByPeriodRepository', () => {
 			});
 		});
 
+		test('starts after the newest weekly row even when an hourly row is older', async () => {
+			await seed('hour', '2026-03-02T10:00:00');
+			await seed('week', '2026-03-16');
+			await seed('day', '2026-04-08');
+
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: '2026-03-23',
+				firstDataDay: '2026-03-23',
+			});
+		});
+
 		test('returns only the weekly bound when every row was folded into weeks', async () => {
 			await seed('week', '2026-03-16');
 			await seed('week', '2026-03-23');

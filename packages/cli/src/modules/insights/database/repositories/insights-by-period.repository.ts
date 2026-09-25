@@ -589,8 +589,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	 *
 	 * - `firstExactDay`: the Monday after the newest weekly row, or `null` when no
 	 *   day was folded into a week yet. No day from here on is in a weekly row.
-	 * - `firstDataDay`: the oldest exact day with hourly or daily data, or `null`
-	 *   when there is none.
+	 * - `firstDataDay`: the oldest hourly or daily row's day, moved forward to
+	 *   `firstExactDay` when it is older, or `null` when there is no such row.
 	 */
 	async getDailyDataStart(): Promise<{
 		firstExactDay: string | null;
@@ -599,31 +599,28 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const periodStart = this.escapeField('periodStart');
 		const periodUnit = this.escapeField('periodUnit');
 
-		// ORDER BY with LIMIT rather than MIN or MAX: the unique index leads with
-		// periodStart, so each read stops at the first matching row.
-		const oldestDaily = await this.createQueryBuilder('daily')
+		// ORDER BY with LIMIT rather than MIN: the unique index leads with
+		// periodStart, so the read stops at the first matching row.
+		const oldestDailyQuery = this.createQueryBuilder('daily')
 			.select(`daily.${periodStart}`, 'periodStart')
 			.where(`daily.${periodUnit} IN (:...dailyUnits)`, {
 				dailyUnits: [PeriodUnitToNumber.hour, PeriodUnitToNumber.day],
 			})
 			.orderBy(`daily.${periodStart}`, 'ASC')
-			.limit(1)
-			.getRawOne<{ periodStart: Date | string }>();
+			.limit(1);
 
-		// Compaction folds the oldest days first, so every weekly row is older than
-		// the oldest daily one. Bounding the read to that range keeps it off the
-		// newer rows, which are most of the table.
+		// Not bounded by the oldest daily row, so the result does not depend on
+		// the order in which compaction folds rows.
 		const newestWeeklyQuery = this.createQueryBuilder('weekly')
 			.select(`weekly.${periodStart}`, 'periodStart')
 			.where(`weekly.${periodUnit} = :weekUnit`, { weekUnit: PeriodUnitToNumber.week })
 			.orderBy(`weekly.${periodStart}`, 'DESC')
 			.limit(1);
-		if (oldestDaily) {
-			newestWeeklyQuery.andWhere(`weekly.${periodStart} <= :oldestDaily`, {
-				oldestDaily: oldestDaily.periodStart,
-			});
-		}
-		const newestWeekly = await newestWeeklyQuery.getRawOne<{ periodStart: Date | string }>();
+
+		const [oldestDaily, newestWeekly] = await Promise.all([
+			oldestDailyQuery.getRawOne<{ periodStart: Date | string }>(),
+			newestWeeklyQuery.getRawOne<{ periodStart: Date | string }>(),
+		]);
 
 		const firstExactDay = newestWeekly
 			? DateTime.fromISO(periodStartParser.parse(newestWeekly.periodStart), { zone: 'utc' })
@@ -634,12 +631,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			? periodStartParser.parse(oldestDaily.periodStart).slice(0, 10)
 			: null;
 
-		if (!oldestDailyDay) return { firstExactDay, firstDataDay: null };
-
 		return {
 			firstExactDay,
 			firstDataDay:
-				firstExactDay && firstExactDay > oldestDailyDay ? firstExactDay : oldestDailyDay,
+				oldestDailyDay && firstExactDay && firstExactDay > oldestDailyDay
+					? firstExactDay
+					: oldestDailyDay,
 		};
 	}
 }
