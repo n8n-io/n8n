@@ -547,23 +547,40 @@ describe('V1StepExecutor', () => {
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
-		// Nothing can deliver a resume request yet and sub-workflow steps do not
-		// exist, so completing the step would report a wait that never happened.
-		it.each([
-			[
-				'WAIT_INDEFINITELY',
-				WAIT_INDEFINITELY,
-				'Node "Subject" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.',
-			],
-			[
-				'WAIT_FOR_SUB_EXECUTION',
-				WAIT_FOR_SUB_EXECUTION,
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
-			],
-		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
-			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
+		// No deadline, so only a resume request ends the wait.
+		it.each(['omitted', 'true'])(
+			'declares a wait with no deadline when acceptsResumeRequest is %s',
+			async (acceptsResumeRequest) => {
+				const graph = graphWith('test.waitsUntil', {
+					waitTill: WAIT_INDEFINITELY.toISOString(),
+					acceptsResumeRequest,
+				});
+				const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+				expect(result).toEqual({ wait: { resumeBinding: 'execution' } });
+			},
+		);
+
+		it('fails the step when a wait with no deadline refuses resume requests', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_INDEFINITELY.toISOString(),
+				acceptsResumeRequest: 'false',
+			});
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			await expect(execution).rejects.toThrow(message);
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits with no time limit and does not accept a resume request, so nothing can end the wait',
+			);
+		});
+
+		// Sub-workflow steps do not exist, so completing the step would report a
+		// wait that never happened.
+		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),
+			});
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
+			);
 		});
 	});
 
