@@ -24,7 +24,6 @@ const initialScrollApplied = ref(false);
 
 let prependAnchor: { element: Element; top: number } | null = null;
 
-// Entries that arrived after the last shown one fade in.
 const enteringIds = ref<ReadonlySet<string>>(new Set());
 
 function scrollToBottom() {
@@ -84,8 +83,7 @@ watch(
 	{ flush: 'post' },
 );
 
-// Compares ids, not positions: a refetch can replace the first entries and still add new ones.
-// Ids ascend (see the store). The first fill of the feed does not animate.
+// Ids, not positions: a refetch can replace the first entries and still add new ones.
 watch(
 	entries,
 	(next, previous) => {
@@ -97,16 +95,14 @@ watch(
 		if (!lastShown) return;
 
 		const newer = next.filter((entry) => Number(entry.id) > Number(lastShown.id));
-		// Only replace the set on new entries, so a prepend does not cut a running animation.
+		// Only replaced on new entries, so a prepend does not cut a running fade.
 		if (newer.length > 0) enteringIds.value = new Set(newer.map((entry) => entry.id));
 	},
 	{ flush: 'post' },
 );
 
-// Keeps the feed at the bottom while the composer grows, so the entries move up with it.
-// When the viewer has scrolled up to older entries, the feed stays where it is.
-// The first size counts as growth too: a restored draft sizes the input after the feed has
-// scrolled to the bottom.
+// Keeps the feed at the bottom while the composer grows, unless the viewer scrolled up.
+// The first size counts too: a restored draft grows the input after the initial scroll.
 let composerHeight = 0;
 useResizeObserver(composer, ([entry]) => {
 	const height = entry?.borderBoxSize[0]?.blockSize ?? 0;
@@ -118,7 +114,7 @@ useResizeObserver(composer, ([entry]) => {
 	container.style.setProperty('--review-activity--composer-height', `${height}px`);
 	if (growth <= 0) return;
 
-	// At the bottom before this growth, the growth is the only distance left. 1px covers rounding.
+	// Was at the bottom before this growth. 1px covers rounding.
 	const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
 	if (distanceToBottom <= growth + 1) scrollToBottom();
 });
@@ -273,13 +269,12 @@ onMounted(() => {
 	position: relative;
 }
 
-/* The composer covers the bottom of the feed, so focus scrolls entry links above it. Set on the
-	entries, not as the feed's scroll padding, which would also scroll the feed for the caret. */
+/* Keeps focused entry links above the composer. Not scroll padding on the feed: that also
+	scrolls the feed for the caret while typing. */
 .list * {
 	scroll-margin-bottom: var(--review-activity--composer-height, 0);
 }
 
-/* Fades in an entry that arrived after the feed was shown. */
 .itemEntering {
 	--animation--fade-in-up--translate: var(--spacing--2xs);
 	--animation--fade-in-up--easing: var(--easing--ease-out-quint);
@@ -301,13 +296,12 @@ onMounted(() => {
 	border-left: var(--border);
 }
 
-/* The composer's wrapper has the bottom space instead, so it sits flush with the bottom edge. */
+/* The composer holds the bottom space, so it sticks flush to the edge. */
 .feedWithComposer {
 	padding-block-end: 0;
 }
 
-/* Sticks to the bottom of the feed when the entries overflow, so the send button stays visible.
-	The opaque background hides the entries that scroll under it. */
+/* Sticks to the bottom when the entries overflow. The background hides entries under it. */
 .composer {
 	position: sticky;
 	bottom: 0;
