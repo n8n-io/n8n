@@ -27,7 +27,6 @@ import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreat
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
-	CanvasGroupNode,
 	CanvasEventBusEvents,
 	CanvasGroupNodeData,
 	CanvasNode,
@@ -69,7 +68,7 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
 import {
-	getEmptyGroupAnchor as getEmptyGroupAnchorFromNodes,
+	getEmptyGroupAnchor,
 	NodeConnectionTypes,
 	type IConnections,
 	type IWorkflowGroup,
@@ -1059,7 +1058,7 @@ function isEmptyGroup(groupId: string): boolean {
 	const memberNodes = group.nodeIds
 		.map((nodeId) => workflowDocumentStore.value.getNodeById(nodeId))
 		.filter(isPresent);
-	return getEmptyGroupAnchorFromNodes(group, memberNodes) !== undefined;
+	return getEmptyGroupAnchor(group, memberNodes) !== undefined;
 }
 
 function onCanvasGroupAddNodesToChat(groupId: string) {
@@ -1336,11 +1335,11 @@ const connectionCreated = ref(false);
 const connectingHandle = ref<ConnectStartEvent>();
 const connectedHandle = ref<Connection>();
 
-function getEmptyGroupAnchor(
+function getEmptyGroupAnchorFromCanvasNode(
 	nodeId: string | undefined,
 ): { nodeId: string; isCollapsed: boolean } | undefined {
 	if (!nodeId) return undefined;
-	const node = findNode(nodeId) as CanvasGroupNode | undefined;
+	const node = findNode(nodeId);
 	if (!node || !isCanvasGroupNode(node) || !node.data?.isEmptyGroup) return undefined;
 
 	const anchorId = node.data.group.nodeIds[0];
@@ -1351,13 +1350,13 @@ function getEmptyGroupAnchor(
 
 function normalizeEmptyGroupConnection(connection: Connection): Connection {
 	const normalized = { ...connection };
-	const sourceGroup = getEmptyGroupAnchor(connection.source);
+	const sourceGroup = getEmptyGroupAnchorFromCanvasNode(connection.source);
 	if (sourceGroup?.isCollapsed) {
 		normalized.source = sourceGroup.nodeId;
 		normalized.sourceHandle = createCanvasConnectionHandleString({ mode: 'outputs' });
 	}
 
-	const targetGroup = getEmptyGroupAnchor(connection.target);
+	const targetGroup = getEmptyGroupAnchorFromCanvasNode(connection.target);
 	if (targetGroup?.isCollapsed) {
 		normalized.target = targetGroup.nodeId;
 		normalized.targetHandle = createCanvasConnectionHandleString({ mode: 'inputs' });
@@ -1367,7 +1366,7 @@ function normalizeEmptyGroupConnection(connection: Connection): Connection {
 }
 
 function normalizeEmptyGroupConnectionStart(handle: ConnectStartEvent): ConnectStartEvent {
-	const group = getEmptyGroupAnchor(handle.nodeId);
+	const group = getEmptyGroupAnchorFromCanvasNode(handle.nodeId);
 	if (!group?.isCollapsed) return handle;
 
 	return {

@@ -234,7 +234,7 @@ watch(
 		}
 		const view = matchedView(mergedNodes);
 		const viewItems = isAddingInsideGroup.value
-			? // Forbid adding empty groups inside empty groups (nesting not supported)
+			? // Forbid adding groups inside groups (nesting not supported)
 				view.items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)
 			: view.items;
 		const viewStack: ViewStack = {

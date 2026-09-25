@@ -200,6 +200,8 @@ type AddNodesBaseOptions = {
 type AddNodesOptions = AddNodesBaseOptions & {
 	position?: XYPosition;
 	trackBulk?: boolean;
+	/** Maps each input index to the node that was actually added, if it succeeded. */
+	addedNodesByInputIndex?: Map<number, INodeUi>;
 };
 
 type AddNodeOptions = AddNodesBaseOptions & {
@@ -1179,6 +1181,7 @@ export function useCanvasOperations() {
 					newNode.placeholder = true;
 				}
 				addedNodes.push(newNode);
+				options.addedNodesByInputIndex?.set(index, newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				console.error(error);
@@ -3765,11 +3768,13 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
+		const addedNodesByInputIndex = new Map<number, INodeUi>();
 		const addedNodes = await addNodes(nodes, {
 			...options,
 			trackHistory,
 			trackBulk: false,
 			telemetry: true,
+			addedNodesByInputIndex,
 		});
 
 		let replacementGroupId: string | undefined;
@@ -3778,7 +3783,9 @@ export function useCanvasOperations() {
 			// must not become the replacement target.
 			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
 			const replacementNode =
-				replacementNodeIndex === -1 ? addedNodes.at(-1) : addedNodes[replacementNodeIndex];
+				replacementNodeIndex === -1
+					? addedNodes.at(-1)
+					: addedNodesByInputIndex.get(replacementNodeIndex);
 			if (replacementNode) {
 				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
 					trackHistory,
@@ -3790,14 +3797,14 @@ export function useCanvasOperations() {
 			}
 		}
 
-		const allNodes = workflowDocumentStore.value.allNodes;
-		const offsetIndex = allNodes.length - nodes.length;
-		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
-			const fromNode = allNodes[offsetIndex + from.nodeIndex];
-			const toNode = allNodes[offsetIndex + to.nodeIndex];
+		const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
+			const fromNode = addedNodesByInputIndex.get(from.nodeIndex);
+			const toNode = addedNodesByInputIndex.get(to.nodeIndex);
+			if (!fromNode || !toNode) return [];
+
 			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
-			return {
+			return [{
 				source: fromNode.id,
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
@@ -3820,7 +3827,7 @@ export function useCanvasOperations() {
 						type,
 					},
 				},
-			};
+			}];
 		});
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
