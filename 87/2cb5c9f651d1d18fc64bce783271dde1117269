@@ -28,7 +28,7 @@ packages/@n8n/cli/README.md
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "cfeec0bfe074a90b16a3bc63126ea3707f47ca28",
+  "base_commit_sha": "872cb5c9f651d1d18fc64bce783271dde1117269",
   "prompts": {},
   "sessions": {
     "s_7d92849ff15ae6": {
