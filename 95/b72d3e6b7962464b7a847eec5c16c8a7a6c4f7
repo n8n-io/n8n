@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_e5a64625bc5cd1::t_3a56ca5dd1ddce 686-716
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e5a64625bc5cd1::t_9c79e5617d5042 222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "95b72d3e6b7962464b7a847eec5c16c8a7a6c4f7",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
