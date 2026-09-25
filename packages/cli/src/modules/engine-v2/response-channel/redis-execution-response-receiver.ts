@@ -51,6 +51,9 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		handler: (response: ExecutionResponse) => void,
 	): Promise<UnsubscribeExecutionResponse> {
 		if (this.stopped) return () => {};
+		if (!this.started) {
+			throw new UnexpectedError('The execution response receiver has not started');
+		}
 
 		const channel = this.getChannelName(executionId);
 		if (this.subscriptionsByChannel.has(channel)) {

@@ -67,6 +67,14 @@ describe('Redis execution response receiver', () => {
 		return registration![1];
 	};
 
+	it('refuses to receive before it starts', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
+
+		await expect(receiver.receive('exec-1', vi.fn())).rejects.toThrow('has not started');
+		expect(subscriber.subscribe).not.toHaveBeenCalled();
+	});
+
 	it('waits for the execution subscription before registration completes', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		let finishSubscription: (() => void) | undefined;

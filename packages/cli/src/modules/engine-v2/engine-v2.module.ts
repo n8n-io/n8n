@@ -96,7 +96,7 @@ export class EngineV2Module implements ModuleInterface {
 		try {
 			await responseReceiver.start();
 		} catch (error) {
-			await responseSender.stop();
+			await Promise.all([responseSender.stop(), responseReceiver.stop()]);
 			throw error;
 		}
 

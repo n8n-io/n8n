@@ -1,14 +1,18 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { RedisClientService } from '@/services/redis-client.service';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
+import type { RedisResponseSubscriber } from '../response-channel/redis-execution-response-receiver';
+import type { RedisResponsePublisher } from '../response-channel/redis-execution-response-sender';
 
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
@@ -84,6 +88,28 @@ describe('EngineV2Module', () => {
 			await module.init();
 
 			expect(engineConfig.authSecret).toBe('a-configured-secret');
+		});
+
+		it('releases both Redis clients when the response receiver fails to start', async () => {
+			engineConfig.responseTransport = 'redis';
+			const publisher = mock<RedisResponsePublisher>();
+			const subscriber = mock<RedisResponseSubscriber>();
+			subscriber.on.mockImplementation(() => {
+				throw new Error('Subscriber failed');
+			});
+			mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
+			mockInstance(RedisClientService, {
+				toValidPrefix: (prefix: string) => prefix,
+				createClient: vi.fn(({ type }: { type: string }) =>
+					type === 'publisher(n8n)' ? publisher : subscriber,
+				) as unknown as RedisClientService['createClient'],
+			});
+
+			await expect(module.init()).rejects.toThrow('Subscriber failed');
+
+			expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+			expect(subscriber.disconnect).toHaveBeenCalledTimes(1);
+			expect(runtime.init).not.toHaveBeenCalled();
 		});
 	});
 
