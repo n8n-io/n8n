@@ -35,7 +35,7 @@ export const credentialDeletedPublicSchema = credentialPublicSchema.extend({
 export class DeleteCredentialPublicDto extends Z.class(credentialDeletedPublicSchema.shape) {}
 
 export const credentialListItemPublicSchema = credentialPublicSchema
-	.pick({ id: true, name: true, description: true, type: true, createdAt: true, updatedAt: true })
+	.pick({ id: true, name: true, type: true, createdAt: true, updatedAt: true })
 	.extend({ shared: z.array(credentialSharedPublicSchema) });
 
 export class CredentialListPublicDto extends Z.class({

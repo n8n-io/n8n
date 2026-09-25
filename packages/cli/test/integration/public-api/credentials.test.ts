@@ -1987,14 +1987,11 @@ describe('credential description', () => {
 		expect(await getStoredDescription(id)).toBe(description);
 	});
 
-	test('should return the description from the get and list endpoints', async () => {
+	test('should return the description when getting a credential by ID', async () => {
 		const id = await createWithDescription();
 
 		const fetched = await authOwnerAgent.get(`/credentials/${id}`);
 		expect(fetched.body.description).toBe(description);
-
-		const listed = await authOwnerAgent.get('/credentials');
-		expect(listed.body.data).toEqual([expect.objectContaining({ id, description })]);
 	});
 
 	test('should ignore the description when credential descriptions are disabled', async () => {
@@ -2011,9 +2008,6 @@ describe('credential description', () => {
 
 		const fetched = await authOwnerAgent.get(`/credentials/${created.body.id}`);
 		expect(fetched.body).not.toHaveProperty('description');
-
-		const listed = await authOwnerAgent.get('/credentials');
-		expect(listed.body.data[0]).not.toHaveProperty('description');
 	});
 });
 

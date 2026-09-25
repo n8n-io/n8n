@@ -106,11 +106,10 @@ function toDeleteCredentialPublicDto(
 	};
 }
 
-function toCredentialListItem(credential: CredentialsEntity, includeDescription: boolean) {
+function toCredentialListItem(credential: CredentialsEntity) {
 	return {
 		id: credential.id,
 		name: credential.name,
-		...(includeDescription && { description: credential.description ?? null }),
 		type: credential.type,
 		createdAt: credential.createdAt.toISOString(),
 		updatedAt: credential.updatedAt.toISOString(),
@@ -172,12 +171,8 @@ export class CredentialsPublicController {
 			},
 		});
 
-		const includeDescription = await this.credentialDescriptions.isEnabled();
-
 		return {
-			data: credentials.map((credential: CredentialsEntity) =>
-				toCredentialListItem(credential, includeDescription),
-			),
+			data: credentials.map((credential: CredentialsEntity) => toCredentialListItem(credential)),
 			nextCursor: encodeNextCursor({
 				offset,
 				limit,
