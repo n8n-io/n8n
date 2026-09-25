@@ -5,10 +5,12 @@ import type {
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
-import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
+import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -43,6 +45,7 @@ function makeOtelSettingsService(
 		enabled: true,
 		productionExecutionsOnly: false,
 		includeNodeSpans: true,
+		exporterProtocol: 'http/protobuf',
 		exporterEndpoint: 'http://localhost:4318',
 		exporterTracingPath: '/v1/traces',
 		exporterServiceName: 'n8n',
@@ -92,12 +95,13 @@ describe('OtelLifecycleHandler', () => {
 				updatedAt: new Date(),
 				activeVersionId: null,
 			},
+			mode: 'trigger',
 			workflowInstance: createWorkflowInstance(),
 			executionId: 'exec-sub',
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -107,6 +111,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
@@ -413,7 +418,7 @@ describe('OtelLifecycleHandler', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -423,6 +428,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
@@ -530,7 +536,7 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should start a new root span linked to the pre-wait origin and not overwrite the persisted origin', async () => {
+		it('should parent the resumed span on the pre-wait span and persist the new context', async () => {
 			traceContextService.get.mockResolvedValueOnce(prePauseContext);
 
 			await handler.onWorkflowResume({
@@ -545,15 +551,28 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					executionId: 'exec-resume',
+					tracingContext: prePauseContext,
 					linkTo: prePauseContext,
 				}),
 			);
-			// The post-resume call should NOT carry a parent context — it's a new root.
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
+		});
+
+		it('should start a root span when no pre-wait context is persisted', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.not.objectContaining({ tracingContext: expect.anything() }),
+				expect.objectContaining({ tracingContext: undefined, linkTo: undefined }),
 			);
-			// Origin stays authoritative; subsequent resumes should link to it too.
-			expect(traceContextService.persist).not.toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
 		});
 	});
 
@@ -567,7 +586,7 @@ describe('OtelLifecycleHandler', () => {
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -577,6 +596,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 		});
 
@@ -635,6 +655,148 @@ describe('OtelLifecycleHandler', () => {
 		});
 	});
 
+	describe('onExecutionCrashed', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
+
+		const eventTracingContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		};
+
+		const startedAt = new Date('2025-01-01T00:00:00.000Z');
+		const stoppedAt = new Date('2025-01-01T00:01:00.000Z');
+
+		const makeEvent = (
+			overrides: Partial<RelayEventMap['execution-crashed']> = {},
+		): RelayEventMap['execution-crashed'] => ({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			workflowName: 'Test',
+			mode: 'trigger',
+			startedAt,
+			stoppedAt,
+			detector: 'queue-recovery',
+			hostId: 'main-1',
+			...overrides,
+		});
+
+		const makeHandler = (overrides: Partial<OtelConfig> = {}, eventService?: EventService) =>
+			new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				mock<OtelService>(),
+				makeOtelSettingsService(overrides),
+				ownershipService,
+				logger,
+				licenseState,
+				eventService ?? mock<EventService>(),
+			);
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should handle the `execution-crashed` event once initialised', async () => {
+			const eventService = new EventService();
+			makeHandler({}, eventService).init();
+
+			eventService.emit('execution-crashed', makeEvent());
+			await new Promise(setImmediate);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId: 'exec-1', detector: 'queue-recovery' }),
+			);
+		});
+
+		it('should end the crashed workflow span when the event carries no trace context', async () => {
+			await makeHandler().onExecutionCrashed(makeEvent());
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId: 'exec-1', tracingContext: undefined }),
+			);
+		});
+
+		it('should do nothing when tracing is disabled', async () => {
+			await makeHandler({ enabled: false }).onExecutionCrashed(makeEvent());
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing for a manual execution when productionExecutionsOnly is true', async () => {
+			await makeHandler({ productionExecutionsOnly: true }).onExecutionCrashed(
+				makeEvent({ mode: 'manual' }),
+			);
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should end the crashed workflow span with the trace context on the event', async () => {
+			await makeHandler().onExecutionCrashed(makeEvent({ tracingContext: eventTracingContext }));
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				workflowVersionId: undefined,
+				mode: 'trigger',
+				retryOf: undefined,
+				detector: 'queue-recovery',
+				startedAt,
+				stoppedAt,
+				tracingContext: eventTracingContext,
+				workflow: { customAttributes: undefined },
+				project: undefined,
+			});
+		});
+
+		it('should pass the version id, retry source, project and custom attributes on the event', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowVersionId: 'version-1',
+					retryOf: 'exec-original',
+					workflow: { customAttributes: { workflowTag: 'checkout' } },
+					project: { id: 'project-1', customAttributes: { team: 'platform' } },
+				}),
+			);
+		});
+
+		it('should omit the custom attributes but keep the project id when they are not licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+
+			await makeHandler().onExecutionCrashed(
+				makeEvent({
+					workflowCustomTelemetryTags: [{ key: 'workflowTag', value: 'checkout' }],
+					project: { id: 'project-1', customTelemetryTags: [{ key: 'team', value: 'platform' }] },
+				}),
+			);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: { customAttributes: undefined },
+					project: { id: 'project-1', customAttributes: undefined },
+				}),
+			);
+		});
+	});
+
 	describe('onNodeStart / onNodeEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
@@ -675,7 +837,7 @@ describe('OtelLifecycleHandler', () => {
 			}) as unknown as NodeExecuteAfterContext;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			otelSettingsService = makeOtelSettingsService({
 				productionExecutionsOnly: false,
 				includeNodeSpans: true,
@@ -688,6 +850,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 		});
@@ -702,6 +865,7 @@ describe('OtelLifecycleHandler', () => {
 				ownershipService,
 				logger,
 				licenseState,
+				mock<EventService>(),
 			);
 
 			handler.onNodeStart(makeStartCtx());
@@ -801,53 +965,82 @@ describe('productionExecutionsOnly filter', () => {
 	const licenseState = mock<LicenseState>();
 	let handler: OtelLifecycleHandler;
 
-	const inactiveWorkflow = {
+	const node1 = {
+		id: 'node-1',
+		name: 'Node1',
+		type: 'n8n-nodes-base.set',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
+	const publishedWorkflow = {
 		id: 'wf-1',
 		name: 'Test',
 		versionId: 'v1',
-		nodes: [],
+		nodes: [node1],
 		connections: {},
-		active: false,
+		active: true,
 		isArchived: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		activeVersionId: null,
+		activeVersionId: 'av-1',
 	};
 
-	const activeWorkflow = { ...inactiveWorkflow, active: true };
+	const snapshot = {
+		id: 'wf-1',
+		name: 'Test',
+		nodes: [node1],
+		connections: {},
+		settings: {},
+		nodeGroups: [],
+	};
 
-	const makeWorkflowStartCtx = (workflow: object): WorkflowExecuteBeforeContext => ({
+	const makeWorkflowStartCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): WorkflowExecuteBeforeContext => ({
 		type: 'workflowExecuteBefore',
 		workflow: workflow as never,
+		mode,
 		workflowInstance: undefined as never,
 		executionId: 'exec-1',
 	});
 
-	const makeWorkflowEndCtx = (workflow: object): WorkflowExecuteAfterContext =>
+	const makeWorkflowEndCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): WorkflowExecuteAfterContext =>
 		({
 			type: 'workflowExecuteAfter',
 			workflow,
+			mode,
 			executionId: 'exec-1',
 			newStaticData: {},
 			runData: {
 				status: 'success',
-				mode: 'manual',
+				mode,
 				data: { resultData: { runData: {}, pinData: {} } },
 			},
 		}) as unknown as WorkflowExecuteAfterContext;
 
-	const makeNodeStartCtx = (workflow: object): NodeExecuteBeforeContext =>
+	const makeNodeStartCtx = (
+		workflow: object,
+		mode: WorkflowExecuteMode,
+	): NodeExecuteBeforeContext =>
 		({
 			type: 'nodeExecuteBefore',
 			workflow,
+			mode,
 			nodeName: 'Node1',
 			executionId: 'exec-1',
 		}) as unknown as NodeExecuteBeforeContext;
 
-	const makeNodeEndCtx = (workflow: object): NodeExecuteAfterContext =>
+	const makeNodeEndCtx = (workflow: object, mode: WorkflowExecuteMode): NodeExecuteAfterContext =>
 		({
 			type: 'nodeExecuteAfter',
 			workflow,
+			mode,
 			nodeName: 'Node1',
 			executionId: 'exec-1',
 			taskData: {
@@ -861,7 +1054,7 @@ describe('productionExecutionsOnly filter', () => {
 		}) as unknown as NodeExecuteAfterContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		otelSettingsService = makeOtelSettingsService({
 			productionExecutionsOnly: true,
 			includeNodeSpans: true,
@@ -876,15 +1069,16 @@ describe('productionExecutionsOnly filter', () => {
 			ownershipService,
 			logger,
 			licenseState,
+			mock<EventService>(),
 		);
 		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
 
-	it('should not start spans for an inactive workflow when productionExecutionsOnly is true, but still call endWorkflow', async () => {
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
-		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
-		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
-		handler.onNodeEnd(makeNodeEndCtx(inactiveWorkflow));
+	it('should not start spans for a manual execution when productionExecutionsOnly is true, but still call endWorkflow', async () => {
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
+		handler.onWorkflowEnd(makeWorkflowEndCtx(publishedWorkflow, 'manual'));
+		handler.onNodeStart(makeNodeStartCtx(publishedWorkflow, 'manual'));
+		handler.onNodeEnd(makeNodeEndCtx(publishedWorkflow, 'manual'));
 
 		expect(tracer.startWorkflow).not.toHaveBeenCalled();
 		expect(traceContextService.persist).not.toHaveBeenCalled();
@@ -893,44 +1087,64 @@ describe('productionExecutionsOnly filter', () => {
 		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
-	it('should close a span even when settings change to exclude the workflow mid-execution', async () => {
+	it('should close a span even when settings change to exclude the execution mid-run', async () => {
+		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 
 		// Simulate settings change mid-execution
 		otelSettingsService._settings.productionExecutionsOnly = true;
 
-		handler.onWorkflowEnd(makeWorkflowEndCtx(activeWorkflow));
+		handler.onWorkflowEnd(makeWorkflowEndCtx(publishedWorkflow, 'manual'));
 		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
-	it('should trace an active workflow when productionExecutionsOnly is true', async () => {
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	it.each<WorkflowExecuteMode>(['trigger', 'webhook', 'integrated', 'retry', 'error', 'cli'])(
+		'should trace a %s execution when productionExecutionsOnly is true',
+		async (mode) => {
+			tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+			await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, mode));
 
-		expect(tracer.startWorkflow).toHaveBeenCalled();
-		expect(traceContextService.persist).toHaveBeenCalled();
-	});
+			expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalled();
+		},
+	);
 
-	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
+	it('should trace a manual execution when productionExecutionsOnly is false', async () => {
 		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
 
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 	});
 
-	it('should also treat activeVersionId as published', async () => {
-		const workflowWithVersionId = { ...inactiveWorkflow, active: false, activeVersionId: 'v123' };
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	describe('when the context holds a persisted workflow snapshot (scaling worker)', () => {
+		it('should trace the workflow even though the snapshot has no published markers', async () => {
+			tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(workflowWithVersionId));
+			await handler.onWorkflowStart(makeWorkflowStartCtx(snapshot, 'webhook'));
 
-		expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(tracer.startWorkflow).toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalled();
+		});
+
+		it('should emit node spans for the snapshot', () => {
+			handler.onNodeStart(makeNodeStartCtx(snapshot, 'webhook'));
+			handler.onNodeEnd(makeNodeEndCtx(snapshot, 'webhook'));
+
+			expect(tracer.startNode).toHaveBeenCalled();
+			expect(tracer.endNode).toHaveBeenCalled();
+		});
+
+		it('should still skip a manual execution carried on a snapshot', async () => {
+			await handler.onWorkflowStart(makeWorkflowStartCtx(snapshot, 'manual'));
+
+			expect(tracer.startWorkflow).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -948,21 +1162,21 @@ describe('onReloadOtelConfig', () => {
 			mock<OwnershipService>(),
 			mock<Logger>(),
 			licenseState,
+			mock<EventService>(),
 		);
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel SDK and refreshes the tracer', async () => {
+	it('restarts the OTel tracer provider', async () => {
 		const handler = makeHandler();
 		otelService.restart.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
 		expect(otelService.restart).toHaveBeenCalledTimes(1);
-		expect(tracer.refreshTracer).toHaveBeenCalledTimes(1);
 	});
 });
 

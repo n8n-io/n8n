@@ -364,7 +364,7 @@ describe('MicrosoftAgent365Trigger', () => {
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
-					fail('Should have thrown an error');
+					expect.fail('Should have thrown an error');
 				} catch (error) {
 					expect(error).toBeInstanceOf(NodeOperationError);
 					expect((error as NodeOperationError).description).toBe(
@@ -379,7 +379,7 @@ describe('MicrosoftAgent365Trigger', () => {
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
-					fail('Should have thrown an error');
+					expect.fail('Should have thrown an error');
 				} catch (err) {
 					expect(err).toBeInstanceOf(NodeOperationError);
 					expect((err as NodeOperationError).message).toContain('Network error');

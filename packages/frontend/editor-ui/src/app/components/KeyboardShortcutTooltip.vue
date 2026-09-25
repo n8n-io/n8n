@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { KeyboardShortcut } from '@/Interface';
-import type { N8nTooltipProps } from '@n8n/design-system/components/N8nTooltip';
+import type { N8nTooltipProps } from '@n8n/design-system';
 
 import { N8nKeyboardShortcut, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -37,6 +37,7 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 }
 
 .label {
-	flex-shrink: 0;
+	min-width: 0;
+	font-size: var(--font-size--xs);
 }
 </style>

@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
 import { N8nAlertDialog } from '@n8n/design-system';
 
+import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
+
 const props = defineProps<{
 	apiKey: ApiKey | null;
 	open: boolean;
@@ -32,8 +34,7 @@ const description = computed(() => {
 	if (!props.apiKey) return '';
 	if (props.revokingForOther) {
 		const owner = props.apiKey.owner;
-		const ownerName =
-			[owner?.firstName, owner?.lastName].filter(Boolean).join(' ') || owner?.email || '';
+		const ownerName = owner ? getApiKeyOwnerDisplayName(owner) : '';
 		return i18n.baseText('settings.api.revoke.description.other', {
 			interpolate: { ownerName },
 		});

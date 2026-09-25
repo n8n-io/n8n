@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import type { SelectSize } from '@n8n/design-system/types';
+import { isIconOrEmoji, type IconOrEmoji, type SelectSize } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
@@ -8,7 +7,8 @@ import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import type { ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 import {
 	N8nBadge,
@@ -29,7 +29,6 @@ type Props = {
 	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
 	static?: boolean;
-	hideAddInput?: boolean;
 	placeholder?: string;
 	emptyOptionsText?: string;
 	size?: SelectSize;
@@ -38,9 +37,17 @@ type Props = {
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
 	disabledTooltip?: string;
+	teleported?: boolean;
+	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
+	showSuffix?: boolean;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
+
+// Keep an in-place popper outside a scroll container's clipping area.
+const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
 
 const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
@@ -108,15 +115,21 @@ const filteredProjects = computed(() => {
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
+	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
+		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-		...filteredProjects.value,
+		...projects,
 	];
 });
 
 const moreResultsCount = computed(() => {
 	return Math.max(0, searchCount.value - searchResults.value.length);
 });
+const showSearchHint = computed(
+	() => filter.value === '' && sortedProjects.value.length === 0 && moreResultsCount.value > 0,
+);
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -214,11 +227,12 @@ watch(
 		<N8nTooltip :disabled="!props.disabledTooltip" placement="top">
 			<template #content>{{ props.disabledTooltip }}</template>
 			<N8nSelect
-				v-if="!props.hideAddInput && (!props.static || props.disabledTooltip)"
+				v-if="!props.static || props.disabledTooltip"
 				:model-value="selectedProject"
 				data-test-id="project-sharing-select"
 				filterable
 				remote
+				:remote-show-suffix="props.showSuffix"
 				:remote-method="setFilter"
 				:placeholder="selectPlaceholder"
 				:default-first-option="true"
@@ -226,6 +240,8 @@ watch(
 				:size="size ?? 'medium'"
 				:disabled="props.readonly || !!props.disabledTooltip"
 				:clearable
+				:teleported="props.teleported"
+				:popper-options="props.teleported ? undefined : inPlacePopperOptions"
 				:popper-class="$style.popper"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
@@ -249,18 +265,22 @@ watch(
 					<ProjectSharingInfo :project="project" />
 				</N8nOption>
 				<N8nOption
-					v-if="moreResultsCount > 0"
+					v-if="showSearchHint || moreResultsCount > 0"
 					:key="'more-results'"
 					:value="''"
 					:label="''"
 					disabled
-					:class="$style.moreResults"
+					:class="$style.searchNotice"
 				>
 					<N8nText size="small" color="text-light">
 						{{
-							locale.baseText('projects.sharing.moreResults', {
-								interpolate: { count: moreResultsCount },
-							})
+							showSearchHint
+								? locale.baseText('projects.sharing.startTypingToSearch', {
+										interpolate: { count: searchCount },
+									})
+								: locale.baseText('projects.sharing.moreResults', {
+										interpolate: { count: moreResultsCount },
+									})
 						}}
 					</N8nText>
 				</N8nOption>
@@ -269,7 +289,7 @@ watch(
 		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
-					<N8nBadge theme="tertiary" bold>
+					<N8nBadge variant="outline">
 						{{ locale.baseText('auth.roles.owner') }}
 					</N8nBadge></ProjectSharingInfo
 				>
@@ -352,9 +372,8 @@ watch(
 	font-size: var(--font-size--sm);
 }
 
-.moreResults {
+.searchNotice {
 	cursor: default;
 	text-align: center;
-	border-top: var(--border);
 }
 </style>

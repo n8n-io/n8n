@@ -75,6 +75,29 @@ describe('PlannedTaskStorage', () => {
 			expect(checkpoint?.deps).toEqual(['build-1']);
 		});
 
+		it('round-trips a graph containing a legacy delegate task', async () => {
+			const graph = makeGraph({
+				tasks: [
+					{
+						id: 'legacy-1',
+						title: 'Legacy delegate task',
+						kind: 'delegate',
+						spec: 'Do the research',
+						deps: [],
+						status: 'planned',
+					},
+				],
+			});
+			memory.getThread.mockResolvedValue({
+				metadata: { instanceAiPlannedTasks: graph },
+			});
+
+			const loaded = await storage.get('thread-1');
+
+			expect(loaded).not.toBeNull();
+			expect(loaded?.tasks[0]?.kind).toBe('delegate');
+		});
+
 		it('returns null when the stored graph has an unknown kind', async () => {
 			memory.getThread.mockResolvedValue({
 				metadata: {

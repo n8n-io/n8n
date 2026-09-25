@@ -93,6 +93,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 	],
+	sensitiveOutputFields: ['headers.authorization', 'headers.cookie', 'headers.x-auth-token'],
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -141,6 +142,17 @@ const descriptionV2: INodeTypeDescription = {
 				propertyHint:
 					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
 			},
+		},
+		{
+			displayName: 'Require Workflow Execute Permission',
+			name: 'requireExecuteAccess',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			description:
+				'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
@@ -257,6 +269,13 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
+				},
+				{
+					displayName: 'Show Headers',
+					name: 'showHeaders',
+					type: 'boolean',
+					default: false,
+					description: 'Whether the form submit request headers are shown',
 				},
 			],
 		},

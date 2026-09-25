@@ -1,5 +1,11 @@
-import { mock, mockDeep } from 'jest-mock-extended';
-import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 
 import { Xero } from '../Xero.node';
 
@@ -73,6 +79,49 @@ describe('Xero Node', () => {
 
 				// Verify returns empty array
 				expect(result).toEqual([]);
+			});
+		});
+	});
+
+	describe.each([
+		['invoice', 'Invoices'],
+		['contact', 'Contacts'],
+	])('%s getAll with returnAll', (resource, propertyName) => {
+		it('should send the Xero-tenant-id header on every page', async () => {
+			const xero = new Xero();
+			const executeFunctions = mockDeep<IExecuteFunctions>();
+			const params: IDataObject = {
+				resource,
+				operation: 'getAll',
+				organizationId: 'test-org-id',
+				returnAll: true,
+				options: {},
+			};
+
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			executeFunctions.getNode.mockReturnValue(mock<INode>());
+			executeFunctions.getNodeParameter.mockImplementation((name: string) => params[name]);
+			executeFunctions.helpers.constructExecutionMetaData.mockImplementation(
+				(data) => data as NodeExecutionWithMetadata[],
+			);
+			executeFunctions.helpers.returnJsonArray.mockImplementation((data) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			);
+			executeFunctions.helpers.requestOAuth2
+				.mockResolvedValueOnce({ [propertyName]: [{ id: 1 }] })
+				.mockResolvedValueOnce({ [propertyName]: [{ id: 2 }] })
+				.mockResolvedValueOnce({ [propertyName]: [] });
+
+			const result = await xero.execute.call(executeFunctions);
+
+			expect(result[0].map(({ json }) => json)).toEqual([{ id: 1 }, { id: 2 }]);
+			const calls = executeFunctions.helpers.requestOAuth2.mock.calls;
+			expect(calls).toHaveLength(3);
+			calls.forEach(([, options], index) => {
+				expect(options.headers).toEqual(
+					expect.objectContaining({ 'Xero-tenant-id': 'test-org-id' }),
+				);
+				expect(options.qs).toEqual(expect.objectContaining({ page: index + 1 }));
 			});
 		});
 	});

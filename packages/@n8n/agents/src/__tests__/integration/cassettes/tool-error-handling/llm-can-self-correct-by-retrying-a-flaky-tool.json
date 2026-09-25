@@ -1,0 +1,314 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use fetch_data to fetch data. If the tool fails with a transient error, retry the SAME call once. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"xyz\"."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_data",
+					"description": "Fetch data. May fail on the first attempt — retry if it does.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_013ZWS9As5TqYrV8RZ26YnVy\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01GuGgiSP1bhGuzqXndzJMuA\",\"name\":\"fetch_data\",\"input\":{\"id\":\"xyz\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":652,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:53Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:53Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:52Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:53Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154fa1d5ee99cca-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 09:48:53 GMT",
+			"request-id": "req_011CceuzFDWSGFSXMBNc4BoH",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b0d3d2f762438c7aa877350524121f8a-1b4483adaf2942bf-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use fetch_data to fetch data. If the tool fails with a transient error, retry the SAME call once. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"xyz\"."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01GuGgiSP1bhGuzqXndzJMuA",
+							"name": "fetch_data",
+							"input": {
+								"id": "xyz"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01GuGgiSP1bhGuzqXndzJMuA",
+							"content": "Error: Transient error: rate limit exceeded, please retry",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_data",
+					"description": "Fetch data. May fail on the first attempt — retry if it does.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_014CceQMK2JuGipBkN8Mowig\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let me retry that call:\"},{\"type\":\"tool_use\",\"id\":\"toolu_011DvyY2heCwvELkeTm3CSD1\",\"name\":\"fetch_data\",\"input\":{\"id\":\"xyz\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":739,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":60,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:54Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:53Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:54Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154fa223c4d9cca-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 09:48:54 GMT",
+			"request-id": "req_011CceuzJXwLtCgEpYfJqiYU",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-51d7c5395991839d9610d32bf07cff26-610e4acd6afc9848-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use fetch_data to fetch data. If the tool fails with a transient error, retry the SAME call once. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"xyz\"."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01GuGgiSP1bhGuzqXndzJMuA",
+							"name": "fetch_data",
+							"input": {
+								"id": "xyz"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01GuGgiSP1bhGuzqXndzJMuA",
+							"content": "Error: Transient error: rate limit exceeded, please retry",
+							"is_error": true
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Let me retry that call:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_011DvyY2heCwvELkeTm3CSD1",
+							"name": "fetch_data",
+							"input": {
+								"id": "xyz"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_011DvyY2heCwvELkeTm3CSD1",
+							"content": "{\"id\":\"xyz\",\"value\":42}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_data",
+					"description": "Fetch data. May fail on the first attempt — retry if it does.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_015y2UJQjaczfuD5gmgwrsfs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Successfully fetched the data for id \\\"xyz\\\". The result is:\\n- **id**: xyz\\n- **value**: 42\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":819,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":30,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:55Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:55Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:54Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:55Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154fa28fdec9cca-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 09:48:55 GMT",
+			"request-id": "req_011CceuzPv91AN9TkHpcEe2y",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-6c77da7c7f033d0ef238fe810467f65d-b133821b470bd2bf-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -1,0 +1,128 @@
+name: 'Test: Single-instance deps (npm-install)'
+
+# An npm-install graph exposes curated-lib duplicates that pnpm dev/deploy hides, because root
+# `pnpm.overrides` don't travel in published tarballs.
+
+on:
+  workflow_call:
+    inputs:
+      scope:
+        description: '"changed" verifies only packages touched since base-ref; "all" packs every publishable package.'
+        required: true
+        type: string
+      base-ref:
+        description: 'Commit to diff against. Required when scope is "changed", rejected otherwise.'
+        required: false
+        type: string
+        default: ''
+      base-branch:
+        description: 'Branch to check out before verifying, so the run profiles that branch rather than the caller''s triggering revision. Only valid when scope is "all".'
+        required: false
+        type: string
+        default: ''
+      blocking:
+        description: 'Fail the calling workflow on a finding. Defaults to advisory while the curated-lib backlog is worked down.'
+        required: false
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: 'Job timeout. The "all" scope packs every publishable package, so it needs longer than the scoped one.'
+        required: false
+        type: number
+        default: 20
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    env:
+      # Advisory runs downgrade findings to `::warning::` annotations and exit 0, so the known
+      # third-party splits don't leave a permanently red job that everyone learns to ignore.
+      # This deliberately replaces `continue-on-error`, which also swallowed the failures we do
+      # want — a usage error, a rejected input, or a crash that verified nothing.
+      REPORT_ONLY: ${{ !inputs.blocking && '--report-only' || '' }}
+    steps:
+      # Every rejected combination below otherwise degrades into a run that verifies nothing and
+      # still exits 0. These fail the job even in advisory mode — `--report-only` downgrades
+      # findings, not misconfiguration.
+      - name: Validate inputs
+        env:
+          SCOPE: ${{ inputs.scope }}
+          BASE_REF: ${{ inputs.base-ref }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
+        run: |
+          case "$SCOPE" in
+            changed)
+              [ -n "$BASE_REF" ] || { echo "::error::scope=changed requires base-ref."; exit 1; }
+              # A base-branch checkout would move HEAD away from the pushed commit, so the diff
+              # would silently describe the wrong range.
+              [ -z "$BASE_BRANCH" ] || { echo "::error::scope=changed cannot be combined with base-branch."; exit 1; }
+              ;;
+            all)
+              [ -z "$BASE_REF" ] || { echo "::error::scope=all does not use base-ref."; exit 1; }
+              ;;
+            *)
+              echo "::error::Unknown scope \"$SCOPE\" (expected \"changed\" or \"all\")."
+              exit 1
+              ;;
+          esac
+
+      # Checking out `base-branch` directly (rather than fetching everything and switching
+      # afterwards) keeps that case to a single-commit fetch. scope=changed does need history back
+      # to `base-ref`, but only to diff it: `git diff --name-only --no-renames` reads trees, so the
+      # blobs can stay on the server. Nothing after this step reads an object outside the working
+      # tree, which the checkout materializes in full.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.base-branch }}
+          fetch-depth: ${{ inputs.base-branch != '' && 1 || 0 }}
+          filter: blob:none
+          persist-credentials: false
+
+      # A `base-branch` can point at a release line that predates this tooling (the v1 patch track
+      # is the live case), where there is simply nothing to verify. Without a base-branch the ref is
+      # the caller's own revision, on which the package must exist — a move or rename has to fail
+      # loudly rather than quietly turn this into a green job that verified nothing.
+      - name: Check the verifier is present on this ref
+        id: verifier
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+        run: |
+          if [ -f packages/testing/code-health/package.json ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          elif [ -n "$BASE_BRANCH" ]; then
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::packages/testing/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
+          else
+            echo '::error::packages/testing/code-health is missing (moved or renamed?).'
+            exit 1
+          fi
+
+      # Only the verifier's own closure needs compiling. The check reads package.json out of the
+      # npm-install graph, so the packed tarballs' contents don't matter — packing skips lifecycle
+      # scripts, and the workspace install exists so `pnpm pack` can resolve `workspace:` specs.
+      - name: Setup and Build
+        if: steps.verifier.outputs.present == 'true'
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/code-health...
+
+      # `--dir` rather than `--filter`: a filter matching nothing exits 0, so a renamed or moved
+      # package would turn this into a green job that verified nothing.
+      - name: Verify npm-install closure (changed packages)
+        if: steps.verifier.outputs.present == 'true' && inputs.scope == 'changed'
+        env:
+          BASE_REF: ${{ inputs.base-ref }}
+        run: |
+          # REPORT_ONLY is a single flag or empty. Quoting it would pass an empty argument, which
+          # the CLI reads as an (unknown) package name and rejects.
+          # shellcheck disable=SC2086
+          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
+
+      - name: Verify npm-install closure (all packages)
+        if: steps.verifier.outputs.present == 'true' && inputs.scope == 'all'
+        run: |
+          # shellcheck disable=SC2086 # see the scoped step above
+          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY

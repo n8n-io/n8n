@@ -27,7 +27,7 @@ const connectedNotion: McpServerConnectionItem = {
 	title: 'Notion',
 	description: 'Connect to the Notion MCP Server',
 	iconSource: { type: 'file', src: ICON.notion },
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-notion-1', required: true }],
 	settings: {
 		inclusionMode: 'except',
@@ -109,7 +109,7 @@ const connectedSlack: McpServerConnectionItem = {
 	title: 'Slack',
 	description: 'Connect to the Slack MCP Server',
 	iconSource: { type: 'file', src: ICON.slack },
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'httpBearerAuth', credentialId: 'cred-slack-1', required: true }],
 	longDescription:
 		'The Slack MCP server connects an n8n agent to a Slack workspace so it can read recent channel history and post messages on behalf of a user.',
@@ -129,7 +129,7 @@ const availableGithub: McpServerConnectionItem = {
 	title: 'GitHub',
 	description: 'Connect to the GitHub MCP Server',
 	iconSource: { type: 'file', src: ICON.github },
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	longDescription:
 		'The GitHub MCP server lets agents triage issues, draft pull requests, and run common repository workflows from inside n8n.',
@@ -149,7 +149,7 @@ const availableGmail: McpServerConnectionItem = {
 	title: 'Gmail',
 	description: 'Connect to the Gmail MCP Server',
 	iconSource: { type: 'file', src: ICON.gmail },
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	availableTools: [
 		{ id: 'gmail.send', name: 'send-email', category: 'write' },
@@ -163,7 +163,7 @@ const availableLinear: McpServerConnectionItem = {
 	title: 'Linear',
 	description: 'Connect to the Linear MCP Server',
 	iconSource: { type: 'file', src: ICON.linear },
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	availableTools: [
 		{ id: 'linear.list-issues', name: 'list-issues', category: 'read' },
@@ -177,7 +177,7 @@ const availableGoogleDrive: McpServerConnectionItem = {
 	title: 'Google Drive',
 	description: 'Connect to the Google Drive MCP Server',
 	iconSource: { type: 'file', src: ICON.googleDrive },
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	availableTools: [{ id: 'drive.list-files', name: 'list-files', category: 'read' }],
 };
@@ -187,7 +187,7 @@ const availableHttp: McpServerConnectionItem = {
 	kind: 'mcp-server',
 	title: 'HTTP Request',
 	description: 'Connect to the HTTP Request MCP Server',
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'httpBearerAuth', required: true }],
 	availableTools: [{ id: 'http.fetch', name: 'fetch', category: 'read' }],
 };
@@ -195,10 +195,11 @@ const availableHttp: McpServerConnectionItem = {
 const availableOpenAi: NodeConnectionItem = {
 	id: 'node-openai',
 	kind: 'node',
+	category: 'ai',
 	title: 'OpenAI',
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	iconSource: { type: 'file', src: ICON.openai },
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 	credentials: [{ authType: 'openAiApi', required: true }],
 	longDescription:
@@ -210,7 +211,7 @@ const availableMultiCredentialHttp: NodeConnectionItem = {
 	kind: 'node',
 	title: 'HTTP Request',
 	description: 'Make HTTP requests with OAuth2 or a bearer token.',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: 'n8n-nodes-base.httpRequestTool',
 	credentials: [
 		{ authType: 'oAuth2Api', required: false },
@@ -221,20 +222,22 @@ const availableMultiCredentialHttp: NodeConnectionItem = {
 const availableGemini: NodeConnectionItem = {
 	id: 'node-gemini',
 	kind: 'node',
+	category: 'ai',
 	title: 'Google Gemini',
 	description: 'Interact with Google Gemini AI models.',
 	iconSource: { type: 'file', src: ICON.gemini },
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: '@n8n/n8n-nodes-langchain.googleGemini',
 };
 
 const availableGoogleSheets: NodeConnectionItem = {
 	id: 'node-google-sheets',
 	kind: 'node',
+	category: 'n8n',
 	title: 'Google Sheets Tool',
 	description: 'Read, update and write data to Google Sheets.',
 	iconSource: { type: 'file', src: ICON.googleSheets },
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: 'n8n-nodes-base.googleSheetsTool',
 	longDescription:
 		'Read or write rows in a Google Sheet. The agent can append new rows, look up data by query, update existing values, and delete rows when asked. Best for tabular data that needs to be shared with a team or kept in sync with other Sheets-based tools.',
@@ -244,12 +247,25 @@ const availableGoogleSheets: NodeConnectionItem = {
 	],
 };
 
+const availableCommunityFirecrawl: NodeConnectionItem = {
+	id: 'node-community-firecrawl',
+	kind: 'node',
+	category: 'community',
+	title: 'Firecrawl',
+	description: 'Scrape and crawl sites into LLM-ready markdown.',
+	status: 'none',
+	nodeTypeName: 'n8n-nodes-firecrawl.firecrawlTool',
+	verified: true,
+	communityPreview: true,
+	credentials: [{ authType: 'firecrawlApi', required: true }],
+};
+
 const availableAgentCodeReviewer: AgentConnectionItem = {
 	id: 'agent-code-reviewer',
 	kind: 'agent',
 	title: 'Code Reviewer',
 	description: 'Reviews diffs and flags issues before merge.',
-	isConnected: false,
+	status: 'none',
 	agentId: 'agent-1001',
 };
 
@@ -258,7 +274,7 @@ const availableAgentDocWriter: AgentConnectionItem = {
 	kind: 'agent',
 	title: 'Doc Writer',
 	description: 'Drafts release notes from changelog entries.',
-	isConnected: false,
+	status: 'none',
 	agentId: 'agent-1002',
 };
 
@@ -267,7 +283,7 @@ const availableDataCustomers: DataStoreConnectionItem = {
 	kind: 'data-store',
 	title: 'Customers database',
 	description: 'Read or write customer rows and their related orders.',
-	isConnected: false,
+	status: 'none',
 	dataStoreId: 'ds-customers',
 };
 
@@ -276,7 +292,7 @@ const availableDataSalesCsv: DataStoreConnectionItem = {
 	kind: 'data-store',
 	title: 'Sales CSV',
 	description: 'Monthly export of closed deals — read-only.',
-	isConnected: false,
+	status: 'none',
 	dataStoreId: 'ds-sales-csv',
 };
 
@@ -284,7 +300,7 @@ const availableWorkflowSummariser: WorkflowConnectionItem = {
 	id: 'workflow-summariser',
 	kind: 'workflow',
 	title: 'Notion onboarding flow',
-	isConnected: false,
+	status: 'none',
 	workflowId: 'wf-1234',
 	longDescription:
 		'Walks a new employee through their first day in Notion — fetches their profile, creates a starter task list, and posts a welcome message to the team channel.',
@@ -294,7 +310,7 @@ const availableWorkflowEmailParser: WorkflowConnectionItem = {
 	id: 'workflow-email-parser',
 	kind: 'workflow',
 	title: 'Notion data extraction',
-	isConnected: false,
+	status: 'none',
 	workflowId: 'wf-5678',
 };
 
@@ -310,6 +326,7 @@ export const realisticItems: ToolConnectionItem[] = [
 	availableMultiCredentialHttp,
 	availableGemini,
 	availableGoogleSheets,
+	availableCommunityFirecrawl,
 	availableAgentCodeReviewer,
 	availableAgentDocWriter,
 	availableDataCustomers,
@@ -349,7 +366,7 @@ export function makeLargeMcpList(count: number): McpServerConnectionItem[] {
 		kind: 'mcp-server' as const,
 		title: `Synthetic MCP Server #${index + 1}`,
 		description: `Connect to a fabricated MCP server for virtualization testing (${index + 1}).`,
-		isConnected: false,
+		status: 'none',
 		credentials: [{ authType: 'httpBearerAuth', required: true }],
 		availableTools: [
 			{

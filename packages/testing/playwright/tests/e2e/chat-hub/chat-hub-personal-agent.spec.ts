@@ -3,7 +3,7 @@ import { test, expect, chatHubTestConfig } from './fixtures';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Personal agent @capability:proxy',
+	'Personal agent',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},
@@ -87,7 +87,7 @@ test.describe(
 			await n8n.chatHubChat.sidebar.getPersonalAgentButton().click();
 			await n8n.chatHubPersonalAgents.getMenuAt(0).click();
 			await n8n.chatHubPersonalAgents.getVisiblePopoverMenuItem('Delete').click();
-			await n8n.page.getByRole('dialog').getByText('Delete', { exact: true }).click(); // confirmation dialog
+			await n8n.chatHubPersonalAgents.confirmDeleteAgent();
 			await expect(n8n.chatHubPersonalAgents.getAgentCards()).toHaveCount(0);
 		});
 	},

@@ -4,15 +4,28 @@ import type { JSONSchema7 } from 'json-schema';
 import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
 import { convertJsonSchemaToZod } from './schemaParsing';
+
+/**
+ * Parses a `json`-typed node parameter. The editor stores these as strings,
+ * but programmatic producers (AI workflow builder, public API) may store real
+ * objects or arrays — accept both.
+ */
+export function parseJsonParameter<T>(value: unknown, errorMessage: string): T {
+	if (typeof value === 'object' && value !== null) {
+		return value as T;
+	}
+	return jsonParse<T>(typeof value === 'string' ? value : String(value), { errorMessage });
+}
 
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions | ISupplyDataFunctions;
@@ -78,6 +91,26 @@ function sanitizeForSessionKey(name: string): string {
 	return name.replace(/[^A-Za-z0-9_-]/g, '_');
 }
 
+// The session key can arrive straight from an untrusted request body (e.g. a
+// public chat trigger). It is used to address stored data in the memory
+// backend, so it must be a primitive value: an object or array would be
+// interpreted as query structure by backends like MongoDB. Coerce numbers and
+// booleans to strings and reject anything non-primitive.
+export function coerceSessionIdToString(
+	ctx: ISupplyDataFunctions | IWebhookFunctions,
+	sessionId: unknown,
+	itemIndex: number,
+): string {
+	if (typeof sessionId === 'string') return sessionId;
+	if (typeof sessionId === 'number' || typeof sessionId === 'boolean') {
+		return String(sessionId);
+	}
+	throw new NodeOperationError(ctx.getNode(), 'Invalid session ID', {
+		description: 'The session ID must be a text value',
+		itemIndex,
+	});
+}
+
 export function getSessionId(
 	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
@@ -91,43 +124,48 @@ export function getSessionId(
 	if (selectorType === autoSelect) {
 		// If memory node is used in webhook like node(like chat trigger node), it doesn't have access to evaluateExpression
 		// so we try to extract sessionId from the bodyData
+		let rawSessionId: unknown;
 		if ('getBodyData' in ctx) {
 			const bodyData = ctx.getBodyData() ?? {};
-			sessionId = bodyData.sessionId as string;
+			rawSessionId = bodyData.sessionId;
 		} else {
-			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+			rawSessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex);
 
 			// try to get sessionId from chat trigger
-			if (!sessionId || sessionId === undefined) {
+			if (rawSessionId === '' || rawSessionId === undefined || rawSessionId === null) {
 				try {
 					const chatTrigger = ctx.getChatTrigger();
 
 					if (chatTrigger) {
-						sessionId = ctx.evaluateExpression(
+						rawSessionId = ctx.evaluateExpression(
 							`{{ $('${chatTrigger.name}').first().json.sessionId }}`,
 							itemIndex,
-						) as string;
+						);
 					}
 				} catch (error) {}
 			}
 		}
 
-		if (sessionId === '' || sessionId === undefined) {
+		if (rawSessionId === '' || rawSessionId === undefined || rawSessionId === null) {
 			throw new NodeOperationError(ctx.getNode(), 'No session ID found', {
 				description:
 					"Expected to find the session ID in an input field called 'sessionId' (this is what the chat trigger node outputs). To use something else, change the 'Session ID' parameter",
 				itemIndex,
 			});
 		}
+
+		sessionId = coerceSessionIdToString(ctx, rawSessionId, itemIndex);
 	} else {
-		sessionId = ctx.getNodeParameter(customKey, itemIndex, '') as string;
-		if (sessionId === '' || sessionId === undefined) {
+		const rawSessionId = ctx.getNodeParameter(customKey, itemIndex, '');
+		if (rawSessionId === '' || rawSessionId === undefined || rawSessionId === null) {
 			throw new NodeOperationError(ctx.getNode(), 'Key parameter is empty', {
 				description:
 					"Provide a key to use as session ID in the 'Key' parameter or use the 'Connected Chat Trigger Node' option to use the session ID from your Chat Trigger",
 				itemIndex,
 			});
 		}
+
+		sessionId = coerceSessionIdToString(ctx, rawSessionId, itemIndex);
 	}
 
 	// Scoping uses the memory node's own name, so connecting a single memory
@@ -194,11 +232,13 @@ export const getConnectedTools = async (
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
+	options?: { inputData?: IDataObject },
 ): Promise<Tool[]> => {
-	const toolkitConnections = (await ctx.getInputConnectionData(
-		NodeConnectionTypes.AiTool,
-		0,
-	)) as SupplyDataToolResponse[];
+	// `getRequestObject` narrows to IWebhookFunctions, the only context whose
+	// getInputConnectionData signature takes the input override.
+	const toolkitConnections = (await ('getRequestObject' in ctx
+		? ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0, options)
+		: ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0))) as SupplyDataToolResponse[];
 
 	// Get parent nodes to map toolkits to their source nodes.
 	// getInputConnectionData filters out disabled nodes, so parents must be filtered
@@ -219,18 +259,15 @@ export const getConnectedTools = async (
 				const tools = toolOrToolkit.tools;
 				// Add metadata to each tool from the toolkit
 				return tools.map((tool) => {
-					const sourceNode = parentNodes[index] ?? tool.name;
-
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
-					tool.metadata.sourceNodeName = sourceNode?.name;
+					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
 					return tool;
 				});
 			} else {
-				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
-				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
 			}
 
 			return toolOrToolkit;
@@ -268,6 +305,24 @@ export const getConnectedTools = async (
 };
 
 /**
+ * Reads the custom header configured on a credential, if present and valid.
+ * Shared by header merging and tracing redaction so the guard lives in one place.
+ */
+export function getCustomCredentialHeader(
+	credentials: ICredentialDataDecryptedObject,
+): { name: string; value: string } | undefined {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return { name: credentials.headerName, value: credentials.headerValue };
+	}
+	return undefined;
+}
+
+/**
  * Merges custom credential headers into an existing defaultHeaders object.
  * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
  */
@@ -275,15 +330,11 @@ export function mergeCustomHeaders(
 	credentials: ICredentialDataDecryptedObject,
 	defaultHeaders: Record<string, string>,
 ): Record<string, string> {
-	if (
-		credentials.header &&
-		typeof credentials.headerName === 'string' &&
-		credentials.headerName &&
-		typeof credentials.headerValue === 'string'
-	) {
+	const customHeader = getCustomCredentialHeader(credentials);
+	if (customHeader) {
 		return {
 			...defaultHeaders,
-			[credentials.headerName]: credentials.headerValue,
+			[customHeader.name]: customHeader.value,
 		};
 	}
 	return defaultHeaders;

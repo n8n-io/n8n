@@ -277,7 +277,7 @@ When the AI agent needs to invoke a local tool the call flows through
 
 ```mermaid
 sequenceDiagram
-    participant A as AI Agent (Mastra tool)
+    participant A as AI Agent (@n8n/agents tool)
     participant GW as LocalGateway
     participant SRV as Controller (SSE)
     participant D as computer-use Daemon
@@ -304,7 +304,7 @@ rejects all outstanding promises immediately with `"Local gateway disconnected"`
 
 When a tool group operates in `Ask` mode and no stored rule matches the
 resource, the daemon returns a `GATEWAY_CONFIRMATION_REQUIRED` error instead
-of a result. The Mastra tool layer handles this by suspending the agent —
+of a result. The `@n8n/agents` tool layer handles this by suspending the agent —
 persisting its state to the database — and resuming it after the user
 responds. This means the confirmation survives page reloads and server
 restarts.
@@ -316,7 +316,7 @@ sequenceDiagram
     participant DB as Database
     participant D as computer-use Daemon
 
-    Note over SRV: First invocation — tool execute() called by Mastra
+    Note over SRV: First invocation — tool execute() called by @n8n/agents
     SRV->>D: callTool({ name, args }) via LocalGateway
     D-->>SRV: { isError: true, content: ["GATEWAY_CONFIRMATION_REQUIRED::..."] }
     SRV->>SRV: parse GatewayConfirmationRequiredPayload

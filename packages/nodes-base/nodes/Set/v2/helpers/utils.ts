@@ -2,8 +2,8 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 import {
-	ApplicationError,
 	NodeOperationError,
+	UserError,
 	deepCopy,
 	getValueDescription,
 	jsonParse,
@@ -115,7 +115,7 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+			throw new UserError(`The include option "${options.include}" is not known!`, {
 				level: 'warning',
 			});
 	}
@@ -205,9 +205,17 @@ export const validateEntry = (
 		}
 	}
 
+	const newValue = validationResult.newValue;
+
+	// v3.5+ serializes values to JSON-safe form so output never carries live
+	// Luxon DateTime objects (dateTime fields) or nested dates inside objects/arrays
+	if (nodeVersion && nodeVersion >= 3.5 && newValue !== undefined && newValue !== null) {
+		return { name, value: deepCopy(newValue) };
+	}
+
 	return {
 		name,
-		value: validationResult.newValue ?? null,
+		value: newValue ?? null,
 	};
 };
 

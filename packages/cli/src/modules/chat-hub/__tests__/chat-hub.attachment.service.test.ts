@@ -1,11 +1,11 @@
 import type { ChatAttachment } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubAttachmentService', () => {
 	const binaryDataService = mock<BinaryDataService>();
@@ -39,6 +39,17 @@ describe('ChatHubAttachmentService', () => {
 			];
 			expect(() => service.validateAttachments(attachments, true, '*/*')).not.toThrow();
 		});
+
+		it.each(['*', '*/*, application/pdf'])(
+			'should allow any file when allowedFilesMimeTypes contains %s',
+			(allowedFilesMimeTypes) => {
+				const attachments = [makeAttachment('application/zip')];
+
+				expect(() =>
+					service.validateAttachments(attachments, true, allowedFilesMimeTypes),
+				).not.toThrow();
+			},
+		);
 
 		it('should allow any file when allowedFilesMimeTypes is empty', () => {
 			const attachments = [makeAttachment('image/png'), makeAttachment('audio/mp3')];

@@ -54,6 +54,7 @@ export async function runChat(options: RunChatOptions): Promise<ScenarioTrace> {
 	);
 
 	try {
+		await client.ensureThread(threadId);
 		await delay(SSE_SETTLE_DELAY_MS);
 		await client.sendMessage(threadId, prompt);
 

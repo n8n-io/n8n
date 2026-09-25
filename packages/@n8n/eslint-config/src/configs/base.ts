@@ -17,7 +17,6 @@ export const baseConfig = tseslint.config(
 		'dist/**',
 		'eslint.config.mjs',
 		'tsup.config.ts',
-		'jest.config.js',
 		'vite.config.ts',
 		'vitest.config.ts',
 	]),
@@ -43,6 +42,15 @@ export const baseConfig = tseslint.config(
 		},
 		settings: {
 			'import-x/resolver-next': [createTypeScriptImportResolver()],
+			// Neutralize the string-based parser mapping added by import-x's TS preset.
+			// A string parser path makes import-x re-`require('@typescript-eslint/parser')`
+			// when parsing imported modules, which resolves a parser copy peered to the
+			// leaf package's tsgo `typescript` (no programmatic API in TS7) and crashes
+			// reading `ts.Extension.Cjs`. ESLint deep-merges settings, so we can't drop
+			// the key — instead empty its extension list so import-x matches nothing here
+			// and falls back to the already-loaded parser object from languageOptions
+			// (backed by TS6).
+			'import-x/parsers': { '@typescript-eslint/parser': [] },
 		},
 		rules: {
 			// ******************************************************************
@@ -76,13 +84,6 @@ export const baseConfig = tseslint.config(
 			 * https://eslint.org/docs/latest/rules/no-void
 			 */
 			'no-void': ['error', { allowAsStatement: true }],
-
-			/**
-			 * https://eslint.org/docs/latest/rules/indent
-			 *
-			 * Delegated to Prettier.
-			 */
-			indent: 'off',
 
 			/**
 			 * https://eslint.org/docs/latest/rules/no-constant-binary-expression
@@ -158,7 +159,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
 			 */
-			'@typescript-eslint/consistent-type-imports': 'error',
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
 			'@typescript-eslint/consistent-type-exports': 'error',
 
@@ -176,45 +177,6 @@ export const baseConfig = tseslint.config(
 						delimiter: 'semi',
 						requireLast: false,
 					},
-				},
-			],
-
-			// Not needed because we use Biome formatting
-			'@stylistic/ident': 'off',
-
-			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
-			 */
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'default',
-					format: ['camelCase'],
-				},
-				{
-					selector: 'import',
-					format: ['camelCase', 'PascalCase'],
-				},
-				{
-					selector: 'variable',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'property',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'typeLike',
-					format: ['PascalCase'],
-				},
-				{
-					selector: ['method', 'function', 'parameter'],
-					format: ['camelCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
 				},
 			],
 
@@ -259,11 +221,6 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/no-unused-expressions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
-			 */
-			'@typescript-eslint/prefer-nullish-coalescing': 'error',
-
-			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-optional-chain.md
 			 */
 			'@typescript-eslint/prefer-optional-chain': 'error',
@@ -298,26 +255,6 @@ export const baseConfig = tseslint.config(
 			'import-x/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
-			 */
-			'import-x/no-default-export': 'error',
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
-			 */
-			'import-x/order': [
-				'error',
-				{
-					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
-					},
-					groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
-					'newlines-between': 'always',
-				},
-			],
-
-			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
 			 */
 			'import-x/no-duplicates': 'error',
@@ -333,6 +270,27 @@ export const baseConfig = tseslint.config(
 			'import-x/default': 'off',
 			'import-x/no-named-as-default-member': 'off',
 			'import-x/no-unresolved': 'off',
+
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{
+					devDependencies: [
+						'**/test/**',
+						'**/__tests__/**',
+						'**/*.test.ts',
+						'**/*.test.utils.ts',
+						'**/*.spec.ts',
+						'**/integration-tests/**',
+						'**/test-utils/**',
+						'**/*.config.ts',
+						'**/*.config.js',
+						'**/scripts/*.ts',
+						'**/scripts/*.js',
+						'**/*.stories.ts',
+					],
+					optionalDependencies: false,
+				},
+			],
 
 			// ******************************************************************
 			//                    overrides to base ruleset
@@ -376,18 +334,6 @@ export const baseConfig = tseslint.config(
 			'no-unused-vars': 'off',
 			'@typescript-eslint/no-unused-vars': 'off',
 
-			/**
-			 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
-			 */
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector: 'TSEnumDeclaration:not([const=true])',
-					message:
-						'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
-				},
-			],
-
 			// ----------------------------------
 			//         no-unused-imports
 			// ----------------------------------
@@ -395,7 +341,16 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
 			 */
-			'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'unused-imports/no-unused-imports': 'error',
+
+			/**
+			 * https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/filename-case.md
+			 *
+			 * Set here because 35 packages had each set it for themselves. The
+			 * `frontend` and `nodes` layers turn it off: a Vue component, a
+			 * composable and a node file all carry a meaningful capital letter.
+			 */
+			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 			/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
 			'unicorn/no-unnecessary-await': 'error',
@@ -405,16 +360,49 @@ export const baseConfig = tseslint.config(
 
 			'lodash/path-style': ['error', 'as-needed'],
 			'lodash/import-scope': ['error', 'method'],
+
+			/**
+			 * Rules the repo had already stopped enforcing.
+			 *
+			 * Each of these was switched off or downgraded in ten or more of the
+			 * 72 packages, one config at a time, and every lint script runs with
+			 * `--quiet`, so a downgrade to `warn` enforced nothing either. Turning
+			 * them off here states that once, instead of in fifty places.
+			 *
+			 * To enforce one again, set it to `error` in the package that is ready
+			 * for it; a local upgrade is allowed and is how `naming-convention`
+			 * still runs in twelve packages. Deleting a line from this list is a
+			 * repo-wide change and needs the violations fixed first.
+			 *
+			 * Counted by `scripts/lint-parity/majority.mjs`.
+			 */
+			'@typescript-eslint/naming-convention': 'off',
+			'@typescript-eslint/no-empty-object-type': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unsafe-function-type': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-return': 'off',
+			'@typescript-eslint/prefer-nullish-coalescing': 'off',
+			'@typescript-eslint/require-await': 'off',
+			'@typescript-eslint/unbound-method': 'off',
+			'import-x/no-default-export': 'off',
+			'import-x/order': 'off',
+			'n8n-local-rules/no-uncaught-json-parse': 'off',
+			'no-empty': 'off',
 		},
 	},
 	{
 		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
-			'n8n-local-rules/no-plain-errors': 'off',
-			'@typescript-eslint/unbound-method': 'off',
-			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			// Test code casts mocks into position; the rule's assignability check reads
+			// those casts as redundant and removing them breaks the build.
+			'@typescript-eslint/no-unnecessary-type-assertion': 'off',
+			'n8n-local-rules/no-skipped-tests': 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

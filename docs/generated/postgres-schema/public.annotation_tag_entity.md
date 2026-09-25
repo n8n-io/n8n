@@ -4,27 +4,27 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(16) |  | false | [public.execution_annotation_tags](public.execution_annotation_tags.md) |  |  |
 | name | varchar(24) |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_69dfa041592c30bbc0d4b84aa00 | PRIMARY KEY | PRIMARY KEY (id) |
 | annotation_tag_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | annotation_tag_entity_id_not_null | n | NOT NULL id |
 | annotation_tag_entity_name_not_null | n | NOT NULL name |
 | annotation_tag_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| PK_69dfa041592c30bbc0d4b84aa00 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_69dfa041592c30bbc0d4b84aa00 | CREATE UNIQUE INDEX "PK_69dfa041592c30bbc0d4b84aa00" ON public.annotation_tag_entity USING btree (id) |
 | IDX_ae51b54c4bb430cf92f48b623f | CREATE UNIQUE INDEX "IDX_ae51b54c4bb430cf92f48b623f" ON public.annotation_tag_entity USING btree (name) |
+| PK_69dfa041592c30bbc0d4b84aa00 | CREATE UNIQUE INDEX "PK_69dfa041592c30bbc0d4b84aa00" ON public.annotation_tag_entity USING btree (id) |
 
 ## Relations
 
@@ -34,9 +34,9 @@ erDiagram
 "public.execution_annotation_tags" }o--|| "public.annotation_tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES annotation_tag_entity(id) ON DELETE CASCADE"
 
 "public.annotation_tag_entity" {
+  timestamp_3__with_time_zone createdAt
   varchar_16_ id
   varchar_24_ name
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.execution_annotation_tags" {

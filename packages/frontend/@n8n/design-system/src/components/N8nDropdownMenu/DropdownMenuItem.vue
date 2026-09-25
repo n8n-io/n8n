@@ -1,81 +1,78 @@
 <script setup lang="ts" generic="T = string, D = never">
 import {
+	DropdownMenuCheckboxItem,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubTrigger,
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
-
-import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
+import Icon from '../N8nIcon/Icon.vue';
+import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
+	DropdownMenuWidthKey,
+	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
+	type DropdownMenuSearchMode,
 } from './DropdownMenu.types';
-import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
-
-const SUBMENU_FOCUS_DELAY = 100;
+import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nText from '../N8nText/Text.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
-const props = withDefaults(defineProps<DropdownMenuItemProps<T, D>>(), {
-	loadingItemCount: 3,
-});
-defineSlots<DropdownMenuItemSlots<T, D>>();
+const props = withDefaults(
+	defineProps<
+		DropdownMenuItemProps<T, D> & {
+			htmlId?: string;
+			disablePointerFocus?: boolean;
+			closeOnSelect?: boolean;
+			searchMode?: DropdownMenuSearchMode;
+		}
+	>(),
+	{
+		loadingItemCount: 3,
+		disablePointerFocus: false,
+		checkbox: false,
+		closeOnSelect: true,
+		searchMode: 'internal',
+	},
+);
+const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
 
 const emit = defineEmits<{
 	select: [value: T];
 	search: [searchTerm: string, itemId: T];
 	'update:subMenuOpen': [open: boolean];
+	pointermove: [event: PointerEvent];
 }>();
 
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
+const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
+const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
-const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
+const childrenContainerRef = ref<HTMLElement | null>(null);
+const subContentMaxHeight = ref<string>();
 
-const searchRef = ref<{ focus: () => void } | null>(null);
+const SUB_MENU_ITEM_GLIMPSE_RATIO = 0.5;
+const SUB_MENU_ITEM_ALIGNMENT_TOLERANCE = 2;
 
-const childHasSubMenu = (child: NonNullable<typeof props.children>[number]): boolean => {
-	return (child.children && child.children.length > 0) || !!child.loading || !!child.searchable;
-};
-
-// Keyboard navigation for sub-menu
-const subMenuNavigation = useMenuKeyboardNavigation({
-	items: toRef(() => props.children ?? []),
-	hasSubMenu: childHasSubMenu,
-	onSelect: (_index, child) => {
-		emit('select', child.id);
-		closeSubMenu();
-	},
-	onCloseSubMenu: () => {
-		closeSubMenu();
-	},
-});
-
-const { highlightedIndex: subMenuHighlightedIndex } = subMenuNavigation;
-
-const handleSearchUpdate = (value: string) => {
-	searchTerm.value = value;
-	emit('search', value, props.id);
+const waitForLayout = async () => {
+	await nextTick();
+	await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 };
 
 const handleChildSearch = (term: string, itemId: T) => {
 	emit('search', term, itemId);
-};
-
-const handleSubContentKeydown = (event: KeyboardEvent) => {
-	if (!props.searchable) return;
-
-	subMenuNavigation.handleKeydown(event);
 };
 
 const hasChildren = computed(() => props.children && props.children.length > 0);
@@ -84,27 +81,11 @@ const hasSubMenu = computed(() => hasChildren.value || props.loading || props.se
 const handleSubMenuOpenChange = (open: boolean) => {
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
-
-	if (open && props.searchable) {
-		subMenuNavigation.highlightFirst();
-		setTimeout(() => searchRef.value?.focus(), SUBMENU_FOCUS_DELAY);
-	} else {
-		subMenuNavigation.reset();
-	}
-
-	if (!open && props.searchable) {
-		searchTerm.value = '';
-		emit('search', '', props.id);
-	}
 };
 
 const closeSubMenu = () => {
 	internalSubMenuOpen.value = false;
 	emit('update:subMenuOpen', false);
-	if (props.searchable) {
-		searchTerm.value = '';
-		emit('search', '', props.id);
-	}
 };
 
 const leadingProps = computed(() => ({
@@ -125,19 +106,118 @@ const handleSelect = (value: T) => {
 	emit('select', value);
 };
 
-const handleItemSelect = () => {
-	if (!props.disabled && !hasSubMenu.value) {
-		emit('select', props.id);
+const handleItemSelect = (event: Event) => {
+	if (props.disabled || hasSubMenu.value) return;
+	// Keep the menu open for toggle-style rows (keepOpen) or items opting out of close-on-select.
+	if (props.keepOpen || !props.closeOnSelect) event.preventDefault();
+	emit('select', props.id);
+};
+
+const handlePointerMove = (event: PointerEvent) => {
+	if (props.disablePointerFocus && props.searchMode === 'external') event.preventDefault();
+	emit('pointermove', event);
+};
+
+const openSubMenu = () => {
+	if (props.disabled || internalSubMenuOpen.value) return;
+	handleSubMenuOpenChange(true);
+};
+
+const handleSelectableParentKeydown = (event: KeyboardEvent) => {
+	if (
+		!props.selectable ||
+		props.disabled ||
+		event.key !== 'Enter' ||
+		event.isComposing ||
+		event.keyCode === 229
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('select', props.id);
+};
+
+const handleSelectableParentClick = (event: MouseEvent) => {
+	if (props.disabled) return;
+	event.preventDefault();
+	emit('select', props.id);
+};
+
+const handleSubMenuIndicatorClick = (event: MouseEvent) => {
+	event.preventDefault();
+	openSubMenu();
+	if (props.searchMode === 'external') externalNavigation?.focusTarget();
+};
+
+const handleSubMenuTriggerClick = (event: MouseEvent) => {
+	if (!props.disablePointerFocus || props.searchMode !== 'external') return;
+
+	const action = (event.target as HTMLElement | null)?.closest?.('[data-sub-menu-action]');
+	if (props.selectable && action) return;
+
+	event.preventDefault();
+	openSubMenu();
+	if (props.searchMode === 'external') externalNavigation?.focusTarget();
+};
+
+const handleSubContentFocusOutside = (event: Event) => {
+	if (props.disablePointerFocus) {
+		event.preventDefault();
 	}
 };
 
-// Reset sub-menu highlighted index when children change
-watch(
-	() => props.children,
-	() => {
-		subMenuNavigation.reset();
-	},
-);
+const handleSubContentOpenAutoFocus = (event: Event) => {
+	if (props.searchMode !== 'external') return;
+	event.preventDefault();
+	externalNavigation?.focusTarget();
+};
+
+const handleSubContentCloseAutoFocus = (event: Event) => {
+	if (props.searchMode === 'external') event.preventDefault();
+};
+
+const updateSubContentMaxHeight = async () => {
+	subContentMaxHeight.value = undefined;
+	await waitForLayout();
+
+	const container = childrenContainerRef.value;
+	if (!container || container.scrollHeight <= container.clientHeight) return;
+
+	const items = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+	const containerTop = container.getBoundingClientRect().top;
+	const viewportBottom = container.clientHeight;
+	const itemRects = items.map((item) => {
+		const rect = item.getBoundingClientRect();
+		return {
+			top: rect.top - containerTop,
+			bottom: rect.bottom - containerTop,
+			height: rect.height,
+		};
+	});
+	const hasPartialItem = itemRects.some(
+		({ top, bottom }) =>
+			top < viewportBottom - SUB_MENU_ITEM_ALIGNMENT_TOLERANCE &&
+			bottom > viewportBottom + SUB_MENU_ITEM_ALIGNMENT_TOLERANCE,
+	);
+	if (hasPartialItem) return;
+
+	const lastFullItemIndex = itemRects.findLastIndex(
+		({ bottom }) => bottom <= viewportBottom + SUB_MENU_ITEM_ALIGNMENT_TOLERANCE,
+	);
+	const lastFullItem = itemRects[lastFullItemIndex];
+	const nextItem = itemRects[lastFullItemIndex + 1];
+	if (!lastFullItem || !nextItem) return;
+
+	subContentMaxHeight.value = `${Math.floor(
+		lastFullItem.bottom + nextItem.height * SUB_MENU_ITEM_GLIMPSE_RATIO,
+	)}px`;
+};
+
+const handleResize = () => {
+	void updateSubContentMaxHeight();
+};
 
 // Sync internal state with prop when prop changes (controlled mode)
 watch(
@@ -149,27 +229,49 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(internalSubMenuOpen, (open) => {
+	if (open) {
+		void updateSubContentMaxHeight();
+		window.addEventListener('resize', handleResize);
+	} else {
+		window.removeEventListener('resize', handleResize);
+		subContentMaxHeight.value = undefined;
+	}
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <template>
 	<div ref="itemRef" :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
+		<DropdownMenuLabel v-if="header" :class="$style['section-header']">
+			<N8nText size="small" color="text-light" bold>{{ label }}</N8nText>
+		</DropdownMenuLabel>
+
 		<DropdownMenuSub
-			v-if="hasSubMenu"
+			v-else-if="hasSubMenu"
 			:open="internalSubMenuOpen"
 			@update:open="handleSubMenuOpenChange"
 		>
 			<DropdownMenuSubTrigger
+				:id="htmlId"
+				:data-virtual-highlighted="highlighted ? '' : undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[
 					$style.item,
 					$style['sub-trigger'],
 					props.class,
-					{ 'is-disabled': !!disabled },
-					{ [$style.highlighted]: highlighted },
+					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
 				]"
+				@keydown.capture="handleSelectableParentKeydown"
+				@click.capture="handleSubMenuTriggerClick"
+				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
@@ -183,7 +285,24 @@ watch(
 						{{ icon.value }}
 					</span>
 				</slot>
-				<slot name="item-label" :item="props" :ui="labelProps">
+				<span
+					v-if="selectable"
+					:class="$style['selectable-label']"
+					data-sub-menu-action="select"
+					@click.stop="handleSelectableParentClick"
+				>
+					<slot name="item-label" :item="props" :ui="labelProps">
+						<N8nText
+							:class="$style['item-label']"
+							:title="titleAttr"
+							size="medium"
+							:color="disabled ? 'text-xlight' : 'text-dark'"
+						>
+							{{ label }}
+						</N8nText>
+					</slot>
+				</span>
+				<slot v-else name="item-label" :item="props" :ui="labelProps">
 					<N8nText
 						:class="$style['item-label']"
 						:title="titleAttr"
@@ -193,7 +312,36 @@ watch(
 						{{ label }}
 					</N8nText>
 				</slot>
+				<span
+					v-if="selectable"
+					:class="$style['sub-indicator-action']"
+					data-sub-menu-action="open"
+					@click.stop="handleSubMenuIndicatorClick"
+				>
+					<slot
+						v-if="slots['item-trailing']"
+						name="item-trailing"
+						:item="props"
+						:ui="trailingProps"
+					/>
+					<Icon
+						icon="chevron-right"
+						:class="$style['sub-indicator']"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						size="large"
+					/>
+				</span>
+				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
+					<slot name="item-trailing" :item="props" :ui="trailingProps" />
+					<Icon
+						icon="chevron-right"
+						:class="$style['sub-indicator']"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						size="large"
+					/>
+				</span>
 				<Icon
+					v-else
 					icon="chevron-right"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
@@ -203,79 +351,172 @@ watch(
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					ref="subContentRef"
 					:class="$style['sub-content']"
+					:style="[
+						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
+						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
+						{ '--n8n--dropdown-menu-width': menuWidth },
+					]"
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
-					@keydown="handleSubContentKeydown"
+					@open-auto-focus="handleSubContentOpenAutoFocus"
+					@close-auto-focus="handleSubContentCloseAutoFocus"
+					@focus-outside="handleSubContentFocusOutside"
 				>
-					<N8nDropdownMenuSearch
-						v-if="searchable && !loading"
-						ref="searchRef"
-						:model-value="searchTerm"
-						:placeholder="searchPlaceholder ?? 'Search...'"
-						@update:model-value="handleSearchUpdate"
-						@key:escape="closeSubMenu"
-						@key:navigate="subMenuNavigation.navigate"
-						@key:arrow-left="subMenuNavigation.handleArrowLeft"
-						@key:enter="subMenuNavigation.handleEnter"
-					/>
-
-					<div v-if="loading" :class="$style['loading-container']">
-						<N8nLoading
-							v-for="i in loadingItemCount"
-							:key="i"
-							:rows="1"
-							:class="$style['loading-item']"
-							variant="p"
-						/>
-					</div>
-					<template v-else-if="hasChildren">
-						<div
-							:class="$style['children-container']"
-							data-menu-items
-							@mouseenter="subMenuNavigation.reset"
-						>
-							<template v-for="(child, childIndex) in props.children" :key="child.id">
-								<N8nDropdownMenuItem
-									v-bind="child"
-									:highlighted="searchable && subMenuHighlightedIndex === childIndex"
-									:divided="child.divided && childIndex > 0"
-									@select="handleSelect"
-									@search="handleChildSearch"
+					<DropdownMenuSearchableContent
+						v-if="searchable || searchMode === 'external'"
+						:open="internalSubMenuOpen"
+						:items="children ?? []"
+						:search-placeholder="searchPlaceholder"
+						:search-mode="searchMode"
+						:is-sub-menu="true"
+						@select="handleSelect"
+						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
+						@close="closeSubMenu"
+						@back="closeSubMenu"
+					>
+						<template #default="searchableContent">
+							<div v-if="loading" :class="$style['loading-container']">
+								<N8nLoading
+									v-for="i in loadingItemCount"
+									:key="i"
+									:rows="1"
+									:class="$style['loading-item']"
+									variant="p"
+								/>
+							</div>
+							<template v-else-if="hasChildren">
+								<div
+									ref="childrenContainerRef"
+									:class="$style['children-container']"
+									data-menu-items
 								>
-									<template #item-leading="leadingProps">
-										<slot name="item-leading" v-bind="leadingProps" />
+									<template v-for="(child, childIndex) in props.children" :key="child.id">
+										<N8nDropdownMenuItem
+											v-bind="child"
+											:html-id="searchableContent.getItemDomId(childIndex)"
+											:highlighted="searchableContent.highlightedIndex === childIndex"
+											:sub-menu-open="searchableContent.openSubMenuIndex === childIndex"
+											:disable-pointer-focus="true"
+											:search-mode="searchMode"
+											:divided="child.divided && childIndex > 0"
+											@select="handleSelect"
+											@search="handleChildSearch"
+											@update:sub-menu-open="
+												searchableContent.onSubMenuOpenChange(childIndex, $event)
+											"
+											@pointermove="searchableContent.onItemHover(childIndex)"
+										>
+											<template #item-leading="leadingProps">
+												<slot name="item-leading" v-bind="leadingProps" />
+											</template>
+											<template #item-label="bodyProps">
+												<slot name="item-label" v-bind="bodyProps" />
+											</template>
+											<template #item-trailing="trailingProps">
+												<slot name="item-trailing" v-bind="trailingProps" />
+											</template>
+										</N8nDropdownMenuItem>
 									</template>
-									<template #item-label="bodyProps">
-										<slot name="item-label" v-bind="bodyProps" />
-									</template>
-									<template #item-trailing="trailingProps">
-										<slot name="item-trailing" v-bind="trailingProps" />
-									</template>
-								</N8nDropdownMenuItem>
+								</div>
 							</template>
-						</div>
-					</template>
+							<div v-else :class="$style['empty-state']">No items</div>
+						</template>
+					</DropdownMenuSearchableContent>
 
-					<!-- Empty state when search returns no results -->
-					<div v-else-if="searchable && searchTerm" :class="$style['empty-state']">No results</div>
+					<template v-else>
+						<div v-if="loading" :class="$style['loading-container']">
+							<N8nLoading
+								v-for="i in loadingItemCount"
+								:key="i"
+								:rows="1"
+								:class="$style['loading-item']"
+								variant="p"
+							/>
+						</div>
+						<template v-else-if="hasChildren">
+							<div ref="childrenContainerRef" :class="$style['children-container']" data-menu-items>
+								<template v-for="(child, childIndex) in props.children" :key="child.id">
+									<N8nDropdownMenuItem
+										v-bind="child"
+										:divided="child.divided && childIndex > 0"
+										:search-mode="searchMode"
+										@select="handleSelect"
+										@search="handleChildSearch"
+									>
+										<template #item-leading="leadingProps">
+											<slot name="item-leading" v-bind="leadingProps" />
+										</template>
+										<template #item-label="bodyProps">
+											<slot name="item-label" v-bind="bodyProps" />
+										</template>
+										<template #item-trailing="trailingProps">
+											<slot name="item-trailing" v-bind="trailingProps" />
+										</template>
+									</N8nDropdownMenuItem>
+								</template>
+							</div>
+						</template>
+					</template>
 				</DropdownMenuSubContent>
 			</DropdownMenuPortal>
 		</DropdownMenuSub>
 
-		<!-- Regular item without children -->
-		<DropdownMenuItem
-			v-else
+		<!-- Checkbox item without children -->
+		<DropdownMenuCheckboxItem
+			v-else-if="checkbox"
+			:id="htmlId"
+			:model-value="checked"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[
 				$style.item,
 				props.class,
-				{ 'is-disabled': !!disabled },
-				{ [$style.highlighted]: highlighted },
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
 			]"
+			@pointermove.capture="handlePointerMove"
+			@select="handleItemSelect"
+		>
+			<slot name="item-leading" :item="props" :ui="leadingProps">
+				<Icon
+					v-if="icon?.type === 'icon'"
+					:icon="icon.value"
+					:class="[$style['item-leading'], $style.icon]"
+					:color="disabled ? 'text-xlight' : 'text-light'"
+					size="large"
+				/>
+				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
+					{{ icon.value }}
+				</span>
+			</slot>
+			<slot name="item-label" :item="props" :ui="labelProps">
+				<N8nText
+					:class="$style['item-label']"
+					:title="titleAttr"
+					size="medium"
+					:color="disabled ? 'text-xlight' : 'text-dark'"
+				>
+					{{ label }}
+				</N8nText>
+			</slot>
+			<slot name="item-trailing" :item="props" :ui="trailingProps" />
+		</DropdownMenuCheckboxItem>
+
+		<!-- Regular item without children -->
+		<DropdownMenuItem
+			v-else
+			:id="htmlId"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
+			:disabled="disabled"
+			:data-test-id="testId"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -313,34 +554,43 @@ watch(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/floating-item' as floating-item;
+@use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
+
 .wrapper {
 	display: contents;
 }
 
 .children-container {
 	padding: var(--spacing--4xs);
-	max-height: var(--reka-dropdown-menu-content-available-height);
+	max-height: inherit;
 	overflow-y: auto;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+	mask-image: linear-gradient(
+		to bottom,
+		black 0,
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	);
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--3xs);
+	user-select: none;
 }
 
 .item {
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	border-radius: var(--radius--2xs);
-	display: flex;
-	align-items: center;
-	min-height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
+	@include floating-item.floating-item;
+
 	color: var(--text-color);
-	gap: var(--spacing--2xs);
-	outline: none;
 
 	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
-		&.highlighted {
+		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
 			cursor: pointer;
 		}
@@ -351,15 +601,37 @@ watch(
 		cursor: not-allowed;
 	}
 
-	:global([data-menu-content]:hover) &.highlighted:not(:hover),
-	:global([data-menu-items]:hover) &.highlighted:not(:hover) {
-		background-color: transparent;
+	&.destructive.destructive:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[data-virtual-highlighted] {
+			.item-label.item-label {
+				color: var(--text-color--danger);
+			}
+
+			.icon.icon,
+			.item-check.item-check,
+			.sub-indicator.sub-indicator {
+				color: var(--icon-color--danger) !important;
+			}
+		}
+	}
+
+	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
+		&:hover,
+		&[data-highlighted] {
+			background-color: transparent;
+		}
 	}
 }
 
 .sub-trigger {
-	&[data-state='open'] {
-		background-color: var(--background--active);
+	&:not([data-disabled]) {
+		&[data-virtual-highlighted],
+		&[data-state='open'] {
+			background-color: var(--background--hover);
+			cursor: pointer;
+		}
 	}
 }
 
@@ -369,12 +641,44 @@ watch(
 	color: var(--color--text--tint-1);
 }
 
+.selectable-label {
+	display: flex;
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.sub-indicator-action {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.sub-indicator-action .item-trailing,
+.sub-indicator-action .sub-indicator {
+	margin-left: 0;
+}
+
 .sub-content {
-	min-width: 160px;
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
-	z-index: 999999;
+	z-index: var.$index-popper;
+	width: fit-content;
+	min-width: calc(var(--n8n--dropdown-menu-width, 24rem) / 4);
+	max-width: var(--n8n--dropdown-menu-width, 24rem);
+	max-height: min(
+		var(--reka-dropdown-menu-content-available-height),
+		var(--n8n-dropdown-sub-max-height, 75vh)
+	);
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	overflow: hidden;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .item-leading {

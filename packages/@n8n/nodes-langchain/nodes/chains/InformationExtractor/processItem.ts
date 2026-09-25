@@ -5,6 +5,7 @@ import type { OutputFixingParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import { toParserInputText } from '@utils/output_parsers/parserInput';
 import { getTracingConfig } from '@utils/tracing';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
@@ -44,7 +45,11 @@ export async function processItem(
 		inputPrompt,
 	];
 	const prompt = ChatPromptTemplate.fromMessages(messages);
-	const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(ctx));
+	const chain = prompt
+		.pipe(llm)
+		.pipe(toParserInputText)
+		.pipe(parser)
+		.withConfig(getTracingConfig(ctx));
 
 	try {
 		return await chain.invoke(messages);

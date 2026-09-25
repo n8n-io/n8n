@@ -104,6 +104,62 @@
 			"id": 9,
 			"name": "If/Switch branch wired directly to multi-input merge",
 			"success": true
+		},
+		{
+			"id": 10,
+			"name": "Node groups - linear chain with a grouped section",
+			"success": true
+		},
+		{
+			"id": 11,
+			"name": "Lint: Code node network call",
+			"success": true,
+			"expectedLintIssues": [{ "code": "CODE_NODE_NETWORK_CALL" }]
+		},
+		{
+			"id": 12,
+			"name": "Lint: unsolicited sticky note",
+			"success": true,
+			"expectedLintIssues": [{ "code": "SDK_UNSOLICITED_STICKY" }]
+		},
+		{
+			"id": 13,
+			"name": "Lint: Python Code node network import",
+			"success": true,
+			"expectedLintIssues": [{ "code": "CODE_NODE_NETWORK_CALL" }]
+		},
+		{
+			"id": 14,
+			"name": "Structured Output Parser: JSON Schema pasted as the example",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD",
+					"nodeName": "Structured Output Parser"
+				}
+			]
+		},
+		{
+			"id": 15,
+			"name": "Structured Output Parser: object-valued example",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING",
+					"nodeName": "Structured Output Parser"
+				}
+			]
+		},
+		{
+			"id": 16,
+			"name": "Structured Output Parser: example is not valid JSON",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID",
+					"nodeName": "Structured Output Parser"
+				}
+			]
 		}
 	]
 }

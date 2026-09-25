@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 export class QuickConnectModule implements ModuleInterface {
 	async init() {
 		await this.registerHandlers();
-		await import('./quick-connect.controller');
+		await import('./quick-connect.controller.js');
 	}
 
 	/**
@@ -16,7 +16,7 @@ export class QuickConnectModule implements ModuleInterface {
 	 * Note: backendFlowConfig is intentionally excluded from the response to keep it server-side only.
 	 */
 	async settings() {
-		const { QuickConnectConfig } = await import('./quick-connect.config');
+		const { QuickConnectConfig } = await import('./quick-connect.config.js');
 		const { options } = Container.get(QuickConnectConfig);
 		// Strip backendFlowConfig before sending options to frontend
 		return {
@@ -27,7 +27,7 @@ export class QuickConnectModule implements ModuleInterface {
 	}
 
 	private async registerHandlers() {
-		const { QuickConnectService } = await import('./quick-connect.service');
+		const { QuickConnectService } = await import('./quick-connect.service.js');
 		const quickConnectService = Container.get(QuickConnectService);
 		await quickConnectService.registerHandlers();
 	}

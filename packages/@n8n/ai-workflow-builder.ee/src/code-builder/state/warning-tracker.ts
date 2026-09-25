@@ -14,11 +14,13 @@ import type { ValidationWarning } from '../types';
  *
  * The key format is: code|nodeName|parameterPath
  * This allows deduplication by location rather than message content.
+ * Exported so other consumers that diff warning sets (e.g. the MCP
+ * update_workflow tool) share the same identity rule.
  *
  * @param warning - The warning to generate a key for
  * @returns A unique string key
  */
-function getWarningKey(warning: ValidationWarning): string {
+export function getWarningKey(warning: ValidationWarning): string {
 	return `${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`;
 }
 

@@ -4,64 +4,95 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
+import { escapeODataValue } from '@utils/query-escaping';
+
+import { getExcelCredentialType, microsoftApiRequest } from '../transport';
+
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
+
+const WORKBOOK_EXTENSIONS = ['.xlsx', '.xlsm'];
+
+type DriveItem = {
+	id?: string;
+	name?: string;
+	webUrl?: string;
+	file?: IDataObject;
+};
+
+type DriveSearchResponse = {
+	value?: DriveItem[];
+	'@odata.nextLink'?: string;
+};
+
+function workbookExtension(item: DriveItem): string | undefined {
+	if (item.file === undefined) return undefined;
+	const name = (item.name ?? '').toLowerCase();
+	return WORKBOOK_EXTENSIONS.find((extension) => name.endsWith(extension));
+}
 
 export async function searchWorkbooks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
-	const extensionFilter = fileExtensions.join(' OR ');
-
-	const q = filter || extensionFilter;
-
-	let response: IDataObject = {};
-
-	if (paginationToken) {
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			'',
-			undefined,
-			undefined,
-			paginationToken, // paginationToken contains the full URL
-		);
-	} else {
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			`/drive/root/search(q='${q}')`,
-			undefined,
+	if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
+		// App-only Graph can't search a drive — steer the user to "By ID".
+		throw new NodeOperationError(
+			this.getNode(),
+			'Search is not supported with the Service Principal credential',
 			{
-				select: 'id,name,webUrl',
-				$top: 100,
+				description:
+					'App-only Microsoft Graph cannot search a drive. Switch the Workbook field to "By ID" and paste the workbook ID, or use an OAuth2 credential.',
 			},
 		);
 	}
+	const trimmed = filter?.trim() ?? '';
+	const q = trimmed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : trimmed;
+	const encodedQuery = trimmed === '' ? q : encodeURIComponent(escapeODataValue(q));
 
-	if (response.value && filter) {
-		response.value = (response.value as IDataObject[]).filter((workbook: IDataObject) => {
-			return fileExtensions.some((extension) => (workbook.name as string).includes(extension));
+	const response: DriveSearchResponse = paginationToken
+		? await microsoftApiRequest.call(
+				this,
+				'GET',
+				'',
+				undefined,
+				undefined,
+				paginationToken, // paginationToken contains the full URL
+				undefined,
+				0,
+			)
+		: await microsoftApiRequest.call(
+				this,
+				'GET',
+				`/drive/root/search(q='${encodedQuery}')`,
+				undefined,
+				{
+					select: 'id,name,webUrl,file',
+					$top: 100,
+				},
+				undefined,
+				undefined,
+				0,
+			);
+
+	const results: INodeListSearchItems[] = [];
+	for (const item of response.value ?? []) {
+		const extension = workbookExtension(item);
+		if (extension === undefined) continue;
+		const name = item.name ?? '';
+		results.push({
+			name: name.slice(0, -extension.length),
+			value: item.id ?? '',
+			url: item.webUrl,
 		});
 	}
 
 	return {
-		results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
-			for (const extension of fileExtensions) {
-				if ((workbook.name as string).includes(extension)) {
-					workbook.name = (workbook.name as string).replace(extension, '');
-					break;
-				}
-			}
-			return {
-				name: workbook.name as string,
-				value: workbook.id as string,
-				url: workbook.webUrl as string,
-			};
-		}),
-		paginationToken: response['@odata.nextLink'] as string | undefined,
+		results,
+		paginationToken: response['@odata.nextLink'],
 	};
 }
 
@@ -86,6 +117,9 @@ export async function getWorksheetsList(
 		{
 			select: 'id,name',
 		},
+		undefined,
+		undefined,
+		0,
 	);
 
 	return {
@@ -121,6 +155,10 @@ export async function getWorksheetTables(
 		'GET',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	const results: INodeListSearchItems[] = [];
@@ -137,6 +175,9 @@ export async function getWorksheetTables(
 			{
 				select: 'address',
 			},
+			undefined,
+			undefined,
+			0,
 		);
 
 		const [sheetName, sheetRange] = address.split('!' as string);

@@ -15,22 +15,22 @@ CREATE TABLE "chat_hub_tools" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar |  | false | [chat_hub_session_tools](chat_hub_session_tools.md) [chat_hub_agent_tools](chat_hub_agent_tools.md) |  |  |
-| name | varchar(255) |  | false |  |  |  |
-| type | varchar(255) |  | false |  |  |  |
-| typeVersion | REAL |  | false |  |  |  |
-| ownerId | varchar |  | false |  | [user](user.md) |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | definition | TEXT |  | false |  |  |  |
 | enabled | boolean | true | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar |  | false | [chat_hub_agent_tools](chat_hub_agent_tools.md) [chat_hub_session_tools](chat_hub_session_tools.md) |  |  |
+| name | varchar(255) |  | false |  |  |  |
+| ownerId | varchar |  | false |  | [user](user.md) |  |
+| type | varchar(255) |  | false |  |  |  |
+| typeVersion | REAL |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_chat_hub_tools_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -45,45 +45,45 @@ CREATE TABLE "chat_hub_tools" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar
 ```mermaid
 erDiagram
 
-"chat_hub_session_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"chat_hub_session_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_tools" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "chat_hub_tools" {
-  varchar id PK
-  varchar_255_ name
-  varchar_255_ type
-  REAL typeVersion
-  varchar ownerId FK
+  datetime_3_ createdAt
   TEXT definition
   boolean enabled
-  datetime_3_ createdAt
+  varchar id PK
+  varchar_255_ name
+  varchar ownerId FK
+  varchar_255_ type
+  REAL typeVersion
   datetime_3_ updatedAt
-}
-"chat_hub_session_tools" {
-  varchar sessionId PK
-  varchar toolId PK
 }
 "chat_hub_agent_tools" {
   varchar agentId PK
   varchar toolId PK
 }
+"chat_hub_session_tools" {
+  varchar sessionId PK
+  varchar toolId PK
+}
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

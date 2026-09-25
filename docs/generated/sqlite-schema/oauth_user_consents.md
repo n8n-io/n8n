@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "clientId" varchar NOT NULL, "grantedAt" bigint NOT NULL, CONSTRAINT "UQ_083721d99ce8db4033e2958ebb4" UNIQUE ("userId", "clientId"), CONSTRAINT "FK_a651acea2f6c97f8c4514935486" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21e6c3c2d78a097478fae6aaefa" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "clientId" varchar NOT NULL, "grantedAt" bigint NOT NULL, "scope" text NOT NULL, CONSTRAINT "UQ_083721d99ce8db4033e2958ebb4" UNIQUE ("userId", "clientId"), CONSTRAINT "FK_a651acea2f6c97f8c4514935486" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_21e6c3c2d78a097478fae6aaefa" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -15,18 +15,19 @@ CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | INTEGER |  | false |  |  |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  |  |
+| id | INTEGER |  | false |  |  |  |
+| scope | TEXT |  | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_oauth_user_consents_1 | UNIQUE | UNIQUE (userId, clientId) |
 
 ## Indexes
@@ -40,41 +41,43 @@ CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" 
 ```mermaid
 erDiagram
 
-"oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_user_consents" {
-  INTEGER id
-  varchar userId FK
   varchar clientId FK
   bigint grantedAt
-}
-"user" {
-  varchar id PK
-  varchar_255_ email
-  varchar_32_ firstName
-  varchar_32_ lastName
-  varchar password
-  TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
-  varchar_128_ roleSlug FK
+  INTEGER id
+  TEXT scope
+  varchar userId FK
 }
 "oauth_clients" {
-  varchar id PK
-  varchar_255_ name
-  TEXT redirectUris
-  TEXT grantTypes
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
-  varchar_255_ tokenEndpointAuthMethod
   datetime_3_ createdAt
+  TEXT grantTypes
+  varchar id PK
+  boolean isFirstParty
+  varchar_255_ name
+  TEXT redirectUris
+  varchar_255_ tokenEndpointAuthMethod
+  datetime_3_ updatedAt
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

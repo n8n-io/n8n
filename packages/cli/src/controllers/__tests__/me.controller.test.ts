@@ -5,8 +5,9 @@ import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+import type { Mock } from 'vitest';
+import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
@@ -22,12 +23,12 @@ import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
 
-jest.mock('@/sso.ee/sso-helpers', () => ({
-	...jest.requireActual('@/sso.ee/sso-helpers'),
-	getCurrentAuthenticationMethod: jest.fn(),
+vi.mock('@/sso.ee/sso-helpers', async () => ({
+	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers')>('@/sso.ee/sso-helpers')),
+	getCurrentAuthenticationMethod: vi.fn(),
 }));
 
-const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as jest.Mock;
+const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as Mock;
 
 const browserId = 'test-browser-id';
 
@@ -47,7 +48,7 @@ describe('MeController', () => {
 	});
 
 	describe('updateCurrentUser', () => {
-		it('should update the user in the DB, and issue a new cookie', async () => {
+		it('should update the user name in the DB', async () => {
 			const user = {
 				id: '123',
 				email: 'valid@email.com',
@@ -57,7 +58,6 @@ describe('MeController', () => {
 				mfaEnabled: false,
 			} as unknown as User;
 			const payload = new UserUpdateRequestDto({
-				email: 'valid@email.com',
 				firstName: 'John',
 				lastName: 'Potato',
 			});
@@ -65,7 +65,6 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res, payload);
@@ -79,18 +78,8 @@ describe('MeController', () => {
 			expect(userService.update).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
-				fieldsChanged: ['firstName', 'lastName'], // email did not change
+				fieldsChanged: ['firstName', 'lastName'],
 			});
-			expect(res.cookie).toHaveBeenCalledWith(
-				AUTH_COOKIE_NAME,
-				'signed-token',
-				expect.objectContaining({
-					maxAge: expect.any(Number),
-					httpOnly: true,
-					sameSite: 'lax',
-					secure: false,
-				}),
-			);
 
 			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.update', [
 				user.email,
@@ -98,11 +87,49 @@ describe('MeController', () => {
 			]);
 		});
 
+		it('should not change the email when an email field is sent', async () => {
+			const user = {
+				id: '123',
+				email: 'valid@email.com',
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'password',
+				authIdentities: [],
+				role: GLOBAL_OWNER_ROLE,
+				mfaEnabled: false,
+			} as unknown as User;
+			const req = { user, browserId } as unknown as AuthenticatedRequest;
+			const res = mock<Response>();
+			userRepository.findOneByOrFail.mockResolvedValue(user);
+			userService.findUserWithAuthIdentities.mockResolvedValue(user);
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+			// The DTO strips unknown keys, so a stray email never reaches the service.
+			const payload = new UserUpdateRequestDto({
+				firstName: 'Jane',
+				lastName: 'Doe',
+				email: 'new@email.com',
+			} as unknown as UserUpdateRequestDto);
+
+			await controller.updateCurrentUser(req, res, payload);
+
+			expect(userService.update).toHaveBeenCalledWith(user.id, {
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: ['firstName'],
+			});
+		});
+
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
 			const user = {
 				id: '123',
 				password: 'password',
 				email: 'current@email.com',
+				firstName: 'John',
+				lastName: 'Doe',
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
@@ -111,17 +138,17 @@ describe('MeController', () => {
 
 			externalHooks.run.mockImplementationOnce(async (hookName) => {
 				if (hookName === 'user.profile.beforeUpdate') {
-					throw new BadRequestError('Invalid email address');
+					throw new BadRequestError('Invalid name');
 				}
 			});
 
 			const execution = controller.updateCurrentUser(
 				req,
 				mock(),
-				mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
+				mock({ firstName: 'Jane', lastName: 'Doe' }),
 			);
 			await expect(execution).rejects.toThrow(BadRequestError);
-			await expect(execution).rejects.toThrow('Invalid email address');
+			await expect(execution).rejects.toThrow('Invalid name');
 		});
 
 		describe('when user is authenticated via LDAP or OIDC', () => {
@@ -147,7 +174,6 @@ describe('MeController', () => {
 					req,
 					mock(),
 					new UserUpdateRequestDto({
-						email: 'ldap@email.com',
 						firstName: 'Jane',
 						lastName: 'Doe',
 					}),
@@ -181,8 +207,7 @@ describe('MeController', () => {
 					req,
 					mock(),
 					new UserUpdateRequestDto({
-						email: 'new-oidc@email.com',
-						firstName: 'John',
+						firstName: 'Jane',
 						lastName: 'Doe',
 					}),
 				);
@@ -197,14 +222,15 @@ describe('MeController', () => {
 				const user = {
 					id: '123',
 					email: 'valid@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
 					password: 'password',
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
 				} as unknown as User;
 				const payload = new UserUpdateRequestDto({
-					email: 'valid@email.com',
-					firstName: 'John',
+					firstName: 'Jane',
 					lastName: 'Potato',
 				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
@@ -212,7 +238,6 @@ describe('MeController', () => {
 
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -243,7 +268,6 @@ describe('MeController', () => {
 					req,
 					mock(),
 					new UserUpdateRequestDto({
-						email: 'multi@email.com',
 						firstName: 'Jane',
 						lastName: 'Doe',
 					}),
@@ -257,12 +281,9 @@ describe('MeController', () => {
 		});
 
 		describe('when an auth_identity exists but the SSO provider is no longer active', () => {
-			const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
-
 			const setUpdateMocks = (user: User) => {
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 			};
 
@@ -288,7 +309,6 @@ describe('MeController', () => {
 					req,
 					mock(),
 					new UserUpdateRequestDto({
-						email: 'saml@email.com',
 						firstName: 'Jane',
 						lastName: 'Doe',
 					}),
@@ -312,7 +332,6 @@ describe('MeController', () => {
 					mfaEnabled: false,
 				} as unknown as User;
 				const payload = new UserUpdateRequestDto({
-					email: 'saml@email.com',
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
 				});
@@ -327,7 +346,6 @@ describe('MeController', () => {
 				await controller.updateCurrentUser(req, res, payload);
 
 				expect(userService.update).toHaveBeenCalledWith(user.id, {
-					email: 'saml@email.com',
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
 				});
@@ -349,7 +367,6 @@ describe('MeController', () => {
 					mfaEnabled: false,
 				} as unknown as User;
 				const payload = new UserUpdateRequestDto({
-					email: 'ldap@email.com',
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
 				});
@@ -378,7 +395,6 @@ describe('MeController', () => {
 					mfaEnabled: false,
 				} as unknown as User;
 				const payload = new UserUpdateRequestDto({
-					email: 'oidc@email.com',
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
 				});
@@ -391,39 +407,6 @@ describe('MeController', () => {
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(req, res, payload);
-
-				expect(userService.update).toHaveBeenCalled();
-			});
-
-			it('should allow email change for previously-SAML user once SAML is disabled', async () => {
-				const user = {
-					id: '123',
-					email: 'saml-old@email.com',
-					firstName: 'John',
-					lastName: 'Doe',
-					password: passwordHash,
-					authIdentities: [],
-					role: GLOBAL_OWNER_ROLE,
-					mfaEnabled: false,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				const res = mock<Response>();
-
-				userService.findSsoIdentity.mockResolvedValue({
-					providerType: 'saml',
-				} as unknown as AuthIdentity);
-				setUpdateMocks(user);
-
-				await controller.updateCurrentUser(
-					req,
-					res,
-					new UserUpdateRequestDto({
-						email: 'saml-new@email.com',
-						firstName: 'John',
-						lastName: 'Doe',
-						currentPassword: 'old_password',
-					}),
-				);
 
 				expect(userService.update).toHaveBeenCalled();
 			});
@@ -451,7 +434,6 @@ describe('MeController', () => {
 					req,
 					res,
 					new UserUpdateRequestDto({
-						email: 'token@email.com',
 						firstName: 'NewFirst',
 						lastName: 'NewLast',
 					}),
@@ -485,7 +467,6 @@ describe('MeController', () => {
 					req,
 					res,
 					new UserUpdateRequestDto({
-						email: 'unchanged@email.com',
 						firstName: 'Same',
 						lastName: 'Name',
 					}),
@@ -493,221 +474,6 @@ describe('MeController', () => {
 
 				expect(userService.findSsoIdentity).not.toHaveBeenCalled();
 				expect(userService.update).toHaveBeenCalled();
-			});
-		});
-
-		describe('when mfa is enabled', () => {
-			it('should throw BadRequestError if mfa code is missing', async () => {
-				const user = {
-					id: '123',
-					email: 'valid@email.com',
-					password: 'password',
-					authIdentities: [],
-					role: GLOBAL_OWNER_ROLE,
-					mfaEnabled: true,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-
-				const execution = controller.updateCurrentUser(
-					req,
-					mock(),
-					new UserUpdateRequestDto({
-						email: 'new@email.com',
-						firstName: 'John',
-						lastName: 'Potato',
-					}),
-				);
-
-				await expect(execution).rejects.toThrow(BadRequestError);
-				await expect(execution).rejects.toThrow('Two-factor code is required to change email');
-			});
-
-			it('should throw InvalidMfaCodeError if mfa code is invalid', async () => {
-				const user = {
-					id: '123',
-					email: 'valid@email.com',
-					password: 'password',
-					authIdentities: [],
-					role: GLOBAL_OWNER_ROLE,
-					mfaEnabled: true,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				mockMfaService.validateMfa.mockResolvedValue(false);
-
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						mock({
-							email: 'new@email.com',
-							firstName: 'John',
-							lastName: 'Potato',
-							mfaCode: 'invalid',
-						}),
-					),
-				).rejects.toThrow(InvalidMfaCodeError);
-			});
-
-			it("should update the user's email if mfa code is valid", async () => {
-				const user = {
-					id: '123',
-					email: 'valid@email.com',
-					password: 'password',
-					authIdentities: [],
-					role: GLOBAL_OWNER_ROLE,
-					mfaEnabled: true,
-					mfaSecret: 'secret',
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				const res = mock<Response>();
-				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
-				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
-				mockMfaService.validateMfa.mockResolvedValue(true);
-
-				const result = await controller.updateCurrentUser(
-					req,
-					res,
-					mock({
-						email: 'new@email.com',
-						firstName: 'John',
-						lastName: 'Potato',
-						mfaCode: '123456',
-					}),
-				);
-
-				expect(result).toEqual({});
-			});
-		});
-
-		describe('when mfa is disabled and email is being changed', () => {
-			const oldPasswordPlain = 'old_password';
-			const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
-
-			it('should throw BadRequestError if currentPassword is missing', async () => {
-				const user = {
-					id: '123',
-					email: 'michel-old@email.com',
-					password: passwordHash,
-					mfaEnabled: false,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-
-				const execution = controller.updateCurrentUser(
-					req,
-					mock(),
-					new UserUpdateRequestDto({
-						email: 'michel-new@email.com',
-						firstName: 'Michel',
-						lastName: 'n8n',
-					}),
-				);
-
-				await expect(execution).rejects.toThrow(BadRequestError);
-				await expect(execution).rejects.toThrow('Current password is required to change email');
-			});
-
-			it('should throw BadRequestError if currentPassword is not a string', async () => {
-				const user = {
-					id: '123',
-					email: 'michel-old@email.com',
-					password: passwordHash,
-					mfaEnabled: false,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-
-				const execution = controller.updateCurrentUser(req, mock(), {
-					email: 'michel-new@email.com',
-					firstName: 'Michel',
-					lastName: 'n8n',
-					currentPassword: 123 as any,
-				} as any);
-
-				await expect(execution).rejects.toThrow(BadRequestError);
-				await expect(execution).rejects.toThrow('Current password is required to change email');
-			});
-
-			it('should throw BadRequestError if currentPassword is incorrect', async () => {
-				const user = {
-					email: 'michel-old@email.com',
-					password: passwordHash,
-					mfaEnabled: false,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-
-				const execution = controller.updateCurrentUser(
-					req,
-					mock(),
-					mock({
-						email: 'michel-new@email.com',
-						firstName: 'Michel',
-						lastName: 'n8n',
-						currentPassword: 'wrong-password',
-					}),
-				);
-
-				await expect(execution).rejects.toThrow(BadRequestError);
-				await expect(execution).rejects.toThrow(
-					'Unable to update profile. Please check your credentials and try again.',
-				);
-			});
-
-			it('should update the user email if currentPassword is correct', async () => {
-				const user = {
-					email: 'michel-old@email.com',
-					password: passwordHash,
-					mfaEnabled: false,
-					role: GLOBAL_OWNER_ROLE,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				const res = mock<Response>();
-				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
-				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
-
-				const result = await controller.updateCurrentUser(
-					req,
-					res,
-					mock({
-						email: 'michel-new@email.com',
-						firstName: 'Michel',
-						lastName: 'n8n',
-						currentPassword: oldPasswordPlain,
-					}),
-				);
-
-				expect(userService.update).toHaveBeenCalled();
-				expect(result).toEqual({});
-			});
-
-			it('should not require currentPassword when email is not being changed', async () => {
-				const user = {
-					email: 'michel@email.com',
-					password: passwordHash,
-					mfaEnabled: false,
-					role: GLOBAL_OWNER_ROLE,
-				} as unknown as User;
-				const req = { user, browserId } as unknown as AuthenticatedRequest;
-				const res = mock<Response>();
-				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
-				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
-
-				const result = await controller.updateCurrentUser(
-					req,
-					res,
-					new UserUpdateRequestDto({
-						email: 'michel@email.com',
-						firstName: 'Michel',
-						lastName: 'n8n',
-					}),
-				);
-
-				expect(userService.update).toHaveBeenCalled();
-				expect(result).toEqual({});
 			});
 		});
 	});
@@ -779,7 +545,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(
@@ -852,7 +618,7 @@ describe('MeController', () => {
 			} as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(
 				req,
@@ -926,7 +692,7 @@ describe('MeController', () => {
 				} as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
 				const result = await controller.updatePassword(

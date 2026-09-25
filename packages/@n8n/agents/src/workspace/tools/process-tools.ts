@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { raceWithAbort } from '../../sdk/abort';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { SandboxProcessManager } from '../types';
@@ -19,8 +20,8 @@ export function createListProcessesTool(processes: SandboxProcessManager): Built
 				),
 			}),
 		)
-		.handler(async () => {
-			const list = await processes.list();
+		.handler(async (_input, ctx) => {
+			const list = await raceWithAbort(async () => await processes.list(), ctx.abortSignal);
 			return { processes: list };
 		})
 		.build();
@@ -35,8 +36,11 @@ export function createKillProcessTool(processes: SandboxProcessManager): BuiltTo
 			}),
 		)
 		.output(z.object({ killed: z.boolean() }))
-		.handler(async (input) => {
-			const killed = await processes.kill(input.pid);
+		.handler(async (input, ctx) => {
+			const killed = await raceWithAbort(
+				async () => await processes.kill(input.pid),
+				ctx.abortSignal,
+			);
 			return { killed };
 		})
 		.build();

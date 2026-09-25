@@ -20,7 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
-  distribute        Distribute specs across shards using capability-aware bin-packing
+  distribute        Distribute specs across shards using fixture-pool-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -150,20 +150,19 @@ Example:
 
 export function showDiscoverHelp(): void {
 	console.log(`
-Discover - Find test specs and their capabilities via AST analysis
+Discover - Find test specs and worker requirements via AST analysis
 
-Statically discovers spec files and extracts capability tags.
+Statically discovers spec files and resolves capability options from test.use().
 Outputs JSON to stdout. Pipe to jq for human-readable output.
 
 Usage:
   playwright-janitor discover
 
 Output:
-  { specs: [{ path, capabilities }], skipTags }
+  { specs: [{ path, capabilities, services }], skipTags }
 
 Config:
-  skipTags: string[]       Tags that exclude specs (default: [])
-  capabilityPrefix: string Prefix for capability extraction (default: '@capability:')
+  skipTags: string[] Tags that exclude specs (default: [])
 
 Skip detection:
   - test.fixme() and test.skip() are always detected via AST
@@ -177,9 +176,9 @@ Example:
 
 export function showOrchestrateHelp(): void {
 	console.log(`
-Orchestrate - Distribute specs across shards using capability-aware bin-packing
+Orchestrate - Distribute specs across shards using fixture-pool-aware bin-packing
 
-Groups tests by capability to minimize fixture overhead, then uses greedy
+Groups tests by fixture pool to minimize fixture overhead, then uses greedy
 bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
@@ -198,7 +197,7 @@ Config:
   orchestration.maxGroupDuration Max group size before splitting (default: 5min)
 
 Output:
-  { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
+  { shards: [{ shard, specs, testTime, capabilities, services, fixtureCount }], totalTestTime }
 
 Examples:
   playwright-janitor distribute --shards=14 | jq '.shards[0].specs'
@@ -236,45 +235,38 @@ runtime via the DI container by every consuming package's integration tests).
 
 export function showScopeHelp(): void {
 	console.log(`
-Scope - Per-package jest/vitest scope from changed files
+Scope - Per-package vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope [--package-dir=<dir>] [--changed-files=<list>]
 
-  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
-  --changed-files: newline- OR comma-separated repo-root-relative paths.
-                   Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
 
 Output (single line on stdout):
-  SKIP        No in-package files changed
-  RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
-  <files>     Pass to jest --findRelatedTests / vitest related
+  SKIP        No in-package files changed and package not affected upstream
+  RUN_FULL    Config/global trigger changed, package affected by an upstream
+              change, OR no CHANGED_FILES signal (local dev)
+  <files>     Pass to vitest related
 `);
 }
 
 export function showTestScopedHelp(): void {
 	console.log(`
-Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+Test-Scoped - Compute scope and spawn vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
-  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
-  --changed-files: newline- OR comma-separated repo-root-relative paths.
-                   Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
-CI: scopes via jest --findRelatedTests / vitest related --run, or skips
-if the package wasn't touched. Unrecognised flags are forwarded to the
-runner.
+CI: scopes via vitest related --run; runs the full suite when the package is
+affected by an upstream change; skips if the package wasn't touched.
+Unrecognised flags are forwarded to the runner.
 `);
 }
 

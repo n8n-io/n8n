@@ -1,0 +1,10 @@
+/** Ensures `error` is an `Error */
+export function ensureError(error: unknown): Error {
+	return error instanceof Error
+		? error
+		: new Error('Error that was not an instance of Error was thrown', {
+				// We should never throw anything except something that derives from Error
+				// Wrap this into an error, so error-reporter can report it
+				cause: new Error(String(error)),
+			});
+}

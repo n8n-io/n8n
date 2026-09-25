@@ -182,6 +182,10 @@ const formOptions: INodePropertyCollection[] = [
 				// Update ALLOWED_FIELD_TYPES in packages/workflow/src/type-validation.ts when adding new field types
 				options: formElementTypes,
 				required: true,
+				builderHint: {
+					propertyHint:
+						"Valid values: text, number, email, textarea, dropdown, date, file, html, hiddenField, radio, checkbox, password. There is NO 'time' type — use fieldType: 'text' with placeholder 'e.g. 2:30 PM' for time-of-day inputs.",
+				},
 			},
 			{
 				displayName: 'Element Name',

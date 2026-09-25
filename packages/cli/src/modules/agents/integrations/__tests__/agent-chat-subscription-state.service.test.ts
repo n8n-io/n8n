@@ -1,10 +1,12 @@
+import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { StateAdapter, Lock, QueueEntry } from 'chat';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
 import type { AgentChatSubscriptionRepository } from '../../repositories/agent-chat-subscription.repository';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -14,33 +16,33 @@ const slackIntegration: AgentIntegrationConfig = {
 	credentialId: 'cred-1',
 };
 
-function makeDelegate(): jest.Mocked<StateAdapter> {
+function makeDelegate(): Mocked<StateAdapter> {
 	const subscriptions = new Set<string>();
 	const delegate = {
-		connect: jest.fn().mockResolvedValue(undefined),
-		disconnect: jest.fn().mockResolvedValue(undefined),
-		subscribe: jest.fn(async (threadId: string) => {
+		connect: vi.fn().mockResolvedValue(undefined),
+		disconnect: vi.fn().mockResolvedValue(undefined),
+		subscribe: vi.fn(async (threadId: string) => {
 			subscriptions.add(threadId);
 		}),
-		unsubscribe: jest.fn(async (threadId: string) => {
+		unsubscribe: vi.fn(async (threadId: string) => {
 			subscriptions.delete(threadId);
 		}),
-		isSubscribed: jest.fn(async (threadId: string) => subscriptions.has(threadId)),
-		acquireLock: jest.fn(async () => null as Lock | null),
-		appendToList: jest.fn().mockResolvedValue(undefined),
-		delete: jest.fn().mockResolvedValue(undefined),
-		dequeue: jest.fn(async () => null as QueueEntry | null),
-		enqueue: jest.fn(async () => 1),
-		extendLock: jest.fn(async () => true),
-		forceReleaseLock: jest.fn().mockResolvedValue(undefined),
-		get: jest.fn(async () => null),
-		getList: jest.fn(async () => []),
-		queueDepth: jest.fn(async () => 0),
-		releaseLock: jest.fn().mockResolvedValue(undefined),
-		set: jest.fn().mockResolvedValue(undefined),
-		setIfNotExists: jest.fn(async () => true),
+		isSubscribed: vi.fn(async (threadId: string) => subscriptions.has(threadId)),
+		acquireLock: vi.fn(async () => null as Lock | null),
+		appendToList: vi.fn().mockResolvedValue(undefined),
+		delete: vi.fn().mockResolvedValue(undefined),
+		dequeue: vi.fn(async () => null as QueueEntry | null),
+		enqueue: vi.fn(async () => 1),
+		extendLock: vi.fn(async () => true),
+		forceReleaseLock: vi.fn().mockResolvedValue(undefined),
+		get: vi.fn(async () => null),
+		getList: vi.fn(async () => []),
+		queueDepth: vi.fn(async () => 0),
+		releaseLock: vi.fn().mockResolvedValue(undefined),
+		set: vi.fn().mockResolvedValue(undefined),
+		setIfNotExists: vi.fn(async () => true),
 	};
-	return delegate as unknown as jest.Mocked<StateAdapter>;
+	return delegate as unknown as Mocked<StateAdapter>;
 }
 
 function makeService(multiMainEnabled = true) {
@@ -54,10 +56,8 @@ function makeService(multiMainEnabled = true) {
 	} as Partial<GlobalConfig>);
 	const logger = mockLogger();
 	const service = new AgentChatSubscriptionStateService(
-		logger,
 		repository,
-		publisher,
-		globalConfig,
+		new AgentChangePublisher(publisher, globalConfig, logger),
 	);
 
 	return { service, repository, publisher, logger };
@@ -129,7 +129,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('negative-caches DB misses briefly, then retries after the cache expires', async () => {
-		const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+		const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
 		try {
 			const { service, repository } = makeService();
 			repository.isSubscribed.mockResolvedValue(false);
@@ -155,7 +155,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('prunes expired negative-cache entries when recording a new miss', async () => {
-		const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+		const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
 		try {
 			const { service, repository } = makeService();
 			repository.isSubscribed.mockResolvedValue(false);
@@ -379,7 +379,7 @@ describe('AgentChatSubscriptionStateService', () => {
 		);
 		expect(delegate.subscribe).toHaveBeenCalledWith('thread-1');
 		expect(logger.warn).toHaveBeenCalledWith(
-			'[AgentChatSubscriptionStateService] Failed to publish subscription change',
+			'Failed to publish agent-chat-subscription-changed',
 			expect.objectContaining({ threadId: 'thread-1', action: 'subscribe', error: 'redis down' }),
 		);
 	});

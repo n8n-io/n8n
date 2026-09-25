@@ -1,23 +1,44 @@
 <script lang="ts" setup>
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
+import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
+import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
 const props = defineProps<{
 	file?: File;
 	attachment?: InstanceAiAttachment;
 	isRemovable?: boolean;
 }>();
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	remove: [file: File];
+	'remove-resource': [];
+	'update:attachment': [attachment: InstanceAiNodesAttachment];
 }>();
 
 const loading = ref(true);
 
-const mimeType = computed(() => props.file?.type ?? props.attachment?.mimeType ?? '');
-const fileName = computed(() => props.file?.name ?? props.attachment?.fileName ?? '');
+const nodesAttachment = computed(() =>
+	props.attachment?.type === 'nodes' ? props.attachment : undefined,
+);
+// A workflow attachment is a resource reference (no bytes) — rendered as a
+// chip; everything below handles the binary file case.
+const workflowAttachment = computed(() =>
+	props.attachment?.type === 'workflow' ? props.attachment : undefined,
+);
+const agentAttachment = computed(() =>
+	props.attachment?.type === 'agent' ? props.attachment : undefined,
+);
+const fileAttachment = computed(() =>
+	props.attachment?.type === 'file' ? props.attachment : undefined,
+);
+
+const mimeType = computed(() => props.file?.type ?? fileAttachment.value?.mimeType ?? '');
+const fileName = computed(() => props.file?.name ?? fileAttachment.value?.fileName ?? '');
 const isImage = computed(() => mimeType.value.startsWith('image/'));
 
 const objectUrl = computed(() => {
@@ -29,16 +50,16 @@ const objectUrl = computed(() => {
 
 const thumbnailSrc = computed(() => {
 	if (objectUrl.value) return objectUrl.value;
-	if (props.attachment && isImage.value) {
-		return `data:${props.attachment.mimeType};base64,${props.attachment.data}`;
+	if (fileAttachment.value && isImage.value) {
+		return `data:${fileAttachment.value.mimeType};base64,${fileAttachment.value.data}`;
 	}
 	return null;
 });
 
 const fallbackFile = computed(() => {
 	if (props.file) return props.file;
-	if (props.attachment) {
-		return new File([], props.attachment.fileName, { type: props.attachment.mimeType });
+	if (fileAttachment.value) {
+		return new File([], fileAttachment.value.fileName, { type: fileAttachment.value.mimeType });
 	}
 	return new File([], 'unknown');
 });
@@ -61,7 +82,31 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div v-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
+	<NodesAttachmentChips
+		v-if="nodesAttachment"
+		:attachment="nodesAttachment"
+		:is-removable="isRemovable ?? false"
+		@update:attachment="emit('update:attachment', $event)"
+		@remove-all="emit('remove-resource')"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="workflowAttachment"
+		:label="workflowAttachment.name ?? 'Workflow'"
+		icon="workflow"
+		:trailing-icon="workflowAttachment.executionId ? 'play' : undefined"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
+		test-id="attachment-preview-resource"
+		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="agentAttachment"
+		:label="agentAttachment.name ?? 'Agent'"
+		icon="robot"
+		test-id="attachment-preview-resource"
+	/>
+	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
 			<N8nIcon icon="spinner" color="primary" spin size="small" />
 		</div>
@@ -76,7 +121,7 @@ onBeforeUnmount(() => {
 		</button>
 	</div>
 	<ChatFile
-		v-else
+		v-else-if="props.file || fileAttachment"
 		:file="fallbackFile"
 		:is-removable="isRemovable ?? false"
 		@remove="emit('remove', $event)"

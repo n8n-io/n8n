@@ -1,9 +1,12 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
-import { IsObject, IsString, Length } from 'class-validator';
+import { IsObject, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
 import type { ICredentialsDb } from './types-db';
+
+export type CredentialUsageScope = 'project' | 'instance';
 
 @Entity()
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
@@ -13,6 +16,15 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 		message: 'Credential name must be $constraint1 to $constraint2 characters long.',
 	})
 	name: string;
+
+	/** User-supplied note on what the credential is for. Blank is stored as `null`. */
+	@Column({ type: 'text', nullable: true })
+	@IsOptional()
+	@IsString({ message: 'Credential `description` must be of type string.' })
+	@MaxLength(CREDENTIAL_DESCRIPTION_MAX_LENGTH, {
+		message: 'Credential description must be at most $constraint1 characters long.',
+	})
+	description: string | null;
 
 	@Column('text')
 	@IsObject()
@@ -60,6 +72,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 */
 	@Column({ type: 'varchar', nullable: true })
 	resolverId: string | null;
+
+	@Column({ type: 'varchar', length: 16, default: 'project' })
+	usageScope: CredentialUsageScope;
 
 	toJSON() {
 		const { shared, ...rest } = this;

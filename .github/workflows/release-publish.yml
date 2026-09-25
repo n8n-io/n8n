@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine track from package version number
@@ -43,7 +43,7 @@ jobs:
     needs: [determine-version-info]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: npm
     permissions:
       id-token: write
@@ -61,15 +61,15 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Install script dependencies
-        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
 
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
 
       - name: Dry-run publishing
         run: |
-          pnpm --filter n8n publish --no-git-checks --dry-run
-          pnpm publish -r --filter '!n8n' --no-git-checks --dry-run
+          "$PNPM_HOME/pnpm" --filter n8n publish --no-git-checks --dry-run
+          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --no-git-checks --dry-run
 
       - name: Pre publishing changes
         run: |
@@ -90,13 +90,14 @@ jobs:
           if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
             PUBLISH_TAG="release-${PUBLISH_TAG}"
           fi
-          pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
+          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
       # If we don't use the --tag rc, all releases will default to "latest".
       - name: Publish n8n to NPM with rc tag
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-        run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
+        run: |
+          "$PNPM_HOME/pnpm" --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc
@@ -109,6 +110,7 @@ jobs:
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+      create_attestations: true
     secrets: inherit
 
   build-daytona-snapshot:
@@ -253,4 +255,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel C036AELNMV0 \
-            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please Go to the actions page and retry failed runs to recover a flake in the release pipeline.'
+            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please go to the actions page and retry failed runs to recover a flake in the release pipeline. <!subteam^S08FYH9C9ME|@release-captain>'

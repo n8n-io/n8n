@@ -499,7 +499,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
 
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
+	/**
+	 * `markDirty: false` is for writes that mirror already-saved server state:
+	 * the document changes, but there is nothing new to save.
+	 */
+	function updateNodeProperties(
+		updateInformation: INodeUpdatePropertiesInformation,
+		{ markDirty = true }: { markDirty?: boolean } = {},
+	): void {
 		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
 
 		if (nodeIndex !== -1) {
@@ -509,7 +516,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
-				if (changed) {
+				if (changed && markDirty) {
 					void onStateDirty.trigger();
 				}
 			}

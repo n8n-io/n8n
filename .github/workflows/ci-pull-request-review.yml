@@ -1,8 +1,11 @@
 name: 'CI: Pull Request Review'
 
+# "CI: Owners Required Reviews" listens to this workflow's completion
+# (workflow_run) to re-evaluate fork PRs: a fork's review event runs without
+# secrets, a workflow_run does not. Keep the trigger on every review event.
 on:
   pull_request_review:
-    types: [submitted]
+    types: [submitted, dismissed]
 
 concurrency:
   group: ci-review-${{ github.event.pull_request.number }}
@@ -36,7 +39,7 @@ jobs:
             design-system:
               packages/frontend/@n8n/design-system/**
               packages/frontend/@n8n/storybook/**
-              .github/workflows/test-visual-chromatic.yml
+              .github/workflows/release-chromatic.yml
 
   chromatic:
     name: Chromatic
@@ -47,7 +50,7 @@ jobs:
     if: >-
       needs.filter.outputs.design_system == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/test-visual-chromatic.yml
+    uses: ./.github/workflows/release-chromatic.yml
     with:
       ref: ${{ needs.filter.outputs.commit_sha }}
     secrets: inherit

@@ -15,33 +15,33 @@ CREATE TABLE "user_api_keys" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" va
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
-| label | varchar(100) |  | false |  |  |  |
 | apiKey | varchar |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| scopes | TEXT |  | true |  |  |  |
 | audience | varchar | 'public-api' | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| label | varchar(100) |  | false |  |  |  |
 | lastUsedAt | datetime(3) |  | true |  |  |  |
+| scopes | TEXT |  | true |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_user_api_keys_3 | UNIQUE | UNIQUE (userId, label) |
-| sqlite_autoindex_user_api_keys_2 | UNIQUE | UNIQUE (apiKey) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_user_api_keys_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_user_api_keys_2 | UNIQUE | UNIQUE (apiKey) |
+| sqlite_autoindex_user_api_keys_3 | UNIQUE | UNIQUE (userId, label) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_user_api_keys_3 | UNIQUE (userId, label) |
-| sqlite_autoindex_user_api_keys_2 | UNIQUE (apiKey) |
 | sqlite_autoindex_user_api_keys_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_user_api_keys_2 | UNIQUE (apiKey) |
+| sqlite_autoindex_user_api_keys_3 | UNIQUE (userId, label) |
 
 ## Relations
 
@@ -51,32 +51,32 @@ erDiagram
 "user_api_keys" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "user_api_keys" {
-  varchar_36_ id PK
-  varchar userId FK
-  varchar_100_ label
   varchar apiKey
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT scopes
   varchar audience
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_100_ label
   datetime_3_ lastUsedAt
+  TEXT scopes
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

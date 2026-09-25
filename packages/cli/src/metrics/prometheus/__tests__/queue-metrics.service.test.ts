@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -8,7 +9,7 @@ import { PrometheusQueueMetricsService } from '../queue-metrics.service';
 
 import type { EventService } from '@/events/event.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusQueueMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -21,8 +22,8 @@ describe('PrometheusQueueMetricsService', () => {
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const eventService = mock<EventService>();
 	let service: PrometheusQueueMetricsService;
-	let mockGaugeSet: jest.Mock;
-	let mockCounterInc: jest.Mock;
+	let mockGaugeSet: Mock;
+	let mockCounterInc: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
@@ -38,14 +39,14 @@ describe('PrometheusQueueMetricsService', () => {
 			instanceSettings,
 			eventService,
 		);
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -135,7 +136,7 @@ describe('PrometheusQueueMetricsService', () => {
 		it('should update gauges and counters with correct values from job counts', () => {
 			service.init();
 			const handler = getEventHandler('job-counts-updated');
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 			handler!({ waiting: 5, active: 3, completed: 10, failed: 2 });

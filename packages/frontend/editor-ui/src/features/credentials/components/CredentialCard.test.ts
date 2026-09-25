@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { setActivePinia } from 'pinia';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -8,7 +9,7 @@ import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -33,7 +34,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const showMessage = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage,
 		showError,
@@ -61,6 +62,7 @@ describe('CredentialCard', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		projectsStore = useProjectsStore();
 		settingsStore = useSettingsStore();
 		settingsStore.settings = {
@@ -73,6 +75,35 @@ describe('CredentialCard', () => {
 		mockAuthorize.mockReset();
 		mockIsOAuthCredentialType.mockReset();
 		mockIsOAuthCredentialType.mockReturnValue(true);
+	});
+
+	it.each([false, undefined])('hides stored descriptions when the flag is %s', (enabled) => {
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(Boolean(enabled));
+		const data = createCredential({ description: 'Stored description' });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
+		expect(data.description).toBe('Stored description');
+	});
+
+	it('shows the full description as plain text on hover', async () => {
+		const description = '<b>Production reports</b>. '.repeat(15);
+		const data = createCredential({ description });
+		const { getByTestId, findByTestId } = renderComponent({ props: { data } });
+		const descriptionText = getByTestId('credential-card-description');
+
+		expect(descriptionText).toHaveTextContent(description.trim());
+		await userEvent.hover(descriptionText);
+		const tooltip = await findByTestId('tooltip-content');
+		expect(tooltip).toHaveTextContent(description.trim());
+		expect(tooltip.querySelector('b')).toBeNull();
+	});
+
+	it.each([undefined, null, ''])('omits an empty description (%s)', (description) => {
+		const data = createCredential({ description });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
 	});
 
 	it('should render name and home project name', () => {
@@ -129,6 +160,42 @@ describe('CredentialCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).toHaveTextContent('Move');
+	});
+
+	it('should hide the Delete action for an end-user credential without the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Delete');
+	});
+
+	it('should show the Delete action for an end-user credential with the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete', 'credential:createEndUser'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Delete');
 	});
 
 	it('should set readOnly variant based on prop', () => {
@@ -341,7 +408,7 @@ describe('CredentialCard', () => {
 				id: 'cred-1',
 				isResolvable: true,
 				connectedByMe: false,
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				homeProject: { name: 'Test Project' },
 				...overrides,
 			});
@@ -355,12 +422,24 @@ describe('CredentialCard', () => {
 			expect(queryByTestId('credential-card-not-connected')).not.toBeInTheDocument();
 		});
 
-		it('should hide the Connect button when the user lacks update permission', () => {
+		it('should hide the Connect button when the user lacks connect permission', () => {
 			const { queryByTestId } = renderComponent({
-				props: { data: privateUnconnectedData({ scopes: ['credential:read'] }) },
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:update'] }),
+				},
 			});
 
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+		});
+
+		it('should show the Connect button for a user with only the connect permission', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:connect'] }),
+				},
+			});
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
 		});
 
 		it('should still show project badge alongside the Connect button', () => {

@@ -1,3 +1,4 @@
+import { isSuppressed } from '@n8n/rules-engine';
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
@@ -28,6 +29,13 @@ import { truncateText } from '../utils/ast-helpers.js';
  * - page.goto('/workflow/123')
  * - this.page.goto(`/workflow/${id}`)
  * - n8n.page.goto(ROUTES.NEW_WORKFLOW_PAGE)
+ *
+ * Legitimate raw navigations (e.g. benchmarks measuring cold load time, or
+ * tests exercising routing/URL behaviour directly) can opt out with a
+ * directive comment on the preceding line, ideally with a reason:
+ *
+ *   // janitor-disable-next-line no-raw-editor-navigation -- measures cold load
+ *   await n8n.page.goto(`/workflow/${workflowId}`);
  */
 export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'no-raw-editor-navigation';
@@ -56,6 +64,7 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 		const violations: Violation[] = [];
 
 		for (const file of files) {
+			const lines = file.getFullText().split('\n');
 			const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
 
 			for (const call of calls) {
@@ -75,6 +84,10 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 
 				const callText = call.getText();
 				if (ruleAllows(this.id, callText)) {
+					continue;
+				}
+
+				if (isSuppressed(this, lines, call)) {
 					continue;
 				}
 

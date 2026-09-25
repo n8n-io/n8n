@@ -1,4 +1,4 @@
-import { getJwtExpiry } from '@n8n/utils';
+import { getJwtExpiry } from '@n8n/utils/get-jwt-expiry';
 import { UnexpectedError } from 'n8n-workflow';
 
 interface CachedToken {

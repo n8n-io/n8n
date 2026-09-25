@@ -15,18 +15,18 @@ CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRI
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
-| lastObservedMessageId | varchar(36) |  | false |  |  |  |
-| lastObservedAt | datetime(3) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| lastObservedAt | datetime(3) |  | false |  |  |  |
+| lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | sqlite_autoindex_instance_ai_observation_cursors_1 | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 
 ## Indexes
@@ -43,19 +43,19 @@ erDiagram
 "instance_ai_observation_cursors" |o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_observation_cursors" {
-  varchar observationScopeId PK
-  varchar_36_ lastObservedMessageId
-  datetime_3_ lastObservedAt
   datetime_3_ createdAt
+  datetime_3_ lastObservedAt
+  varchar_36_ lastObservedMessageId
+  varchar observationScopeId PK
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

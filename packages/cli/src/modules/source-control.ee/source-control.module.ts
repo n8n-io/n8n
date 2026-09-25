@@ -9,9 +9,9 @@ import { Container } from '@n8n/di';
 })
 export class SourceControlModule implements ModuleInterface {
 	async init() {
-		await import('./source-control.controller.ee');
+		await import('./source-control.controller.ee.js');
 
-		const { SourceControlService } = await import('./source-control.service.ee');
+		const { SourceControlService } = await import('./source-control.service.ee.js');
 		await Container.get(SourceControlService).start();
 	}
 }

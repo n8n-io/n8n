@@ -76,7 +76,7 @@ class TaskRunner:
         self,
         config: TaskRunnerConfig,
     ):
-        self.runner_id = nanoid()
+        self.runner_id = config.runner_id or nanoid()
         self.name = RUNNER_NAME
         self.config = config
 
@@ -94,6 +94,7 @@ class TaskRunner:
             external_allow=config.external_allow,
             builtins_deny=config.builtins_deny,
             runner_env_deny=config.env_deny,
+            allow_transitive_imports=config.allow_transitive_imports,
         )
         self.analyzer = TaskAnalyzer(self.security_config)
         self.logger = logging.getLogger(__name__)

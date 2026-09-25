@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BaseModal } from './BaseModal';
@@ -18,8 +18,29 @@ export class CredentialModal extends BaseModal {
 		super(root.page());
 	}
 
-	getModal(): Locator {
+	static fromPage(page: Page): CredentialModal {
+		const content = page.getByTestId('editCredential-modal');
+		return new CredentialModal(page.getByRole('dialog').filter({ has: content }));
+	}
+
+	/**
+	 * Scope every inherited `BaseModal` method (`close`, `getCloseButton`, `getText`, …)
+	 * to this modal's root. The credential modal is frequently stacked on top of another
+	 * dialog (e.g. the chat-hub provider settings modal), so the default page-wide
+	 * `page.getByRole('dialog')` container would resolve the wrong dialog.
+	 */
+	get container(): Locator {
 		return this.root;
+	}
+
+	getModal(): Locator {
+		return this.root.getByTestId('editCredential-modal');
+	}
+
+	async close(): Promise<void> {
+		const closeButton = this.getCloseButton();
+		if (!(await closeButton.isVisible())) return;
+		await closeButton.click();
 	}
 
 	getCredentialName(): Locator {
@@ -111,13 +132,6 @@ export class CredentialModal extends BaseModal {
 	async save(): Promise<void> {
 		await this.getSaveButton().click();
 		await this.waitForSaveComplete();
-	}
-
-	async close(): Promise<void> {
-		const closeBtn = this.root.locator('.el-dialog__close').first();
-		if (await closeBtn.isVisible()) {
-			await closeBtn.click();
-		}
 	}
 
 	/**
@@ -217,6 +231,28 @@ export class CredentialModal extends BaseModal {
 	 */
 	getVisibleDropdown(): Locator {
 		return this.root.page().locator('.el-popper[aria-hidden="false"]');
+	}
+
+	/**
+	 * Get an option by its text within the currently visible dropdown popper
+	 * (e.g. the sharing user select or the credential picker dropdown).
+	 */
+	getVisibleDropdownOption(text: string): Locator {
+		return this.getVisibleDropdown().getByText(text);
+	}
+
+	/**
+	 * Get a credential sharing-list item by the name it displays in the Sharing tab.
+	 */
+	getSharingListItem(name: string): Locator {
+		return this.getModal().getByTestId('project-sharing-list-item').filter({ hasText: name });
+	}
+
+	/**
+	 * Remove a user (or "All users") from the credential sharing list.
+	 */
+	async removeUserFromSharing(name: string): Promise<void> {
+		await this.getSharingListItem(name).getByTestId('project-sharing-remove').click();
 	}
 
 	/**

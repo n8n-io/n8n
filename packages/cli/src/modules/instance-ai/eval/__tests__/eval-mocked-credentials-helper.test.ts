@@ -18,6 +18,13 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
+} as unknown as Logger;
+
 const fakeAdditionalData = {} as IWorkflowExecuteAdditionalData;
 const fakeWorkflow = {} as Workflow;
 const fakeHttpHelper = {} as IHttpRequestHelper;
@@ -26,15 +33,15 @@ const fakeNodeCreds: INodeCredentialsDetails = { id: 'missing-id', name: 'Telegr
 
 function makeInner(overrides: Partial<ICredentialsHelper> = {}): ICredentialsHelper {
 	return {
-		getParentTypes: jest.fn().mockReturnValue([]),
-		authenticate: jest.fn().mockResolvedValue({ url: 'http://signed' }),
-		preAuthentication: jest.fn().mockResolvedValue({ token: 'real' }),
-		runPreAuthentication: jest.fn().mockResolvedValue({ token: 'real' }),
-		getCredentials: jest.fn().mockResolvedValue({} as ICredentials),
-		getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
-		updateCredentials: jest.fn().mockResolvedValue(undefined),
-		updateCredentialsOauthTokenData: jest.fn().mockResolvedValue(undefined),
-		getCredentialsProperties: jest.fn().mockReturnValue([]),
+		getParentTypes: vi.fn().mockReturnValue([]),
+		authenticate: vi.fn().mockResolvedValue({ url: 'http://signed' }),
+		preAuthentication: vi.fn().mockResolvedValue({ token: 'real' }),
+		runPreAuthentication: vi.fn().mockResolvedValue({ token: 'real' }),
+		getCredentials: vi.fn().mockResolvedValue({} as ICredentials),
+		getDecrypted: vi.fn().mockResolvedValue({ accessToken: 'real-token' }),
+		updateCredentials: vi.fn().mockResolvedValue(undefined),
+		updateCredentialsOauthTokenData: vi.fn().mockResolvedValue(undefined),
+		getCredentialsProperties: vi.fn().mockReturnValue([]),
 		...overrides,
 	} as ICredentialsHelper;
 }
@@ -43,7 +50,7 @@ describe('EvalMockedCredentialsHelper', () => {
 	describe('getDecrypted', () => {
 		it('delegates to inner when credential resolves', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -58,11 +65,11 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('returns marker stub on CredentialNotFoundError and tracks the entry', async () => {
 			const inner = makeInner({
-				getDecrypted: jest
+				getDecrypted: vi
 					.fn()
 					.mockRejectedValue(new CredentialNotFoundError('missing-id', 'telegramApi')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -80,9 +87,9 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('rethrows non-CredentialNotFoundError errors', async () => {
 			const inner = makeInner({
-				getDecrypted: jest.fn().mockRejectedValue(new Error('database is down')),
+				getDecrypted: vi.fn().mockRejectedValue(new Error('database is down')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			await expect(
 				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
@@ -92,11 +99,11 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('rethrows generic no-id UnexpectedError errors', async () => {
 			const inner = makeInner({
-				getDecrypted: jest
+				getDecrypted: vi
 					.fn()
 					.mockRejectedValue(new UnexpectedError('Found credential with no ID.')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			await expect(
 				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
@@ -106,9 +113,9 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('records "unknown" nodeName when executeData is missing', async () => {
 			const inner = makeInner({
-				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('id', 'telegramApi')),
+				getDecrypted: vi.fn().mockRejectedValue(new CredentialNotFoundError('id', 'telegramApi')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			await helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual');
 
@@ -117,9 +124,9 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('tolerates an undefined credential id without ever touching the inner helper', async () => {
 			// Falsy ids must be mocked before the inner helper can throw.
-			const innerGetDecrypted = jest.fn();
+			const innerGetDecrypted = vi.fn();
 			const inner = makeInner({
-				getCredentialsProperties: jest.fn().mockReturnValue([
+				getCredentialsProperties: vi.fn().mockReturnValue([
 					{
 						name: 'apiKey',
 						displayName: 'API Key',
@@ -129,7 +136,7 @@ describe('EvalMockedCredentialsHelper', () => {
 				]),
 				getDecrypted: innerGetDecrypted,
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const undefinedIdCreds: INodeCredentialsDetails = {
 				id: undefined as unknown as string,
 				name: 'OpenWeatherMap API',
@@ -157,15 +164,19 @@ describe('EvalMockedCredentialsHelper', () => {
 		describe('server URL rewrite', () => {
 			const serverUrl = 'http://127.0.0.1:55555';
 			const openAiCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
-			const openAiNode = { name: 'OpenAI Chat Model', id: 'node-9' } as INode;
+			const openAiNode = {
+				name: 'OpenAI Chat Model',
+				id: 'node-9',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			} as INode;
 
 			it('rewrites the URL field on openAiApi credentials when serverUrl is set', async () => {
 				const inner = makeInner({
-					getDecrypted: jest
+					getDecrypted: vi
 						.fn()
 						.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				const result = await helper.getDecrypted(
 					fakeAdditionalData,
@@ -192,8 +203,8 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			it('does not mutate the credential returned by the inner helper', async () => {
 				const original = { apiKey: 'sk-real', url: 'https://api.openai.com/v1' };
-				const inner = makeInner({ getDecrypted: jest.fn().mockResolvedValue(original) });
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const inner = makeInner({ getDecrypted: vi.fn().mockResolvedValue(original) });
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				const result = await helper.getDecrypted(
 					fakeAdditionalData,
@@ -208,9 +219,9 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			it('does not rewrite credentials of an unmapped type', async () => {
 				const inner = makeInner({
-					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+					getDecrypted: vi.fn().mockResolvedValue({ accessToken: 'real-token' }),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				const result = await helper.getDecrypted(
 					fakeAdditionalData,
@@ -224,9 +235,9 @@ describe('EvalMockedCredentialsHelper', () => {
 			});
 
 			it('logs a warning via the injected logger when the credential type is unmapped', async () => {
-				const warn = jest.fn();
+				const warn = vi.fn();
 				const inner = makeInner({
-					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+					getDecrypted: vi.fn().mockResolvedValue({ accessToken: 'real-token' }),
 				});
 				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, {
 					warn,
@@ -241,11 +252,11 @@ describe('EvalMockedCredentialsHelper', () => {
 				expect(warn.mock.calls[0][0]).toContain('Anthropic Chat Model');
 			});
 
-			it('is silent on unmapped types when no logger was passed', async () => {
+			it('returns the inner credential unchanged on unmapped types', async () => {
 				const inner = makeInner({
-					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+					getDecrypted: vi.fn().mockResolvedValue({ accessToken: 'real-token' }),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				await expect(
 					helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual'),
@@ -254,11 +265,11 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			it('is a no-op when serverUrl is undefined (today’s default path)', async () => {
 				const inner = makeInner({
-					getDecrypted: jest
+					getDecrypted: vi
 						.fn()
 						.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner);
+				const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 				const result = await helper.getDecrypted(
 					fakeAdditionalData,
@@ -273,11 +284,11 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			it('rewrites the URL on the marker stub when the credential is missing', async () => {
 				const inner = makeInner({
-					getDecrypted: jest
+					getDecrypted: vi
 						.fn()
 						.mockRejectedValue(new CredentialNotFoundError('cred-1', 'openAiApi')),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				const result = await helper.getDecrypted(
 					fakeAdditionalData,
@@ -294,9 +305,9 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			it('records each rewrite in order across multiple calls', async () => {
 				const inner = makeInner({
-					getDecrypted: jest.fn().mockResolvedValue({ apiKey: 'sk-real', url: 'real' }),
+					getDecrypted: vi.fn().mockResolvedValue({ apiKey: 'sk-real', url: 'real' }),
 				});
-				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, mockLogger);
 
 				await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
 					node: { name: 'A', id: 'a' } as INode,
@@ -311,7 +322,7 @@ describe('EvalMockedCredentialsHelper', () => {
 			describe('root token embedding', () => {
 				it('embeds the resolved root in the rewritten URL path', async () => {
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -319,7 +330,7 @@ describe('EvalMockedCredentialsHelper', () => {
 					const helper = new EvalMockedCredentialsHelper(
 						inner,
 						serverUrl,
-						undefined,
+						mockLogger,
 						subNodeToRoot,
 					);
 
@@ -336,7 +347,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 				it('URL-encodes special characters in the root name', async () => {
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -344,7 +355,7 @@ describe('EvalMockedCredentialsHelper', () => {
 					const helper = new EvalMockedCredentialsHelper(
 						inner,
 						serverUrl,
-						undefined,
+						mockLogger,
 						subNodeToRoot,
 					);
 
@@ -363,7 +374,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 				it('falls back to bare /v1 when the sub-node has no routing entry', async () => {
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -371,7 +382,7 @@ describe('EvalMockedCredentialsHelper', () => {
 					const helper = new EvalMockedCredentialsHelper(
 						inner,
 						serverUrl,
-						undefined,
+						mockLogger,
 						subNodeToRoot,
 					);
 
@@ -389,9 +400,9 @@ describe('EvalMockedCredentialsHelper', () => {
 				});
 
 				it('warns when a routing map is supplied but the sub-node is missing from it', async () => {
-					const warn = jest.fn();
+					const warn = vi.fn();
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -413,9 +424,9 @@ describe('EvalMockedCredentialsHelper', () => {
 				});
 
 				it('does NOT warn when no routing map is supplied (legacy single-root fallback path)', async () => {
-					const warn = jest.fn();
+					const warn = vi.fn();
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -432,7 +443,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 				it('routes to the right root when multiple sub-nodes feed different roots', async () => {
 					const inner = makeInner({
-						getDecrypted: jest
+						getDecrypted: vi
 							.fn()
 							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 					});
@@ -443,7 +454,7 @@ describe('EvalMockedCredentialsHelper', () => {
 					const helper = new EvalMockedCredentialsHelper(
 						inner,
 						serverUrl,
-						undefined,
+						mockLogger,
 						subNodeToRoot,
 					);
 
@@ -493,16 +504,16 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		function makeSynthesizingInner(): ICredentialsHelper {
 			return makeInner({
-				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getCredentialsProperties: vi.fn().mockReturnValue(propsSchema),
 				// Not reached for a null id (short-circuits first); left rejecting so a regression fails loudly.
-				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+				getDecrypted: vi.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
 			});
 		}
 
 		function makeNoIdInner(): ICredentialsHelper {
 			return makeInner({
-				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
-				getDecrypted: jest
+				getCredentialsProperties: vi.fn().mockReturnValue(propsSchema),
+				getDecrypted: vi
 					.fn()
 					.mockRejectedValue(new CredentialMissingIdError('openAiApi', 'openAiApi')),
 			});
@@ -513,7 +524,7 @@ describe('EvalMockedCredentialsHelper', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeSynthesizingInner(),
 				'http://127.0.0.1:54321',
-				undefined,
+				mockLogger,
 				subNodeToRoot,
 			);
 
@@ -536,7 +547,7 @@ describe('EvalMockedCredentialsHelper', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeSynthesizingInner(),
 				'http://127.0.0.1:1',
-				undefined,
+				mockLogger,
 			);
 
 			await helper.getDecrypted(fakeAdditionalData, nullNodeCreds, 'openAiApi', 'manual', {
@@ -557,7 +568,7 @@ describe('EvalMockedCredentialsHelper', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeSynthesizingInner(),
 				'http://127.0.0.1:1',
-				undefined,
+				mockLogger,
 				subNodeToRoot,
 			);
 
@@ -582,11 +593,11 @@ describe('EvalMockedCredentialsHelper', () => {
 			// hooks). Those flows would either crash on placeholder values or
 			// leak real-auth side effects from a fake credential.
 			const inner = makeInner({
-				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
-				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
-				authenticate: jest.fn().mockResolvedValue({ url: 'http://should-not-be-called' }),
+				getCredentialsProperties: vi.fn().mockReturnValue(propsSchema),
+				getDecrypted: vi.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+				authenticate: vi.fn().mockResolvedValue({ url: 'http://should-not-be-called' }),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			const synthetic = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -616,7 +627,11 @@ describe('EvalMockedCredentialsHelper', () => {
 			// The helper may be used in eval mode without the wire server
 			// (e.g. HTTP-helper-only workflows). Without `serverUrl` we just
 			// pass the synthetic through — matches the pre-hook behaviour.
-			const helper = new EvalMockedCredentialsHelper(makeSynthesizingInner());
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				undefined,
+				mockLogger,
+			);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -631,7 +646,7 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 
 		it('synthesizes a credential when the inner helper reports a missing id', async () => {
-			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner(), undefined, mockLogger);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -654,7 +669,7 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 
 		it('synthesizes a credential when the credential id is empty', async () => {
-			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner(), undefined, mockLogger);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -696,11 +711,11 @@ describe('EvalMockedCredentialsHelper', () => {
 			['missing id (placeholder)', { name: 'Telegram cred' }],
 		])('synthesizes without delegating to inner — %s', async (_label, creds) => {
 			const inner = makeInner({
-				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getCredentialsProperties: vi.fn().mockReturnValue(propsSchema),
 				// Stands in for core's UnexpectedError on a falsy id — fails loudly if the short-circuit regresses.
-				getDecrypted: jest.fn().mockRejectedValue(new Error('Found credential with no ID.')),
+				getDecrypted: vi.fn().mockRejectedValue(new Error('Found credential with no ID.')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			const result = await helper.getDecrypted(
 				fakeAdditionalData,
@@ -717,12 +732,13 @@ describe('EvalMockedCredentialsHelper', () => {
 			]);
 		});
 
-		it('still delegates (and surfaces the throw) when an id IS present', async () => {
+		it('forwards trigger credential usage when an id is present', async () => {
 			// A present id whose lookup fails with a non-CredentialNotFoundError must still propagate.
 			const inner = makeInner({
-				getDecrypted: jest.fn().mockRejectedValue(new Error('database is down')),
+				getDecrypted: vi.fn().mockRejectedValue(new Error('database is down')),
 			});
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
+			const options = { credentialUsage: 'trigger' } as const;
 
 			await expect(
 				helper.getDecrypted(
@@ -730,16 +746,29 @@ describe('EvalMockedCredentialsHelper', () => {
 					{ id: 'real-id', name: 'Telegram cred' },
 					'telegramApi',
 					'manual',
+					undefined,
+					undefined,
+					undefined,
+					options,
 				),
 			).rejects.toThrow('database is down');
-			expect(inner.getDecrypted).toHaveBeenCalled();
+			expect(inner.getDecrypted).toHaveBeenCalledWith(
+				fakeAdditionalData,
+				{ id: 'real-id', name: 'Telegram cred' },
+				'telegramApi',
+				'manual',
+				undefined,
+				undefined,
+				undefined,
+				options,
+			);
 		});
 	});
 
 	describe('authenticate', () => {
 		it('passes the request through unchanged for marker payloads', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const requestOptions: IHttpRequestOptions = { url: 'http://example.com' };
 
 			const result = await helper.authenticate(
@@ -756,7 +785,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('delegates to inner for real credentials', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const requestOptions: IHttpRequestOptions = { url: 'http://example.com' };
 
 			const result = await helper.authenticate(
@@ -781,7 +810,7 @@ describe('EvalMockedCredentialsHelper', () => {
 	describe('preAuthentication / runPreAuthentication', () => {
 		it('returns marker payload unchanged from preAuthentication', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const stub: ICredentialDataDecryptedObject = { __evalMockedCredential: true };
 
 			const result = await helper.preAuthentication(
@@ -798,7 +827,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('returns marker payload unchanged from runPreAuthentication', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const stub: ICredentialDataDecryptedObject = { __evalMockedCredential: true };
 
 			const result = await helper.runPreAuthentication(fakeHttpHelper, stub, 'telegramApi');
@@ -809,7 +838,7 @@ describe('EvalMockedCredentialsHelper', () => {
 
 		it('delegates preAuthentication for real credentials', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 			const real: ICredentialDataDecryptedObject = { accessToken: 'real-token' };
 
 			await helper.preAuthentication(fakeHttpHelper, real, 'telegramApi', fakeNode, false);
@@ -824,10 +853,112 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 	});
 
+	// TRUST-508: an un-intercepted model call used to live only in a server log,
+	// so the verifier scored the scenario as if the builder had wired it wrong.
+	describe('interceptionGaps', () => {
+		const lmNode = {
+			name: 'OpenAI Model',
+			id: 'node-lm',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		} as INode;
+		const lmCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
+
+		async function fetchFor(
+			helper: EvalMockedCredentialsHelper,
+			node: INode,
+			type = 'openAiApi',
+		): Promise<void> {
+			await helper.getDecrypted(fakeAdditionalData, lmCreds, type, 'manual', {
+				node,
+			} as IExecuteData);
+		}
+
+		function innerWithUrl(): ICredentialsHelper {
+			return makeInner({
+				getDecrypted: vi
+					.fn()
+					.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+			});
+		}
+
+		it('records a gap when the sub-node has no routing entry', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map([['Some Other Sub-Node', 'Some Agent']]),
+			);
+
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('"OpenAI Model"');
+			expect(helper.interceptionGaps[0]).toContain('no vendor LLM routing entry');
+		});
+
+		it('records a gap when the credential type has no rewrite mapping', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map<string, string>(),
+			);
+
+			await fetchFor(
+				helper,
+				{ ...lmNode, type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' },
+				'anthropicApi',
+			);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('no wire-server URL rewrite mapping');
+		});
+
+		it('records a gap when interception is off entirely', async () => {
+			const helper = new EvalMockedCredentialsHelper(innerWithUrl(), undefined, mockLogger);
+
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('interception is not active');
+		});
+
+		it('stays empty for a routed sub-node and for non-vendor nodes', async () => {
+			const routed = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map([['OpenAI Model', 'Extract Jobs']]),
+			);
+			await fetchFor(routed, lmNode);
+			expect(routed.interceptionGaps).toEqual([]);
+
+			// A Gmail/HTTP node reaching the same branches is fine — its traffic
+			// goes through the HTTP mock whatever its credential URL says.
+			const httpNode = new EvalMockedCredentialsHelper(innerWithUrl(), undefined, mockLogger);
+			await fetchFor(httpNode, { ...fakeNode, type: 'n8n-nodes-base.gmail' }, 'gmailOAuth2');
+			expect(httpNode.interceptionGaps).toEqual([]);
+		});
+
+		it('does not repeat one node/reason across repeated credential fetches', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map<string, string>(),
+			);
+
+			await fetchFor(helper, lmNode);
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+		});
+	});
+
 	describe('passthrough methods', () => {
 		it('delegates passthrough methods to inner', async () => {
 			const inner = makeInner();
-			const helper = new EvalMockedCredentialsHelper(inner);
+			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
 
 			helper.getParentTypes('telegramApi');
 			helper.getCredentialsProperties('telegramApi');

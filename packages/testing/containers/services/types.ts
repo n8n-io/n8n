@@ -1,10 +1,13 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+import type { EngineMode } from './engine';
+
 /** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
 export const EXTERNAL_HOST = 'host.docker.internal';
 
 export const SERVICE_NAMES = [
 	'postgres',
+	'enginePostgres',
 	'redis',
 	'mailpit',
 	'gitea',
@@ -63,16 +66,26 @@ export interface StartContext {
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
+	registerContainer?(container: StartedTestContainer): void;
+	registerPath?(path: string): void;
 }
 
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
+	/** Overall startup deadline and n8n readiness timeout override in milliseconds. */
+	startupTimeoutMs?: number;
 	mains?: number;
 	workers?: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
+	/**
+	 * Runs engine v2. `container` starts a data plane container next to the
+	 * main; `in-process` hosts it in the main. Needs Postgres (`postgres: true`
+	 * or a service that brings it), one main, no workers, no webhook procs.
+	 */
+	engine?: EngineMode;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -98,6 +111,21 @@ export interface StackConfig {
 	 * Opt-in capability for the coverage pipeline; off by default.
 	 */
 	coverageHostDir?: string;
+	/**
+	 * Override the n8n image for this stack (default: the process-wide
+	 * TEST_IMAGE_N8N resolution). `stack.replaceN8N()` can then swap to a
+	 * different image on the same data — the upgrade/downgrade cycles.
+	 */
+	image?: string;
+	/**
+	 * Host dir bind-mounted as the n8n container's home (`/home/node`), so the
+	 * user folder (settings file, sqlite database) outlives the container and
+	 * `replaceN8N()` can boot another image on the same data. Single-main
+	 * stacks only. Pair with `user` so the files stay owned by the host user.
+	 */
+	userHomeHostDir?: string;
+	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
+	user?: string;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
@@ -109,6 +137,19 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 	shouldStart?(ctx: StartContext): boolean;
 	/** @example (ctx) => ({ taskBrokerUri: `http://${ctx.projectName}-n8n:5679` }) */
 	getOptions?(ctx: StartContext): unknown;
+	/**
+	 * Env for an already-deployed instance of this service, read from the host
+	 * environment. Returning a value means the deployment stands in for the
+	 * local containers: `start()` is skipped and this env is handed to n8n
+	 * instead. Return `undefined` to fall back to the local stack.
+	 *
+	 * Implementations may probe the deployment before claiming it. They must
+	 * resolve, never reject: an unreachable deployment is `undefined` (use the
+	 * local stack), not an error that takes the whole stack down with it.
+	 *
+	 * @example async () => (await reachable()) ? { FOO_URL: process.env.FOO_URL } : undefined
+	 */
+	hostedEnv?(ctx?: StartContext): Promise<Record<string, string> | undefined>;
 	/** Starts container, returns connection details for env() */
 	start(
 		network: StartedNetwork,

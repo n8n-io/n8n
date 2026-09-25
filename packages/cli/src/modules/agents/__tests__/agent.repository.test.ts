@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { In } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -14,14 +15,14 @@ describe('AgentRepository', () => {
 	let repository: AgentRepository;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		repository = new AgentRepository(mockDataSource as never);
 	});
 
 	describe('findByIdAndProjectId', () => {
 		it('calls findOne with id, projectId, and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
-			jest.spyOn(repository, 'findOne').mockResolvedValue(agent);
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
@@ -33,7 +34,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns null when no agent matches', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			vi.spyOn(repository, 'findOne').mockResolvedValue(null);
 
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
@@ -41,10 +42,49 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findById', () => {
+		it('calls findOne with the id alone and the activeVersion relation', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findById('agent-1');
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1' },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
+		});
+	});
+
+	describe('findByIdInProjects', () => {
+		it('returns null without querying when projectIds is empty', async () => {
+			const findOne = vi.spyOn(repository, 'findOne');
+
+			const result = await repository.findByIdInProjects('agent-1', []);
+
+			expect(result).toBeNull();
+			expect(findOne).not.toHaveBeenCalled();
+		});
+
+		it('constrains the lookup to the given project ids', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findByIdInProjects('agent-1', ['project-1', 'project-2']);
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']) },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
+		});
+	});
+
 	describe('findByProjectId', () => {
 		it('calls find ordered by updatedAt descending with the activeVersion relation', async () => {
 			const agents = [mock<Agent>(), mock<Agent>()];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByProjectId('project-1');
 
@@ -57,11 +97,82 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns an empty array when the project has no agents', async () => {
-			jest.spyOn(repository, 'find').mockResolvedValue([]);
+			vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			const result = await repository.findByProjectId('project-1');
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('findSummariesByProjectIds', () => {
+		const makeQb = () => ({
+			select: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			orderBy: vi.fn().mockReturnThis(),
+			take: vi.fn().mockReturnThis(),
+			getMany: vi.fn().mockResolvedValue([]),
+		});
+
+		it('returns [] without querying when projectIds is empty', async () => {
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			const result = await repository.findSummariesByProjectIds([], { limit: 10 });
+
+			expect(result).toEqual([]);
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('selects only summary columns without the activeVersion join', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(['project-1']);
+
+			expect(mockQb.select).toHaveBeenCalledWith([
+				'agent.id',
+				'agent.name',
+				'agent.projectId',
+				'agent.activeVersionId',
+				'agent.availableInMCP',
+				'agent.updatedAt',
+			]);
+			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+				projectIds: ['project-1'],
+			});
+			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.take).not.toHaveBeenCalled();
+		});
+
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(null);
+
+			expect(mockQb.where).not.toHaveBeenCalled();
+		});
+
+		it('pushes all filters and the limit into the query', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(['p1', 'p2'], {
+				query: 'sales',
+				publishedOnly: true,
+				excludeAgentId: 'agent-3',
+				limit: 10,
+			});
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
+				query: '%sales%',
+			});
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.activeVersionId IS NOT NULL');
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id != :excludeAgentId', {
+				excludeAgentId: 'agent-3',
+			});
+			expect(mockQb.take).toHaveBeenCalledWith(10);
 		});
 	});
 
@@ -78,16 +189,16 @@ describe('AgentRepository', () => {
 		it('builds the expected query for a single project id', async () => {
 			const agents = [mock<Agent>()];
 			const mockQb = {
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				addSelect: jest.fn().mockReturnThis(),
-				orderBy: jest.fn().mockReturnThis(),
-				skip: jest.fn().mockReturnThis(),
-				take: jest.fn().mockReturnThis(),
-				getManyAndCount: jest.fn().mockResolvedValue([agents, 1]),
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([agents, 1]),
 			};
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			const result = await repository.findByProjectIdsPaginated(['project-1'], {
 				skip: 0,
@@ -103,18 +214,39 @@ describe('AgentRepository', () => {
 			expect(result).toEqual({ count: 1, data: agents });
 		});
 
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(null, {
+				skip: 0,
+				take: 25,
+			} as never);
+
+			expect(mockQb.where).not.toHaveBeenCalled();
+		});
+
 		it('applies the name search filter', async () => {
 			const mockQb = {
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				addSelect: jest.fn().mockReturnThis(),
-				orderBy: jest.fn().mockReturnThis(),
-				skip: jest.fn().mockReturnThis(),
-				take: jest.fn().mockReturnThis(),
-				getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
 			};
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1', 'p2'], {
 				skip: 0,
@@ -124,6 +256,18 @@ describe('AgentRepository', () => {
 
 			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
 				query: '%support%',
+			});
+		});
+	});
+
+	describe('findMcpAvailabilityCandidates', () => {
+		it('omits the where clause when all agents are requested', async () => {
+			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
+
+			await repository.findMcpAvailabilityCandidates({ all: true });
+
+			expect(find).toHaveBeenCalledWith({
+				select: ['id', 'projectId', 'availableInMCP'],
 			});
 		});
 	});
@@ -140,7 +284,7 @@ describe('AgentRepository', () => {
 				makeAgent('agent-unrelated', [{ type: 'telegram', credentialId: 'cred-2' }]),
 				makeAgent('agent-empty', []),
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -153,11 +297,9 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns an empty array when no other agent uses the credential', async () => {
-			jest
-				.spyOn(repository, 'find')
-				.mockResolvedValue([
-					makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
-				]);
+			vi.spyOn(repository, 'find').mockResolvedValue([
+				makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
+			]);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -175,7 +317,7 @@ describe('AgentRepository', () => {
 				{ id: 'agent-null', integrations: null } as unknown as Agent,
 				{ id: 'agent-undef' } as unknown as Agent,
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -192,7 +334,7 @@ describe('AgentRepository', () => {
 				makeAgent('agent-other', [{ type: 'slack', credentialId: 'cred-other' }]),
 				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',

@@ -20,30 +20,50 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import {
+	collectParametersByTab,
+	createCommonNodeSettings,
+	removeMismatchedOptionValues,
+} from '@/features/ndv/shared/ndv.utils';
+import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { Workflow, NodeHelpers, deepCopy, type INode, type INodeParameters } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	deepCopy,
+	type INode,
+	type INodeParameters,
+	type Workflow,
+} from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import {
 	ChatHubToolContextKey,
 	ExpressionLocalResolveContextSymbol,
+	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
 } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
+	hiddenOperations?: readonly string[];
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
+	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
+	syncNodeToNdv?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -64,13 +84,21 @@ const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
-const credentialProjectId = computed(() => props.projectId ?? projectsStore.personalProject?.id);
+// `props.projectId` can be an empty string when the agent scope id has not
+// resolved yet (see `useAgentScopeProjectId`), so fall back with `||` rather
+// than `??` — otherwise the empty string sticks and the credential fetch below
+// is skipped on first open.
+const credentialProjectId = computed(() => props.projectId || projectsStore.personalProject?.id);
 
 const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
 		return null;
 	}
-	return nodeTypesStore.getNodeType(props.initialNode.type);
+	const description = nodeTypesStore.getNodeType(props.initialNode.type);
+	if (!description || !props.hiddenOperations?.length) {
+		return description;
+	}
+	return omitOperationOptions(description, props.hiddenOperations);
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -143,15 +171,23 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const workflowDocumentStore = computed(() => {
-	const store = useWorkflowDocumentStore(createWorkflowDocumentId('node-tool-workflow'));
+const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
+const workflowDocumentStore = computed(() => toolWorkflowStore);
 
-	if (node.value) {
-		store.setNodes([node.value]);
-	}
-
-	return store;
-});
+watch(
+	node,
+	(currentNode) => {
+		if (currentNode) {
+			toolWorkflowStore.setNodes([currentNode]);
+			if (props.syncNodeToNdv) {
+				toolNdvStore.setActiveNodeName(currentNode.name, 'other');
+			}
+		}
+	},
+	{ immediate: true },
+);
 
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
@@ -186,8 +222,49 @@ function makeUniqueName(baseName: string, existingNames: string[]): string {
 function handleChangeParameter(updateData: IUpdateInformation) {
 	if (!node.value) return;
 
-	const newParameters = deepCopy(node.value.parameters);
-	setParameterValue(newParameters, updateData.name, updateData.value);
+	const nodeType = nodeTypeDescription.value;
+	if (!nodeType) {
+		const newParameters = deepCopy(node.value.parameters);
+		setParameterValue(newParameters, updateData.name, updateData.value);
+		node.value = { ...node.value, parameters: newParameters };
+		return;
+	}
+
+	// Re-derive parameters the same way the NDV does (see
+	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
+	// apply the change, drop options that no longer match, then refill defaults.
+	// This resets a dependent param (e.g. `operation`) to the new resource's
+	// default when `resource` changes, instead of keeping a stale selection.
+	let parameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.value.parameters,
+			false,
+			false,
+			node.value,
+			nodeType,
+		) ?? {};
+	parameters = deepCopy(parameters);
+
+	setParameterValue(parameters, updateData.name, updateData.value);
+	if (updateData.value !== undefined) {
+		// `removeMismatchedOptionValues` keys off the changed param's `name` only;
+		// its `value` field is unused, so `null` keeps the call type-clean.
+		removeMismatchedOptionValues(nodeType, node.value.typeVersion, parameters, {
+			name: updateData.name,
+			value: null,
+		});
+	}
+
+	const newParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			parameters,
+			true,
+			false,
+			node.value,
+			nodeType,
+		) ?? parameters;
 
 	node.value = {
 		...node.value,
@@ -227,6 +304,10 @@ function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
 		};
 	}
 }
+
+// CredentialsSelect → ParameterInput writes the document store only; this
+// keeps the local draft (isValid / save payload) in sync.
+provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 
 function handleChangeName(name: string) {
 	if (node.value) {
@@ -346,8 +427,16 @@ onMounted(async () => {
 	// Set project context for dynamic parameter loading and credential creation.
 	if (props.projectId) {
 		await projectsStore.fetchAndSetProject(props.projectId);
-	} else if (projectsStore.personalProject) {
-		projectsStore.setCurrentProject(projectsStore.personalProject);
+	} else {
+		// No usable project scope was provided (the agent scope id can resolve to
+		// '' before project state loads). Ensure the personal project is loaded so
+		// the credential fetch below has a real scope on first open.
+		if (!projectsStore.personalProject) {
+			await projectsStore.getPersonalProject();
+		}
+		if (projectsStore.personalProject) {
+			projectsStore.setCurrentProject(projectsStore.personalProject);
+		}
 	}
 
 	// Ensure credentials are loaded for the credentials selector to work.
@@ -355,10 +444,9 @@ onMounted(async () => {
 	// credentials from another project do not bleed into this tool config.
 	const projectId = credentialProjectId.value;
 	if (projectId) {
-		credentialsStore.setCredentials([]);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
+			credentialsStore.fetchUsableCredentials({ projectId }),
 		]);
 	}
 });
@@ -366,6 +454,13 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	// Clear current project to avoid side effects
 	projectsStore.setCurrentProject(null);
+
+	// Dispose the scoped document store and the NDV store its descendants
+	// materialize — Pinia stores are not freed on unmount. The doc id is a
+	// constant and only one tool-config host is mounted at a time.
+	const documentStore = workflowDocumentStore.value;
+	disposeNDVStore(toolNdvStore);
+	disposeWorkflowDocumentStore(documentStore);
 });
 
 defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
@@ -391,6 +486,8 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:node-values="node.parameters"
 					:is-read-only="false"
 					:node="node"
+					:parameter-issues="props.parameterIssues"
+					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 					@value-changed="handleChangeParameter"
 				>
 					<NodeCredentials
@@ -400,6 +497,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:project-id="credentialProjectId"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
+						:skip-credentials-fetch="true"
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>

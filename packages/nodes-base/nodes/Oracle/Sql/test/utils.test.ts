@@ -1,15 +1,174 @@
 import { DateTime } from 'luxon';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import * as oracleDBTypes from 'oracledb';
-import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { ExecuteOpBindParam } from '../helpers/interfaces';
+import type { ExecuteOpBindParam, OracleDBNodeCredentials, ColumnMap } from '../helpers/interfaces';
 import {
 	addSortRules,
+	addWhereClauses,
 	configureQueryRunner,
+	escapeSqlStringLiteral,
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
+	quoteSqlIdentifier,
 } from '../helpers/utils';
+import { getOracleDBConfig } from '../transport';
+
+describe('getOracleDBConfig', () => {
+	it('should convert numeric credential values to numbers', () => {
+		const credentials = {
+			useThickMode: false,
+			useSSL: false,
+			poolMin: '0',
+			poolMax: '4',
+			poolIncrement: '1',
+			maxLifetimeSession: '120',
+			poolTimeout: '60',
+			connectTimeout: '10',
+			transportConnectTimeout: '20',
+			expireTime: '30',
+		} as unknown as OracleDBNodeCredentials;
+
+		expect(getOracleDBConfig(credentials)).toMatchObject({
+			poolMin: 0,
+			poolMax: 4,
+			poolIncrement: 1,
+			maxLifetimeSession: 120,
+			poolTimeout: 60,
+			connectTimeout: 10,
+			transportConnectTimeout: 20,
+			expireTime: 30,
+		});
+	});
+});
+
+describe('Test addWhereClauses', () => {
+	const schema: ColumnMap = { ID: { type: 'NUMBER', nullable: true, maxSize: 0 } };
+	const node = mock<INode>();
+
+	const build = (condition: string, value: unknown = 1) =>
+		addWhereClauses(
+			'DELETE FROM "T"',
+			[{ column: 'ID', condition, value }],
+			'AND',
+			schema,
+			node,
+			0,
+		);
+
+	it('should normalise the "equal" operator to =', () => {
+		const [query] = build('equal');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" = :0');
+	});
+
+	it('should keep the column and value out of the concatenated SQL', () => {
+		const [query, binds] = build('>', 5);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" > :0');
+		expect(binds).toHaveLength(1);
+	});
+
+	it('should build value-less clauses for IS NULL / IS NOT NULL', () => {
+		const [query, binds] = build('IS NULL', undefined);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" IS NULL');
+		expect(binds).toHaveLength(0);
+	});
+
+	it.each(['<>', '^=', 'NOT LIKE'])('should accept the %s operator synonym', (condition) => {
+		const [query] = build(condition);
+		expect(query).toEqual(`DELETE FROM "T" WHERE "ID" ${condition} :0`);
+	});
+
+	it('should accept a lowercase operator, normalising it to uppercase', () => {
+		const [query] = build('like');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" LIKE :0');
+	});
+
+	it('should accept a lowercase "is null" and build a value-less clause', () => {
+		const [query, binds] = build('is null', undefined);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" IS NULL');
+		expect(binds).toHaveLength(0);
+	});
+
+	it('should tolerate surrounding whitespace in the operator', () => {
+		const [query] = build('  =  ');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" = :0');
+	});
+
+	it('should reject an operator outside the allowed set', () => {
+		expect(() => build("= 'x' OR 1=1 --")).toThrow('is not valid');
+	});
+
+	it('should reject an empty operator', () => {
+		expect(() => build('')).toThrow('is not valid');
+	});
+
+	it.each([5, null, { op: '=' }])(
+		'should reject the non-string operator %o with the operator error',
+		(condition) => {
+			expect(() => build(condition as unknown as string)).toThrow('is not valid');
+		},
+	);
+});
+
+describe('Test quoteSqlIdentifier', () => {
+	it('should wrap a simple identifier in double quotes', () => {
+		expect(quoteSqlIdentifier('employees')).toEqual('"employees"');
+	});
+
+	it('should quote each part of a dot-separated identifier', () => {
+		expect(quoteSqlIdentifier('scott.employees')).toEqual('"scott"."employees"');
+	});
+
+	it('should preserve an already-quoted identifier', () => {
+		expect(quoteSqlIdentifier('"My Table"')).toEqual('"My Table"');
+	});
+
+	it('should trim surrounding whitespace before quoting', () => {
+		expect(quoteSqlIdentifier('  employees  ')).toEqual('"employees"');
+	});
+
+	it('should reject an identifier containing a double quote', () => {
+		expect(() => quoteSqlIdentifier('my"table')).toThrow('is not valid');
+	});
+
+	it('should accept a single quote, which is legal in an Oracle identifier', () => {
+		expect(quoteSqlIdentifier("O'Brien")).toEqual('"O\'Brien"');
+	});
+
+	it('should preserve a single quote inside an already-quoted identifier', () => {
+		expect(quoteSqlIdentifier('"O\'Brien"')).toEqual('"O\'Brien"');
+	});
+
+	it('should quote (not reject) a value crafted to close a string literal', () => {
+		// The literal-context safety comes from escapeSqlStringLiteral, not from rejection here.
+		expect(quoteSqlIdentifier("X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA")).toEqual(
+			'"X\') PURGE; EXECUTE IMMEDIATE \'DROP TABLE SENSITIVE_DATA"',
+		);
+	});
+
+	it('should reject a double-dot identifier', () => {
+		expect(() => quoteSqlIdentifier('my..column')).toThrow('is not valid');
+	});
+});
+
+describe('Test escapeSqlStringLiteral', () => {
+	it('should double a single quote so it cannot terminate a literal', () => {
+		expect(escapeSqlStringLiteral('"O\'Brien"')).toEqual('"O\'\'Brien"');
+	});
+
+	it('should leave a value without single quotes unchanged', () => {
+		expect(escapeSqlStringLiteral('"scott"."employees"')).toEqual('"scott"."employees"');
+	});
+
+	it('should neutralise an identifier crafted to close the DROP literal', () => {
+		const quoted = quoteSqlIdentifier("X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA");
+		expect(escapeSqlStringLiteral(quoted)).toEqual(
+			"\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\"",
+		);
+	});
+});
 
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
@@ -395,12 +554,12 @@ describe('Test getBindParameters ', () => {
 
 describe('Test configureQueryRunner', () => {
 	it('should return object out bind values from execute operations', async () => {
-		const execute = jest.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {
@@ -453,26 +612,170 @@ describe('Test configureQueryRunner', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
+	it('should return RETURNING date out binds as ISO strings on version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result).toEqual([{ json: { created: '2020-01-01T12:00:00.000Z' } }]);
+	});
+
+	it('should keep RETURNING date out binds as Date objects before version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect((result[0].json as IDataObject).created).toBeInstanceOf(Date);
+	});
+
+	it('should move RETURNING binary out binds to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { doc: blob } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const context = {
+			helpers: { constructExecutionMetaData, prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING doc INTO :doc', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result[0].json).not.toHaveProperty('doc');
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'doc');
+		expect((result[0] as INodeExecutionData).binary?.doc).toBeDefined();
+	});
+
+	it('should move fetched binary columns to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ rows: [{ ID: 1, DOC: blob }] });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const context = {
+			helpers: { constructExecutionMetaData, prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner([{ query: 'SELECT id, doc FROM docs', values: {} }], [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect(result[0].json).toEqual({ ID: 1 });
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'DOC');
+		expect((result[0] as INodeExecutionData).binary?.DOC).toBeDefined();
+	});
+
+	it('should keep fetched binary columns in json before version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ rows: [{ ID: 1, DOC: blob }] });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner([{ query: 'SELECT id, doc FROM docs', values: {} }], [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect((result[0].json as IDataObject).DOC).toBe(blob);
+		expect((result[0] as INodeExecutionData).binary).toBeUndefined();
+	});
+
 	it('should append out-bind execution data one item at a time without spread push', async () => {
-		const pushSpy = jest.spyOn(Array.prototype, 'push');
+		// Manually patch Array.prototype.push instead of vi.spyOn — vitest records spy calls
+		// via array push internally, so spying on push itself recurses infinitely. Record via
+		// index assignment to avoid that.
+		const originalPush = Array.prototype.push;
+		const pushCalls: unknown[][] = [];
+		Array.prototype.push = function (...args: unknown[]) {
+			pushCalls[pushCalls.length] = args;
+			return originalPush.apply(this, args);
+		};
 		const outBinds = [
 			[[1], ['Alice']],
 			[[2], ['Bob']],
 			[[3], ['Charlie']],
 		];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
 		const expectedEntries: INodeExecutionData[] = [];
-		const constructExecutionMetaData = jest
-			.fn()
-			.mockImplementation((data: INodeExecutionData[]) => {
-				const item = data[0];
-				if (item) expectedEntries[expectedEntries.length] = item;
-				return item ? [item, item, item] : [];
-			});
+		const constructExecutionMetaData = vi.fn().mockImplementation((data: INodeExecutionData[]) => {
+			const item = data[0];
+			if (item) expectedEntries[expectedEntries.length] = item;
+			return item ? [item, item, item] : [];
+		});
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -499,11 +802,11 @@ describe('Test configureQueryRunner', () => {
 					stmtBatching: 'single',
 				},
 			);
-			executionDataPushCalls = pushSpy.mock.calls.filter(
+			executionDataPushCalls = pushCalls.filter(
 				([entry]) => entry && expectedEntries.includes(entry as INodeExecutionData),
 			);
 		} finally {
-			pushSpy.mockRestore();
+			Array.prototype.push = originalPush;
 		}
 
 		expect(result).toHaveLength(9);
@@ -517,15 +820,15 @@ describe('Test configureQueryRunner', () => {
 	});
 
 	it('should return select execution data from the concat path', async () => {
-		const concatSpy = jest.spyOn(Array.prototype, 'concat');
+		const concatSpy = vi.spyOn(Array.prototype, 'concat');
 		const rows = [{ COL1: 1 }, { COL1: 2 }, { COL1: 3 }];
 		const executionData = rows.map((row) => ({ json: row }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest.fn().mockImplementation(() => executionData);
+		const constructExecutionMetaData = vi.fn().mockImplementation(() => executionData);
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -568,12 +871,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) =>
 				Array.from({ length: chunkSize }, () => data[0]),
@@ -610,12 +913,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large select result sets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {

@@ -1,7 +1,8 @@
 import path from 'path';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from 'fs';
+import { fileURLToPath, pathToFileURL } from 'url';
 import shell from 'shelljs';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
 
@@ -12,15 +13,19 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const SPEC_FILENAME = 'openapi.yml';
 const SPEC_THEME_FILENAME = 'swagger-theme.css';
 
+const YAML_STRINGIFY_OPTS = { singleQuote: true, aliasDuplicateObjects: false, lineWidth: 0 };
+
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+copyAgentIntegrationAssets();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
-	bundleOpenApiSpecs();
+
+	await buildPublicApiSpec();
 }
 
 function generateUserManagementEmailTemplates() {
@@ -58,20 +63,120 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-function bundleOpenApiSpecs() {
-	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
+// Builds the v1 spec from two sources:
+// - the hand-written routes (eov) at `openapi.yml`
+// - the full `@PublicApiController` decorated routes at `openapi.decorator-routes.generated.yml`
+async function buildPublicApiSpec() {
+	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
+	const { generateDocs, mergeDecoratorDocument, DECORATOR_ROOT_FILENAME } =
+		await loadOpenApiGenerator();
 
-	shell
-		.find(publicApiDir)
-		.reduce((acc, cur) => {
-			return cur.endsWith(SPEC_FILENAME) ? [...acc, path.relative('./src', cur)] : acc;
-		}, [])
-		.forEach((specPath) => {
-			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle "src/${specPath}" --output "${distSpecPath}"`;
+	// 1. Generate decorated route OpenAPI specs from source.
+	generateDocs(v1Dir);
 
-			shell.exec(command, { silent: true });
-		});
+	// 2. Bundle both sources.
+	const v1DistDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+
+	const eovDistSpec = path.join(v1DistDir, SPEC_FILENAME);
+	bundleSpec(path.join(v1Dir, SPEC_FILENAME), eovDistSpec);
+
+	const decoratorDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
+	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), decoratorDistSpec);
+
+	// 3. Merge the two specs into a single OpenAPI document, writing back to the eov spec path.
+	const eovDoc = parseYaml(readFileSync(eovDistSpec, 'utf8'));
+	const decoratorDoc = parseYaml(readFileSync(decoratorDistSpec, 'utf8'));
+
+	// 4. Merge the two specs and write back to the eov spec path.
+	writeFileSync(
+		eovDistSpec,
+		stringifyYaml(mergeDecoratorDocument(eovDoc, decoratorDoc), YAML_STRINGIFY_OPTS),
+	);
+
+	// 5. Cleanup the decorator spec.
+	rmSync(decoratorDistSpec);
+}
+
+// Imports the already-compiled generator from dist rather than the .ts source — by the time
+// build:data runs, `tsc` has already emitted it and build.mjs has no TS loader.
+async function loadOpenApiGenerator() {
+	const generatorPath = path.resolve(
+		ROOT_DIR,
+		'dist',
+		'public-api',
+		'v1',
+		'openapi-gen',
+		'generate.js',
+	);
+	if (!existsSync(generatorPath)) {
+		throw new Error(
+			`OpenAPI doc generator not found at ${generatorPath} — did the TypeScript build run before build:data?`,
+		);
+	}
+
+	const generator = await import(pathToFileURL(generatorPath).href);
+	for (const name of ['generateDocs', 'mergeDecoratorDocument', 'DECORATOR_ROOT_FILENAME']) {
+		if (generator[name] === undefined) {
+			throw new Error(
+				`OpenAPI doc generator at ${generatorPath} is missing export '${name}' — its contract may have changed.`,
+			);
+		}
+	}
+	return generator;
+}
+
+// Bundles a spec through redocly, resolving all $refs into a single file at `distPath`.
+function bundleSpec(sourcePath, distPath) {
+	const result = shell.exec(`pnpm openapi bundle "${sourcePath}" --output "${distPath}"`, {
+		silent: true,
+	});
+	if (result.code !== 0) {
+		throw new Error(`redocly failed to bundle ${sourcePath}:\n${result.stderr || result.stdout}`);
+	}
+}
+
+function copyAgentIntegrationAssets() {
+	// tsc emits no non-TS files, so every platform's assets are copied here.
+	// Discovered rather than listed: a platform that adds an assets directory
+	// otherwise works in dev, where they are read from src, and ships without
+	// them.
+	const platformsRoot = path.resolve(
+		ROOT_DIR,
+		'src',
+		'modules',
+		'agents',
+		'integrations',
+		'platforms',
+	);
+	const sourceDirs = glob.sync('*/assets', {
+		cwd: platformsRoot,
+		onlyDirectories: true,
+		absolute: false,
+	});
+
+	if (sourceDirs.length === 0) {
+		throw new Error(`No agent integration assets directories found under: ${platformsRoot}`);
+	}
+
+	for (const relativeDir of sourceDirs) {
+		const sourceDir = path.resolve(platformsRoot, relativeDir);
+		const destinationDir = path.resolve(
+			ROOT_DIR,
+			'dist',
+			'modules',
+			'agents',
+			'integrations',
+			'platforms',
+			relativeDir,
+		);
+
+		shell.rm('-rf', destinationDir);
+		shell.mkdir('-p', path.dirname(destinationDir));
+		shell.cp('-R', sourceDir, destinationDir);
+		if (!existsSync(destinationDir)) {
+			throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
+		}
+	}
 }
 
 function generateTimezoneData() {

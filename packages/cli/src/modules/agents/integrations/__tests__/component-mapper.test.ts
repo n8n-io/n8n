@@ -1,20 +1,39 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
-// Define mocks inline inside the factory to avoid jest.mock hoisting issues
-type MockFn = jest.Mock<any, any[]>;
-const mockButton: MockFn = jest.fn((opts) => ({ type: 'button', ...opts }));
-const mockCard: MockFn = jest.fn((opts) => ({ type: 'card', ...opts }));
-const mockActions: MockFn = jest.fn((children) => ({ type: 'actions', children }));
-const mockCardText: MockFn = jest.fn((content) => ({ type: 'text', content }));
-const mockSection: MockFn = jest.fn((children) => ({ type: 'section', children }));
-const mockDivider: MockFn = jest.fn(() => ({ type: 'divider' }));
-const mockImage: MockFn = jest.fn((opts) => ({ type: 'image', ...opts }));
-const mockSelect: MockFn = jest.fn((opts) => ({ type: 'select', ...opts }));
-const mockSelectOption: MockFn = jest.fn((opts) => ({ type: 'select_option', ...opts }));
-const mockRadioSelect: MockFn = jest.fn((opts) => ({ type: 'radio_select', ...opts }));
-const mockFields: MockFn = jest.fn((children) => ({ type: 'fields', children }));
-const mockField: MockFn = jest.fn((opts) => ({ type: 'field', ...opts }));
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('../esm-loader', () => {
+import type { AgentRepository } from '../../repositories/agent.repository';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
+// Define mocks inline inside the factory to avoid vi.mock hoisting issues
+type MockFn = Mock<(...args: any[]) => any>;
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockSelectOption,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children: any) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content: any) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children: any) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })) as MockFn,
+	mockSelectOption: vi.fn((opts: any) => ({ type: 'select_option', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children: any) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })) as MockFn,
+}));
+
+vi.mock('../esm-loader', () => {
 	// These reference the hoisted variables above via closure
 
 	const wrap =
@@ -35,7 +54,7 @@ jest.mock('../esm-loader', () => {
 	const Field = wrap(mockField);
 
 	return {
-		loadChatSdk: jest.fn().mockResolvedValue({
+		loadChatSdk: vi.fn().mockResolvedValue({
 			Button,
 			Card,
 			Actions,
@@ -54,14 +73,14 @@ jest.mock('../esm-loader', () => {
 
 import { ComponentMapper } from '../component-mapper';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { Container } from '@n8n/di';
 
 describe('ComponentMapper', () => {
 	let mapper: ComponentMapper;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mapper = new ComponentMapper();
 	});
 
@@ -449,7 +468,7 @@ describe('ComponentMapper', () => {
 
 		it('should preserve radio_select components for Slack cards', async () => {
 			const registry = new ChatIntegrationRegistry();
-			registry.register(new SlackIntegration());
+			registry.register(new SlackIntegration(mock<AgentRepository>()));
 			Container.set(ChatIntegrationRegistry, registry);
 
 			const payload = {

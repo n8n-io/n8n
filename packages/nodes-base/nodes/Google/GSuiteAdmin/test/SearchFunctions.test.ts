@@ -2,23 +2,24 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 import { searchUsers, searchGroups, searchDevices } from '../SearchFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../GenericFunctions');
+vi.mock('../GenericFunctions');
 
 describe('searchFunctions', () => {
 	let mockContext: ILoadOptionsFunctions;
 
 	beforeEach(() => {
 		mockContext = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as ILoadOptionsFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('searchUsers', () => {
 		it('should return formatted user search results', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
+			(googleApiRequestAllItems as Mock).mockResolvedValueOnce([
 				{ id: '123', name: { fullName: 'John Doe' } },
 				{ id: '456' },
 			]);
@@ -41,7 +42,7 @@ describe('searchFunctions', () => {
 		});
 
 		it('should return an empty array if no users found', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
+			(googleApiRequestAllItems as Mock).mockResolvedValueOnce([]);
 			const result = await searchUsers.call(mockContext);
 			expect(result).toEqual({ results: [] });
 		});
@@ -49,7 +50,7 @@ describe('searchFunctions', () => {
 
 	describe('searchGroups', () => {
 		it('should return formatted group search results', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
+			(googleApiRequestAllItems as Mock).mockResolvedValueOnce([
 				{ id: 'group1', name: 'Group One' },
 				{ id: 'group2', email: 'group@example.com' },
 				{ id: 'group3' },
@@ -67,7 +68,7 @@ describe('searchFunctions', () => {
 		});
 
 		it('should return empty results if no groups found', async () => {
-			(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
+			(googleApiRequestAllItems as Mock).mockResolvedValueOnce([]);
 			const result = await searchGroups.call(mockContext);
 			expect(result).toEqual({ results: [] });
 		});
@@ -75,7 +76,7 @@ describe('searchFunctions', () => {
 
 	describe('searchDevices', () => {
 		it('should return formatted device search results', async () => {
-			(googleApiRequest as jest.Mock).mockResolvedValueOnce({
+			(googleApiRequest as Mock).mockResolvedValueOnce({
 				chromeosdevices: [{ deviceId: 'dev1', serialNumber: 'SN123' }, { deviceId: 'Dev2' }],
 			});
 
@@ -96,7 +97,7 @@ describe('searchFunctions', () => {
 		});
 
 		it('should return empty results if no devices found', async () => {
-			(googleApiRequest as jest.Mock).mockResolvedValueOnce({ chromeosdevices: [] });
+			(googleApiRequest as Mock).mockResolvedValueOnce({ chromeosdevices: [] });
 			const result = await searchDevices.call(mockContext);
 			expect(result).toEqual({ results: [] });
 		});

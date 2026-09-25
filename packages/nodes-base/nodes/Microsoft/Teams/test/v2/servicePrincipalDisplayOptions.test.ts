@@ -1,0 +1,462 @@
+import type { INodeProperties } from 'n8n-workflow';
+
+import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
+import { versionDescription } from '../../v2/actions/versionDescription';
+import { SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+import { ACTIVITY_NOTIFICATION_SETUP_URL } from '../../v2/transport/forbiddenHints';
+
+const actionProps = versionDescription.properties;
+const triggerProps = new MicrosoftTeamsTrigger().description.properties;
+
+/** All resolved copies of a field (by name) — there can be several (RLC variants). */
+const byName = (props: INodeProperties[], name: string) =>
+	props.filter((property) => property.name === name);
+
+const isSpHidden = (property?: INodeProperties) =>
+	Array.isArray(property?.displayOptions?.hide?.['/authentication']) &&
+	property?.displayOptions?.hide?.['/authentication']?.includes(SERVICE_PRINCIPAL_AUTH);
+
+const isSpShown = (property?: INodeProperties) =>
+	property?.displayOptions?.show?.['/authentication']?.includes(SERVICE_PRINCIPAL_AUTH) === true;
+
+describe('Microsoft Teams Service Principal displayOptions contract', () => {
+	describe('credential entry uses the un-prefixed show.authentication key', () => {
+		it.each([
+			['action node', versionDescription.credentials ?? []],
+			['trigger node', new MicrosoftTeamsTrigger().description.credentials ?? []],
+		])('%s gates the SP credential with show.authentication (no slash prefix)', (_l, creds) => {
+			const spCredential = creds.find((c) => c.name === SERVICE_PRINCIPAL_AUTH);
+			expect(spCredential?.required).toBe(true);
+			expect(spCredential?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+			// the credential entry must NOT use the slash-prefixed field-level key
+			expect(spCredential?.displayOptions?.show?.['/authentication']).toBeUndefined();
+		});
+	});
+
+	// The per-resource loops below assert "every field is hidden under SP", which is vacuously
+	// true for a field that was never added. Pin that the mention picker is one they cover.
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s:%s has a mentions field', (resource, operation) => {
+		const mentions = actionProps.find(
+			(p) =>
+				p.name === 'mentions' &&
+				p.displayOptions?.show?.resource?.includes(resource) &&
+				p.displayOptions?.show?.operation?.includes(operation),
+		);
+
+		expect(mentions).toBeDefined();
+	});
+
+	// Same reason, plus one more: the loop below filters on `displayOptions.show.resource`, so a
+	// field that lost that key is silently skipped rather than failing. Topic is also the only
+	// place the `updateDisplayOptions` deep-merge is checked - its own `chatType` condition has
+	// to survive alongside the injected resource/operation keys.
+	it('chat:create shows Topic only for a group chat', () => {
+		const topic = actionProps.find(
+			(p) =>
+				p.name === 'topic' &&
+				p.displayOptions?.show?.resource?.includes('chat') &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		expect(topic?.displayOptions?.show).toEqual({
+			resource: ['chat'],
+			operation: ['create'],
+			chatType: ['group'],
+		});
+	});
+
+	describe.each(['chat', 'chatMessage', 'chatMember'])(
+		'%s - hidden under SP via the slash-prefixed field-level key',
+		(resource) => {
+			it('operation selector carries hide["/authentication"] = [SP]', () => {
+				const op = actionProps.find(
+					(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+				);
+				expect(isSpHidden(op)).toBe(true);
+				// distinct from the un-prefixed credential gate
+				expect(op?.displayOptions?.hide?.authentication).toBeUndefined();
+			});
+
+			it('every field copy is hidden under SP', () => {
+				const fields = actionProps.filter((p) =>
+					p.displayOptions?.show?.resource?.includes(resource),
+				);
+				const gatedFields = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+				expect(gatedFields.length).toBeGreaterThan(0);
+				for (const field of gatedFields) {
+					expect(isSpHidden(field)).toBe(true);
+				}
+			});
+
+			it('shows an SP notice for the resource', () => {
+				const notice = actionProps.find(
+					(p) =>
+						p.type === 'notice' &&
+						p.displayOptions?.show?.resource?.includes(resource) &&
+						p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+				);
+				expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+			});
+		},
+	);
+
+	describe('chatMessage — delete actions', () => {
+		const selector = actionProps.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('chatMessage'),
+		);
+		const operationValues = (selector?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
+		const fieldsFor = (operation: string) =>
+			actionProps.filter(
+				(p) =>
+					p.type !== 'notice' &&
+					p.displayOptions?.show?.resource?.includes('chatMessage') &&
+					p.displayOptions?.show?.operation?.includes(operation),
+			);
+
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s is offered and shows only the chat and message pickers',
+			(operation) => {
+				expect(operationValues).toContain(operation);
+				expect(fieldsFor(operation).map((p) => p.name)).toEqual(['chatId', 'messageId']);
+			},
+		);
+	});
+
+	describe('onlineMeeting — available under SP with an organizer picker', () => {
+		const fields = actionProps.filter((p) =>
+			p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+		);
+
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
+		});
+
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.length).toBeGreaterThan(0);
+			for (const field of gated) {
+				expect(isSpHidden(field)).toBe(false);
+			}
+		});
+
+		// The loop above walks top-level fields only, so the two nested copies need their own pin.
+		it.each<[string, string | undefined]>([
+			['create', undefined],
+			['createOrGet', 'options'],
+			['update', 'updateFields'],
+		])('%s has an attendees field that is not hidden under SP', (operation, container) => {
+			const operationFields = fields.filter((p) =>
+				p.displayOptions?.show?.operation?.includes(operation),
+			);
+			const pool = container
+				? ((operationFields.find((p) => p.name === container)?.options ?? []) as INodeProperties[])
+				: operationFields;
+			const found = pool.find((p) => p.name === 'attendees');
+
+			expect(found).toBeDefined();
+			expect(isSpHidden(found)).toBe(false);
+		});
+
+		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
+			const organizer = fields.find((p) => p.name === 'organizerId');
+			expect(organizer).toBeDefined();
+			expect(organizer?.displayOptions).toEqual({
+				show: { resource: ['onlineMeeting'], '/authentication': [SERVICE_PRINCIPAL_AUTH] },
+			});
+			expect(organizer?.required).toBe(true);
+			expect(organizer?.modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			// no extractValue: an expression that resolves to a UPN must reach the node
+			expect(organizer?.modes?.every((m) => m.extractValue === undefined)).toBe(true);
+		});
+
+		it('shows an SP notice for the resource', () => {
+			const notice = fields.find(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+
+		it('the Service Principal authentication option no longer lists online meetings as unavailable', () => {
+			const authentication = actionProps.find((p) => p.name === 'authentication');
+			const spOption = (authentication?.options ?? []).find(
+				(option) => 'value' in option && option.value === SERVICE_PRINCIPAL_AUTH,
+			);
+			expect(spOption).toBeDefined();
+			expect(
+				'description' in (spOption ?? {}) ? (spOption as { description?: string }).description : '',
+			).not.toContain('online meetings are unavailable');
+		});
+	});
+
+	describe('channelMessage — the sending and delete operations are hidden under SP', () => {
+		const selector = actionProps.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('channelMessage'),
+		);
+		const operationValues = (selector?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
+		const fieldsFor = (operation: string) =>
+			actionProps.filter(
+				(p) =>
+					p.type !== 'notice' &&
+					p.displayOptions?.show?.resource?.includes('channelMessage') &&
+					p.displayOptions?.show?.operation?.includes(operation),
+			);
+
+		it.each(['create', 'reply', 'softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s fields are hidden under SP',
+			(operation) => {
+				const fields = fieldsFor(operation);
+				expect(fields.length).toBeGreaterThan(0);
+				for (const field of fields) {
+					expect(isSpHidden(field)).toBe(true);
+				}
+			},
+		);
+
+		it.each(['get', 'getAll', 'getAllReplies'])('%s fields are shown under SP', (operation) => {
+			const fields = fieldsFor(operation);
+			expect(fields.length).toBeGreaterThan(0);
+			for (const field of fields) {
+				expect(isSpHidden(field)).toBe(false);
+			}
+		});
+
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s is offered and shows only the team, channel, message and options fields',
+			(operation) => {
+				expect(operationValues).toContain(operation);
+				expect(fieldsFor(operation).map((p) => p.name)).toEqual([
+					'teamId',
+					'channelId',
+					'messageId',
+					'options',
+				]);
+			},
+		);
+
+		it('has an SP notice for every channelMessage operation', () => {
+			const notices = actionProps.filter(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.resource?.includes('channelMessage') &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			const operations = notices.flatMap((n) => n.displayOptions?.show?.operation ?? []);
+			expect(operations).toEqual(
+				expect.arrayContaining([
+					'create',
+					'reply',
+					'get',
+					'getAll',
+					'getAllReplies',
+					'softDeleteMessage',
+					'undoSoftDeleteMessage',
+				]),
+			);
+		});
+	});
+
+	describe('task:getAll — plan picker shown, member-mode hidden under SP', () => {
+		const taskGetAllFields = actionProps.filter(
+			(p) =>
+				p.displayOptions?.show?.resource?.includes('task') &&
+				p.displayOptions?.show?.operation?.includes('getAll'),
+		);
+
+		it('tasksFor is hidden under SP', () => {
+			const tasksFor = taskGetAllFields.find((p) => p.name === 'tasksFor');
+			expect(isSpHidden(tasksFor)).toBe(true);
+		});
+
+		it('the member-mode group picker (first groupId) is hidden under SP', () => {
+			const groupCopies = byName(taskGetAllFields, 'groupId');
+			expect(groupCopies.length).toBeGreaterThan(0);
+			expect(isSpHidden(groupCopies[0])).toBe(true);
+		});
+
+		it('an SP-shown plan picker exists', () => {
+			const planCopies = byName(taskGetAllFields, 'planId');
+			expect(planCopies.some((p) => isSpShown(p))).toBe(true);
+		});
+
+		it('the SP-shown plan picker defaults to By-ID mode with no auto-firing list', () => {
+			const spPlan = byName(taskGetAllFields, 'planId').find((p) => isSpShown(p));
+			expect(spPlan).toBeDefined();
+			// By-ID default so the dropdown never auto-fires getPlans with an empty groupId
+			// (which would hit the SP empty-id validation error).
+			expect((spPlan?.default as { mode?: string })?.mode).toBe('id');
+			// no list mode, and no group dependency that would trigger a load.
+			expect(spPlan?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spPlan?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
+	});
+
+	describe('task:create — By-ID plan/bucket under SP, group hidden', () => {
+		const fields = actionProps.filter(
+			(p) =>
+				p.displayOptions?.show?.resource?.includes('task') &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		it('the OAuth2 group picker is hidden under SP', () => {
+			const group = byName(fields, 'groupId').find((p) => isSpHidden(p));
+			expect(group).toBeDefined();
+		});
+
+		it.each(['planId', 'bucketId'])(
+			'an SP-shown By-ID %s picker exists (no list, no deps)',
+			(name) => {
+				const spCopy = byName(fields, name).find((p) => isSpShown(p));
+				expect(spCopy).toBeDefined();
+				expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+				expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+				expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+			},
+		);
+
+		it.each(['planId', 'bucketId'])('the OAuth2 list-mode %s picker is hidden under SP', (name) => {
+			const oauthCopy = byName(fields, name).find((p) => isSpHidden(p));
+			expect(oauthCopy).toBeDefined();
+		});
+
+		// `assignedTo` (member RLC) lives inside the `options` collection.
+		const optionFields = (fields.find((p) => p.name === 'options')?.options ??
+			[]) as INodeProperties[];
+		const assignedToCopies = optionFields.filter((o) => o.name === 'assignedTo');
+
+		it('an SP-shown By-ID assignedTo picker exists (no list, no deps)', () => {
+			const spCopy = assignedToCopies.find((p) => isSpShown(p));
+			expect(spCopy).toBeDefined();
+			expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+			expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
+
+		it('the OAuth2 list-mode assignedTo picker is hidden under SP', () => {
+			expect(assignedToCopies.some((p) => isSpHidden(p))).toBe(true);
+		});
+	});
+
+	describe('task:update — By-ID plan/bucket under SP inside updateFields, group hidden', () => {
+		const updateFields = actionProps.find(
+			(p) =>
+				p.name === 'updateFields' &&
+				p.displayOptions?.show?.resource?.includes('task') &&
+				p.displayOptions?.show?.operation?.includes('update'),
+		);
+		const options = (updateFields?.options ?? []) as INodeProperties[];
+		const byOptName = (name: string) => options.filter((o) => o.name === name);
+
+		it('the OAuth2 group picker is hidden under SP', () => {
+			expect(byOptName('groupId').some((p) => isSpHidden(p))).toBe(true);
+		});
+
+		it.each(['planId', 'bucketId'])(
+			'an SP-shown By-ID %s picker exists (no list, no deps)',
+			(name) => {
+				const spCopy = byOptName(name).find((p) => isSpShown(p));
+				expect(spCopy).toBeDefined();
+				expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+				expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+				expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+			},
+		);
+
+		it.each(['planId', 'bucketId'])('the OAuth2 list-mode %s picker is hidden under SP', (name) => {
+			expect(byOptName(name).some((p) => isSpHidden(p))).toBe(true);
+		});
+
+		it('an SP-shown By-ID assignedTo picker exists (no list, no deps)', () => {
+			const spCopy = byOptName('assignedTo').find((p) => isSpShown(p));
+			expect(spCopy).toBeDefined();
+			expect((spCopy?.default as { mode?: string })?.mode).toBe('id');
+			expect(spCopy?.modes?.some((m) => m.name === 'list')).toBe(false);
+			expect(spCopy?.typeOptions?.loadOptionsDependsOn).toBeUndefined();
+		});
+
+		it('the OAuth2 list-mode assignedTo picker is hidden under SP', () => {
+			expect(byOptName('assignedTo').some((p) => isSpHidden(p))).toBe(true);
+		});
+	});
+
+	describe('trigger — watch-all and chat fields hidden under SP', () => {
+		it.each(['watchAllTeams', 'watchAllChannels'])('%s carries hide["/authentication"]', (name) => {
+			const field = triggerProps.find((p) => p.name === name);
+			expect(isSpHidden(field)).toBe(true);
+		});
+
+		it.each(['watchAllChats', 'chatId'])('chat field %s is hidden under SP', (name) => {
+			const field = triggerProps.find((p) => p.name === name);
+			expect(isSpHidden(field)).toBe(true);
+		});
+
+		// Regression: the watch-all toggles are hidden under SP, so they resolve to `undefined`.
+		// The dependent pickers must gate on `_cnd: { not: true }` (matches `false` AND `undefined`),
+		// not a plain `[false]` — otherwise the Team/Channel pickers disappear under SP.
+		it.each(['teamId', 'channelId'])(
+			'the %s picker gates watchAllTeams with _cnd:{not:true} (renders under SP)',
+			(name) => {
+				const field = triggerProps.find((p) => p.name === name);
+				expect(field?.displayOptions?.show?.watchAllTeams).toEqual([{ _cnd: { not: true } }]);
+			},
+		);
+
+		it('the channelId picker gates watchAllChannels with _cnd:{not:true} (renders under SP)', () => {
+			const channel = triggerProps.find((p) => p.name === 'channelId');
+			expect(channel?.displayOptions?.show?.watchAllChannels).toEqual([{ _cnd: { not: true } }]);
+		});
+	});
+
+	describe('activityNotification - available under SP with a recipient picker', () => {
+		const fields = actionProps.filter((p) =>
+			p.displayOptions?.show?.resource?.includes('activityNotification'),
+		);
+
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
+		});
+
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.map((p) => p.name)).toEqual([
+				'recipientId',
+				'headline',
+				'previewText',
+				'topic',
+				'topicLink',
+				'options',
+			]);
+			for (const field of gated) expect(isSpHidden(field)).toBe(false);
+		});
+
+		it('the recipient picker is required with list and By-ID modes and no extractValue', () => {
+			const recipient = fields.find((p) => p.name === 'recipientId');
+			expect(recipient?.required).toBe(true);
+			expect(recipient?.displayOptions?.show?.['/authentication']).toBeUndefined();
+			expect(recipient?.modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			expect(recipient?.modes?.every((m) => m.extractValue === undefined)).toBe(true);
+		});
+
+		it('shows the setup notice under every credential and links the setup guide', () => {
+			const notice = fields.find((p) => p.name === 'activityNotificationSetupNotice');
+			expect(notice?.type).toBe('notice');
+			expect(notice?.displayOptions?.show?.authentication).toBeUndefined();
+			expect(notice?.displayOptions?.show?.['/authentication']).toBeUndefined();
+			expect(isSpHidden(notice)).toBe(false);
+			expect(notice?.displayName).toContain(`href="${ACTIVITY_NOTIFICATION_SETUP_URL}"`);
+		});
+	});
+});

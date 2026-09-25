@@ -1,6 +1,5 @@
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -11,6 +10,21 @@ export interface WorkflowIdConflict {
 	existingProjectId: string | null;
 	isArchived: boolean;
 	name: string;
+}
+
+export interface WorkflowLineageConflict {
+	sourceWorkflowId: string;
+	projectId: string;
+	existingWorkflows: Array<{
+		id: string;
+		name: string;
+		isArchived: boolean;
+	}>;
+}
+
+interface WorkflowImportMatches {
+	matches: Map<string, WorkflowEntity>;
+	lineageConflicts: WorkflowLineageConflict[];
 }
 
 @Service()
@@ -42,12 +56,19 @@ export class WorkflowImportMatchService {
 	async findBySourceWorkflowIds(
 		projectId: string,
 		sourceWorkflowIds: string[],
-	): Promise<Map<string, WorkflowEntity>> {
-		if (sourceWorkflowIds.length === 0) return new Map();
+	): Promise<WorkflowImportMatches> {
+		if (sourceWorkflowIds.length === 0) {
+			return { matches: new Map(), lineageConflicts: [] };
+		}
 
 		const packageWorkflowIds = new Set(sourceWorkflowIds);
-		const finderOptions = { includeActiveVersion: true, includeParentFolder: true } as const;
+		const finderOptions = {
+			includeActiveVersion: true,
+			includeParentFolder: true,
+			includeArchived: true,
+		} as const;
 		const matchBySourceWorkflowId = new Map<string, WorkflowEntity>();
+		const lineageConflicts: WorkflowLineageConflict[] = [];
 
 		const workflows = await this.workflowFinderService.findOwnedWorkflowsBySourceWorkflowIds(
 			projectId,
@@ -55,20 +76,37 @@ export class WorkflowImportMatchService {
 			finderOptions,
 		);
 
+		const workflowsBySourceId = new Map<string, WorkflowEntity[]>();
 		for (const workflow of workflows) {
 			if (!workflow.sourceWorkflowId) continue;
 
 			const key = workflow.sourceWorkflowId;
 			if (!packageWorkflowIds.has(key)) continue;
+			const candidates = workflowsBySourceId.get(key) ?? [];
+			candidates.push(workflow);
+			workflowsBySourceId.set(key, candidates);
+		}
 
-			if (matchBySourceWorkflowId.has(key)) {
-				throw new UnexpectedError(
-					'Multiple workflows in the target project share the same sourceWorkflowId',
-					{ extra: { projectId, sourceWorkflowId: key } },
-				);
+		for (const [sourceWorkflowId, candidates] of workflowsBySourceId) {
+			const activeCandidates = candidates.filter((workflow) => !workflow.isArchived);
+			if (candidates.length === 1 || activeCandidates.length === 1) {
+				matchBySourceWorkflowId.set(sourceWorkflowId, activeCandidates[0] ?? candidates[0]);
+				continue;
 			}
 
-			matchBySourceWorkflowId.set(key, workflow);
+			const sortedCandidates = candidates.toSorted((left, right) =>
+				left.id.localeCompare(right.id),
+			);
+			matchBySourceWorkflowId.set(sourceWorkflowId, sortedCandidates[0]);
+			lineageConflicts.push({
+				sourceWorkflowId,
+				projectId,
+				existingWorkflows: sortedCandidates.map(({ id, name, isArchived }) => ({
+					id,
+					name,
+					isArchived,
+				})),
+			});
 		}
 
 		for (const workflow of workflows) {
@@ -80,6 +118,6 @@ export class WorkflowImportMatchService {
 			matchBySourceWorkflowId.set(key, workflow);
 		}
 
-		return matchBySourceWorkflowId;
+		return { matches: matchBySourceWorkflowId, lineageConflicts };
 	}
 }

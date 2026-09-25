@@ -8,11 +8,11 @@ describe('MauticTriggerHelpers', () => {
 	const testPayload = Buffer.from('{"mautic.lead_post_save_new":[{"contact":{"id":1}}]}');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -20,7 +20,7 @@ describe('MauticTriggerHelpers', () => {
 		it('should return true when no secret is configured', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -38,7 +38,7 @@ describe('MauticTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'webhook-signature') return expectedSignature;
 					return null;
 				}),
@@ -55,7 +55,7 @@ describe('MauticTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'webhook-signature') return 'invalidsignature';
 					return null;
 				}),
@@ -72,7 +72,7 @@ describe('MauticTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 

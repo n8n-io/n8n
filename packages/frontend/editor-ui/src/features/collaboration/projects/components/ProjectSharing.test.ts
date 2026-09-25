@@ -5,7 +5,7 @@ import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '../__tests__/utils';
 import ProjectSharing from './ProjectSharing.vue';
 import type { AllRolesMap } from '@n8n/permissions';
-import { useI18n } from '@n8n/i18n';
+import { i18n, useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
 import type { ProjectListItem } from '../projects.types';
 import type { ProjectSearchFn } from '../projects.utils';
@@ -75,6 +75,31 @@ describe('ProjectSharing', () => {
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
+	});
+
+	it('should hide the dropdown chevron by default (remote + filterable select)', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+			},
+		});
+
+		expect(getByTestId('project-sharing-select').querySelector('.el-select__caret')).toBeNull();
+	});
+
+	it('should show the dropdown chevron when showSuffix is set', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+				showSuffix: true,
+			},
+		});
+
+		expect(
+			getByTestId('project-sharing-select').querySelector('.el-select__caret'),
+		).toBeInTheDocument();
 	});
 
 	it('should filter, add and remove projects', async () => {
@@ -231,6 +256,26 @@ describe('ProjectSharing', () => {
 		expect(lastItem).toHaveTextContent('projects.sharing.moreResults');
 	});
 
+	it('shows the total count and a search hint without a divider when no initial projects are available (LIGO-1092)', async () => {
+		vi.mocked(useI18n).mockReturnValue(i18n);
+		// LIGO-1092: The initial page has projects, but the filter hides all of them.
+		const firstPage = Array.from({ length: 50 }, () => createProjectListItem('team'));
+		const searchFn = vi.fn(createTestSearchFnWithCount(firstPage, 511));
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn,
+				filterFn: () => false,
+				modelValue: [],
+			},
+		});
+
+		const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+		expect(searchFn).toHaveBeenCalledWith('');
+		expect(dropdownItems).toHaveLength(1);
+		expect(dropdownItems[0]).toHaveTextContent('511 results - Start typing to search');
+		expect(dropdownItems[0].className).not.toMatch(/moreResults/);
+	});
+
 	it('should not show "more results" indicator when all results fit', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -248,6 +293,45 @@ describe('ProjectSharing', () => {
 			item.classList.contains('is-disabled'),
 		);
 		expect(disabledItems).toHaveLength(0);
+	});
+
+	describe('ordering', () => {
+		const unorderedProjects: ProjectListItem[] = [
+			{ ...createProjectListItem('team'), name: 'Charlie' },
+			{ ...createProjectListItem('team'), name: 'Alpha' },
+			{ ...createProjectListItem('team'), name: 'Bravo' },
+		];
+
+		it('should list projects alphabetically by name regardless of input order', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['Alpha', 'Bravo', 'Charlie']);
+		});
+
+		it('should keep "All Users" first and sort the remaining projects alphabetically', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+					canShareGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['All users and projects', 'Alpha', 'Bravo', 'Charlie']);
+		});
 	});
 
 	describe('global sharing', () => {

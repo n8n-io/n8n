@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isFirstParty" boolean NOT NULL DEFAULT (false))
 ```
 
 </details>
@@ -15,14 +15,15 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar |  | false | [oauth_access_tokens](oauth_access_tokens.md) [oauth_user_consents](oauth_user_consents.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) |  |  |
-| name | varchar(255) |  | false |  |  |  |
-| redirectUris | TEXT |  | false |  |  |  |
-| grantTypes | TEXT |  | false |  |  |  |
 | clientSecret | varchar(255) |  | true |  |  |  |
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
-| tokenEndpointAuthMethod | varchar(255) | 'none' | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| grantTypes | TEXT |  | false |  |  |  |
+| id | varchar |  | false | [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) |  |  |
+| isFirstParty | boolean | false | false |  |  |  |
+| name | varchar(255) |  | false |  |  |  |
+| redirectUris | TEXT |  | false |  |  |  |
+| tokenEndpointAuthMethod | varchar(255) | 'none' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -44,55 +45,58 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 erDiagram
 
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_clients" {
-  varchar id PK
-  varchar_255_ name
-  TEXT redirectUris
-  TEXT grantTypes
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
-  varchar_255_ tokenEndpointAuthMethod
   datetime_3_ createdAt
+  TEXT grantTypes
+  varchar id PK
+  boolean isFirstParty
+  varchar_255_ name
+  TEXT redirectUris
+  varchar_255_ tokenEndpointAuthMethod
   datetime_3_ updatedAt
 }
 "oauth_access_tokens" {
-  varchar token PK
   varchar clientId FK
+  varchar token PK
+  varchar userId FK
+}
+"oauth_authorization_codes" {
+  varchar clientId FK
+  varchar_255_ code PK
+  varchar codeChallenge
+  varchar_255_ codeChallengeMethod
+  datetime_3_ createdAt
+  bigint expiresAt
+  varchar redirectUri
+  varchar resource
+  TEXT scope
+  varchar state
+  datetime_3_ updatedAt
+  boolean used
+  varchar userId FK
+}
+"oauth_refresh_tokens" {
+  varchar clientId FK
+  datetime_3_ createdAt
+  bigint expiresAt
+  varchar resource
+  TEXT scope
+  varchar_255_ token PK
+  datetime_3_ updatedAt
   varchar userId FK
 }
 "oauth_user_consents" {
-  INTEGER id
-  varchar userId FK
   varchar clientId FK
   bigint grantedAt
-}
-"oauth_authorization_codes" {
-  varchar_255_ code PK
-  varchar clientId FK
-  varchar userId FK
-  varchar redirectUri
-  varchar codeChallenge
-  varchar_255_ codeChallengeMethod
-  bigint expiresAt
-  varchar state
-  boolean used
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  varchar resource
+  INTEGER id
   TEXT scope
-}
-"oauth_refresh_tokens" {
-  varchar_255_ token PK
-  varchar clientId FK
   varchar userId FK
-  bigint expiresAt
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT scope
 }
 ```
 

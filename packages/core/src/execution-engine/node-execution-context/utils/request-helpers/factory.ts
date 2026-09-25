@@ -1,4 +1,5 @@
-import { httpRequest } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
 	IExecuteData,
@@ -84,8 +85,10 @@ export const getRequestHelperFunctions = (
 					requestOptions.headers as Record<string, string>,
 				);
 			}
-			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
+		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
+			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,
@@ -93,6 +96,7 @@ export const getRequestHelperFunctions = (
 			paginationOptions,
 			credentialsType,
 			additionalCredentialOptions,
+			sanitizedRequest,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any[]> {
 			return await requestWithAuthenticationPaginated.call(
@@ -104,6 +108,7 @@ export const getRequestHelperFunctions = (
 				node,
 				credentialsType,
 				additionalCredentialOptions,
+				sanitizedRequest,
 			);
 		},
 		async httpRequestWithAuthentication(
@@ -123,7 +128,6 @@ export const getRequestHelperFunctions = (
 				additionalCredentialOptions,
 			);
 		},
-
 		async refreshOAuth2Token(
 			this: IAllExecuteFunctions,
 			credentialsType: string,

@@ -13,6 +13,7 @@ import {
 	type ResolvedExpressionFailure,
 	type ResolvedNodeParametersResult,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import {
 	type IExecuteData,
 	type INode,
@@ -335,7 +336,7 @@ export async function extractResolvedNodeParameters(
 				}
 				return capResolvedLeaf(resolvedValue);
 			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = getErrorMessage(error);
 				failedExpressions.push({
 					path,
 					raw: value,
@@ -360,7 +361,18 @@ export async function extractResolvedNodeParameters(
 	};
 
 	const parameters = (nodeJson.parameters ?? {}) as Record<string, unknown>;
-	const resolvedTree = walk(parameters, '') as Record<string, unknown>;
+	// When N8N_EXPRESSION_ENGINE=vm, expression evaluation runs in a V8 isolate
+	// that must be acquired for this workflow's Expression instance before any
+	// `getParameterValue` call — otherwise the VM bridge throws "No bridge
+	// acquired". This throwaway workflow never goes through the execution engine,
+	// so we acquire/release the isolate ourselves. No-op in legacy mode.
+	await workflow.expression.acquireIsolate();
+	let resolvedTree: Record<string, unknown>;
+	try {
+		resolvedTree = walk(parameters, '') as Record<string, unknown>;
+	} finally {
+		await workflow.expression.releaseIsolate();
+	}
 
 	// Resolved values can echo data from upstream nodes (webhook bodies, HTTP
 	// responses, etc.) so they're wrapped as untrusted data — same pattern used

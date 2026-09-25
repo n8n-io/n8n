@@ -13,6 +13,7 @@ import { Container, Service } from '@n8n/di';
 export class ExecutionContextHookRegistry {
 	private hookMap: Map<string, IContextEstablishmentHook> = new Map();
 	private globalHook: Set<IContextEstablishmentHook> = new Set();
+	private subExecutionHook: Set<IContextEstablishmentHook> = new Set();
 
 	constructor(
 		private readonly executionContextHookMetadata: ContextEstablishmentHookMetadata,
@@ -33,9 +34,11 @@ export class ExecutionContextHookRegistry {
 	async init() {
 		this.hookMap.clear();
 		this.globalHook.clear();
+		this.subExecutionHook.clear();
 
 		const hookClasses = this.executionContextHookMetadata.getClasses();
 		const globalHookClasses = this.executionContextHookMetadata.getGlobalClasses();
+		const subExecutionHookClasses = this.executionContextHookMetadata.getSubExecutionClasses();
 		this.logger.debug(`Registering ${hookClasses.length} execution context hooks.`);
 
 		for (const hookClass of hookClasses) {
@@ -70,6 +73,9 @@ export class ExecutionContextHookRegistry {
 			this.hookMap.set(hook.hookDescription.name, hook);
 			if (globalHookClasses.includes(hookClass)) {
 				this.globalHook.add(hook);
+			}
+			if (subExecutionHookClasses.includes(hookClass)) {
+				this.subExecutionHook.add(hook);
 			}
 		}
 	}
@@ -110,5 +116,15 @@ export class ExecutionContextHookRegistry {
 
 	getGlobalHooks(): IContextEstablishmentHook[] {
 		return Array.from(this.globalHook);
+	}
+
+	/**
+	 * Returns hooks that opted into re-running for sub-workflow executions via
+	 * `runForSubExecution`. These re-derive the child's own context on top of the
+	 * inherited parent context (e.g. capturing the child workflow's redaction
+	 * policy on its own execution record).
+	 */
+	getSubExecutionHooks(): IContextEstablishmentHook[] {
+		return Array.from(this.subExecutionHook);
 	}
 }

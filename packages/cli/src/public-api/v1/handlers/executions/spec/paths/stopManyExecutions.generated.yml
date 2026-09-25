@@ -1,0 +1,70 @@
+operationId: stopManyExecutions
+tags:
+  - Executions
+summary: Stop multiple executions
+description: Stop multiple executions from your instance based on filter criteria.
+x-required-scope: execution:stop
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          status:
+            type: array
+            items:
+              type: string
+              enum:
+                - queued
+                - running
+                - waiting
+            minItems: 1
+            description: Array of execution statuses to stop. Must include at least one status.
+            example:
+              - queued
+              - running
+              - waiting
+          workflowId:
+            type: string
+            description: Optional workflow ID to filter executions. If not provided, will stop executions across all accessible workflows. The literal value `all` has the same effect as omitting it.
+            example: 2tUt1wbLX592XDdX
+          startedAfter:
+            type: string
+            format: date-time
+            description: Only stop executions that started after this time.
+            example: 2024-01-01T00:00:00.000Z
+          startedBefore:
+            type: string
+            format: date-time
+            description: Only stop executions that started before this time.
+            example: 2024-12-31T23:59:59.999Z
+        required:
+          - status
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            stopped:
+              type: integer
+              description: The number of executions that were successfully stopped.
+              example: 5
+          required:
+            - stopped
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

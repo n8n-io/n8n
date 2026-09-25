@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia';
 import CanvasNodeChoicePrompt from './CanvasNodeChoicePrompt.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EditorEnabledFeaturesKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
@@ -71,5 +71,15 @@ describe('CanvasNodeChoicePrompt', () => {
 
 		expect(getByTestId('canvas-add-first-step-button')).toBeInTheDocument();
 		expect(queryByTestId('canvas-build-with-ai-button')).not.toBeInTheDocument();
+	});
+
+	it('renders the assistant sparkles icon on the Build with AI tile', () => {
+		const { getByTestId } = renderComponent({
+			pinia: setupStores({ isAiBuilderEnabled: true }),
+		});
+
+		expect(
+			getByTestId('canvas-build-with-ai-button').querySelector('[data-icon="sparkles"]'),
+		).toBeInTheDocument();
 	});
 });

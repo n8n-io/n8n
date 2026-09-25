@@ -1,4 +1,4 @@
-import type { CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
+import type { CommandBarItem } from '@n8n/design-system';
 import type { ComputedRef, Ref } from 'vue';
 
 export type { CommandBarItem };

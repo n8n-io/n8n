@@ -1,12 +1,13 @@
 import { createHmac } from 'crypto';
 
 import * as utils from '../GenericFunctions';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => {
-	const original = jest.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const original = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
 		...original,
-		NodeApiError: jest.fn().mockImplementation(function (
+		NodeApiError: vi.fn().mockImplementation(function (
 			this: { node: unknown; error: unknown },
 			node: unknown,
 			error: unknown,
@@ -23,15 +24,15 @@ describe('Facebook GenericFunctions', () => {
 	let mockExecuteFunctions: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({
+			getNode: vi.fn().mockReturnValue({
 				name: 'Facebook',
 				typeVersion: 1,
 			}),
-			getNodeParameter: jest.fn().mockReturnValue('accessToken'),
-			getCredentials: jest.fn().mockImplementation(async (type) => {
+			getNodeParameter: vi.fn().mockReturnValue('accessToken'),
+			getCredentials: vi.fn().mockImplementation(async (type) => {
 				if (type === 'facebookGraphApi') {
 					return { accessToken: 'test-access-token' };
 				} else if (type === 'facebookGraphAppApi') {
@@ -43,8 +44,8 @@ describe('Facebook GenericFunctions', () => {
 				}
 			}),
 			helpers: {
-				request: jest.fn(),
-				requestWithAuthentication: jest.fn(),
+				request: vi.fn(),
+				requestWithAuthentication: vi.fn(),
 			},
 		};
 	});
@@ -89,7 +90,7 @@ describe('Facebook GenericFunctions', () => {
 
 		it('should include appsecret_proof and appsecret_time when appSecret is set', async () => {
 			const fixedTime = 1700000000;
-			jest.spyOn(Date, 'now').mockReturnValue(fixedTime * 1000);
+			vi.spyOn(Date, 'now').mockReturnValue(fixedTime * 1000);
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
@@ -114,7 +115,7 @@ describe('Facebook GenericFunctions', () => {
 				}),
 			);
 
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should not include appsecret_proof when appSecret is empty', async () => {

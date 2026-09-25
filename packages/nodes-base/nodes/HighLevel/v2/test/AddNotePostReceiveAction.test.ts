@@ -1,11 +1,14 @@
-import { highLevelApiRequest } from '../GenericFunctions';
+import type { IExecuteSingleFunctions, IN8nHttpFullResponse } from 'n8n-workflow';
+
+import { addNotePostReceiveAction, highLevelApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('GenericFunctions - highLevelApiRequest', () => {
 	let mockContext: any;
-	let mockHttpRequestWithAuthentication: jest.Mock;
+	let mockHttpRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
-		mockHttpRequestWithAuthentication = jest.fn();
+		mockHttpRequestWithAuthentication = vi.fn();
 		mockContext = {
 			helpers: {
 				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
@@ -112,5 +115,46 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 		});
 
 		expect(result).toEqual(mockResponse);
+	});
+});
+
+describe('addNotePostReceiveAction', () => {
+	it('encodes the contact ID as one URL path segment', async () => {
+		const httpRequestWithAuthentication = vi.fn().mockResolvedValue({});
+		const context = {
+			getNodeParameter: vi.fn().mockReturnValue('A note'),
+			helpers: { httpRequestWithAuthentication },
+		};
+
+		await addNotePostReceiveAction.call(
+			context as unknown as IExecuteSingleFunctions,
+			[{ json: {} }],
+			{
+				body: { contact: { id: 'contact/id?x#y', locationId: 'location-id' } },
+			} as IN8nHttpFullResponse,
+		);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'highLevelOAuth2Api',
+			expect.objectContaining({
+				url: 'https://services.leadconnectorhq.com/contacts/contact%2Fid%3Fx%23y/notes',
+			}),
+		);
+	});
+
+	it('rejects an invalid contact ID before sending a request', async () => {
+		const httpRequestWithAuthentication = vi.fn();
+		const context = {
+			getNodeParameter: vi.fn().mockReturnValue('A note'),
+			helpers: { httpRequestWithAuthentication },
+		};
+
+		await expect(
+			addNotePostReceiveAction.call(context as unknown as IExecuteSingleFunctions, [{ json: {} }], {
+				body: { contact: { id: '..', locationId: 'location-id' } },
+			} as IN8nHttpFullResponse),
+		).rejects.toThrow('Invalid identifier');
+
+		expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 });

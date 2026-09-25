@@ -27,9 +27,9 @@ pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% 
 
 ## CI Regression Detection
 
-Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It comments on PRs with results and regression warnings.
+Benchmarks run automatically on every push to `master`, not on pull requests. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It reports results and regression warnings against the master trend.
 
-You can also trigger benchmarks manually for any branch via **Actions > Test: Benchmarks > Run workflow**.
+To benchmark a change before you merge it, trigger the run manually for your branch via **Actions > Test: Benchmarks > Run workflow**.
 
 ### Local vs CI
 
@@ -77,6 +77,7 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | Area | What it measures | Why it matters |
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
+| Workflow graph traversal | `getChildNodes` / `getParentNodes` on branching graphs | Runs on every execution (`checkReadyForExecution`) and across the editor; must stay linear in graph size |
 
 
 ## Tips

@@ -1,3 +1,4 @@
+import { STICKY_NODE_TYPE } from './constants';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -12,13 +13,138 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type INodeTypes,
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
-import { isTriggerNode } from './node-helpers';
+import { isTriggerNode, isTriggerNodeType } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
+
+/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
+export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
+
+/**
+ * How many boxes a reader should see on the canvas with every group collapsed:
+ * the trigger, each group, and each ungrouped node. Shared by the grouping
+ * guidance and the build-time check so the number cannot drift between them.
+ */
+export const TOP_LEVEL_ITEM_CEILING = 7;
+
+/**
+ * Drops non-string values, caps to the max length, and treats empty as "no description".
+ */
+export function normalizeGroupDescription(description: unknown): string | undefined {
+	if (typeof description !== 'string') return undefined;
+	const capped = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
+	return capped.length > 0 ? capped : undefined;
+}
+
+/** Issue code shared by every surface that reports the collapsed box count. */
+export const TOP_LEVEL_ITEMS_OVER_CEILING_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+
+export type TopLevelItemsSummary = {
+	/** Boxes on the canvas with every group collapsed: groups plus ungrouped nodes. */
+	total: number;
+	groupCount: number;
+	ceiling: number;
+	overCeiling: boolean;
+	/** Ungrouped nodes that draw a box, the trigger included. */
+	ungroupedNodeNames: string[];
+	/** Ungrouped nodes a group could still hold; a trigger cannot join one. */
+	groupableNodeNames: string[];
+};
+
+type TopLevelItemsNode = Pick<INode, 'type'> & { id?: string; name?: string };
+
+/**
+ * Names of the nodes that reach their parent over non-main connections only. A
+ * sub-node rides with its parent on the canvas, so it is not a box of its own.
+ */
+export function collectSubNodeNames(
+	connectionsBySourceNode: IConnections | undefined,
+): Set<string> {
+	const subNodeNames = new Set<string>();
+
+	for (const [nodeName, connectionsByType] of Object.entries(connectionsBySourceNode ?? {})) {
+		// An empty slot (`ai_tool: [[]]`) is not a connection, so it must not make a sub-node.
+		const connectedTypes = Object.entries(connectionsByType)
+			.filter(([, outputs]) => outputs.some((targets) => (targets?.length ?? 0) > 0))
+			.map(([type]) => type);
+
+		if (
+			connectedTypes.length > 0 &&
+			connectedTypes.every((type) => type !== NodeConnectionTypes.Main)
+		) {
+			subNodeNames.add(nodeName);
+		}
+	}
+
+	return subNodeNames;
+}
+
+/**
+ * Counts the boxes a reader sees with every group collapsed. Sticky notes and
+ * sub-nodes do not count: a sticky belongs to the user, a sub-node rides with its
+ * parent. Shared by the Instance AI build and the MCP save tools so both report
+ * the same number the grouping guidance states.
+ */
+export function summarizeTopLevelItems(input: {
+	nodes: TopLevelItemsNode[];
+	nodeGroups?: Array<Pick<IWorkflowGroup, 'nodeIds'>>;
+	connectionsBySourceNode?: IConnections;
+}): TopLevelItemsSummary {
+	const groups = input.nodeGroups ?? [];
+	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
+	const subNodeNames = collectSubNodeNames(input.connectionsBySourceNode);
+
+	const ungrouped = input.nodes.filter((node) => {
+		const isSticky = node.type === STICKY_NODE_TYPE;
+		const isGrouped = node.id !== undefined && groupedNodeIds.has(node.id);
+		const isSubNode = node.name !== undefined && subNodeNames.has(node.name);
+
+		return !isSticky && !isGrouped && !isSubNode;
+	});
+
+	const labelOf = (node: TopLevelItemsNode) => node.name ?? node.id ?? node.type;
+	const total = groups.length + ungrouped.length;
+
+	return {
+		total,
+		groupCount: groups.length,
+		ceiling: TOP_LEVEL_ITEM_CEILING,
+		overCeiling: total > TOP_LEVEL_ITEM_CEILING,
+		ungroupedNodeNames: ungrouped.map(labelOf),
+		groupableNodeNames: ungrouped.filter((node) => !isTriggerNodeType(node.type)).map(labelOf),
+	};
+}
+
+/** The over-ceiling message, worded once so every surface tells the agent the same thing. */
+export function formatTopLevelItemsMessage(summary: TopLevelItemsSummary): string {
+	const stillUngrouped =
+		summary.groupableNodeNames.length > 0
+			? `. Still ungrouped: ${summary.groupableNodeNames.join(', ')}`
+			: '';
+
+	return (
+		`The canvas top level has ${summary.total} boxes with every group collapsed, over the ${summary.ceiling} you should aim for` +
+		stillUngrouped +
+		'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.'
+	);
+}
+
+/**
+ * The group rules that relax behind a flag. Each one rolls out on its own.
+ * The validator takes this shape; the canvas and the save path each fill it
+ * from their own flag reader.
+ */
+export type NodeGroupRuleOptions = {
+	/** Accept a group that holds its own trigger. */
+	allowTriggerInGroup?: boolean;
+	/** Accept a group with several entry and exit nodes. */
+	allowMultipleBoundaryNodes?: boolean;
+};
 
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
@@ -33,7 +159,7 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 		node: TNode,
 		nodeType: INodeTypeDescription,
 	) => Array<NodeConnectionType | INodeOutputConfiguration>;
-};
+} & NodeGroupRuleOptions;
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
 	| { valid: true; subGraph: TNode[]; subGraphData: ExtractableSubgraphData }
@@ -51,11 +177,64 @@ export type NodeGroupValidationResult<TNode extends INode = INode> =
 			connection: { source: string; target: string; type: string };
 	  };
 
+/**
+ * Single source of truth for the structural grouping rules, shared by three
+ * surfaces so they cannot drift:
+ * - `sdkReference`: the rule as stated in the SDK/MCP docs an agent reads.
+ * - `violation`: the fragment used in the save-path rejection message below.
+ *
+ * Only the four reasons `validateNodeSelectionForGrouping` can actually return
+ * live here. The per-node `multiple-input-branches` / `multiple-output-branches`
+ * checks are extraction-only (`validateNodeSelectionForExtraction`) and are
+ * deliberately absent — a group is never rejected for them.
+ */
+export const NODE_GROUPING_RULES = {
+	triggerSelected: {
+		sdkReference: '**No trigger nodes.** Trigger nodes cannot be part of a group.',
+		violation: 'cannot contain trigger nodes',
+	},
+	invalidSubgraph: {
+		sdkReference:
+			'**One connected section with a single entry and exit.** The connectable members must ' +
+			'form a single connected section of the graph — reachable from one another, not two ' +
+			'unrelated islands — where at most one member takes main input from outside the group and ' +
+			'has no predecessor inside, and at most one member sends main output outside it and has no ' +
+			'successor inside (the one exception: a closed loop whose only exit is the loop node) — so ' +
+			'a gate cannot hold only its dead end. The limit is on members facing outward, not on connections: ' +
+			'several connections may reach that one entry member, and several may leave that one exit ' +
+			'member. Sticky notes may accompany the selection ' +
+			'without participating in connectivity, and a sticky-only group is valid.',
+		violation: 'must form a single connected subgraph with a single entry and exit',
+	},
+	nonMainBoundary: {
+		sdkReference:
+			'**Keep AI sub-nodes with their Agent.** If an AI Agent is in a group, its language-model, ' +
+			'tool, and memory sub-nodes belong in the same group — put them either all inside the group ' +
+			'or all outside it, never split. A model/tool/memory connection must not cross the group boundary.',
+		// Fragment: reads as `<label> cannot cross the "<type>" connection between "<a>" and "<b>".`
+		violation: 'cannot cross the',
+	},
+	nodeAlreadyGrouped: {
+		sdkReference: '**One group per node.** A node can belong to at most one group at a time.',
+		violation: 'contains nodes that already belong to another group',
+	},
+} as const;
+
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeSelectionValidationResult<TNode> {
-	const subgraphResult = validateNodeSelectionSubgraph(input);
-	if (!subgraphResult.valid) return subgraphResult;
+	// Both rules forced off: extraction replaces the selection with one node, which
+	// has one input and one output. Several entries or exits leave nothing to wire
+	// that node back to.
+	const subgraphResult = validateNodeSelectionSubgraph({
+		...input,
+		allowTriggerInGroup: false,
+		allowMultipleBoundaryNodes: false,
+	});
+
+	if (!subgraphResult.valid) {
+		return subgraphResult;
+	}
 
 	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
 	const { start, end } = subgraphResult.subGraphData;
@@ -89,10 +268,27 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
 	}
 
-	const extractableResult = validateNodeSelectionSubgraph(input);
-	if (!extractableResult.valid) return extractableResult;
+	// Sticky notes have no connections, so the subgraph/connectivity rules
+	// below are checked against connectable nodes only — stickies ride along
+	// as plain members. A sticky-only group is valid *data* (a group can
+	// degenerate to one when its last connectable node is deleted); stricter
+	// rules live with the callers: creation surfaces require at least one
+	// connectable node (see `resolveGroupableNodeIds` in the editor) and
+	// persistence rejects memberless groups (see `validateWorkflowNodeGroups`
+	// in the CLI), which also keeps empty selections out of this fast path.
+	const connectableNodes = input.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+	if (connectableNodes.length === 0) {
+		return {
+			valid: true,
+			subGraph: input.nodes,
+			subGraphData: { start: undefined, end: undefined },
+		};
+	}
 
-	const nodeNames = new Set(extractableResult.subGraph.map((node) => node.name));
+	const subgraphResult = validateNodeSelectionSubgraph({ ...input, nodes: connectableNodes });
+	if (!subgraphResult.valid) return subgraphResult;
+
+	const nodeNames = new Set(subgraphResult.subGraph.map((node) => node.name));
 	const boundaryConnection = findNonMainBoundaryConnection(
 		nodeNames,
 		input.connectionsBySourceNode,
@@ -102,18 +298,320 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
 	}
 
-	return extractableResult;
+	// Report the full selection (stickies included) as the resulting subgraph.
+	return { ...subgraphResult, subGraph: input.nodes };
+}
+
+export type WorkflowGroupViolationCode =
+	| 'duplicate-group-id'
+	| 'duplicate-group-name'
+	| 'empty-group'
+	| 'unknown-node-id'
+	| 'node-in-multiple-groups'
+	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
+
+export type WorkflowGroupViolation = {
+	groupId: string;
+	groupName: string;
+	code: WorkflowGroupViolationCode;
+	/** Actionable, user-facing description; identical to the save-path rejection message. */
+	message: string;
+};
+
+type WorkflowGroupViolationWithGroup = WorkflowGroupViolation & { group: IWorkflowGroup };
+
+export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
+	nodes: TNode[];
+	connectionsBySourceNode?: IConnections;
+	nodeGroups?: IWorkflowGroup[];
+	/**
+	 * Resolves a node to its type description (used to detect trigger nodes), or
+	 * `undefined`/`null` for unknown node types so validation degrades gracefully.
+	 * Pass `null` to run basic checks only.
+	 */
+	getNodeType: ((node: TNode) => INodeTypeDescription | null | undefined) | null;
+} & NodeGroupRuleOptions;
+
+export type WorkflowGroupsValidationResult =
+	| { valid: true }
+	| { valid: false; violations: [WorkflowGroupViolation, ...WorkflowGroupViolation[]] };
+
+export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description. Returns `null` for unknown node types so
+ * validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
+
+/**
+ * Validates a workflow's `nodeGroups` without throwing, collecting all violations.
+ * Single source of truth for group rules: persistence (CLI save path) rejects with
+ * the first violation's message, and validate-time surfaces (e.g. the MCP
+ * `validate_workflow` tool) report all of them as errors.
+ *
+ * Basic checks (always run): unique group IDs, unique group names, at least one
+ * member, all referenced node IDs exist, and each node belongs to at most one group.
+ *
+ * Full checks (run only when `getNodeType` is non-null, and skipped for groups that
+ * already have a basic violation): each group must satisfy the same grouping rules
+ * the canvas enforces — no triggers, a single connected subgraph, and no non-main
+ * connection crossing the group boundary — validated against the other groups as
+ * existing groups. Pass the `getNodeType` callback to run the full checks (on
+ * create, and on an update that changed the graph or the groups); pass `null` to
+ * run basic checks only (e.g. a git import, so legacy-invalid groups don't block
+ * the import).
+ *
+ * Violations are collected in the same order the save path checks them, so
+ * `violations[0]` is always the error a save would reject with.
+ *
+ * Note: must be called after node IDs are assigned (see `addNodeIds` in the CLI),
+ * since nodes created via the API may not have IDs until that step assigns them.
+ */
+export function validateWorkflowGroups<TNode extends INode>(
+	input: WorkflowGroupsValidationInput<TNode>,
+): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity(input);
+
+	if (result.valid) return { valid: true };
+
+	const [firstViolation, ...restViolations] = result.violations;
+	return {
+		valid: false,
+		violations: [
+			stripWorkflowGroupIdentity(firstViolation),
+			...restViolations.map(stripWorkflowGroupIdentity),
+		],
+	};
+}
+
+function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
+	nodes,
+	connectionsBySourceNode,
+	nodeGroups,
+	getNodeType,
+	...rules
+}: WorkflowGroupsValidationInput<TNode>):
+	| { valid: true }
+	| {
+			valid: false;
+			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
+	  } {
+	if (!nodeGroups || nodeGroups.length === 0) return { valid: true };
+
+	const violations: WorkflowGroupViolationWithGroup[] = [];
+	// Tracked by object identity: duplicate IDs/names make `group.id` ambiguous.
+	const groupsWithBasicViolations = new Set<IWorkflowGroup>();
+	const addViolation = (
+		group: IWorkflowGroup,
+		code: WorkflowGroupViolationCode,
+		message: string,
+	) => {
+		violations.push({ group, groupId: group.id, groupName: group.name, code, message });
+	};
+
+	const nodeById = new Map(nodes.filter((node) => Boolean(node.id)).map((node) => [node.id, node]));
+	// Node names are how users and agents identify nodes, so messages use them;
+	// the id is only a fallback for members without a resolvable name.
+	const nodeLabel = (nodeId: string) => nodeById.get(nodeId)?.name || nodeId;
+	const seenGroupIds = new Set<string>();
+	const seenGroupNames = new Set<string>();
+	const nodeToGroup = new Map<string, string>();
+
+	for (const group of nodeGroups) {
+		const addBasicViolation = (code: WorkflowGroupViolationCode, message: string) => {
+			addViolation(group, code, message);
+			groupsWithBasicViolations.add(group);
+		};
+
+		// Unique group IDs
+		if (seenGroupIds.has(group.id)) {
+			addBasicViolation('duplicate-group-id', `Duplicate node group ID "${group.id}".`);
+		}
+		seenGroupIds.add(group.id);
+
+		// Unique group names
+		if (seenGroupNames.has(group.name)) {
+			addBasicViolation('duplicate-group-name', `Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
+		if (group.nodeIds.length === 0) {
+			addBasicViolation('empty-group', `Group "${group.name}" has no members.`);
+		}
+
+		for (const nodeId of group.nodeIds) {
+			// All referenced nodes must exist
+			if (!nodeById.has(nodeId)) {
+				addBasicViolation(
+					'unknown-node-id',
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+				continue;
+			}
+			// A node can only belong to one group
+			const existingGroup = nodeToGroup.get(nodeId);
+			if (existingGroup) {
+				addBasicViolation(
+					'node-in-multiple-groups',
+					`Node "${nodeLabel(nodeId)}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+				);
+			} else {
+				nodeToGroup.set(nodeId, group.name);
+			}
+		}
+	}
+
+	if (getNodeType) {
+		const connections = connectionsBySourceNode ?? {};
+
+		for (const group of nodeGroups) {
+			// A basic violation makes the group's member set unreliable, so the
+			// graph rules would only produce misleading follow-up violations.
+			if (groupsWithBasicViolations.has(group)) continue;
+
+			const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
+			const result = validateNodeSelectionForGrouping({
+				nodes: groupNodes,
+				connectionsBySourceNode: connections,
+				getNodeType,
+				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+				...rules,
+			});
+			if (!result.valid) {
+				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
+			}
+		}
+	}
+
+	const [firstViolation, ...restViolations] = violations;
+	if (!firstViolation) return { valid: true };
+	return { valid: false, violations: [firstViolation, ...restViolations] };
+}
+
+function stripWorkflowGroupIdentity({
+	groupId,
+	groupName,
+	code,
+	message,
+}: WorkflowGroupViolationWithGroup): WorkflowGroupViolation {
+	return { groupId, groupName, code, message };
+}
+
+/**
+ * Non-fatal twin of `validateWorkflowGroups`: drops every offending group instead
+ * of throwing, returning every violation for the groups it dropped.
+ * Mutates `nodeGroups`.
+ *
+ * `shouldDrop` filters which violating groups are removed, letting a caller
+ * drop the groups it can blame first and re-check the rest afterwards.
+ */
+export function dropInvalidWorkflowGroups<TNode extends INode>(
+	workflow: { nodes: TNode[]; nodeGroups?: IWorkflowGroup[]; connections?: IConnections },
+	getNodeType: GetNodeTypeForGrouping | null,
+	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
+): WorkflowGroupViolation[] {
+	if (!workflow.nodeGroups?.length) {
+		return [];
+	}
+
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) {
+		return [];
+	}
+
+	const dropped = result.violations.filter(shouldDrop);
+	if (dropped.length === 0) {
+		return [];
+	}
+
+	const droppedGroups = new Set(dropped.map((violation) => violation.group));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroups.has(group));
+
+	return dropped.map(stripWorkflowGroupIdentity);
+}
+
+/**
+ * Maps a failed `validateNodeSelectionForGrouping` result to an actionable message
+ * that names the offending group and the rule it broke. These strings are the
+ * public save-rejection messages — change them only deliberately.
+ */
+function groupRuleViolationMessage(
+	group: IWorkflowGroup,
+	result: Extract<NodeGroupValidationResult, { valid: false }>,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	const label = `Node group "${group.name}"`;
+	switch (result.reason) {
+		case 'trigger-selected':
+			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;
+		case 'invalid-subgraph':
+			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}${describeSubgraphError(result.errors[0], nodeLabel)}.`;
+		case 'node-already-grouped':
+			return `${label} ${NODE_GROUPING_RULES.nodeAlreadyGrouped.violation}: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
+		case 'non-main-boundary':
+			return `${label} ${NODE_GROUPING_RULES.nonMainBoundary.violation} "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`;
+		// Extraction-only reasons; unreachable from grouping but required for exhaustiveness.
+		case 'multiple-input-branches':
+			return `${label} has multiple input branches at node "${result.node}".`;
+		case 'multiple-output-branches':
+			return `${label} has multiple output branches at node "${result.node}".`;
+	}
+}
+
+/**
+ * Names the node(s) the engine blamed, so the reader can fix the boundary
+ * instead of guessing which member faces outward.
+ */
+function describeSubgraphError(
+	error: ExtractableErrorResult | undefined,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	if (!error) {
+		return '';
+	}
+
+	switch (error.errorCode) {
+		case 'Output Edge From Non-Leaf Node':
+		case 'Input Edge To Non-Root Node':
+			return ` (${error.errorCode.toLowerCase()}: "${nodeLabel(error.node)}")`;
+		case 'Multiple Input Nodes':
+		case 'Multiple Output Nodes':
+			return ` (${error.errorCode.toLowerCase()}: ${[...error.nodes].map((node) => `"${nodeLabel(node)}"`).join(', ')})`;
+		case 'No Continuous Path From Root To Leaf In Selection':
+			return ` (no path from "${nodeLabel(error.start)}" to "${nodeLabel(error.end)}")`;
+	}
 }
 
 function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
+	allowTriggerInGroup,
+	allowMultipleBoundaryNodes,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
-	const triggers = nodes.filter((node) => {
-		const nodeType = getNodeType(node);
-		return nodeType ? isTriggerNode(nodeType) : false;
-	});
+	// A relaxed group may hold its own trigger, together with the nodes that follow it.
+	const triggers = allowTriggerInGroup
+		? []
+		: nodes.filter((node) => {
+				const nodeType = getNodeType(node);
+				return nodeType ? isTriggerNode(nodeType) : false;
+			});
 	if (triggers.length > 0) {
 		return {
 			valid: false,
@@ -124,7 +622,10 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 
 	const adjacencyList = buildAdjacencyList(connectionsBySourceNode);
 	const selectedNodeNames = new Set(nodes.map((node) => node.name));
-	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+	// A relaxed group may have several entry and exit nodes
+	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList, {
+		relaxBoundaryRules: allowMultipleBoundaryNodes,
+	});
 
 	if (Array.isArray(selection)) {
 		return { valid: false, reason: 'invalid-subgraph', errors: selection };

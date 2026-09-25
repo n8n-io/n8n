@@ -60,6 +60,11 @@ describe('UpdateWorkflowDto', () => {
 				request: { nodeGroups: [] },
 			},
 			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: { parentFolder: { id: 'folder123', name: 'Some Folder' } },
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
@@ -71,6 +76,15 @@ describe('UpdateWorkflowDto', () => {
 		])('should validate $name', ({ request }) => {
 			const result = UpdateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = UpdateWorkflowDto.safeParse({
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
 		});
 
 		test('should transform tags from objects to string array', () => {
@@ -209,11 +223,6 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
-				name: 'staticData as array',
-				request: { staticData: [] },
-				expectedErrorPath: ['staticData'],
-			},
-			{
 				name: 'pinData as array',
 				request: { pinData: [] },
 				expectedErrorPath: ['pinData'],
@@ -292,6 +301,16 @@ describe('UpdateWorkflowDto', () => {
 
 				expect(result.success).toBe(true);
 				expect(result.data).not.toHaveProperty('versionId');
+			});
+
+			test('should not accept staticData field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('staticData');
 			});
 
 			test('should not accept isArchived field', () => {

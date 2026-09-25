@@ -7,8 +7,9 @@ import type {
 	IHttpRequestOptions,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import type { SplunkCredentials, SplunkError } from '../helpers/interfaces';
 import { extractErrorDescription, formatEntry, parseXml } from '../helpers/utils';
 

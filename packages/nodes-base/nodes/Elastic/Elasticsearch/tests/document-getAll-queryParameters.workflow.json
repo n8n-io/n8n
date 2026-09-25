@@ -1,0 +1,69 @@
+{
+	"name": "Elasticsearch Document GetAll Query Parameters Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "getAll",
+				"indexId": "my-index",
+				"returnAll": false,
+				"limit": 10,
+				"simple": false,
+				"options": {
+					"query": "{\"query\": {\"term\": {\"user.id\": \"$1\"}}}",
+					"queryParameters": "={{ ['john\", \"boost\": \"2'] }}"
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "elasticsearch-getAll",
+			"name": "Elasticsearch",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "elasticsearch-cred-id",
+					"name": "Elasticsearch account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Elasticsearch": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_score": 1,
+					"_source": {
+						"user.id": "john"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Elasticsearch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

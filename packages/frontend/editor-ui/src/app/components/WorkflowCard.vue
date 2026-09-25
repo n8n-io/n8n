@@ -8,20 +8,23 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import { useI18n } from '@n8n/i18n';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { StatusDotVariant } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
@@ -30,7 +33,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -44,12 +47,16 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
+import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -117,7 +124,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
@@ -295,6 +302,9 @@ const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openInAssistant = useOpenInAssistantCard(props);
+
 // Optimistic state for the legacy 3-dot menu fallback (used when the
 // 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
@@ -317,13 +327,49 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
-const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+// Keyed by the full status union so a new backend status is a compile error
+// here instead of silently rendering as the green 'Published' dot.
+const publicationIndicators: Record<
+	WorkflowListPublicationStatus,
+	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
+> = {
+	published: { variant: 'success', labelKey: 'workflows.published' },
+	partial: {
+		variant: 'warning',
+		labelKey: 'workflows.publicationStatus.partial',
+		tooltipKey: 'workflows.publicationStatus.partial.tooltip',
+	},
+	failed: {
+		variant: 'danger',
+		labelKey: 'workflows.publicationStatus.failed',
+		tooltipKey: 'workflows.publicationStatus.failed.tooltip',
+	},
+};
+
+// The server-derived status is authoritative when present; workflows with no
+// settled trigger rows omit it and fall back to the legacy activeVersionId indicator.
+const publicationIndicator = computed(() => {
+	const state = props.data.publicationStatus ?? (isWorkflowPublished.value ? 'published' : null);
+	if (state === null) return null;
+	const { variant, labelKey, tooltipKey } = publicationIndicators[state];
+	return {
+		state,
+		variant,
+		label: locale.baseText(labelKey),
+		tooltip: tooltipKey ? locale.baseText(tooltipKey) : null,
+	};
 });
 
-const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
+const hasDynamicCredentials = computed(() => {
+	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
+});
+
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id, 'workflow'));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	if (openInAssistant(event)) return;
+
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
@@ -440,6 +486,7 @@ async function unpublishWorkflow() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.data.id,
 			versionName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
@@ -615,38 +662,21 @@ const tags = computed(
 				data-test-id="workflow-card-name"
 			>
 				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="workflow-card-dynamic-credentials"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.private.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
-				>{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" /> |
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
+			<span v-show="data" :class="$style.divider">|</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
+			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
 			<span
 				v-show="showLegacyMcpIndicator"
 				:class="$style.legacyMcpIndicator"
@@ -655,6 +685,18 @@ const tags = computed(
 				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
+			</span>
+			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+			<span
+				v-if="hasDynamicCredentials"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="workflow-card-private-credential"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+					size="small"
+				/>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -717,16 +759,14 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
+				<PublicationIndicator
+					v-else-if="publicationIndicator"
+					:variant="publicationIndicator.variant"
+					:label="publicationIndicator.label"
+					:tooltip="publicationIndicator.tooltip"
+					:data-state="publicationIndicator.state"
 					data-test-id="workflow-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
+				/>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -736,6 +776,8 @@ const tags = computed(
 					:is-mcp-module-active="props.isMcpModuleActive"
 					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
+				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"
@@ -749,6 +791,8 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -796,6 +840,16 @@ const tags = computed(
 	align-items: center;
 }
 
+.divider {
+	// Standalone flex item so the row `gap` applies evenly on both sides.
+	user-select: none;
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -809,6 +863,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -826,42 +881,7 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
@@ -881,7 +901,7 @@ const tags = computed(
 	}
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.breadcrumbs > div {
 		flex-direction: column;
 	}

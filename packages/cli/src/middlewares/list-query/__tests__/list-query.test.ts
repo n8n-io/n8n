@@ -1,5 +1,6 @@
 import type { ListQueryDb } from '@n8n/db';
 import type { Response, NextFunction } from 'express';
+import type { MockInstance } from 'vitest';
 
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
@@ -12,20 +13,20 @@ import { sortByQueryMiddleware } from '../sort-by';
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;
 	let mockRes: Response;
-	const nextFn: NextFunction = jest.fn();
+	const nextFn: NextFunction = vi.fn();
 	let args: [ListQuery.Request, Response, NextFunction];
 
-	let sendErrorResponse: jest.SpyInstance;
+	let sendErrorResponse: MockInstance;
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
-		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;
+		mockRes = { status: () => ({ json: vi.fn() }) } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];
 
-		sendErrorResponse = jest.spyOn(ResponseHelper, 'sendErrorResponse');
+		sendErrorResponse = vi.spyOn(ResponseHelper, 'sendErrorResponse');
 	});
 
 	describe('Query filter', () => {
@@ -45,6 +46,33 @@ describe('List query middleware', () => {
 
 			expect(mockReq.listQueryOptions).toEqual({ filter: { query: 'My Workflow' } });
 			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should parse up to 50 unique workflow ids', async () => {
+			const ids = Array.from({ length: 50 }, (_, index) => `workflow-${index}`);
+			mockReq.query = { filter: JSON.stringify({ ids }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({ filter: { ids } });
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should reject more than 50 workflow ids', async () => {
+			const ids = Array.from({ length: 51 }, (_, index) => `workflow-${index}`);
+			mockReq.query = { filter: JSON.stringify({ ids }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+
+		test('should reject duplicate workflow ids', async () => {
+			mockReq.query = { filter: JSON.stringify({ ids: ['workflow-1', 'workflow-1'] }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
 		});
 
 		test('should ignore invalid filter', async () => {

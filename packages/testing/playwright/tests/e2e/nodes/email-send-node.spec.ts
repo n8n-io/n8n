@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'email' });
 
 test(
-	'EmailSend node sends via SMTP @capability:email',
+	'EmailSend node sends via SMTP',
 	{
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
@@ -74,7 +74,7 @@ test(
 		);
 
 		// Execute the workflow via UI API endpoint by navigating to the canvas and clicking run
-		await n8n.page.goto(`/workflow/${workflowId}`);
+		await n8n.start.fromExistingWorkflow(workflowId);
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);

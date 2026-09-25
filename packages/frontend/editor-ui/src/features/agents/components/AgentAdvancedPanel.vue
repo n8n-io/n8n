@@ -1,66 +1,72 @@
 <script setup lang="ts">
-/**
- * Behavior panel — execution-behavior knobs that used to live in the old
- * AgentOverviewPanel: native web search, reasoning depth (provider-gated),
- * and tool-call concurrency.
- *
- * Thinking is always visible as a toggle but disabled (with a tooltip) when
- * the selected provider doesn't support it. The sub-control differs by
- * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
- * `reasoningEffort` low/medium/high select.
- */
+/** Advanced settings for memory and execution behavior. */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	N8nCollapsiblePanel,
-	N8nInputNumber2,
-	N8nSelect,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
+import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
+import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
+import AgentPanel from './AgentPanel.vue';
 
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
-	REASONING_EFFORT_OPTIONS,
-	type ReasoningEffort,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
+	type AnthropicCacheTtl,
 } from '../provider-capabilities';
-import { parseProvider } from '../utils/model-string';
-import {
-	getNativeWebSearchArgs,
-	getWebSearchMethod,
-	type FallbackWebSearchProvider,
-	type NativeWebSearchArgs,
-	type WebSearchMethod,
-	withWebSearchConfig,
-} from '../utils/nativeWebSearch';
+import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
-const credentialsStore = useCredentialsStore();
-const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false, providerTools: [] } as const;
-const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
-const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
-type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
-type WebSearchSelectValue = 'off' | WebSearchMethod;
+const { catalog, ensureLoaded } = useModelCatalog();
+const DEFAULT_CAPABILITIES = {
+	promptCaching: false,
+	webSearch: false,
+	providerTools: [],
+} as const;
+
+function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
+	return AGENT_REASONING_LEVELS.find((level) => level === value) ?? 'medium';
+}
 
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+		projectId?: string;
+	}>(),
 	{
 		disabled: false,
-		collapsible: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const isExpanded = ref(!props.collapsible);
-
 const provider = computed(() => parseProvider(props.config?.model));
+const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
+const selectedCatalogModel = computed(() => {
+	if (!selectedModel.value) return undefined;
+	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
+});
+const isReasoningUnavailable = computed(
+	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,
+);
+const reasoningHintKey = computed(() => {
+	if (!selectedModel.value) return 'agents.builder.advanced.reasoning.noModelHint';
+	if (selectedCatalogModel.value?.reasoning === false) {
+		return 'agents.builder.advanced.reasoning.unsupportedHint';
+	}
+	return 'agents.builder.advanced.reasoning.hint';
+});
 const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
-const hasNativeWebSearch = computed(() => Boolean(capabilities.value.webSearch));
+
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void ensureLoaded(projectId);
+	},
+	{ immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // Generic helper for numeric config fields
@@ -81,7 +87,7 @@ type NumberFieldOptions =
 
 /**
  * Creates a ref, debounced config-emit, change handler, and watch-sync
- * function for one numeric field inside `config`. Designed for N8nInputNumber2
+ * function for one numeric field inside `config`. Designed for N8nInputNumber
  * which emits numbers directly (NaN when the field is cleared).
  *
  * Pass a number for fields that always persist their fallback (e.g. concurrency).
@@ -145,18 +151,18 @@ function makeNumberField(key: NumberConfigKey, options: NumberFieldOptions) {
 // ---------------------------------------------------------------------------
 
 const CONCURRENCY_MIN = 1;
-const CONCURRENCY_MAX = 20;
+const CONCURRENCY_MAX = 100;
+const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
-const MAX_ITERATIONS_DEFAULT = 30;
-const BUDGET_TOKENS_MIN = 1;
-const BUDGET_TOKENS_DEFAULT = 1024;
+const MAX_ITERATIONS_DEFAULT = 100;
+const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
 	modelValue: concurrencyModelValue,
 	onChange: onConcurrencyChange,
 	sync: syncConcurrency,
-} = makeNumberField('toolCallConcurrency', CONCURRENCY_MIN);
+} = makeNumberField('toolCallConcurrency', CONCURRENCY_DEFAULT);
 
 const {
 	modelValue: maxIterationsModelValue,
@@ -165,511 +171,212 @@ const {
 } = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
 
 // ---------------------------------------------------------------------------
-// Thinking — provider-gated, handled separately
+// Reasoning
 // ---------------------------------------------------------------------------
 
-const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
-const webSearchMethod = ref<WebSearchSelectValue>(
-	webSearchEnabled.value ? getWebSearchMethod(props.config, hasNativeWebSearch.value) : 'off',
-);
-const webSearchArgs = ref<NativeWebSearchArgs>(
-	getNativeWebSearchArgs(props.config, capabilities.value.webSearch),
-);
-const webSearchMaxUses = ref('');
-const webSearchExternalAccess = ref(true);
-const webSearchContextSize = ref<SearchContextSize>('medium');
-const fallbackWebSearchProvider = ref<FallbackWebSearchProvider>(
-	props.config?.config?.webSearch?.provider === 'searxng' ? 'searxng' : 'brave',
-);
-const fallbackWebSearchCredential = ref(props.config?.config?.webSearch?.credential ?? '');
-const thinkingCfg = computed(() => props.config?.config?.thinking ?? null);
-const thinkingEnabled = ref(thinkingCfg.value !== null);
-const budgetTokens = ref(thinkingCfg.value?.budgetTokens ?? BUDGET_TOKENS_DEFAULT);
-const reasoningEffort = ref<ReasoningEffort>(
-	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
+const reasoningEnabled = ref(props.config?.config?.reasoning !== undefined);
+const reasoningLevel = ref<AgentReasoningLevel>(
+	normalizeReasoningLevel(props.config?.config?.reasoning),
 );
 
-function syncWebSearchOptions(args: NativeWebSearchArgs) {
-	webSearchMaxUses.value =
-		typeof args.maxUses === 'number'
-			? String(args.maxUses)
-			: String(ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES);
-	webSearchExternalAccess.value =
-		typeof args.externalWebAccess === 'boolean' ? args.externalWebAccess : true;
-	webSearchContextSize.value =
-		args.searchContextSize === 'low' ||
-		args.searchContextSize === 'medium' ||
-		args.searchContextSize === 'high'
-			? args.searchContextSize
-			: 'medium';
+function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
+	return cfg?.config?.promptCaching?.anthropic?.ttl ?? PROMPT_CACHING_TTL_DEFAULT;
 }
 
-syncWebSearchOptions(webSearchArgs.value);
+const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
 
 watch(
 	() => props.config,
-	(cfg) => {
-		if (!cfg) return;
-		const t = cfg.config?.thinking ?? null;
-		thinkingEnabled.value = t !== null;
-		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
-		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
-		syncConcurrency(cfg);
-		syncMaxIterations(cfg);
-		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
-		webSearchMethod.value = webSearchEnabled.value
-			? getWebSearchMethod(cfg, hasNativeWebSearch.value)
-			: 'off';
-		webSearchArgs.value = getNativeWebSearchArgs(cfg, capabilities.value.webSearch);
-		fallbackWebSearchProvider.value = webSearchMethod.value === 'searxng' ? 'searxng' : 'brave';
-		fallbackWebSearchCredential.value = cfg.config?.webSearch?.credential ?? '';
-		syncWebSearchOptions(webSearchArgs.value);
+	(config) => {
+		if (!config) return;
+		reasoningEnabled.value = config.config?.reasoning !== undefined;
+		reasoningLevel.value = normalizeReasoningLevel(config.config?.reasoning);
+		anthropicTtl.value = anthropicTtlFrom(config);
+		syncConcurrency(config);
+		syncMaxIterations(config);
 	},
 	{ deep: true },
 );
 
-const fallbackCredentialType = computed(() =>
-	webSearchMethod.value === 'searxng' ? 'searXngApi' : 'braveSearchApi',
-);
-const fallbackCredentials = computed(() =>
-	credentialsStore.allCredentials.filter(
-		(credential) => credential.type === fallbackCredentialType.value,
-	),
-);
-
-function buildWebSearchArgs(): NativeWebSearchArgs {
-	const tool = capabilities.value.webSearch;
-	if (!tool || webSearchMethod.value !== 'native') return {};
-
-	if (tool === 'anthropic.web_search') {
-		const maxUses = Number(webSearchMaxUses.value);
-		return {
-			...(Number.isFinite(maxUses) && maxUses > 0 && { maxUses }),
-		};
-	}
-
-	if (tool === 'openai.web_search') {
-		return {
-			externalWebAccess: webSearchExternalAccess.value,
-			searchContextSize: webSearchContextSize.value,
-		};
-	}
-
-	return {};
+function emitReasoning() {
+	emit('update:config', {
+		config: { ...props.config?.config, reasoning: reasoningLevel.value },
+	});
 }
 
-function emitWebSearchConfig() {
-	if (!webSearchEnabled.value) return;
-	const method = webSearchMethod.value === 'off' ? 'native' : webSearchMethod.value;
-	emit(
-		'update:config',
-		withWebSearchConfig(
-			props.config,
-			true,
-			method,
-			capabilities.value.webSearch,
-			buildWebSearchArgs(),
-			fallbackWebSearchCredential.value,
-		),
-	);
-}
-
-function onWebSearchOptionInput() {
-	emitWebSearchConfig();
-}
-
-function onWebSearchMethodChange(value: WebSearchSelectValue) {
-	webSearchMethod.value = value;
-	webSearchEnabled.value = value !== 'off';
-	const method = value === 'off' ? 'native' : value;
-	const nextFallbackProvider = value === 'brave' || value === 'searxng' ? value : null;
-	if (nextFallbackProvider && nextFallbackProvider !== fallbackWebSearchProvider.value) {
-		fallbackWebSearchCredential.value = '';
-	}
-	if (nextFallbackProvider) {
-		fallbackWebSearchProvider.value = nextFallbackProvider;
-	}
-	emit(
-		'update:config',
-		withWebSearchConfig(
-			props.config,
-			webSearchEnabled.value,
-			method,
-			capabilities.value.webSearch,
-			buildWebSearchArgs(),
-			fallbackWebSearchCredential.value,
-		),
-	);
-}
-
-function onFallbackCredentialChange(value: string) {
-	fallbackWebSearchCredential.value = value;
-	emit(
-		'update:config',
-		withWebSearchConfig(
-			props.config,
-			webSearchEnabled.value,
-			webSearchMethod.value === 'off' ? 'native' : webSearchMethod.value,
-			capabilities.value.webSearch,
-			buildWebSearchArgs(),
-			value,
-		),
-	);
-}
-
-function emitThinking() {
-	const cap = capabilities.value.thinking;
-	if (!cap) return;
-	const thinking =
-		cap === 'budgetTokens'
-			? { provider: 'anthropic' as const, budgetTokens: budgetTokens.value }
-			: { provider: 'openai' as const, reasoningEffort: reasoningEffort.value };
-	emit('update:config', { config: { ...props.config?.config, thinking } });
-}
-
-function onThinkingToggle(value: boolean) {
-	if (!capabilities.value.thinking) return;
-	thinkingEnabled.value = value;
+function onReasoningToggle(value: boolean) {
+	reasoningEnabled.value = value;
 	if (!value) {
 		const rest = { ...(props.config?.config ?? {}) };
-		delete rest.thinking;
+		delete rest.reasoning;
 		emit('update:config', { config: rest });
 		return;
 	}
-	emitThinking();
+	emitReasoning();
 }
 
-const emitBudget = useDebounceFn(emitThinking, 500);
-function onBudgetChange(n: number) {
-	if (isNaN(n) || n < BUDGET_TOKENS_MIN) return;
-	budgetTokens.value = n;
-	void emitBudget();
+function onReasoningLevelChange(value: AgentReasoningLevel) {
+	reasoningLevel.value = value;
+	emitReasoning();
 }
 
-function onReasoningEffortChange(value: ReasoningEffort) {
-	reasoningEffort.value = value;
-	emitThinking();
+function onAnthropicTtlChange(value: AnthropicCacheTtl) {
+	anthropicTtl.value = value;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled: true, anthropic: { ttl: value } },
+		},
+	});
 }
-
-const thinkingDisabledReason = computed(() =>
-	capabilities.value.thinking
-		? ''
-		: i18n.baseText('agents.builder.advanced.thinking.unsupportedTooltip', {
-				interpolate: {
-					provider:
-						provider.value ||
-						i18n.baseText('agents.builder.advanced.thinking.unsupportedProviderFallback'),
-				},
-			}),
-);
 </script>
 
 <template>
-	<N8nCollapsiblePanel
-		v-model="isExpanded"
-		:class="$style.panel"
-		:disabled="!props.collapsible"
-		data-testid="agent-behavior-panel"
-	>
-		<template #title>
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
-		</template>
-		<div :class="$style.content">
-			<div :class="$style.settingGroup">
+	<div :class="$style.panels" data-testid="agent-behavior-panel">
+		<AgentPanel
+			:header="i18n.baseText('agents.builder.advanced.title')"
+			:description="i18n.baseText('agents.builder.advanced.description')"
+		>
+			<div :class="$style.content">
+				<AgentMemoryModelSetting
+					:config="props.config"
+					:disabled="props.disabled"
+					:project-id="props.projectId"
+					@update:config="emit('update:config', $event)"
+				/>
+
+				<div :class="$style.settingGroup">
+					<div :class="$style.row">
+						<div :class="$style.rowLabel">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+								i18n.baseText('agents.builder.advanced.reasoning.label')
+							}}</N8nText>
+							<N8nText
+								size="small"
+								:class="shared.dataEntrySubLabel"
+								data-testid="agent-reasoning-hint"
+							>
+								{{ i18n.baseText(reasoningHintKey) }}
+							</N8nText>
+						</div>
+						<N8nSwitch2
+							:model-value="reasoningEnabled"
+							:disabled="props.disabled || isReasoningUnavailable"
+							:class="$style.switchControl"
+							data-testid="agent-reasoning-toggle"
+							@update:model-value="(v) => onReasoningToggle(Boolean(v))"
+						/>
+					</div>
+
+					<div
+						v-if="reasoningEnabled"
+						:class="$style.subSettings"
+						data-testid="agent-reasoning-settings"
+					>
+						<div :class="$style.row">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+								i18n.baseText('agents.builder.advanced.reasoningEffort.label')
+							}}</N8nText>
+							<N8nSelect
+								:model-value="reasoningLevel"
+								size="small"
+								:disabled="props.disabled || isReasoningUnavailable"
+								:class="$style.shortInput"
+								data-testid="agent-reasoning-effort-select"
+								@update:model-value="onReasoningLevelChange"
+							>
+								<N8nOption
+									v-for="opt in AGENT_REASONING_LEVELS"
+									:key="opt"
+									:value="opt"
+									:label="opt"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</div>
+
+				<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
+					<div :class="$style.row">
+						<div :class="$style.rowLabel">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+								i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+							}}</N8nText>
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
+								{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
+							</N8nText>
+						</div>
+						<N8nSelect
+							:model-value="anthropicTtl"
+							size="small"
+							:disabled="props.disabled"
+							:class="$style.shortInput"
+							data-testid="agent-prompt-caching-ttl-select"
+							@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
+						>
+							<N8nOption
+								v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+								:key="opt"
+								:value="opt"
+								:label="opt"
+							/>
+						</N8nSelect>
+					</div>
+				</div>
+
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.webSearch.label')
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.concurrency.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
-							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 						</N8nText>
 					</div>
-					<N8nSelect
-						:model-value="webSearchMethod"
-						size="small"
+					<N8nInputNumber
+						:model-value="concurrencyModelValue"
+						:min="CONCURRENCY_MIN"
+						:max="CONCURRENCY_MAX"
+						:precision="0"
+						:controls="false"
 						:disabled="props.disabled"
 						:class="$style.shortInput"
-						data-testid="agent-web-search-method"
-						@update:model-value="(v) => onWebSearchMethodChange(v as WebSearchSelectValue)"
-					>
-						<N8nOption
-							value="off"
-							:label="i18n.baseText('agents.builder.advanced.webSearch.method.off')"
-						/>
-						<N8nOption
-							v-if="capabilities.webSearch"
-							value="native"
-							:label="i18n.baseText('agents.builder.advanced.webSearch.method.native')"
-						/>
-						<N8nOption
-							value="brave"
-							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.brave')"
-						/>
-						<N8nOption
-							value="searxng"
-							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.searxng')"
-						/>
-					</N8nSelect>
+						data-testid="agent-concurrency-input"
+						@update:model-value="onConcurrencyChange"
+					/>
 				</div>
 
-				<div
-					v-if="webSearchEnabled"
-					:class="$style.subSettings"
-					data-testid="agent-web-search-settings"
-				>
-					<div
-						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'anthropic.web_search'"
-						:class="$style.row"
-					>
-						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
-								i18n.baseText('agents.builder.advanced.webSearch.maxUses.label')
-							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
-								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
-							</N8nText>
-						</div>
-						<N8nInputNumber2
-							:model-value="Number(webSearchMaxUses)"
-							:min="1"
-							:precision="0"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-web-search-max-uses"
-							@update:model-value="
-								(v) => {
-									webSearchMaxUses = String(v);
-									onWebSearchOptionInput();
-								}
-							"
-						/>
-					</div>
-
-					<div
-						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
-						:class="$style.row"
-					>
-						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
-								i18n.baseText('agents.builder.advanced.webSearch.externalAccess.label')
-							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
-								{{ i18n.baseText('agents.builder.advanced.webSearch.externalAccess.hint') }}
-							</N8nText>
-						</div>
-						<N8nSwitch2
-							:model-value="webSearchExternalAccess"
-							:disabled="props.disabled"
-							:class="$style.switchControl"
-							data-testid="agent-web-search-external-access"
-							@update:model-value="
-								(v) => {
-									webSearchExternalAccess = Boolean(v);
-									onWebSearchOptionInput();
-								}
-							"
-						/>
-					</div>
-
-					<div
-						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
-						:class="$style.row"
-					>
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.webSearch.contextSize.label')
-						}}</N8nText>
-						<N8nSelect
-							:model-value="webSearchContextSize"
-							size="small"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-web-search-context-size"
-							@update:model-value="
-								(v) => {
-									webSearchContextSize = v as SearchContextSize;
-									onWebSearchOptionInput();
-								}
-							"
-						>
-							<N8nOption
-								v-for="opt in SEARCH_CONTEXT_SIZE_OPTIONS"
-								:key="opt"
-								:value="opt"
-								:label="opt"
-							/>
-						</N8nSelect>
-					</div>
-
-					<div v-if="webSearchMethod !== 'native'" :class="$style.row">
-						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
-								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
-							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
-								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
-							</N8nText>
-						</div>
-						<N8nSelect
-							:model-value="fallbackWebSearchCredential"
-							size="small"
-							:disabled="props.disabled"
-							:class="$style.credentialSelect"
-							data-testid="agent-web-search-fallback-credential"
-							@update:model-value="(v) => onFallbackCredentialChange(String(v))"
-						>
-							<N8nOption
-								v-for="credential in fallbackCredentials"
-								:key="credential.id"
-								:value="credential.id"
-								:label="credential.name"
-							/>
-						</N8nSelect>
-					</div>
-				</div>
-			</div>
-
-			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.thinking.label')
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.maxIterations.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
-							{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 						</N8nText>
 					</div>
-					<N8nTooltip
-						:content="thinkingDisabledReason"
-						:disabled="!!capabilities.thinking"
-						placement="top"
-					>
-						<N8nSwitch2
-							:model-value="thinkingEnabled"
-							:disabled="!capabilities.thinking || props.disabled"
-							:class="$style.switchControl"
-							data-testid="agent-thinking-toggle"
-							@update:model-value="(v) => onThinkingToggle(Boolean(v))"
-						/>
-					</N8nTooltip>
-				</div>
-
-				<div
-					v-if="thinkingEnabled && capabilities.thinking"
-					:class="$style.subSettings"
-					data-testid="agent-thinking-settings"
-				>
-					<div v-if="capabilities.thinking === 'budgetTokens'" :class="$style.row">
-						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
-								i18n.baseText('agents.builder.advanced.budgetTokens.label')
-							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
-								{{ i18n.baseText('agents.builder.advanced.budgetTokens.hint') }}
-							</N8nText>
-						</div>
-						<N8nInputNumber2
-							:model-value="budgetTokens"
-							:min="BUDGET_TOKENS_MIN"
-							:precision="0"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-budget-tokens-input"
-							@update:model-value="onBudgetChange"
-						/>
-					</div>
-
-					<div v-if="capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.reasoningEffort.label')
-						}}</N8nText>
-						<N8nSelect
-							:model-value="reasoningEffort"
-							size="small"
-							:disabled="props.disabled"
-							:class="$style.shortInput"
-							data-testid="agent-reasoning-effort-select"
-							@update:model-value="onReasoningEffortChange"
-						>
-							<N8nOption
-								v-for="opt in REASONING_EFFORT_OPTIONS"
-								:key="opt"
-								:value="opt"
-								:label="opt"
-							/>
-						</N8nSelect>
-					</div>
+					<N8nInputNumber
+						:model-value="maxIterationsModelValue"
+						:min="MAX_ITERATIONS_MIN"
+						:max="MAX_ITERATIONS_MAX"
+						:precision="0"
+						:controls="false"
+						:disabled="props.disabled"
+						:class="$style.shortInput"
+						data-testid="agent-max-iterations-input"
+						@update:model-value="onMaxIterationsChange"
+					/>
 				</div>
 			</div>
-
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.advanced.concurrency.label')
-					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
-					</N8nText>
-				</div>
-				<N8nInputNumber2
-					:model-value="concurrencyModelValue"
-					:min="CONCURRENCY_MIN"
-					:max="CONCURRENCY_MAX"
-					:precision="0"
-					:disabled="props.disabled"
-					:class="$style.shortInput"
-					data-testid="agent-concurrency-input"
-					@update:model-value="onConcurrencyChange"
-				/>
-			</div>
-
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.advanced.maxIterations.label')
-					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
-					</N8nText>
-				</div>
-				<N8nInputNumber2
-					:model-value="maxIterationsModelValue"
-					:min="MAX_ITERATIONS_MIN"
-					:max="MAX_ITERATIONS_MAX"
-					:precision="0"
-					:disabled="props.disabled"
-					:class="$style.shortInput"
-					data-testid="agent-max-iterations-input"
-					@update:model-value="onMaxIterationsChange"
-				/>
-			</div>
-		</div>
-	</N8nCollapsiblePanel>
+		</AgentPanel>
+	</div>
 </template>
 
 <style module>
-.panel {
-	width: 100%;
-}
-
-.panel.panel {
-	border: 0;
-	border-radius: 0;
-	background-color: transparent;
-	scroll-margin-bottom: 0;
-}
-
-.panel.panel > :first-child {
-	padding: 0;
-	min-height: auto;
-}
-
-.panel.panel > :first-child h3 {
-	margin: 0;
-}
-
-.panel.panel > [data-state] > :first-child {
-	padding: var(--spacing--sm) 0 0;
+.panels {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
 }
 
 .content {

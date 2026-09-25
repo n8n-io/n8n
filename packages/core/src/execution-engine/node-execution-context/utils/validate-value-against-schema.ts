@@ -6,6 +6,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
+	ResourceMapperField,
 	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import {
@@ -17,6 +18,31 @@ import {
 
 import type { ExtendedValidationResult } from '@/interfaces';
 
+const schemaIndexCache = new WeakMap<ResourceMapperField[], Map<string, ResourceMapperField>>();
+
+const EMPTY_SCHEMA_INDEX: ReadonlyMap<string, ResourceMapperField> = new Map();
+
+const indexSchemaById = (
+	schema: ResourceMapperField[] | undefined,
+): ReadonlyMap<string, ResourceMapperField> => {
+	// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+	// `schema: null` reaches this. Indexing runs before the loop now, where the previous
+	// `schema.find` only ran inside it, so bail out here instead of throwing on iteration.
+	if (!schema?.length) {
+		return EMPTY_SCHEMA_INDEX;
+	}
+	let index = schemaIndexCache.get(schema);
+	if (!index) {
+		index = new Map<string, ResourceMapperField>();
+		for (const entry of schema) {
+			// First occurrence wins, matching the `schema.find` this index replaces
+			if (!index.has(entry.id)) index.set(entry.id, entry);
+		}
+		schemaIndexCache.set(schema, index);
+	}
+	return index;
+};
+
 const validateResourceMapperValue = (
 	parameterName: string,
 	paramValues: { [key: string]: unknown },
@@ -26,6 +52,14 @@ const validateResourceMapperValue = (
 	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
 	const skipRequiredCheck = resourceMapperTypeOptions?.mode !== 'add';
 	const enableTypeValidationOptions = Boolean(resourceMapperTypeOptions?.showTypeConversionOptions);
+	// When the node description sets this, the stored `convertFieldsToString` is
+	// ignored: the UI wrote it unconditionally and offers no way to see or change it,
+	// so only programmatic authors could produce a differing value. Nodes opt in per
+	// version, because turning casting on also turns on the `strict` check, which
+	// would reject inputs that saved workflows pass through today.
+	const alwaysConvertFieldsToString = Boolean(
+		resourceMapperTypeOptions?.alwaysConvertFieldsToString,
+	);
 	const paramNameParts = parameterName.split('.');
 	if (paramNameParts.length !== 2) {
 		return result;
@@ -35,13 +69,13 @@ const validateResourceMapperValue = (
 	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
 		return result;
 	}
-	const schema = resourceMapperField.schema;
+	const schemaById = indexSchemaById(resourceMapperField.schema);
 	const paramValueNames = Object.keys(paramValues);
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
 
-		const schemaEntry = schema.find((s) => s.id === key);
+		const schemaEntry = schemaById.get(key);
 
 		if (
 			!skipRequiredCheck &&
@@ -60,7 +94,9 @@ const validateResourceMapperValue = (
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
 				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
-				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
+				parseStrings:
+					enableTypeValidationOptions &&
+					(alwaysConvertFieldsToString || resourceMapperField.convertFieldsToString),
 			});
 
 			if (!validationResult.valid) {

@@ -70,15 +70,50 @@ describe('createWorkItem', () => {
 // ── handleBuildOutcome ──────────────────────────────────────────────────────
 
 describe('handleBuildOutcome', () => {
+	it('carries a user-skipped setup requirement onto the state', () => {
+		const { state: next } = handleBuildOutcome(
+			makeState(),
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: { status: 'not_required', reason: 'skipped-by-user' },
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(true);
+	});
+
+	it("clears a previous build's skipped-setup flag when setup is required again", () => {
+		// A credential added after the skip must still route setup, so the flag can't be sticky.
+		const { state: next } = handleBuildOutcome(
+			{ ...makeState(), setupSkippedByUser: true },
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Route the workflow through setup so the user can add real credentials.',
+				},
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(false);
+	});
+
 	it('transitions to verifying when submitted and testable', () => {
 		const state = makeState();
-		const outcome = makeOutcome({ workflowId: 'wf_123' });
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 
 		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
 
 		expect(next.phase).toBe('verifying');
 		expect(next.status).toBe('active');
 		expect(next.workflowId).toBe('wf_123');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('verify');
 		if (action.type === 'verify') {
 			expect(action.workflowId).toBe('wf_123');
@@ -105,6 +140,7 @@ describe('handleBuildOutcome', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			submitted: false,
+			sourceFilePath: 'src/workflows/main.workflow.ts',
 			failureSignature: 'tsc error',
 		});
 
@@ -112,7 +148,11 @@ describe('handleBuildOutcome', () => {
 
 		expect(next.phase).toBe('building');
 		expect(next.status).toBe('active');
+		expect(next.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		expect(action.type).toBe('continue_building');
+		if (action.type === 'continue_building') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
+		}
 		expect(attempt.result).toBe('failure');
 	});
 
@@ -150,7 +190,7 @@ describe('handleBuildOutcome', () => {
 		expect(attempt.attempt).toBe(2);
 	});
 
-	it('blocks unresolved placeholders as saved-workflow setup', () => {
+	it('blocks legacy unresolved placeholders as saved-workflow setup', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			workflowId: 'wf_123',
@@ -178,6 +218,40 @@ describe('handleBuildOutcome', () => {
 			reason: 'mocked_credentials_or_placeholders',
 		});
 		expect(action.type).toBe('blocked');
+	});
+
+	it('verifies submitted workflows before setup when unresolved placeholders remain', () => {
+		const state = makeState();
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+			hasUnresolvedPlaceholders: true,
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			verificationReadiness: { status: 'ready' },
+			setupRequirement: {
+				status: 'required',
+				reason: 'unresolved-placeholders',
+				guidance: 'Route to setup.',
+			},
+			remediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		});
+
+		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.phase).toBe('verifying');
+		expect(next.status).toBe('active');
+		expect(next.workflowId).toBe('wf_123');
+		expect(next.hasUnresolvedPlaceholders).toBe(true);
+		expect(next.lastRemediation).toBeUndefined();
+		expect(action).toEqual({ type: 'verify', workflowId: 'wf_123' });
+		expect(attempt.result).toBe('success');
+		expect(attempt.remediationCategory).toBeUndefined();
 	});
 
 	it('allows two pre-save submit failures before blocking the third', () => {
@@ -377,6 +451,64 @@ describe('handleBuildOutcome', () => {
 // ── handleVerificationVerdict ───────────────────────────────────────────────
 
 describe('handleVerificationVerdict', () => {
+	describe('deterministic claim', () => {
+		it('carries a downgraded claim onto the done action instead of blocking the loop', () => {
+			const state = makeState({ phase: 'verifying' });
+			const { state: next, action } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({
+					verdict: 'verified',
+					claim: {
+						level: 'partial',
+						plannedNodeCount: 12,
+						reachedNodeCount: 5,
+						nodesNotReached: ['Send Email'],
+						simulatedNodes: [],
+						pinnedNodes: [],
+						unprovenTargets: [],
+						publishReady: false,
+						liveTestRecommended: true,
+					},
+				}),
+			);
+
+			// The loop must still settle — re-verifying replays the same coverage.
+			expect(next.phase).toBe('done');
+			expect(next.status).toBe('completed');
+			expect(action.type).toBe('done');
+			if (action.type !== 'done') throw new Error('expected done');
+			expect(action.claim?.level).toBe('partial');
+			expect(action.claim?.publishReady).toBe(false);
+		});
+
+		it('records the repair target so a later run can tell whether it was proven', () => {
+			const state = makeState({ phase: 'verifying' });
+			const { state: next } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({
+					verdict: 'needs_patch',
+					failedNodeName: 'Send Email',
+					diagnosis: 'Wrong channel',
+				}),
+			);
+
+			expect(next.lastFailedNodeName).toBe('Send Email');
+		});
+
+		it('keeps a known repair target when a later rebuild names no node', () => {
+			const state = makeState({ phase: 'verifying', lastFailedNodeName: 'Send Email' });
+			const { state: next } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({ verdict: 'needs_rebuild', diagnosis: 'Structural repair' }),
+			);
+
+			expect(next.lastFailedNodeName).toBe('Send Email');
+		});
+	});
+
 	it('ignores stale verification verdicts from a different run without resetting state', () => {
 		const state = makeState({
 			runId: 'run_current',
@@ -498,7 +630,11 @@ describe('handleVerificationVerdict', () => {
 	});
 
 	it('produces patch action with fallback node name when failedNodeName is missing', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
 			failureSignature: 'gmail:error',
@@ -509,11 +645,16 @@ describe('handleVerificationVerdict', () => {
 		expect(action.type).toBe('patch');
 		if (action.type === 'patch') {
 			expect(action.failedNodeName).toBe('unknown');
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 		}
 	});
 
 	it('transitions to repairing with rebuild on needs_rebuild', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			sourceFilePath: 'src/workflows/main.workflow.ts',
+		});
 		const verdict = makeVerdict({
 			verdict: 'needs_rebuild',
 			diagnosis: 'Multiple nodes misconfigured',
@@ -527,6 +668,7 @@ describe('handleVerificationVerdict', () => {
 		expect(next.rebuildAttempts).toBe(1);
 		expect(action.type).toBe('rebuild');
 		if (action.type === 'rebuild') {
+			expect(action.sourceFilePath).toBe('src/workflows/main.workflow.ts');
 			expect(action.failureDetails).toContain(
 				'Workflow inspection: Saved graph has no connection into the final response node.',
 			);

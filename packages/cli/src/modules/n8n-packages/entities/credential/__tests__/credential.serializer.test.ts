@@ -36,6 +36,17 @@ describe('CredentialSerializer', () => {
 		});
 	});
 
+	it('emits bundled expression data when provided', () => {
+		const credential = makeCredential();
+
+		const serialized = serializer.serialize(credential, {
+			data: { value: '={{ $secrets.api.key }}' },
+		});
+
+		expect(Object.keys(serialized).sort()).toEqual(['data', 'id', 'name', 'type']);
+		expect(serialized.data).toEqual({ value: '={{ $secrets.api.key }}' });
+	});
+
 	it('does not leak encrypted data or secret-adjacent flags', () => {
 		const credential = makeCredential({
 			data: 'sensitive-encrypted-payload',

@@ -8,6 +8,7 @@ import {
 	type INodeParameters,
 } from 'n8n-workflow';
 import * as oracleDBTypes from 'oracledb';
+import type { Mock } from 'vitest';
 
 import * as deleteTable from '../actions/database/deleteTable.operation';
 import * as executeSQL from '../actions/database/executeQuery.operation';
@@ -20,7 +21,7 @@ import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
 
 const mockConnection = {
-	execute: jest.fn((_query = '') => {
+	execute: vi.fn((_query = '') => {
 		const result = {} as { rows: any[] };
 		result.rows = [
 			{
@@ -137,10 +138,10 @@ const mockConnection = {
 		];
 		return result;
 	}),
-	close: jest.fn(),
-	beginTransaction: jest.fn(),
-	commit: jest.fn(),
-	rollback: jest.fn(),
+	close: vi.fn(),
+	beginTransaction: vi.fn(),
+	commit: vi.fn(),
+	rollback: vi.fn(),
 };
 
 Object.defineProperty(mockConnection, 'oracleServerVersion', {
@@ -219,16 +220,13 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			return continueOnFail;
 		},
 		helpers: {
-			constructExecutionMetaData: jest.fn((data) => data),
+			constructExecutionMetaData: vi.fn((data) => data),
 		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
 
-export function getRunQueriesFn(
-	mockThis: any,
-	pool: oracleDBTypes.Pool,
-): jest.Mock<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>> {
+export function getRunQueriesFn(mockThis: any, pool: oracleDBTypes.Pool): Mock<RunQueriesFn> {
 	if (integratedTests) {
 		// Create the real query runner using the node context
 		const realRunQueries: RunQueriesFn = configureQueryRunner.call(
@@ -239,13 +237,13 @@ export function getRunQueriesFn(
 		);
 
 		// Wrap the real one with a spy to track calls
-		return jest.fn(async (...args: Parameters<RunQueriesFn>) => {
-			return await realRunQueries(...args);
+		return vi.fn(async (...args: Parameters<RunQueriesFn>) => {
+			return await realRunQueries.apply(undefined, args);
 		});
 	}
 
 	// Default: return mock function with correct signature
-	return jest.fn<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>>();
+	return vi.fn<(...args: Parameters<RunQueriesFn>) => ReturnType<RunQueriesFn>>();
 }
 
 describe('Test All operations', () => {
@@ -253,7 +251,6 @@ describe('Test All operations', () => {
 	const nodeParametersDef: IDataObject = {
 		operation: 'execute',
 	};
-	const integratedTestsTimeOut = 200000; // connecting to DB and test it.
 	const mockThisDef = createMockExecuteFunction(nodeParametersDef);
 	const table = 'N8N_TEST_DEMO_TYPES';
 	const deptTable = 'N8N_TEST_DEPT';
@@ -310,10 +307,6 @@ VALUES (
 	];
 
 	const dropDeptTbl = `DROP TABLE if exists ${deptTable}`;
-
-	if (integratedTests) {
-		jest.setTimeout(integratedTestsTimeOut);
-	}
 
 	async function populateRows(conn: oracleDBTypes.Connection) {
 		if (conn) {
@@ -383,7 +376,7 @@ VALUES (
 	};
 
 	function verifyOutPutColumnsOptions(
-		runQueries: jest.Mock<ReturnType<RunQueriesFn>, Parameters<RunQueriesFn>>,
+		runQueries: Mock<RunQueriesFn>,
 		nodeOptions: IDataObject,
 		inputItems: INodeExecutionData[],
 		result: INodeExecutionData[],
@@ -478,7 +471,7 @@ VALUES (
 
 		// check the arguments passed to runQueries are as expected.
 		const [_, actualItems, actualOptions] = runQueries.mock.calls[0];
-		actualItems.forEach((item, index) => {
+		actualItems.forEach((item: INodeExecutionData, index: number) => {
 			expect(item.json).toEqual(items[index]);
 		});
 		expect(actualOptions).toBe(nodeOptions);
@@ -565,7 +558,7 @@ VALUES (
 
 	describe('Test delete operation', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		const docid = 1;
@@ -679,17 +672,214 @@ VALUES (
 				} else {
 					queries.push({
 						query: expectedQuery,
-						values: [bindVal],
+						values: bindVal === undefined ? [] : [bindVal],
 					});
 				}
 				expect(runQueries).toHaveBeenCalledWith(queries, emptyInputItems, nodeOptions);
 			},
 		);
+
+		it('should neutralise an injected Drop table name by escaping the string literal', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'deleteTable',
+				schema: { __rl: true, mode: 'list', value: CONFIG.user },
+				table: {
+					__rl: true,
+					mode: 'list',
+					value: "X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA",
+				},
+				deleteCommand: 'drop',
+				options: {},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const items = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			await deleteTable.execute.call(mockThis, runQueries, items, {}, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const { query } = runQueries.mock.calls[0][0][0];
+			// The injected quotes are doubled, so they stay inside the identifier and
+			// cannot terminate the EXECUTE IMMEDIATE literal.
+			expect(query).toContain(
+				".\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\" PURGE')",
+			);
+			expect(query).not.toContain("X') PURGE");
+		});
 	});
 
 	describe('Test execute operation', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
+			continueOnFail = true;
+		});
+
+		it('should throw Oracle driver timeout errors when continueOnFail is false', async () => {
+			continueOnFail = false;
+
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			await expect(
+				executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, timeoutPool),
+			).rejects.toThrow(/NJS-510/i);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+		});
+
+		it('should propogate when Oracle timeout is returned as a success item and continueOnFail is true', async () => {
+			continueOnFail = true;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+			expect(result[0].json.error).toBeDefined();
+			expect(result[0].json.message).toEqual('NJS-510: connection timed out during connect() call');
+		});
+
+		it("should route Oracle timeout to error output when node's onError is continueErrorOutput", async () => {
+			continueOnFail = true;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters) as unknown as IExecuteFunctions & {
+				getNode: () => INode;
+			};
+
+			// Force node onError behaviour used in the workflow
+			const node = mockThis.getNode();
+			node.onError = 'continueErrorOutput';
+
+			const bugResult = [
+				{
+					json: {
+						message: 'NJS-510: connection timed out during connect() call',
+						error: { name: 'NJS-510', errorNum: 510 },
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+			const runQueries = vi.fn().mockResolvedValue(bugResult);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			expect(result).toEqual([
+				{
+					json: {
+						error: { name: 'NJS-510', errorNum: 510 },
+						message: 'NJS-510: connection timed out during connect() call',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+
+			delete node.onError;
+		});
+
+		it("should throw when continueOnFail is false and node's onError is continueRegularOutput", async () => {
+			continueOnFail = false;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters) as unknown as IExecuteFunctions & {
+				getNode: () => INode;
+			};
+
+			const node = mockThis.getNode();
+			node.onError = 'continueRegularOutput';
+
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			await expect(
+				executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, timeoutPool),
+			).rejects.toThrow(/NJS-510/i);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+
+			delete node.onError;
 		});
 
 		it('should call runQueries with binds passed using bindInfo and single item', async () => {
@@ -1254,7 +1444,7 @@ VALUES (
 		const items = [{ json: {} }];
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('returnAll, should call runQueries with', async () => {
@@ -1631,7 +1821,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
@@ -2023,7 +2213,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
@@ -2429,7 +2619,7 @@ VALUES (
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			continueOnFail = false;
 
 			// restore variables modified in tests.

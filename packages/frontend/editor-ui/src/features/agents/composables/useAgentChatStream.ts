@@ -1,52 +1,70 @@
-import { ref, reactive, computed, nextTick, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
+import { useDocumentVisibility } from '@vueuse/core';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { TIME } from '@/app/constants/durations';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
-	getBuilderMessages,
-	clearBuilderMessages,
+	cancelAgentChatExecution,
+	cancelAgentChatRun,
+	clearTestChatMessages,
 	getChatMessages,
 	getTestChatMessages,
-	clearTestChatMessages,
 } from './useAgentApi';
 
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	findOpenInteractive,
+	findTailOpenInteractive,
+	findTailSteerableInteractive,
+	getMessageInteractive,
+	getMessageInteractives,
+	isApprovalSuspendInput,
 	rebuildInteractiveFromHistory,
-	type ChatMessage,
-	type ToolCall,
-} from './agentChatMessages';
+	setMessageInteractives,
+	upsertMessageInteractive,
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
+import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
-import { summariseToolCall } from '../utils/interactive-summary';
+import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
 	message: string;
 	missing: string[];
 }
 
+interface AgentChatWarning {
+	message: string;
+	server?: string;
+	code?: string;
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
-	endpoint: Ref<'build' | 'chat'>;
 	/**
 	 * When provided, chat mode runs in session-continuation: history is fetched
 	 * per-thread and the id is propagated to the backend so further messages
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
-	onCodeUpdated?: () => void;
-	onCodeDelta?: (delta: string) => void;
-	onConfigUpdated?: () => void;
-	onBuildDone?: () => void;
+	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
+	onSessionCreated?: (sessionId: string) => void;
 }
 
 type ResumePayload =
@@ -62,21 +80,73 @@ type ResumePayload =
 			text: string;
 	  };
 
+const STOP_ACCEPTANCE_TIMEOUT_MS = 30 * TIME.SECOND;
+
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
+
+function warningKey(warning: AgentChatWarning): string {
+	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
 	const { showError } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
-	const isStreaming = ref(false);
+	const isStreamOpen = ref(false);
+	const activeExecutionId = ref<string | null>(null);
+	const acceptedSessionId = ref<string>();
+	const isRecovering = ref(false);
+	const isStreaming = computed(
+		() => isStreamOpen.value || activeExecutionId.value !== null || isRecovering.value,
+	);
+	const isCancelling = ref(false);
+	let stopTargetId: string | undefined;
 	const abortController = ref<AbortController | null>(null);
+	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const historyLoaded = ref(false);
+	const pushStore = usePushConnectionStore();
+	const visibility = useDocumentVisibility();
+	let disposed = false;
+	let historyVersion = 0;
+	let streamVersion = 0;
+	let refreshAfterStream = false;
+	let retryCount = 0;
+	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let stopAcceptanceTimer: ReturnType<typeof setTimeout> | undefined;
+	let acknowledgedSessionId: string | undefined;
+	const targetKey = () =>
+		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
+	function acknowledgeSessionCreation(sessionId = params.continueSessionId?.value): void {
+		if (
+			!sessionId ||
+			params.newSession?.value !== true ||
+			sessionId !== params.continueSessionId?.value ||
+			sessionId === acknowledgedSessionId
+		) {
+			return;
+		}
+		acknowledgedSessionId = sessionId;
+		params.onSessionCreated?.(sessionId);
+	}
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
 	 * next send so users can fix the config and retry without a manual dismiss.
 	 */
 	const fatalError = ref<FatalAgentError | null>(null);
+	/**
+	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
+	 * connect, so its tools were skipped). The run continues; these are shown to
+	 * the user as a warning callout. Visible warnings clear on the next send;
+	 * explicitly dismissed warnings stay hidden for this composable instance.
+	 */
+	const warnings = ref<AgentChatWarning[]>([]);
+	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -85,58 +155,165 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return 'receiving';
 	});
 
-	async function loadHistory(): Promise<void> {
-		if (historyLoaded.value) return;
-		const continueId = params.continueSessionId?.value;
+	async function refreshHistory({
+		clearOnNotFound = false,
+		silent = false,
+	}: {
+		clearOnNotFound?: boolean;
+		silent?: boolean;
+	} = {}): Promise<boolean> {
+		if (disposed) return false;
+		const continueId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		// Reject outdated session, request, and stream snapshots to preserve the current conversation.
+		const target = targetKey();
+		const version = ++historyVersion;
+		const streamAtStart = streamVersion;
+		const isCurrent = () => !disposed && target === targetKey() && version === historyVersion;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
-			if (params.endpoint.value === 'build') {
-				const envelope = await getBuilderMessages(
+			let runningExecutionId: string | null | undefined;
+			if (continueId) {
+				const envelope = await getChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					continueId,
+				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
+				runningExecutionId = envelope.activeExecutionId;
+			} else {
+				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
-			} else if (continueId) {
-				dbMessages = await getChatMessages(
-					rootStore.restApiContext,
-					params.projectId.value,
-					params.agentId.value,
-					continueId,
-				);
-			} else {
-				dbMessages = await getTestChatMessages(
-					rootStore.restApiContext,
-					params.projectId.value,
-					params.agentId.value,
-				);
+				runningExecutionId = envelope.activeExecutionId;
 			}
-			if (dbMessages.length > 0) {
+			if (!isCurrent()) return false;
+			if (continueId) acknowledgeSessionCreation(continueId);
+			retryCount = 0;
+			clearTimeout(retryTimer);
+			if (!isStreamOpen.value && streamAtStart === streamVersion) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+				isRecovering.value = false;
+				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
+				if (isCancelling.value) reconcileStop();
+			} else if (isStreamOpen.value) {
+				refreshAfterStream = true;
+			} else {
+				refreshHistoryFromPush();
 			}
-			params.onHistoryLoaded?.(messages.value.length);
+			return true;
 		} catch (error) {
-			// Treat 404 as "no thread yet" rather than surfacing an error —
-			// covers stale continue URLs and any lingering race where the
-			// thread hasn't been persisted on the backend.
+			if (!isCurrent()) return false;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				params.onHistoryLoaded?.(0);
-			} else {
+				if (!isStreamOpen.value && streamAtStart === streamVersion && !activeExecutionId.value) {
+					isRecovering.value = false;
+					isCancelling.value = false;
+				}
+				if (
+					clearOnNotFound &&
+					!activeExecutionId.value &&
+					!isStreamOpen.value &&
+					streamAtStart === streamVersion
+				) {
+					messages.value = [];
+				}
+				return clearOnNotFound;
+			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
-		} finally {
-			historyLoaded.value = true;
+			// Keep the current transcript and retry twice before waiting for another update or recovery event.
+			if (retryCount < 2) {
+				clearTimeout(retryTimer);
+				retryTimer = setTimeout(() => refreshHistoryFromPush(), TIME.SECOND * 2 ** retryCount++);
+			}
+			return false;
 		}
 	}
 
+	async function loadHistory(): Promise<void> {
+		if (historyLoaded.value) return;
+		isRecovering.value = true;
+		const loaded = await refreshHistory({ clearOnNotFound: true });
+		historyLoaded.value = true;
+		// A running resume can have no messages yet. Keep its session selected.
+		if (loaded && (messages.value.length > 0 || !isStreaming.value)) {
+			params.onHistoryLoaded?.(messages.value.length);
+		}
+	}
+
+	// A turn can complete with no stream attached — a Wait node finishing wakes the
+	// run server-side, long after this chat's SSE stream closed.
+	const refreshHistoryFromPush = useAgentExecutionUpdates(
+		{
+			projectId: params.projectId,
+			agentId: params.agentId,
+			// A continued session is pinned to one thread; the default test chat has
+			// only one, so any update for this agent is the chat being shown.
+			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
+		},
+		async () => {
+			// Defer history refreshes until the local stream ends to preserve streamed text.
+			if (isStreamOpen.value) {
+				refreshAfterStream = true;
+				return;
+			}
+			await refreshHistory({ silent: true });
+		},
+		() => {
+			historyVersion++;
+			retryCount = 0;
+			clearTimeout(retryTimer);
+		},
+	);
+
+	// Recover missed updates when the preview reopens, reconnects, becomes visible, or changes session.
+	function refresh() {
+		retryCount = 0;
+		clearTimeout(retryTimer);
+		refreshHistoryFromPush();
+	}
+	watch(
+		() => pushStore.isConnected,
+		(connected) => {
+			if (connected) refresh();
+		},
+	);
+	watch(visibility, (value) => {
+		if (value === 'visible') refresh();
+	});
+	watch(targetKey, () => {
+		detachStream();
+		messages.value = [];
+		activeExecutionId.value = null;
+		acceptedSessionId.value = undefined;
+		isRecovering.value = true;
+		isCancelling.value = false;
+		stopTargetId = undefined;
+		historyVersion++;
+		streamVersion++;
+		refresh();
+	});
+	// Clear retry timers and ignore late responses when this chat closes.
+	onScopeDispose(() => {
+		disposed = true;
+		detachStream();
+		clearTimeout(retryTimer);
+	});
+
 	async function clearHistory(): Promise<void> {
-		const clearRemote =
-			params.endpoint.value === 'build' ? clearBuilderMessages : clearTestChatMessages;
 		try {
-			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
+			await clearTestChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+			);
 			messages.value = [];
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
@@ -148,13 +325,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
-		builderMutated: boolean;
+		target: string;
+		executionId?: string;
+		busy?: boolean;
+		onAccepted?: () => void;
 		/**
 		 * Set when the stream emitted an `error` event. Callers (notably
 		 * `resume`) inspect this so they can roll back optimistic UI state
 		 * that was applied before the round-trip.
 		 */
 		errorEmitted: boolean;
+		/** Set when the stream reaches a valid terminal event. */
+		terminalEventReceived: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -164,6 +346,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		current?: ChatMessage;
 		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
 		minted: Set<ChatMessage>;
+		reasoningStartedAt: Map<string, number>;
+		openReasoning: Map<string, ThinkingSegment>;
 	}
 
 	/**
@@ -177,14 +361,42 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			id: crypto.randomUUID(),
 			role: 'assistant',
 			content: '',
-			thinking: '',
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
+			executionId: session.executionId,
 		});
 		messages.value.push(msg);
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
+	}
+
+	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
+		const existing = session.openReasoning.get(id);
+		if (existing) return existing;
+
+		const msg = ensureCurrent(session);
+		const segment = reactive<ThinkingSegment>({
+			id,
+			content: '',
+			startTime: session.reasoningStartedAt.get(id) ?? Date.now(),
+		});
+		msg.thinkingSegments = [...(msg.thinkingSegments ?? []), segment];
+		session.openReasoning.set(id, segment);
+		return segment;
+	}
+
+	function settleReasoning(session: StreamSession, id: string, endTime = Date.now()): void {
+		const segment = session.openReasoning.get(id);
+		if (segment) segment.endTime = endTime;
+		session.openReasoning.delete(id);
+		session.reasoningStartedAt.delete(id);
+	}
+
+	function settleOpenReasoning(session: StreamSession): void {
+		const endTime = Date.now();
+		for (const id of session.openReasoning.keys()) settleReasoning(session, id, endTime);
+		session.reasoningStartedAt.clear();
 	}
 
 	/**
@@ -202,12 +414,123 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
+		// Prefer the current turn's card over one abandoned by an earlier turn.
+		const interactive =
+			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
+		if (interactive?.runId) {
+			return { runId: interactive.runId, toolCallId: interactive.toolCallId };
+		}
+
+		for (const message of messages.value) {
+			const toolCall = message.toolCalls?.find(
+				(tc) => tc.state === TOOL_CALL_STATE.SUSPENDED && tc.runId,
+			);
+			if (toolCall?.runId) return { runId: toolCall.runId, toolCallId: toolCall.toolCallId };
+		}
+		return undefined;
+	}
+
+	function markMessageSuccessIfSettled(msg: ChatMessage): void {
+		if (
+			msg.status !== CHAT_MESSAGE_STATUS.AWAITING_USER &&
+			msg.status !== CHAT_MESSAGE_STATUS.STREAMING
+		)
+			return;
+		const hasOpenInteractive = getMessageInteractives(msg).some(
+			(payload) => payload.resolvedAt === undefined,
+		);
+		if (!hasOpenInteractive && !msg.toolCalls?.some(isToolCallInFlight))
+			msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+	}
+
+	function isToolCallInFlight(toolCall: ToolCall): boolean {
+		return (
+			toolCall.state === TOOL_CALL_STATE.PENDING ||
+			toolCall.state === TOOL_CALL_STATE.RUNNING ||
+			toolCall.state === TOOL_CALL_STATE.SUSPENDED
+		);
+	}
+
+	function markRunCancelled(runId: string): void {
+		for (const message of messages.value) {
+			const belongsToRun = message.toolCalls?.some((toolCall) => toolCall.runId === runId);
+			if (!belongsToRun) continue;
+
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (toolCall.runId !== runId && !isToolCallInFlight(toolCall)) continue;
+				toolCall.state = TOOL_CALL_STATE.CANCELLED;
+				toolCall.canceled = true;
+				changed = true;
+
+				const interactive = getMessageInteractive(message, toolCall.toolCallId);
+				if (interactive) {
+					upsertMessageInteractive(message, {
+						...interactive,
+						resolvedAt: Date.now(),
+						cancelled: true,
+					});
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
-			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+			if (
+				!msg.content &&
+				(msg.toolCalls?.length ?? 0) === 0 &&
+				getMessageThinkingSegments(msg).length === 0
+			) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
 			}
+		}
+	}
+
+	function markInFlightStateFailed(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (
+				msg.status === CHAT_MESSAGE_STATUS.STREAMING ||
+				msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER
+			) {
+				msg.status = CHAT_MESSAGE_STATUS.ERROR;
+			}
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall)) {
+					toolCall.state = TOOL_CALL_STATE.ERROR;
+				}
+			}
+			setMessageInteractives(
+				msg,
+				getMessageInteractives(msg).filter((interactive) => interactive.resolvedAt !== undefined),
+			);
+		}
+	}
+
+	/**
+	 * Settle tool calls left `pending`/`running` after the stream ended (their
+	 * terminal events never arrived). Used by `stopGenerating` to recover the
+	 * desync where the chat is idle and responsive but tool steps keep pulsing.
+	 * Suspended tools are left untouched — they have a `runId` and are still
+	 * resolvable through the normal resume/cancel flow.
+	 */
+	function settleStaleInFlightToolCalls(): void {
+		for (const message of messages.value) {
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.CANCELLED;
+					toolCall.canceled = true;
+					changed = true;
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
 		}
 	}
 
@@ -215,7 +538,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		event: AgentSseEvent,
 		session: StreamSession,
 	): { done?: boolean } | undefined {
+		// Controller validation failures only emit `error`. Any other event proves
+		// that the backend admitted and persisted this turn.
+		if (event.type !== 'error') acknowledgeSessionCreation();
 		switch (event.type) {
+			case 'execution-started':
+				clearTimeout(stopAcceptanceTimer);
+				session.executionId = event.executionId;
+				activeExecutionId.value = event.executionId;
+				acceptedSessionId.value = event.sessionId;
+				session.onAccepted?.();
+				session.onAccepted = undefined;
+				if (isCancelling.value) reconcileStop();
+				break;
 			case 'start-step':
 			case 'finish-step':
 				// LLM iteration boundary — the next text/tool event mints a
@@ -225,8 +560,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'text-start':
 			case 'text-end':
+				break;
 			case 'reasoning-start':
-			case 'reasoning-end':
+				session.reasoningStartedAt.set(event.id, Date.now());
 				break;
 			case 'text-delta': {
 				const msg = ensureCurrent(session);
@@ -235,9 +571,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'reasoning-delta': {
 				const msg = ensureCurrent(session);
+				const segment = ensureReasoningSegment(session, event.id);
+				segment.content += event.delta;
 				msg.thinking = (msg.thinking ?? '') + event.delta;
 				break;
 			}
+			case 'reasoning-end':
+				settleReasoning(session, event.id);
+				break;
 			case 'tool-input-start': {
 				const msg = ensureCurrent(session);
 				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
@@ -253,8 +594,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-input-delta':
-				// Streaming tool input — `code-delta` handles the build-tool case.
-				// No ToolCall state mutation here.
+				// Streaming tool input isn't rendered incrementally; the full
+				// input arrives on `tool-call`. No ToolCall state mutation here.
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -335,35 +676,43 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the card so it flips to its resolved
-					// (disabled) state immediately. No separate "resumed" event needed.
-					if (found.msg.interactive) {
-						const updated = rebuildInteractiveFromHistory(found.tc);
-						if (updated) found.msg.interactive = updated;
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
+					const updated = rebuildInteractiveFromHistory(found.tc);
+					if (updated && currentInteractive?.resolvedAt === undefined) {
+						upsertMessageInteractive(found.msg, updated);
 					}
-					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
 			}
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
+				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					tc.input = payload.input;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
+					tc.runId = payload.runId;
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
-						input: payload.input,
 						state: TOOL_CALL_STATE.SUSPENDED,
+						runId: payload.runId,
+						...(suspendIsRenderableInput
+							? { input: payload.input }
+							: { suspendPayload: payload.input }),
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
@@ -373,28 +722,48 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				});
 				if (interactive) {
 					interactive.runId = payload.runId;
-					msg.interactive = interactive;
+					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
+				session.terminalEventReceived = true;
+				break;
+			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
-			case 'code-delta': {
-				params.onCodeDelta?.(event.delta);
-				break;
-			}
-			case 'config-updated':
-			case 'tool-updated': {
-				session.builderMutated = true;
-				params.onConfigUpdated?.();
+			case 'warning': {
+				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
+				// tools were skipped). The run continues; surfaced as a callout.
+				const warning: AgentChatWarning = {
+					message: event.message,
+					...(event.server !== undefined && { server: event.server }),
+					...(event.code !== undefined && { code: event.code }),
+				};
+				if (!dismissedWarningKeys.has(warningKey(warning))) {
+					warnings.value.push(warning);
+				}
 				break;
 			}
 			case 'error': {
 				session.errorEmitted = true;
+				if (event.errorCode === 'turn_already_running') {
+					session.busy = true;
+					isCancelling.value = false;
+					stopTargetId = undefined;
+					isRecovering.value = true;
+					return { done: true };
+				}
+				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
+				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else {
@@ -403,15 +772,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							id: crypto.randomUUID(),
 							role: 'assistant',
 							content: event.message,
-							thinking: '',
 							toolCalls: [],
 							status: CHAT_MESSAGE_STATUS.ERROR,
 						}),
 					);
 				}
+				session.terminalEventReceived = true;
 				break;
 			}
 			case 'done':
+				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
+				settleOpenReasoning(session);
+				if (event.executionId) {
+					for (const msg of session.minted) {
+						msg.executionId = event.executionId;
+					}
+				}
+				session.terminalEventReceived = true;
 				return { done: true };
 			default:
 				break;
@@ -419,18 +796,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return undefined;
 	}
 
-	async function consumeStream(response: Response, session: StreamSession): Promise<boolean> {
-		if (!response.body) return false;
+	async function consumeStream(
+		response: Response,
+		session: StreamSession,
+		signal: AbortSignal,
+	): Promise<void> {
+		if (!response.body) return;
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
 
-		let doneSeen = false;
-
 		try {
 			readerLoop: while (true) {
 				const { done, value } = await reader.read();
-				if (done) break;
+				if (done || signal.aborted || disposed || session.target !== targetKey()) break;
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split('\n');
 				buffer = lines.pop() ?? '';
@@ -446,7 +825,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					}
 					const result = handleEvent(event, session);
 					if (result?.done) {
-						doneSeen = true;
 						break readerLoop;
 					}
 				}
@@ -454,34 +832,53 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		} finally {
 			reader.releaseLock();
 		}
-
-		return doneSeen;
 	}
 
 	function finalizeStream(session: StreamSession): void {
+		settleOpenReasoning(session);
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			// Defensive: if the stream completed (`done`) while tool calls are
+			// still `pending`/`running`, their terminal events never arrived
+			// (e.g. backend emitted `done` before per-tool `tool-execution-end`,
+			// or the events were dropped). Settle them so the UI stops pulsing
+			// and Stop hides — the run is over and the agent is responsive.
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall) && toolCall.state !== TOOL_CALL_STATE.SUSPENDED) {
+					toolCall.state = TOOL_CALL_STATE.DONE;
+				}
+			}
 		}
-
-		if (params.endpoint.value !== 'build') return;
-		if (session.builderMutated) params.onConfigUpdated?.();
 	}
+
+	type StreamOutcome = 'completed' | 'failed' | 'aborted' | 'busy' | 'detached';
 
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
-	): Promise<{ ok: boolean }> {
+		onAccepted?: () => void,
+	): Promise<{ outcome: StreamOutcome }> {
 		const session: StreamSession = {
-			builderMutated: false,
+			target: targetKey(),
+			onAccepted,
 			errorEmitted: false,
+			terminalEventReceived: false,
 			minted: new Set(),
+			reasoningStartedAt: new Map(),
+			openReasoning: new Map(),
 		};
-
-		isStreaming.value = true;
+		isStreamOpen.value = true;
+		streamVersion++;
 		const controller = new AbortController();
 		abortController.value = controller;
-		let transportFailed = false;
-		let doneSeen = false;
+		let settleStream: (() => void) | undefined;
+		streamSettlements.set(
+			controller,
+			new Promise<void>((resolve) => {
+				settleStream = resolve;
+			}),
+		);
+		const isCurrent = () => !disposed && session.target === targetKey();
 
 		try {
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
@@ -492,74 +889,106 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				body: JSON.stringify(body),
 				signal: controller.signal,
 			});
-
+			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
 			if (!response.ok || !response.body) {
-				transportFailed = true;
-				const errorMsg: ChatMessage = {
+				messages.value.push({
 					id: crypto.randomUUID(),
 					role: 'assistant',
 					content: `Error: ${response.statusText || 'Failed to reach agent'}`,
 					status: 'error',
-				};
-				messages.value.push(errorMsg);
-				return { ok: false };
+				});
+				return { outcome: 'failed' };
 			}
-
-			doneSeen = await consumeStream(response, session);
+			await consumeStream(response, session, controller.signal);
+			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
+			if (session.busy) return { outcome: 'busy' };
+			if (!session.terminalEventReceived) {
+				isRecovering.value = true;
+				return { outcome: 'detached' };
+			}
 			finalizeStream(session);
-		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') {
-				finalizeStream(session);
-				// User-initiated abort — surface as a failure so optimistic
-				// callers (resume) restore their pre-flight state instead of
-				// leaving the UI half-committed.
-				return { ok: false };
-			}
-			transportFailed = true;
-			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-			messages.value.push({
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: text,
-				status: 'error',
-			});
+			if (!session.errorEmitted) session.onAccepted?.();
+			return { outcome: session.errorEmitted ? 'failed' : 'completed' };
+		} catch {
+			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
+			if (session.errorEmitted) return { outcome: 'failed' };
+			// A lost response cannot tell us whether the server accepted or finished the turn.
+			isRecovering.value = true;
+			return { outcome: 'detached' };
 		} finally {
-			abortController.value = null;
-			isStreaming.value = false;
+			if (abortController.value === controller) {
+				clearTimeout(stopAcceptanceTimer);
+				abortController.value = null;
+				isStreamOpen.value = false;
+			}
+			streamSettlements.delete(controller);
+			settleStream?.();
+			if (isCurrent()) {
+				streamVersion++;
+				if (session.executionId || refreshAfterStream || isRecovering.value) {
+					refreshAfterStream = false;
+					refreshHistoryFromPush();
+				} else if (isCancelling.value && !activeExecutionId.value) {
+					isCancelling.value = false;
+				}
+			}
 		}
-
-		if (params.endpoint.value === 'build' && doneSeen) {
-			await nextTick();
-			params.onBuildDone?.();
-		}
-
-		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
-	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[], onAccepted?: () => void) {
+		const target = targetKey();
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
-		if (endpoint === 'chat' && params.continueSessionId?.value) {
-			body.sessionId = params.continueSessionId.value;
+		const sessionId = params.continueSessionId?.value;
+		const newSession = params.newSession?.value === true;
+		if (sessionId) {
+			body.sessionId = sessionId;
+			if (newSession) body.newSession = true;
 		}
-		await postAndConsume(url, body);
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: encoded.mimeType || 'application/octet-stream',
+						data: encoded.data,
+					};
+				}),
+			);
+		}
+		if (disposed || target !== targetKey()) return { outcome: 'aborted' };
+		const result = await postAndConsume(url, body, onAccepted);
+		if (
+			newSession &&
+			params.newSession?.value === true &&
+			sessionId &&
+			sessionId === params.continueSessionId?.value &&
+			sessionId !== acknowledgedSessionId
+		) {
+			await refreshHistory({ silent: true });
+		}
+		return result;
 	}
 
 	/**
-	 * Resume a suspended interaction. Build-mode interactions post to
-	 * build/resume; preview chat approval prompts post to chat/resume. Both
-	 * paths re-enter the same SSE handler. The `runId` is required — it comes
-	 * from the original `tool-call-suspended` chunk (live) or from the
-	 * `openSuspensions` sidecar applied during history reload.
+	 * Resume a suspended interaction via `chat/resume`, re-entering the same
+	 * SSE handler. The `runId` is required — it comes from the original
+	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
+	 * applied during history reload.
 	 *
-	 * The UI updates optimistically, then restores the previous card state if
-	 * the resume POST or SSE stream fails.
+	 * The UI updates optimistically, then reconciles with persisted history if
+	 * the resume fails, falling back to the previous card state if history is unavailable.
 	 */
-	async function resume(payload: ResumePayload): Promise<void> {
+	async function resume(payload: ResumePayload, onAccepted?: () => void): Promise<'sent' | 'busy'> {
+		if (isStreaming.value || isCancelling.value) return 'busy';
+
 		const isCancellation = 'cancelled' in payload;
 		const text = isCancellation ? payload.text.trim() : '';
-		if (isCancellation && !text) return;
+		if (isCancellation && !text) return 'busy';
 
 		const found = findToolCallById(payload.toolCallId);
 		const snapshot = found
@@ -572,6 +1001,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg: found.msg,
 					prevStatus: found.msg.status,
 					prevInteractive: found.msg.interactive,
+					prevInteractives: found.msg.interactives ? [...found.msg.interactives] : undefined,
 				}
 			: null;
 		let optimisticUserMessageId: string | undefined;
@@ -580,12 +1010,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (isCancellation) {
 				found.tc.state = TOOL_CALL_STATE.CANCELLED;
 				found.tc.canceled = true;
-				if (found.msg.interactive) {
-					found.msg.interactive = {
-						...found.msg.interactive,
+				const interactive = getMessageInteractive(found.msg, payload.toolCallId);
+				if (interactive) {
+					upsertMessageInteractive(found.msg, {
+						...interactive,
 						resolvedAt: Date.now(),
 						cancelled: true,
-					};
+					});
 				}
 			} else {
 				found.tc.state = TOOL_CALL_STATE.DONE;
@@ -597,10 +1028,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
-				if (updated) found.msg.interactive = updated;
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
+				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
-			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			markMessageSuccessIfSettled(found.msg);
 		}
 
 		const resumeData: unknown = isCancellation
@@ -618,75 +1052,234 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				role: 'user',
 				content: text,
 				status: 'success',
+				createdAt: Date.now(),
 			});
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const resumeEndpoint = params.endpoint.value === 'chat' ? 'chat/resume' : 'build/resume';
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${resumeEndpoint}`;
-		const { ok } = await postAndConsume(url, {
-			runId: payload.runId,
-			toolCallId: payload.toolCallId,
-			resumeData,
-		});
-		if (!ok && snapshot) {
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
+		const { outcome } = await postAndConsume(
+			url,
+			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
+			onAccepted,
+		);
+		let reconciled = false;
+		if (outcome === 'failed' || outcome === 'busy') {
+			reconciled = await refreshHistory();
+		}
+		if (
+			(outcome === 'failed' || outcome === 'busy') &&
+			!reconciled &&
+			!activeExecutionId.value &&
+			snapshot
+		) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
-			snapshot.msg.interactive = snapshot.prevInteractive;
+			if (snapshot.prevInteractives) {
+				setMessageInteractives(snapshot.msg, snapshot.prevInteractives);
+			} else if (snapshot.prevInteractive) {
+				setMessageInteractives(snapshot.msg, [snapshot.prevInteractive]);
+			} else {
+				setMessageInteractives(snapshot.msg, []);
+			}
 		}
-		if (!ok && optimisticUserMessageId) {
+		if (
+			optimisticUserMessageId &&
+			(outcome === 'busy' || (outcome === 'failed' && !reconciled && !activeExecutionId.value))
+		) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
 		}
+		return outcome === 'busy' ? 'busy' : 'sent';
 	}
 
-	async function cancelAndSteer(text: string): Promise<void> {
-		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
-		if (!openMsg?.interactive?.runId) return;
+	async function cancelAndSteer(text: string, onAccepted?: () => void): Promise<'sent' | 'busy'> {
+		// Steering answers the card the user is looking at — the one on the current
+		// turn, and never a waiting card, which only the workflow or a deliberate
+		// click may end. The chat input gates this too, but the rule belongs with
+		// the resume it would send.
+		const openInteractive = findTailSteerableInteractive(messages.value);
+		if (!openInteractive?.runId) return 'busy';
 
-		await resume({
-			runId: openMsg.interactive.runId,
-			toolCallId: openMsg.interactive.toolCallId,
-			cancelled: true,
-			text,
-		});
+		return await resume(
+			{
+				runId: openInteractive.runId,
+				toolCallId: openInteractive.toolCallId,
+				cancelled: true,
+				text,
+			},
+			onAccepted,
+		);
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(
+		text: string,
+		files?: File[],
+		onAccepted?: () => void,
+	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return 'busy';
+		isStreamOpen.value = true;
+		const messageId = crypto.randomUUID();
+		const target = targetKey();
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
+		warnings.value = [];
 		messages.value.push({
-			id: crypto.randomUUID(),
+			id: messageId,
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			createdAt: Date.now(),
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: resolveFileMimeType(file.name, file.type) || 'application/octet-stream',
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamFromEndpoint(params.endpoint.value, trimmed);
+		try {
+			const { outcome } = await streamChat(trimmed, files, onAccepted);
+			if (outcome === 'busy') {
+				messages.value = messages.value.filter((message) => message.id !== messageId);
+				return 'busy';
+			}
+			return 'sent';
+		} finally {
+			if (!abortController.value && target === targetKey()) isStreamOpen.value = false;
+		}
 	}
 
 	function dismissFatalError(): void {
 		fatalError.value = null;
 	}
 
-	function stopGenerating(): void {
-		abortController.value?.abort();
+	function dismissWarning(index: number): void {
+		const warning = warnings.value[index];
+		if (!warning) return;
+		const dismissedKey = warningKey(warning);
+		dismissedWarningKeys.add(dismissedKey);
+		warnings.value = warnings.value.filter((item) => warningKey(item) !== dismissedKey);
+	}
+
+	function detachStream(): void {
+		clearTimeout(stopAcceptanceTimer);
+		const controller = abortController.value;
+		abortController.value = null;
+		isStreamOpen.value = false;
+		controller?.abort();
+	}
+
+	function retainStopUntilAcceptance(): void {
+		isCancelling.value = true;
+		const controller = abortController.value;
+		if (!controller) return;
+		stopAcceptanceTimer = setTimeout(() => {
+			if (controller !== abortController.value || !isCancelling.value || activeExecutionId.value)
+				return;
+			isRecovering.value = true;
+			detachStream();
+		}, STOP_ACCEPTANCE_TIMEOUT_MS);
+	}
+
+	function reconcileStop(): void {
+		const executionId = activeExecutionId.value;
+		if (!executionId || (stopTargetId && stopTargetId !== executionId)) {
+			isCancelling.value = false;
+			stopTargetId = undefined;
+			return;
+		}
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (threadId) void requestExecutionStop(executionId, threadId);
+	}
+
+	async function requestExecutionStop(executionId: string, threadId: string): Promise<void> {
+		if (stopTargetId === executionId) return;
+		stopTargetId = executionId;
+		const target = targetKey();
+		try {
+			const { cancelRequested } = await cancelAgentChatExecution(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				executionId,
+			);
+			if (!cancelRequested && target === targetKey() && stopTargetId === executionId) {
+				isCancelling.value = false;
+				stopTargetId = undefined;
+			}
+		} catch (error) {
+			if (!disposed && target === targetKey() && stopTargetId === executionId) {
+				isCancelling.value = false;
+				stopTargetId = undefined;
+				showError(error, locale.baseText('agents.chat.stop.error'));
+			}
+		} finally {
+			if (!disposed && target === targetKey()) refreshHistoryFromPush();
+		}
+	}
+
+	async function stopGenerating(): Promise<void> {
+		if (isCancelling.value) return;
+		const executionId = activeExecutionId.value;
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (executionId && threadId) {
+			isCancelling.value = true;
+			await requestExecutionStop(executionId, threadId);
+			return;
+		}
+
+		const openSuspension = findOpenSuspension();
+		if (!openSuspension) {
+			if (isStreaming.value) retainStopUntilAcceptance();
+			else settleStaleInFlightToolCalls();
+			return;
+		}
+
+		isCancelling.value = true;
+		const controller = abortController.value;
+		const settlement = controller ? streamSettlements.get(controller) : undefined;
+		try {
+			const { cancelled } = await cancelAgentChatRun(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				openSuspension.runId,
+			);
+			if (cancelled) markRunCancelled(openSuspension.runId);
+			else await refreshHistory();
+		} catch (error) {
+			await refreshHistory();
+			showError(error, locale.baseText('agents.chat.stop.error'));
+		} finally {
+			detachStream();
+			await settlement;
+			isCancelling.value = false;
+		}
 	}
 
 	return {
 		messages,
 		isStreaming,
+		activeExecutionId,
+		isCancelling,
 		messagingState,
 		fatalError,
+		warnings,
 		loadHistory,
+		refresh,
 		clearHistory,
 		sendMessage,
 		stopGenerating,
+		detachStream,
 		resume,
 		cancelAndSteer,
 		dismissFatalError,
+		dismissWarning,
 	};
 }

@@ -8,7 +8,7 @@ import { formatList } from '@/app/utils/formatters/listFormatter';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { BaseNode, CredentialUsages } from '../templates.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { I18nT } from 'vue-i18n';
 import type { SetupCredentialsModalSource } from './SetupWorkflowCredentialsModal.vue';

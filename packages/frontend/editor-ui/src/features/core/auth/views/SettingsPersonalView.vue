@@ -1,23 +1,24 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role } from '@n8n/api-types';
+import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { MFA_DOCS_URL } from '@/app/constants';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
-	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
-} from '@/app/constants';
+} from '../auth.constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { createFormEventBus } from '@n8n/design-system';
 import type { MfaModalEvents } from '../auth.eventBus';
 import { promptMfaCodeBus } from '../auth.eventBus';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -42,14 +43,6 @@ type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
 	email: string;
-	/**
-	 * Required when changing the user email and no MFA enabled
-	 */
-	currentPassword?: string;
-};
-
-type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
-	mfaCode?: string;
 };
 
 type RoleContent = {
@@ -61,6 +54,7 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
+const isActive = ref<boolean>(true);
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
@@ -83,6 +77,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -95,15 +90,17 @@ const isManagedByEnv = computed((): boolean => {
 	return currentUser.value?.isManagedByEnv ?? false;
 });
 
+const isLdapCurrentAuthMethod = computed((): boolean => {
+	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
-	const isLdapEnabled =
-		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
 		ssoStore.isEnterpriseOidcEnabled &&
 		ssoStore.isOidcLoginEnabled &&
 		currentUser.value?.signInType === 'oidc';
-	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
+	return isLdapCurrentAuthMethod.value || isSamlEnabled || isOidcEnabled;
 });
 
 const isPersonalSecurityEnabled = computed((): boolean => {
@@ -120,6 +117,18 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
+// Unlike SAML/OIDC, LDAP has no native 2FA, so n8n's own 2FA must stay
+// configurable for LDAP users even though password management is external.
+const canConfigureMfa = computed((): boolean => {
+	return (
+		isMfaFeatureEnabled.value && (isPersonalSecurityEnabled.value || isLdapCurrentAuthMethod.value)
+	);
+});
+
+const isSecuritySectionVisible = computed((): boolean => {
+	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
+});
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
@@ -128,40 +137,50 @@ const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
-const roles = computed<Record<Role, RoleContent>>(() => ({
-	[ROLE.Default]: {
-		name: i18n.baseText('auth.roles.default'),
-		description: i18n.baseText('settings.personal.role.tooltip.default'),
-	},
-	[ROLE.Member]: {
-		name: i18n.baseText('auth.roles.member'),
-		description: i18n.baseText('settings.personal.role.tooltip.member'),
-	},
-	[ROLE.ChatUser]: {
-		name: i18n.baseText('auth.roles.chatUser'),
-		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
-	},
-	[ROLE.Admin]: {
-		name: i18n.baseText('auth.roles.admin'),
-		description: i18n.baseText('settings.personal.role.tooltip.admin'),
-	},
-	[ROLE.Owner]: {
-		name: i18n.baseText('auth.roles.owner'),
-		description: i18n.baseText('settings.personal.role.tooltip.owner', {
-			interpolate: {
-				cloudAccess: cloudPlanStore.hasCloudPlan
-					? i18n.baseText('settings.personal.role.tooltip.cloud')
-					: '',
-			},
-		}),
-	},
-}));
+const currentUserRole = computed<RoleContent>(() => {
+	const knownRoles: Partial<Record<Role, RoleContent>> = {
+		[ROLE.Default]: {
+			name: i18n.baseText('auth.roles.default'),
+			description: i18n.baseText('settings.personal.role.tooltip.default'),
+		},
+		[ROLE.Member]: {
+			name: i18n.baseText('auth.roles.member'),
+			description: i18n.baseText('settings.personal.role.tooltip.member'),
+		},
+		[ROLE.ChatUser]: {
+			name: i18n.baseText('auth.roles.chatUser'),
+			description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+		},
+		[ROLE.Admin]: {
+			name: i18n.baseText('auth.roles.admin'),
+			description: i18n.baseText('settings.personal.role.tooltip.admin'),
+		},
+		[ROLE.Owner]: {
+			name: i18n.baseText('auth.roles.owner'),
+			description: i18n.baseText('settings.personal.role.tooltip.owner', {
+				interpolate: {
+					cloudAccess: cloudPlanStore.hasCloudPlan
+						? i18n.baseText('settings.personal.role.tooltip.cloud')
+						: '',
+				},
+			}),
+		},
+	};
 
-const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
+	const globalRoleName = usersStore.globalRoleName;
+	const knownRole = knownRoles[globalRoleName as Role];
+	if (knownRole) return knownRole;
 
-onMounted(() => {
-	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
-	formInputs.value = [
+	// Custom instance role: show its display name, without a preset tooltip.
+	const customRole = rolesStore.processedInstanceRoles.find((r) => r.slug === globalRoleName);
+	return {
+		name: customRole?.displayName ?? globalRoleName,
+		description: customRole?.description ?? '',
+	};
+});
+
+function buildFormInputs(): IFormInputs {
+	return [
 		{
 			name: 'firstName',
 			initialValue: currentUser.value?.firstName,
@@ -200,6 +219,11 @@ onMounted(() => {
 			},
 		},
 	];
+}
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	formInputs.value = buildFormInputs();
 });
 
 function onInput() {
@@ -210,12 +234,38 @@ function onReadyToSubmit(ready: boolean) {
 	readyToSubmit.value = ready;
 }
 
-/** Saves users basic info and personalization settings */
-async function saveUserSettings(params: UserBasicDetailsWithMfa) {
+async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
+	const form = data as UserBasicDetailsForm;
+	const emailChanged = usersStore.currentUser?.email !== form.email;
+
+	// Name and theme save immediately - they need no re-authentication.
+	await saveNameAndPersonalisation(form);
+
+	// Email changes go through the confirmation flow, gated by password or MFA.
+	// Skip if the view unmounted during the awaited save, so the modal never
+	// opens on a departed page.
+	if (emailChanged && isActive.value) {
+		startEmailChange(form.email);
+	}
+}
+
+/** Saves name and personalization settings, only when they changed. */
+async function saveNameAndPersonalisation(form: UserBasicDetailsForm) {
+	const current = usersStore.currentUser;
+	const nameChanged = current?.firstName !== form.firstName || current?.lastName !== form.lastName;
+
+	if (!nameChanged && !hasAnyPersonalisationChanges.value) {
+		return;
+	}
+
 	try {
-		// The MFA code might be invalid so we update the user's basic info first
-		await updateUserBasicInfo(params);
-		await updatePersonalisationSettings();
+		if (nameChanged && usersStore.currentUserId) {
+			await usersStore.updateUserName({ firstName: form.firstName, lastName: form.lastName });
+		}
+		if (hasAnyPersonalisationChanges.value) {
+			uiStore.setTheme(currentSelectedTheme.value);
+		}
+		hasAnyBasicInfoChanges.value = false;
 
 		showToast({
 			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
@@ -227,11 +277,8 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	}
 }
 
-async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
-	const form = data as UserBasicDetailsForm;
-	const emailChanged = usersStore.currentUser?.email !== form.email;
-
-	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
+function startEmailChange(newEmail: string) {
+	if (usersStore.currentUser?.mfaEnabled) {
 		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
 		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
@@ -240,51 +287,51 @@ async function onSubmit(data: Record<string, string | number | boolean | null | 
 				return;
 			}
 
-			await saveUserSettings({
-				...form,
-				mfaCode: payload.mfaCode,
-			});
+			await submitEmailChange({ email: newEmail, mfaCode: payload.mfaCode });
 		});
-	} else if (emailChanged) {
+	} else {
 		uiStore.openModal(CONFIRM_PASSWORD_MODAL_KEY);
+
 		confirmPasswordEventBus.once('close', async (payload: ConfirmPasswordModalEvents['close']) => {
 			if (!payload) {
 				// User closed the modal without submitting the form
 				return;
 			}
 
-			await saveUserSettings({
-				...form,
-				currentPassword: payload.currentPassword,
-			});
+			await submitEmailChange({ email: newEmail, currentPassword: payload.currentPassword });
 			uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
 		});
-	} else {
-		await saveUserSettings(form);
 	}
 }
 
-async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
-	if (!hasAnyBasicInfoChanges.value || !usersStore.currentUserId) {
-		return;
-	}
+async function submitEmailChange(params: ChangeEmailRequestDto) {
+	try {
+		const result = await usersStore.requestEmailChange(params);
 
-	await usersStore.updateUser({
-		firstName: userBasicInfo.firstName,
-		lastName: userBasicInfo.lastName,
-		email: userBasicInfo.email,
-		mfaCode: userBasicInfo.mfaCode,
-		currentPassword: userBasicInfo.currentPassword,
-	});
+		if (result.status === 'confirmation-sent') {
+			// The change is not applied yet, so put the field back to the current email.
+			revertEmailField();
+			showToast({
+				title: i18n.baseText('settings.personal.emailChange.confirmationSent.title'),
+				message: i18n.baseText('settings.personal.emailChange.confirmationSent.message'),
+				type: 'success',
+			});
+		} else {
+			// status 'changed': no email delivery is configured, so it applied at once.
+			showToast({
+				title: i18n.baseText('settings.personal.personalSettingsUpdated'),
+				message: '',
+				type: 'success',
+			});
+		}
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
+	}
+}
+
+function revertEmailField() {
+	formInputs.value = buildFormInputs();
 	hasAnyBasicInfoChanges.value = false;
-}
-
-async function updatePersonalisationSettings() {
-	if (!hasAnyPersonalisationChanges.value) {
-		return;
-	}
-
-	uiStore.setTheme(currentSelectedTheme.value);
 }
 
 function onSaveClick() {
@@ -341,6 +388,7 @@ async function onMfaDisableClick() {
 }
 
 onBeforeUnmount(() => {
+	isActive.value = false;
 	promptMfaCodeBus.off('closed', disableMfa);
 });
 </script>
@@ -354,7 +402,7 @@ onBeforeUnmount(() => {
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-					<N8nTooltip placement="bottom">
+					<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
 						<template #content>{{ currentUserRole.description }}</template>
 						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
 							currentUserRole.name
@@ -390,18 +438,18 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled && !isManagedByEnv">
+		<div v-if="isSecuritySectionVisible">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
-			<div class="mb-s">
+			<div v-if="isPersonalSecurityEnabled" class="mb-s">
 				<N8nInputLabel :label="i18n.baseText('auth.password')">
 					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
+			<div v-if="canConfigureMfa" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<N8nText :bold="false" :class="$style.infoText">
@@ -478,6 +526,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .container {
 	padding-bottom: 100px;
 

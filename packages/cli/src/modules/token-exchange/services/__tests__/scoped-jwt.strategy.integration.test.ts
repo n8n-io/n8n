@@ -2,8 +2,8 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 import { createMember, createOwner } from '@test-integration/db/users';

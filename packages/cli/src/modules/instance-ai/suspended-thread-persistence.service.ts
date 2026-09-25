@@ -1,13 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { AgentDbMessage } from '@n8n/instance-ai';
 import type { DeepPartial } from '@n8n/typeorm';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * The slice of the pending-confirmation repository this service writes to.
@@ -22,27 +18,16 @@ export interface PendingConfirmationStore {
 	deleteExpired(now: Date): Promise<number>;
 }
 
-/** The slice of thread memory used to persist a user message on suspend. */
-export interface UserMessageStore {
-	saveMessages(args: {
-		threadId: string;
-		resourceId: string;
-		messages: AgentDbMessage[];
-	}): Promise<void>;
-}
-
 export interface SuspendedThreadPersistenceServiceOptions {
 	logger: Logger;
 	config: Pick<InstanceAiConfig, 'confirmationTimeout'>;
 	pendingConfirmationRepo: PendingConfirmationStore;
-	agentMemory: UserMessageStore;
 }
 
 /**
  * Owns the DB-backed persistence of suspended Instance AI runs: the pending
- * confirmation index rows and the user message that triggered them. Extracted
- * from `InstanceAiService` (INS-393) to keep that service focused on the live
- * run loop.
+ * confirmation index rows. Extracted from `InstanceAiService` to keep that
+ * service focused on the live run loop.
  *
  * Deliberately scoped to persistence only — claiming and resuming a
  * confirmation orphaned by a process restart needs the run-loop machinery
@@ -59,13 +44,10 @@ export class SuspendedThreadPersistenceService {
 
 	private readonly pendingConfirmationRepo: PendingConfirmationStore;
 
-	private readonly agentMemory: UserMessageStore;
-
 	constructor(options: SuspendedThreadPersistenceServiceOptions) {
 		this.logger = options.logger;
 		this.config = options.config;
 		this.pendingConfirmationRepo = options.pendingConfirmationRepo;
-		this.agentMemory = options.agentMemory;
 	}
 
 	async pruneStalePendingConfirmations(now: number): Promise<void> {
@@ -91,8 +73,10 @@ export class SuspendedThreadPersistenceService {
 	/**
 	 * Persist the index for a HITL confirmation so a fresh process can find it
 	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
-	 * Fire-and-forget: a DB write failure must not block the agent flow, which
-	 * still operates correctly via the in-memory state on this main.
+	 * Never throws: a DB write failure must not block the agent flow, which
+	 * still operates correctly via the in-memory state on this main. Callers
+	 * await it before they publish the card, so no client can read the card
+	 * from the log while its row is still missing.
 	 */
 	async persistPendingConfirmation(params: {
 		requestId: string;
@@ -149,43 +133,6 @@ export class SuspendedThreadPersistenceService {
 				threadId,
 				error: getErrorMessage(error),
 			});
-		}
-	}
-
-	/**
-	 * Persist the original user-typed message to thread memory the first time
-	 * a run hits an inline HITL confirmation, so the message bubble survives
-	 * a restart that happens while the run is suspended. The `id` matches the
-	 * one we pass to the SDK's streamInput, so the SDK's eventual end-of-turn
-	 * save (if the run does resume and complete) upserts the same row instead
-	 * of creating a duplicate.
-	 */
-	async persistUserMessageOnSuspend(
-		threadId: string,
-		userId: string,
-		message: { id: string; text: string },
-	): Promise<boolean> {
-		try {
-			await this.agentMemory.saveMessages({
-				threadId,
-				resourceId: userId,
-				messages: [
-					{
-						id: message.id,
-						role: 'user',
-						content: [{ type: 'text', text: message.text }],
-						createdAt: new Date(),
-					},
-				],
-			});
-			return true;
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist user message on HITL suspend', {
-				threadId,
-				userId,
-				error: getErrorMessage(error),
-			});
-			return false;
 		}
 	}
 }

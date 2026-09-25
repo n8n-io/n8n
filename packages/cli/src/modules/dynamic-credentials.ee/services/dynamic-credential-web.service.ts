@@ -1,9 +1,11 @@
-import { AuthService } from '@/auth/auth.service';
-import { Service } from '@n8n/di';
 import { Z } from '@n8n/api-types';
-import { z } from 'zod';
-import { ICredentialContext } from 'n8n-workflow';
+import { Service } from '@n8n/di';
 import { Request } from 'express';
+import { ExecutionContextService } from 'n8n-core';
+import { ICredentialContext } from 'n8n-workflow';
+import { z } from 'zod';
+
+import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 class AuthSourceQuerySchema extends Z.class({
@@ -31,23 +33,21 @@ function getBearerToken(req: Request): string | null {
 
 @Service()
 export class DynamicCredentialWebService {
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly executionContextService: ExecutionContextService,
+	) {}
 
 	private buildCookieCredentialContext(req: Request): ICredentialContext {
 		const sessionCookie = this.authService.getCookieToken(req);
 		if (sessionCookie === undefined) {
 			throw new UnauthenticatedError('Session cookie is missing');
 		}
-		return {
-			identity: sessionCookie,
-			version: 1,
-			metadata: {
-				source: 'cookie-source',
-				browserId: this.authService.getBrowserId(req),
-				method: this.authService.getMethod(req),
-				endpoint: this.authService.getEndpoint(req),
-			},
-		};
+		return this.executionContextService.buildRequestBoundCredentialContext(sessionCookie, {
+			method: this.authService.getMethod(req),
+			endpoint: this.authService.getEndpoint(req),
+			browserId: this.authService.getBrowserId(req),
+		});
 	}
 
 	getCredentialContextFromRequest(req: Request): ICredentialContext {

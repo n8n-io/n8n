@@ -8,9 +8,15 @@ import {
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
+import {
+	WorkflowRepository,
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
@@ -40,7 +46,7 @@ function expectWorkflowsMatch(
 	const oldSorted = [...oldWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 	const newSorted = [...newWorkflows].sort((a, b) => a.id.localeCompare(b.id));
 
-	// Jest's toEqual does deep recursive comparison of all fields
+	// Vitest's toEqual does deep recursive comparison of all fields
 	expect(newSorted).toEqual(oldSorted);
 }
 
@@ -483,6 +489,51 @@ describe('WorkflowRepository', () => {
 			expect(workflowIds).not.toContain(workflow3.id);
 		});
 
+		it('should return workflows whose rows an older indexer version wrote', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Indexed at the current version counter, but by an older indexer version.
+			const outdatedWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 3,
+				publishedVersionId: null,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Indexed by the current indexer version.
+			const currentWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			const dependencies = new WorkflowDependencies(currentWorkflow.id, 3);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
+		});
+
 		it('should respect the batch size limit', async () => {
 			//
 			// ARRANGE
@@ -505,6 +556,62 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('findWorkflowsNeedingPublishedVersionIndexing', () => {
+		it('should return active workflows with missing or outdated published rows', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Active, but no published dependency rows exist.
+			const unindexedWorkflow = await createActiveWorkflow();
+
+			// Published rows exist, but an older indexer version wrote them.
+			const outdatedWorkflow = await createActiveWorkflow();
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 1,
+				publishedVersionId: outdatedWorkflow.activeVersionId,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Published rows exist at the current indexer version.
+			const currentWorkflow = await createActiveWorkflow();
+			const dependencies = new WorkflowDependencies(
+				currentWorkflow.id,
+				1,
+				currentWorkflow.activeVersionId,
+			);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing =
+				await workflowRepository.findWorkflowsNeedingPublishedVersionIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(unindexedWorkflow.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
 		});
 	});
 
@@ -752,7 +859,7 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch workflows using subquery for standard user with roles', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -789,7 +896,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle personal project filtering correctly', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -816,7 +923,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle onlySharedWithMe filter correctly', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -840,7 +947,7 @@ describe('WorkflowRepository', () => {
 
 		it('should apply filters correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -871,7 +978,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle pagination correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -941,9 +1048,9 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch both workflows and folders using subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -971,9 +1078,9 @@ describe('WorkflowRepository', () => {
 
 		it('should handle complex filtering in union query with subquery', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1022,10 +1129,10 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for standard user with both approaches', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -1067,9 +1174,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for personal project with both approaches', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1108,9 +1215,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results with filters and pagination', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1160,10 +1267,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly filter workflows by project when workflows belong to multiple projects', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 
@@ -1242,10 +1349,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly isolate workflows by user - each user sees only their workflows', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			// Create two separate users
 			const userA = await createMember();

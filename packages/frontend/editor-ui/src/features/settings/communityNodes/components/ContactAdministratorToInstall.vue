@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, useCssModule } from 'vue';

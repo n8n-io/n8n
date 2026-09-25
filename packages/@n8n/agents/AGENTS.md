@@ -38,7 +38,7 @@ src/
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder
     verify.ts           # Verification utilities
-  runtime/              # Internal — never exported
+  runtime/              # Runtime internals; selected MCP and memory helpers are exported
     agent-runtime.ts    # Core agent execution engine (AI SDK)
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
@@ -63,7 +63,7 @@ src/
   workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
   integrations/         # Optional integrations (exported where applicable)
     langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)
-  utils/                # Internal helpers (e.g. Zod utilities); not barrel-exported
+  utils/                # Shared helpers; selected JSON, model, and Zod utilities are exported
 examples/
   basic-agent.ts        # Sample snippet; included in format/lint paths
 docs/
@@ -120,11 +120,29 @@ class EngineAgent extends Agent {
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 
+### Integration tests
+
+Integration tests make real LLM calls. CI replays recorded HTTP cassettes
+instead, so every test must have a matching recording.
+
+**Workflow after changing or adding integration tests:**
+
+1. `pnpm test:integration <file>` — verify the test passes with a live API key
+2. `pnpm test:integration:record <file>` — record HTTP cassettes
+3. `pnpm test:integration:replay` — confirm the test passes from recordings
+
+**Rules:**
+- No random IDs or current timestamps in HTTP requests — the replay matcher
+  must be able to match recorded requests deterministically
+- The integration scripts pin `TZ=UTC` because some request payloads render
+  local-time timestamps (e.g. observation log `(HH:MM)` markers); recording in
+  another timezone would produce cassettes that only replay on that machine
+- Run only the affected test files, not the full suite, unless changes affect all tests
+
 ## Documentation
 
-- Runtime architecture notes: `docs/agent-runtime-architecture.md` (this package).
-- Spec-driven work in the wider repo may use `.claude/specs/` (see repo
-  `.claude/skills/spec-driven-development`).
+- Spec-driven work in the wider repo may use `.agents/specs/` (see repo skill
+  `.agents/skills/spec-driven-development`).
 
 ## Building
 

@@ -3,11 +3,20 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nCallout, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
+import { useInstanceAiComputerUseTelemetry } from '../../instanceAiComputerUse.telemetry';
 import MacOsIcon from '../../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../../assets/os-icons/windows-icon.svg';
 import LinuxIcon from '../../assets/os-icons/linux-icon.svg';
+
+const props = withDefaults(
+	defineProps<{
+		embedded?: boolean;
+	}>(),
+	{
+		embedded: false,
+	},
+);
 
 const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
@@ -22,7 +31,7 @@ const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> =
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
-const telemetry = useTelemetry();
+const telemetry = useInstanceAiComputerUseTelemetry();
 
 const selectedOs = ref<'mac' | 'windows' | 'linux'>('mac');
 const copied = ref(false);
@@ -135,9 +144,7 @@ async function copyCommand() {
 		}
 		if (!store.setupCommand) return;
 		await navigator.clipboard.writeText(store.setupCommand);
-		telemetry.track('User copied computer use connection command', {
-			os: selectedOs.value,
-		});
+		telemetry.trackCommandCopied(selectedOs.value);
 		copied.value = true;
 		setTimeout(() => {
 			copied.value = false;
@@ -147,13 +154,18 @@ async function copyCommand() {
 	}
 }
 
+async function prepareSetupCommand() {
+	if (!store.isLocalGatewayDisabledByAdmin && store.isLocalGatewayDisabled) {
+		await store.persistLocalGatewayPreference(false);
+	}
+
+	await store.fetchSetupCommand();
+}
+
 // Fetch the paste-ready setup command from the server. No daemon calls here —
-// the local daemon is only contacted when the user clicks Connect.
+// the local daemon is only contacted when the user runs the local command.
 onMounted(() => {
-	telemetry.track('User opened computer use connection modal', {
-		is_connected: store.isGatewayConnected,
-	});
-	void store.fetchSetupCommand();
+	void prepareSetupCommand();
 });
 
 watch(
@@ -179,8 +191,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.body">
-		<div :class="$style.header">
+	<div :class="[$style.body, props.embedded && $style.bodyEmbedded]">
+		<div v-if="!props.embedded" :class="$style.header">
 			<N8nHeading tag="h2" size="large" :class="$style.title">
 				{{ i18n.baseText('instanceAi.welcomeModal.gateway.title') }}
 			</N8nHeading>
@@ -281,6 +293,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
+}
+
+.bodyEmbedded {
+	padding: 0;
 }
 
 .header {

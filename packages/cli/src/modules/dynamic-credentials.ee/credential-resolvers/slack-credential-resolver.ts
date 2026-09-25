@@ -13,6 +13,7 @@ import {
 	type ICredentialDataDecryptedObject,
 	jsonParse,
 } from 'n8n-workflow';
+
 import {
 	SlackSignatureIdentifier,
 	SlackSignatureOptionsSchema,

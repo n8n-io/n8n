@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { DeprecationService } from '../deprecation.service';
 
@@ -12,8 +12,12 @@ describe('DeprecationService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
+		taskRunners: { mode: 'internal' },
 	});
-	const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
+	const instanceSettings = mockInstance(InstanceSettings, {
+		instanceType: 'main',
+		isDocker: true,
+	});
 	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
 	beforeEach(() => {
@@ -21,7 +25,7 @@ describe('DeprecationService', () => {
 		// this test suite.
 		process.env = {};
 
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
@@ -61,6 +65,26 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
+		['N8N_DB_PING_TIMEOUT', '1', true],
+		['WEBHOOK_URL', 'https://example.com/', true],
+		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
+		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
+		['N8N_EXPRESSION_ENGINE', 'legacy', true],
+		['N8N_EXPRESSION_ENGINE', 'vm', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'true', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', '1', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'false', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', undefined, false],
+		['N8N_OUTBOUND_PROXY_MODE', 'main-only', true],
+		['N8N_OUTBOUND_PROXY_MODE', 'all', false],
+		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', 'internal', true],
+		['N8N_RUNNERS_MODE', 'external', false],
+		['N8N_RUNNERS_MODE', undefined, true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
+		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
+		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
@@ -80,10 +104,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType }),
+						mock<InstanceSettings>({ instanceType, isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				},
 			);
 		});
@@ -103,10 +127,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType: 'worker' }),
+						mock<InstanceSettings>({ instanceType: 'worker', isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 			});
 
@@ -119,10 +143,10 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(
 						logger,
 						globalConfig,
-						mock<InstanceSettings>({ instanceType: 'webhook' }),
+						mock<InstanceSettings>({ instanceType: 'webhook', isDocker: true }),
 					);
 					service.warn();
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 			});
 
@@ -134,7 +158,7 @@ describe('DeprecationService', () => {
 					process.env[envVar] = envValue;
 					const service = new DeprecationService(logger, globalConfig, instanceSettings);
 					service.warn();
-					expect(logger.warn).toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
 				});
 
 				test('should not warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is true', () => {
@@ -143,7 +167,7 @@ describe('DeprecationService', () => {
 					const service = new DeprecationService(logger, globalConfig, instanceSettings);
 					service.warn();
 
-					expect(logger.warn).not.toHaveBeenCalled();
+					expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 				});
 
 				test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is undefined', () => {
@@ -157,6 +181,76 @@ describe('DeprecationService', () => {
 					expect(warningMessage).toContain(envVar);
 				});
 			});
+		});
+	});
+
+	describe('default-flip warnings', () => {
+		test.each([
+			'N8N_UNVERIFIED_PACKAGES_ENABLED',
+			'N8N_RUNNERS_TASK_TIMEOUT',
+			'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
+			'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
+		])('should warn when %s is unset', (envVar) => {
+			delete process.env[envVar];
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
+		});
+
+		test.each([
+			['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false'],
+			['N8N_RUNNERS_TASK_TIMEOUT', '120'],
+			['N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES', '1048576'],
+			['N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES', '100'],
+		])('should not warn when %s is set explicitly', (envVar, value) => {
+			process.env[envVar] = value;
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
+		});
+	});
+
+	describe('N8N_SSRF_PROTECTION_ENABLED', () => {
+		beforeEach(() => {
+			process.env.N8N_SSRF_PROTECTION_ENABLED = 'true';
+		});
+
+		test.each([undefined, 'default', 'DEFAULT , 100.64.0.0/10'])(
+			'should warn when N8N_SSRF_BLOCKED_IP_RANGES is `%s`',
+			(ranges) => {
+				if (ranges === undefined) delete process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				else process.env.N8N_SSRF_BLOCKED_IP_RANGES = ranges;
+				deprecationService.warn();
+				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain('N8N_SSRF_PROTECTION_ENABLED');
+			},
+		);
+
+		test('should not warn when N8N_SSRF_BLOCKED_IP_RANGES lists literal ranges only', () => {
+			process.env.N8N_SSRF_BLOCKED_IP_RANGES = '10.0.0.0/8,192.168.0.0/16';
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain('N8N_SSRF_PROTECTION_ENABLED');
+		});
+	});
+
+	describe('running outside a container', () => {
+		const message = 'Running n8n outside a container is deprecated';
+
+		test('should warn when not running in a container', () => {
+			const service = new DeprecationService(
+				logger,
+				globalConfig,
+				mock<InstanceSettings>({ instanceType: 'main', isDocker: false }),
+			);
+			service.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(message);
+		});
+
+		test('should not warn when running in a container', () => {
+			const service = new DeprecationService(
+				logger,
+				globalConfig,
+				mock<InstanceSettings>({ instanceType: 'main', isDocker: true }),
+			);
+			service.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(message);
 		});
 	});
 });

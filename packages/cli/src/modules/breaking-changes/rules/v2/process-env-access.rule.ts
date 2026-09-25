@@ -1,8 +1,8 @@
 import { BreakingChangeRecommendation } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
+import { BreakingChangeRule } from '@n8n/decorators';
 import { INode } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -54,7 +54,7 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 				}
 			} else {
 				// Check in expressions
-				const nodeJson = JSON.stringify(node.parameters);
+				const nodeJson = JSON.stringify(node.parameters ?? {});
 				if (processEnvPattern.test(nodeJson) && !affectedNodes.some((n) => n.nodeId === node.id)) {
 					affectedNodes.push({ nodeId: node.id, nodeName: node.name });
 				}

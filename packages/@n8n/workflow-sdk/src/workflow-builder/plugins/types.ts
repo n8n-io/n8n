@@ -5,7 +5,10 @@
  * WorkflowBuilder with custom validators, composite handlers, and serializers.
  */
 
-import type { GraphNode, NodeInstance, IDataObject } from '../../types/base';
+import type { AuthoredNodeGroup, GraphNode, NodeInstance, IDataObject } from '../../types/base';
+
+/** An authored group with its members resolved to the node IDs the serializer emits. */
+export type ResolvedNodeGroup = Omit<AuthoredNodeGroup, 'members'> & { memberIds: string[] };
 
 // =============================================================================
 // Utility Functions for Validators
@@ -62,8 +65,13 @@ export interface ValidationIssue {
 	readonly code: string;
 	/** Human-readable message describing the issue */
 	readonly message: string;
-	/** Severity level: 'error' for fatal issues, 'warning' for non-fatal */
-	readonly severity: 'error' | 'warning';
+	/**
+	 * Severity at the creation site:
+	 * - `error` — fatal for `ValidationResult.valid`
+	 * - `warning` — non-fatal for `valid`, blocks save / CLI exit
+	 * - `informational` — never blocks save / CLI exit
+	 */
+	readonly severity: 'error' | 'warning' | 'informational';
 	/** Violation level for evaluation scoring (defaults to 'minor' if not set) */
 	readonly violationLevel?: 'critical' | 'major' | 'minor';
 	/** Name of the node where the issue was found (optional) */
@@ -351,6 +359,20 @@ export interface SerializerContext extends PluginContext {
 
 	/** Whether to use Dagre-based layout for node positioning */
 	readonly tidyUp?: boolean;
+
+	/**
+	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted
+	 * nodes carry. `id`, when present, is the source group ID (from fromJSON); the serializer
+	 * reuses it, otherwise assigns one.
+	 */
+	readonly nodeGroups?: readonly ResolvedNodeGroup[];
+
+	/**
+	 * Existing group IDs keyed by group name. When a group name matches, the serializer
+	 * reuses that ID instead of deriving a deterministic one (preserves UI-assigned IDs
+	 * across edits). Groups without a match fall back to the deterministic ID.
+	 */
+	readonly existingGroupIdsByName?: ReadonlyMap<string, string>;
 }
 
 /**

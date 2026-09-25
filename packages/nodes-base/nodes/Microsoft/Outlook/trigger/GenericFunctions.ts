@@ -57,7 +57,8 @@ export async function getPollResponse(
 			const results = await Promise.all(
 				endpoints.map(
 					async (endpoint) =>
-						await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, undefined, {
+						// Poll context: 0 is the transport's fallback read, not an item index.
+						await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, 0, undefined, {
 							...qs,
 						}),
 				),
@@ -65,13 +66,23 @@ export async function getPollResponse(
 			responseData = results.flat();
 		} else {
 			qs.$top = 1;
+			// Graph does not guarantee any ordering without $orderby, so request the
+			// newest message explicitly. When $orderby is combined with $filter, Graph
+			// requires the ordered property to appear first in the filter, so prepend
+			// an always-true receivedDateTime clause when user filters are set.
+			qs.$orderby = 'receivedDateTime desc';
+			if (qs.$filter) {
+				// Parentheses keep user `or` filters from mixing with the date clause.
+				qs.$filter = `receivedDateTime ge 1900-01-01T00:00:00Z and (${qs.$filter})`;
+			}
 			const endpoints =
 				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
 
 			const results = await Promise.all(
 				endpoints.map(
 					async (endpoint) =>
-						await microsoftApiRequest.call(this, 'GET', endpoint, undefined, { ...qs }),
+						// Poll context: 0 is the transport's fallback read, not an item index.
+						await microsoftApiRequest.call(this, 'GET', endpoint, 0, undefined, { ...qs }),
 				),
 			);
 			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);
@@ -85,7 +96,13 @@ export async function getPollResponse(
 
 		if (options.downloadAttachments) {
 			const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-			executionData = await downloadAttachments.call(this, responseData as IDataObject[], prefix);
+			// Poll context: 0 is the transport's fallback read, not an item index.
+			executionData = await downloadAttachments.call(
+				this,
+				responseData as IDataObject[],
+				prefix,
+				0,
+			);
 		} else {
 			executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 		}

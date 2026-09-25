@@ -1,0 +1,388 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { EngineConfig } from '@n8n/config';
+import type { ExecutionResponseSender } from '@n8n/engine';
+import { mock } from 'vitest-mock-extended';
+
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsHelper } from '@/credentials-helper';
+import type { NodeTypes } from '@/node-types';
+
+import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
+import type { EngineControlPlaneClient } from '../engine-control-plane-client';
+import type { EngineCredentialsClient } from '../engine-credentials-client';
+import { EngineV2Runtime } from '../engine-v2.runtime';
+import { RemoteCredentialsHelper } from '../remote-credentials-helper';
+
+// Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
+// can close over them.
+const mocks = vi.hoisted(() => {
+	const dataSource = {
+		isInitialized: false,
+		initialize: vi.fn(async () => {
+			dataSource.isInitialized = true;
+		}),
+		runMigrations: vi.fn(async () => []),
+		destroy: vi.fn(async () => {
+			dataSource.isInitialized = false;
+		}),
+	};
+
+	/** Set to make `listen()` fail instead of coming up. */
+	const listen: { error?: Error } = {};
+
+	const server = {
+		close: vi.fn((done: (error?: Error) => void) => done()),
+		once: vi.fn((event: string, listener: (error?: Error) => void) => {
+			if (event === 'listening' && !listen.error) listener();
+			if (event === 'error' && listen.error) listener(listen.error);
+			return server;
+		}),
+	};
+
+	const engine = {
+		app: { listen: vi.fn((_port: number, _host: string) => server) },
+		start: vi.fn(),
+		stop: vi.fn(async () => {}),
+	};
+
+	const v1StepExecutor = { execute: vi.fn() };
+	const stepDataLoader = vi.fn();
+
+	type AdditionalData = { executionId?: string; credentialsHelper?: unknown };
+
+	type V1StepExecutorDeps = {
+		additionalDataFactory: (context: {
+			executionId: string;
+			workflowId: string;
+			mode: string;
+			userId?: string;
+			projectId?: string;
+		}) => Promise<AdditionalData>;
+	};
+
+	return {
+		dataSource,
+		listen,
+		server,
+		engine,
+		v1StepExecutor,
+		stepDataLoader,
+		createDataSource: vi.fn((_url: string) => dataSource),
+		createEngineRuntime: vi.fn((_options: unknown) => engine),
+		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
+			return stepDataLoader;
+		}),
+		V1StepExecutor: vi.fn(function (_deps: V1StepExecutorDeps) {
+			return v1StepExecutor;
+		}),
+	};
+});
+
+vi.mock('@n8n/engine', () => ({
+	AllowAllAdmittance: vi.fn(),
+	SharedSecretIdentityVerifier: vi.fn(),
+	createDataSource: mocks.createDataSource,
+	createEngineRuntime: mocks.createEngineRuntime,
+}));
+
+vi.mock('@n8n/node-engine-compatibility', () => ({
+	createEngineStepDataLoader: mocks.createEngineStepDataLoader,
+	V1StepExecutor: mocks.V1StepExecutor,
+}));
+
+describe('EngineV2Runtime', () => {
+	const engineConfig = (databaseUrl: string) =>
+		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
+
+	const nodeTypes = mock<NodeTypes>();
+
+	let controlPlaneClient: EngineControlPlaneClient;
+	let credentialsClient: EngineCredentialsClient;
+	const credentialsHelper = mock<CredentialsHelper>();
+	const credentialTypes = mock<CredentialTypes>();
+	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
+
+	// `@n8n/engine` is mocked below, so the sender is a stand-in too.
+	const responseSender = () => mock<ExecutionResponseSender>();
+
+	const newRuntime = (databaseUrl = 'postgres://engine') =>
+		new EngineV2Runtime(
+			engineConfig(databaseUrl),
+			nodeTypes,
+			mockLogger(),
+			controlPlaneClient,
+			credentialsClient,
+			credentialsHelper,
+			credentialTypes,
+			additionalDataBuilder,
+		);
+
+	const stepContext = {
+		executionId: 'exec-1',
+		workflowId: 'wf-1',
+		mode: 'manual',
+		userId: 'user-1',
+		projectId: 'project-1',
+	};
+
+	/** The `additionalDataFactory` the runtime handed to the v1 step executor. */
+	const additionalDataFactory = () => {
+		externalDependencies({ executionStore: {}, stepStore: {} });
+		return mocks.V1StepExecutor.mock.calls[0][0].additionalDataFactory;
+	};
+
+	/** The `externalDependencies` callback the runtime handed to the engine. */
+	const externalDependencies = (stores: { executionStore: unknown; stepStore: unknown }) => {
+		const options = mocks.createEngineRuntime.mock.calls[0][0] as {
+			externalDependencies: (stores: unknown) => Record<string, unknown>;
+		};
+		return options.externalDependencies(stores);
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.dataSource.isInitialized = false;
+		mocks.listen.error = undefined;
+		controlPlaneClient = mock<EngineControlPlaneClient>();
+		credentialsClient = mock<EngineCredentialsClient>();
+		additionalDataBuilder.build.mockImplementation(
+			(_context, helper) =>
+				({
+					credentialsHelper: helper,
+				}) as unknown as ReturnType<EngineAdditionalDataBuilder['build']>,
+		);
+	});
+
+	describe('init', () => {
+		it('refuses to start without a data plane database', async () => {
+			await expect(newRuntime('').init(responseSender())).rejects.toThrow(
+				'N8N_ENGINE_DATABASE_URL',
+			);
+
+			expect(mocks.createDataSource).not.toHaveBeenCalled();
+		});
+
+		it('opens the data plane connection and migrates it before building the engine', async () => {
+			await newRuntime().init(responseSender());
+
+			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine');
+			expect(mocks.dataSource.initialize).toHaveBeenCalled();
+			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ dataSource: mocks.dataSource }),
+			);
+		});
+
+		it('starts the engine', async () => {
+			await newRuntime().init(responseSender());
+
+			expect(mocks.engine.start).toHaveBeenCalled();
+		});
+
+		it('injects a lifecycle event callback that reports to the control plane', async () => {
+			await newRuntime().init(responseSender());
+
+			const events = [
+				{
+					type: 'execution:completed' as const,
+					executionId: 'exec-1',
+					workflowId: 'wf-1',
+					at: '2026-08-24T10:00:00.000Z',
+				},
+			];
+			const lifecycleEventCallback = externalDependencies({ executionStore: {}, stepStore: {} })
+				.lifecycleEventCallback as (events: unknown[], signal: AbortSignal) => Promise<void>;
+			const signal = new AbortController().signal;
+
+			await lifecycleEventCallback(events, signal);
+
+			// The signal rides along, so an abandoned batch cancels its request.
+			expect(controlPlaneClient.sendLifecycleEvents).toHaveBeenCalledExactlyOnceWith(
+				events,
+				signal,
+			);
+		});
+
+		it('injects the v1 step executor so v1-node steps can run', async () => {
+			await newRuntime().init(responseSender());
+
+			const stores = { executionStore: {}, stepStore: {} };
+
+			expect(externalDependencies(stores).v1StepExecutor).toBe(mocks.v1StepExecutor);
+			// The executor needs the CLI node types to run a v1 node, and the engine's
+			// own stores to read the step data.
+			expect(mocks.V1StepExecutor).toHaveBeenCalledWith(
+				expect.objectContaining({ nodeTypes, loadStepData: mocks.stepDataLoader }),
+			);
+			expect(mocks.createEngineStepDataLoader).toHaveBeenCalledWith(
+				stores.executionStore,
+				stores.stepStore,
+			);
+		});
+
+		it('builds the v1 additional data from the step context, not from the control plane', async () => {
+			await newRuntime().init(responseSender());
+
+			await additionalDataFactory()(stepContext);
+
+			expect(additionalDataBuilder.build).toHaveBeenCalledExactlyOnceWith(
+				stepContext,
+				expect.any(RemoteCredentialsHelper),
+			);
+		});
+
+		it('gives the step a credentials helper that asks the control plane', async () => {
+			await newRuntime().init(responseSender());
+
+			const additionalData = await additionalDataFactory()(stepContext);
+
+			expect(additionalData.credentialsHelper).toBeInstanceOf(RemoteCredentialsHelper);
+		});
+
+		it('binds the credentials helper to the execution of the step', async () => {
+			await newRuntime().init(responseSender());
+			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
+
+			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
+				credentialsHelper: RemoteCredentialsHelper;
+			};
+			await helper.getDecrypted(
+				mock(),
+				{ id: 'cred-1', name: 'Acme API' },
+				'httpHeaderAuth',
+				'manual',
+				{ node: mock({ type: 'n8n-nodes-base.httpRequest' }), data: {}, source: null },
+			);
+
+			expect(credentialsClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					execution: { executionId: 'exec-1', workflowId: 'wf-1', mode: 'manual' },
+					context: { userId: 'user-1', projectId: 'project-1' },
+				}),
+				expect.any(AbortSignal),
+			);
+		});
+
+		it('serves the engine API on the configured address', async () => {
+			await newRuntime().init(responseSender());
+
+			expect(mocks.engine.app.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+		});
+
+		it('closes the connection when migrations fail', async () => {
+			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
+
+			await expect(newRuntime().init(responseSender())).rejects.toThrow('migration failed');
+
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+			expect(mocks.engine.stop).not.toHaveBeenCalled();
+		});
+
+		it('stops the engine and closes the connection when the server fails to listen', async () => {
+			mocks.listen.error = new Error('listen failed');
+
+			await expect(newRuntime().init(responseSender())).rejects.toThrow('listen failed');
+
+			expect(mocks.server.close).not.toHaveBeenCalled();
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('surfaces the startup failure even when the rollback fails', async () => {
+			mocks.listen.error = new Error('listen failed');
+			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
+
+			await expect(newRuntime().init(responseSender())).rejects.toThrow('listen failed');
+		});
+	});
+
+	describe('shutdown', () => {
+		it('closes the server, stops the engine and closes the connection', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+
+			await runtime.shutdown();
+
+			expect(mocks.server.close).toHaveBeenCalled();
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('stops the engine and closes the connection when the server fails to close', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+
+			const error = await runtime
+				.shutdown()
+				.catch((shutdownError: AggregateError) => shutdownError);
+
+			expect(error).toBeInstanceOf(AggregateError);
+			expect((error as AggregateError).errors).toEqual([new Error('close failed')]);
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('closes the connection when the engine fails to stop', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
+
+			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
+
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('aborts the credential requests of running steps', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
+			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
+				credentialsHelper: RemoteCredentialsHelper;
+			};
+			await helper.getDecrypted(
+				mock(),
+				{ id: 'cred-1', name: 'Acme API' },
+				'httpHeaderAuth',
+				'manual',
+				{ node: mock({ type: 'n8n-nodes-base.httpRequest' }), data: {}, source: null },
+			);
+			const [, signal] = vi.mocked(credentialsClient.resolve).mock.calls[0];
+
+			await runtime.shutdown();
+
+			expect(signal.aborted).toBe(true);
+		});
+
+		it('is a no-op when init never ran', async () => {
+			await expect(newRuntime().shutdown()).resolves.toBeUndefined();
+
+			expect(mocks.dataSource.destroy).not.toHaveBeenCalled();
+		});
+
+		it('releases a resource again when its first release failed', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+
+			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
+			await expect(runtime.shutdown()).resolves.toBeUndefined();
+
+			expect(mocks.server.close).toHaveBeenCalledTimes(2);
+			// The engine and the connection released on the first pass, so they are
+			// not touched again.
+			expect(mocks.engine.stop).toHaveBeenCalledTimes(1);
+			expect(mocks.dataSource.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('is safe to call twice', async () => {
+			const runtime = newRuntime();
+			await runtime.init(responseSender());
+
+			await runtime.shutdown();
+			await expect(runtime.shutdown()).resolves.toBeUndefined();
+
+			expect(mocks.dataSource.destroy).toHaveBeenCalledTimes(1);
+		});
+	});
+});

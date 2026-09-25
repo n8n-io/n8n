@@ -52,8 +52,12 @@ describe('emitPerSpecLcovs (scan/skip logic)', () => {
 		writeFileSync(join(bs, 'no_marker', 'raw-1.json'), '{}');
 		mkdirSync(join(bs, 'no_raw'), { recursive: true });
 		writeFileSync(join(bs, 'no_raw', '.spec'), 'x');
+		// Frontend writes JSONL raws — discovery must find `.jsonl`, not just `.json`.
+		mkdirSync(join(bs, 'spec_jsonl'), { recursive: true });
+		writeFileSync(join(bs, 'spec_jsonl', '.spec'), 'tests/e2e/b.spec.ts');
+		writeFileSync(join(bs, 'spec_jsonl', 'raw-1.jsonl'), '{}\n');
 
 		const stats = await emitPerSpecLcovs(opts(() => false));
-		expect(stats).toEqual({ dirs: 3, withMarker: 2, withRaw: 1, emitted: 0 });
+		expect(stats).toEqual({ dirs: 4, withMarker: 3, withRaw: 2, emitted: 0 });
 	});
 });

@@ -1,0 +1,96 @@
+{
+	"name": "OneDrive SP file:get per-item drive target",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "51111111-1111-1111-1111-111111111111",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"data": [{ "drive": "b!driveA" }, { "drive": "b!driveB" }]
+			},
+			"id": "52222222-2222-2222-2222-222222222222",
+			"name": "Test Data",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resourceTarget": "drive",
+				"driveTarget": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.drive }}"
+				},
+				"resource": "file",
+				"operation": "get",
+				"fileId": "FILE123"
+			},
+			"id": "53333333-3333-3333-3333-333333333333",
+			"name": "Microsoft OneDrive",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft OneDrive": [
+			{
+				"json": {
+					"id": "FILE123",
+					"name": "a.txt",
+					"file": {
+						"mimeType": "text/plain"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "FILE123",
+					"name": "b.txt",
+					"file": {
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test Data": {
+			"main": [
+				[
+					{
+						"node": "Microsoft OneDrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

@@ -1,26 +1,23 @@
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import type { Message } from '@n8n/agents';
-import { z } from 'zod';
 
-import { EPHEMERAL_CACHE, SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { buildAssertionsBlock, judgeExpectations } from './assertion-judge';
+import { EPHEMERAL_CACHE } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
-import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
-import { transcriptAsText } from '../utils/conversation-text';
+import {
+	perTurnToolCallCounts,
+	sumUsage,
+	transcriptAsText,
+	usageTokens,
+} from '../utils/conversation-text';
 
-// ---------------------------------------------------------------------------
-// Structured output schema
-// ---------------------------------------------------------------------------
-
-const expectationResultSchema = z.object({
-	results: z.array(
-		z.object({
-			index: z.number(),
-			pass: z.boolean(),
-			reason: z.string(),
-		}),
-	),
-});
+// Re-exported for import-site stability — cli/index.ts and runner.ts import it from here.
+export { allFailVerdicts } from './assertion-judge';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -31,18 +28,22 @@ export interface BuildExpectationsInput {
 	transcript: TranscriptTurn[];
 	workflowJson?: WorkflowResponse;
 	metrics?: ConversationMetrics;
+	/** Per-step debug from the build; source of every token number below. */
+	runDebug?: InstanceAiRunDebugResponse[];
+	/** Observational memory for the thread: rows plus the compaction cursor. */
+	threadMemory?: InstanceAiEvalThreadMemoryResponse;
+	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
+	 *  to the cached build context so outcome expectations can be judged against them. */
+	artifactContext?: string;
 }
-
-const JUDGE_MODEL = SONNET_MODEL;
-const MAX_VERIFY_ATTEMPTS = 2;
-const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 /**
  * Judge author-written natural-language expectations about the build conversation +
- * resulting workflow. Informational only — never feeds verify_pass@k. On judge failure
- * (errors or timeouts across all attempts) it returns `incomplete` verdicts so the report
- * stays complete while reading as "no verdict" rather than failures; callers additionally
- * guard with `.catch()`.
+ * resulting workflow. Verdicts are scored as units alongside execution scenarios
+ * (pass rates, gate) and are embedded in LangSmith run outputs for the baseline
+ * comparison. On judge failure (errors or timeouts across all attempts) it returns
+ * `incomplete` verdicts so the report stays complete while reading as "no verdict"
+ * rather than failures; callers additionally guard with `.catch()`.
  */
 export async function verifyBuildExpectations(
 	expectations: string[],
@@ -50,92 +51,55 @@ export async function verifyBuildExpectations(
 ): Promise<BuildExpectationResult[]> {
 	if (expectations.length === 0) return [];
 
-	// Workflow block is stable per build — mark it as an Anthropic cache breakpoint.
+	// Workflow + artifact blocks are stable per build — mark them as one Anthropic cache breakpoint.
+	const buildContext = [buildWorkflowContextBlock(build.workflowJson), build.artifactContext]
+		.filter((block): block is string => block !== undefined)
+		.join('\n\n');
 	const messages: Message[] = [
 		{
 			role: 'user',
 			content: [
 				{
 					type: 'text',
-					text: buildWorkflowContextBlock(build.workflowJson),
+					text: buildContext,
 					providerOptions: EPHEMERAL_CACHE,
 				},
 				{
 					type: 'text',
-					text: buildConversationContext(expectations, build.transcript, build.metrics),
+					text: buildConversationContext(
+						expectations,
+						build.transcript,
+						build.metrics,
+						build.runDebug,
+						build.threadMemory,
+					),
 				},
 			],
 		},
 	];
 
-	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
-		const agent = createEvalAgent('eval-build-expectations-verifier', {
-			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
-			cache: true,
-			model: JUDGE_MODEL,
-		}).structuredOutput(expectationResultSchema);
+	await dumpJudgeContext(messages);
 
-		const abortController = new AbortController();
-		const timer = setTimeout(
-			() =>
-				abortController.abort(
-					new Error(`expectations judge timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`),
-				),
-			VERIFY_ATTEMPT_TIMEOUT_MS,
-		);
-		let result;
-		try {
-			result = await agent.generate(messages, { abortSignal: abortController.signal });
-		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : String(error);
-			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
-			continue;
-		} finally {
-			clearTimeout(timer);
-		}
-
-		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
-		const byIndex = new Map<number, { pass: boolean; reason: string }>();
-		if (parsed.success) {
-			for (const entry of parsed.data.results) {
-				// Schema validated index/pass/reason types; only the range needs checking.
-				if (entry.index >= 0 && entry.index < expectations.length) {
-					byIndex.set(entry.index, { pass: entry.pass, reason: entry.reason });
-				}
-			}
-		}
-
-		if (byIndex.size > 0) {
-			// Omitted expectations are marked `incomplete` (not a genuine fail).
-			return expectations.map((expectation, i) => {
-				const verdict = byIndex.get(i);
-				return verdict
-					? { expectation, pass: verdict.pass, reason: verdict.reason }
-					: { expectation, pass: false, reason: 'no verdict returned', incomplete: true };
-			});
-		}
-
-		console.warn(
-			`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
-		);
-	}
-
-	console.warn(`[expectations] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
-	return allFailVerdicts(expectations, 'judge produced no result');
+	return await judgeExpectations(messages, expectations);
 }
 
-/**
- * Verdicts when the judge produced nothing (exhausted attempts, or callers'
- * `.catch()`). Marked `incomplete` so a dead judge renders as neutral "no
- * verdict" rather than every expectation failing.
- */
-export function allFailVerdicts(expectations: string[], reason: string): BuildExpectationResult[] {
-	return expectations.map((expectation) => ({
-		expectation,
-		pass: false,
-		reason,
-		incomplete: true,
-	}));
+/** Dump the assembled judge prompt to `DEBUG_JUDGE_CONTEXT`; nothing else shows it. */
+async function dumpJudgeContext(messages: Message[]): Promise<void> {
+	const target = process.env.DEBUG_JUDGE_CONTEXT;
+	if (!target) return;
+	const text = messages
+		.flatMap((message) =>
+			Array.isArray(message.content)
+				? message.content.flatMap((part) => ('text' in part ? [part.text] : []))
+				: [],
+		)
+		.join('\n\n--- block ---\n\n');
+	try {
+		const { appendFile } = await import('fs/promises');
+		await appendFile(target, `\n\n===== JUDGE CALL =====\n\n${text}\n`);
+	} catch {
+		// Diagnostics must never fail a run.
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +110,8 @@ function buildConversationContext(
 	expectations: string[],
 	transcript: TranscriptTurn[],
 	metrics: ConversationMetrics | undefined,
+	runDebug: InstanceAiRunDebugResponse[] | undefined,
+	threadMemory: InstanceAiEvalThreadMemoryResponse | undefined,
 ): string {
 	const metricsBlock = metrics
 		? `\`\`\`json\n${JSON.stringify(metrics, null, 2)}\n\`\`\``
@@ -153,16 +119,68 @@ function buildConversationContext(
 	return [
 		'## Conversation transcript',
 		'',
-		transcriptAsText(transcript),
+		transcriptAsText(transcript, runDebug),
 		'',
 		'## Conversation metrics (ground truth — do not recount)',
 		'',
 		metricsBlock,
 		'',
-		'## Expectations',
+		'## Tool calls per turn (ground truth — do not recount)',
 		'',
-		expectations.map((e, i) => `${String(i)}. ${e}`).join('\n'),
+		perTurnToolCallCounts(transcript),
 		'',
-		'Return a verdict for every numbered expectation, using its 0-based index.',
+		'## Token usage totals (ground truth — do not recount)',
+		'',
+		tokenUsageTotals(runDebug),
+		'',
+		// Fetched only for a case that asserts on compaction. Absent, the section is
+		// left out rather than telling the judge memory was "not captured".
+		...(threadMemory
+			? [
+					'## Observational memory after compaction (ground truth — do not recount)',
+					'',
+					observationLogBlock(threadMemory),
+					'',
+				]
+			: []),
+		buildAssertionsBlock(expectations),
+	].join('\n');
+}
+
+/** What the agent remembers after compaction, so an expectation can grade the summary
+ *  itself. Markers are the Observer's own priority labels. */
+function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse): string {
+	if (!memory.cursor) return '(observational memory has not compacted this conversation)';
+	if (memory.observations.length === 0) return '(compacted, but no observations were kept)';
+	return memory.observations
+		.map(({ marker, text }) => `- [${marker.toUpperCase()}] ${text}`)
+		.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Token usage totals
+// ---------------------------------------------------------------------------
+
+/** Build-wide sum, the one number the turn headers don't carry. Orchestrator steps
+ *  only, so a delegated `build-agent` leg is absent (workflow builds are not). */
+function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): string {
+	if (!runDebug || runDebug.length === 0) return '(no run debug captured)';
+
+	const {
+		input,
+		output,
+		cacheRead,
+		cacheWrite,
+		steps: stepCount,
+	} = sumUsage(runDebug.flatMap((run) => run.steps));
+
+	// Instructions + tool schemas + the first message. A seeded case also carries
+	// its restored history here, so this is the first call, not a history-free floor.
+	const opening = usageTokens(runDebug[0]?.steps[0]?.output?.usage).input;
+	const runWord = runDebug.length === 1 ? 'run' : 'runs';
+	return [
+		`Total: ${String(input)} tokens in / ${String(output)} tokens out across ${String(stepCount)} LLM steps, ${String(runDebug.length)} ${runWord}`,
+		`Cache: ${String(cacheRead)} tokens read / ${String(cacheWrite)} tokens written`,
+		`Opening step: ${String(opening)} input tokens on the first LLM call (instructions, tool schemas and the first message; a seeded case also carries its restored history here)`,
 	].join('\n');
 }

@@ -4,8 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { ElCollapseTransition } from 'element-plus';
 
-import { useClipboard } from '@/app/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
 import type { WebhookDisplayData } from '@/features/setupPanel/composables/useWebhookUrls';
 
 defineProps<{

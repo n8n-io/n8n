@@ -74,7 +74,7 @@ export async function init() {
 /**
  * Build a Postgres template DB with all migrations + auth roles seeded.
  * Idempotent: drops any existing DB with the same name first.
- * Called from Jest globalSetup (orchestrator process) before workers fork —
+ * Called from Vitest globalSetup (orchestrator process) before workers fork —
  * each worker's `init()` then clones from the template instead of replaying
  * the full migration history.
  */
@@ -140,7 +140,7 @@ export async function terminate() {
 	}
 
 	// Clear all cached DI singletons (DbConnection, DataSource, GlobalConfig,
-	// AuthRolesService, …). With persistent Jest workers (no per-file process
+	// AuthRolesService, …). With persistent Vitest workers (no per-file process
 	// recycling), the next test file's testDb.init() would otherwise reuse the
 	// DbConnection instance whose DataSource we just destroyed — and try to
 	// .initialize() it again, which hangs. Resetting forces the next get() to
@@ -156,6 +156,7 @@ type EntityName =
 	| 'InsightsRaw'
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
+	| 'InstanceMonitoringReport'
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'ChatHubSession'
@@ -170,9 +171,13 @@ type EntityName =
 	| 'DynamicCredentialEntry'
 	| 'DynamicCredentialResolver'
 	| 'DynamicCredentialUserEntry'
+	| 'TypeAvailabilityPolicy'
+	| 'TypeAvailabilityPolicyScope'
+	| 'TypeAvailabilityPolicyAttachment'
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
-	| 'TrustedKeyEntity';
+	| 'TrustedKeyEntity'
+	| 'WorkflowStatisticsDelta';
 
 /**
  * Truncate specific DB tables in a test DB.
@@ -203,7 +208,56 @@ export async function truncate(entities: EntityName[]) {
 		await connection.query(`DELETE FROM ${tableName}`);
 	}
 
+	// `workflow_published_version` references workflows and history rows with
+	// RESTRICT, so it has to go before either of them.
+	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
+		await connection.getRepository('WorkflowPublishedVersion').delete({});
+	}
+
 	for (const name of entities) {
+		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
+		// can't go through the repository, so we clear it directly.
+		if (name === 'WorkflowStatisticsDelta') {
+			const { type, tablePrefix } = Container.get(GlobalConfig).database;
+			if (type === 'postgresdb') {
+				const table = connection.driver.escape(`${tablePrefix}workflow_statistics_delta`);
+				await connection.query(`DELETE FROM ${table}`);
+			}
+			continue;
+		}
 		await connection.getRepository(name).delete({});
 	}
+}
+
+export async function resetDeploymentKeys() {
+	const connection = Container.get(Connection);
+	const { type, tablePrefix } = Container.get(GlobalConfig).database;
+	const table = connection.driver.escape(`${tablePrefix}deployment_key`);
+	const deleteTrigger = connection.driver.escape(`${tablePrefix}prevent_deployment_key_delete`);
+
+	if (type === 'postgresdb') {
+		const truncateTrigger = connection.driver.escape(
+			`${tablePrefix}prevent_deployment_key_truncate`,
+		);
+		await connection.transaction(async (tx) => {
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${truncateTrigger}`);
+			await tx.query(`DELETE FROM ${table}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${truncateTrigger}`);
+		});
+		return;
+	}
+
+	await connection.transaction(async (tx) => {
+		await tx.query(`DROP TRIGGER ${deleteTrigger}`);
+		await tx.query(`DELETE FROM ${table}`);
+		await tx.query(`
+			CREATE TRIGGER ${deleteTrigger}
+			BEFORE DELETE ON ${table}
+			BEGIN
+				SELECT RAISE(ABORT, 'Deployment keys must not be deleted');
+			END
+		`);
+	});
 }

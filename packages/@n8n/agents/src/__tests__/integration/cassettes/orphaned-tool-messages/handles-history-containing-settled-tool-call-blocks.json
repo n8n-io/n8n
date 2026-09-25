@@ -1,0 +1,78 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are an inventory assistant. Use lookup to check stock. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Can you summarize what we discussed?"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "lookup",
+					"description": "Look up data by id",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01CKrzucdDH9Rzx6XTmswk63\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I don't have any previous conversation history to summarize. This is the start of our conversation. \\n\\nI'm an inventory assistant ready to help you check stock levels. If you have products you'd like me to look up, just provide me with the product IDs and I'll retrieve the inventory information for you.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":606,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":68,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:34Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:35Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:34Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:34Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1037290ff8ac245-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:20:35 GMT",
+			"request-id": "req_011CcLBTzb9QBUzK8zoaoqeX",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=m265ufYFWQKzW.OdOHRnCnz.gNOv9UF6iYlcNJYV0_E-1782217234.0732472-1.0.1.1-0ir2YDvCJ0wL5d1Q.6wLQmxcYaupxxHzLCtRugA.RT8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-3069d71bf2f95afba6d408828d4c6cf6-d8be10442cfc704e-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

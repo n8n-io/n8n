@@ -15,8 +15,8 @@ import {
 } from '@n8n/db';
 import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -50,7 +50,7 @@ describe('OwnershipService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkflowProjectCached()', () => {
@@ -84,6 +84,7 @@ describe('OwnershipService', () => {
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
 			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.projectId = 'some-project-id';
 			projectRelation.project = project;
 			projectRelation.user = owner;
 
@@ -128,6 +129,39 @@ describe('OwnershipService', () => {
 			expect(projectRelationRepository.getPersonalProjectOwners).not.toHaveBeenCalled();
 			expect(foundOwner).toEqual(owner);
 		});
+
+		test('should fetch owners for uncached projects in one repository call', async () => {
+			const firstOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const secondOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const ownerRelations = [
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-1',
+					user: firstOwner,
+				}),
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-2',
+					user: secondOwner,
+				}),
+			];
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce(ownerRelations);
+
+			const owners = await ownershipService.getPersonalProjectOwnersCached([
+				'project-1',
+				'project-2',
+			]);
+
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledWith([
+				'project-1',
+				'project-2',
+			]);
+			expect(owners).toEqual(
+				new Map([
+					['project-1', firstOwner],
+					['project-2', secondOwner],
+				]),
+			);
+		});
 	});
 
 	describe('getProjectOwnerCached()', () => {
@@ -138,6 +172,7 @@ describe('OwnershipService', () => {
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
 				role: PROJECT_OWNER_ROLE_SLUG,
+				projectId: 'some-project-id',
 				project: mockProject,
 				user: mockOwner,
 			});
@@ -287,18 +322,19 @@ describe('OwnershipService', () => {
 	});
 
 	describe('getInstanceOwner()', () => {
-		test('should find owner using global owner role ID', async () => {
+		test('should find owner using global owner role ID, with the role relation loaded', async () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				relations: ['role'],
 			});
 		});
 	});
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+			userRepository.exists.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);

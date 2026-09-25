@@ -14,7 +14,7 @@ import { computed, ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import type { TestRunRecord } from '../evaluation.api';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
@@ -50,7 +50,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -59,7 +59,7 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
 		showMessage: vi.fn(),

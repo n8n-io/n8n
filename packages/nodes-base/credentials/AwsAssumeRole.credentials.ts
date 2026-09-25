@@ -6,7 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import { type AwsAssumeRoleCredentialsType, type AWSRegion } from './common/aws/types';
+import { type AWSRegion } from './common/aws/regions';
+import { type AwsAssumeRoleCredentialsType } from './common/aws/types';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import {
 	assumeRole,
@@ -20,7 +21,7 @@ export class AwsAssumeRole implements ICredentialType {
 
 	displayName = 'AWS (Assume Role)';
 
-	documentationUrl = 'awsassumerole';
+	documentationUrl = 'aws';
 
 	icon = { light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' } as const;
 
@@ -30,11 +31,11 @@ export class AwsAssumeRole implements ICredentialType {
 			displayName: 'Use System Credentials',
 			name: 'useSystemCredentialsForRole',
 			description:
-				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. Access to AWS system credentials is disabled by default and must be explicitly enabled. See <a href="https://docs.n8n.io/integrations/credentials/awsassumerole/">documentation</a> for more information.',
+				'Use system credentials (environment variables, container role, etc.) to call STS.AssumeRole. Access to AWS system credentials is disabled by default and must be explicitly enabled. See <a href="https://docs.n8n.io/integrations/builtin/credentials/aws/">documentation</a> for more information.',
 			type: 'boolean',
 			default: false,
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 		{
@@ -156,7 +157,7 @@ export class AwsAssumeRole implements ICredentialType {
 			region,
 		);
 
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+		return await signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

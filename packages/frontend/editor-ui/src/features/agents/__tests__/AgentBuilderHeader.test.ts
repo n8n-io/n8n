@@ -4,13 +4,21 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
+import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const trackClickedNewAgentMock = vi.fn();
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
+}));
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
-const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
-	href: `/projects/${to.params?.projectId ?? ''}/agents`,
-}));
+const routerResolve = vi.fn(
+	(to: { name?: string; params?: { projectId?: string; agentId?: string } }) => ({
+		href: `/projects/${to.params?.projectId ?? ''}/agents`,
+	}),
+);
 
 vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
@@ -31,11 +39,23 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAssistantIcon: {
+		name: 'N8nAssistantIcon',
+		template: '<i data-testid="stub-assistant-icon" />',
+		props: ['size'],
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<button v-bind="$attrs" :data-variant="variant" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
-		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot><span v-if="label">{{ label }}</span></slot></component>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href', 'label'],
+		emits: ['click'],
+	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
 		emits: ['click'],
 	},
 	N8nDropdownMenuItem: {
@@ -59,19 +79,19 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
 		template: '<div v-bind="$attrs" />',
-		props: ['items', 'activatorIcon'],
+		props: ['items', 'activatorIcon', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
@@ -80,15 +100,17 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 
 type DropdownStubWrapper = VueWrapper<{
 	items: Array<{ id: string; label?: string; disabled?: boolean }>;
+	extraPopperClass?: string;
 	$options: unknown;
 	$emit: (event: 'select', value: string) => void;
 }>;
 
+function getDropdown(wrapper: ReturnType<typeof mountHeader>, testId: string) {
+	return wrapper.getComponent(`[data-testid="${testId}"]`) as DropdownStubWrapper;
+}
+
 function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
-	const switcher = wrapper.findComponent(
-		'[data-testid="agent-header-switcher"]',
-	) as DropdownStubWrapper;
-	return switcher.vm.items;
+	return getDropdown(wrapper, 'agent-header-switcher').vm.items;
 }
 
 const baseAgent = {
@@ -102,7 +124,15 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		props: [
+			'agent',
+			'projectId',
+			'agentId',
+			'isSaving',
+			'beforeRevertToPublished',
+			'configValidationStatus',
+			'beforePublish',
+		],
 		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
@@ -113,20 +143,28 @@ function mountHeader(
 		projectName: string | null;
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
+		artifactMode: boolean;
+		isPreviewOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
+		configValidationStatus: 'valid' | 'invalid' | null;
+		beforePublish: () => Promise<boolean>;
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
 		props: {
-			agent: overrides.agent ?? baseAgent,
+			agent: 'agent' in overrides ? (overrides.agent ?? null) : baseAgent,
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
+			artifactMode: overrides.artifactMode,
+			isPreviewOpen: overrides.isPreviewOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
+			configValidationStatus: overrides.configValidationStatus,
+			beforePublish: overrides.beforePublish,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -137,6 +175,7 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
+		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
 	});
 
@@ -148,10 +187,34 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
+	it('hides breadcrumbs and switcher in artifact mode', () => {
+		const wrapper = mountHeader({ artifactMode: true });
+
+		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-switcher"]').exists()).toBe(false);
+	});
+
+	it('hides header management actions in artifact mode', () => {
+		const wrapper = mountHeader({
+			artifactMode: true,
+			agent: { ...baseAgent, hasPublishHistory: true } as AgentResource,
+			headerActions: [{ id: 'delete', label: 'Delete' }],
+		});
+
+		expect(wrapper.find('[data-testid="agent-header-version-history-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
+	});
+
 	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
-		expect(action.props('activatorIcon')).toBe('ellipsis');
+		const action = wrapper.get('[data-testid="agent-header-actions"]');
+		expect(action.get('button').attributes('data-icon')).toBe('ellipsis');
+	});
+
+	it('widens the header action menu so labels are readable from the icon trigger', () => {
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
+		const action = getDropdown(wrapper, 'agent-header-actions');
+		expect(action.vm.extraPopperClass).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -234,18 +297,39 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
-	it('forwards header-action from the action dropdown', async () => {
+	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		const action = getDropdown(wrapper, 'agent-header-actions');
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
 	});
 
-	it('emits open-preview from the preview button', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-preview-btn"]').trigger('click');
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
+	it.each([
+		{
+			label: 'opens',
+			isPreviewOpen: false,
+			event: 'open-preview',
+			accessibleLabel: 'agents.builder.preview.button',
+		},
+		{
+			label: 'closes',
+			isPreviewOpen: true,
+			event: 'close-preview',
+			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+		},
+	])(
+		'$label Preview from the preview action',
+		async ({ isPreviewOpen, event, accessibleLabel }) => {
+			const wrapper = mountHeader({ isPreviewOpen });
+			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
+
+			await previewButton.trigger('click');
+			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
+		},
+	);
 
 	it('disables preview with a tooltip when the agent is not runnable', async () => {
 		const wrapper = mountHeader({
@@ -264,6 +348,21 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
+	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+		const wrapper = mountHeader({
+			isPreviewOpen: true,
+			agent: { ...baseAgent, isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
 	it('emits switch-agent when a switcher item is selected', async () => {
 		agentsListRef.value = [baseAgent, { id: 'a2', name: 'Other' } as unknown as AgentResource];
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
@@ -276,14 +375,19 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to the new agent page from the switcher footer', async () => {
+	it('navigates to the builder with a pending agent for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
+		// Goes through `useCreateAgent` like every other entry point: the same
+		// minted id is tracked and carried into the route/pending-agent state.
+		expect(trackClickedNewAgentMock).toHaveBeenCalledWith('dropdown', expect.any(String));
+		const [, mintedAgentId] = trackClickedNewAgentMock.mock.calls[0] as [string, string];
 		expect(routerPush).toHaveBeenCalledWith({
-			name: 'NewAgentView',
-			query: { projectId: 'p1' },
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'p1', agentId: mintedAgentId },
+			state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
 		});
 	});
 });

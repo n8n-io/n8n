@@ -16,8 +16,9 @@ import type {
 	NodeOperationError,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { computed } from 'vue';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	executionDataToJson,
@@ -28,6 +29,7 @@ import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
@@ -41,7 +43,8 @@ const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 
 export const useAIAssistantHelpers = () => {
-	const ndvStore = injectNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowHelpers = useWorkflowHelpers();

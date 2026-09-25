@@ -1,18 +1,20 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
-import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import { NodeTypes } from '../../node-types';
 import { OwnershipService } from '../../services/ownership.service';
@@ -34,17 +36,16 @@ describe('ChatExecutionManager', () => {
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should handle errors from getRunData gracefully', async () => {
 		const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
 		const message = { sessionId: '123', action: 'sendMessage', chatInput: 'input' } as ChatMessage;
 
-		jest
-			.spyOn(chatExecutionManager as any, 'getRunData')
-			.mockRejectedValue(new Error('Test error'));
+		vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(true);
+		vi.spyOn(chatExecutionManager as any, 'getRunData').mockRejectedValue(new Error('Test error'));
 
 		await expect(chatExecutionManager.runWorkflow(execution, message)).rejects.toThrow(
 			'Test error',
@@ -61,15 +62,44 @@ describe('ChatExecutionManager', () => {
 			} as ChatMessage;
 			const runData = { executionMode: 'manual', executionData: {}, workflowData: {} } as any;
 
-			jest.spyOn(chatExecutionManager as any, 'getRunData').mockResolvedValue(runData);
+			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(true);
+			vi.spyOn(chatExecutionManager as any, 'getRunData').mockResolvedValue(runData);
 
 			await chatExecutionManager.runWorkflow(execution, message);
 
-			expect(workflowRunner.run).toHaveBeenCalledWith(runData, true, true, '1');
+			expect(workflowRunner.run).toHaveBeenCalledWith(runData, true, true, {
+				executionId: '1',
+				expectedStatus: 'waiting',
+			});
+		});
+
+		it('refuses to run when the suspended node is not chat-driven', async () => {
+			const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
+			const message = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+			} as ChatMessage;
+
+			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(false);
+			const getRunDataSpy = vi.spyOn(chatExecutionManager as any, 'getRunData');
+
+			await expect(chatExecutionManager.runWorkflow(execution, message)).rejects.toThrow(
+				'Refusing to resume a non-chat node over chat',
+			);
+			expect(getRunDataSpy).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('cancelExecution', () => {
+		beforeEach(() => {
+			// The status-transition tests below exercise the cancel logic itself; the
+			// chat-ownership gate is covered by its own tests. Treat the execution as
+			// chat-driven so these focus on status handling.
+			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(true);
+		});
+
 		it('should update execution status to canceled if it is running', async () => {
 			const executionId = '1';
 			const execution = { id: executionId, status: 'running' } as any;
@@ -122,6 +152,44 @@ describe('ChatExecutionManager', () => {
 
 			expect(executionRepository.update).not.toHaveBeenCalled();
 		});
+
+		it('should not cancel a waiting execution the chat socket does not drive', async () => {
+			// A socket attached to a non-chat execution (e.g. a Send-and-Wait gate via
+			// a leaked token) must not cancel it by going idle.
+			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(false);
+			const executionId = '9';
+			const execution = { id: executionId, status: 'waiting' } as any;
+
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			await chatExecutionManager.cancelExecution(executionId);
+
+			expect(executionRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('does not throw or cancel when the parked node type is unresolvable', async () => {
+			// Use the real isChatDrivenExecution (the describe's beforeEach stubs it) so
+			// the resolution failure is exercised: it must be swallowed, so cancelExecution
+			// returns and the heartbeat loop can still clean up the session.
+			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockRestore();
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockImplementation(() => {
+				throw new Error('Unrecognized node type: some.uninstalled.node');
+			});
+			const execution = {
+				id: '9',
+				status: 'waiting',
+				workflowData: { id: 'wf', nodes: [] },
+				data: {
+					executionData: {
+						nodeExecutionStack: [{ node: { name: 'X', type: 'x' }, data: { main: [[]] } }],
+					},
+				},
+			} as any;
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			await expect(chatExecutionManager.cancelExecution('9')).resolves.toBeUndefined();
+			expect(executionRepository.update).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('findExecution', () => {
@@ -169,12 +237,11 @@ describe('ChatExecutionManager', () => {
 			const project = { id: 'projectId' };
 			const nodeExecutionData = [[{ json: message }]];
 
-			const getRunDataSpy = jest
+			const getRunDataSpy = vi
 				.spyOn(chatExecutionManager as any, 'runNode')
 				.mockResolvedValue(nodeExecutionData);
-			const getWorkflowProjectCachedSpy = jest
-				.spyOn(ownershipService, 'getWorkflowProjectCached')
-				.mockResolvedValue(project as any);
+			const getWorkflowProjectCachedSpy =
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project as any);
 
 			const runData = await (chatExecutionManager as any).getRunData(execution, message);
 
@@ -228,10 +295,8 @@ describe('ChatExecutionManager', () => {
 			}
 
 			beforeEach(() => {
-				jest.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
-				jest
-					.spyOn(ownershipService, 'getWorkflowProjectCached')
-					.mockResolvedValue({ id: 'projectId' } as any);
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
 			});
 
 			it('should disable node and clear waitTill even when waitTill is not set', async () => {
@@ -278,14 +343,65 @@ describe('ChatExecutionManager', () => {
 			});
 		});
 
+		describe('when node is a HITL tool', () => {
+			// HITL tools carry a generated `<base>HitlTool` type (e.g. chatHitlTool),
+			// not CHAT_TOOL_NODE_TYPE, but must get the same resume fix-up so the
+			// approval is logged on the ai_tool channel and the gated tool executes.
+			const HITL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatHitlTool';
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: '' };
+
+			function makeHitlToolExecution() {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'HitlToolNode',
+							runData: {
+								HitlToolNode: [
+									{ startTime: 123, executionTime: 456, executionIndex: 0, source: [] },
+								],
+							},
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'HitlToolNode', type: HITL_TOOL_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill: new Date(),
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			beforeEach(() => {
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should disable node, clear waitTill and rewire output to AiTool', async () => {
+				const execution = makeHitlToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				const resumingNode = execution.data.executionData.nodeExecutionStack[0].node;
+				expect(resumingNode.disabled).toBe(true);
+				expect(execution.data.waitTill).toBeUndefined();
+				expect(resumingNode.rewireOutputLogTo).toBe(NodeConnectionTypes.AiTool);
+			});
+		});
+
 		describe('when node is a regular chat node', () => {
 			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
 
 			beforeEach(() => {
-				jest.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
-				jest
-					.spyOn(ownershipService, 'getWorkflowProjectCached')
-					.mockResolvedValue({ id: 'projectId' } as any);
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
 			});
 
 			it('should not modify node state or run data for chat node', async () => {
@@ -373,7 +489,9 @@ describe('ChatExecutionManager', () => {
 				workflowData: { id: 'workflowId' },
 				data: {
 					resultData: { lastNodeExecuted: 'nodeId' },
-					executionData: { nodeExecutionStack: [{ data: { main: [[]] } }] },
+					executionData: {
+						nodeExecutionStack: [{ node: { name: 'nodeId' }, data: { main: [[]] } }],
+					},
 				},
 				mode: 'manual',
 			} as any;
@@ -383,9 +501,9 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-			const workflow = { getNode: jest.fn().mockReturnValue(null) };
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: vi.fn().mockReturnValue(null) };
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -408,9 +526,9 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-			const workflow = { getNode: jest.fn().mockReturnValue({}) };
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: vi.fn().mockReturnValue({}) };
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -423,7 +541,9 @@ describe('ChatExecutionManager', () => {
 				workflowData: { id: 'workflowId' },
 				data: {
 					resultData: { lastNodeExecuted: 'nodeId' },
-					executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+					executionData: {
+						nodeExecutionStack: [{ node: { name: 'nodeId' }, data: { main: [[{}]] } }],
+					},
 				},
 				mode: 'manual',
 			} as any;
@@ -434,17 +554,17 @@ describe('ChatExecutionManager', () => {
 				files: [],
 			} as ChatMessage;
 			const node = { type: 'testType', typeVersion: 1 };
-			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const nodeType = { onMessage: vi.fn().mockResolvedValue([[{ json: message }]]) };
 			const workflow = {
-				getNode: jest.fn().mockReturnValue(node),
-				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				getNode: vi.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
 				expression: {
-					acquireIsolate: jest.fn().mockResolvedValue(undefined),
-					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
 				},
 			};
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -459,7 +579,9 @@ describe('ChatExecutionManager', () => {
 				workflowData: { id: 'workflowId' },
 				data: {
 					resultData: { lastNodeExecuted: 'nodeId' },
-					executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+					executionData: {
+						nodeExecutionStack: [{ node: { name: 'nodeId' }, data: { main: [[{}]] } }],
+					},
 				},
 				mode: 'manual',
 			} as any;
@@ -469,17 +591,17 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 			const node = { type: 'testType', typeVersion: 1 };
-			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const nodeType = { onMessage: vi.fn().mockResolvedValue([[{ json: message }]]) };
 			const workflow = {
-				getNode: jest.fn().mockReturnValue(node),
-				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				getNode: vi.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
 				expression: {
-					acquireIsolate: jest.fn().mockResolvedValue(undefined),
-					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
 				},
 			};
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -500,29 +622,31 @@ describe('ChatExecutionManager', () => {
 					workflowData: { id: 'workflowId' },
 					data: {
 						resultData: { lastNodeExecuted: 'nodeId' },
-						executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+						executionData: {
+							nodeExecutionStack: [{ node: { name: 'nodeId' }, data: { main: [[{}]] } }],
+						},
 					},
 					mode: 'manual',
 				} as any;
 			}
 
-			function makeWorkflow(nodeType: { onMessage?: jest.Mock }) {
+			function makeWorkflow(nodeType: { onMessage?: Mock }) {
 				const expression = {
-					acquireIsolate: jest.fn().mockResolvedValue(undefined),
-					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
 				};
 				const workflow = {
-					getNode: jest.fn().mockReturnValue({ type: 'testType', typeVersion: 1 }),
-					nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+					getNode: vi.fn().mockReturnValue({ type: 'testType', typeVersion: 1 }),
+					nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
 					expression,
 				};
-				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 				return { workflow, expression };
 			}
 
 			it('should acquire and release isolate around onMessage', async () => {
-				const onMessage = jest.fn().mockResolvedValue([[{ json: message }]]);
+				const onMessage = vi.fn().mockResolvedValue([[{ json: message }]]);
 				const { expression } = makeWorkflow({ onMessage });
 
 				await (chatExecutionManager as any).runNode(makeExecution(), message);
@@ -537,7 +661,7 @@ describe('ChatExecutionManager', () => {
 			});
 
 			it('should release isolate when onMessage throws', async () => {
-				const onMessage = jest.fn().mockRejectedValue(new Error('boom'));
+				const onMessage = vi.fn().mockRejectedValue(new Error('boom'));
 				const { expression } = makeWorkflow({ onMessage });
 
 				await expect(
@@ -591,10 +715,10 @@ describe('ChatExecutionManager', () => {
 
 				const workflow = {
 					id: 'workflowId',
-					getNode: jest.fn().mockReturnValue(null), // tool node not found
+					getNode: vi.fn().mockReturnValue(null), // tool node not found
 				};
-				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 				const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -602,7 +726,7 @@ describe('ChatExecutionManager', () => {
 			});
 
 			it('redirects to the real tool node and runs onMessage on it', async () => {
-				const onMessage = jest.fn().mockResolvedValue([[{ json: { result: 'ok' } }]]);
+				const onMessage = vi.fn().mockResolvedValue([[{ json: { result: 'ok' } }]]);
 				const execution = {
 					id: '1',
 					workflowData: { id: 'workflowId' },
@@ -626,21 +750,21 @@ describe('ChatExecutionManager', () => {
 
 				const workflow = {
 					id: 'workflowId',
-					getNode: jest.fn().mockImplementation((name: string) => {
+					getNode: vi.fn().mockImplementation((name: string) => {
 						if (name === TOOL_EXECUTOR_NODE_NAME) return null;
 						if (name === 'My Tool') return toolNode;
 						return null;
 					}),
 					nodeTypes: {
-						getByNameAndVersion: jest.fn().mockReturnValue({ onMessage }),
+						getByNameAndVersion: vi.fn().mockReturnValue({ onMessage }),
 					},
 					expression: {
-						acquireIsolate: jest.fn().mockResolvedValue(undefined),
-						releaseIsolate: jest.fn().mockResolvedValue(undefined),
+						acquireIsolate: vi.fn().mockResolvedValue(undefined),
+						releaseIsolate: vi.fn().mockResolvedValue(undefined),
 					},
 				};
-				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 				const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -650,6 +774,206 @@ describe('ChatExecutionManager', () => {
 				expect(onMessage).toHaveBeenCalled();
 				expect(result).toEqual([[{ json: { result: 'ok' } }]]);
 			});
+		});
+	});
+
+	describe('canResumeOverChat', () => {
+		// A chat message may only resume a node whose resolved type implements the
+		// onMessage hook. Everything else (Send-and-Wait gates, non-chat HITL tools,
+		// plain Wait) must be refused regardless of the token presented.
+		function makeExecution(
+			nodeType: string,
+			parameters: Record<string, unknown> = {},
+			nodeName = 'parkedNode',
+		): IExecutionResponse {
+			const node = { name: nodeName, type: nodeType, typeVersion: 1, parameters };
+			return {
+				id: '1',
+				workflowData: { id: 'wf', nodes: [node] },
+				data: {
+					resultData: { lastNodeExecuted: nodeName, runData: {} },
+					executionData: { nodeExecutionStack: [{ node, data: { main: [[]] } }] },
+				},
+			} as unknown as IExecutionResponse;
+		}
+
+		function mockWorkflow(execution: IExecutionResponse, hasOnMessage: boolean) {
+			const node = execution.data.executionData!.nodeExecutionStack[0].node;
+			const workflow = {
+				id: 'wf',
+				getNode: (name: string) => (name === node.name ? node : null),
+				nodeTypes: {
+					getByNameAndVersion: () => (hasOnMessage ? { onMessage: vi.fn() } : {}),
+				},
+			};
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+		}
+
+		it('allows a chat node that implements onMessage', () => {
+			const execution = makeExecution(CHAT_NODE_TYPE);
+			mockWorkflow(execution, true);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(true);
+		});
+
+		it('returns false (does not throw) when node type resolution fails', () => {
+			const execution = makeExecution(CHAT_NODE_TYPE);
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockImplementation(() => {
+				throw new Error('Unrecognized node type: some.uninstalled.node');
+			});
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('allows RespondToWebhook (implements onMessage)', () => {
+			const execution = makeExecution(RESPOND_TO_WEBHOOK_NODE_TYPE);
+			mockWorkflow(execution, true);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(true);
+		});
+
+		it('allows a chat-based HITL tool (inherits onMessage)', () => {
+			const execution = makeExecution('@n8n/n8n-nodes-langchain.chatHitlTool');
+			mockWorkflow(execution, true);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(true);
+		});
+
+		it('refuses a chat node that opted out of user input', () => {
+			const execution = makeExecution(CHAT_NODE_TYPE, { blockUserInput: true });
+			mockWorkflow(execution, true);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('applies the blockUserInput carve-out to a chat-based HITL tool', () => {
+			// chatHitlTool inherits onMessage and retains blockUserInput; the carve-out
+			// must reach it even though its type is not literally CHAT_(TOOL_)NODE_TYPE.
+			const execution = makeExecution('@n8n/n8n-nodes-langchain.chatHitlTool', {
+				blockUserInput: true,
+			});
+			mockWorkflow(execution, true);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('refuses a Send-and-Wait node (no onMessage)', () => {
+			const execution = makeExecution('n8n-nodes-base.telegram', { operation: 'sendAndWait' });
+			mockWorkflow(execution, false);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('refuses a non-chat HITL tool (no onMessage)', () => {
+			const execution = makeExecution('n8n-nodes-base.telegramHitlTool');
+			mockWorkflow(execution, false);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('refuses a plain Wait node (no onMessage)', () => {
+			const execution = makeExecution('n8n-nodes-base.wait', { resume: 'timeInterval' });
+			mockWorkflow(execution, false);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('keys off the parked stack node, not lastNodeExecuted', () => {
+			// Confused-deputy guard: lastNodeExecuted names a chat decoy, but the node
+			// the engine would resume (nodeExecutionStack[0]) is a Telegram gate. The
+			// decision must follow the parked stack node and refuse.
+			const decoy = { name: 'Decoy', type: CHAT_NODE_TYPE, typeVersion: 1, parameters: {} };
+			const gate = {
+				name: 'Manager approval',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1,
+				parameters: { operation: 'sendAndWait' },
+			};
+			const execution = {
+				id: '1',
+				workflowData: { id: 'wf', nodes: [decoy, gate] },
+				data: {
+					resultData: { lastNodeExecuted: 'Decoy', runData: {} },
+					executionData: { nodeExecutionStack: [{ node: gate, data: { main: [[]] } }] },
+				},
+			} as unknown as IExecutionResponse;
+			const workflow = {
+				getNode: (name: string) => (name === 'Decoy' ? decoy : name === gate.name ? gate : null),
+				nodeTypes: {
+					getByNameAndVersion: (type: string) =>
+						type === CHAT_NODE_TYPE ? { onMessage: vi.fn() } : {},
+				},
+			};
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+
+		it('refuses when there is no parked execution data', () => {
+			const execution = {
+				id: '1',
+				workflowData: { id: 'wf', nodes: [] },
+				data: { resultData: { lastNodeExecuted: 'x', runData: {} }, executionData: undefined },
+			} as unknown as IExecutionResponse;
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue({
+				getNode: () => null,
+				nodeTypes: { getByNameAndVersion: () => ({ onMessage: vi.fn() }) },
+			});
+
+			expect(chatExecutionManager.canResumeOverChat(execution)).toBe(false);
+		});
+	});
+
+	describe('resolveResumeNodeType', () => {
+		it('reports the wrapped tool type for a tool-executor entry, not the executor', () => {
+			const toolNode = {
+				name: 'My Tool',
+				type: 'n8n-nodes-base.telegramHitlTool',
+				typeVersion: 1,
+				parameters: {},
+			};
+			const execution = {
+				id: '1',
+				workflowData: { id: 'wf', nodes: [toolNode] },
+				data: {
+					resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: TOOL_EXECUTOR_NODE_NAME,
+									type: '@n8n/n8n-nodes-langchain.toolExecutor',
+									parameters: { node: 'My Tool' },
+								},
+								data: { main: [[]] },
+							},
+						],
+					},
+				},
+			} as unknown as IExecutionResponse;
+			const workflow = {
+				getNode: (name: string) => (name === 'My Tool' ? toolNode : null),
+				nodeTypes: { getByNameAndVersion: () => ({}) },
+			};
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+
+			expect(chatExecutionManager.resolveResumeNodeType(execution)).toBe(
+				'n8n-nodes-base.telegramHitlTool',
+			);
+		});
+
+		it('returns undefined when the node type cannot be resolved', () => {
+			const execution = {
+				id: '1',
+				data: {
+					executionData: { nodeExecutionStack: [{ node: { name: 'x', type: 'x' }, data: {} }] },
+				},
+			} as unknown as IExecutionResponse;
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockImplementation(() => {
+				throw new Error('Unrecognized node type');
+			});
+
+			expect(chatExecutionManager.resolveResumeNodeType(execution)).toBeUndefined();
 		});
 	});
 });

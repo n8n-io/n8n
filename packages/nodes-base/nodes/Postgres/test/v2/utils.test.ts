@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
@@ -10,6 +10,8 @@ import type {
 	QueryMode,
 	QueryWithValues,
 } from '../../v2/helpers/interfaces';
+import type { MockInstance } from 'vitest';
+
 import {
 	addSortRules,
 	addReturning,
@@ -28,6 +30,7 @@ import {
 	isWhereClause,
 	getWhereClauses,
 	runQueriesAndHandleErrors,
+	parseParameterLoadingError,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -150,6 +153,25 @@ describe('Test PostgresV2, parsePostgresError', () => {
 		expect(parsedError).toBeDefined();
 		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
+	});
+});
+
+describe('Test PostgresV2, parseParameterLoadingError', () => {
+	it('should wrap a raw error as a warning-level NodeOperationError', () => {
+		const error = parseParameterLoadingError(
+			node,
+			new Error('relation "public.missing_table" does not exist'),
+		);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error.level).toEqual('warning');
+		expect(error.message).toEqual('relation "public.missing_table" does not exist');
+	});
+
+	it('should return an existing NodeOperationError unchanged', () => {
+		const original = new NodeOperationError(node, 'boom');
+
+		expect(parseParameterLoadingError(node, original)).toBe(original);
 	});
 });
 
@@ -533,14 +555,14 @@ describe('Test PostgresV2, hasJsonDataType', () => {
 
 describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
 	const pgp = pgPromise();
-	let pgpJsonSpy: jest.SpyInstance;
+	let pgpJsonSpy: MockInstance;
 	const schema: ColumnInfo[] = [
 		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
 		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
 	];
 
 	beforeEach(() => {
-		pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+		pgpJsonSpy = vi.spyOn(pgp.as, 'json');
 	});
 
 	it.each([
@@ -731,7 +753,7 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 		test.each(invalidOperations)(
 			'getWhereClauses throws an exception for "%s" operation',
 			(operation) => {
-				const getNodeParameterMock = jest.fn().mockReturnValue({
+				const getNodeParameterMock = vi.fn().mockReturnValue({
 					values: [
 						{
 							column: 'test',
@@ -770,7 +792,7 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 						value: 'angry',
 					},
 				];
-				const getNodeParameterMock = jest.fn().mockReturnValue({
+				const getNodeParameterMock = vi.fn().mockReturnValue({
 					values: clauses,
 				});
 				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
@@ -784,7 +806,7 @@ describe('Test PostgresV2, runQueriesAndHandleErrors', () => {
 	it.each([['single'], ['transaction']] as QueryMode[][])(
 		'should return errors without running queries when batching is %s',
 		async (batching) => {
-			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
+			const runQueries: QueriesRunner = vi.fn().mockResolvedValue([]);
 			const queries: QueryWithValues[] = [
 				{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
 			];
@@ -807,7 +829,7 @@ describe('Test PostgresV2, runQueriesAndHandleErrors', () => {
 	);
 
 	it('should run queries and return errors when batching is independently', async () => {
-		const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+		const runQueries: QueriesRunner = vi.fn().mockResolvedValue([
 			{ json: { id: 1 }, pairedItem: { item: 0 } },
 			{ json: { id: 3 }, pairedItem: { item: 2 } },
 		]);
@@ -831,7 +853,7 @@ describe('Test PostgresV2, runQueriesAndHandleErrors', () => {
 	it.each([['single'], ['transaction'], ['independently']] as QueryMode[][])(
 		'should run queries when batching is %s and there are no errors',
 		async (batching) => {
-			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+			const runQueries: QueriesRunner = vi.fn().mockResolvedValue([
 				{ json: { id: 1 }, pairedItem: { item: 0 } },
 				{ json: { id: 2 }, pairedItem: { item: 1 } },
 				{ json: { id: 3 }, pairedItem: { item: 2 } },

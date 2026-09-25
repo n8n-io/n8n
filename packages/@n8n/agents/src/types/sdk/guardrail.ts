@@ -1,6 +1,7 @@
 export type GuardrailType = 'pii' | 'prompt-injection' | 'moderation' | 'custom';
 export type GuardrailStrategy = 'block' | 'redact' | 'warn';
-export type PiiDetectionType = 'email' | 'phone' | 'credit-card' | 'ssn-us' | 'address';
+/** Re-exported so the detection vocabulary has one definition (see `@n8n/utils`). */
+export type { PiiDetectionType } from '@n8n/utils/redaction/pii-patterns';
 
 export interface BuiltGuardrail {
 	readonly name: string;

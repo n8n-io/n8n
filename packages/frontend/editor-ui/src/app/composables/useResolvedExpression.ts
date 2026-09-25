@@ -1,12 +1,16 @@
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
+	getExternalSecretPreview,
 	isExpression as isExpressionUtil,
+	isSingleResolvable,
+	referencesExecutionData,
 	stringifyExpressionResult,
 } from '@/app/utils/expressions';
 
 import debounce from 'lodash/debounce';
-import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { type IDataObject } from 'n8n-workflow';
 import {
 	computed,
 	onMounted,
@@ -21,6 +25,7 @@ import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowH
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import { useRedactionHint } from '@/features/shared/editors/composables/useRedactionHint';
 
 export function useResolvedExpression({
 	expression,
@@ -35,9 +40,10 @@ export function useResolvedExpression({
 	stringifyObject?: MaybeRefOrGetter<boolean>;
 	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
-	const ndvStore = injectNDVStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const { isRedacted: isRedactedExecution, redactedHintText } = useRedactionHint();
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -48,6 +54,7 @@ export function useResolvedExpression({
 
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
+	const isRedacted = ref(false);
 
 	const targetItem = computed(() => ndvStore.value.expressionTargetItem ?? undefined);
 	const activeNode = computed(() => ndvStore.value.activeNode);
@@ -107,14 +114,41 @@ export function useResolvedExpression({
 			if (currentInvocation !== updateExpressionInvocation) return;
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(
-				resolved,
-				workflowDocumentStore.value.getPinDataSnapshot(),
-				hasRunData.value,
-			);
+			const expressionString = toValue(expression);
+			const secretPreview =
+				resolved.ok &&
+				resolved.result === undefined &&
+				toValue(isForCredential) &&
+				typeof expressionString === 'string'
+					? getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets)
+					: undefined;
+
+			// Redaction empties the item data, so an expression that reads it resolves
+			// to nothing even though the execution has a value. Show a reveal prompt
+			// instead of the empty result, matching the expression editor preview.
+			// A single `{{ }}` that still resolves to a value used a fallback, so show
+			// that value; a mixed expression resolves to its literal text and keeps
+			// the prompt.
+			isRedacted.value =
+				resolved.ok &&
+				!secretPreview &&
+				isRedactedExecution.value &&
+				typeof expressionString === 'string' &&
+				referencesExecutionData(expressionString) &&
+				!(isSingleResolvable(expressionString) && resolved.result !== undefined);
+
+			resolvedExpressionString.value = isRedacted.value
+				? redactedHintText.value
+				: (secretPreview?.text ??
+					stringifyExpressionResult(
+						resolved,
+						workflowDocumentStore.value.getPinDataSnapshot(),
+						hasRunData.value,
+					));
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
+			isRedacted.value = false;
 		}
 	}
 
@@ -133,5 +167,5 @@ export function useResolvedExpression({
 
 	onMounted(updateExpression);
 
-	return { resolvedExpression, resolvedExpressionString, isExpression };
+	return { resolvedExpression, resolvedExpressionString, isExpression, isRedacted };
 }

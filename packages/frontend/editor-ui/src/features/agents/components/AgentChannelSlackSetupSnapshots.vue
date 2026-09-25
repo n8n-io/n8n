@@ -594,9 +594,12 @@
 	display: flex;
 	gap: var(--spacing--sm);
 	width: 100%;
+	min-width: 0;
 	font-size: var(--font-size--sm);
 	color: var(--text-color);
-	overflow: hidden;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .panel {

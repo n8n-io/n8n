@@ -38,7 +38,7 @@ describe('updateRoleDtoSchema', () => {
 				name: 'displayName and scopes',
 				request: {
 					displayName: 'Enhanced Role',
-					scopes: ['project:*', 'workflow:read'],
+					scopes: ['project:read', 'workflow:read'],
 				},
 			},
 			{
@@ -96,18 +96,6 @@ describe('updateRoleDtoSchema', () => {
 						'workflow:execute',
 						'credential:share',
 					],
-				},
-			},
-			{
-				name: 'wildcard scopes',
-				request: {
-					scopes: ['project:*', 'workflow:*'],
-				},
-			},
-			{
-				name: 'global wildcard scope',
-				request: {
-					scopes: ['*'],
 				},
 			},
 			{
@@ -264,6 +252,20 @@ describe('updateRoleDtoSchema', () => {
 				expectedErrorPath: ['scopes'],
 			},
 			{
+				name: 'resource wildcard scope',
+				request: {
+					scopes: ['project:*', 'workflow:*'],
+				},
+				expectedErrorPath: ['scopes', 0],
+			},
+			{
+				name: 'global wildcard scope',
+				request: {
+					scopes: ['*'],
+				},
+				expectedErrorPath: ['scopes', 0],
+			},
+			{
 				name: 'invalid scope in array',
 				request: {
 					scopes: ['project:read', 'invalid:scope'],
@@ -398,7 +400,7 @@ describe('updateRoleDtoSchema', () => {
 				{
 					displayName: 'Complete Update',
 					description: 'Full update description',
-					scopes: ['*'],
+					scopes: ['project:read'],
 				},
 			];
 
@@ -412,7 +414,7 @@ describe('updateRoleDtoSchema', () => {
 			const request = {
 				displayName: 'AB', // minimum length
 				description: 'D'.repeat(500), // maximum length
-				scopes: ['*'], // global wildcard
+				scopes: ['project:read'],
 			};
 
 			const result = UpdateRoleDto.safeParse(request);

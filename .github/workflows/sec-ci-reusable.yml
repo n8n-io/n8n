@@ -17,6 +17,10 @@ jobs:
       ref: ${{ inputs.ref }}
     secrets: inherit
 
+  zizmor-scan:
+    name: Zizmor Security Scan
+    uses: ./.github/workflows/sec-zizmor-reusable.yml
+
   # Future security checks can be added here:
   # - dependency-scan:
   # - secret-detection:

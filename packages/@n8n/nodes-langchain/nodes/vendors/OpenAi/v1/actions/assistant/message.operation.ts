@@ -11,8 +11,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	assertCredentialAllowsUrl,
 	BaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -24,6 +22,7 @@ import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@n8n/ai-utilities';
@@ -183,13 +182,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	if (options.baseURL) {
-		assertCredentialAllowsUrl({
-			node: this.getNode(),
-			credentialData: credentials,
-			url: options.baseURL,
-			pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-			surface: 'OpenAI',
-		});
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 	}
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
@@ -203,10 +196,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: timeout ?? 10000,
 		baseURL,
 		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL, {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				baseURL,
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				this.helpers.getSecureEgressFilter(),
+			),
 		},
 		defaultHeaders,
 	});
@@ -316,7 +313,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		// Remove configuration properties and runId added by Langchain that are not relevant to the user
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
-		if (!(error instanceof ApplicationError) && !(error instanceof BaseError)) {
+		if (!(error instanceof BaseError)) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
 		}
 	}

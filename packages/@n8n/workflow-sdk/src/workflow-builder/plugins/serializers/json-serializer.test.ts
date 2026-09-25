@@ -1,6 +1,7 @@
 import { jsonSerializer } from './json-serializer';
 import type { GraphNode } from '../../../types/base';
-import { trigger } from '../../node-builders/node-builder';
+import { node, trigger } from '../../node-builders/node-builder';
+import { generateDeterministicGroupId } from '../../string-utils';
 import type { SerializerContext } from '../types';
 
 // Helper to create a mock serializer context
@@ -110,6 +111,119 @@ describe('jsonSerializer', () => {
 			const result = jsonSerializer.serialize(ctx);
 
 			expect(result.nodes[0]?.parameters).toEqual({});
+		});
+
+		it('omits null and undefined optional top-level node keys', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Request',
+					notes: null as unknown as string,
+					webhookId: null as unknown as string,
+					executeOnce: null as unknown as boolean,
+					onError: null as unknown as 'continueRegularOutput',
+					credentials: {
+						httpBasicAuth: { id: null as unknown as string, name: 'Basic Auth' },
+					},
+				},
+			});
+			const stickyNote = {
+				id: 'sticky-1',
+				name: 'Sticky Note',
+				type: 'n8n-nodes-base.stickyNote',
+				version: '1',
+				config: {
+					_originalName: undefined,
+					parameters: {},
+				},
+			} as unknown as GraphNode['instance'];
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([
+					['HTTP Request', { instance: httpNode, connections: new Map() }],
+					['Sticky Note', { instance: stickyNote, connections: new Map() }],
+				]),
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			for (const serializedNode of result.nodes) {
+				for (const [key, value] of Object.entries(serializedNode)) {
+					if (key === 'parameters') continue;
+					expect(value).not.toBeNull();
+					expect(value).not.toBeUndefined();
+				}
+			}
+
+			expect(result.nodes[0]).not.toHaveProperty('notes');
+			expect(result.nodes[0]).not.toHaveProperty('webhookId');
+			expect(result.nodes[0]).not.toHaveProperty('executeOnce');
+			expect(result.nodes[0]).not.toHaveProperty('onError');
+			expect(result.nodes[0]?.credentials).toEqual({
+				httpBasicAuth: { id: null, name: 'Basic Auth' },
+			});
+			expect(result.nodes[1]).not.toHaveProperty('name');
+		});
+
+		describe('node groups', () => {
+			it('omits nodeGroups when the context has none', () => {
+				const result = jsonSerializer.serialize(createMockSerializerContext());
+
+				expect(result.nodeGroups).toBeUndefined();
+			});
+
+			it('derives a deterministic id when a group carries none and no name matches', () => {
+				const ctx = createMockSerializerContext({
+					workflowId: 'wf-1',
+					nodeGroups: [{ name: 'G', memberIds: [] }],
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.nodeGroups).toEqual([
+					{ id: generateDeterministicGroupId('wf-1', 'G'), name: 'G', nodeIds: [] },
+				]);
+			});
+
+			it('reuses an existing id matched by name when the group carries none', () => {
+				const ctx = createMockSerializerContext({
+					nodeGroups: [{ name: 'G', memberIds: [] }],
+					existingGroupIdsByName: new Map([['G', 'ui-id']]),
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.nodeGroups![0].id).toBe('ui-id');
+			});
+
+			it("prefers the group's own id over a name match", () => {
+				const ctx = createMockSerializerContext({
+					nodeGroups: [{ id: 'carried-id', name: 'G', memberIds: [] }],
+					existingGroupIdsByName: new Map([['G', 'ui-id']]),
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.nodeGroups![0].id).toBe('carried-id');
+			});
+
+			it('drops member ids that are not present in the emitted nodes', () => {
+				const fetch = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch' },
+				});
+				const ctx = createMockSerializerContext({
+					nodes: new Map<string, GraphNode>([
+						['Fetch', { instance: fetch, connections: new Map() }],
+					]),
+					nodeGroups: [{ name: 'G', memberIds: [fetch.id, 'ghost-id'] }],
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.nodeGroups![0].nodeIds).toEqual([fetch.id]);
+			});
 		});
 	});
 });

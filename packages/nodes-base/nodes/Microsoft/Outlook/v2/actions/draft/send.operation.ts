@@ -37,13 +37,13 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			.filter((email) => email);
 
 		if (recipients.length !== 0) {
-			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, {
+			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, index, {
 				toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),
 			});
 		}
 	}
 
-	await microsoftApiRequest.call(this, 'POST', `/messages/${draftId}/send`);
+	await microsoftApiRequest.call(this, 'POST', `/messages/${draftId}/send`, index);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

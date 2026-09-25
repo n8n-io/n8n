@@ -23,11 +23,11 @@ const mockCreatedSession = {
 	data: { id: 'new-session-123', status: SESSION_STATUS.RUNNING },
 };
 
-jest.mock('../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../transport');
+vi.mock('../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
+		apiRequest: vi.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
 			// return failed request
 			if (endpoint.endsWith('/sessions') && params.fail) {
 				return {};
@@ -441,8 +441,8 @@ describe('Test Airtop utils', () => {
 				warnings: [],
 			};
 
-			const expectedError = new NodeApiError(mockNode, { message: 'Error 1\nError 2' });
-			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(expectedError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(NodeApiError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow('Error 1\nError 2');
 		});
 	});
 

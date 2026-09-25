@@ -1,11 +1,11 @@
 import { Time } from '@n8n/constants';
-import { Delete, Options, Param, Post, RestController } from '@n8n/decorators';
-import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
-import type { Scope } from '@n8n/permissions';
+import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest } from '@n8n/db';
+import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { type ICredentialContext, jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -13,15 +13,25 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
+import { carriesN8nIdentity } from './credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
-import { CredentialConnectionStatusService, DynamicCredentialResolverRegistry } from './services';
+import { N8nIdentityNotSupportedError } from './errors/n8n-identity-not-supported.error';
+import {
+	AuthorizeIntentService,
+	CredentialConnectionStatusService,
+	DynamicCredentialResolverRegistry,
+	DynamicCredentialService,
+} from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
 import { getDynamicCredentialMiddlewares } from './utils';
 
 const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
+
+const NO_CONNECTION_TO_DISCONNECT = 'No connection to disconnect';
 
 @RestController('/credentials')
 export class DynamicCredentialsController {
@@ -36,22 +46,22 @@ export class DynamicCredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialConnectionStatusService: CredentialConnectionStatusService,
 		private readonly eventService: EventService,
+		private readonly authorizeIntentService: AuthorizeIntentService,
+		private readonly dynamicCredentialService: DynamicCredentialService,
+		private readonly urlService: UrlService,
 	) {}
 
-	private async findCredentialToUse(
-		credentialId: string,
-		user?: User,
-		scope?: Scope,
-	): Promise<CredentialsEntity> {
-		// External (static-token) callers have no n8n user; their identity is
-		// validated by the resolver, so we resolve the credential by id. When the
-		// request carries an n8n session user, enforce that user's access instead.
-		const credential =
-			user && scope
-				? await this.credentialsFinderService.findCredentialForUser(credentialId, user, [scope])
-				: await this.enterpriseCredentialsService.getOne(credentialId);
+	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
+		// No project scope is checked: the connect half of this flow never had one, and
+		// the resolver keys every read and write on the caller's own identity, so a
+		// caller can only reach their own stored token.
+		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 
-		if (!credential) {
+		// These routes serve only end-user credentials, whose token is per-caller. A
+		// fixed credential's token lives on the shared row, so changing it is an edit
+		// and stays on the `credential:update` paths. Folded into the not-found branch
+		// so the response cannot tell "fixed" from "no such credential".
+		if (!credential?.isResolvable) {
 			throw new NotFoundError('Credential not found');
 		}
 
@@ -64,7 +74,11 @@ export class DynamicCredentialsController {
 		return credential;
 	}
 
-	private async getResolverInstance(resolverId: string | undefined) {
+	private async getResolverInstance(
+		resolverId: string | undefined,
+		credentialContext: ICredentialContext,
+		credentialName: string,
+	) {
 		if (!resolverId) {
 			throw new BadRequestError('Missing resolverId query parameter');
 		}
@@ -83,6 +97,15 @@ export class DynamicCredentialsController {
 		if (!resolver) {
 			throw new NotFoundError('Resolver type not found');
 		}
+
+		// The caller names the resolver, and clients take that id from the workflow's
+		// effective resolver rather than the credential's own, so it can be any
+		// registered resolver. Refuse to hand an n8n session token to a resolver that
+		// keys on an external subject (it would forward the token to a third party).
+		if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) {
+			throw new BadRequestError(new N8nIdentityNotSupportedError(credentialName).message);
+		}
+
 		return { resolver, resolverEntity };
 	}
 
@@ -107,11 +130,14 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
-		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
+		const { resolver, resolverEntity } = await this.getResolverInstance(
+			resolverId,
+			credentialContext,
+			credential.name,
+		);
 
 		if (resolver.deleteSecret) {
 			// Decrypt and parse resolver configuration
@@ -149,11 +175,14 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
-		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
+		const { resolver, resolverEntity } = await this.getResolverInstance(
+			resolverId,
+			credentialContext,
+			credential.name,
+		);
 
 		if (resolver.validateIdentity) {
 			// Decrypt and parse resolver configuration
@@ -167,12 +196,21 @@ export class DynamicCredentialsController {
 			});
 		}
 
+		// Best-effort: bind the callback to the intended n8n user when the resolver
+		// names one, so `decodeCsrfState` rejects a mismatched session. External
+		// machine callers legitimately have no n8n user, so this never fails the POST.
+		const ownership = await this.dynamicCredentialService.resolveOwningUserIdForAuthorization(
+			credentialContext,
+			resolverEntity.id,
+		);
+
 		const csrfData: CreateCsrfStateData = {
 			cid: credential.id,
 			origin: 'dynamic-credential',
 			authorizationHeader: req.headers.authorization ?? `Bearer ${credentialContext.identity}`,
 			authMetadata: credentialContext.metadata,
 			credentialResolverId: req.query.resolverId,
+			userId: ownership.status === 'bound' ? ownership.userId : undefined,
 		};
 
 		if (credential.type.toLowerCase().includes('oauth2')) {
@@ -184,6 +222,93 @@ export class DynamicCredentialsController {
 		}
 
 		throw new BadRequestError('Credential type not supported');
+	}
+
+	/**
+	 * GET /credentials/:id/authorize?token=...
+	 *
+	 * Browser-clickable counterpart to the POST authorize flow. A credential gate hands
+	 * back this short link instead of a large provider authorization URL; opening it
+	 * materializes the OAuth flow (deferred discovery / client registration happens here)
+	 * and redirects to the provider. The unguessable, short-lived `token` is the
+	 * authorization — like the OAuth callback, no session or endpoint auth token is
+	 * required, since the caller identity was captured server-side when the link was
+	 * issued.
+	 */
+	@Get('/:id/authorize', {
+		allowUnauthenticated: true,
+		usesTemplates: true,
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitAuthorizePerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
+	})
+	async authorizeCredentialRedirect(req: Request, res: Response): Promise<void> {
+		const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+		if (!token) {
+			this.oauthService.renderCallbackError(res, 'Missing authorization token.');
+			return;
+		}
+
+		const intent = await this.authorizeIntentService.get(token);
+		if (!intent || intent.credentialId !== req.params.id) {
+			this.oauthService.renderCallbackError(
+				res,
+				'This authorization link is invalid or has expired. Please request a new one.',
+			);
+			return;
+		}
+
+		// When the link is bound to an n8n user, the clicker must be that user.
+		if (intent.userId) {
+			const user = isAuthenticatedRequest(req) ? req.user : undefined;
+
+			if (!user) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'unauthenticated',
+					credentialId: intent.credentialId,
+				});
+				// Absolute, same-origin http(s) URL so SigninView returns here after login.
+				const returnUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
+				res.redirect(
+					`${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+				);
+				return;
+			}
+
+			if (user.id !== intent.userId) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'user-mismatch',
+					credentialId: intent.credentialId,
+				});
+				this.oauthService.renderCallbackError(
+					res,
+					'This authorization link was issued for a different account. Sign in as the intended user and open the link again.',
+				);
+				return;
+			}
+		}
+
+		try {
+			const credential = await this.findCredentialToUse(intent.credentialId);
+
+			const csrfData: CreateCsrfStateData = {
+				cid: credential.id,
+				origin: 'dynamic-credential',
+				authorizationHeader: intent.identity ? `Bearer ${intent.identity}` : '',
+				authMetadata: intent.metadata,
+				credentialResolverId: intent.resolverId,
+				userId: intent.userId,
+			};
+
+			const authorizationUrl = credential.type.toLowerCase().includes('oauth2')
+				? await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res)
+				: await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
+
+			res.redirect(authorizationUrl);
+		} catch (e) {
+			this.oauthService.renderCallbackError(res, ensureError(e).message);
+		}
 	}
 
 	/**
@@ -204,10 +329,10 @@ export class DynamicCredentialsController {
 		res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findById(credentialId);
 
 		if (!credential) {
-			throw new NotFoundError('Credential not found');
+			throw new NotFoundError(NO_CONNECTION_TO_DISCONNECT);
 		}
 
 		const affected = await this.credentialConnectionStatusService.deleteMyConnection(
@@ -216,7 +341,7 @@ export class DynamicCredentialsController {
 		);
 
 		if (affected === 0) {
-			throw new NotFoundError('No connection to disconnect');
+			throw new NotFoundError(NO_CONNECTION_TO_DISCONNECT);
 		}
 
 		this.eventService.emit('credentials-user-disconnected', {

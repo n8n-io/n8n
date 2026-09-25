@@ -1,8 +1,70 @@
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type {
+	InstanceAiAgentActivity,
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+	InstanceAiTimelineEntry,
+} from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 
-/** True when the agent node is the workflow-builder sub-agent. */
-export function isBuilderAgent(node: InstanceAiAgentNode): boolean {
-	return node.kind === 'builder' || node.role === 'workflow-builder';
+const AGENT_ACTIVITY_KEYS: Record<InstanceAiAgentActivity, BaseTextKey> = {
+	creating: 'instanceAi.agentActivity.creating',
+	editing: 'instanceAi.agentActivity.editing',
+	exploring: 'instanceAi.agentActivity.exploring',
+	testing: 'instanceAi.agentActivity.testing',
+	publishing: 'instanceAi.agentActivity.publishing',
+	working: 'instanceAi.agentActivity.working',
+};
+
+export function getAgentActivityKey(
+	node: Pick<InstanceAiAgentNode, 'activity'>,
+): BaseTextKey | undefined {
+	return node.activity ? AGENT_ACTIVITY_KEYS[node.activity] : undefined;
+}
+
+const BUILDER_ROLE_LABELS: Record<string, string> = {
+	'agent-builder': 'Building agent',
+	'workflow-builder': 'Building workflow',
+};
+
+/** True when the agent node is a workflow-builder or agent-builder sub-agent. */
+export function isBuilderAgent(node: Pick<InstanceAiAgentNode, 'kind' | 'role'>): boolean {
+	return (
+		node.kind === 'builder' ||
+		node.kind === 'agent-builder' ||
+		node.role === 'workflow-builder' ||
+		node.role === 'agent-builder'
+	);
+}
+
+export function getBuilderRoleLabel(
+	node: Pick<InstanceAiAgentNode, 'kind' | 'role'>,
+): string | undefined {
+	if (!isBuilderAgent(node)) return undefined;
+	return BUILDER_ROLE_LABELS[node.role];
+}
+
+/** First candidate that has content, trimmed. A blank one never wins over the next. */
+export function firstNonBlank(...candidates: Array<string | undefined>): string | undefined {
+	return candidates.map((candidate) => candidate?.trim()).find((candidate) => candidate);
+}
+
+/**
+ * Header label for a sub-agent section. Blank candidates are skipped: an empty
+ * title or subtitle — which older threads persisted — would otherwise leave a
+ * header with nothing in it but a chevron.
+ */
+export function getAgentSectionTitle(
+	node: InstanceAiAgentNode,
+	activityTitle?: string,
+): string | undefined {
+	return firstNonBlank(
+		activityTitle,
+		node.title,
+		getBuilderRoleLabel(node),
+		node.targetResource?.name,
+		node.subtitle,
+		node.role,
+	);
 }
 
 /** True when the node is a builder sub-agent that is currently running. */
@@ -35,15 +97,40 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 	// a non-builder child is still running (builders are rendered separately).
 	if (
 		!message.isStreaming &&
-		tree.children.some((c) => c.status === 'active' && !isBuilderAgent(c))
+		tree.children.some((c: InstanceAiAgentNode) => c.status === 'active' && !isBuilderAgent(c))
 	) {
 		return true;
 	}
 
+	const activeBuilderChildIds = new Set(
+		tree.children
+			.filter((child: InstanceAiAgentNode) => isActiveBuilderAgent(child))
+			.map((child: InstanceAiAgentNode) => child.agentId),
+	);
+	const activeBuilderChildResponseIds = new Set(
+		tree.timeline
+			.filter(
+				(entry): entry is Extract<InstanceAiTimelineEntry, { type: 'child' }> =>
+					entry.type === 'child' &&
+					entry.responseId !== undefined &&
+					activeBuilderChildIds.has(entry.agentId),
+			)
+			.map((entry) => entry.responseId),
+	);
+	const toolCallsById = Object.fromEntries(tree.toolCalls.map((tc) => [tc.toolCallId, tc]));
+
 	// Any timeline entry that isn't a hoisted active builder counts as content.
 	const childrenById: Record<string, InstanceAiAgentNode> = {};
 	for (const c of tree.children) childrenById[c.agentId] = c;
-	return tree.timeline.some((e) => {
+	return tree.timeline.some((e: InstanceAiTimelineEntry) => {
+		if (e.type === 'tool-call') {
+			const toolCall = toolCallsById[e.toolCallId];
+			return !(
+				toolCall?.toolName === 'build-agent' &&
+				e.responseId !== undefined &&
+				activeBuilderChildResponseIds.has(e.responseId)
+			);
+		}
 		if (e.type !== 'child') return true;
 		const child = childrenById[e.agentId];
 		return !child || !isActiveBuilderAgent(child);

@@ -12,16 +12,18 @@ import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import { groupNodesByType } from './group-nodes-by-type';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
 } from './types';
 import { N8N_VERSION } from '../../constants';
 
@@ -45,6 +47,7 @@ export class BreakingChangeService {
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
+		private readonly migrationRegistry: MigrationRegistry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly cacheService: CacheService,
@@ -78,25 +81,14 @@ export class BreakingChangeService {
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
+						migratable: this.migrationRegistry.has(rule.id),
 					});
 				}
 			} catch (error) {
-				console.log('error', error);
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
 		return instanceLevelResults;
-	}
-
-	private groupNodesByType(nodes: INode[]): Map<string, INode[]> {
-		const nodesGroupedByType: Map<string, INode[]> = new Map();
-		for (const node of nodes) {
-			if (!nodesGroupedByType.has(node.type)) {
-				nodesGroupedByType.set(node.type, []);
-			}
-			nodesGroupedByType.get(node.type)!.push(node);
-		}
-		return nodesGroupedByType;
 	}
 
 	private async aggregateRegularRuleResults(
@@ -117,6 +109,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -165,6 +158,7 @@ export class BreakingChangeService {
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
+					migratable: this.migrationRegistry.has(rule.id),
 				});
 			}
 		}
@@ -218,7 +212,7 @@ export class BreakingChangeService {
 			}
 
 			for (const workflow of workflows) {
-				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
+				const nodesGroupedByType = groupNodesByType(workflow.nodes);
 				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
 
 				const workflowMetadata: WorkflowMetadata = {
@@ -233,7 +227,13 @@ export class BreakingChangeService {
 				workflowMetadataMap.set(workflow.id, workflowMetadata);
 
 				for (const rule of workflowLevelRules) {
-					const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					let result: WorkflowDetectionReport;
+					try {
+						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+						continue;
+					}
 					if (result.isAffected) {
 						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
@@ -250,7 +250,11 @@ export class BreakingChangeService {
 				}
 
 				for (const rule of batchRules) {
-					await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					try {
+						await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+					}
 				}
 			}
 		}
@@ -281,38 +285,37 @@ export class BreakingChangeService {
 			return await existingDetection;
 		}
 
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
-
-		// Start a new detection and store the promise
-		const detectionPromise: Promise<BreakingChangeReportResult> = new Promise((resolve) => {
-			void (async () => {
-				// Check cache first
-				const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
-				if (cachedResult) {
-					this.logger.debug('Using cached breaking change detection results', {
-						targetVersion,
-					});
-					return resolve(cachedResult);
-				}
-
-				// Perform detection
-				const detectionResult = await this.detect(targetVersion);
-				return resolve(detectionResult);
-			})();
-		});
+		const detectionPromise = this.detectWithCache(targetVersion);
 		this.ongoingDetections.set(targetVersion, detectionPromise);
 
 		try {
-			const result = await detectionPromise;
-			// Store in cache if detection took significant time
-			if (result.shouldCache) {
-				await this.cacheService.set(cacheKey, result);
-			}
-			return result;
+			return await detectionPromise;
 		} finally {
-			// Clean up the promise after completion (success or failure)
 			this.ongoingDetections.delete(targetVersion);
 		}
+	}
+
+	private async detectWithCache(
+		targetVersion: BreakingChangeVersion,
+	): Promise<BreakingChangeReportResult> {
+		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
+
+		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
+		if (cachedResult) {
+			this.logger.debug('Using cached breaking change detection results', { targetVersion });
+			return cachedResult;
+		}
+
+		const result = await this.detect(targetVersion);
+		if (result.shouldCache) {
+			await this.cacheService.set(cacheKey, result);
+		}
+		return result;
+	}
+
+	private reportRuleError(error: unknown, ruleId: string, workflowId: string) {
+		this.logger.warn('Breaking change rule failed for workflow, skipping', { ruleId, workflowId });
+		this.errorReporter.error(error, { extra: { ruleId, workflowId } });
 	}
 
 	private shouldCacheDetection(durationMs: number): boolean {

@@ -1,21 +1,30 @@
 import type {
-	AgentBuilderMessagesResponse,
+	AgentApproval,
+	AgentBackgroundJobsResponse,
+	AgentCapabilitySummary,
+	AgentChatMessagesResponse,
+	AgentConfigMutationResponse,
+	AgentConfigResponse,
+	AgentConfigValidationResponse,
+	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
+	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
-	CreateSlackAgentAppResponse,
-	SlackAgentAppManifestResponse,
+	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
 
 export type ListAgentsSortBy =
 	| 'name:asc'
@@ -31,6 +40,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		availableInMCP?: boolean;
 	};
 };
 
@@ -93,27 +103,56 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
+	/** Creates the agent under an already-minted id, so a surface that referenced
+	 *  it while unsaved keeps pointing at the same agent. Pass `schema`/`tools`/
+	 *  `skills` to seed a full agent in a duplicate operation). */
+	options: {
+		id?: string;
+		schema?: AgentJsonConfig;
+		tools?: Record<string, CustomToolEntry>;
+		skills?: Record<string, AgentSkill>;
+	} = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name },
+		{
+			name,
+			...(options.id ? { id: options.id } : {}),
+			...(options.schema ? { schema: options.schema } : {}),
+			...(options.tools ? { tools: options.tools } : {}),
+			...(options.skills ? { skills: options.skills } : {}),
+		},
 	);
 };
 
-export const updateAgent = async (
+export const duplicateAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	data: { code?: string; name?: string },
+	name: string,
 ): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
-	);
+	const [agent, configResponse] = await Promise.all([
+		getAgent(context, projectId, agentId),
+		getAgentConfig(context, projectId, agentId),
+	]);
+	// Task bodies live in a separate table we don't copy, so drop the refs —
+	// otherwise the clone carries dangling task ids and cannot be published.
+	// Channels are copied without their credential: the claim check ignores
+	// publish state, so keeping the source's credentialId would 409 at publish
+	// time (and break the source's channel). Blank to drafts so the builder
+	// opens the copy with a "connect a channel" chip instead.
+	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
+	const draftIntegrations = (sourceIntegrations ?? []).map((integration) => ({
+		...integration,
+		credentialId: '',
+	}));
+	return await createAgent(context, projectId, name, {
+		schema: { ...rest, name, integrations: draftIntegrations },
+		tools: agent.tools,
+		skills: agent.skills,
+	});
 };
 
 export const deleteAgent = async (
@@ -168,6 +207,25 @@ export const deleteAgentFile = async (
 	);
 };
 
+export const warmAgentKnowledgeSandbox = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ accepted: true }> => {
+	return await makeRestApiRequest<{ accepted: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
+	);
+};
+
+/** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
+export interface ConnectIntegrationOptions {
+	replaces?: { credentialId: string };
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
+}
+
 export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -175,12 +233,19 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<{ status: string; agent?: AgentResource }> => {
-	return await makeRestApiRequest(
+	options?: ConnectIntegrationOptions,
+): Promise<AgentIntegrationConnectResponse> => {
+	return await makeRestApiRequest<AgentIntegrationConnectResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type, credentialId, ...(settings ? { settings } : {}) },
+		{
+			type,
+			credentialId,
+			...(settings ? { settings } : {}),
+			...(options?.replaces ? { replaces: options.replaces } : {}),
+			...(options?.approval ? { approval: options.approval } : {}),
+		},
 	);
 };
 
@@ -190,12 +255,13 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-): Promise<{ status: string }> => {
-	return await makeRestApiRequest(
+	deleteExternalResource?: boolean,
+): Promise<AgentDisconnectIntegrationResponse> => {
+	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId },
+		{ type, credentialId, deleteExternalResource },
 	);
 };
 
@@ -278,56 +344,7 @@ export const runAgentTask = async (
 	);
 };
 
-// Backward-compatible aliases
-export const connectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const disconnectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const getSlackStatus = getIntegrationStatus;
-
-export const createSlackAgentApp = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	appConfigurationToken: string,
-): Promise<CreateSlackAgentAppResponse> => {
-	return await makeRestApiRequest<CreateSlackAgentAppResponse>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/app`,
-		{ appConfigurationToken },
-	);
-};
-
-export const getSlackAgentAppManifest = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<SlackAgentAppManifestResponse> => {
-	return await makeRestApiRequest<SlackAgentAppManifestResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
-	);
-};
-
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;
@@ -345,6 +362,20 @@ export const getModelCatalog = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/models`,
+	);
+};
+
+export const getProviderModels = async (
+	context: IRestApiContext,
+	projectId: string,
+	provider: string,
+	credentialId?: string,
+): Promise<AgentProviderModelsResponse> => {
+	return await makeRestApiRequest<AgentProviderModelsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/models/${provider}`,
+		credentialId ? { credentialId } : undefined,
 	);
 };
 
@@ -418,11 +449,41 @@ export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentJsonConfig> => {
-	return await makeRestApiRequest<AgentJsonConfig>(
+): Promise<AgentConfigResponse> => {
+	return await makeRestApiRequest<AgentConfigResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+/**
+ * Static, authoritative readiness check for the current draft. Never
+ * performs live/network validation — safe to call frequently. The publish
+ * endpoint re-checks this independently, so this is purely for UI feedback
+ * (disabled Publish tooltip, invalid capability chips).
+ */
+export const getAgentConfigValidation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentConfigValidationResponse> => {
+	return await makeRestApiRequest<AgentConfigValidationResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/validation`,
+	);
+};
+
+export const getAgentCapabilitySummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentCapabilitySummary> => {
+	return await makeRestApiRequest<AgentCapabilitySummary>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/summary`,
 	);
 };
 
@@ -431,12 +492,13 @@ export const updateAgentConfig = async (
 	projectId: string,
 	agentId: string,
 	config: AgentJsonConfig,
-): Promise<{ config: AgentJsonConfig; versionId: string | null }> => {
-	return await makeRestApiRequest(
+	baseConfigHash: string | null,
+): Promise<AgentConfigMutationResponse> => {
+	return await makeRestApiRequest<AgentConfigMutationResponse>(
 		context,
 		'PUT',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
-		{ config },
+		{ config, baseConfigHash },
 	);
 };
 
@@ -460,36 +522,26 @@ export const updateAgentSkill = async (
 	agentId: string,
 	skillId: string,
 	updates: Partial<AgentSkill>,
+	baseSkillHash?: string,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		updates,
+		{ ...updates, baseSkillHash },
 	);
 };
 
-export const getBuilderMessages = async (
+export const getAgentBackgroundJobs = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentBuilderMessagesResponse> => {
-	return await makeRestApiRequest<AgentBuilderMessagesResponse>(
+	threadId: string,
+): Promise<AgentBackgroundJobsResponse> => {
+	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
-export const clearBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
 	);
 };
 
@@ -498,11 +550,11 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
 	);
 };
 
@@ -510,8 +562,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
@@ -530,6 +582,33 @@ export const clearTestChatMessages = async (
 	);
 };
 
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
+export const cancelAgentChatExecution = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+): Promise<{ cancelRequested: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -543,6 +622,19 @@ export const deleteCustomTool = async (
 	);
 };
 
+export const testAgentVectorStore = async (
+	context: IRestApiContext,
+	projectId: string,
+	vectorStore: AgentJsonVectorStoreConfig,
+): Promise<VectorStoreTestResult> => {
+	return await makeRestApiRequest<VectorStoreTestResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
+		{ vectorStore },
+	);
+};
+
 export const listAgentIntegrations = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -551,5 +643,17 @@ export const listAgentIntegrations = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/integrations`,
+	);
+};
+
+export const getAgentWriteLock = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ clientId: string; userId: string } | null> => {
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };

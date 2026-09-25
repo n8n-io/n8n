@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import type { BooleanLicenseFeature } from '@n8n/constants';
+import { type BooleanLicenseFeature, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
@@ -10,11 +11,10 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';
-
-const UNLIMITED_USERS_QUOTA = -1;
 
 export type ProjectScopeResource = 'workflow' | 'credential' | 'dataTable';
 
@@ -88,6 +88,23 @@ export const validCursor = (
 	return next();
 };
 
+/**
+ * Signals that an endpoint is deprecated via the RFC 9745 `Deprecation` response header. Callers
+ * pass a semantic `Date`; this middleware owns the on-the-wire formatting so the wire syntax
+ * (an RFC 9651 structured-field Date, `@<unix-seconds>`) never leaks to call sites.
+ *
+ * `since` is a fixed value owned by the caller — never derive it from `Date.now()`, so the header
+ * stays deterministic across requests.
+ */
+export const deprecated = ({ since }: DeprecationInfo) => {
+	const deprecation = `@${Math.floor(since.getTime() / 1000)}`;
+
+	return (_req: Request, res: express.Response, next: express.NextFunction): void => {
+		res.setHeader('Deprecation', deprecation);
+		next();
+	};
+};
+
 export type ScopeTaggedMiddleware = Middleware & {
 	__apiKeyScope: ApiKeyScope;
 };
@@ -128,6 +145,20 @@ function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
 	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
+/**
+ * Tags an endpoint with a composite `x-required-scope` value (comma-separated).
+ * Actual scope enforcement is deferred to the handler, which picks the required
+ * scope based on the request payload.
+ */
+export function publicApiCompositeScope(requiredScopes: string): ScopeTaggedMiddleware {
+	return Object.assign(
+		(_req: Request, _res: Response, next: NextFunction) => {
+			next();
+		},
+		{ __apiKeyScope: requiredScopes as ApiKeyScope },
+	);
+}
+
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
@@ -141,9 +172,9 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
-	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
+	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
-			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
 	}
 

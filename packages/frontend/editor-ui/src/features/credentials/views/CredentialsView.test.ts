@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -5,7 +6,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -13,6 +14,7 @@ import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
@@ -84,6 +86,7 @@ const mockedProjectsApi = vi.mocked(projectsApi);
 describe('CredentialsView', () => {
 	beforeEach(async () => {
 		createTestingPinia({ initialState });
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		await router.push('/');
 		await router.isReady();
 
@@ -115,6 +118,7 @@ describe('CredentialsView', () => {
 				id: '1',
 				name: 'test',
 				type: 'test',
+				description: 'Use for production reports',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
 				isManaged: false,
@@ -124,6 +128,9 @@ describe('CredentialsView', () => {
 		projectsStore.isProjectHome = false;
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('resources-list-item')).toBeVisible();
+		expect(getByTestId('credential-card-description')).toHaveTextContent(
+			'Use for production reports',
+		);
 	});
 
 	it('should disable cards based on permissions', () => {
@@ -164,7 +171,10 @@ describe('CredentialsView', () => {
 			projectsStore.currentProject = createTestProject({ scopes: ['credential:create'] });
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'create' });
-			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: CREDENTIAL_SELECT_MODAL_KEY,
+				data: {},
+			});
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {
@@ -191,7 +201,7 @@ describe('CredentialsView', () => {
 			}));
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'abc123' });
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123', expect.anything());
 		});
 
 		it('should not show the modal on the route if the user has no permission to read or update', async () => {
@@ -419,6 +429,35 @@ describe('CredentialsView', () => {
 		});
 	});
 
+	describe('credentials shared with all users and projects', () => {
+		it('requests global credentials for the personal project page', async () => {
+			const personalProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = personalProject;
+			projectsStore.currentProject = personalProject;
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				params: { projectId: personalProject.id },
+			});
+			renderComponent();
+			await flushPromises();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: personalProject.id,
+					includeGlobal: true,
+				}),
+			);
+		});
+	});
+
 	describe('private credentials connect flow', () => {
 		const buildPrivateUnconnectedCredential = (
 			overrides: Partial<ICredentialsResponse> = {},
@@ -429,7 +468,7 @@ describe('CredentialsView', () => {
 				type: 'oAuth2Api',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				isManaged: false,
 				isResolvable: true,
 				connectedByMe: false,
@@ -459,6 +498,21 @@ describe('CredentialsView', () => {
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
 			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
 			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('does not show the "Needs first setup" badge for private credentials with empty data', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildPrivateUnconnectedCredential({
+					connectedByMe: true,
+					data: {} as unknown as string,
+				}),
+			];
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('resources-list-item').textContent).not.toContain('Needs first setup');
 		});
 
 		it('refetches credentials when the Connect button completes successfully', async () => {

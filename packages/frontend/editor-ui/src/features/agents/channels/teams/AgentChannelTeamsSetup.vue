@@ -1,0 +1,653 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { saveAs } from 'file-saver';
+import { N8nButton, N8nCopyInput, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
+import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
+import type {
+	AgentTeamsIntegrationSettings,
+	ChatIntegrationDescriptor,
+	TeamsAgentSetupState,
+	TeamsCredentialCheck,
+} from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type { PermissionsRecord } from '@n8n/permissions';
+import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
+import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
+import AgentChannelTeamsAvailability, {
+	type TeamsAvailability,
+} from './AgentChannelTeamsAvailability.vue';
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
+import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+
+const credentialId = defineModel<string>({ default: '' });
+
+const props = withDefaults(
+	defineProps<{
+		mode: 'setup' | 'edit';
+		integration: ChatIntegrationDescriptor;
+		credentials: AgentCredentialOption[];
+		credentialPermissions: PermissionsRecord['credential'];
+		credentialsLoading?: boolean;
+		loading?: boolean;
+		connected?: boolean;
+		isPublished?: boolean;
+		errorMessage?: string;
+		errorIsConflict?: boolean;
+		projectId: string;
+		agentId: string;
+		forceNewCredential?: boolean;
+		savedSettings?: AgentTeamsIntegrationSettings;
+	}>(),
+	{
+		credentialsLoading: false,
+		loading: false,
+		connected: false,
+		isPublished: true,
+		errorMessage: '',
+		errorIsConflict: false,
+		forceNewCredential: false,
+		savedSettings: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	create: [];
+	edit: [];
+	connect: [];
+}>();
+
+const i18n = useI18n();
+const rootStore = useRootStore();
+const agentTelemetry = useAgentTelemetry();
+
+const ENTRA_APP_REGISTRATION_URL =
+	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
+
+const setupState = ref<TeamsAgentSetupState | null>(null);
+const showEndpoint = ref(false);
+
+const availability = ref<TeamsAvailability>({
+	teamChannels: props.savedSettings?.teamChannels ?? false,
+	groupChats: props.savedSettings?.groupChats ?? false,
+	readAllChannelMessages: props.savedSettings?.readAllChannelMessages ?? false,
+	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
+});
+
+const displayName = ref(props.savedSettings?.displayName ?? '');
+const description = ref(props.savedSettings?.description ?? '');
+
+/**
+ * Shown as placeholders rather than written into the fields. Filling them in
+ * would save them as overrides on the first connect, and the Teams app would
+ * then keep the agent's old name after a rename.
+ */
+const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
+const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
+
+const messagingEndpointUrl = computed(() => {
+	if (setupState.value) return setupState.value.messagingEndpointUrl;
+	// The same shape the backend builds, so the URL still shows when the setup
+	// request fails -- which is when someone most needs to paste it by hand.
+	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/teams`;
+});
+
+/**
+ * Surfaced here rather than at connect, which is three steps later: by then the
+ * user has already spent an Azure deployment that the portal refuses, and reads
+ * Azure's wording for a choice they could still change on this step.
+ */
+const credentialClaimedBy = computed(() => setupState.value?.credentialClaimedBy ?? null);
+
+const downloading = ref(false);
+const downloadError = ref('');
+// The manifest needs the bot's client ID, which the picked credential supplies
+// before it is connected, so the step does not wait on connecting.
+const canDownloadPackage = computed(
+	() => Boolean(setupState.value?.botId) && !credentialClaimedBy.value,
+);
+
+const credentialCheck = ref<TeamsCredentialCheck | null>(null);
+const checking = ref(false);
+
+/**
+ * Both requests answer for the credential that was selected when they were
+ * sent. Without this, switching credentials quickly lets an earlier answer
+ * land last and describe the wrong one -- as a verified credential, or as a
+ * deployment link for the credential no longer selected. Each request has its
+ * own counter, so reloading one does not discard an answer for the other.
+ */
+let latestCheck = 0;
+let latestSetupState = 0;
+
+/**
+ * Tracked per field, so an edit to one does not stop the others adopting
+ * settings that arrive afterwards.
+ */
+const touched = ref(new Set<'availability' | 'displayName' | 'description'>());
+
+function editAvailability(value: TeamsAvailability) {
+	availability.value = value;
+	touched.value.add('availability');
+}
+
+function editDisplayName(value: string) {
+	displayName.value = value;
+	touched.value.add('displayName');
+}
+
+function editDescription(value: string) {
+	description.value = value;
+	touched.value.add('description');
+}
+
+/**
+ * Saving is gated on the credential actually reaching Microsoft. Without this
+ * the channel connects on a wrong secret and fails on the first message, long
+ * after the setup said it succeeded.
+ */
+const credentialVerified = computed(() => credentialCheck.value?.status === 'ok');
+const credentialProblem = computed(() =>
+	credentialCheck.value?.status === 'failed' ? credentialCheck.value.reason : null,
+);
+
+async function runCredentialCheck(trigger: 'auto' | 'recheck') {
+	const request = ++latestCheck;
+	const id = credentialId.value;
+	// A result for the credential just replaced says nothing about this one, so
+	// it goes before the new answer arrives rather than after.
+	credentialCheck.value = null;
+	checking.value = false;
+	// Only the setup step reads the result, and the check costs a token request
+	// to Microsoft, so the settings view does not pay for it.
+	if (props.mode !== 'setup' || !id) return;
+
+	checking.value = true;
+	let result: TeamsCredentialCheck;
+	// Shown to the user as unreachable, but kept apart in telemetry: a failed
+	// n8n request says nothing about whether Microsoft accepts the credential.
+	let requestFailed = false;
+	try {
+		result = await checkTeamsCredential(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			id,
+		);
+	} catch {
+		result = { status: 'failed', reason: 'unreachable' };
+		requestFailed = true;
+	}
+	if (request !== latestCheck) return;
+	credentialCheck.value = result;
+	checking.value = false;
+	agentTelemetry.trackCheckedTeamsCredential({
+		agentId: props.agentId,
+		trigger,
+		status: result.status,
+		...(result.status === 'failed'
+			? { reason: requestFailed ? 'request_failed' : result.reason }
+			: {}),
+	});
+}
+
+async function downloadPackage() {
+	downloading.value = true;
+	downloadError.value = '';
+	try {
+		const blob = await fetchTeamsAppPackage(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			credentialId.value || undefined,
+			currentSettings.value,
+		);
+		saveAs(blob, 'n8n-agent-teams-app.zip');
+		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
+	} catch {
+		downloadError.value = i18n.baseText('agents.channels.teams.setup.install.downloadFailed');
+		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'error' });
+	} finally {
+		downloading.value = false;
+	}
+}
+
+async function loadSetupState() {
+	const request = ++latestSetupState;
+	if (!props.projectId || !props.agentId) return;
+	try {
+		const state = await getTeamsSetupState(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			credentialId.value || undefined,
+		);
+		if (request === latestSetupState) setupState.value = state;
+	} catch {
+		if (request === latestSetupState) setupState.value = null;
+	}
+}
+
+watch(
+	() => props.connected,
+	() => loadSetupState(),
+);
+
+watch(
+	credentialId,
+	async () => {
+		await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
+	},
+	{ immediate: true },
+);
+
+/**
+ * Re-synced rather than read once, so settings that arrive after this mounts
+ * are not overwritten by the empty defaults the refs started with. Edits
+ * already made here win: only an untouched field follows the saved value.
+ */
+watch(
+	() => props.savedSettings,
+	(saved) => {
+		if (!saved) return;
+		if (!touched.value.has('availability')) {
+			availability.value = {
+				teamChannels: saved.teamChannels ?? false,
+				groupChats: saved.groupChats ?? false,
+				readAllChannelMessages: saved.readAllChannelMessages ?? false,
+				readAllGroupMessages: saved.readAllGroupMessages ?? false,
+			};
+		}
+		if (!touched.value.has('displayName')) displayName.value = saved.displayName ?? '';
+		if (!touched.value.has('description')) description.value = saved.description ?? '';
+	},
+);
+
+const steps = computed(() => [
+	{
+		id: 'create-credential',
+		title: i18n.baseText('agents.channels.teams.setup.createCredential.title'),
+		description: i18n.baseText('agents.channels.teams.setup.createCredential.description'),
+	},
+	{
+		id: 'create-bot',
+		title: i18n.baseText('agents.channels.teams.setup.createBot.title'),
+		description: i18n.baseText('agents.channels.teams.setup.createBot.description'),
+	},
+	{
+		id: 'availability',
+		title: i18n.baseText('agents.channels.teams.setup.availability.title'),
+		description: i18n.baseText('agents.channels.teams.setup.availability.description'),
+	},
+	{
+		id: 'install',
+		title: i18n.baseText('agents.channels.teams.setup.install.title'),
+		description: i18n.baseText('agents.channels.teams.setup.install.description'),
+	},
+]);
+
+/**
+ * Built on the saved settings, because connecting replaces the settings object
+ * wholesale: a field this form does not render would otherwise be dropped the
+ * first time someone saves from here.
+ *
+ * Empty strings are absent rather than values: the schema requires a non-empty
+ * string when the field is present, and both fall back server-side.
+ */
+const currentSettings = computed(() => {
+	// The identity keys are dropped from the base: an empty field means "fall
+	// back to the agent", and the saved value would otherwise reinstate itself.
+	const {
+		displayName: _saved,
+		description: _savedDescription,
+		...rest
+	} = props.savedSettings ?? {};
+	return {
+		...rest,
+		...availability.value,
+		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
+		...(description.value.trim() ? { description: description.value.trim() } : {}),
+	};
+});
+
+defineExpose({ credentialId, validationError: null, currentSettings });
+</script>
+
+<template>
+	<div :class="$style.teamsSetup">
+		<N8nStepper v-if="mode === 'setup'" :steps="steps">
+			<template #default="{ step }">
+				<div :class="$style.stepContent">
+					<div v-if="step.id === 'create-credential'" :class="$style.stepStack">
+						<AgentIntegrationCredentialConnection
+							v-if="!connected"
+							v-model="credentialId"
+							:integration-type="integration.type"
+							:integration-label="integration.label"
+							:credentials="credentials"
+							:credential-permissions="credentialPermissions"
+							:credentials-loading="credentialsLoading"
+							:disabled="loading"
+							:loading="loading"
+							:error-message="errorMessage"
+							:error-is-conflict="errorIsConflict"
+							:force-new-credential="forceNewCredential"
+							@create="emit('create')"
+							@edit="emit('edit')"
+						/>
+
+						<N8nText
+							v-if="credentialClaimedBy"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-credential-claimed"
+						>
+							{{
+								i18n.baseText('agents.channels.teams.setup.createCredential.claimed', {
+									interpolate: { agent: credentialClaimedBy },
+								})
+							}}
+						</N8nText>
+
+						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
+							{{ i18n.baseText('agents.channels.teams.setup.createCredential.prerequisites') }}
+							<a
+								:href="ENTRA_APP_REGISTRATION_URL"
+								target="_blank"
+								rel="noopener noreferrer"
+								data-testid="teams-entra-register-link"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.createCredential.button') }}
+							</a>
+						</N8nText>
+					</div>
+
+					<div v-else-if="step.id === 'create-bot'" :class="$style.stepStack">
+						<N8nButton
+							v-if="setupState?.deployToAzureUrl"
+							:href="setupState.deployToAzureUrl"
+							target="_blank"
+							variant="subtle"
+							size="medium"
+							data-testid="teams-deploy-to-azure"
+							@click="agentTelemetry.trackClickedDeployToAzure({ agentId })"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
+						</N8nButton>
+						<N8nText v-else :class="$style.hint" size="small" data-testid="teams-deploy-blocked">
+							{{
+								credentialClaimedBy
+									? i18n.baseText('agents.channels.teams.setup.createBot.needsFreeCredential')
+									: i18n.baseText('agents.channels.teams.setup.createBot.needsCredential')
+							}}
+						</N8nText>
+
+						<N8nText :class="$style.hint" size="small">
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
+						</N8nText>
+
+						<!-- The deployment sets the endpoint, so only someone wiring up an
+							existing bot needs to see it. -->
+						<N8nButton
+							v-if="!showEndpoint"
+							variant="ghost"
+							size="small"
+							data-testid="teams-show-endpoint"
+							@click="showEndpoint = true"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
+						</N8nButton>
+						<div v-else :class="$style.field" data-testid="teams-endpoint-field">
+							<label for="teams-messaging-endpoint-url">
+								<N8nText size="small" bold>
+									{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
+								</N8nText>
+							</label>
+							<N8nCopyInput
+								id="teams-messaging-endpoint-url"
+								:value="messagingEndpointUrl"
+								size="large"
+								:class="$style.urlInput"
+								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
+								:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
+							/>
+							<N8nText :class="$style.hint" size="small">
+								{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBotHint') }}
+							</N8nText>
+						</div>
+					</div>
+
+					<div v-else-if="step.id === 'availability'" :class="$style.stepStack">
+						<AgentChannelTeamsAvailability
+							:model-value="availability"
+							@update:model-value="editAvailability"
+						/>
+					</div>
+
+					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
+						<N8nButton
+							v-if="canDownloadPackage"
+							variant="subtle"
+							size="medium"
+							icon="download"
+							:loading="downloading"
+							data-testid="teams-download-package"
+							@click="downloadPackage"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+						</N8nButton>
+						<N8nText v-else size="small" :class="$style.hint" data-testid="teams-package-blocked">
+							{{ i18n.baseText('agents.channels.teams.setup.install.needsBot') }}
+						</N8nText>
+
+						<N8nText
+							v-if="downloadError"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-download-error"
+						>
+							{{ downloadError }}
+						</N8nText>
+
+						<N8nText :class="$style.hint" size="small">
+							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+						</N8nText>
+
+						<!-- Last, because the modal closes on it: the package has to be
+							downloaded by then. -->
+						<template v-if="!connected">
+							<N8nText
+								v-if="checking"
+								:class="$style.hint"
+								size="small"
+								data-testid="teams-credential-checking"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.checking') }}
+							</N8nText>
+							<template v-else-if="credentialProblem">
+								<N8nText size="small" :class="$style.error" data-testid="teams-credential-problem">
+									{{
+										i18n.baseText(`agents.channels.teams.setup.install.failed.${credentialProblem}`)
+									}}
+								</N8nText>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									data-testid="teams-credential-recheck"
+									@click="runCredentialCheck('recheck')"
+								>
+									{{ i18n.baseText('agents.channels.teams.setup.install.recheck') }}
+								</N8nButton>
+							</template>
+							<!-- Only when nothing is picked; a verified credential says nothing. -->
+							<N8nText
+								v-else-if="!credentialId"
+								:class="$style.hint"
+								size="small"
+								data-testid="teams-connect-blocked"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.needsCredential') }}
+							</N8nText>
+
+							<N8nButton
+								variant="solid"
+								size="medium"
+								:disabled="!credentialVerified || Boolean(credentialClaimedBy) || loading"
+								:loading="loading"
+								data-testid="teams-connect"
+								@click="emit('connect')"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.connectButton') }}
+							</N8nButton>
+						</template>
+						<N8nText
+							v-if="connected && !isPublished"
+							:class="$style.hint"
+							size="small"
+							data-testid="teams-publish-notice"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.publishNotice') }}
+						</N8nText>
+					</div>
+				</div>
+			</template>
+		</N8nStepper>
+
+		<div v-else :class="$style.formContent">
+			<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
+				{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
+			</N8nText>
+
+			<div :class="$style.field" data-testid="teams-display-name">
+				<label for="teams-display-name">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
+					</N8nText>
+				</label>
+				<N8nInput
+					id="teams-display-name"
+					:model-value="displayName"
+					@update:model-value="editDisplayName"
+					size="large"
+					:maxlength="TEAMS_DISPLAY_NAME_MAX"
+					:placeholder="defaultDisplayName"
+					show-word-limit
+				/>
+			</div>
+
+			<div :class="$style.field" data-testid="teams-description">
+				<label for="teams-description">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.settings.description') }}
+					</N8nText>
+				</label>
+				<N8nInput
+					id="teams-description"
+					:model-value="description"
+					@update:model-value="editDescription"
+					size="large"
+					:maxlength="TEAMS_DESCRIPTION_MAX"
+					:placeholder="defaultDescription"
+					show-word-limit
+				/>
+			</div>
+
+			<AgentChannelTeamsAvailability
+				:model-value="availability"
+				start-collapsed
+				@update:model-value="editAvailability"
+			/>
+
+			<N8nButton
+				v-if="canDownloadPackage"
+				variant="subtle"
+				size="small"
+				icon="download"
+				:loading="downloading"
+				data-testid="teams-download-package"
+				@click="downloadPackage"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+			</N8nButton>
+			<N8nText v-if="downloadError" size="small" :class="$style.error">
+				{{ downloadError }}
+			</N8nText>
+
+			<N8nButton
+				v-if="!showEndpoint"
+				variant="ghost"
+				size="small"
+				data-testid="teams-show-endpoint"
+				@click="showEndpoint = true"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
+			</N8nButton>
+			<div v-else :class="$style.field" data-testid="teams-endpoint-field">
+				<label for="teams-messaging-endpoint-url">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
+					</N8nText>
+				</label>
+				<N8nCopyInput
+					id="teams-messaging-endpoint-url"
+					:value="messagingEndpointUrl"
+					size="large"
+					:class="$style.urlInput"
+					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
+					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style module lang="scss">
+.teamsSetup,
+.formContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.stepContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding-top: var(--spacing--xs);
+}
+
+.stepStack {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	width: 100%;
+}
+
+.hint {
+	color: var(--text-color--subtler);
+}
+
+.error {
+	color: var(--color--danger);
+}
+
+.urlInput {
+	flex: 1;
+	min-width: 0;
+}
+
+.urlInput input {
+	font-family: monospace;
+	font-size: var(--font-size--2xs);
+	text-overflow: ellipsis;
+}
+</style>

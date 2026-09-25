@@ -6,8 +6,9 @@ import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
 } from '../types';
+import { AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 
-const AZURE_OPENAI_SCOPE = 'https://cognitiveservices.azure.com/.default';
+const AZURE_OPENAI_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */
@@ -18,12 +19,17 @@ export async function setupOAuth2Authentication(
 	try {
 		const credential =
 			await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(credentialName);
-		// Create a TokenCredential
-		const entraTokenCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
+		// Mints tokens for the inference audience (the default).
+		const entraTokenCredential = new N8nOAuth2TokenCredential(
+			this.getNode(),
+			credential,
+			undefined,
+			this.helpers.getSecureEgressFilter(),
+		);
 		const deploymentDetails = await entraTokenCredential.getDeploymentDetails();
 
-		// Use getBearerTokenProvider to create the function LangChain expects
-		// Pass the required scope for Azure Cognitive Services
+		// getBearerTokenProvider caches the token across calls. It requires a scope, but the
+		// audience comes from the credential above; the v1.0 endpoint reads `resource`, not `scope`.
 		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
@@ -33,6 +39,9 @@ export async function setupOAuth2Authentication(
 			azureOpenAIApiInstanceName: deploymentDetails.resourceName,
 			azureOpenAIApiVersion: deploymentDetails.apiVersion,
 			azureOpenAIEndpoint: deploymentDetails.endpoint,
+			...(deploymentDetails.endpointType === 'foundry' && deploymentDetails.foundryEndpoint
+				? { azureFoundryBaseURL: deploymentDetails.foundryEndpoint }
+				: {}),
 		};
 	} catch (error) {
 		this.logger.error(`Error setting up Entra ID authentication: ${error.message}`, error);

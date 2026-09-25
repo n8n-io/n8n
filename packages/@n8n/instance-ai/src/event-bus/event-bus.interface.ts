@@ -1,14 +1,23 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-/** Stored event with a per-thread monotonic ID for SSE replay. */
+/**
+ * Stored event with a per-thread monotonic ID for SSE replay.
+ * `id` is absent on ephemeral events (text/reasoning deltas, status): they are
+ * live-delivered but never persisted, and their SSE frames carry no `id:` line
+ * so the browser replay cursor only advances on durable facts.
+ */
 export interface StoredEvent {
-	id: number; // monotonically increasing per thread, 1-based
+	id?: number; // monotonically increasing per thread, 1-based, durable facts only
 	event: InstanceAiEvent;
 }
 
 type Unsubscribe = () => void;
 
-/** Domain-level interface -- no transport details leak through. */
+/**
+ * Domain-level interface -- no transport details leak through. Publish and
+ * subscribe only: events are persisted to `instance_ai_events`, and every read
+ * (replay, run-scoped, cursor seeding) goes through the durable event log.
+ */
 export interface InstanceAiEventBus {
 	/**
 	 * Publish an event to a thread channel.
@@ -21,31 +30,4 @@ export interface InstanceAiEventBus {
 	 * Returns an unsubscribe function.
 	 */
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): Unsubscribe;
-
-	/**
-	 * Retrieve all persisted events for a thread with id > afterId.
-	 * Used for replay on reconnect.
-	 * Returns events in id order (ascending).
-	 */
-	getEventsAfter(threadId: string, afterId: number): StoredEvent[];
-
-	/**
-	 * Retrieve all persisted events for a thread that belong to a specific run.
-	 * More efficient than getEventsAfter(threadId, 0) + filter when only one
-	 * run's events are needed (e.g. building agent tree snapshots).
-	 */
-	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[];
-
-	/**
-	 * Retrieve all persisted events for a thread that belong to any of the
-	 * specified runs. Used for rebuilding merged assistant turns that span
-	 * multiple auto-follow-up runs.
-	 */
-	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[];
-
-	/**
-	 * Get the next event ID that will be assigned for a thread.
-	 * Useful for the SSE endpoint to know whether there are events to replay.
-	 */
-	getNextEventId(threadId: string): number;
 }

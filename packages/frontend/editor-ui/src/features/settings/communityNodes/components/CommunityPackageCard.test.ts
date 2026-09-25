@@ -9,7 +9,11 @@ import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 const communityPackage: PublicInstalledPackage = {
 	packageName: 'n8n-nodes-test',
 	installedVersion: '1.0.0',
-	installedNodes: [{ name: 'TestNode' } as PublicInstalledNode],
+	installedNodes: [
+		{ name: 'OldNode', type: 'n8n-nodes-test.oldNode' } as PublicInstalledNode,
+		{ name: 'TestNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode,
+		{ name: 'OtherNode', type: 'n8n-nodes-test.otherNode' } as PublicInstalledNode,
+	],
 	createdAt: new Date(0),
 	updatedAt: new Date(0),
 };
@@ -43,18 +47,18 @@ describe('CommunityPackageCard', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
-		setupPinia();
+		setupPinia({ communityNodesEnabled: true });
 		nodeTypesStore = useNodeTypesStore();
 	});
 
-	it('should call nodeTypesStore methods and update latestVerifiedVersion when packageName changes', async () => {
-		Object.defineProperty(nodeTypesStore, 'visibleNodeTypes', {
-			get: () => [{ name: 'n8n-nodes-test' }],
-		});
-		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
-		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
+	it('skips stale node types when loading the verified package version', async () => {
+		nodeTypesStore.getCommunityNodeAttributes = vi
+			.fn()
+			.mockImplementation(async (nodeType) =>
+				nodeType === 'n8n-nodes-test.testNode' ? { npmVersion: '2.0.0' } : null,
+			);
 
-		renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				communityPackage,
 			},
@@ -62,8 +66,30 @@ describe('CommunityPackageCard', () => {
 
 		await flushPromises();
 
-		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
-		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-test');
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			1,
+			'n8n-nodes-test.oldNode',
+		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			2,
+			'n8n-nodes-test.testNode',
+		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledTimes(2);
+		expect(getByText('Update')).toBeInTheDocument();
+	});
+
+	it('does not load verified package data without an installed node type', async () => {
+		nodeTypesStore.getCommunityNodeAttributes = vi.fn();
+
+		renderComponent({
+			props: {
+				communityPackage: { ...communityPackage, installedNodes: [] },
+			},
+		});
+
+		await flushPromises();
+
+		expect(nodeTypesStore.getCommunityNodeAttributes).not.toHaveBeenCalled();
 	});
 
 	describe('uninstall action visibility', () => {

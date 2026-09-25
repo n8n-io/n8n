@@ -1,4 +1,4 @@
-import { isEmpty, intersection, isValidDate } from '@/app/utils/typesUtils';
+import { isEmpty, intersection, isValidDate, abbreviateNumber } from '@/app/utils/typesUtils';
 
 describe('Types Utils', () => {
 	describe('isEmpty', () => {
@@ -38,6 +38,23 @@ describe('Types Utils', () => {
 			expect(
 				intersection([1, 2, 2, 3, 4], [2, 3, 3, 4], [2, 1, 5, 4, 4, 1], [2, 4, 5, 5, 6, 7]),
 			).toEqual([2, 4]);
+		});
+	});
+
+	describe('abbreviateNumber', () => {
+		test.each([
+			[0, '0'],
+			[42, '42'],
+			[999, '999'],
+			[1500, '1.5k'],
+			[12345, '12.3k'],
+			[1000000, '1M'],
+			[999999, '1M'],
+			[999999999, '1G'],
+			[-2500, '-2.5k'],
+			[1e21, '1000E'],
+		])('formats %i as %s', (input, expected) => {
+			expect(abbreviateNumber(input)).toBe(expected);
 		});
 	});
 

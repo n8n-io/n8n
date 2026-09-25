@@ -22,8 +22,11 @@ test.describe(
 			const popupPromise = n8n.page.waitForEvent('popup');
 			await n8n.credentials.credentialModal.oauthConnectButton.click();
 
+			// The window opens blank within the click gesture and is navigated to the
+			// authorization URL once the backend returns it — wait for that request.
 			const popup = await popupPromise;
-			const popupUrl = popup.url();
+			const authRequest = await popup.waitForRequest(/accounts\.google\.com/);
+			const popupUrl = authRequest.url();
 			expect(popupUrl).toContain('accounts.google.com');
 			expect(popupUrl).toContain('client_id=test-key');
 

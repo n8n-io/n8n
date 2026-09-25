@@ -1,13 +1,25 @@
+import { SettingsRepository } from '@n8n/db';
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import '../rules';
 import type { IBreakingChangeRule } from '../types';
 
 describe('Breaking change rules auto-discovery', () => {
-	it('should register all 16 v2 rules', () => {
+	beforeAll(() => {
+		// Some rules inject repositories that need a live DataSource. Provide a
+		// mock so the container can resolve every rule without a database.
+		Container.set(SettingsRepository, mock<SettingsRepository>());
+	});
+
+	it('should register all rules grouped by version', () => {
 		const metadata = Container.get(BreakingChangeRuleMetadata);
-		expect(metadata.getEntries()).toHaveLength(16);
+		const entries = metadata.getEntries();
+
+		expect(entries.filter((entry) => entry.version === 'v2')).toHaveLength(16);
+		expect(entries.filter((entry) => entry.version === 'v3').length).toBeGreaterThanOrEqual(35);
+		expect(entries.length).toBeGreaterThanOrEqual(50);
 	});
 
 	it('should resolve all registered rules with valid metadata from the DI container', () => {

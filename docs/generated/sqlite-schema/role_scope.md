@@ -28,10 +28,10 @@ CREATE TABLE role_scope (
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| roleSlug | PRIMARY KEY | PRIMARY KEY (roleSlug) |
-| scopeSlug | PRIMARY KEY | PRIMARY KEY (scopeSlug) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE |
+| roleSlug | PRIMARY KEY | PRIMARY KEY (roleSlug) |
+| scopeSlug | PRIMARY KEY | PRIMARY KEY (scopeSlug) |
 | sqlite_autoindex_role_scope_1 | PRIMARY KEY | PRIMARY KEY (roleSlug, scopeSlug) |
 
 ## Indexes
@@ -54,18 +54,18 @@ erDiagram
   VARCHAR_128_ scopeSlug PK
 }
 "role" {
-  varchar_128_ slug PK
-  TEXT displayName
-  TEXT description
-  TEXT roleType
-  boolean systemRole
   datetime_3_ createdAt
+  TEXT description
+  TEXT displayName
+  TEXT roleType
+  varchar_128_ slug PK
+  boolean systemRole
   datetime_3_ updatedAt
 }
 "scope" {
-  varchar_128_ slug PK
-  TEXT displayName
   TEXT description
+  TEXT displayName
+  varchar_128_ slug PK
 }
 ```
 

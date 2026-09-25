@@ -10,18 +10,23 @@ import type { ToolConnectionItem } from './types';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	hideBackButton?: boolean;
 }>();
 
 const emit = defineEmits<{
 	back: [];
 	close: [];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
 
 const placeholderIcon = computed(() => {
 	switch (props.item.kind) {
+		case 'service':
 		case 'mcp-server':
 			return 'plug';
 		case 'workflow':
@@ -44,9 +49,10 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 		<header :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
+					v-if="!hideBackButton"
 					icon="arrow-left"
 					variant="ghost"
-					size="small"
+					size="medium"
 					:aria-label="i18n.baseText('tools.connection.detail.back')"
 					data-test-id="tools-connection-detail-back"
 					@click="emit('back')"
@@ -73,11 +79,14 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 						(toolItem, authType, credentialId) =>
 							emit('select-credential', toolItem, authType, credentialId)
 					"
+					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+					@first-credential-connect="emit('first-credential-connect', $event)"
+					@new-credential-connect="emit('new-credential-connect', $event)"
 				/>
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="small"
+					size="medium"
 					:aria-label="i18n.baseText('tools.connection.action.close')"
 					data-test-id="tools-connection-detail-close"
 					@click="emit('close')"
@@ -96,7 +105,7 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--lg);
 }
 
 .header {

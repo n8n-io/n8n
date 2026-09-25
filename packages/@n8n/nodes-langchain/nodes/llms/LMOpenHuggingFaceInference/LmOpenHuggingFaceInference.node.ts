@@ -1,5 +1,6 @@
 import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -138,7 +139,15 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		const credentials = await this.getCredentials('huggingFaceApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as { endpointUrl?: string };
+
+		if (options.endpointUrl) {
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.endpointUrl,
+			});
+		}
 
 		// LangChain does not yet support specifying Provider
 		// That's why mistral's model is the default value

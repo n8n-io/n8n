@@ -33,12 +33,10 @@ function createConfig(supportCloud = true): ConfigArray {
 			},
 		},
 		{
-			files: ['package.json'],
+			files: ['package.json', '**/*.node.json'],
 			// Apply the community-nodes recommended config here as well so that
-			// rules gating on `package.json` (e.g. no-overrides-field,
-			// valid-peer-dependencies, no-forbidden-lifecycle-scripts) actually
-			// fire. The `**/*.ts` block above scopes its `extends:` to TypeScript
-			// only, which means ESLint never lints package.json under that block —
+			// rules for JSON files fire. The `**/*.ts` block above scopes its
+			// `extends:` to TypeScript only, so ESLint does not lint JSON there —
 			// see CE-1023 for the analogous issue in @n8n/scan-community-package.
 			extends: [communityNodesRecommended],
 			rules: {
@@ -74,7 +72,7 @@ function createConfig(supportCloud = true): ConfigArray {
 		},
 	);
 }
-export const config = createConfig();
-export const configWithoutCloudSupport = createConfig(false);
+export const config: ConfigArray = createConfig();
+export const configWithoutCloudSupport: ConfigArray = createConfig(false);
 
 export default config;

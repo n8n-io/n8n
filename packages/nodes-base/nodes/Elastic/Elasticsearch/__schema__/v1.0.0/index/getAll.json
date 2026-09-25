@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "indexId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

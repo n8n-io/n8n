@@ -3,20 +3,21 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { execute } from '../../../v2/actions/sheet/remove.operation';
 import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import { apiRequest } from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({
-	apiRequest: jest.fn(),
+vi.mock('../../../v2/transport', () => ({
+	apiRequest: vi.fn(),
 }));
 
 describe('Google Sheet - Remove', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	const mockExecuteFunctions = {
-		getInputData: jest.fn(),
-		getNodeParameter: jest.fn(),
+		getInputData: vi.fn(),
+		getNodeParameter: vi.fn(),
 		helpers: {
-			constructExecutionMetaData: jest.fn(),
+			constructExecutionMetaData: vi.fn(),
 		},
 	} as unknown as Partial<IExecuteFunctions>;
 
@@ -25,14 +26,14 @@ describe('Google Sheet - Remove', () => {
 
 	test('should process a single item', async () => {
 		const items = [{ json: {} }];
-		((mockExecuteFunctions as IExecuteFunctions).getInputData as jest.Mock).mockReturnValue(items);
+		((mockExecuteFunctions as IExecuteFunctions).getInputData as Mock).mockReturnValue(items);
 
 		const apiResponse = { replies: [{ some: 'data' }], foo: 'bar' };
-		(apiRequest as jest.Mock).mockResolvedValue(apiResponse);
+		(apiRequest as Mock).mockResolvedValue(apiResponse);
 
 		const constructedData = [{ json: { foo: 'bar', index: 0 } }];
 		(
-			(mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData as jest.Mock
+			(mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData as Mock
 		).mockReturnValue(constructedData);
 
 		const result = await execute.call(
@@ -57,19 +58,19 @@ describe('Google Sheet - Remove', () => {
 
 	test('should process multiple items', async () => {
 		const items = [{ json: {} }, { json: {} }];
-		((mockExecuteFunctions as IExecuteFunctions).getInputData as jest.Mock).mockReturnValue(items);
+		((mockExecuteFunctions as IExecuteFunctions).getInputData as Mock).mockReturnValue(items);
 
 		const apiResponses = [
 			{ replies: [{ some: 'data1' }], foo: 'bar1' },
 			{ replies: [{ some: 'data2' }], foo: 'bar2' },
 		];
-		(apiRequest as jest.Mock)
+		(apiRequest as Mock)
 			.mockResolvedValueOnce(apiResponses[0])
 			.mockResolvedValueOnce(apiResponses[1]);
 
 		const constructedDataItem0 = [{ json: { foo: 'bar1', index: 0 } }];
 		const constructedDataItem1 = [{ json: { foo: 'bar2', index: 1 } }];
-		((mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData as jest.Mock)
+		((mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData as Mock)
 			.mockReturnValueOnce(constructedDataItem0)
 			.mockReturnValueOnce(constructedDataItem1);
 

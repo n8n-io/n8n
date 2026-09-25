@@ -1,15 +1,18 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
+import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -17,8 +20,9 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
+	const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 	const { balance } = useAiGateway();
-	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
+	const { openTopUp } = useAiGatewayTopUp();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -58,11 +62,17 @@ export function useSettingsItems() {
 			{
 				id: 'settings-n8n-connect',
 				icon: 'plug-zap',
-				label: i18n.baseText('settings.n8nConnect'),
+				label: i18n.baseText(
+					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
+				),
 				position: 'top',
 				available:
-					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
-				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+					settingsStore.isAiGatewayEnabled &&
+					(settingsStore.isAiGatewayCloudUbbEnabled ||
+						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
+				route: settingsStore.isAiGatewayCloudUbbEnabled
+					? undefined
+					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
 						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
@@ -71,12 +81,12 @@ export function useSettingsItems() {
 						: undefined,
 			},
 			{
-				id: 'settings-project-roles',
+				id: 'settings-roles',
 				icon: 'user-round',
-				label: i18n.baseText('settings.projectRoles'),
+				label: i18n.baseText('settings.roles'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
 				new: true,
 			},
 			{
@@ -112,6 +122,15 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-promotions',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.promotions.title'),
+				position: 'top',
+				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
+				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+				preview: true,
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
@@ -125,7 +144,7 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
 				available:
-					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
@@ -167,17 +186,6 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
-			id: 'settings-opentelemetry',
-			icon: 'telescope',
-			label: i18n.baseText('settings.opentelemetry'),
-			position: 'top',
-			available:
-				settingsStore.isModuleActive('otel') &&
-				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
-			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
-		});
-
-		menuItems.push({
 			id: 'settings-community-nodes',
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),
@@ -199,11 +207,33 @@ export function useSettingsItems() {
 
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;
+		const items = menuItems.concat(
+			moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)),
+		);
 
-		return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
+		// After Instance-level MCP, which the MCP module appends late. The flag is read here
+		// because the middleware check does not run route guards.
+		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
+		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
+			id: 'settings-context',
+			icon: 'brain',
+			label: i18n.baseText('settings.context.title'),
+			position: 'top',
+			available: isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+			preview: true,
+		});
+
+		return items;
 	});
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
 
-	return { settingsItems: visibleSettingsItems };
+	const handleSettingsItemSelect = async (itemId: string) => {
+		if (itemId === 'settings-n8n-connect' && settingsStore.isAiGatewayCloudUbbEnabled) {
+			await openTopUp({ source: 'settings_page' });
+		}
+	};
+
+	return { settingsItems: visibleSettingsItems, handleSettingsItemSelect };
 }

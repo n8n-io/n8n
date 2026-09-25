@@ -6,7 +6,14 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "installed_nodes" ("name"	char(200) NOT NULL,"type"	char(200) NOT NULL,"latestVersion"	INTEGER DEFAULT 1,"package"	char(214) NOT NULL,PRIMARY KEY("name"),FOREIGN KEY("package") REFERENCES "installed_packages"("packageName") ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE "installed_nodes" (
+				"name" char(200) NOT NULL,
+				"type" char(200) NOT NULL,
+				"latestVersion" REAL DEFAULT 1,
+				"package" char(214) NOT NULL,
+				PRIMARY KEY ("name"),
+				FOREIGN KEY ("package") REFERENCES "installed_packages" ("packageName") ON DELETE CASCADE ON UPDATE CASCADE
+			)
 ```
 
 </details>
@@ -15,17 +22,17 @@ CREATE TABLE "installed_nodes" ("name"	char(200) NOT NULL,"type"	char(200) NOT N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| latestVersion | REAL | 1 | true |  |  |  |
 | name | char(200) |  | false |  |  |  |
-| type | char(200) |  | false |  |  |  |
-| latestVersion | INTEGER | 1 | true |  |  |  |
 | package | char(214) |  | false |  | [installed_packages](installed_packages.md) |  |
+| type | char(200) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| name | PRIMARY KEY | PRIMARY KEY (name) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE |
+| name | PRIMARY KEY | PRIMARY KEY (name) |
 | sqlite_autoindex_installed_nodes_1 | PRIMARY KEY | PRIMARY KEY (name) |
 
 ## Indexes
@@ -42,17 +49,17 @@ erDiagram
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "installed_nodes" {
+  REAL latestVersion
   char_200_ name PK
-  char_200_ type
-  INTEGER latestVersion
   char_214_ package FK
+  char_200_ type
 }
 "installed_packages" {
-  char_214_ packageName PK
-  char_50_ installedVersion
-  char_70_ authorName
   char_70_ authorEmail
+  char_70_ authorName
   datetime_3_ createdAt
+  char_50_ installedVersion
+  char_214_ packageName PK
   datetime_3_ updatedAt
 }
 ```

@@ -30,7 +30,13 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - Duplicate notifications, duplicate API calls, or repeated shared-context fetches usually mean a downstream node is missing \`executeOnce: true\` or should be on a parallel branch
    - Example: \`config: { ..., executeOnce: true }\`
 
-4. **Pick the right control-flow primitive**
+4. **Use raw HTTP bodies for XML, SOAP, and plain-text payloads**
+   - For HTTP Request nodes that send XML, SOAP, CSV, or plain text, set \`sendBody: true\`, \`contentType: 'raw'\`, put the payload in \`body\`, and set \`rawContentType\` to the matching media type such as \`'text/xml'\` or \`'application/xml'\`.
+   - Do NOT set \`specifyBody\`, \`jsonBody\`, or \`bodyParameters\` for raw payloads.
+   - Use \`contentType: 'json'\` and \`specifyBody: 'json'\` only when the request body is valid JSON. Never put XML or SOAP strings in \`jsonBody\`.
+   - This still applies when a previous Code or Set node builds the XML string: do NOT set \`jsonBody: expr('{{ $json.soapBody }}')\` or similar. Reference that value from the HTTP Request \`body\` field with \`contentType: 'raw'\`.
+
+5. **Pick the right control-flow primitive**
    - **Per-item loop with side effects (fetch, embed, write)** → \`splitInBatches\` with \`batchSize: 1\` feeding the per-item work, loop back via \`nextBatch\`. No \`IF\` gate before it.
    - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
    - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
@@ -38,10 +44,29 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - A Filter or IF only selects items; it does not perform a requested side effect. If the user asks to archive, update, delete, send, or create only matching items, wire the corresponding action node on the matching path.
    - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.
 
-5. **Input and output indices are 0-based — \`.input(0)\` is the FIRST input**
+6. **Input and output indices are 0-based — \`.input(0)\` is the FIRST input**
    - \`.input(0)\` and \`.output(0)\` refer to the **first** input/output. \`.input(1)\` and \`.output(1)\` refer to the **second**. \`.input(1)\` is NOT the first input — it is the second one.
    - This applies everywhere indices are passed: \`.input(n)\`, \`.output(n)\`, \`.onCase(n, ...)\` for switch outputs, and any \`outputIndex\` argument.
    - When wiring N branches to a Merge node, the indices are \`0, 1, ..., N-1\` — never \`1, 2, ..., N\`.
    - Counter-examples to AVOID:
      - WRONG: \`sourceA.to(merge.input(1))\` followed by \`sourceB.to(merge.input(2))\` — this skips input 0 entirely; the first branch is silently dropped.
-     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.`;
+     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.
+
+7. **Inserting a node into an existing connection changes what downstream receives**
+   - A node receives ONLY its immediate predecessor's output. Inserting C between A→B means B now reads C's output — \`$json\` references and auto-mapped ("map automatically") fields in B silently switch from A's data to C's.
+   - Write/create/send nodes (rows appended, sheets/pages created, messages sent) output their **API response** — ids, metadata, \`ok\` flags — NOT the data that flowed into them. Inserting one in-line before another write (e.g. a create-if-missing step before an append) replaces the payload with metadata.
+   - Keep the data path intact instead:
+     - **Branch in parallel**: wire the inserted node as a sibling branch off the data producer, so the original data still flows into the downstream node.
+     - **Reorder upstream**: place the inserted step before the data-producing node (trigger → ensure-target → produce data → write).
+     - **Reference explicitly**: have the downstream node read \`$('Data Node').item.json.field\` instead of \`$json\`.
+   - Counter-example to AVOID:
+     - WRONG: \`code.to(ensureSheet).to(appendRows)\` — appendRows maps the create-sheet response, not the rows from \`code\`.
+     - CORRECT: \`trigger.to(ensureSheet).to(code).to(appendRows)\` — the ensure step runs before the data is produced, and the write still receives the data.
+
+8. **Polling triggers that feed create/write actions need a mark-as-handled step**
+   - When a polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeds an action that creates or writes records — tasks, rows, tickets, messages — the workflow must ensure each polled item is processed once. Poll cursors are best-effort bookkeeping: they reset when the trigger node is recreated or renamed, and every still-matching item is then re-delivered and re-creates its record as a duplicate.
+   - Use one of these mechanisms:
+     - Restrict the trigger to unread/unprocessed items AND mark each item handled once its record exists — in a way the trigger's own filter excludes: mark as read when filtering unread, move out of the watched folder, or apply a label ONLY if the trigger's query also excludes that label (adding a label does not mark a message read, so a label alone changes nothing under an unread filter).
+     - Record handled item ids in a Data Table and skip ids already seen: look the id up BEFORE creating the record, and insert it only AFTER the create succeeds.
+   - An unread filter alone is NOT enough. If no step ever marks the item read, the filter never excludes anything — the workflow looks correct on the canvas while still reprocessing every item.
+   - The mark-as-handled step must run AFTER the record is created — wire it downstream of the create node (a terminal write is fine under rule 7) — so a mid-run failure cannot consume an item without producing its output. This ordering deliberately trades a rare duplicate (create succeeded, marking failed) for never losing an item; do not invert it.`;

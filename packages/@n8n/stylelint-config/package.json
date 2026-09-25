@@ -27,23 +27,18 @@
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "stylelint": "^16.23.0",
-    "stylelint-config-standard-scss": "^15.0.1",
+    "stylelint": "catalog:",
     "stylelint-scss": "^6.12.1",
     "postcss-html": "^1.8.0",
     "postcss-scss": "^4.0.9"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "rimraf": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
-    "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
-  },
-  "peerDependencies": {
-    "stylelint": ">= 16"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

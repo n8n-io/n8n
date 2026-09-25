@@ -5,6 +5,7 @@ import type { MockedFunction } from 'vitest';
 import {
 	createWorkflow,
 	createNode,
+	createNodeType,
 	nodeTypes,
 	parseToolResult,
 	createToolConfig,
@@ -220,6 +221,65 @@ describe('getResourceLocatorOptions tool', () => {
 				{},
 				{ googleCalendarOAuth2Api: { id: 'cred1', name: 'Google Calendar' } },
 				'work',
+			);
+		});
+
+		it('should fetch options for parameters using loadOptionsMethod', async () => {
+			const mockResults = createResourceLocatorResults([
+				{ name: 'Engineering', value: 'team-eng' },
+				{ name: 'Support', value: 'team-support' },
+			]);
+			const mockCallback = mockResourceLocatorCallback(mockResults);
+			const tool = createGetResourceLocatorOptionsTool(
+				[
+					...parsedNodeTypes,
+					createNodeType({
+						name: 'n8n-nodes-base.linear',
+						displayName: 'Linear',
+						credentials: [{ name: 'linearOAuth2Api', required: true }],
+						properties: [
+							{
+								displayName: 'Team Name or ID',
+								name: 'teamId',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getTeams',
+								},
+							},
+						],
+					}),
+				],
+				mockCallback,
+			).tool;
+			const credentials = { linearOAuth2Api: { id: 'cred1', name: 'Linear' } };
+			const workflow = createWorkflow([
+				createNode({
+					id: 'linear1',
+					name: 'Linear',
+					type: 'n8n-nodes-base.linear',
+					credentials,
+					parameters: { resource: 'issue' },
+				}),
+			]);
+
+			setupWorkflowState(mockGetCurrentTaskInput, workflow);
+			const config = createToolConfig('get_resource_locator_options', 'call-load-options');
+
+			const result = await tool.invoke({ nodeId: 'linear1', parameterPath: 'teamId' }, config);
+			const content = parseToolResult<ParsedToolContent>(result);
+			const message = content.update.messages[0]?.kwargs.content;
+
+			expect(message).toContain('<display_name>Engineering</display_name>');
+			expect(message).toContain('<id>team-eng</id>');
+			expect(message).toContain('<display_name>Support</display_name>');
+			expect(mockCallback).toHaveBeenCalledWith(
+				'getTeams',
+				'parameters.teamId',
+				{ name: 'n8n-nodes-base.linear', version: 1 },
+				{ resource: 'issue' },
+				credentials,
+				undefined,
 			);
 		});
 

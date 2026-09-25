@@ -78,18 +78,14 @@ describe('common helper', () => {
 			const input = '/test/gi';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('test');
-			expect(result.flags).toBe('gi');
+			expect(result).toEqual({ source: 'test', flags: 'gi' });
 		});
 
 		it('should parse regex with forward slashes but no flags', () => {
 			const input = '/test/';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('test');
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: 'test', flags: '' });
 		});
 
 		it('should parse regex with different flags', () => {
@@ -138,9 +134,7 @@ describe('common helper', () => {
 			const input = 'test';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('test');
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: 'test', flags: '' });
 		});
 
 		it('should handle string with special characters without forward slashes', () => {
@@ -155,63 +149,49 @@ describe('common helper', () => {
 			const input = '';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('(?:)'); // Empty string becomes non-capturing group
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: '', flags: '' });
 		});
 
 		it('should handle null input', () => {
 			const input = null as unknown as string;
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('(?:)'); // null becomes empty string, then non-capturing group
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: '', flags: '' });
 		});
 
 		it('should handle undefined input', () => {
 			const input = undefined as unknown as string;
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('(?:)'); // undefined becomes empty string, then non-capturing group
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: '', flags: '' });
 		});
 
 		it('should handle malformed regex with only opening slash', () => {
 			const input = '/test';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('\\/test'); // Forward slash gets escaped
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: '/test', flags: '' });
 		});
 
 		it('should handle malformed regex with only closing slash', () => {
 			const input = 'test/';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('test\\/'); // Forward slash gets escaped
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: 'test/', flags: '' });
 		});
 
 		it('should handle regex with empty pattern', () => {
 			const input = '//g';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('(?:)'); // Empty pattern becomes non-capturing group
-			expect(result.flags).toBe('g');
+			expect(result).toEqual({ source: '', flags: 'g' });
 		});
 
 		it('should handle regex with only slashes', () => {
 			const input = '//';
 			const result = parseRegex(input);
 
-			expect(result).toBeInstanceOf(RegExp);
-			expect(result.source).toBe('(?:)'); // Empty pattern becomes non-capturing group
-			expect(result.flags).toBe('');
+			expect(result).toEqual({ source: '', flags: '' });
 		});
 
 		it('should handle complex regex patterns', () => {

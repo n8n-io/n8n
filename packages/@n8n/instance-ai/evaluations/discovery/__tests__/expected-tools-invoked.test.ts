@@ -1,27 +1,36 @@
 import type { AgentActivity, CapturedToolCall, EventOutcome } from '../../types';
-import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
-import type { DiscoveryTestCase } from '../types';
+import { evaluateDiscoveryTrial, runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
+import type { DiscoveryTestCase, DiscoveryTrialFacts } from '../types';
+
+type ToolCallInput = Pick<CapturedToolCall, 'toolName'> &
+	Partial<Pick<CapturedToolCall, 'args' | 'result'>>;
+
+function makeToolCall(tc: ToolCallInput, i: number): CapturedToolCall {
+	return {
+		toolCallId: `call-${i}`,
+		toolName: tc.toolName,
+		args: tc.args ?? {},
+		...(tc.result === undefined ? {} : { result: tc.result }),
+		durationMs: 0,
+	};
+}
 
 function makeOutcome(opts: {
-	toolCalls?: Array<Pick<CapturedToolCall, 'toolName'> & Partial<Pick<CapturedToolCall, 'args'>>>;
-	agents?: Array<Pick<AgentActivity, 'role' | 'tools'>>;
+	toolCalls?: ToolCallInput[];
+	agents?: Array<Pick<AgentActivity, 'role' | 'tools'> & { toolCalls?: ToolCallInput[] }>;
 }): EventOutcome {
 	return {
 		workflowIds: [],
 		executionIds: [],
 		dataTableIds: [],
+		artifactRefs: [],
 		finalText: '',
-		toolCalls: (opts.toolCalls ?? []).map((tc, i) => ({
-			toolCallId: `call-${i}`,
-			toolName: tc.toolName,
-			args: tc.args ?? {},
-			durationMs: 0,
-		})),
+		toolCalls: (opts.toolCalls ?? []).map(makeToolCall),
 		agentActivities: (opts.agents ?? []).map((a, i) => ({
 			agentId: `agent-${i}`,
 			role: a.role,
 			tools: a.tools,
-			toolCalls: [],
+			toolCalls: (a.toolCalls ?? []).map(makeToolCall),
 			textContent: '',
 			reasoning: '',
 			status: 'completed',
@@ -342,6 +351,236 @@ describe('runExpectedToolsInvokedCheck', () => {
 		});
 	});
 
+	describe('args — structured argument matching', () => {
+		const connectNotion: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'Search my Notion.',
+			expectedToolInvocations: {
+				anyOfToolCalls: [
+					{ toolName: 'mcp-servers', args: { action: 'connect', serverSlugs: ['notion'] } },
+				],
+			},
+		};
+
+		it('passes on a deep-partial match, ignoring unlisted keys', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: { action: 'connect', serverSlugs: ['notion'], reason: 'unlocks search' },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('matches an array as a subset, not by length or order', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: { action: 'connect', serverSlugs: ['linear', 'notion'] },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails when a listed key differs, even though a substring match would pass', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: {
+								action: 'connect',
+								serverSlugs: ['linear'],
+								reason: 'Linear covers this instead of Notion',
+							},
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+		});
+
+		it('fails when the action differs', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp-servers', args: { action: 'search', queries: ['notion'] } }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+		});
+	});
+
+	describe('declined tool calls', () => {
+		const declined = {
+			declined: true,
+			message: 'Tool "mcp_notion_notion-search" was not approved',
+		};
+
+		it('does not count a declined call as a violation', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						noneOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('does not count a declined call as satisfying a positive expectation', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						anyOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('declined');
+		});
+
+		it('still counts a call that was approved and ran', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						anyOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('matches a refusal when the expectation asks for one', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						allOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('does not match a call that ran when the expectation asks for a refusal', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						allOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('a declined result');
+		});
+
+		it('does not count a sub-agent call the user refused as invoked', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: { noneOf: ['mcp_notion_notion-search'] },
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+					agents: [
+						{
+							role: 'researcher',
+							tools: [],
+							toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+			expect(result.invokedTools).not.toContain('mcp_notion_notion-search');
+		});
+
+		it('counts a sub-agent call that ran as invoked', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: { anyOf: ['mcp_notion_notion-search'] },
+				},
+				makeOutcome({
+					agents: [
+						{
+							role: 'researcher',
+							tools: [],
+							toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('forbids a refusal when noneOfToolCalls asks for one', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						noneOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+		});
+	});
+
 	describe('rule validation', () => {
 		it('throws when neither anyOf nor noneOf is provided', () => {
 			expect(() =>
@@ -360,5 +599,98 @@ describe('runExpectedToolsInvokedCheck', () => {
 				),
 			).toThrow();
 		});
+	});
+});
+
+describe('evaluateDiscoveryTrial', () => {
+	const trial = (overrides: Partial<DiscoveryTrialFacts> = {}): DiscoveryTrialFacts => ({
+		streamStatus: 'completed',
+		timeoutMs: 60_000,
+		unmatchedConfirmations: [],
+		...overrides,
+	});
+
+	const negativeOnly: DiscoveryTestCase = {
+		id: 'test',
+		userMessage: 'Set up a Slack credential.',
+		expectedToolInvocations: { noneOf: ['browser_navigate'] },
+	};
+
+	const positiveOnly: DiscoveryTestCase = {
+		id: 'test',
+		userMessage: 'Screenshot my dashboard.',
+		expectedToolInvocations: { anyOf: ['browser_navigate'] },
+	};
+
+	const satisfied = makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] });
+
+	it('passes a satisfied expectation on a completed run', () => {
+		expect(evaluateDiscoveryTrial(negativeOnly, makeOutcome({}), trial()).pass).toBe(true);
+		expect(evaluateDiscoveryTrial(positiveOnly, satisfied, trial()).pass).toBe(true);
+	});
+
+	it.each([
+		['negative-only', negativeOnly, makeOutcome({})],
+		['positive-only', positiveOnly, satisfied],
+	])('fails a satisfied %s expectation when the run stopped at its step cap', (_l, s, outcome) => {
+		const result = evaluateDiscoveryTrial(s, outcome, trial({ streamStatus: 'step-exhausted' }));
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('step cap');
+	});
+
+	it.each(['errored', 'suspended'] as const)(
+		'fails a satisfied expectation when the run %s',
+		(streamStatus) => {
+			const result = evaluateDiscoveryTrial(positiveOnly, satisfied, trial({ streamStatus }));
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('Run did not complete');
+		},
+	);
+
+	it('fails a satisfied expectation when the run exceeded its budget', () => {
+		const result = evaluateDiscoveryTrial(
+			positiveOnly,
+			satisfied,
+			trial({ streamStatus: 'timed-out', timeoutMs: 150_000 }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('exceeded its 150000ms budget');
+	});
+
+	it('reports the run error alongside the invalid trial', () => {
+		const result = evaluateDiscoveryTrial(
+			negativeOnly,
+			makeOutcome({}),
+			trial({ streamStatus: 'errored', runError: 'overloaded_error' }),
+		);
+
+		expect(result.comment).toContain('errored: overloaded_error');
+	});
+
+	it('keeps the expectation diagnostic when an invalid trial also failed its expectation', () => {
+		const result = evaluateDiscoveryTrial(
+			positiveOnly,
+			makeOutcome({ toolCalls: [{ toolName: 'nodes' }] }),
+			trial({ streamStatus: 'timed-out' }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('budget and was abandoned');
+		expect(result.comment).toContain('Expected at least one of');
+	});
+
+	it('fails when a declared confirmation answer was never asked for', () => {
+		const result = evaluateDiscoveryTrial(
+			negativeOnly,
+			makeOutcome({}),
+			trial({ unmatchedConfirmations: ['mcp_notion_notion-search'] }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('mcp_notion_notion-search');
+		expect(result.comment).toContain('never ran');
 	});
 });

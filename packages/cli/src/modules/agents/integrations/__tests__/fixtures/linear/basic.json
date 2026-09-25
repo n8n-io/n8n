@@ -1,0 +1,102 @@
+{
+	"botUser": {
+		"id": "USER_BOT",
+		"name": "agentname",
+		"displayName": "AgentName",
+		"app": true
+	},
+	"user": {
+		"id": "USER_ALICE",
+		"name": "alice",
+		"displayName": "Alice Developer",
+		"email": "alice@example.com"
+	},
+	"issue": {
+		"id": "ISSUE_123",
+		"identifier": "ENG-123",
+		"title": "Investigate customer workflow",
+		"description": "Customer reported unexpected workflow behavior.",
+		"url": "https://linear.app/n8n/issue/ENG-123/investigate-customer-workflow"
+	},
+	"mention": {
+		"type": "Comment",
+		"action": "create",
+		"organizationId": "ORG_1",
+		"webhookId": "WEBHOOK_1",
+		"webhookTimestamp": 1719000000000,
+		"data": {
+			"id": "COMMENT_1",
+			"issueId": "ISSUE_123",
+			"body": "@AgentName hello agent",
+			"user": {
+				"id": "USER_ALICE",
+				"name": "alice",
+				"displayName": "Alice Developer",
+				"email": "alice@example.com"
+			},
+			"issue": {
+				"id": "ISSUE_123",
+				"identifier": "ENG-123",
+				"title": "Investigate customer workflow",
+				"description": "Customer reported unexpected workflow behavior.",
+				"url": "https://linear.app/n8n/issue/ENG-123/investigate-customer-workflow"
+			},
+			"createdAt": "2024-06-21T12:00:00.000Z",
+			"url": "https://linear.app/n8n/issue/ENG-123#comment-COMMENT_1"
+		}
+	},
+	"followUp": {
+		"type": "Comment",
+		"action": "create",
+		"organizationId": "ORG_1",
+		"webhookId": "WEBHOOK_1",
+		"webhookTimestamp": 1719000001000,
+		"data": {
+			"id": "COMMENT_2",
+			"issueId": "ISSUE_123",
+			"body": "follow up",
+			"user": {
+				"id": "USER_ALICE",
+				"name": "alice",
+				"displayName": "Alice Developer",
+				"email": "alice@example.com"
+			},
+			"issue": {
+				"id": "ISSUE_123",
+				"identifier": "ENG-123",
+				"title": "Investigate customer workflow",
+				"description": "Customer reported unexpected workflow behavior.",
+				"url": "https://linear.app/n8n/issue/ENG-123/investigate-customer-workflow"
+			},
+			"createdAt": "2024-06-21T12:00:01.000Z",
+			"url": "https://linear.app/n8n/issue/ENG-123#comment-COMMENT_2"
+		}
+	},
+	"selfMessage": {
+		"type": "Comment",
+		"action": "create",
+		"organizationId": "ORG_1",
+		"webhookId": "WEBHOOK_1",
+		"webhookTimestamp": 1719000002000,
+		"data": {
+			"id": "COMMENT_3",
+			"issueId": "ISSUE_123",
+			"body": "bot echo",
+			"user": {
+				"id": "USER_BOT",
+				"name": "agentname",
+				"displayName": "AgentName",
+				"app": true
+			},
+			"issue": {
+				"id": "ISSUE_123",
+				"identifier": "ENG-123",
+				"title": "Investigate customer workflow",
+				"description": "Customer reported unexpected workflow behavior.",
+				"url": "https://linear.app/n8n/issue/ENG-123/investigate-customer-workflow"
+			},
+			"createdAt": "2024-06-21T12:00:02.000Z",
+			"url": "https://linear.app/n8n/issue/ENG-123#comment-COMMENT_3"
+		}
+	}
+}

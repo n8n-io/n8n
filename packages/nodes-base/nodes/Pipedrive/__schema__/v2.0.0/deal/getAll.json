@@ -1,0 +1,82 @@
+{
+	"properties": {
+		"acv": {},
+		"add_time": {
+			"type": "string"
+		},
+		"archive_time": {},
+		"arr": {},
+		"channel": {},
+		"channel_id": {},
+		"close_time": {},
+		"creator_user_id": {
+			"type": "number"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object"
+		},
+		"expected_close_date": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"local_close_date": {},
+		"local_lost_date": {},
+		"local_won_date": {},
+		"lost_reason": {},
+		"lost_time": {},
+		"mrr": {},
+		"org_id": {
+			"type": "number"
+		},
+		"origin": {
+			"type": "string"
+		},
+		"origin_id": {},
+		"owner_id": {
+			"type": "number"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"pipeline_id": {
+			"type": "number"
+		},
+		"probability": {},
+		"stage_change_time": {},
+		"stage_id": {
+			"type": "number"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"value": {
+			"type": "number"
+		},
+		"visible_to": {
+			"type": "number"
+		},
+		"won_time": {}
+	},
+	"type": "object"
+}

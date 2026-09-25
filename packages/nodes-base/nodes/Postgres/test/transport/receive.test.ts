@@ -1,4 +1,4 @@
-import { applyLargeNumbersReceive } from '../../transport';
+import { applyLargeNumbersReceive, createReceiveHandler } from '../../transport';
 
 const BIGINT_TYPE_ID = 20;
 const NUMERIC_TYPE_ID = 1700;
@@ -74,5 +74,30 @@ describe('applyLargeNumbersReceive', () => {
 				result: { fields: [{ name: 'id', dataTypeID: BIGINT_TYPE_ID }] },
 			}),
 		).not.toThrow();
+	});
+});
+
+describe('createReceiveHandler', () => {
+	const bigintResult = { fields: [{ name: 'id', dataTypeID: BIGINT_TYPE_ID }] };
+
+	it('should convert large numbers when largeNumbersOutput is "numbers"', () => {
+		const handler = createReceiveHandler('numbers');
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe(9007199254740992);
+	});
+
+	it('should leave values untouched when largeNumbersOutput is not "numbers"', () => {
+		const handler = createReceiveHandler('text');
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe('9007199254740993');
+	});
+
+	it('should leave values untouched when largeNumbersOutput is undefined', () => {
+		const handler = createReceiveHandler(undefined);
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe('9007199254740993');
 	});
 });

@@ -1,0 +1,105 @@
+
+> @n8n/instance-ai@1.15.0 eval:instance-ai /Users/robin/Documents/n8n/packages/@n8n/instance-ai
+> tsx evaluations/cli/index.ts
+
+2026-07-07T12:05:13.323Z [INFO] Authenticating with http://localhost:5678...
+2026-07-07T12:05:13.634Z [OK] Authenticated
+2026-07-07T12:05:13.634Z [INFO] Seeding MCP registry...
+2026-07-07T12:05:13.639Z [INFO] Skipped MCP registry seed (test endpoint unavailable)
+2026-07-07T12:05:13.692Z [INFO] No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)
+2026-07-07T12:05:13.692Z [INFO] Running 93 test case(s) with 111 scenario(s) × 1 iteration(s) across 1 lane(s)
+2026-07-07T12:05:13.693Z [INFO]   Running case: "Build a workflow with a chat-triggered AI agent that can sea..."
+2026-07-07T12:05:13.694Z [INFO]   Running case [multi-turn]: "Every hour, get our tasks from Airtable and ping each one to..."
+2026-07-07T12:05:13.694Z [INFO]   Running case [multi-turn]: "Every weekday at 9am, post a 'Daily standup starting soon' r..."
+2026-07-07T12:05:13.695Z [INFO]   Running case [multi-turn]: "Every morning, send my team a summary of yesterday's signups..."
+2026-07-07T12:06:48.481Z [INFO]   Workflow built: Notion Project Assistant (5 nodes) [95s] [thread d9c5cbe6-853b-484d-836c-ee3a691517e9]
+2026-07-07T12:07:18.487Z [WARN]   Workflow checks: 3 errored, excluded from scoring (correct_node_operations, valid_data_flow, fulfills_user_request)
+2026-07-07T12:07:34.210Z [INFO]   Workflow built: Daily Signups Summary to Slack (4 nodes) [141s] (1 turn) [proxy: questions=1, deterministic=1] [thread 316e43fb-3159-405e-ab16-988fef0e98a7]
+2026-07-07T12:07:38.012Z [INFO]     [happy-path] exec=19s (2 nodes)
+2026-07-07T12:07:45.685Z [INFO]     [happy-path] PASS verify=8s
+2026-07-07T12:07:45.685Z [INFO]   Scenarios done: 1 scenarios [27s]
+2026-07-07T12:07:45.736Z [INFO]   Running case: "Create a webhook trigger that accepts a POST request contain..."
+2026-07-07T12:08:13.989Z [INFO]     [happy-path] exec=28s (4 nodes)
+2026-07-07T12:08:17.996Z [INFO]     [happy-path] PASS verify=4s
+2026-07-07T12:08:17.996Z [INFO]   Scenarios done: 1 scenarios [32s]
+2026-07-07T12:08:18.025Z [INFO]   Running case: "When I run the workflow manually, download the PDF at https:..."
+2026-07-07T12:08:22.266Z [INFO]   Workflow built: Hourly Airtable Tasks to Slack (4 nodes) [189s] (2 turns) [proxy: approval=2, rejection=1, deterministic=1] [thread f1ac9757-d038-4a9b-a397-be85f567322f]
+2026-07-07T12:09:01.893Z [INFO]   Workflow built: Download PDF (2 nodes) [44s] [thread 377f0cce-6aa6-4796-af4c-65f08c2dabb8]
+2026-07-07T12:09:05.614Z [INFO]     [empty-records] exec=21s (3 nodes)
+2026-07-07T12:09:10.520Z [INFO]     [empty-records] PASS verify=5s
+2026-07-07T12:09:27.808Z [INFO]     [large-pdf] exec=18s (2 nodes)
+2026-07-07T12:09:27.809Z [INFO]     [large-pdf] scenario context capped: saved 637556 chars (~159389 tokens)
+2026-07-07T12:09:33.175Z [INFO]     [happy-path] exec=24s (2 nodes)
+2026-07-07T12:09:36.308Z [INFO]     [large-pdf] PASS verify=8s
+2026-07-07T12:09:37.641Z [INFO]     [happy-path] PASS verify=4s
+2026-07-07T12:09:37.642Z [INFO]   Scenarios done: 2 scenarios [28s]
+2026-07-07T12:09:37.702Z [INFO]   Running case: "Build a workflow that handles a Telegram voice message. The ..."
+2026-07-07T12:10:05.437Z [INFO]     [happy-path] exec=81s (4 nodes)
+2026-07-07T12:10:10.180Z [INFO]     [happy-path] PASS verify=5s
+2026-07-07T12:10:10.180Z [INFO]   Scenarios done: 2 scenarios [86s]
+2026-07-07T12:10:10.208Z [INFO]   Running case [multi-turn]: "Build a scheduled n8n workflow that runs every hour and sync..."
+2026-07-07T12:11:07.504Z [INFO]   Workflow built: Webhook Image Upload to Slack (3 nodes) [202s] [thread 38ca5cd6-f239-4785-8cb6-04088f5dd483]
+2026-07-07T12:11:13.681Z [INFO]   Workflow built: Telegram Voice Transcription (4 nodes) [96s] [thread 9be23690-5037-4f17-90d5-d94a276283c6]
+2026-07-07T12:11:37.516Z [WARN]   Workflow checks: 1 errored, excluded from scoring (response_matches_workflow_changes)
+2026-07-07T12:11:38.953Z [INFO]   Workflow checks: 3 failing (valid_field_references, correct_node_operations, fulfills_user_request)
+2026-07-07T12:12:33.388Z [INFO]     [audio-attachment] exec=56s (3 nodes)
+2026-07-07T12:12:38.625Z [INFO]     [happy-path] exec=60s (4 nodes)
+2026-07-07T12:12:40.243Z [INFO]     [audio-attachment] PASS verify=7s
+2026-07-07T12:12:44.391Z [INFO]     [happy-path] PASS verify=6s
+2026-07-07T12:12:44.391Z [INFO]   Scenarios done: 1 scenarios [65s]
+2026-07-07T12:12:44.423Z [INFO]   Running case [multi-turn]: "I want a workflow that handles contact-form submissions comi..."
+2026-07-07T12:12:53.708Z [INFO]     [happy-path] exec=76s (3 nodes)
+2026-07-07T12:13:03.402Z [INFO]     [happy-path] PASS verify=10s
+2026-07-07T12:13:03.402Z [INFO]   Scenarios done: 2 scenarios [86s]
+2026-07-07T12:13:03.426Z [INFO]   Running case [multi-turn]: "I want a workflow that reports who on the team is filing Lin..."
+2026-07-07T12:14:31.396Z [INFO]   Workflow built: Daily Standup Bot (7 nodes) [558s] (12 turns) [proxy: approval=8, deterministic=4] [thread 933385fa-986d-48a3-bb3b-51f5b1e4b637]
+2026-07-07T12:14:56.672Z [INFO]   Workflow built: Contact Form Handler (4 nodes) [132s] (1 turn) [proxy: questions=2, setupWorkflowApply=1] [thread e973b694-e937-4bcd-a02b-adf73ec8949c]
+2026-07-07T12:15:00.222Z [INFO]   Workflow checks: 1 failing (valid_field_references)
+2026-07-07T12:15:26.675Z [INFO]   Workflow checks: 2 failing (error_routes_consistent, google_sheets_rlc_default_mode)
+2026-07-07T12:15:26.675Z [WARN]   Workflow checks: 1 errored, excluded from scoring (response_matches_workflow_changes)
+2026-07-07T12:15:30.665Z [INFO]     [standup-reminder] exec=30s (4 nodes)
+2026-07-07T12:15:42.803Z [INFO]     [standup-reminder] PASS verify=12s
+2026-07-07T12:15:42.803Z [INFO]   Scenarios done: 1 scenarios [42s]
+2026-07-07T12:15:42.832Z [INFO]   Running case: "Every morning, read all emails received in the last 24 hours..."
+2026-07-07T12:15:48.076Z [INFO]     [happy-path] exec=21s (2 nodes)
+2026-07-07T12:15:48.832Z [INFO]     [empty-message] exec=22s (2 nodes)
+2026-07-07T12:15:49.741Z [INFO]     [partial-action-failure] exec=23s (2 nodes)
+2026-07-07T12:15:52.058Z [INFO]     [missing-fields] exec=25s (2 nodes)
+2026-07-07T12:15:59.963Z [INFO]     [happy-path] FAIL [builder_issue] verify=12s
+2026-07-07T12:15:59.963Z [INFO]     [happy-path] Only the Send Auto-Reply Gmail node ran; Notify Team on Telegram and Log to Google Sheets did not execute, so 2 of the 3 required actions never received the webhook data. The root cause is in the connections JSON: the webhook's three action nodes are wired to three separate output ports (main index 0, 1, and 2) instead of all being attached to the single output port 0. A webhook node only emits from port 0, so only Send Auto-Reply (on port 0) received the submission; Telegram (port 1) and Google Sheets (port 2) got nothing and are shown as 'did not run'. The workflow therefore fails the criteria that all 3 actions receive the webhook data.
+2026-07-07T12:16:02.896Z [INFO]     [empty-message] FAIL [builder_issue] verify=14s
+2026-07-07T12:16:02.896Z [INFO]     [empty-message] Only Send Auto-Reply ran; the Telegram notification and Google Sheets log never executed, so the checklist requirement that both reflect the empty message field cannot be satisfied. The webhook's connections JSON wires the three downstream nodes to three separate output ports: Send Auto-Reply on main index 0, Notify Team on Telegram on index 1, and Log to Google Sheets on index 2. But a Webhook node has only a single output port (index 0), so it emitted items only to Send Auto-Reply. The trace confirms this — Send Auto-Reply is the only node that received data, while Telegram and Google Sheets are listed as 'Did not run'. To fan out in parallel, all three nodes must share the same output-port array (index 0).
+2026-07-07T12:16:06.891Z [INFO]     [missing-fields] FAIL [builder_issue] verify=15s
+2026-07-07T12:16:06.891Z [INFO]     [missing-fields] The email was sent (Send Auto-Reply ran and posted to Gmail with the empty name handled gracefully), but the Telegram alert and Google Sheets log never executed. The connections JSON wires 'Notify Team on Telegram' to the webhook's output index 1 and 'Log to Google Sheets' to output index 2, but a webhook node only emits on a single main output (index 0). Only 'Send Auto-Reply' (index 0) received data; the other two branches got 0 items and did not run, so the criterion 'the Telegram alert and Google Sheets log contain whatever data was available' is unmet.
+2026-07-07T12:16:11.018Z [INFO]     [invalid-email] exec=11s (2 nodes)
+2026-07-07T12:16:22.439Z [INFO]     [partial-action-failure] FAIL [builder_issue] verify=33s
+2026-07-07T12:16:22.439Z [INFO]     [partial-action-failure] The webhook is miswired: all three actions are connected to separate output ports (main[0], main[1], main[2]) instead of being three parallel connections on the single output array main[0]. A webhook node has only one output, so only Send Auto-Reply (on index 0) received data. The execution summary confirms Notify Team on Telegram and Log to Google Sheets 'did not run'. As a result, the Telegram failure the scenario meant to test never occurred, and critically the Google Sheets data-logging action never executed either — so the submission was never persisted. The workflow's ability to gracefully handle the Telegram error and still run independent actions cannot be demonstrated because the structure prevents 2 of 3 actions from ever executing.
+2026-07-07T12:16:37.224Z [INFO]     [invalid-email] FAIL [builder_issue] verify=26s
+2026-07-07T12:16:37.224Z [INFO]     [invalid-email] The workflow crashed entirely instead of handling the invalid email gracefully. The Gmail 'Send Auto-Reply' node errored with 'Invalid email address (item 0)' because it validated the malformed 'not-an-email' address, and since it has no onError/continueOnFail setting, the error propagated as a workflow error. Furthermore, the branches are miswired: the webhook connections place Send Auto-Reply on output port 0, Notify Team on Telegram on port 1, and Log to Google Sheets on port 2, but a webhook node only emits on port 0 — so even without the crash, Telegram and Sheets would never receive data. The trace confirms both downstream nodes 'did not run'. The scenario required Telegram and Sheets to still work and the email failure to be isolated, but neither happened.
+2026-07-07T12:16:37.224Z [INFO]   Scenarios done: 5 scenarios [70s]
+2026-07-07T12:16:37.253Z [INFO]   Running case [multi-turn]: "Every day, fetch the last day of messages from a few Slack c..."
+2026-07-07T12:18:02.310Z [INFO]   Workflow built: Daily Email Digest (5 nodes) [139s] [thread c2e4acb7-107b-4785-bb95-d4caf9399b03]
+2026-07-07T12:18:31.129Z [INFO]   Workflow built: Hourly Project Task Count Sync (5 nodes) [501s] (5 turns) [proxy: approval=2] [thread f5cdf4c8-39c0-45b7-b530-43cb012cffa4]
+2026-07-07T12:18:32.313Z [WARN]   Workflow checks: 1 errored, excluded from scoring (valid_data_flow)
+2026-07-07T12:18:54.327Z [INFO]   Workflow built: Linear Cross-Team Contribution Report (4 nodes) [351s] (5 turns) [proxy: approval=2, setupWorkflowApply=1, deterministic=1] [thread c4b514da-18b1-4297-8866-5c5ca03cafad]
+2026-07-07T12:19:01.132Z [WARN]   Workflow checks: 1 errored, excluded from scoring (response_matches_workflow_changes)
+2026-07-07T12:19:19.829Z [INFO]     [no-recent-emails] exec=47s (2 nodes)
+2026-07-07T12:19:24.328Z [INFO]   Workflow checks: 1 failing (fulfills_user_request)
+2026-07-07T12:19:24.329Z [WARN]   Workflow checks: 1 errored, excluded from scoring (response_matches_workflow_changes)
+2026-07-07T12:19:38.864Z [INFO]     [no-recent-emails] FAIL [builder_issue] verify=19s
+2026-07-07T12:19:38.864Z [INFO]     [no-recent-emails] The empty-inbox path never completed: the Gmail node returned 0 items, and since it has no alwaysOutputData enabled, the downstream 'Aggregate Emails' code node (which contains the actual empty-inbox handling: `items.length === 0` → 'No emails were received in the last 24 hours.') never executed. As a result Extract & Prioritize and Send Daily Digest also did not run — no no-action digest was sent and there is no dedicated no-op/fallback node. The workflow effectively terminated at the Gmail node with 0 items, leaving the flow incomplete. There is also no IF/Switch node in the workflow at all; the design depended on the code node running with an empty item, but that requires the Gmail node to emit an (empty) item, which it did not.
+2026-07-07T12:20:09.392Z [INFO]     [no-cross-team-issues] exec=45s (4 nodes)
+2026-07-07T12:20:10.807Z [INFO]     [multi-team-creator] exec=46s (4 nodes)
+2026-07-07T12:20:13.932Z [INFO]     [no-cross-team-issues] PASS verify=5s
+2026-07-07T12:20:15.046Z [INFO]     [happy-path] exec=74s (4 nodes)
+2026-07-07T12:20:15.047Z [INFO]     [happy-path] scenario context capped: saved 2370 chars (~593 tokens)
+2026-07-07T12:20:15.741Z [INFO]     [multi-team-creator] PASS verify=5s
+2026-07-07T12:20:19.578Z [INFO]     [unknown-creator] exec=55s (4 nodes)
+2026-07-07T12:20:22.824Z [INFO]     [happy-path] PASS verify=8s
+2026-07-07T12:20:22.827Z [INFO]   Scenarios done: 1 scenarios [81s]
+2026-07-07T12:20:22.962Z [INFO]   Running case: "Build a workflow that runs every Monday at 9am and records a..."
+2026-07-07T12:20:28.928Z [INFO]     [unknown-creator] PASS verify=9s
+2026-07-07T12:20:37.975Z [INFO]     [happy-path] exec=73s (4 nodes)
+2026-07-07T12:20:48.790Z [INFO]     [happy-path] PASS verify=11s
+2026-07-07T12:20:48.791Z [INFO]   Scenarios done: 4 scenarios [84s]
+2026-07-07T12:20:48.821Z [INFO]   Running case [multi-turn]: "Every weekday at 9am, fetch all my Linear issues that have t..."

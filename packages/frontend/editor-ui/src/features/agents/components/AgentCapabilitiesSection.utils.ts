@@ -1,4 +1,4 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 
 import type { AgentJsonToolRef } from '../types';
 import type {
@@ -19,6 +19,10 @@ type BaseToolRow = {
 	fallbackIcon: IconName;
 	toolType: AgentJsonToolRef['type'] | 'mcpServer';
 	openTarget: ToolOpenTarget;
+	invalid: boolean;
+	invalidReasons: string[];
+	warning: boolean;
+	warningReasons: string[];
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -27,6 +31,8 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		label: row.label,
 		nodeType: row.nodeType,
 		openTarget: row.openTarget,
+		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
 	};
 
 	return {
@@ -35,6 +41,10 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		typeLabel: row.typeLabel,
 		nodeType: row.nodeType,
 		fallbackIcon: row.fallbackIcon,
+		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
+		warning: row.warning,
+		warningReasons: row.warningReasons,
 		isGrouped: false,
 		tool: item,
 	};
@@ -49,12 +59,18 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		typeLabel: first.typeLabel,
 		nodeType: first.nodeType,
 		fallbackIcon: first.fallbackIcon,
+		invalid: group.some((row) => row.invalid),
+		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
+		warning: group.some((row) => row.warning),
+		warningReasons: [...new Set(group.flatMap((row) => row.warningReasons))],
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
 			label: row.label,
 			nodeType: row.nodeType,
 			openTarget: row.openTarget,
+			invalid: row.invalid,
+			invalidReasons: row.invalidReasons,
 		})),
 	};
 }

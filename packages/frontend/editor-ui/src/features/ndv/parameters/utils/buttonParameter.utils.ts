@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import { ApplicationError, type INode, type INodeExecutionData } from 'n8n-workflow';
+import { UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
@@ -226,7 +226,7 @@ export async function generateCodeForAiTransform(
 
 		value = code;
 	} else {
-		throw new ApplicationError('AI code generation is not enabled');
+		throw new UserError('AI code generation is not enabled');
 	}
 
 	if (value === undefined) return;

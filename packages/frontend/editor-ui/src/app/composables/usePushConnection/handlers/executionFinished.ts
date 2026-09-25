@@ -3,8 +3,8 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
@@ -12,7 +12,7 @@ import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-b
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -21,6 +21,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -75,10 +76,25 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// This rejects finishes from other workflows (which would otherwise clear this
 	// document's running state and show a spurious toast) and from concurrent runs
 	// of the same workflow that this document isn't displaying.
-	const { activeExecutionId } = workflowExecutionStateStore;
+	const { activeExecutionId, stoppedExecutionId } = workflowExecutionStateStore;
+	// Stopping a run clears `activeExecutionId` before the (scaling-mode) worker's
+	// `executionFinished` push arrives — the stop endpoint persists `canceled`
+	// first, so the stop poll wins. Accept the finish of the execution this
+	// document just stopped so its trimmed run-data placeholders still get
+	// backfilled. The marker is only set when the local run data is incomplete
+	// (trimmed placeholders), only honored while no other run is tracked
+	// (`undefined`) so a stale marker can never hijack a newer run, and consumed
+	// immediately so a duplicate push cannot re-process the finish.
+	const isFinishOfStoppedExecution =
+		activeExecutionId === undefined && stoppedExecutionId === data.executionId;
 	const belongsToThisDocument =
 		activeExecutionId === data.executionId ||
-		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId);
+		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId) ||
+		isFinishOfStoppedExecution;
+
+	if (isFinishOfStoppedExecution) {
+		workflowExecutionStateStore.clearStoppedExecutionId();
+	}
 
 	// Clear the per-node spinner queue when this finish is ours, or when this
 	// document isn't tracking any run (`undefined`, e.g. idle or iframe preview)
@@ -92,6 +108,11 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (!belongsToThisDocument) {
 		return;
 	}
+
+	// A run using an n8n-managed credential consumes credits; invalidate the wallet
+	// cache so any balance pill reflects them. Gated on managed credentials so
+	// ordinary runs don't trigger a refetch.
+	refreshWalletAfterBilledRun(documentId);
 
 	const telemetry = useTelemetry();
 
@@ -183,6 +204,26 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 }
 
 /**
+ * Force-refreshes the AI gateway wallet when the finished run used an n8n-managed
+ * credential. No-op when the gateway is disabled or no managed credential is present.
+ */
+export function refreshWalletAfterBilledRun(documentId: WorkflowDocumentId) {
+	const settingsStore = useSettingsStore();
+	if (!settingsStore.isAiGatewayEnabled) {
+		return;
+	}
+
+	const aiGatewayStore = useAiGatewayStore();
+	const { nodes } = useWorkflowDocumentStore(documentId).getSnapshot();
+	const usedManagedCredential = nodes.some((node) =>
+		aiGatewayStore.hasGatewayManagedCredential(node),
+	);
+	if (usedManagedCredential) {
+		void aiGatewayStore.fetchWallet({ force: true });
+	}
+}
+
+/**
  * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
  * @param execution
  * @param opts
@@ -247,7 +288,7 @@ export async function fetchExecutionData(
 			workflowData: workflowDocumentStore.getSnapshot(),
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+			startedAt: useWorkflowExecutionStateStore(documentId).activeExecution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -442,7 +483,6 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	successToastAlreadyShown: boolean,
 	suppressToasts = false,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -452,7 +492,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecution = useWorkflowExecutionStateStore(documentId).activeExecution;
 	if (workflowExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -532,7 +572,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
-	workflowExecutionStateStore.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setDisplayedExecutionId(execution.id);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
     "build:unchecked": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets",
-    "lint": "eslint . --quiet",
+    "lint": "oxlint --quiet",
     "typecheck": "tsc --noEmit",
     "copy:assets": "node scripts/copy-assets.js",
     "copy:renderer": "node scripts/copy-renderer.js",
@@ -24,19 +24,22 @@
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",
+    "electron": "catalog:",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.4",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^8.2.0",
-    "electron": "^41.3.0",
     "electron-builder": "^26.9.0",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "rimraf": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

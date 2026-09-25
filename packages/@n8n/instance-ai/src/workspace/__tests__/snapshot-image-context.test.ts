@@ -38,7 +38,8 @@ describe('snapshot-image-context', () => {
 		).resolves.toBe('# Schedule');
 	});
 
-	it('reuses a hash-keyed staging directory for the same cache key', async () => {
+	it('stages once per cache key and reuses the directory read-only', async () => {
+		// Same key ⇒ same content in prod, so the repeat reuses the first staging (filesB ignored).
 		const filesA = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"a"}']]);
 		const filesB = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"b"}']]);
 		const cacheKey = 'aaaaaaaaaaaa-bbbbbbbbbbbb';
@@ -49,24 +50,36 @@ describe('snapshot-image-context', () => {
 
 		expect(second.stagingDir).toBe(first.stagingDir);
 		await expect(readFile(join(first.stagingDir, 'package.json'), 'utf-8')).resolves.toBe(
-			'{"name":"b"}',
+			'{"name":"a"}',
 		);
 	});
 
-	it('removes stale files when reusing a cache-keyed staging directory', async () => {
+	it('serves concurrent stagings for the same cache key from a single directory', async () => {
 		const cacheKey = 'cccccccccccc-dddddddddddd';
-		const filesWithExtra = new Map([
-			[`${WORKSPACE_ROOT}/package.json`, '{"name":"a"}'],
-			[`${WORKSPACE_ROOT}/skills/removed/SKILL.md`, '# Removed'],
+		const files = new Map([
+			[`${WORKSPACE_ROOT}/package.json`, '{"name":"concurrent"}'],
+			[`${WORKSPACE_ROOT}/skills/post-build-flow/SKILL.md`, '# Post build'],
+			[`${WORKSPACE_ROOT}/knowledge-base/templates/example.ts`, 'export const x = 1;'],
 		]);
-		const filesWithoutExtra = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"b"}']]);
 
-		const first = await stageWorkspaceFilesForImage(filesWithExtra, WORKSPACE_ROOT, cacheKey);
-		const second = await stageWorkspaceFilesForImage(filesWithoutExtra, WORKSPACE_ROOT, cacheKey);
-		tempDirs.push(first.stagingDir);
+		const results = await Promise.all(
+			Array.from(
+				{ length: 8 },
+				async () => await stageWorkspaceFilesForImage(files, WORKSPACE_ROOT, cacheKey),
+			),
+		);
+		tempDirs.push(results[0].stagingDir);
 
-		expect(second.stagingDir).toBe(first.stagingDir);
-		await expect(access(join(first.stagingDir, 'skills/removed/SKILL.md'))).rejects.toThrow();
+		// All callers share one directory and every file is intact — no rm clobbered a write.
+		for (const result of results) {
+			expect(result.stagingDir).toBe(results[0].stagingDir);
+		}
+		await expect(
+			readFile(join(results[0].stagingDir, 'skills/post-build-flow/SKILL.md'), 'utf-8'),
+		).resolves.toBe('# Post build');
+		await expect(
+			readFile(join(results[0].stagingDir, 'knowledge-base/templates/example.ts'), 'utf-8'),
+		).resolves.toBe('export const x = 1;');
 	});
 
 	it('disposeSnapshotImageContext removes the staging directory', async () => {

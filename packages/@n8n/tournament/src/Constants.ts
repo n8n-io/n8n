@@ -3,7 +3,10 @@ import type {
 	ExpressionKind,
 	PatternKind,
 	PropertyKind,
+	SpreadElementKind,
+	SpreadPropertyKind,
 	StatementKind,
+	SwitchCaseKind,
 	VariableDeclaratorKind,
 } from 'ast-types/lib/gen/kinds';
 
@@ -23,4 +26,7 @@ export type ParentKind =
 	| PropertyKind
 	| PatternKind
 	| VariableDeclaratorKind
-	| CatchClauseKind;
+	| CatchClauseKind
+	| SpreadElementKind
+	| SpreadPropertyKind
+	| SwitchCaseKind;

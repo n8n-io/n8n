@@ -1,6 +1,7 @@
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	SEND_AND_WAIT_OPERATION,
@@ -315,6 +316,32 @@ describe('Test Chat Node', () => {
 			const result = await chat.onMessage(mockExecuteFunctions, message);
 
 			expect(result).toEqual([[message]]);
+		});
+
+		it('v1.3 should return a tool-friendly response when used as a tool without waiting for reply', async () => {
+			const chatToolNode = mock<INode>({
+				name: 'Chat',
+				type: CHAT_TOOL_NODE_TYPE,
+				parameters: {},
+				typeVersion: 1.3,
+			});
+			const message = { json: { chatInput: '' } };
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { chatInput: 'other input' } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatToolNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return 'send';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, message);
+
+			expect(result).toEqual([[{ json: { sent: true } }]]);
 		});
 
 		it('v1.2 should return output data directly without nesting into `data` field (except `approved`)', async () => {

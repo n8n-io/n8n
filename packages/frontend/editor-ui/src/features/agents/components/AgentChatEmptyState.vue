@@ -1,31 +1,34 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 
-const props = defineProps<{
-	endpoint: 'build' | 'chat';
+import type { AgentJsonConfig } from '../types';
+import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
+import { useI18n } from '@n8n/i18n';
+
+const i18n = useI18n();
+
+defineProps<{
+	agentConfig: AgentJsonConfig | null;
 }>();
-
-const icon = computed(() => (props.endpoint === 'build' ? 'wand-sparkles' : 'message-square'));
-const title = computed(() =>
-	props.endpoint === 'build' ? 'Build your agent' : 'Chat with your agent',
-);
-const subtitle = computed(() =>
-	props.endpoint === 'build'
-		? 'Describe what you want your agent to do'
-		: 'Send a message to start a conversation',
-);
 </script>
 
 <template>
-	<div :class="[$style.emptyState, endpoint === 'build' && $style.buildEmptyState]">
-		<N8nIcon :icon="icon" :size="32" color="text-light" />
-		<N8nText tag="p" bold>{{ title }}</N8nText>
-		<N8nText size="small" color="text-light">{{ subtitle }}</N8nText>
+	<div :class="$style.emptyState">
+		<AgentPersonalisationIcon
+			:personalisation="agentConfig?.personalisation"
+			:class="$style.icon"
+			:size="64"
+		/>
+		<N8nText tag="h3" step="xl" bold>{{ agentConfig?.name }}</N8nText>
+		<N8nText step="sm" color="text-light">
+			{{ i18n.baseText('agents.chat.emptyState.description') }}
+		</N8nText>
 	</div>
 </template>
 
-<style module>
+<style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .emptyState {
 	display: flex;
 	flex-direction: column;
@@ -33,5 +36,22 @@ const subtitle = computed(() =>
 	justify-content: center;
 	height: 100%;
 	gap: var(--spacing--3xs);
+
+	> * {
+		@include motion.fade-in-up;
+		animation-fill-mode: backwards;
+	}
+
+	> :nth-child(2) {
+		animation-delay: 0.2s;
+	}
+
+	> :nth-child(3) {
+		animation-delay: 0.4s;
+	}
+}
+
+.icon {
+	margin-bottom: var(--spacing--3xs);
 }
 </style>

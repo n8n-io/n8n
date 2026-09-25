@@ -16,16 +16,16 @@ CREATE TABLE "user_favorites" ("id" integer PRIMARY KEY NOT NULL, "userId" varch
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | INTEGER |  | false |  |  |  |
-| userId | varchar |  | false |  | [user](user.md) |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | resourceType | varchar(64) |  | false |  |  |  |
+| userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_user_favorites_1 | UNIQUE | UNIQUE (userId, resourceId, resourceType) |
 
 ## Indexes
@@ -45,26 +45,26 @@ erDiagram
 
 "user_favorites" {
   INTEGER id
-  varchar userId FK
   varchar_255_ resourceId
   varchar_64_ resourceType
+  varchar userId FK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

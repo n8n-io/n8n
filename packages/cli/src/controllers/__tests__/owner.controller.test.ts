@@ -1,13 +1,13 @@
 import type { DismissBannerRequestDto } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { BannerService } from '@/services/banner.service';
-import type { UserService } from '@/services/user.service';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { PostHogClient } from '@/posthog';
+import type { BannerService } from '@/services/banner.service';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { UserService } from '@/services/user.service';
 
 describe('OwnerController', () => {
 	const authService = mock<AuthService>();
@@ -26,9 +26,9 @@ describe('OwnerController', () => {
 
 	describe('setupOwner', () => {
 		it('should pass on errors from the service', async () => {
-			jest
-				.spyOn(ownershipService, 'setupOwner')
-				.mockRejectedValueOnce(new BadRequestError('Instance owner already setup'));
+			ownershipService.setupOwner.mockRejectedValueOnce(
+				new BadRequestError('Instance owner already setup'),
+			);
 
 			const execution = controller.setupOwner(mock(), mock(), mock());
 

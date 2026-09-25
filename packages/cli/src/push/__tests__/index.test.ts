@@ -2,9 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
-import { captor, mock } from 'jest-mock-extended';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
+import type { MockInstance } from 'vitest';
+import { captor, mock } from 'vitest-mock-extended';
 import { type WebSocket, Server as WSServer } from 'ws';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -15,13 +16,13 @@ import { WebSocketPush } from '@/push/websocket.push';
 
 import type { PushConfig } from '../push.config';
 
-jest.mock('ws', () => ({
-	Server: jest.fn(),
+vi.mock('ws', async () => ({
+	Server: vi.fn(),
 }));
-jest.unmock('@/push');
-jest.mock('@n8n/backend-common', () => {
+vi.unmock('@/push');
+vi.mock('@n8n/backend-common', async () => {
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
 		inProduction: true,
 	};
 });
@@ -38,7 +39,7 @@ describe('Push', () => {
 	const wsBackend = mockInstance(WebSocketPush);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnValue(logger);
 	});
 
@@ -46,8 +47,8 @@ describe('Push', () => {
 		const restEndpoint = 'rest';
 		const app = mock<Application>();
 		const server = mock<Server>();
-		// @ts-expect-error `jest.spyOn` typings don't allow `constructor`
-		const wssSpy = jest.spyOn(WSServer.prototype, 'constructor') as jest.SpyInstance<WSServer>;
+		// @ts-expect-error `vi.spyOn` typings don't allow `constructor`
+		const wssSpy = vi.spyOn(WSServer.prototype, 'constructor') as MockInstance<WSServer>;
 
 		describe('sse backend', () => {
 			test('should not create a WebSocket server', () => {
@@ -70,7 +71,10 @@ describe('Push', () => {
 			beforeEach(() => {
 				config.backend = 'websocket';
 				push = new Push(config, mock(), logger, mock(), mock());
-				wssSpy.mockReturnValue(wsServer);
+				// `new WSServer()` constructs the mock; return the stub from a function.
+				wssSpy.mockImplementation(function () {
+					return wsServer;
+				} as never);
 
 				push.setupPushServer(restEndpoint, server, app);
 
@@ -149,11 +153,6 @@ describe('Push', () => {
 			describe('should throw on invalid origin', () => {
 				test.each([
 					{
-						name: 'origin is undefined',
-						origin: undefined,
-						xForwardedHost: undefined,
-					},
-					{
 						name: 'origin does not match host',
 						origin: 'https://123example.com',
 						xForwardedHost: undefined,
@@ -189,6 +188,25 @@ describe('Push', () => {
 				});
 			});
 
+			test('should only accept a missing origin header on SSE', () => {
+				req.headers = {
+					host,
+					'sec-fetch-site': 'same-origin',
+				} as typeof req.headers;
+				const emitSpy = vi.spyOn(push, 'emit');
+
+				push.handleRequest(req, res);
+
+				if (backendName === 'sse') {
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, { req, res });
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				} else {
+					expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+					expect(ws.close).toHaveBeenCalledWith(1008);
+					expect(backend.add).not.toHaveBeenCalled();
+				}
+			});
+
 			describe('should not throw on invalid origin if `X-Forwarded-Host` is set correctly', () => {
 				test.each([
 					{
@@ -216,7 +234,7 @@ describe('Push', () => {
 					req.headers.origin = origin;
 					req.headers['x-forwarded-host'] = xForwardedHost;
 
-					const emitSpy = jest.spyOn(push, 'emit');
+					const emitSpy = vi.spyOn(push, 'emit');
 					const connection = backendName === 'sse' ? { req, res } : ws;
 
 					// ACT
@@ -261,7 +279,7 @@ describe('Push', () => {
 
 					if (shouldPass) {
 						// Expected behavior: connection should be established
-						const emitSpy = jest.spyOn(push, 'emit');
+						const emitSpy = vi.spyOn(push, 'emit');
 						const connection = backendName === 'sse' ? { req, res } : ws;
 
 						// ACT
@@ -302,7 +320,7 @@ describe('Push', () => {
 			});
 
 			test('should add the connection if pushRef is valid', () => {
-				const emitSpy = jest.spyOn(push, 'emit');
+				const emitSpy = vi.spyOn(push, 'emit');
 
 				push.handleRequest(req, res);
 
@@ -328,7 +346,7 @@ describe('Push', () => {
 					req.headers['x-forwarded-host'] = [host, 'other-host.com'] as any;
 					req.headers.origin = `https://${host}`;
 
-					const emitSpy = jest.spyOn(push, 'emit');
+					const emitSpy = vi.spyOn(push, 'emit');
 					const connection = backendName === 'sse' ? { req, res } : ws;
 
 					push.handleRequest(req, res);
@@ -342,7 +360,7 @@ describe('Push', () => {
 					req.headers['x-forwarded-host'] = 'wrong-host.com'; // Should be ignored
 					req.headers.origin = `https://${host}`;
 
-					const emitSpy = jest.spyOn(push, 'emit');
+					const emitSpy = vi.spyOn(push, 'emit');
 					const connection = backendName === 'sse' ? { req, res } : ws;
 
 					push.handleRequest(req, res);
@@ -355,7 +373,7 @@ describe('Push', () => {
 					req.headers.forwarded = `proto=https;host=${host}:443`;
 					req.headers.origin = `https://${host}`;
 
-					const emitSpy = jest.spyOn(push, 'emit');
+					const emitSpy = vi.spyOn(push, 'emit');
 					const connection = backendName === 'sse' ? { req, res } : ws;
 
 					push.handleRequest(req, res);
@@ -368,7 +386,7 @@ describe('Push', () => {
 					req.headers.origin = 'https://[::1]:443';
 					req.headers['x-forwarded-host'] = '[::1]:443';
 
-					const emitSpy = jest.spyOn(push, 'emit');
+					const emitSpy = vi.spyOn(push, 'emit');
 					const connection = backendName === 'sse' ? { req, res } : ws;
 
 					push.handleRequest(req, res);

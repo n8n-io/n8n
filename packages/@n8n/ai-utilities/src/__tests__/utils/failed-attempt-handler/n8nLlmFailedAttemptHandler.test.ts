@@ -1,5 +1,5 @@
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { makeN8nLlmFailedAttemptHandler } from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
@@ -25,7 +25,7 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 
 	it('should throw wrapped exception from custom handler', () => {
 		const customHandler = vi.fn(() => {
-			throw new ApplicationError('Custom handler error');
+			throw new UnexpectedError('Custom handler error');
 		});
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
 

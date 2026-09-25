@@ -1,12 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { OutboundHttp } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
@@ -21,14 +24,14 @@ const linear: AgentIntegrationConfig = {
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration());
-	registry.register(new LinearIntegration(mock<Logger>()));
+	registry.register(new SlackIntegration(mock<AgentRepository>()));
+	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
 
 describe('ChatIntegrationContextQueryExecutor', () => {
 	it('searches Slack users by name through the selected integration connection', async () => {
-		const usersList = jest.fn().mockResolvedValue({
+		const usersList = vi.fn().mockResolvedValue({
 			members: [
 				{
 					id: 'U123',
@@ -51,7 +54,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 		const slackAdapter = {
 			client: { users: { list: usersList } },
-			withToken: jest.fn(async (options: Record<string, unknown>) => ({
+			withToken: vi.fn(async (options: Record<string, unknown>) => ({
 				...options,
 				token: 'xoxb-token',
 			})),
@@ -60,10 +63,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -73,10 +77,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			input: { query: 'Michael Drury' },
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
-			type: 'slack',
-			credentialId: 'cred-a',
-		});
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
 		expect(result).toEqual({
@@ -96,7 +97,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 	});
 
 	it('searches Slack channels by name through the selected integration connection', async () => {
-		const conversationsList = jest.fn().mockResolvedValue({
+		const conversationsList = vi.fn().mockResolvedValue({
 			channels: [
 				{
 					id: 'C123',
@@ -119,7 +120,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 		const slackAdapter = {
 			client: { conversations: { list: conversationsList } },
-			withToken: jest.fn(async (options: Record<string, unknown>) => ({
+			withToken: vi.fn(async (options: Record<string, unknown>) => ({
 				...options,
 				token: 'xoxb-token',
 			})),
@@ -128,10 +129,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -166,7 +168,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('gets Linear users through the selected integration connection', async () => {
 		const linearClient = {
-			user: jest.fn().mockResolvedValue({
+			user: vi.fn().mockResolvedValue({
 				id: 'user-1',
 				name: 'Michael Drury',
 				displayName: 'Michael',
@@ -183,10 +185,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -196,7 +199,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			input: { userId: 'user-1' },
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', {
 			type: 'linear',
 			credentialId: 'cred-b',
 		});
@@ -221,7 +224,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('searches Linear users by query through the selected integration connection', async () => {
 		const linearClient = {
-			users: jest.fn().mockResolvedValue({
+			users: vi.fn().mockResolvedValue({
 				nodes: [
 					{
 						id: 'user-1',
@@ -242,10 +245,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -288,7 +292,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('gets Linear teams and projects through the selected integration connection', async () => {
 		const linearClient = {
-			team: jest.fn().mockResolvedValue({
+			team: vi.fn().mockResolvedValue({
 				id: 'team-1',
 				key: 'ENG',
 				name: 'Engineering',
@@ -296,7 +300,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 				url: 'https://linear.app/n8n/team/ENG',
 				private: false,
 			}),
-			project: jest.fn().mockResolvedValue({
+			project: vi.fn().mockResolvedValue({
 				id: 'project-1',
 				name: 'Signup',
 				description: 'Signup improvements',
@@ -308,10 +312,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -351,7 +356,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('searches Linear teams, projects, labels, and issue states for setup context', async () => {
 		const team = {
-			projects: jest.fn().mockResolvedValue({
+			projects: vi.fn().mockResolvedValue({
 				nodes: [
 					{
 						id: 'project-1',
@@ -367,13 +372,13 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 				],
 				pageInfo: { hasNextPage: true, endCursor: 'project-cursor' },
 			}),
-			labels: jest.fn().mockResolvedValue({
+			labels: vi.fn().mockResolvedValue({
 				nodes: [
 					{ id: 'label-1', name: 'Shopping', color: '#00ff00', description: 'Grocery work' },
 					{ id: 'label-2', name: 'Bug', color: '#ff0000' },
 				],
 			}),
-			states: jest.fn().mockResolvedValue({
+			states: vi.fn().mockResolvedValue({
 				nodes: [
 					{ id: 'state-1', name: 'Todo', type: 'unstarted', color: '#cccccc', position: 1 },
 					{
@@ -387,8 +392,8 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			team: jest.fn().mockResolvedValue(team),
-			teams: jest.fn().mockResolvedValue({
+			team: vi.fn().mockResolvedValue(team),
+			teams: vi.fn().mockResolvedValue({
 				nodes: [
 					{
 						id: 'team-1',
@@ -404,10 +409,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -530,8 +536,8 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			creator: Promise.resolve(commentAuthor),
 			team: Promise.resolve({ id: 'team-1', key: 'ENG', name: 'Engineering' }),
 			project: Promise.resolve({ id: 'project-1', name: 'Signup' }),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
-			comments: jest.fn().mockResolvedValue({
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
+			comments: vi.fn().mockResolvedValue({
 				nodes: [
 					{
 						id: 'comment-1',
@@ -545,16 +551,17 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			issue: jest.fn().mockResolvedValue(issue),
+			issue: vi.fn().mockResolvedValue(issue),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -599,7 +606,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('searches Linear issues through the selected integration connection', async () => {
 		const linearClient = {
-			searchIssues: jest.fn().mockResolvedValue({
+			searchIssues: vi.fn().mockResolvedValue({
 				totalCount: 1,
 				nodes: [
 					{
@@ -617,7 +624,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 						creator: Promise.resolve(undefined),
 						team: Promise.resolve({ id: 'team-1', key: 'ENG', name: 'Engineering' }),
 						project: Promise.resolve(undefined),
-						labels: jest.fn().mockResolvedValue({ nodes: [] }),
+						labels: vi.fn().mockResolvedValue({ nodes: [] }),
 					},
 				],
 			}),
@@ -626,10 +633,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -668,7 +676,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('paginates Linear issue search via cursor', async () => {
 		const linearClient = {
-			searchIssues: jest.fn().mockResolvedValue({
+			searchIssues: vi.fn().mockResolvedValue({
 				totalCount: 120,
 				nodes: [
 					{
@@ -684,10 +692,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -712,7 +721,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 	it('omits nextCursor when Linear reports no more pages', async () => {
 		const linearClient = {
-			searchIssues: jest.fn().mockResolvedValue({
+			searchIssues: vi.fn().mockResolvedValue({
 				totalCount: 1,
 				nodes: [
 					{
@@ -728,10 +737,11 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -745,7 +755,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 	});
 
 	it('paginates Slack user search via cursor', async () => {
-		const usersList = jest.fn().mockResolvedValue({
+		const usersList = vi.fn().mockResolvedValue({
 			members: [
 				{
 					id: 'U200',
@@ -758,15 +768,16 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 		const slackAdapter = {
 			client: { users: { list: usersList } },
-			withToken: jest.fn(async (options: Record<string, unknown>) => options),
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -781,7 +792,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 	});
 
 	it('paginates Slack channel search using the requested result limit', async () => {
-		const conversationsList = jest.fn().mockResolvedValue({
+		const conversationsList = vi.fn().mockResolvedValue({
 			channels: [
 				{
 					id: 'C200',
@@ -795,15 +806,16 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 		const slackAdapter = {
 			client: { conversations: { list: conversationsList } },
-			withToken: jest.fn(async (options: Record<string, unknown>) => options),
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -820,5 +832,93 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			cursor: 'channel-cursor-page-2',
 		});
 		expect(result).toMatchObject({ ok: true, nextCursor: 'channel-cursor-page-3' });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Rate-limit handling
+// ---------------------------------------------------------------------------
+
+describe('ChatIntegrationContextQueryExecutor — rate-limit handling', () => {
+	it('returns RATE_LIMIT_EXCEEDED when the adapter throws a 429', async () => {
+		const usersList = vi
+			.fn()
+			.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } }));
+		const slackAdapter = {
+			client: { users: { list: usersList } },
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'Michael' },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(true);
+	});
+
+	it('does not call getChatInstanceForTools again on a blocked connection', async () => {
+		const usersList = vi
+			.fn()
+			.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } }));
+		const slackAdapter = {
+			client: { users: { list: usersList } },
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		// First call: 429 → records the block
+		await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'Michael' },
+		});
+
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
+
+		// Second call: blocked → adapter never called
+		const result2 = await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'John' },
+		});
+
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
+		expect(result2).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
 	});
 });

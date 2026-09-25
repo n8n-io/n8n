@@ -1,11 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type {
+	OperationContext,
+	TransactionRunner,
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
+	WorkflowPublicationTriggerStatusRepository,
+} from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { PublicationResult } from '@/workflows/publication/publication-result';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();
@@ -13,13 +24,26 @@ describe('PublicationStatusReporter', () => {
 
 	const errorReporter = mock<ErrorReporter>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
+	const retryStateRepository = mock<WorkflowPublicationRetryStateRepository>();
+	const transactionRunner = mock<TransactionRunner>();
 	const activationErrorsService = mock<ActivationErrorsService>();
+	const push = mock<Push>();
+	const publisher = mock<Publisher>();
+	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
+	const operationContext: OperationContext = {};
+	const workflowSharingService = mock<WorkflowSharingService>();
+	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 
 	const reporter = new PublicationStatusReporter(
 		logger,
 		errorReporter,
 		outboxRepository,
+		retryStateRepository,
+		transactionRunner,
 		activationErrorsService,
+		publisher,
+		triggerStatusRepository,
+		workflowPushNotifier,
 	);
 
 	function makeRecord(
@@ -37,38 +61,276 @@ describe('PublicationStatusReporter', () => {
 		} as WorkflowPublicationOutbox;
 	}
 
+	const userIds = ['user-1', 'user-2'];
+
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
+		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
+		retryStateRepository.suppressRetry.mockResolvedValue(undefined);
+		retryStateRepository.clearRetrySuppression.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
+		activationErrorsService.register.mockResolvedValue(undefined);
+		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
+		publisher.publishCommand.mockResolvedValue(undefined);
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(userIds);
+		transactionRunner.run.mockImplementation(
+			async (_context, runInTransaction) => await runInTransaction(operationContext),
+		);
 	});
 
-	test('completed marks the record completed and clears activation errors', async () => {
-		await reporter.report(makeRecord(), { type: 'completed' });
+	test('completed writes trigger rows, marks the record completed, and clears activation errors', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'activated',
+					triggerKind: 'in-memory',
+					errorMessage: null,
+				},
+			],
+			operationContext,
+		);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith('wf-1');
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: {
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+		});
 	});
 
-	test.each([['workflow-not-found'], ['workflow-inactive']] as const)(
-		'skipped (%s) marks the record completed and clears activation errors',
-		async (reason) => {
+	describe('external teardown failures', () => {
+		const failure = { nodeName: 'Trello Trigger', error: new Error('remote unreachable') };
+
+		test('unpublished still completes the record, recording the failures as a warning', async () => {
+			await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [failure] });
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
+				1,
+				operationContext,
+				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+			);
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowDeactivated',
+					data: { workflowId: 'wf-1' },
+				},
+				userIds,
+			);
+		});
+
+		test('unpublished reports the abandoned deregistrations once, at error level', async () => {
+			await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [failure] });
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+					level: 'error',
+					cause: failure.error,
+				}),
+				{ shouldBeLogged: true },
+			);
+		});
+
+		test('partial reports the abandoned deregistrations alongside the activation failures', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'partial',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+					{
+						nodeId: 'b',
+						nodeName: 'Broken',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'boom',
+					},
+				],
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			expect(outboxRepository.markPartialSuccess).toHaveBeenCalled();
+		});
+
+		test('failed reports the abandoned deregistrations alongside the activation error', async () => {
+			const activationError = new Error('registration failed');
+			await reporter.report(makeRecord(), {
+				type: 'failed',
+				error: activationError,
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			// The activation error stays the record's failure and its own report.
+			expect(errorReporter.error).toHaveBeenCalledWith(activationError, { shouldBeLogged: true });
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+				1,
+				'registration failed',
+				operationContext,
+			);
+			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
+			);
+		});
+
+		test('completed still completes the record and reports, keeping the activation push', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'completed',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+				],
+				teardownFailures: [failure],
+			});
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
+				1,
+				operationContext,
+				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+			);
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowActivated',
+					data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+				},
+				userIds,
+			);
+		});
+	});
+
+	test('unpublished clears trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
+		await reporter.report(makeRecord(), { type: 'unpublished' });
+
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[],
+			operationContext,
+		);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+	});
+
+	test.each([
+		{ reason: 'workflow-not-found' as const, message: 'Workflow not found' },
+		{ reason: 'node-ids-healed' as const, message: 'healed' },
+		{ reason: 'superseded' as const, message: 'superseded' },
+	])(
+		'skipped ($reason) completes the record, clears activation errors, and logs its own reason',
+		async ({ reason, message }) => {
 			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+			expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+				'wf-1',
+				operationContext,
+			);
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(push.sendToUsers).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(message),
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
 		},
 	);
 
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });
 
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'Published version not found',
+			operationContext,
+		);
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(activationErrorsService.deregister).not.toHaveBeenCalled();
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
+			},
+			userIds,
+		);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: {
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
+			},
+		});
 	});
 
 	test('failed reports the error and marks the record failed with its message', async () => {
@@ -76,18 +338,256 @@ describe('PublicationStatusReporter', () => {
 
 		await reporter.report(makeRecord(), { type: 'failed', error });
 
+		expect(triggerStatusRepository.replaceForWorkflow).not.toHaveBeenCalled();
 		expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'registration failed',
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
+			},
+			userIds,
+		);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: {
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
+			},
+		});
 	});
 
-	test('partial is not handled yet and surfaces as an error', async () => {
-		const result: PublicationResult = { type: 'partial', error: new Error('partial') };
+	// An expected denial: the record must still fail and the UI must still be told,
+	// but it is not a fault to report.
+	test('failed by policy marks the record failed without reporting a fault', async () => {
+		const error = new PolicyViolationError([
+			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+		]);
 
-		await expect(reporter.report(makeRecord(), result)).rejects.toThrow(
-			'Partial workflow publication results are not handled yet',
+		await reporter.report(makeRecord(), { type: 'failed', error });
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
 		);
-		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
+		);
+	});
+
+	test('failed with triggerStatuses writes rows before marking failed', async () => {
+		const error = new Error('partial registration failed');
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+			],
+		});
+
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+			],
+			operationContext,
+		);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'partial registration failed',
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+	});
+
+	test('partial marks partial_success, writes all trigger rows, and pushes the failures without registering activation errors', async () => {
+		await reporter.report(makeRecord(), {
+			type: 'partial',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					nodeName: 'Kafka',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'broker down',
+				},
+			],
+		});
+
+		const expectedMessage =
+			'Some triggers failed to activate: "Schedule": cron unavailable; "Kafka": broker down';
+
+		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(
+			1,
+			expectedMessage,
+			operationContext,
+		);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-2',
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'b',
+					versionId: 'v-2',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					versionId: 'v-2',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'broker down',
+				},
+			],
+			operationContext,
+		);
+		// CAT-3432: partial path must NOT register activation errors
+		expect(activationErrorsService.register).not.toHaveBeenCalled();
+		const expectedPushMsg = {
+			type: 'workflowPartiallyActivated',
+			data: {
+				workflowId: 'wf-1',
+				activeVersionId: 'v-2',
+				errorMessage: expectedMessage,
+				failedNodes: [
+					{ nodeId: 'b', nodeName: 'Schedule', errorMessage: 'cron unavailable' },
+					{ nodeId: 'c', nodeName: 'Kafka', errorMessage: 'broker down' },
+				],
+			},
+		};
+		expect(push.sendToUsers).toHaveBeenCalledWith(expectedPushMsg, userIds);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: expectedPushMsg,
+		});
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+	});
+
+	test('a failed pubsub relay is reported but does not fail the report', async () => {
+		const publishError = new Error('redis unavailable');
+		publisher.publishCommand.mockRejectedValue(publishError);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		// The rejection is handled asynchronously; flush the microtask queue.
+		await new Promise(process.nextTick);
+		expect(errorReporter.error).toHaveBeenCalledWith(publishError, { shouldBeLogged: true });
+	});
+
+	test('a failed recipient lookup does not suppress the pubsub relay', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValueOnce([]);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+			[],
+		);
+	});
+
+	test('the pubsub relay still fires even if the recipient lookup itself throws', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockRejectedValueOnce(
+			new Error('db unavailable'),
+		);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).rejects.toThrow(
+			'db unavailable',
+		);
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+	});
+
+	test('a relayed publication status is delivered to clients with access', async () => {
+		await reporter.handleDisplayWorkflowPublicationStatus({
+			type: 'workflowActivated',
+			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });

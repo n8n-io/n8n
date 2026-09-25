@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
-import { useToast } from '@/app/composables/useToast';
+import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -10,130 +9,114 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
+import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type {
-	AgentExecution,
-	AgentExecutionThread,
-} from '@/features/agents/composables/useAgentThreadsApi';
-import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
-import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
-import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
-import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
-import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import {
-	flattenExecutionsToTimelineItems,
-	computeIdleRanges,
-	sessionBounds,
-	itemFilterKey,
-	chartBlockColor,
-	filteredTimelineItemIndexes,
-	isSubAgentTimelineItem,
-} from '@/features/agents/session-timeline.utils';
-import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
-import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
-import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
+	defaultAgentSessionFilters,
+	type AgentExecution,
+	type AgentExecutionThread,
+	type ThreadDetail,
+} from '@/features/agents/composables/useAgentThreadsApi';
+import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
+import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
+import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
+import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
+import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import type { AgentResource } from '@/features/agents/types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nEmptyState } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const projectsStore = useProjectsStore();
-const activeElement = useActiveElement();
+const {
+	isEnabled: isLangSmithExportEnabled,
+	isExporting,
+	sendSession,
+} = useAgentSessionLangSmithExport();
+const rootStore = useRootStore();
+const { config: localConfig, fetchConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
 
+// Populated by the timeline panel's `loaded` event so the header can render its
+// title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
-const loading = ref(true);
-const selectedIndex = ref<number | null>(null);
-const highlightedIndex = ref<number | null>(null);
-const selectedFilters = ref<Set<string>>(new Set());
-const searchQuery = ref('');
-let loadThreadDetailRequestId = 0;
+const agent = ref<AgentResource | null>(null);
+const isPreviewOpen = ref(false);
+const previewInitialized = ref(false);
+const { canUpdate } = useAgentPermissions(projectId);
+const canDeleteSession = computed(() => canUpdate.value);
+const {
+	activeChatSessionId,
+	effectiveSessionId,
+	currentSessionHasMessages,
+	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
+	currentSessionTitle,
+	sessionMenu,
+	isDeletingSession,
+	onSessionPick,
+	onNewChat,
+	markSessionCreated,
+	deleteSession,
+} = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
-const baseItems = computed<TimelineItem[]>(() =>
-	flattenExecutionsToTimelineItems(executions.value),
+/**
+ * True while the docked preview sits on a brand-new session that has no thread
+ * yet, so this page's thread is no longer what the preview is running. Picking
+ * an existing session is excluded: that one has a thread to show right away,
+ * and the dock's own trace action navigates to it.
+ */
+const isPreviewSessionStale = computed(
+	() =>
+		currentSessionIsLocallyMinted.value &&
+		effectiveSessionId.value !== undefined &&
+		effectiveSessionId.value !== threadId.value,
 );
-
-// Resolve sub-agent ids to friendly names, loaded lazily and only when the
-// session actually contains delegations (mirrors how the chat resolves the
-// delegate step label).
-const { subAgentNameById } = useSubAgentNames(projectId, () =>
-	baseItems.value.some(isSubAgentTimelineItem),
-);
-
-const items = computed<TimelineItem[]>(() =>
-	baseItems.value.map((item) => {
-		if (!isSubAgentTimelineItem(item)) return item;
-		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
-		return name ? { ...item, subAgentName: name } : item;
-	}),
-);
-const idleRanges = computed(() => computeIdleRanges(items.value));
-const bounds = computed(() => sessionBounds(items.value));
-
-function labelForKey(key: string): string {
-	switch (key) {
-		case 'user':
-			return i18n.baseText('agentSessions.timeline.user');
-		case 'agent':
-			return i18n.baseText('agentSessions.timeline.agent');
-		case 'tool':
-			return i18n.baseText('agentSessions.timeline.tool');
-		case 'workflow':
-			return i18n.baseText('agentSessions.timeline.workflow');
-		case 'node':
-			return i18n.baseText('agentSessions.timeline.node');
-		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		default:
-			return key;
-	}
-}
-
-const filterOptions = computed<FilterOption[]>(() => {
-	const counts = new Map<string, number>();
-	const colorByKey = new Map<string, string>();
-	for (const item of items.value) {
-		const key = itemFilterKey(item);
-		counts.set(key, (counts.get(key) ?? 0) + 1);
-		if (!colorByKey.has(key)) colorByKey.set(key, chartBlockColor(item.kind));
-	}
-	return Array.from(counts.entries()).map(([key, count]) => ({
-		key,
-		label: labelForKey(key),
-		color: colorByKey.get(key) ?? 'var(--border-color)',
-		count,
-	}));
-});
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
-	const first = executions.value[0];
-	return first.source ?? 'chat';
+	return executions.value[0].source ?? 'chat';
 });
 
-const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
-	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+const triggerIcon = computed((): IconName => {
+	const source = triggerSource.value;
+	if (!source) return 'bolt-filled';
+
+	switch (source) {
+		case 'slack':
+			return 'slack';
+		case 'instance-ai':
+			return 'sparkles';
+		default:
+			return 'bolt-filled';
+	}
 });
 
 const triggerLabel = computed((): string => {
 	const source = triggerSource.value;
 	if (!source) return '';
+	if (source === 'chat' || source === 'n8n_chat') {
+		return i18n.baseText('agentSessions.origin.preview');
+	}
+	// Instance AI runs are labelled with the product name, not the source id.
+	if (source === 'instance-ai') {
+		return i18n.baseText('agentSessions.origin.instanceAi');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -207,123 +190,116 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const selectedItem = computed<TimelineItem | null>(() =>
-	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
-);
-
 const totalTokens = computed(() => {
 	if (!thread.value) return 0;
 	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
 });
 
+const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const canPreviewSession = computed(
+	() =>
+		currentSessionIsLocallyMinted.value ||
+		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
+);
+const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
-const visibleItemIndexes = computed(() =>
-	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
+/**
+ * The dock resolves the live session's title and its trace/export/delete
+ * gates by looking it up in the store's thread list. That list holds only the
+ * first page fetched on load, so it misses a session started since then and any
+ * thread opened by link from outside that page. When the loaded thread is the
+ * live session, it is the authoritative answer, so prefer it over the lookup.
+ */
+const dockShowsLoadedThread = computed(
+	() => thread.value !== null && thread.value.id === effectiveSessionId.value,
+);
+const dockSessionTitle = computed(() =>
+	dockShowsLoadedThread.value ? sessionTitle.value : currentSessionTitle.value,
+);
+const dockHasSession = computed(
+	() => dockShowsLoadedThread.value || currentSessionHasMessages.value,
 );
 
-function moveSelectedIndex(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-
-	if (highlightedIndex.value === null || !indexes.includes(highlightedIndex.value)) {
-		highlightedIndex.value = direction === 1 ? indexes[0] : indexes[indexes.length - 1];
-		return;
-	}
-
-	const currentVisibleIndex = indexes.indexOf(highlightedIndex.value);
-	const nextVisibleIndex = currentVisibleIndex + direction;
-	if (nextVisibleIndex < 0 || nextVisibleIndex >= indexes.length) return;
-	highlightedIndex.value = indexes[nextVisibleIndex];
+function onPanelLoaded(detail: ThreadDetail | null) {
+	thread.value = detail?.thread ?? null;
+	executions.value = detail?.executions ?? [];
+	upsertLoadedPreviewThread(projectId.value, agentId.value);
 }
 
-function moveSelectedIndexToBoundary(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-	highlightedIndex.value = direction === 1 ? indexes[indexes.length - 1] : indexes[0];
-}
-
-function selectTimelineItem(index: number | null) {
-	selectedIndex.value = index;
-	highlightedIndex.value = index;
-}
-
-function onKeyDown(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
-
-	if (event.key === 'Escape') {
-		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
-			event.preventDefault();
-			selectTimelineItem(null);
-		}
-		return;
-	}
-
-	if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(1);
-		} else {
-			moveSelectedIndex(1);
-		}
-	} else if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(-1);
-		} else {
-			moveSelectedIndex(-1);
-		}
+function upsertLoadedPreviewThread(targetProjectId: string, targetAgentId: string) {
+	const loadedThread = thread.value;
+	if (
+		loadedThread?.canContinueInPreview &&
+		loadedThread.projectId === targetProjectId &&
+		loadedThread.agentId === targetAgentId
+	) {
+		sessionsStore.upsertThread(loadedThread);
 	}
 }
 
-useEventListener(document, 'keydown', onKeyDown);
+let previewLoadRequestId = 0;
 
-function onKeyUp(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-	if (highlightedIndex.value === selectedIndex.value) return;
-	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
-}
+/** Load the agent data required by the shared preview dock. */
+watch(
+	[projectId, agentId],
+	async ([nextProjectId, nextAgentId]) => {
+		const requestId = ++previewLoadRequestId;
+		previewInitialized.value = false;
+		agent.value = null;
+		try {
+			const [loadedAgent] = await Promise.all([
+				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
+				fetchConfig(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
+					filters: defaultAgentSessionFilters(),
+				}),
+			]);
+			if (requestId === previewLoadRequestId) {
+				agent.value = loadedAgent;
+				upsertLoadedPreviewThread(nextProjectId, nextAgentId);
+			}
+		} finally {
+			if (requestId === previewLoadRequestId) previewInitialized.value = true;
+		}
+	},
+	{ immediate: true },
+);
 
-useEventListener(document, 'keyup', onKeyUp);
+watch(
+	threadId,
+	(nextThreadId) => {
+		activeChatSessionId.value = nextThreadId;
+	},
+	{ immediate: true },
+);
 
-async function loadThreadDetail() {
-	const currentProjectId = projectId.value;
-	const currentAgentId = agentId.value;
-	const currentThreadId = threadId.value;
-	const requestId = ++loadThreadDetailRequestId;
-
+/**
+ * Clear this thread's data the instant the live preview session moves on, so
+ * its error markers/title/metrics don't linger next to a new session.
+ */
+watch(isPreviewSessionStale, (stale) => {
+	if (!stale) return;
 	thread.value = null;
 	executions.value = [];
-	selectedFilters.value = new Set();
-	searchQuery.value = '';
-	selectTimelineItem(null);
-	loading.value = true;
+});
 
-	void sessionsStore.fetchThreads(currentProjectId, currentAgentId);
-
-	try {
-		const result = await sessionsStore.getThreadDetail(
-			currentProjectId,
-			currentThreadId,
-			currentAgentId,
-		);
-		if (requestId !== loadThreadDetailRequestId) return;
-		thread.value = result.thread;
-		executions.value = result.executions;
-	} catch (error) {
-		if (requestId !== loadThreadDetailRequestId) return;
-		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
-	} finally {
-		if (requestId === loadThreadDetailRequestId) {
-			loading.value = false;
-		}
-	}
-}
-
-watch([projectId, agentId, threadId], loadThreadDetail, { immediate: true });
+/**
+ * The new session has no thread to fetch until the backend records its first
+ * turn, and that push is the signal it now has one — so re-bind the page to it.
+ */
+useAgentExecutionUpdates({ projectId, agentId, threadId: effectiveSessionId }, () => {
+	if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
+	void router.replace({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId: effectiveSessionId.value,
+		},
+	});
+});
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
@@ -338,6 +314,19 @@ function formatDate(fullDate: string): string {
 }
 
 function closeTimeline() {
+	/**
+	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
+	 * If no state is available, it's most likey because the link was visited directly.
+	 * Here we fallback to default Agents view.
+	 */
+	const previousRoute = router.options.history.state.back;
+	const resolvedPreviousRoute =
+		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
+
+	if (resolvedPreviousRoute?.matched.length) {
+		router.back();
+		return;
+	}
 	void router.push(agentExecutionsRoute.value);
 }
 
@@ -356,6 +345,23 @@ function onSessionSelect(nextThreadId: string) {
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
 }
+
+async function onDeletePreviewSession(sessionId: string) {
+	if (!canDeleteSession.value) return;
+	const deleted = await deleteSession(sessionId);
+	if (!deleted || sessionId !== threadId.value) return;
+	void router.replace(agentExecutionsRoute.value);
+}
+
+function togglePreview() {
+	if (!canPreviewSession.value) return;
+	isPreviewOpen.value = !isPreviewOpen.value;
+}
+
+function viewPreviewTrace() {
+	if (!effectiveSessionId.value) return;
+	onSessionSelect(effectiveSessionId.value);
+}
 </script>
 
 <template>
@@ -371,154 +377,92 @@ function onSessionSelect(nextThreadId: string) {
 			:total-tokens="totalTokens"
 			:total-cost="totalCost"
 			:duration-label="durationLabel"
+			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
+			:langsmith-export-loading="isExporting"
+			:show-preview="canPreviewSession"
+			:is-preview-open="previewVisible"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
+			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<div v-if="!loading" :class="$style.subHeader">
-			<div :class="$style.search">
-				<N8nInput
-					size="medium"
-					v-model="searchQuery"
-					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="12" />
-					</template>
-				</N8nInput>
-			</div>
-			<SessionEventFilter
-				:available="filterOptions"
-				:selected="selectedFilters"
-				@update="(next) => (selectedFilters = next)"
+		<div :class="[$style.content, { [$style.previewOpen]: previewVisible }]">
+			<AgentSessionTimelinePanel
+				v-if="!isPreviewSessionStale"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:thread-id="threadId"
+				@loaded="onPanelLoaded"
 			/>
-		</div>
-
-		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
-			<SessionTimelineChart
-				:items="items"
-				:idle-ranges="idleRanges"
-				:session-start="bounds.start"
-				:session-end="bounds.end"
-				:visible-kinds="selectedFilters"
-				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
-			/>
-		</div>
-
-		<div :class="$style.panels">
-			<div :class="$style.tablePanel">
-				<div v-if="loading" :class="$style.loading">Loading...</div>
-				<SessionTimelineTable
-					v-else
-					:items="items"
-					:idle-ranges="idleRanges"
-					:selected-index="highlightedIndex"
-					:visible-kinds="selectedFilters"
-					:search-query="searchQuery"
-					@select="selectTimelineItem"
+			<div v-else :class="$style.newSessionEmpty">
+				<N8nEmptyState
+					:icon="{ type: 'icon', value: 'message-square' }"
+					:heading="i18n.baseText('agentSessions.timeline.emptyState.heading')"
+					:description="i18n.baseText('agentSessions.timeline.emptyState.description')"
 				/>
 			</div>
-			<Transition name="session-detail-panel">
-				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
-				</div>
-			</Transition>
+
+			<AgentPreviewDock
+				v-if="canPreviewSession"
+				:is-open="previewVisible"
+				:session-title="dockSessionTitle"
+				:session-options="sessionMenu"
+				:has-session="dockHasSession"
+				:initialized="previewInitialized"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:agent="agent"
+				:local-config="localConfig"
+				:connected-triggers="[]"
+				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
+				:can-delete-session="canDeleteSession"
+				:is-deleting-session="isDeletingSession"
+				@view-trace="viewPreviewTrace"
+				@new-session="onNewChat"
+				@delete-session="onDeletePreviewSession"
+				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
+				@close="togglePreview"
+			/>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-:global(body) {
-	--color--session-timeline-block-bg-alpha: 75%;
-}
-:global(body[data-theme='dark']) {
-	--color--session-timeline-block-bg-alpha: 45%;
-}
-@media (prefers-color-scheme: dark) {
-	:global(body:not([data-theme])) {
-		--color--session-timeline-block-bg-alpha: 45%;
-	}
-}
-
 .view {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
-.subHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-}
-.search {
-	flex: 1;
-	min-width: 0;
-}
-.chartRow {
-	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	background-color: var(--background--surface);
-}
-.panels {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-}
-.tablePanel {
-	flex: 6;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
-}
-.detailPanel {
-	flex: 0 0 40%;
-	min-width: 0;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	border-left: var(--border);
-	background-color: var(--background--surface);
-}
 
-:global(.session-detail-panel-enter-active),
-:global(.session-detail-panel-leave-active) {
-	transition:
-		flex-basis var(--duration--snappy) var(--easing--ease-out),
-		opacity var(--duration--snappy) var(--easing--ease-out),
-		transform var(--duration--snappy) var(--easing--ease-out);
+.content {
+	position: relative;
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow: hidden;
-}
-:global(.session-detail-panel-enter-from),
-:global(.session-detail-panel-leave-to) {
-	flex-basis: 0;
-	opacity: 0;
-	transform: translateX(var(--spacing--sm));
-	border-left-color: transparent;
-}
-:global(.session-detail-panel-enter-to),
-:global(.session-detail-panel-leave-from) {
-	flex-basis: 40%;
-	opacity: 1;
-	transform: translateX(0);
-}
-@media (prefers-reduced-motion: reduce) {
-	:global(.session-detail-panel-enter-active),
-	:global(.session-detail-panel-leave-active) {
+	padding-right: 0;
+	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
 		transition: none;
 	}
 }
-.loading {
-	padding: var(--spacing--sm);
-	color: var(--text-color--subtler);
+
+.newSessionEmpty {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 </style>

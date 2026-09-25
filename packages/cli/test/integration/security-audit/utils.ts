@@ -115,8 +115,8 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
 	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	// @ts-expect-error readonly export
-	constants.N8N_VERSION = versionName;
+	// The ESM export is read-only under Vitest, so spy the getter instead of assigning.
+	vi.spyOn(constants, 'N8N_VERSION', 'get').mockReturnValue(versionName);
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
 }
@@ -124,8 +124,8 @@ export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSIO
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
 	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	// @ts-expect-error readonly export
-	constants.N8N_VERSION = versionName;
+	// The ESM export is read-only under Vitest, so spy the getter instead of assigning.
+	vi.spyOn(constants, 'N8N_VERSION', 'get').mockReturnValue(versionName);
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
 }

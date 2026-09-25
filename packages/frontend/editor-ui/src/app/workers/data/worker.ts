@@ -18,8 +18,13 @@ import * as Comlink from 'comlink';
 import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs';
 import * as SQLite from 'wa-sqlite';
 import { AccessHandlePoolVFS } from 'wa-sqlite/src/examples/AccessHandlePoolVFS.js';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { getAllTableSchemas } from './db';
-import { loadNodeTypes as loadNodeTypesOp } from './operations/loadNodeTypes';
+import {
+	loadNodeTypes as loadNodeTypesOp,
+	getAllNodeTypes as getAllNodeTypesOp,
+	getNodeType as getNodeTypeOp,
+} from './operations/loadNodeTypes';
 import {
 	exec as execOp,
 	query as queryOp,
@@ -204,6 +209,20 @@ async function loadNodeTypes(baseUrl: string): Promise<void> {
 }
 
 /**
+ * Get all node types from the local database
+ */
+async function getAllNodeTypes(): Promise<INodeTypeDescription[]> {
+	return await getAllNodeTypesOp(state);
+}
+
+/**
+ * Get a single node type from the local database
+ */
+async function getNodeType(name: string, version: number): Promise<INodeTypeDescription | null> {
+	return await getNodeTypeOp(state, name, version);
+}
+
+/**
  * Store the n8n version in the database
  */
 async function storeVersion(version: string): Promise<void> {
@@ -226,6 +245,8 @@ export const dataWorkerApi = {
 	close,
 	isInitialized,
 	loadNodeTypes,
+	getAllNodeTypes,
+	getNodeType,
 	storeVersion,
 	getStoredVersion,
 };

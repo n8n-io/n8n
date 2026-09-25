@@ -14,6 +14,7 @@
 		],
 		"paths": {
 			"@n8n/chat*": ["../chat/src*"],
+			"@n8n/design-system": ["../design-system/src/index.ts"],
 			"@n8n/design-system*": ["../design-system/src*"],
 			"@n8n/composables*": ["../composables/src*"],
 			"@n8n/i18n*": ["../i18n/src*"],
@@ -26,8 +27,7 @@
 		"src/**/*.ts",
 		"src/**/*.tsx",
 		"src/**/*.vue",
-		"../chat/src/**/*.stories.ts",
-		"../design-system/src/**/*.stories.ts",
-		"../../editor-ui/src/**/*.stories.ts"
+		".storybook/**/*.ts",
+		"../design-system/src/**/*.stories.ts"
 	]
 }

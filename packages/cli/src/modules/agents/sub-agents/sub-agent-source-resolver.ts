@@ -1,31 +1,31 @@
 import {
-	type AgentSkill,
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
 	type ResolvedSubAgentSource,
 	type SubAgentSource,
 } from '@n8n/api-types';
-import type { ToolDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+import { getAgentRuntimeAssets, type AgentRuntimeAssets } from '../utils/agent-runtime-assets';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
+	/**
+	 * Resolve the published version instead of the current draft. Set for
+	 * production runs, mirroring how sub-workflows and "Message an Agent"
+	 * resolve referenced entities.
+	 */
+	usePublishedVersion?: boolean;
 }
 
-export interface ResolvedSubAgentRuntimeSource {
+export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
 	source: ResolvedSubAgentSource;
-	toolDescriptors: Record<string, ToolDescriptor>;
-	toolCodeByName: Record<string, string>;
-	skills: Record<string, AgentSkill>;
 }
 
 @Service()
@@ -36,20 +36,15 @@ export class SubAgentSourceResolver {
 	) {}
 
 	/**
-	 * Resolve a saved n8n agent (its current draft, or a pinned published
-	 * version) into a runnable config plus its tool/skill assets.
+	 * Resolve a saved n8n agent into a runnable config plus its tool/skill
+	 * assets: a pinned historical version (resumes), the published version
+	 * (production runs), or the current draft (test runs).
 	 */
 	async resolveForRuntime(
 		source: SubAgentSource,
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
-		const agent = await this.agentRepository.findByIdAndProjectId(
-			source.agentId,
-			context.projectId,
-		);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${source.agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
 
 		if (source.versionId) {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -77,16 +72,32 @@ export class SubAgentSourceResolver {
 			};
 		}
 
-		const config = composeJsonConfig(agent);
-		if (!config) {
-			throw new UserError(`Agent "${source.agentId}" has no config`);
+		if (context.usePublishedVersion) {
+			const activeVersion = agent.activeVersion;
+			if (!activeVersion?.schema) {
+				throw new UserError(
+					`Sub-agent "${agent.name}" is not published. Publish it before delegating to it in a production run.`,
+				);
+			}
+
+			return {
+				source: {
+					sourceId: source.agentId,
+					versionId: activeVersion.versionId,
+					config: this.toRunnableConfig(activeVersion.schema),
+				},
+				...getAgentRuntimeAssets(activeVersion),
+			};
+		}
+
+		if (!agent.schema) {
+			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
 		return {
 			source: {
 				sourceId: source.agentId,
-				versionId: agent.versionId ?? undefined,
-				config: this.toRunnableConfig(config),
+				config: this.toRunnableConfig(agent.schema),
 			},
 			...getAgentRuntimeAssets(agent),
 		};
@@ -102,22 +113,4 @@ export class SubAgentSourceResolver {
 
 		return result.data;
 	}
-}
-
-function getAgentRuntimeAssets(
-	agent: Pick<Agent | AgentHistory, 'tools' | 'skills'>,
-): Omit<ResolvedSubAgentRuntimeSource, 'source'> {
-	const toolDescriptors: Record<string, ToolDescriptor> = {};
-	const toolCodeByName: Record<string, string> = {};
-
-	for (const [toolId, toolEntry] of Object.entries(agent.tools ?? {})) {
-		toolDescriptors[toolId] = toolEntry.descriptor;
-		toolCodeByName[toolEntry.descriptor.name] = toolEntry.code;
-	}
-
-	return {
-		toolDescriptors,
-		toolCodeByName,
-		skills: agent.skills ?? {},
-	};
 }

@@ -12,13 +12,7 @@
 				"argsContainAny": ["list"]
 			}
 		],
-		"noneOf": [
-			"create-tasks",
-			"build-workflow",
-			"delegate",
-			"spawn_sub_agent:workflow-builder",
-			"spawn_sub_agent:delegate"
-		]
+		"noneOf": ["create-tasks", "build-workflow", "spawn_sub_agent:workflow-builder"]
 	},
-	"rationale": "Regression coverage for runtime skill loading. Standalone data-table work must load the data-table-manager skill and call data-tables directly, without routing through planning, workflow-building, task creation, or delegate paths."
+	"rationale": "Regression coverage for runtime skill loading. Standalone data-table work must load the data-table-manager skill and call data-tables directly, without routing through planning, workflow-building, or task creation."
 }

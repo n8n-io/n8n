@@ -4,20 +4,24 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import type { CloudPlanState } from '@/Interface';
+import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { NEW_AGENT_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import {
+	AGENTS_MODULE_NAME,
+	AGENT_BUILDER_VIEW,
+	PENDING_AGENT_ID_STATE,
+} from '@/features/agents/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
@@ -26,6 +30,25 @@ import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(false),
 }));
+
+const trackClickedNewAgentMock = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
+}));
+
+// Agent menu items carry no `route` — clicking mints the id at click time
+// (via `useCreateAgent`) instead of baking a stale one into the menu. Assert
+// the hand-off `handleSelect` produces: same minted id in the click telemetry,
+// the builder route params, and the pending-agent history state.
+function expectAgentCreated(projectId: string) {
+	const [source, mintedAgentId] = trackClickedNewAgentMock.mock.calls.at(-1) as [string, string];
+	expect(source).toBe('dropdown');
+	expect(routerPushMock).toHaveBeenCalledWith({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId, agentId: mintedAgentId },
+		state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+	});
+}
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
@@ -36,7 +59,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -62,7 +85,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
@@ -288,15 +311,14 @@ describe('useGlobalEntityCreation', () => {
 			projectsStore.isTeamProjectFeatureEnabled = false;
 			projectsStore.personalProject = { id: personalProjectId } as Project;
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			const ids = menu.value.map((item) => item.id);
 			expect(ids).toEqual(['workflow', 'credential', 'agent', 'create-project']);
-			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
-				expect.objectContaining({
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
-				}),
-			);
+			expect(menu.value.find((item) => item.id === 'agent')).not.toHaveProperty('route');
+
+			handleSelect('agent');
+			expectAgentCreated(personalProjectId);
 		});
 
 		it('inserts a flat agent entry when team feature is enabled but no team projects exist', () => {
@@ -312,14 +334,15 @@ describe('useGlobalEntityCreation', () => {
 			} as Project;
 			projectsStore.myProjects = [];
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
-				expect.objectContaining({
-					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
-				}),
+				expect.objectContaining({ disabled: false }),
 			);
+			expect(menu.value.find((item) => item.id === 'agent')).not.toHaveProperty('route');
+
+			handleSelect('agent');
+			expectAgentCreated(personalProjectId);
 		});
 
 		it('disables the flat agent entry when the user lacks the agent:create scope', () => {
@@ -358,26 +381,23 @@ describe('useGlobalEntityCreation', () => {
 				{ id: '3', name: '3', type: 'team', scopes: [] },
 			] as ProjectListItem[];
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			const agentEntry = menu.value.find((item) => item.id === 'agent');
 			expect(agentEntry).toBeDefined();
 			expect(agentEntry?.submenu).toHaveLength(4);
 
 			const personal = agentEntry?.submenu?.find((s) => s.id === 'agent-personal');
-			expect(personal).toStrictEqual(
-				expect.objectContaining({
-					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
-				}),
-			);
+			expect(personal).toStrictEqual(expect.objectContaining({ disabled: false }));
+			expect(personal).not.toHaveProperty('route');
+			handleSelect('agent-personal');
+			expectAgentCreated(personalProjectId);
 
 			const teamWithScope = agentEntry?.submenu?.find((s) => s.id === 'agent-1');
 			expect(teamWithScope?.disabled).toBe(false);
-			expect(teamWithScope?.route).toEqual({
-				name: NEW_AGENT_VIEW,
-				query: { projectId: '1' },
-			});
+			expect(teamWithScope).not.toHaveProperty('route');
+			handleSelect('agent-1');
+			expectAgentCreated('1');
 
 			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);
@@ -621,12 +641,16 @@ describe('useGlobalEntityCreation', () => {
 	describe('instance-ai module', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const enableInstanceAi = () => {

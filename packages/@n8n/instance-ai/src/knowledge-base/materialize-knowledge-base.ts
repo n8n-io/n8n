@@ -4,7 +4,11 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import { SDK_LANGUAGE_REFERENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
+import {
+	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
@@ -13,10 +17,10 @@ import type { Logger } from '../logger';
 import {
 	buildTemplatesIndexFromArchive,
 	KNOWLEDGE_BASE_TEMPLATES_DIR,
-	type KnowledgeBaseTemplateEntry,
 } from './build-templates-index';
 export { KNOWLEDGE_BASE_TEMPLATES_DIR };
 import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
+import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
 	loadPrebakedWorkspaceBundle,
@@ -68,7 +72,6 @@ export interface KnowledgeBaseRootIndex {
 	};
 	templates: {
 		indexFile: string;
-		entries: KnowledgeBaseTemplateEntry[];
 	};
 	reference: {
 		indexFile: string;
@@ -92,7 +95,7 @@ export interface KnowledgeBaseWorkspaceBundle {
 export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
 	templatesArchive?: Buffer | null;
-	logger?: Logger;
+	logger: Logger;
 }
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
@@ -103,14 +106,14 @@ function addTemplatesToKnowledgeBaseFiles(
 	files: Map<string, string>,
 	rootDir: string,
 	templatesArchive: Buffer,
-	logger?: Logger,
-): KnowledgeBaseTemplateEntry[] {
+	logger: Logger,
+): void {
 	const extracted = extractBuilderTemplatesArchive(templatesArchive);
 	if (!extracted) {
-		logger?.warn('[knowledge-base] rejected templates archive during bundle build', {
+		logger.warn('[knowledge-base] rejected templates archive during bundle build', {
 			archiveBytes: templatesArchive.byteLength,
 		});
-		return [];
+		return;
 	}
 
 	const templatesIndex = buildTemplatesIndexFromArchive(extracted);
@@ -127,8 +130,6 @@ function addTemplatesToKnowledgeBaseFiles(
 	// The decompressed archive has been copied into `files`; release the
 	// intermediate map so the duplicate copy isn't held until GC.
 	extracted.clear();
-
-	return templatesIndex.entries;
 }
 
 const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
@@ -145,6 +146,18 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{
+		id: 'open-ai-output-shape',
+		description:
+			'OpenAI node (@n8n/n8n-nodes-langchain.openAi) output shape for downstream expressions',
+		fileName: 'open-ai-output-shape.md',
+	},
+	{
+		id: 'anthropic-output-shape',
+		description:
+			'Anthropic node (@n8n/n8n-nodes-langchain.anthropic) output shape for downstream expressions and Code-node parsing',
+		fileName: 'anthropic-output-shape.md',
+	},
+	{
 		id: 'workflow-builder-guardrails',
 		description:
 			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',
@@ -153,9 +166,18 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-sdk-language',
 		description:
-			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, native node mappings that replace Code nodes',
 		fileName: 'workflow-sdk-language.md',
-		content: SDK_LANGUAGE_REFERENCE,
+		// The mapping table ships with the SDK reference so the builder reads
+		// "which native node replaces this Code node" in the same file.
+		content: `${SDK_LANGUAGE_REFERENCE}\n## Native node mappings\n\n${NATIVE_NODE_PREFERENCE}\n`,
+	},
+	{
+		id: 'node-groups',
+		description:
+			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid',
+		fileName: 'node-groups.md',
+		content: NODE_GROUPS_REFERENCE,
 	},
 ];
 
@@ -238,9 +260,9 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 	const bestPracticesIndex: KnowledgeBaseBestPracticesIndex = { entries: bestPracticeEntries };
 	files.set(bestPracticesIndexPath, stringifyWorkspaceJson(bestPracticesIndex));
 
-	const templateEntries = templatesArchive
-		? addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger)
-		: [];
+	if (templatesArchive) {
+		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
+	}
 	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
@@ -251,7 +273,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 		},
 		templates: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
-			entries: templateEntries,
 		},
 		reference: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
@@ -312,20 +333,30 @@ export async function loadPrebakedKnowledgeBaseBundle(
 export async function materializeKnowledgeBaseIntoWorkspace(
 	options: MaterializeKnowledgeBaseOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {
-	return await materializeWorkspaceBundle({
-		workspace: options.workspace,
-		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger: options.logger,
-		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
-		materializedLogMessage: 'Materialized knowledge base into workspace',
-		materializedLogContext: (bundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: bundle.rootDir,
-			contentHash: bundle.contentHash,
-			fileCount: bundle.files.size,
-		}),
-	});
+	return await traceSandboxOperation(
+		'sync-knowledge-base',
+		{
+			processResult: (bundle) => ({
+				outputs: { contentHash: bundle.contentHash, fileCount: bundle.files.size },
+			}),
+		},
+		async () => {
+			return await materializeWorkspaceBundle({
+				workspace: options.workspace,
+				resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
+				logger: options.logger,
+				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
+				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
+				materializedLogMessage: 'Materialized knowledge base into workspace',
+				materializedLogContext: (bundle) => ({
+					root: options.root,
+					knowledgeBaseRoot: bundle.rootDir,
+					contentHash: bundle.contentHash,
+					fileCount: bundle.files.size,
+				}),
+			});
+		},
+	);
 }
 
 export type {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nText } from '@n8n/design-system';
+import { N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 const i18n = useI18n();
@@ -7,9 +7,11 @@ const i18n = useI18n();
 const props = withDefaults(
 	defineProps<{
 		titleKey?: BaseTextKey;
+		showTitleIcon?: boolean;
 	}>(),
 	{
 		titleKey: 'instanceAi.emptyState.title',
+		showTitleIcon: false,
 	},
 );
 </script>
@@ -17,6 +19,7 @@ const props = withDefaults(
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-empty-state">
 		<N8nText tag="h1" size="xlarge" bold :class="$style.title">
+			<N8nIcon v-if="props.showTitleIcon" icon="sparkles" :class="$style.titleIcon" />
 			{{ i18n.baseText(props.titleKey) }}
 		</N8nText>
 	</div>
@@ -44,6 +47,12 @@ const props = withDefaults(
 }
 
 .title {
+	display: flex;
+	align-items: center;
 	text-align: center;
+}
+
+.titleIcon {
+	margin-right: var(--spacing--2xs);
 }
 </style>

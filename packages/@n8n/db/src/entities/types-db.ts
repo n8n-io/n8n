@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IUserSettings,
 	AnnotationVote,
@@ -18,7 +19,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { CredentialsEntity } from './credentials-entity';
+import type { CredentialUsageScope, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
@@ -66,9 +67,12 @@ export interface IExecutionBase {
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
+	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
+	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
 }
 
 // Required by PublicUser
@@ -97,10 +101,12 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
+	description?: string | null;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	isManaged?: boolean;
+	usageScope?: CredentialUsageScope;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -114,6 +120,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	annotation: {
 		tags: ITagBase[];
 	};
+	/**
+	 * Set when run data was skipped for exceeding `ExecutionsConfig.maxDisplaySize`. `data` is
+	 * then an empty run-data object and `jsonSizeBytes` holds the real size.
+	 */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface PublicUser {
@@ -134,6 +145,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	featureFlagPayloads?: FeatureFlagPayloads;
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;
@@ -168,7 +180,13 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 /** Payload for creating an execution. */
 export type CreateExecutionPayload = Omit<
 	IExecutionDb,
-	'id' | 'createdAt' | 'startedAt' | 'storedAt' | 'jsonSizeBytes' | 'workflowVersionId'
+	| 'id'
+	| 'createdAt'
+	| 'startedAt'
+	| 'storedAt'
+	| 'jsonSizeBytes'
+	| 'binaryDataSizeBytes'
+	| 'workflowVersionId'
 >;
 
 // Data in regular format with references
@@ -195,14 +213,9 @@ export namespace ExecutionSummaries {
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
 	export type FilterFields = Partial<{
-		id: string;
-		finished: boolean;
 		mode: WorkflowExecuteMode;
-		retryOf: string;
-		retrySuccessId: string;
 		status: ExecutionStatus[];
 		workflowId: string;
-		waitTill: boolean;
 		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
@@ -231,8 +244,8 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			firstId?: string;
-			lastId?: string;
+			/** ID of the last row of the previous page. The page continues below it. */
+			beforeId?: string;
 		};
 	};
 
@@ -327,7 +340,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 }
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount?: boolean;
+	workflowCount?: number;
 	subFolderCount?: number;
 };
 
@@ -461,7 +474,7 @@ export type AuthenticatedRequest<
 };
 
 export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
-	return 'user' in req && req.user !== null;
+	return 'user' in req && Object.hasOwn(req, 'user') && req.user !== null;
 }
 
 /**

@@ -3,8 +3,8 @@ import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import MainSidebarHeader from './MainSidebarHeader.vue';
 
@@ -111,6 +111,26 @@ describe('MainSidebarHeader', () => {
 		await fireEvent.click(getByRole('button', { name: 'Toggle sidebar' }));
 
 		expect(emitted('collapse')).toHaveLength(1);
+	});
+
+	it('renders the command bar button by default', () => {
+		const { queryByRole } = createComponentRenderer(MainSidebarHeader, {
+			pinia,
+			props: { isCollapsed: false, hideCreate: true },
+		})();
+
+		expect(queryByRole('button', { name: 'Open command palette' })).toBeInTheDocument();
+	});
+
+	it('hides the command bar button in canvas-only mode', () => {
+		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
+
+		const { queryByRole } = createComponentRenderer(MainSidebarHeader, {
+			pinia,
+			props: { isCollapsed: false, hideCreate: true },
+		})();
+
+		expect(queryByRole('button', { name: 'Open command palette' })).not.toBeInTheDocument();
 	});
 
 	it('emits "openCommandBar" with the click event when command bar button is clicked', async () => {

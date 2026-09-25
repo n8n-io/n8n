@@ -1,9 +1,11 @@
 import type { SimplifiedNodeType } from '@/Interface';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import type { AgentJsonToolRef } from '../types';
 
 export type ToolRowNodeType = SimplifiedNodeType | null;
+
+export type ToolPickerMode = 'tools' | 'workflows';
 
 export type ToolOpenTarget =
 	| {
@@ -21,6 +23,8 @@ export type ToolRowItem = {
 	label: string;
 	nodeType: ToolRowNodeType;
 	openTarget: ToolOpenTarget;
+	invalid: boolean;
+	invalidReasons: string[];
 };
 
 type ToolRowBase = {
@@ -29,6 +33,13 @@ type ToolRowBase = {
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
 	fallbackIcon: IconName;
+	/** True for a single row when it has a configuration error; true for a grouped row when any of its tools do. */
+	invalid: boolean;
+	/** Human-readable reasons behind `invalid`; the union of member reasons for a grouped row. */
+	invalidReasons: string[];
+	/** True when the row blocks publishing but still works in preview (e.g. an unpublished workflow). */
+	warning: boolean;
+	warningReasons: string[];
 };
 
 export type GroupedToolRow = ToolRowBase & {
@@ -45,5 +56,10 @@ export type ToolRow = GroupedToolRow | SingleToolRow;
 
 export type ToolMenuItem = DropdownMenuItemProps<
 	string,
-	{ nodeType: ToolRowNodeType; openTarget: ToolOpenTarget }
+	{
+		nodeType: ToolRowNodeType;
+		openTarget: ToolOpenTarget;
+		invalid: boolean;
+		invalidReasons: string[];
+	}
 >;

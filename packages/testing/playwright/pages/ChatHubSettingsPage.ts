@@ -12,7 +12,7 @@ export class ChatHubSettingsPage extends BasePage {
 	readonly providerModal = new ChatHubProviderSettingsModal(
 		this.page.getByTestId('chatProviderSettingsModal-modal'),
 	);
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 
 	constructor(page: Page) {
 		super(page);

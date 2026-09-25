@@ -10,7 +10,7 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useLogsSelection } from '@/features/execution/logs/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
-import { type LogEntry } from '@/features/execution/logs/logs.types';
+import { type LogEntry, isNodeLog } from '@/features/execution/logs/logs.types';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/execution/logs/composables/useLogsPanelLayout';
 import { type KeyMap } from '@/app/composables/useKeybindings';
@@ -40,14 +40,12 @@ const {
 	isCollapsingDetailsPanel,
 	isOverviewPanelFullWidth,
 	popOutWindow,
-	onResize,
+	resizer,
+	chatPanelResizer,
+	overviewPanelResizer,
 	onResizeEnd,
 	onToggleOpen,
 	onPopOut,
-	onChatPanelResize,
-	onChatPanelResizeEnd,
-	onOverviewPanelResize,
-	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
@@ -67,6 +65,9 @@ const { selected, select, selectNext, selectPrev } = useLogsSelection(
 const inputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
 const outputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
 
+const selectedNode = computed(() =>
+	selected.value && isNodeLog(selected.value) ? selected.value : undefined,
+);
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
 	() => isLogDetailsOpen.value && !isCollapsingDetailsPanel.value,
@@ -81,12 +82,12 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
 const inputCollapsingColumnName = computed(() =>
-	inputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+	inputTableColumnCollapsing.value?.nodeName === selectedNode.value?.node.name
 		? (inputTableColumnCollapsing.value?.columnName ?? null)
 		: null,
 );
 const outputCollapsingColumnName = computed(() =>
-	outputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+	outputTableColumnCollapsing.value?.nodeName === selectedNode.value?.node.name
 		? (outputTableColumnCollapsing.value?.columnName ?? null)
 		: null,
 );
@@ -113,11 +114,13 @@ function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
 		select(undefined);
 	}
-
-	onOverviewPanelResizeEnd();
 }
 
 function handleOpenNdv(treeNode: LogEntry) {
+	if (!isNodeLog(treeNode)) {
+		return;
+	}
+
 	ndvStore.value.setActiveNodeName(treeNode.node.name, 'logs_view');
 
 	void nextTick(() => {
@@ -132,12 +135,16 @@ function handleOpenNdv(treeNode: LogEntry) {
 
 function handleChangeInputTableColumnCollapsing(columnName: string | null) {
 	inputTableColumnCollapsing.value =
-		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
+		columnName && selectedNode.value
+			? { nodeName: selectedNode.value.node.name, columnName }
+			: undefined;
 }
 
 function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	outputTableColumnCollapsing.value =
-		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
+		columnName && selectedNode.value
+			? { nodeName: selectedNode.value.node.name, columnName }
+			: undefined;
 }
 </script>
 
@@ -151,12 +158,11 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 		/>
 		<div ref="popOutContent" :class="[$style.popOutContent, isPoppedOut ? $style.poppedOut : '']">
 			<N8nResizeWrapper
-				:height="isPoppedOut ? undefined : height"
+				:resizer="resizer"
 				:supported-directions="['top']"
 				:is-resizing-enabled="!isPoppedOut"
 				:class="$style.resizeWrapper"
 				:style="{ height: isOpen && !isPoppedOut ? `${height}px` : 'auto' }"
-				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
 				<div ref="container" :class="$style.container" tabindex="-1">
@@ -164,15 +170,13 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 						v-if="hasChat && (!props.isReadOnly || (chatOptions.messageHistory ?? []).length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
-						:width="chatPanelWidth"
+						:resizer="chatPanelResizer"
 						:style="{ width: `${chatPanelWidth}px` }"
 						:class="$style.chat"
 						:window="popOutWindow"
-						@resize="onChatPanelResize"
-						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
-							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pop-out' : ''}`"
+							:key="`canvas-chat-${currentSessionId}-${isReadOnly ? (execution?.id ?? 'none') : 'live'}${isPoppedOut ? '-pop-out' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
@@ -189,12 +193,11 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 					<div ref="logsContainer" :class="$style.logsContainer">
 						<N8nResizeWrapper
 							:class="$style.overviewResizer"
-							:width="overviewPanelWidth"
+							:resizer="overviewPanelResizer"
 							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
 							:is-resizing-enabled="isLogDetailsOpen"
 							:window="popOutWindow"
-							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
@@ -228,7 +231,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:is-open="isOpen"
 							:log-entry="selected"
 							:window="popOutWindow"
-							:latest-info="latestNodeNameById[selected.node.id]"
+							:latest-info="selectedNode ? latestNodeNameById[selectedNode.node.id] : undefined"
 							:panels="logsStore.detailsState"
 							:collapsing-input-table-column-name="inputCollapsingColumnName"
 							:collapsing-output-table-column-name="outputCollapsingColumnName"
@@ -270,6 +273,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 }
 
 .container {
+	--logs-panel--header-height: var(--height--lg);
+
 	height: 100%;
 	display: flex;
 	flex-grow: 1;

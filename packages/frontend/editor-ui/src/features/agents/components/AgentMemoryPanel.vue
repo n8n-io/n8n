@@ -1,26 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { computed, ref } from 'vue';
 import {
-	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
-} from '../constants';
-import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
+	N8nButton,
+	N8nDialog,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+	N8nSwitch,
+} from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
-import { useModelCatalog } from '../composables/useModelCatalog';
-import AgentModelSelector from './AgentModelSelector.vue';
-import {
-	type AgentModelOption,
-	type AgentModelProvider,
-	type AgentModelSelection,
-	isAgentModelProvider,
-	type AgentModelsByProvider,
-} from '../model-providers';
+import AgentPanel from './AgentPanel.vue';
+
 import type { AgentJsonConfig } from '../types';
-import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
@@ -32,71 +29,14 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
-const usersStore = useUsersStore();
-const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const credentialDialogOpen = ref(false);
+const settingsStore = useSettingsStore();
 const projectId = useAgentProjectId();
-const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
-	usersStore.currentUserId ?? 'anonymous',
-	projectId,
-);
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
-const episodicMemoryCredential = computed(() =>
-	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
+const isAiAssistantProxyEnabled = computed(
+	() => settingsStore.moduleSettings.agents?.proxyEnabled === true,
 );
-const configuredMemoryModel = computed(() => {
-	if (episodicMemory.value?.enabled !== true) return null;
-
-	return (
-		episodicMemory.value.reflectorModel?.model ??
-		episodicMemory.value.extractorModel?.model ??
-		props.config?.memory?.observationalMemory?.reflectorModel?.model ??
-		props.config?.memory?.observationalMemory?.observerModel?.model ??
-		null
-	);
-});
-const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
-
-watch(
-	projectId,
-	(id) => {
-		if (id) void ensureLoaded(id);
-	},
-	{ immediate: true },
-);
-
-watch(configuredMemoryModel, (model) => {
-	selectedMemoryModel.value = model;
-});
-
-const filteredAgents = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
-);
-
-const selectedAgent = computed<AgentModelOption | null>(() => {
-	const modelStr = selectedMemoryModel.value ?? modelToString(props.config?.model);
-	if (!modelStr) return null;
-	const parsed = parseModelString(modelStr);
-	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
-
-	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
-		(model) => model.model === parsed.name,
-	);
-	if (registryEntry) return registryEntry;
-
-	return {
-		provider: parsed.provider,
-		model: parsed.name,
-		name: parsed.name,
-		description: null,
-		createdAt: null,
-		metadata: {
-			functionCalling: false,
-			available: true,
-		},
-	};
-});
 
 function buildEnabledMemoryConfig() {
 	const existingMemory = props.config?.memory;
@@ -132,60 +72,9 @@ function disableEpisodicMemory() {
 	});
 }
 
-function onMemoryRecallModelChange(selection: AgentModelSelection) {
-	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
-	if (!credentialId) return;
-
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	selectedMemoryModel.value = model;
-	const workerModel = { model, credential: credentialId };
-
-	const existingMemory = props.config?.memory;
-	const existingEpisodicMemory = existingMemory?.episodicMemory;
-
-	if (existingEpisodicMemory?.enabled !== true) return;
-
-	emit('update:config', {
-		memory: {
-			...buildEnabledMemoryConfig(),
-			observationalMemory: {
-				...existingMemory?.observationalMemory,
-				observerModel: workerModel,
-				reflectorModel: workerModel,
-			},
-			episodicMemory: {
-				...existingEpisodicMemory,
-				extractorModel: workerModel,
-				reflectorModel: workerModel,
-			},
-		},
-	});
-}
-
-function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
-	selectCredential(provider, credentialId);
-}
-
-function openEpisodicMemoryCredentialModal() {
-	uiStore.openModalWithData({
-		name: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-		data: {
-			credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
-			displayName: 'OpenAI',
-			initialValue: episodicMemoryCredential.value,
-			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
-			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
-			cancelLabel: i18n.baseText('generic.cancel'),
-			confirmLabel: i18n.baseText('generic.connect'),
-			showDelete: false,
-			hideCreateNew: true,
-			source: 'agent_episodic_memory',
-			pickerDataTestId: 'agent-episodic-memory-credential-picker',
-			onSelect: (credentialId: string | null) => {
-				if (credentialId) enableEpisodicMemory(credentialId);
-			},
-		},
-	});
+function onCredentialSelected(credentialId: string) {
+	enableEpisodicMemory(credentialId);
+	credentialDialogOpen.value = false;
 }
 
 function onEpisodicMemoryToggle(enabled: boolean) {
@@ -194,71 +83,107 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 		return;
 	}
 
-	openEpisodicMemoryCredentialModal();
+	if (isAiAssistantProxyEnabled.value) {
+		enableEpisodicMemory(MANAGED_CREDENTIAL_TOKEN);
+		return;
+	}
+
+	credentialDialogOpen.value = true;
 }
 </script>
 
 <template>
-	<div :class="[$style.container, props.disabled && $style.disabled]">
-		<div v-if="episodicMemoryEnabled" :class="$style.row">
-			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
-					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
-				</N8nText>
-			</div>
-			<div :class="$style.modelSelector">
-				<AgentModelSelector
-					:selected-model="selectedAgent"
-					:credentials="credentialsByProvider"
-					:models-by-provider="filteredAgents"
-					:is-loading="isLoading"
-					:project-id="projectId"
-					:warn-missing-credentials="true"
-					horizontal
-					data-testid="agent-memory-recall-model-selector"
-					@change="onMemoryRecallModelChange"
-					@select-credential="onSelectCredential"
-				/>
-			</div>
-		</div>
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.memory.title')"
+		:description="i18n.baseText('agents.builder.memory.description')"
+	>
+		<template #header-actions>
+			<N8nText step="sm" color="text-light">
+				{{ i18n.baseText('agents.builder.memory.alwaysOn') }}
+			</N8nText>
+		</template>
 
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
-				<N8nText :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText step="sm" color="text-light">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
-			</div>
-			<div :class="$style.actions">
-				<N8nTooltip>
-					<template #content>
-						{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
-					</template>
-					<N8nIconButton
-						v-if="episodicMemoryEnabled"
-						variant="ghost"
-						size="small"
-						icon-size="medium"
-						icon="cog"
-						:disabled="props.disabled"
-						data-testid="agent-episodic-memory-change-credential"
-						@click="openEpisodicMemoryCredentialModal"
-					/>
-				</N8nTooltip>
-				<N8nSwitch
-					:model-value="episodicMemoryEnabled"
+				<N8nButton
+					v-if="episodicMemoryEnabled && !isAiAssistantProxyEnabled"
+					variant="ghost"
+					size="small"
 					:disabled="props.disabled"
-					data-testid="agent-episodic-memory-toggle"
-					@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
-				/>
+					:class="$style.changeCredentialButton"
+					data-testid="agent-episodic-memory-change-credential"
+					@click="credentialDialogOpen = true"
+				>
+					{{
+						i18n.baseText('agents.builder.memory.episodicMemory.changeCredential' as BaseTextKey)
+					}}
+				</N8nButton>
 			</div>
+			<N8nSwitch
+				:model-value="episodicMemoryEnabled"
+				:disabled="props.disabled"
+				:class="$style.switch"
+				data-testid="agent-episodic-memory-toggle"
+				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
+			/>
 		</div>
-	</div>
+		<N8nDialog
+			:open="credentialDialogOpen"
+			size="medium"
+			@update:open="credentialDialogOpen = $event"
+		>
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{
+						i18n.baseText(
+							'agents.builder.memory.episodicMemory.credentialDialog.title' as BaseTextKey,
+						)
+					}}
+				</N8nDialogTitle>
+			</N8nDialogHeader>
+			<div :class="$style.dialogContent">
+				<div :class="$style.row">
+					<div :class="$style.titleGroup">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
+							{{
+								i18n.baseText(
+									'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
+								)
+							}}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
+							}}
+						</N8nText>
+					</div>
+					<div :class="$style.credentialPicker">
+						<CredentialPicker
+							app-name="OpenAI"
+							size="medium"
+							button-size="large"
+							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
+							:selected-credential-id="null"
+							:project-id="projectId"
+							:show-delete="false"
+							:hide-create-new="false"
+							:teleported="false"
+							credential-modal-append-to-body
+							:class="$style.credentialPicker"
+							data-testid="agent-episodic-memory-credential-picker"
+							@credential-selected="onCredentialSelected"
+						/>
+					</div>
+				</div>
+			</div>
+		</N8nDialog>
+	</AgentPanel>
 </template>
 
 <style module>
@@ -275,15 +200,39 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .titleGroup {
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
-.header {
+.titleGroup > :global(.n8n-text) {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.dialogContent {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	padding-top: var(--spacing--lg);
+}
+
+.dialogContent .row {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.dialogContent .credentialPicker {
+	flex-basis: auto;
+	width: 100%;
+	max-width: none;
+	margin-left: 0;
+}
+
+.credentialPicker input {
+	min-height: 36px;
+	height: 36px;
 }
 
 .row {
@@ -293,47 +242,23 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	gap: var(--spacing--sm);
 }
 
-.actions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-
-	button {
-		color: var(--icon-color);
-	}
+.switch {
+	flex-shrink: 0;
 }
 
-.modelSelector {
+.changeCredentialButton {
+	align-self: flex-start;
+}
+
+.credentialPicker {
 	display: flex;
+	flex: 0 1 280px;
 	justify-content: flex-end;
 	margin-left: auto;
-	min-width: 280px;
+	min-width: min(280px, 100%);
 }
 
-.container.disabled {
-	opacity: 0.6;
-}
-
-.inlineInput {
-	width: 70px;
-	text-align: center;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background-color: var(--background--hover);
-	color: var(--text-color);
-	font-size: var(--font-size--sm);
-	font-family: var(--font-family);
-	outline: none;
-}
-
-.inlineInput:focus {
-	border-color: var(--background--brand);
-}
-
-.divider {
-	border: none;
-	border-top: var(--border);
-	margin: var(--spacing--2xs) 0;
+.credentialPicker > * {
+	width: 100%;
 }
 </style>

@@ -1,8 +1,41 @@
 import crypto from 'crypto';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
+import {
+	escapeSnowflakeObjectIdentifier,
+	getConnectionOptions,
+	isFileTransferQuery,
+	prepareQueryResults,
+} from '../GenericFunctions';
 
-jest.mock('crypto');
+vi.mock('crypto');
+
+describe('isFileTransferQuery', () => {
+	it.each([
+		'GET @stage file:///tmp',
+		'put file:///tmp/file.csv @stage',
+		'PUT/**/file:///tmp/file.csv @stage',
+		'GET/* separator */@stage file:///tmp',
+		'PUT-- separator\nfile:///tmp/file.csv @stage',
+		'GET// separator\n@stage file:///tmp',
+		'-- leading comment\nGET @stage file:///tmp',
+		'// leading comment\nPUT file:///tmp/file.csv @stage',
+		'/* leading comment */ GET @stage file:///tmp',
+	])('detects file-transfer query: %s', (query) => {
+		expect(isFileTransferQuery(query)).toBe(true);
+	});
+
+	it.each([
+		'SELECT 1',
+		"SELECT 'PUT/**/file:///tmp/file.csv @stage'",
+		"SELECT 'GET @stage file:///tmp'",
+		'',
+		'-- comment only',
+		'/* comment only */',
+	])('allows non-file-transfer query: %s', (query) => {
+		expect(isFileTransferQuery(query)).toBe(false);
+	});
+});
 
 describe('escapeSnowflakeObjectIdentifier', () => {
 	it('quotes a single-part identifier', () => {
@@ -38,6 +71,25 @@ describe('getConnectionOptions', () => {
 		clientSessionKeepAlive: true,
 	};
 
+	describe('date serialization', () => {
+		const passwordCredential = {
+			...commonOptions,
+			authentication: 'password' as const,
+			username: 'test-username',
+			password: 'test-password',
+		};
+
+		it('should request dates as strings on version 1.1', () => {
+			const result = getConnectionOptions(passwordCredential, 1.1);
+			expect(result.fetchAsString).toEqual(['Date']);
+		});
+
+		it('should not request dates as strings before version 1.1', () => {
+			expect(getConnectionOptions(passwordCredential, 1)).not.toHaveProperty('fetchAsString');
+			expect(getConnectionOptions(passwordCredential)).not.toHaveProperty('fetchAsString');
+		});
+	});
+
 	describe('should return connection options', () => {
 		it('with username and password for password authentication', () => {
 			const result = getConnectionOptions({
@@ -49,6 +101,56 @@ describe('getConnectionOptions', () => {
 
 			expect(result).toEqual({
 				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('without origin hostname when not provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('without origin hostname when only whitespace is provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: '   ',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('with optional origin hostname when provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
 				username: 'test-username',
 				password: 'test-password',
 			});
@@ -85,7 +187,7 @@ describe('getConnectionOptions', () => {
 		});
 
 		it('with private key for keyPair authentication and passphrase', () => {
-			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
+			const createPrivateKeySpy = vi.spyOn(crypto, 'createPrivateKey').mockImplementation(
 				() =>
 					({
 						export: () => 'test-private-key',
@@ -112,5 +214,49 @@ describe('getConnectionOptions', () => {
 				privateKey: 'test-private-key',
 			});
 		});
+	});
+});
+
+describe('prepareQueryResults', () => {
+	const constructExecutionMetaData = vi
+		.fn()
+		.mockImplementation((data: INodeExecutionData[]) => data);
+	const returnJsonArray = vi
+		.fn()
+		.mockImplementation((data: IDataObject | IDataObject[]) =>
+			(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+		);
+	const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+		data: buffer.toString('base64'),
+		fileName,
+		mimeType: 'application/octet-stream',
+	}));
+	const context = {
+		helpers: { constructExecutionMetaData, returnJsonArray, prepareBinaryData },
+	} as unknown as IExecuteFunctions;
+
+	it('should move binary columns to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+
+		const result = await prepareQueryResults.call(context, [{ ID: 1, DOC: blob }], 0, 1.1);
+
+		expect(result[0].json).toEqual({ ID: 1 });
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'DOC');
+		expect(result[0].binary?.DOC).toBeDefined();
+	});
+
+	it('should keep binary columns in json before version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+
+		const result = await prepareQueryResults.call(context, [{ ID: 1, DOC: blob }], 0, 1);
+
+		expect(result[0].json.DOC).toBe(blob);
+		expect(result[0].binary).toBeUndefined();
+	});
+
+	it('should return no items for undefined rows on version 1.1', async () => {
+		const result = await prepareQueryResults.call(context, undefined, 0, 1.1);
+
+		expect(result).toEqual([]);
 	});
 });

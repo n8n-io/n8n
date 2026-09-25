@@ -15,11 +15,11 @@ CREATE TABLE "instance_version_history" ("id" integer PRIMARY KEY AUTOINCREMENT 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | INTEGER |  | false |  |  |  |
 | major | INTEGER |  | false |  |  |  |
 | minor | INTEGER |  | false |  |  |  |
 | patch | INTEGER |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
@@ -34,11 +34,11 @@ erDiagram
 
 
 "instance_version_history" {
+  datetime_3_ createdAt
   INTEGER id
   INTEGER major
   INTEGER minor
   INTEGER patch
-  datetime_3_ createdAt
 }
 ```
 

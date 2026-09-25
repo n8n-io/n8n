@@ -4,23 +4,169 @@ import {
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
+const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
+
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
-		assistantResponse: '',
-		toolCalls: null,
 		timeline: null,
-		error: null,
+		createdAt: FIXED_CREATED_AT,
 		...overrides,
 	} as unknown as AgentExecution;
 }
 
 describe('execution-to-message-mapper', () => {
+	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps a signal-only turn with status %s',
+		(status) => {
+			const signal = {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			} as const;
+			const result = executionsToMessagesDto([
+				execution({
+					userMessage: null,
+					status,
+					timeline: [
+						{
+							type: 'background-task-signal',
+							signal: { tasks: [...signal.tasks] },
+							timestamp: 100,
+						},
+					],
+				}),
+			]);
+			expect(result).toEqual([
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					executionId: 'execution-1',
+					content: [],
+					executionStatus: status,
+					backgroundTaskSignal: signal,
+					createdAt: FIXED_CREATED_AT.toISOString(),
+				},
+			]);
+		},
+	);
+
+	it('carries the recorded run error on the assistant message of an errored turn', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'The model stream stalled: no data received for 90 seconds.',
+				timeline: [{ type: 'text', content: 'partial output', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+			executionError: 'The model stream stalled: no data received for 90 seconds.',
+		});
+	});
+
+	it('carries the integration author on the user message and omits it when absent', () => {
+		const author = { id: 'U1', name: 'alice' };
+
+		expect(executionToMessagesDto(execution({ author }))[0]).toMatchObject({
+			role: 'user',
+			author,
+		});
+		expect(executionToMessagesDto(execution({ author: null }))[0]).not.toHaveProperty('author');
+	});
+
+	it('keeps an assistant message for an errored turn that produced no output at all', () => {
+		const result = executionsToMessagesDto([
+			execution({ status: 'error', error: 'fetch failed', timeline: [] }),
+		]);
+
+		const assistant = result.find((m) => m.role === 'assistant');
+		expect(assistant).toMatchObject({ executionStatus: 'error', executionError: 'fetch failed' });
+		expect(assistant?.content).toEqual([]);
+	});
+
+	it('does not attach the recorded error to successful turns', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				error: null,
+				timeline: [{ type: 'text', content: 'ok', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
+	it('maps reasoning timeline events with timing into assistant message content', () => {
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'reasoning',
+						content: 'Check the inputs.',
+						timestamp: 100,
+						endTime: 150,
+					},
+					{ type: 'text', content: 'Done.', timestamp: 151, endTime: 160 },
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'reasoning',
+				text: 'Check the inputs.',
+				startTime: 100,
+				endTime: 150,
+			},
+			{ type: 'text', text: 'Done.' },
+		]);
+	});
+
+	it('carries childTrace onto the persisted tool-call content part', () => {
+		const childTrace = {
+			text: 'child said this',
+			reasoningSegments: [{ id: 'r-1', content: 'thinking' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'delegate_subagent',
+						toolCallId: 'tc-parent',
+						input: { goal: 'x' },
+						output: { status: 'completed', answer: 'done' },
+						startTime: 100,
+						endTime: 200,
+						success: true,
+						childTrace,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'tool-call',
+				toolName: 'delegate_subagent',
+				toolCallId: 'tc-parent',
+				input: { goal: 'x' },
+				startTime: 100,
+				endTime: 200,
+				state: 'resolved',
+				output: { status: 'completed', answer: 'done' },
+				childTrace,
+			},
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
-				assistantResponse: 'Let me check.Done.',
 				timeline: [
 					{ type: 'text', content: 'Let me check.', timestamp: 100, endTime: 110 },
 					{
@@ -46,6 +192,8 @@ describe('execution-to-message-mapper', () => {
 				id: 'execution-1:user',
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
+				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -64,8 +212,49 @@ describe('execution-to-message-mapper', () => {
 					},
 					{ type: 'text', text: 'Done.' },
 				],
+				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
+	});
+
+	it('associates a suspension payload with its original tool call', () => {
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'check_ledger',
+			args: {},
+			details: { node: { parameters: { operation: 'get', returnAll: true } } },
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'check_ledger',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+					{
+						type: 'suspension',
+						toolName: 'check_ledger',
+						toolCallId: 'call-1',
+						timestamp: 110,
+						suspendPayload,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'call-1',
+			suspendPayload,
+		});
 	});
 
 	it('maps failed timeline tool calls as rejected content parts', () => {
@@ -92,6 +281,8 @@ describe('execution-to-message-mapper', () => {
 				id: 'execution-1:user',
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
+				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -108,80 +299,92 @@ describe('execution-to-message-mapper', () => {
 						error: 'Tool failed',
 					},
 				],
+				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
 
-	it('falls back to recorded tool calls when execution timeline is unavailable', () => {
+	it('includes attachment file parts on the user message', () => {
 		const result = executionToMessagesDto(
 			execution({
-				assistantResponse: 'Legacy done.',
-				toolCalls: [{ name: 'legacy_tool', input: { id: '123' }, output: 'ok' }],
+				attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
 			}),
 		);
 
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'legacy_tool',
-						toolCallId: 'execution-1:tool:0',
-						input: { id: '123' },
-						output: 'ok',
-					},
-					{ type: 'text', text: 'Legacy done.' },
+		expect(result[0]).toEqual({
+			id: 'execution-1:user',
+			role: 'user',
+			content: [
+				{ type: 'text', text: 'Hello' },
+				{
+					type: 'file',
+					fileId: 'att-1',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+					sizeBytes: 33,
+				},
+			],
+			executionId: 'execution-1',
+			createdAt: FIXED_CREATED_AT.toISOString(),
+		});
+	});
+
+	it('emits a user message for attachment-only turns without text', () => {
+		const result = executionToMessagesDto(
+			execution({
+				userMessage: null,
+				attachments: [
+					{ id: 'att-1', fileName: 'voice.ogg', mimeType: 'audio/ogg', sizeBytes: 100 },
 				],
+			}),
+		);
+
+		expect(result[0].role).toBe('user');
+		expect(result[0].content).toEqual([
+			{
+				type: 'file',
+				fileId: 'att-1',
+				fileName: 'voice.ogg',
+				mimeType: 'audio/ogg',
+				sizeBytes: 100,
 			},
 		]);
 	});
 
-	it('does not infer resolved state from legacy recorded tool call output', () => {
+	it('maps an execution error without model output into an assistant message', () => {
 		const result = executionToMessagesDto(
 			execution({
-				toolCalls: [
-					{
-						name: 'legacy_tool',
-						input: { id: '123' },
-						output: { message: 'Tool failed before timeline recording was available' },
-					},
-				],
+				status: 'error',
+				error: 'Model request failed',
 			}),
 		);
 
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'legacy_tool',
-						toolCallId: 'execution-1:tool:0',
-						input: { id: '123' },
-						output: { message: 'Tool failed before timeline recording was available' },
-					},
-				],
-			},
-		]);
+		// The error stays in `executionError`, not in `content`, so the client
+		// renders it as an error bubble instead of model output.
+		expect(result[1]).toEqual({
+			id: 'execution-1:assistant',
+			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
+			executionStatus: 'error',
+			executionError: 'Model request failed',
+			createdAt: FIXED_CREATED_AT.toISOString(),
+		});
 	});
 
 	it('flattens multiple executions into a single message list', () => {
 		const result = executionsToMessagesDto([
-			execution({ id: 'execution-1', userMessage: 'Hello', assistantResponse: 'Hi' }),
-			execution({ id: 'execution-2', userMessage: 'Again', assistantResponse: 'There' }),
+			execution({
+				id: 'execution-1',
+				userMessage: 'Hello',
+				timeline: [{ type: 'text', content: 'Hi', timestamp: 100 }],
+			}),
+			execution({
+				id: 'execution-2',
+				userMessage: 'Again',
+				timeline: [{ type: 'text', content: 'There', timestamp: 200 }],
+			}),
 		]);
 
 		expect(result.map((message) => message.id)).toEqual([
@@ -189,6 +392,103 @@ describe('execution-to-message-mapper', () => {
 			'execution-1:assistant',
 			'execution-2:user',
 			'execution-2:assistant',
+		]);
+	});
+
+	it('settles an earlier suspended tool call from a later resumed execution', () => {
+		const result = executionsToMessagesDto([
+			execution({
+				id: 'execution-suspended',
+				userMessage: 'Show me an action',
+				timeline: [
+					{ type: 'text', content: 'Pick one.', timestamp: 100, endTime: 110 },
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-action',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									text: 'Choose',
+									card: {
+										components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+									},
+								},
+							},
+						},
+						output: undefined,
+						startTime: 120,
+						endTime: 0,
+						success: false,
+					},
+				],
+			}),
+			execution({
+				id: 'execution-resumed',
+				userMessage: null,
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-action',
+						input: undefined,
+						output: { type: 'button', value: 'approve' },
+						startTime: 200,
+						endTime: 220,
+						success: true,
+					},
+					{ type: 'text', content: 'Approved.', timestamp: 230, endTime: 240 },
+				],
+			}),
+		]);
+
+		expect(result).toEqual([
+			{
+				id: 'execution-suspended:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Show me an action' }],
+				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
+			},
+			{
+				id: 'execution-suspended:assistant',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Pick one.' },
+					{
+						type: 'tool-call',
+						toolName: 'chat_action',
+						toolCallId: 'tc-action',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									text: 'Choose',
+									card: {
+										components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+									},
+								},
+							},
+						},
+						startTime: 120,
+						endTime: 220,
+						state: 'resolved',
+						output: { type: 'button', value: 'approve' },
+					},
+				],
+				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
+			},
+			{
+				id: 'execution-resumed:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Approved.' }],
+				executionId: 'execution-resumed',
+				createdAt: FIXED_CREATED_AT.toISOString(),
+			},
 		]);
 	});
 });

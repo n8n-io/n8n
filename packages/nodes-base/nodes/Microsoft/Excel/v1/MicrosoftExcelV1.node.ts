@@ -24,15 +24,15 @@ import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'Microsoft Excel',
+	displayName: 'Microsoft Excel (OneDrive)',
 	name: 'microsoftExcel',
 	icon: 'file:excel.svg',
 	group: ['input'],
 	version: 1,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-	description: 'Consume Microsoft Excel API',
+	description: 'Consume the Microsoft Excel API for workbooks stored in OneDrive',
 	defaults: {
-		name: 'Microsoft Excel',
+		name: 'Microsoft Excel (OneDrive)',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

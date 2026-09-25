@@ -157,6 +157,12 @@
         "profile": {
             "type": "object",
             "properties": {
+                "department": {
+                    "type": "string"
+                },
+                "division": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -167,6 +173,15 @@
                     "type": "string"
                 },
                 "login": {
+                    "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "userType": {
                     "type": "string"
                 }
             }
@@ -183,5 +198,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

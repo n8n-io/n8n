@@ -2,8 +2,14 @@
  * Consolidated data-tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
+import {
+	instanceAiApprovalDetailsSchema,
+	instanceAiApprovalResumeSchema,
+	buildDataTablesSessionGrantKey,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -22,7 +28,7 @@ const filterSchema = z.object({
 	filters: z.array(
 		z.object({
 			columnName: z.string(),
-			condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+			condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 			value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		}),
 	),
@@ -34,7 +40,7 @@ const filterSchemaWithMinOne = z.object({
 		.array(
 			z.object({
 				columnName: z.string(),
-				condition: z.enum(['eq', 'neq', 'like', 'gt', 'gte', 'lt', 'lte']),
+				condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
 				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 			}),
 		)
@@ -44,18 +50,32 @@ const filterSchemaWithMinOne = z.object({
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 
 interface ConfirmationToolContext {
 	resumeData: ResumeData | undefined;
 	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+}
+
+function hasSessionGrant(context: InstanceAiContext, action: string): boolean {
+	return context.sessionApprovedToolKeys?.has(buildDataTablesSessionGrantKey(action)) === true;
+}
+
+async function persistSessionGrantIfRequested(
+	context: InstanceAiContext,
+	action: string,
+	resumeData: ResumeData | undefined,
+): Promise<void> {
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
+	}
 }
 
 /**
@@ -74,17 +94,81 @@ function isNameConflictError(error: unknown): boolean {
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
+/** Cells can hold arbitrarily large values (e.g. inline base64 images); cap what a
+ *  query feeds back to the model so one broad query cannot flood the conversation. */
+const MAX_CELL_CHARS = 1024;
+
+/** When full cell values are requested, cap rows per call — a few intact blob
+ *  cells are useful; dozens re-create the flood truncation exists to prevent. */
+const MAX_FULL_VALUE_ROWS = 5;
+
+const filterDescribe =
+	'Row filter conditions. For text matching use `ilike` (case-insensitive contains); `like` is ' +
+	'case-sensitive. Values without `%` are wrapped as `%value%`.';
+
 const projectIdDescribe =
-	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
+	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
 const dataTableNameDescribe =
-	'Human-readable name of the data table, shown alongside the ID in the approval card. Pass this whenever you know it (e.g. from a prior `list` call) so users see a recognisable label instead of a bare UUID.';
+	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
 
-/** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
-function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {
-	return input.dataTableName
-		? `${input.dataTableName} (ID: ${input.dataTableId})`
-		: input.dataTableId;
+const columnNameForCardDescribe =
+	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';
+
+/** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
+function dataTableResourceName(input: DataTableReferenceInput): string {
+	return input.dataTableName ?? input.dataTableId;
+}
+
+function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
+	const conditions = {
+		eq: 'is',
+		neq: 'is not',
+		like: 'matches the text pattern',
+		ilike: 'matches the text pattern (ignoring case)',
+		gt: 'is greater than',
+		gte: 'is greater than or equal to',
+		lt: 'is less than',
+		lte: 'is less than or equal to',
+	};
+	return filter.filters
+		.map(({ columnName, condition, value }) => {
+			if (value === null && (condition === 'eq' || condition === 'neq')) {
+				return `"${columnName}" ${condition === 'eq' ? 'has no value' : 'has a value'}`;
+			}
+			if (
+				(condition === 'like' || condition === 'ilike') &&
+				typeof value === 'string' &&
+				!value.includes('%')
+			) {
+				return `"${columnName}" contains ${JSON.stringify(value)}${condition === 'ilike' ? ' (ignoring case)' : ' (matching case)'}`;
+			}
+			return `"${columnName}" ${conditions[condition]} ${JSON.stringify(value)}`;
+		})
+		.join(` ${filter.type} `);
+}
+
+const MAX_DESCRIBED_COLUMNS = 5;
+const MAX_DESCRIBED_ROWS = 3;
+
+function previewRow(data: Record<string, unknown>) {
+	const entries = Object.entries(data);
+	return {
+		values: entries.slice(0, MAX_DESCRIBED_COLUMNS).map(([column, value]) => {
+			const text = value === null || value === undefined ? null : JSON.stringify(value);
+			return { column, value: text && text.length > 100 ? `${text.slice(0, 100)}…` : text };
+		}),
+		remainingColumns: Math.max(0, entries.length - MAX_DESCRIBED_COLUMNS),
+	};
+}
+
+function describeRowChanges(data: Record<string, unknown>): string {
+	const { values, remainingColumns } = previewRow(data);
+	const described = values.map(({ column, value }) => `"${column}" to ${value ?? 'no value'}`);
+	if (remainingColumns > 0) {
+		described.push(`${remainingColumns} more ${remainingColumns === 1 ? 'column' : 'columns'}`);
+	}
+	return described.join(', ');
 }
 
 const listAction = z.object({
@@ -93,7 +177,11 @@ const listAction = z.object({
 });
 
 const schemaAction = z.object({
-	action: z.literal('schema').describe('Get column definitions for a data table'),
+	action: z
+		.literal('schema')
+		.describe(
+			'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
+		),
 	dataTableId: z
 		.string()
 		.describe(
@@ -104,7 +192,12 @@ const schemaAction = z.object({
 });
 
 const queryAction = z.object({
-	action: z.literal('query').describe('Query rows from a data table with optional filtering'),
+	action: z
+		.literal('query')
+		.describe(
+			'Query rows from a data table. Prefer a column filter and a small limit over broad pulls; ' +
+				'results include the total matching `count`, so `limit: 1` is enough to check row existence.',
+		),
 	dataTableId: z
 		.string()
 		.describe(
@@ -112,7 +205,7 @@ const queryAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.optional().describe('Row filter conditions'),
+	filter: filterSchema.optional().describe(filterDescribe),
 	limit: z
 		.number()
 		.int()
@@ -121,6 +214,15 @@ const queryAction = z.object({
 		.optional()
 		.describe('Max rows to return (default 50)'),
 	offset: z.number().int().min(0).optional().describe('Number of rows to skip'),
+	fullCellValues: z
+		.boolean()
+		.optional()
+		.describe(
+			`Return cell values untruncated. By default values longer than ${MAX_CELL_CHARS} characters ` +
+				'(e.g. inline base64 images) are truncated. Requires a filter matching the specific ' +
+				`row(s) whose full values are needed (ignored without one) and returns at most ${MAX_FULL_VALUE_ROWS} ` +
+				'rows per call (default 1) — paginate for more.',
+		),
 });
 
 const createAction = z.object({
@@ -172,6 +274,7 @@ const deleteColumnAction = z.object({
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
+	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 });
 
 const renameColumnAction = z.object({
@@ -184,6 +287,7 @@ const renameColumnAction = z.object({
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
+	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 	newName: z.string().describe('New column name'),
 });
 
@@ -212,7 +316,7 @@ const updateRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchema.describe('Row filter conditions'),
+	filter: filterSchema.describe(filterDescribe),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
 });
 
@@ -229,7 +333,7 @@ const deleteRowsAction = z.object({
 		),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
+	filter: filterSchemaWithMinOne.describe(filterDescribe),
 });
 
 const allActions = [
@@ -296,14 +400,43 @@ async function handleSchema(
 	return { ...table, columns };
 }
 
+function truncateOversizedCells(rows: Array<Record<string, unknown>>): {
+	rows: Array<Record<string, unknown>>;
+	truncatedColumns: string[];
+} {
+	const truncatedColumns = new Set<string>();
+	const truncatedRows = rows.map((row) => {
+		const oversized = Object.entries(row).filter(
+			([, value]) => typeof value === 'string' && value.length > MAX_CELL_CHARS,
+		);
+		if (oversized.length === 0) return row;
+
+		const next = { ...row };
+		for (const [column, value] of oversized) {
+			if (typeof value !== 'string') continue;
+			next[column] =
+				`${value.slice(0, MAX_CELL_CHARS)}… [truncated, ${String(value.length)} chars total]`;
+			truncatedColumns.add(column);
+		}
+		return next;
+	});
+	return { rows: truncatedRows, truncatedColumns: [...truncatedColumns] };
+}
+
 async function handleQuery(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
 	const table = await resolveDataTableReference(context, input, 'readRow');
+	// Honor fullCellValues only for filtered queries, and bound how many intact
+	// rows one call can return — an unfiltered "give me everything untruncated"
+	// is the exact flood shape truncation exists to prevent.
+	const hasFilter = (input.filter?.filters.length ?? 0) > 0;
+	const returnFullValues = input.fullCellValues === true && hasFilter;
+	const limit = returnFullValues ? Math.min(input.limit ?? 1, MAX_FULL_VALUE_ROWS) : input.limit;
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
-		limit: input.limit,
+		limit,
 		offset: input.offset,
 		projectId: input.projectId,
 	});
@@ -311,15 +444,27 @@ async function handleQuery(
 	const returnedRows = result.data.length;
 	const remaining = result.count - (input.offset ?? 0) - returnedRows;
 
+	const hints: string[] = [];
+	let data = result.data;
+	if (!returnFullValues) {
+		const truncation = truncateOversizedCells(result.data);
+		if (truncation.truncatedColumns.length > 0) {
+			data = truncation.rows;
+			hints.push(
+				input.fullCellValues === true
+					? `fullCellValues was ignored because the query has no filter. Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. Re-query with a filter matching only the specific row(s) to get full values.`
+					: `Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. If a full value is needed, re-query with fullCellValues: true and a filter matching only the specific row(s).`,
+			);
+		}
+	}
 	if (remaining > 0) {
-		return {
-			...table,
-			...result,
-			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
-		};
+		hints.push(
+			`${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
+		);
 	}
 
-	return { ...table, ...result };
+	const response = { ...table, count: result.count, data };
+	return hints.length > 0 ? { ...response, hint: hints.join(' ') } : response;
 }
 
 async function handleCreate(
@@ -333,19 +478,21 @@ async function handleCreate(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.createDataTable !== 'always_allow';
+	const needsApproval =
+		context.permissions?.createDataTable !== 'always_allow' && !hasSessionGrant(context, 'create');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create ${input.name}`;
+		let message = `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create ${input.name} in project ${projectLabel}`;
+			message += ` in project "${projectLabel}"`;
 		}
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message,
+			resourceName: input.name,
 			severity: 'info' as const,
 		});
 	}
@@ -354,6 +501,8 @@ async function handleCreate(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'create', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	try {
@@ -385,13 +534,16 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.deleteDataTable !== 'always_allow';
+	const needsApproval =
+		context.permissions?.deleteDataTable !== 'always_allow' && !hasSessionGrant(context, 'delete');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete ${buildDataTableLabel(input)}`,
+			message: 'Permanently delete the table and all its rows',
+			approvalDetails: { action: 'delete-table' } satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}
@@ -400,6 +552,8 @@ async function handleDelete(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.delete(input.dataTableId, { projectId: input.projectId });
@@ -417,13 +571,21 @@ async function handleAddColumn(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'add-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add ${input.columnName} (${input.type}) to ${buildDataTableLabel(input)}`,
+			message: `Add column "${input.columnName}" (${input.type})`,
+			approvalDetails: {
+				action: 'add-column',
+				column: input.columnName,
+				columnType: input.type,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -432,6 +594,8 @@ async function handleAddColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'add-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(
@@ -453,13 +617,20 @@ async function handleDeleteColumn(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'delete-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete ${input.columnId} from ${buildDataTableLabel(input)}`,
+			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
+			approvalDetails: {
+				action: 'delete-column',
+				column: input.currentColumnName ?? input.columnId,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}
@@ -468,6 +639,8 @@ async function handleDeleteColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
@@ -487,13 +660,21 @@ async function handleRenameColumn(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'rename-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Rename ${input.columnId} to ${input.newName} in ${buildDataTableLabel(input)}`,
+			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
+			approvalDetails: {
+				action: 'rename-column',
+				column: input.currentColumnName ?? input.columnId,
+				newName: input.newName,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -502,6 +683,8 @@ async function handleRenameColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'rename-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
@@ -521,13 +704,29 @@ async function handleInsertRows(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'insert-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const rowDescriptions = input.rows.slice(0, MAX_DESCRIBED_ROWS).map((row, index) => {
+			const changes = describeRowChanges(row);
+			return `Row ${index + 1}: ${changes ? `set ${changes}` : 'no column values supplied'}`;
+		});
+		const remaining = input.rows.length - rowDescriptions.length;
+		if (remaining > 0) {
+			rowDescriptions.push(`${remaining} more ${remaining === 1 ? 'row' : 'rows'}`);
+		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into ${buildDataTableLabel(input)}`,
+			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}\n\n${rowDescriptions.join('\n\n')}`,
+			approvalDetails: {
+				action: 'insert-rows',
+				count: input.rows.length,
+				rows: input.rows.slice(0, MAX_DESCRIBED_ROWS).map(previewRow),
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -536,6 +735,8 @@ async function handleInsertRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
@@ -554,13 +755,24 @@ async function handleUpdateRows(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'update-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update rows in ${buildDataTableLabel(input)}`,
+			message:
+				input.filter.filters.length === 0
+					? `Set ${describeRowChanges(input.data)} in all rows`
+					: `Set ${describeRowChanges(input.data)} in rows where ${describeRowFilter(input.filter)}`,
+			approvalDetails: {
+				action: 'update-rows',
+				changes: previewRow(input.data),
+				filter: input.filter,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -569,6 +781,8 @@ async function handleUpdateRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
@@ -587,22 +801,20 @@ async function handleDeleteRows(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'delete-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const filterDesc = input.filter.filters
-			.map(
-				(f: {
-					columnName: string;
-					condition: string;
-					value: string | number | boolean | null;
-				}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
-			)
-			.join(` ${input.filter.type} `);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete rows from ${buildDataTableLabel(input)} where ${filterDesc}`,
+			message: `Delete rows where ${describeRowFilter(input.filter)}`,
+			approvalDetails: {
+				action: 'delete-rows',
+				filter: input.filter,
+			} satisfies InstanceAiApprovalDetails,
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}
@@ -611,6 +823,8 @@ async function handleDeleteRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
@@ -631,7 +845,16 @@ export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)
-		.description('Manage data tables — list, query, create, modify columns, and manage rows.')
+		.description(
+			'Manage data tables — list, query, create, modify columns, and manage rows. ' +
+				'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
+				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
+				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
+				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
+				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
+				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
+				'query only retry strictly narrower.',
+		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)

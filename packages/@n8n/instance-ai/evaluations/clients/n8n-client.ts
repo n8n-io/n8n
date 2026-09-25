@@ -7,11 +7,81 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiHandoffContext,
+	InstanceAiSendMessageRequest,
+	AgentConfigResponse,
+	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadStatusResponse,
+	InstanceAiEvalSeedAgent,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedFolder,
+	InstanceAiEvalSeedWorkflow,
+	InstanceAiResourceAttachment,
+	AgentJsonConfig,
+	AgentSkill,
+	EvaluationConfigDto,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
+import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
+
+// Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
+// AbortSignal is the real bound. This is process-global: only ever imported by the
+// eval CLI harness — never import into the n8n server or shared runtime code.
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
+
+/** Floor for calls that pass no budget: the dispatcher above leaves those
+ *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
+ *  REST call — slower callers pass their own. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
+const RESTORE_THREAD_TIMEOUT_MS = 300_000;
+
+/** How much longer the client waits than the server budget it hands over. */
+const CLIENT_ABORT_MARGIN_MS = 5_000;
+
+/** Server gives up just before the client, so the caller gets an in-band error
+ *  rather than a bare abort. Uncapped: 15 min truncated `complex` budgets. */
+function serverBudgetFor(timeoutMs: number): number {
+	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
+}
+
+// -- Invitation response shapes ------------------------------------------------
+
+const InvitedUsersEnvelope = z.object({
+	data: z.array(
+		z.object({
+			user: z.object({
+				id: z.string(),
+				email: z.string(),
+				inviteAcceptUrl: z.string().optional(),
+			}),
+			error: z.string().optional(),
+		}),
+	),
+});
+
+// -- Conversation seeding response shapes -------------------------------------
+
+const RestoreThreadEnvelope = z.object({
+	data: z.object({
+		ok: z.literal(true),
+		threadId: z.string(),
+		restored: z.number(),
+		workflowIds: z.array(z.string()),
+		dataTableIds: z.array(z.string()).default([]),
+		agentIds: z.array(z.string()).default([]),
+		folderIds: z.array(z.string()).default([]),
+	}),
+});
 
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
@@ -38,20 +108,61 @@ const GatewayStatusSchema = z.object({
 const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
 export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
+// Browser-use relay (a different channel from the computer-use gateway above:
+// the server owns the CDP relay and the extension dials in).
+const BrowserLinkSchema = z.object({
+	connectUrl: z.string(),
+	expiresAt: z.string().nullable(),
+	ttlSeconds: z.number().nullable(),
+});
+const BrowserLinkEnvelope = z.object({ data: BrowserLinkSchema });
+export type BrowserLink = z.infer<typeof BrowserLinkSchema>;
+
+const BrowserStatusSchema = z.object({
+	connected: z.boolean(),
+	connectedAt: z.string().nullable(),
+	toolCategories: z.array(z.object({ name: z.string(), enabled: z.boolean() })),
+});
+const BrowserStatusEnvelope = z.object({ data: BrowserStatusSchema });
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
+
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
 
+/** A credential as `GET /rest/credentials` returns it. No `data`: the REST read
+ *  blanks every password field, so nothing here consumes decrypted credential
+ *  data — see the header of `credential-setup-checks.ts`. */
+export interface CredentialResponse {
+	id: string;
+	name: string;
+	type: string;
+}
+
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
+	alwaysOutputData?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
+}
+
+/** A canvas node group as returned by the n8n REST API — members are node *ids*. */
+export interface WorkflowNodeGroupResponse {
+	id: string;
+	name: string;
+	nodeIds: string[];
+	description?: string;
 }
 
 /** A workflow as returned by GET /rest/workflows/:id. */
@@ -63,6 +174,7 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
 }
 
@@ -71,6 +183,27 @@ interface WorkflowListItem {
 	name: string;
 	active: boolean;
 	nodes: WorkflowNodeResponse[];
+	/** The folder the workflow sits in; absent or null at the project root. */
+	parentFolder?: { id: string } | null;
+}
+
+/** One page of a project's folder list, trimmed to the fields the harness reads. */
+const FolderListEnvelope = z.object({
+	count: z.number(),
+	data: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			parentFolder: z.object({ id: z.string() }).nullable().optional(),
+		}),
+	),
+});
+
+export interface FolderPlacement {
+	id: string;
+	name: string;
+	/** `null` at the project root. */
+	parentFolderId: string | null;
 }
 
 interface ExecutionListItem {
@@ -82,35 +215,69 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
 
-// -- Thread types ------------------------------------------------------------
-
-interface ThreadStatus {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		startedAt: number;
-		runId?: string;
-		messageGroupId?: string;
-	}>;
+/** A data table column as returned by GET .../data-tables/:dataTableId/columns. */
+export interface DataTableColumnResponse {
+	id: string;
+	dataTableId: string;
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'date';
+	index: number;
+	createdAt: string;
+	updatedAt: string;
 }
+
+export type DataTableColumnsResponse = DataTableColumnResponse[];
+
+/**
+ * A data table row as returned by GET .../data-tables/:dataTableId/rows —
+ * column values keyed by column name, plus the system `id`/`createdAt`/`updatedAt` fields.
+ */
+export interface DataTableRowResponse extends Record<string, string | number | boolean | null> {
+	id: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** Paginated rows response; see `getDataTableRows` for why the harness only reads page one. */
+export interface DataTableRowsResponse {
+	count: number;
+	data: DataTableRowResponse[];
+}
+
+// -- Thread types ------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
+/** Non-2xx API response; `status` lets callers branch on e.g. 404 (missing endpoint). */
+export class N8nApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
+
 export class N8nClient {
 	private sessionCookie?: string;
+	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
+	private personalProjectId?: Promise<string>;
+	/** Whether the logged-in user holds `workflow:delete` globally. Read off the
+	 *  login payload, and the reason a 403 can be read as "already gone". See
+	 *  `isWorkflowGone`. False until `login` says otherwise, so a client that
+	 *  never logged in takes the strict path. */
+	private hasGlobalWorkflowDelete = false;
 
-	constructor(private readonly baseUrl: string) {}
+	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
+	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -123,10 +290,16 @@ export class N8nClient {
 		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
 		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
-		await this.fetch('/rest/login', {
+		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		});
+		})) as { data?: { globalScopes?: string[]; isOwner?: boolean } };
+
+		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
+		// is the fallback for a payload that carries no scope list: an owner always
+		// holds the scope, so the two agree wherever both are present.
+		this.hasGlobalWorkflowDelete =
+			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -137,26 +310,60 @@ export class N8nClient {
 
 	/**
 	 * Ensure a conversation thread exists before sending chat messages.
-	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
-	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+	/** `sourceContext` is persisted on the thread and surfaced on the run's
+	 *  LangSmith trace (prefixed `source_context.`), so pass what a later reader
+	 *  needs to tell one build apart from another — the eval harness sends the
+	 *  case slug and iteration. Capped at 2 KB by the API. */
+	async ensureThread(
+		threadId: string,
+		projectId?: string,
+		sourceContext?: Record<string, string | number | boolean>,
+	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
-			body: { threadId, projectId: resolvedProjectId },
+			body: {
+				threadId,
+				projectId: resolvedProjectId,
+				source: 'evals',
+				origin: 'internal',
+				...(sourceContext ? { sourceContext } : {}),
+			},
 		});
 	}
 
 	/**
 	 * Send a chat message to the instance-ai agent.
-	 * POST /rest/instance-ai/chat/:threadId  body: { message }
+	 * POST /rest/instance-ai/chat/:threadId  body: { message, attachments? }
+	 *
+	 * `attachments` are resource references the agent resolves with its tools — the
+	 *  same channel the editor uses when a user opens the assistant with a workflow
+	 *  or Agent in front of them. The assistant receives the resource by id.
 	 */
-	async sendMessage(threadId: string, message: string): Promise<{ runId: string }> {
+	async sendMessage(
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiResourceAttachment[],
+		mode: InstanceAiBuildMode = 'default',
+		promptVersion?: string,
+		handoffContext?: InstanceAiHandoffContext,
+		observerThresholdTokens?: number,
+	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: { message },
+			body: {
+				message,
+				...(attachments?.length ? { attachments } : {}),
+				mode,
+				...(promptVersion ? { promptVersion } : {}),
+				...(handoffContext ? { context: handoffContext } : {}),
+				// Per-thread, so other cases in the suite keep the instance default.
+				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -185,8 +392,13 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
+		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
+		);
 	}
 
 	/**
@@ -206,6 +418,39 @@ export class N8nClient {
 	 */
 	async deleteThread(threadId: string): Promise<void> {
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * List captured LLM debug runs for a thread.
+	 * GET /rest/instance-ai/debug/threads/:threadId/runs
+	 */
+	async listThreadDebugRuns(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadDebugRunsResponse> {
+		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
+		);
+	}
+
+	/**
+	 * Fetch full LLM step debug for a single run.
+	 * GET /rest/instance-ai/debug/runs/:runId
+	 */
+	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
+		return this.unwrapRestData<InstanceAiRunDebugResponse>(
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
+		);
+	}
+
+	/** Live observations + the compaction cursor for a thread. */
+	async getThreadMemory(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
+			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
+		);
 	}
 
 	// -- Computer-use gateway (pairing + status) -----------------------------
@@ -229,6 +474,36 @@ export class N8nClient {
 	async getGatewayStatus(): Promise<GatewayStatus> {
 		const result = await this.fetch('/rest/instance-ai/gateway/status');
 		return GatewayStatusEnvelope.parse(result).data;
+	}
+
+	// -- Browser-use relay (extension pairing + status) ----------------------
+
+	/**
+	 * Mint a connect URL for the browser-use extension to dial into. This is the
+	 * production `mode: 'remote'` path — the server owns the relay.
+	 * POST /rest/instance-ai/browser/create-link
+	 */
+	async createBrowserLink(): Promise<BrowserLink> {
+		const result = await this.fetch('/rest/instance-ai/browser/create-link', { method: 'POST' });
+		return BrowserLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the browser relay status. Flips to `connected: true` once the
+	 * extension has registered.
+	 * GET /rest/instance-ai/browser/status
+	 */
+	async getBrowserStatus(): Promise<BrowserStatus> {
+		const result = await this.fetch('/rest/instance-ai/browser/status');
+		return BrowserStatusEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Drop the browser session so the next case starts from a clean relay.
+	 * POST /rest/instance-ai/browser/disconnect-session
+	 */
+	async disconnectBrowserSession(): Promise<void> {
+		await this.fetch('/rest/instance-ai/browser/disconnect-session', { method: 'POST' });
 	}
 
 	// -- REST API (verification helpers) -------------------------------------
@@ -260,21 +535,95 @@ export class N8nClient {
 		return { id: result.data.id };
 	}
 
+	/**
+	 * List all credentials visible to the authenticated user (no secret data).
+	 * GET /rest/credentials
+	 */
+	async listCredentials(): Promise<CredentialResponse[]> {
+		const result = (await this.fetch('/rest/credentials')) as { data: CredentialResponse[] };
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/**
+	 * Run a credential's own test request WITHOUT persisting anything.
+	 * POST /rest/credentials/test
+	 *
+	 * Proves the stored secret works without the harness ever reading it back.
+	 */
+	async testCredential(credential: {
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ status: string; message?: string }> {
+		const result = (await this.fetch('/rest/credentials/test', {
+			method: 'POST',
+			body: { credentials: credential },
+		})) as { data?: { status?: string; message?: string } };
+		return { status: result.data?.status ?? 'Error', message: result.data?.message };
+	}
+
+	/** Read one credential including its (password-blanked) data — the shape the
+	 *  test endpoint wants echoed back. */
+	async getCredentialForTest(id: string): Promise<{
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}> {
+		const result = (await this.fetch(`/rest/credentials/${id}?includeData=true`)) as {
+			data: { id: string; name: string; type: string; data?: Record<string, unknown> };
+		};
+		return { ...result.data, data: result.data.data ?? {} };
+	}
+
 	/** List all credential IDs visible to the authenticated user. */
 	async listCredentialIds(): Promise<string[]> {
-		const result = (await this.fetch('/rest/credentials')) as {
-			data: Array<{ id: string }>;
-		};
-		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
+		return (await this.listCredentials()).map((c) => c.id);
 	}
 
 	/**
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<WorkflowResponse> {
-		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
+	async getWorkflow(id: string, timeoutMs?: number): Promise<WorkflowResponse> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, { timeoutMs })) as {
 			data: WorkflowResponse;
+		};
+		return result.data;
+	}
+
+	/**
+	 * Get an agent's JSON config (system prompt, model, tools, skill refs).
+	 * GET /rest/projects/:projectId/agents/v2/:agentId/config
+	 */
+	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
+		)) as { data: AgentConfigResponse };
+		return result.data.config;
+	}
+
+	/**
+	 * Get an agent's full skills map (skill content, not just the refs on its config).
+	 * GET /rest/projects/:projectId/agents/v2/:agentId/skills
+	 */
+	async getAgentSkills(projectId: string, agentId: string): Promise<Record<string, AgentSkill>> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/skills`,
+		)) as {
+			data: Record<string, AgentSkill>;
+		};
+		return result.data;
+	}
+
+	/**
+	 * List the evaluation configs defined on a workflow.
+	 * GET /rest/workflows/:workflowId/evaluation-configs
+	 */
+	async getWorkflowEvaluationConfigs(workflowId: string): Promise<EvaluationConfigDto[]> {
+		const result = (await this.fetch(`/rest/workflows/${workflowId}/evaluation-configs`)) as {
+			data: EvaluationConfigDto[];
 		};
 		return result.data;
 	}
@@ -299,12 +648,14 @@ export class N8nClient {
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
+		timeoutMs?: number,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
 			body.triggerToStartFrom = { name: triggerNodeName };
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			timeoutMs,
 			method: 'POST',
 			body,
 		})) as { data: { executionId: string } };
@@ -315,11 +666,15 @@ export class N8nClient {
 	 * Get a single execution by ID.
 	 * GET /rest/executions/:id
 	 */
-	async getExecution(executionId: string): Promise<ExecutionDetail> {
-		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+	async getExecution(executionId: string, timeoutMs?: number): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`, { timeoutMs })) as {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	async stopExecution(executionId: string): Promise<void> {
+		await this.fetch(`/rest/executions/${executionId}/stop`, { method: 'POST', timeoutMs: 5_000 });
 	}
 
 	/**
@@ -412,12 +767,49 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a workflow by ID. The workflow must be archived first.
+	 * Delete a workflow by ID. The workflow must be archived first. The archive
+	 * step's only 400 is "already archived" (a folder delete archives what the
+	 * folder held), so a 400 there goes straight to the delete, which refuses a
+	 * live workflow on its own. Refusing here left every such leftover
+	 * undeletable by eviction and cleanup alike.
+	 *
+	 * A workflow that is already gone is a success, not a failure. A cleanup
+	 * retry re-runs on the same build, and an eviction deletes what it listed a
+	 * moment earlier, so both meet ids another pass already took. See
+	 * `isWorkflowGone` for which status says so.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
-		await this.archiveWorkflow(id);
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		try {
+			await this.archiveWorkflow(id);
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError)) throw error;
+			if (this.isWorkflowGone(error.status)) return;
+			if (error.status !== 400) throw error;
+		}
+		try {
+			await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && this.isWorkflowGone(error.status))) throw error;
+		}
+	}
+
+	/**
+	 * Whether a failed archive or delete means the workflow is already gone.
+	 *
+	 * n8n reports a missing workflow differently per user. A user holding
+	 * `workflow:delete` globally passes the scope middleware on the global check
+	 * alone, so the lookup runs unfiltered and the controller answers the missing
+	 * row with `ForbiddenError`, which is a 403. Everyone else reaches the
+	 * middleware's own `SharedWorkflow` lookup, which throws `NotFoundError`, a 404.
+	 *
+	 * So 403 only means gone for the global user. For anyone else it is a real
+	 * permission failure on a workflow that exists, and swallowing it would
+	 * report a cleanup as clean while leaving the workflow behind.
+	 */
+	private isWorkflowGone(status: number): boolean {
+		if (status === 404) return true;
+		return status === 403 && this.hasGlobalWorkflowDelete;
 	}
 
 	/**
@@ -428,10 +820,11 @@ export class N8nClient {
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
+		description?: string | null,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data },
+			body: { name, type, data, ...(description !== undefined ? { description } : {}) },
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}
@@ -439,7 +832,9 @@ export class N8nClient {
 	/**
 	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
 	 * and trigger a synthetic node-type reload. Requires the server to be running
-	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * with `E2E_TESTS=true` so the test controller is mounted, and an
+	 * authenticated session (`login()` first) — the endpoint rejects
+	 * unauthenticated calls.
 	 * POST /rest/mcp-registry/test/seed  body: none
 	 */
 	async seedMcpRegistry(): Promise<{ count: number }> {
@@ -450,11 +845,226 @@ export class N8nClient {
 	}
 
 	/**
+	 * Enable MCP access for this instance (owner scope required).
+	 * PATCH /rest/mcp/settings  body: { mcpAccessEnabled: true }
+	 *
+	 * `/rest/e2e/reset` truncates the settings table and clears the cache, so MCP
+	 * access is off after a reset regardless of startup env — the fused
+	 * `--build-via-mcp` lane setup calls this after seeding. Throws if the server
+	 * reports MCP still disabled (e.g. N8N_MCP_MANAGED_BY_ENV refuses the PATCH).
+	 */
+	async enableMcpAccess(): Promise<void> {
+		const data = this.unwrapRestData<{ mcpAccessEnabled?: boolean }>(
+			await this.fetch('/rest/mcp/settings', {
+				method: 'PATCH',
+				body: { mcpAccessEnabled: true },
+			}),
+		);
+		if (data.mcpAccessEnabled !== true) {
+			throw new Error(
+				`Failed to enable MCP access (server reported mcpAccessEnabled=${String(data.mcpAccessEnabled)})`,
+			);
+		}
+	}
+
+	/**
+	 * Mint a fresh MCP API key for the authenticated user.
+	 * POST /rest/mcp/api-key/rotate
+	 *
+	 * Uses rotate rather than GET /rest/mcp/api-key because the GET only returns
+	 * the raw JWT when it creates the key; a pre-existing key comes back redacted
+	 * (`******abcd`), which would silently break MCP auth if staged into a
+	 * `claude` config. Rotate deletes + recreates, so the response is always
+	 * unredacted — at the cost of invalidating any prior MCP key for this user.
+	 */
+	async rotateMcpApiKey(): Promise<string> {
+		const data = this.unwrapRestData<{ apiKey?: string }>(
+			await this.fetch('/rest/mcp/api-key/rotate', { method: 'POST' }),
+		);
+		if (!data.apiKey) {
+			throw new Error('MCP api-key rotate endpoint returned no apiKey');
+		}
+		// JWTs are base64url segments and never contain "*" — its presence means
+		// the server redacted the key, which would fail MCP auth downstream.
+		if (data.apiKey.includes('*')) {
+			throw new Error(
+				'MCP api-key rotate endpoint returned a redacted key — cannot stage it for `claude` MCP auth',
+			);
+		}
+		return data.apiKey;
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
 	async deleteCredential(id: string): Promise<void> {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Invite member users in one batched request. Requires an owner session.
+	 * Returns one row per invitee, reporting rather than throwing on failure:
+	 * n8n creates the user shells before it reports per-invite errors, so the
+	 * caller needs every id back to clean up. `acceptToken` is present only when
+	 * the invite was not emailed (`inviteAcceptUrl` is the token's only carrier,
+	 * and it is withheld when SMTP is configured or N8N_INVITE_LINKS_EMAIL_ONLY
+	 * is set).
+	 * POST /rest/invitations  body: [{ email, role: 'global:member' }, ...]
+	 */
+	async inviteMembers(
+		emails: string[],
+	): Promise<Array<{ id: string; email: string; acceptToken?: string; error?: string }>> {
+		if (emails.length === 0) return [];
+		const response = InvitedUsersEnvelope.parse(
+			await this.fetch('/rest/invitations', {
+				method: 'POST',
+				body: emails.map((email) => ({ email, role: 'global:member' })),
+			}),
+		);
+		return response.data.map(({ user, error }) => ({
+			id: user.id,
+			email: user.email,
+			acceptToken: user.inviteAcceptUrl
+				? (new URL(user.inviteAcceptUrl).searchParams.get('token') ?? undefined)
+				: undefined,
+			error: error === '' ? undefined : error,
+		}));
+	}
+
+	/**
+	 * Accept an invitation. The response issues the new user's session cookie,
+	 * so on a fresh N8nClient this doubles as their login.
+	 * POST /rest/invitations/accept
+	 */
+	async acceptInvitation(opts: {
+		token: string;
+		firstName: string;
+		lastName: string;
+		password: string;
+	}): Promise<void> {
+		await this.fetch('/rest/invitations/accept', { method: 'POST', body: opts });
+		if (!this.sessionCookie) {
+			throw new Error('Invitation accepted but no session cookie received');
+		}
+	}
+
+	/**
+	 * Delete a user, including the data remaining in their personal project.
+	 * DELETE /rest/users/:id
+	 */
+	async deleteUser(id: string): Promise<void> {
+		await this.fetch(`/rest/users/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Pin a build thread's credential view to exactly these IDs (empty array =
+	 * the thread sees no credentials).
+	 * POST /rest/instance-ai/eval/thread-credential-allowlist
+	 */
+	async setThreadCredentialAllowlist(
+		threadId: string,
+		credentialIds: string[],
+		bypassCredentialTest?: string[],
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+			method: 'POST',
+			// Omit an empty list so the request stays byte-identical to before for
+			// threads with no credentials at all.
+			body: {
+				threadId,
+				credentialIds,
+				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
+			},
+		});
+	}
+
+	/**
+	 * Seed an existing thread with a previously exported conversation: the
+	 * referenced workflows are recreated (node credentials stripped server-side),
+	 * any agents it built are recreated at their pinned ids and bound to the
+	 * thread, and the native message log is written verbatim, so the thread
+	 * continues as if the conversation really happened.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
+	 * table's name to dodge the per-project unique-name constraint — safe when the
+	 * seed workflow references tables by id (id-remap). Pass false to keep the
+	 * EXACT declared names, so a freshly-built workflow's by-name references
+	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
+	 * seed only data tables.
+	 *
+	 * `options.folders` are created first, in the thread's project, and the
+	 * seed workflows' `parentFolderId` references resolve to them server-side.
+	 * POST /rest/instance-ai/eval/restore-thread
+	 */
+	async restoreThread(
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+		workflows: InstanceAiEvalSeedWorkflow[],
+		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		agents: InstanceAiEvalSeedAgent[] = [],
+		options: { uniquifyNames?: boolean; folders?: InstanceAiEvalSeedFolder[] } = {},
+	): Promise<{
+		restored: number;
+		workflowIds: string[];
+		dataTableIds: string[];
+		agentIds: string[];
+		folderIds: string[];
+	}> {
+		const folders = options.folders ?? [];
+		const body: Record<string, unknown> = {
+			threadId,
+			messages,
+			workflows,
+			dataTables,
+			agents,
+			folders,
+		};
+		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
+		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+			method: 'POST',
+			body,
+			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
+		});
+		const restored = RestoreThreadEnvelope.parse(result).data;
+		// `agentIds` defaults to [] for backends that predate agent seeding, which
+		// would read as "restored fine, zero agents" on a backend that just ignored
+		// the field. If we asked for agents, insist they came back.
+		if (agents.length > 0 && restored.agentIds.length !== agents.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
+			);
+		}
+		// Same guard for folders: a backend that ignores the field would leave the
+		// case grading the agent against a folder that does not exist.
+		if (folders.length > 0 && restored.folderIds.length !== folders.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(folders.length)} folder(s) but the response carried ${String(restored.folderIds.length)} — the backend likely predates folder seeding.`,
+			);
+		}
+		return restored;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
+	 * for the per-scenario row seeding of a case that pre-created its tables
+	 * before the build turn (TRUST-311). Unlike `restoreThread` (which CREATES
+	 * tables), this targets a table that already exists by id, so a scenario can
+	 * declare its own row state without disturbing the table the built workflow
+	 * bound. `threadId` scopes the table to the run's project server-side.
+	 * POST /rest/instance-ai/eval/seed-data-table-rows
+	 */
+	async seedDataTableRows(
+		threadId: string,
+		tableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			timeoutMs,
+			method: 'POST',
+			body: { threadId, tableId, rows },
+		});
 	}
 
 	// -- Data tables ---------------------------------------------------------
@@ -464,13 +1074,149 @@ export class N8nClient {
 	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/projects/personal')) as {
-			data: { id: string };
-		};
-		if (!result.data?.id) {
-			throw new Error('Could not determine personal project ID');
+		this.personalProjectId ??= (async () => {
+			const result = (await this.fetch('/rest/projects/personal')) as {
+				data: { id: string };
+			};
+			if (!result.data?.id) {
+				throw new Error('Could not determine personal project ID');
+			}
+			return result.data.id;
+		})().catch((error: unknown) => {
+			// A failed lookup must not stick: the next caller retries.
+			this.personalProjectId = undefined;
+			throw error;
+		});
+		return await this.personalProjectId;
+	}
+
+	/**
+	 * Create a team project. Used to seed the extra projects a project-scope case
+	 * needs: a second project the eval user can see but whose writes are barred,
+	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 *
+	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
+	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
+	 * unlicensed instance. The error is re-thrown with that hint rather than
+	 * swallowed: a case that silently ran without it would grade the agent
+	 * against a project list it never saw, and pass for the wrong reason.
+	 * POST /rest/projects
+	 */
+	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+		try {
+			const result = (await this.fetch('/rest/projects', {
+				method: 'POST',
+				body: { name },
+			})) as { data?: { id?: string; name?: string } };
+			const id = result.data?.id;
+			if (!id) {
+				throw new Error(`Project "${name}" was created but the response carried no id`);
+			}
+			return { id, name: result.data?.name ?? name };
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
+				throw new Error(
+					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
+						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
+						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
+						'cert in the env is ignored. Re-enable it after seeding the owner:\n' +
+						'      PATCH /rest/e2e/feature {"feature":"feat:projectRole:admin","enabled":true}\n' +
+						'      PATCH /rest/e2e/quota   {"feature":"quota:maxTeamProjects","value":-1}\n' +
+						`  Original error: ${error.message}`,
+				);
+			}
+			throw error;
 		}
-		return result.data.id;
+	}
+
+	/**
+	 * List the team projects the authenticated user can see, so a run can evict a
+	 * crashed predecessor's leftover before recreating it. Personal projects
+	 * are filtered out — they're never seeded and must never be deleted.
+	 * GET /rest/projects
+	 */
+	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+		const result = (await this.fetch('/rest/projects')) as {
+			data?: Array<{ id?: string; name?: string; type?: string }>;
+		};
+		return (result.data ?? []).flatMap(({ id, name, type }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		);
+	}
+
+	/**
+	 * Delete a project. Used to tear down seeded projects after a run.
+	 * DELETE /rest/projects/:projectId
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
+	}
+
+	// -- Folders -------------------------------------------------------------
+
+	/**
+	 * Every folder in a project, flat, with the parent each one sits under. One
+	 * request: the pre-run snapshot, the eviction and the tree delete all derive
+	 * what they need (the root level, a subtree) from this list in memory.
+	 * GET /rest/projects/:projectId/folders
+	 */
+	async listFolders(projectId: string): Promise<FolderPlacement[]> {
+		// Paged to the end: the eviction must see every folder, and a page that
+		// stops short would let a leftover hide behind the cut. No `select`: a custom
+		// select that includes `parentFolder` 500s on the server ("column
+		// distinctAlias.folder_updatedAt does not exist"), so the default select it is.
+		const pageSize = 250;
+		const folders: FolderPlacement[] = [];
+		for (let skip = 0; ; skip += pageSize) {
+			const page = FolderListEnvelope.parse(
+				await this.fetch(
+					`/rest/projects/${projectId}/folders?take=${String(pageSize)}&skip=${String(skip)}`,
+				),
+			);
+			for (const { id, name, parentFolder } of page.data) {
+				folders.push({ id, name, parentFolderId: parentFolder?.id ?? null });
+			}
+			if (page.data.length < pageSize || folders.length >= page.count) break;
+		}
+		return folders;
+	}
+
+	/**
+	 * Delete a folder the run created. n8n archives any workflow still inside
+	 * and moves it to the root, so call it after the run's workflows are gone.
+	 * DELETE /rest/projects/:projectId/folders/:folderId
+	 */
+	async deleteFolder(projectId: string, folderId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/folders/${folderId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Delete a folder the run did NOT create, with everything in it: every
+	 * workflow anywhere in its subtree (unpublished and deleted through the
+	 * normal path, so no trigger stays registered), then the folder, whose
+	 * delete cascades to the emptied subfolders. Used to evict a crashed run's
+	 * leftover seed folder. Returns how many workflows it deleted.
+	 */
+	async deleteFolderTree(projectId: string, folderId: string): Promise<number> {
+		const folders = await this.listFolders(projectId);
+		// A Set iterates over members added during the loop, so each folder's
+		// children join the walk as it reaches them.
+		const subtree = new Set<string>([folderId]);
+		for (const parentId of subtree) {
+			for (const folder of folders) {
+				if (folder.parentFolderId === parentId) subtree.add(folder.id);
+			}
+		}
+		const inside = (await this.listWorkflows()).filter(
+			(workflow) =>
+				workflow.parentFolder?.id !== undefined && subtree.has(workflow.parentFolder.id),
+		);
+		for (const workflow of inside) {
+			await this.deleteWorkflow(workflow.id);
+		}
+		await this.deleteFolder(projectId, folderId);
+		return inside.length;
 	}
 
 	/**
@@ -478,10 +1224,21 @@ export class N8nClient {
 	 * GET /rest/projects/:projectId/data-tables
 	 */
 	async listDataTables(projectId: string): Promise<Array<{ id: string; name: string }>> {
-		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
-			data: Array<{ id: string; name: string }>;
+		// The list endpoint paginates: `{ data: { count, data: [...] } }`. Reading
+		// `result.data` as the array made this return [] for every project, silently —
+		// it has no error path, so every caller just saw "no tables".
+		//
+		// `take` is explicit because the default page is 10, and every caller here
+		// enumerates the WHOLE set (seed eviction, CU cleanup, discovery's pre-existing
+		// set) — a short page silently leaves leftovers behind. 250 is the server's
+		// per-page cap; a case declares at most 20 tables and eviction runs before
+		// every build, so the backlog drains rather than outgrowing one page.
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables?take=250`)) as {
+			data?: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>;
 		};
-		return Array.isArray(result.data) ? result.data : [];
+		const payload = result.data;
+		if (Array.isArray(payload)) return payload;
+		return payload?.data ?? [];
 	}
 
 	/** List data table IDs for a project. */
@@ -498,6 +1255,40 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	/**
+	 * Get a data table's column definitions.
+	 * GET /rest/projects/:projectId/data-tables/:dataTableId/columns
+	 */
+	async getDataTableColumns(
+		projectId: string,
+		dataTableId: string,
+	): Promise<DataTableColumnsResponse> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/data-tables/${dataTableId}/columns`,
+		)) as { data: DataTableColumnsResponse };
+		return result.data;
+	}
+
+	/**
+	 * Get a data table's rows.
+	 * GET /rest/projects/:projectId/data-tables/:dataTableId/rows
+	 *
+	 * Paginated via `ListDataTableContentQueryDto`; this fetches only the
+	 * default first page — a sample is sufficient for judging, so the harness
+	 * doesn't page through the whole table.
+	 *
+	 * `DataTableService.getManyRowsAndCount` returns `{ count, data }`
+	 * directly, and the REST layer wraps every controller return in
+	 * `{ data: <value> }` (see `response-helper.ts`'s `send()`), so the raw
+	 * payload is double-nested: `{ data: { count, data: rows } }`.
+	 */
+	async getDataTableRows(projectId: string, dataTableId: string): Promise<DataTableRowsResponse> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/data-tables/${dataTableId}/rows`,
+		)) as { data: DataTableRowsResponse };
+		return result.data;
 	}
 
 	// -- Eval mock execution -------------------------------------------------
@@ -518,16 +1309,52 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		// Forwarded so the server stops the run rather than leaving it burning CPU.
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
 			body,
-			timeoutMs,
+			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
+	}
+
+	/**
+	 * Run one scenario turn against a built first-class Agent: the agent's own
+	 * model call is real, its tools' HTTP is served by the mock layer. Runs for
+	 * minutes, like the workflow variant.
+	 */
+	async executeAgentWithLlmMock(
+		agentId: string,
+		projectId: string,
+		scenarioHints?: string,
+		timeoutMs: number = 120_000,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
+		if (scenarioHints) body.scenarioHints = scenarioHints;
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		body.timeoutMs = serverBudgetMs;
+
+		const result = (await this.fetch(
+			`/rest/instance-ai/eval/execute-agent-with-llm-mock/${agentId}`,
+			{
+				method: 'POST',
+				body,
+				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
+			},
+		)) as { data: InstanceAiEvalAgentExecutionResult };
+		return result.data;
+	}
+
+	async deleteAgent(projectId: string, agentId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
+			method: 'DELETE',
+		});
 	}
 
 	// -- SSE helpers ---------------------------------------------------------
@@ -552,6 +1379,13 @@ export class N8nClient {
 
 	// -- Internal fetch ------------------------------------------------------
 
+	private unwrapRestData<T>(result: unknown): T {
+		if (result && typeof result === 'object' && 'data' in result) {
+			return (result as { data: T }).data;
+		}
+		return result as T;
+	}
+
 	private async fetch(
 		path: string,
 		options: { method?: string; body?: unknown; timeoutMs?: number } = {},
@@ -564,16 +1398,28 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
+		// A bare `?? DEFAULT` would turn `timeoutMs: 0` into `AbortSignal.timeout(0)` —
+		// an instant abort, where the old truthiness check meant "unbounded". No caller
+		// passes one, and unbounded is what this path exists to remove, so a
+		// non-positive value falls back to the default: bounded either way.
+		const timeoutMs =
+			options.timeoutMs !== undefined && options.timeoutMs > 0
+				? options.timeoutMs
+				: DEFAULT_REQUEST_TIMEOUT_MS;
+
 		const res = await fetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
+			signal: AbortSignal.timeout(timeoutMs),
 		});
 
 		if (!res.ok) {
 			const text = await res.text();
-			throw new Error(`n8n API ${method} ${path} failed (${res.status}): ${text}`);
+			throw new N8nApiError(
+				`n8n API ${method} ${path} failed (${res.status}): ${text}`,
+				res.status,
+			);
 		}
 
 		// Capture auth cookie from login response

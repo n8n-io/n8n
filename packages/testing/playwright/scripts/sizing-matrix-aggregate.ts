@@ -6,17 +6,29 @@
  *
  *   CURRENTS_API_KEY=… ... --currents-run <runId>
  *
+ * In `--input` mode the report can be either a loose `run-report.json` file or
+ * an inline base64 attachment inside a Playwright `test-results.json` (how the
+ * benchmark lanes emit it). Inline attachments are decoded to loose files first
+ * so the filesystem scan picks them up — no Currents/secret coupling needed.
+ *
  * Hardware defaults to the Blacksmith CI runner (8 vCPU / 16 GB). Override
  * via `--hardware-runner/--hardware-vcpu/--hardware-ram-gb` or
  * `SIZING_MATRIX_RUNNER/VCPU/RAM_GB` env when running off-CI, or the matrix
  * will mis-attribute the source.
  */
 
+import type { JSONReport, JSONReportSuite } from '@playwright/test/reporter';
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const CURRENTS_API = 'https://api.currents.dev/v1';
+
+const RUN_REPORT_ATTACHMENT = 'run-report.json';
+
+// Repo root anchored to this file's location, so version/sha auto-detection
+// works regardless of the cwd the script is invoked from.
+const REPO_ROOT = resolve(__dirname, '../../../..');
 
 import type { RunReport } from '../utils/benchmark/run-report';
 import {
@@ -25,109 +37,13 @@ import {
 	type AggregateInput,
 	type HardwareInfo,
 	type SpecMapping,
-	type Topology,
 } from '../utils/benchmark/sizing-matrix';
+import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 
 const DEFAULT_HARDWARE: HardwareInfo = {
 	runner: 'blacksmith-8vcpu-ubuntu-2204',
 	vcpu: 8,
 	ramGb: 16,
-};
-
-const S0_SINGLE_MAIN: Topology = {
-	mains: 1,
-	webhookProcs: 0,
-	workers: 0,
-	mainVcpu: 2,
-	mainRamGb: 4,
-	pgVcpu: 2,
-	pgRamGb: 4,
-	redisVcpu: 1,
-	redisRamGb: 1,
-};
-
-const S1_QUEUE_BASELINE: Topology = {
-	...S0_SINGLE_MAIN,
-	workers: 1,
-	workerVcpu: 2,
-	workerRamGb: 4,
-};
-
-const S1_DEDICATED_PROC_BASELINE: Topology = {
-	...S1_QUEUE_BASELINE,
-	webhookProcs: 1,
-};
-
-const S2_DEDICATED_PROC_2WP_1W: Topology = {
-	...S1_DEDICATED_PROC_BASELINE,
-	webhookProcs: 2,
-};
-
-const S2_DEDICATED_PROC_2WP_2W: Topology = {
-	...S2_DEDICATED_PROC_2WP_1W,
-	workers: 2,
-};
-
-// Webhook and kafka triggers collapse into the same cell — shape is workload
-// archetype, not ingress protocol.
-const DEFAULT_MAPPING: SpecMapping = {
-	'webhook/webhook-single-instance.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'webhook/webhook-dedicated-proc-baseline.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	'webhook/webhook-dedicated-proc-2wp-1w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_1W,
-	},
-	'webhook/webhook-dedicated-proc-2wp-2w.spec.ts': {
-		scale: 'S2',
-		shape: 'L',
-		topology: S2_DEDICATED_PROC_2WP_2W,
-	},
-	'webhook/webhook-save-data-overhead.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_DEDICATED_PROC_BASELINE,
-	},
-	// `webhook-sync-latency-floor` is deliberately unmapped — measures latency at
-	// fixed concurrency, not throughput, and distorts the S1-L distribution.
-	'kafka/single-instance-ceiling.spec.ts': {
-		scale: 'S0',
-		shape: 'L',
-		topology: S0_SINGLE_MAIN,
-	},
-	'kafka/queue-mode-sustained-rate.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/burst-drain-capacity.spec.ts': {
-		scale: 'S1',
-		shape: 'L',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/node-count-scaling.spec.ts': {
-		scale: 'S1',
-		shape: 'X',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/output-size-impact.spec.ts': {
-		scale: 'S1',
-		shape: 'D',
-		topology: S1_QUEUE_BASELINE,
-	},
-	'kafka/steady-rate-breaking-point.spec.ts': {
-		scale: 'S0',
-		shape: 'X',
-		topology: S0_SINGLE_MAIN,
-	},
 };
 
 interface CliArgs {
@@ -194,9 +110,9 @@ function resolveHardware(args: Record<string, string>): HardwareInfo {
 
 function readN8nVersion(): string {
 	try {
-		const pkg = JSON.parse(
-			readFileSync(join(process.cwd(), 'packages/cli/package.json'), 'utf8'),
-		) as { version?: string };
+		const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'packages/cli/package.json'), 'utf8')) as {
+			version?: string;
+		};
 		return pkg.version ?? 'unknown';
 	} catch {
 		return 'unknown';
@@ -205,10 +121,10 @@ function readN8nVersion(): string {
 
 function readGitSha(): string {
 	try {
-		const head = readFileSync(join(process.cwd(), '.git/HEAD'), 'utf8').trim();
+		const head = readFileSync(join(REPO_ROOT, '.git/HEAD'), 'utf8').trim();
 		if (head.startsWith('ref: ')) {
 			const refPath = head.slice(5);
-			return readFileSync(join(process.cwd(), '.git', refPath), 'utf8')
+			return readFileSync(join(REPO_ROOT, '.git', refPath), 'utf8')
 				.trim()
 				.slice(0, 12);
 		}
@@ -309,7 +225,7 @@ function sanitiseFilename(spec: string): string {
 	return spec.replace(/[^a-z0-9._-]+/gi, '-').slice(0, 120);
 }
 
-function findRunReports(root: string): string[] {
+function findFiles(root: string, match: (path: string) => boolean): string[] {
 	const found: string[] = [];
 	const stack = [root];
 	while (stack.length) {
@@ -317,7 +233,7 @@ function findRunReports(root: string): string[] {
 		if (!current) continue;
 		const stat = statSync(current);
 		if (stat.isFile()) {
-			if (current.endsWith('.json') && current.includes('run-report')) found.push(current);
+			if (match(current)) found.push(current);
 			continue;
 		}
 		if (!stat.isDirectory()) continue;
@@ -328,7 +244,63 @@ function findRunReports(root: string): string[] {
 	return found.sort();
 }
 
-function loadReport(path: string): { path: string; report: RunReport } | undefined {
+export function findRunReports(root: string): string[] {
+	return findFiles(root, (p) => p.endsWith('.json') && p.includes('run-report'));
+}
+
+/** Decodes every `run-report.json` attachment, paired with its source spec file. */
+function collectRunReports(suites: JSONReportSuite[]): Array<{ body: string; specFile: string }> {
+	const found: Array<{ body: string; specFile: string }> = [];
+	const walk = (suite: JSONReportSuite, inheritedFile: string): void => {
+		const suiteFile = suite.file ?? inheritedFile;
+		for (const spec of suite.specs ?? []) {
+			const specFile = spec.file ?? suiteFile;
+			for (const test of spec.tests ?? []) {
+				for (const result of test.results ?? []) {
+					for (const attachment of result.attachments ?? []) {
+						if (attachment.name === RUN_REPORT_ATTACHMENT && attachment.body) {
+							found.push({
+								body: Buffer.from(attachment.body, 'base64').toString('utf8'),
+								specFile,
+							});
+						}
+					}
+				}
+			}
+		}
+		for (const child of suite.suites ?? []) walk(child, suiteFile);
+	};
+	for (const suite of suites) walk(suite, '');
+	return found;
+}
+
+/**
+ * Decodes the inline `run-report.json` attachments from each lane's
+ * `test-results.json` into loose files (all `findRunReports` scans). Names each
+ * by its spec-file path, not the lane: the cell mapping matches on the spec-file
+ * stem, so a lane-named file would never map. Returns the count.
+ */
+export function extractInlineRunReports(root: string): number {
+	let index = 0;
+	for (const file of findFiles(root, (p) => basename(p) === 'test-results.json')) {
+		let report: JSONReport;
+		try {
+			report = JSON.parse(readFileSync(file, 'utf8')) as JSONReport;
+		} catch (error) {
+			console.warn(`[sizing-matrix] Failed to parse ${file}: ${(error as Error).message}`);
+			continue;
+		}
+		const laneDir = dirname(file);
+		for (const { body, specFile } of collectRunReports(report.suites ?? [])) {
+			const stem = sanitiseFilename(specFile || `lane-${index}`);
+			writeFileSync(join(laneDir, `${stem}.run-report.${index}.json`), body);
+			index++;
+		}
+	}
+	return index;
+}
+
+export function loadReport(path: string): { path: string; report: RunReport } | undefined {
 	try {
 		const report = JSON.parse(readFileSync(path, 'utf8')) as RunReport;
 		if (report.schemaVersion !== 1) {
@@ -354,6 +326,12 @@ async function main(): Promise<void> {
 		reportPaths = fetched.reportPaths;
 		if (fetched.commitSha) commitSha = fetched.commitSha;
 	} else if (args.input) {
+		const extracted = extractInlineRunReports(args.input);
+		if (extracted > 0) {
+			console.log(
+				`[sizing-matrix] Extracted ${extracted} inline run-report.json attachment(s) from test-results.json`,
+			);
+		}
 		reportPaths = findRunReports(args.input);
 	} else {
 		throw new Error('Either --input or --currents-run is required');
@@ -377,6 +355,13 @@ async function main(): Promise<void> {
 		runDate: new Date().toISOString(),
 	};
 	const matrix = aggregate(input);
+
+	if (matrix.cells.length === 0) {
+		throw new Error(
+			`Aggregated 0 cells from ${reports.length} run-report(s) — every report failed to map to a sizing cell. ` +
+				'Extracted report filenames must carry the spec-file stem the mapping matches on.',
+		);
+	}
 
 	mkdirSync(dirname(args.out), { recursive: true });
 	writeFileSync(args.out, JSON.stringify(matrix, null, 2));
@@ -408,7 +393,9 @@ async function main(): Promise<void> {
 	}
 }
 
-main().catch((error) => {
-	console.error(`[sizing-matrix] ${(error as Error).message}`);
-	process.exit(1);
-});
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(`[sizing-matrix] ${(error as Error).message}`);
+		process.exit(1);
+	});
+}

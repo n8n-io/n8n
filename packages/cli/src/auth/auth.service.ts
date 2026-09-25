@@ -1,15 +1,17 @@
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -34,6 +36,29 @@ interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
 }
 
+/**
+ * A valid signature proves only that this instance signed the token, not that
+ * it signed it as a session token. Narrowing to `IssuedJWT` promises the type
+ * of every field, and the callers act on those types rather than re-check them:
+ * `exp` bounds the session (`jwt.verify` treats a token without one as
+ * unbounded), `usedMfa` decides the MFA gate, `isEmbed` relaxes the cookie to
+ * `SameSite=None`, and `browserId` binds the session to one browser. So check
+ * each one, and require a present optional claim to hold its declared type.
+ */
+function isIssuedJWT(payload: unknown): payload is IssuedJWT {
+	if (!isRecord(payload)) return false;
+	const { id, hash, exp, browserId, usedMfa, isEmbed } = payload;
+	return (
+		typeof id === 'string' &&
+		id.length > 0 &&
+		typeof hash === 'string' &&
+		Number.isFinite(exp) &&
+		(browserId === undefined || typeof browserId === 'string') &&
+		(usedMfa === undefined || typeof usedMfa === 'boolean') &&
+		(isEmbed === undefined || typeof isEmbed === 'boolean')
+	);
+}
+
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
@@ -56,10 +81,21 @@ interface CreateAuthMiddlewareOptions {
 	allowUnauthenticated?: boolean;
 }
 
+interface EmailChangeToken {
+	sub: string;
+	newEmail: string;
+	hash: string;
+}
+
 @Service()
 export class AuthService {
-	// The browser-id check needs to be skipped on these endpoints
-	private skipBrowserIdCheckEndpoints: string[];
+	/**
+	 * Endpoints exempt from the browser-id check on GET requests. Strings are
+	 * matched exactly against `baseUrl + route path`; RegExps cover routes
+	 * whose controller prefix carries resolved params (e.g. a `:projectId`
+	 * that express substitutes into `req.baseUrl`).
+	 */
+	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -84,6 +120,11 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 
+			// The dynamic-credential authorize link is a top-level browser navigation
+			// (link click / redirect), so it can't carry the browser-id header. The
+			// GET method guard below keeps this GET-only; POST authorize is unaffected.
+			`/${restEndpoint}/credentials/:id/authorize`,
+
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
@@ -95,6 +136,13 @@ export class AuthService {
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
+
+			// Agent chat attachments render via <img> tags, which can't send the
+			// browser-id header. The controller prefix carries a resolved
+			// :projectId in req.baseUrl, so this one needs a pattern.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+			),
 		];
 	}
 
@@ -155,7 +203,7 @@ export class AuthService {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
-			if (req.user) next();
+			if (Object.hasOwn(req, 'user') && req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
@@ -188,6 +236,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -311,13 +364,19 @@ export class AuthService {
 		throw new AuthError('Unauthorized');
 	}
 
+	private endpointSkipsBrowserIdCheck(endpoint: string): boolean {
+		return this.skipBrowserIdCheckEndpoints.some((entry) =>
+			typeof entry === 'string' ? entry === endpoint : entry.test(endpoint),
+		);
+	}
+
 	private validateBrowserId(
 		jwtPayload: IssuedJWT,
 		browserId: string | undefined,
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
@@ -332,9 +391,11 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+		const jwtPayload = this.jwtService.verify<unknown>(token, {
 			algorithms: ['HS256'],
 		});
+
+		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
@@ -389,9 +450,41 @@ export class AuthService {
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
+	generateEmailChangeUrl(user: User, newEmail: string) {
+		const payload: EmailChangeToken = {
+			sub: user.id,
+			newEmail,
+			hash: this.createJWTHash(user),
+		};
+		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
+		url.searchParams.append('token', token);
+		return url.toString();
+	}
+
+	async resolveEmailChangeToken(
+		token: string,
+	): Promise<{ user: User; newEmail: string } | undefined> {
+		let decoded: EmailChangeToken;
+		try {
+			decoded = this.jwtService.verify(token, {
+				audience: 'n8n-email-change',
+			});
+		} catch {
+			return;
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: decoded.sub },
+			relations: ['authIdentities', 'role'],
+		});
+		if (!user) return;
+		if (decoded.hash !== this.createJWTHash(user)) return; // password/email changed since issue
+		return { user, newEmail: decoded.newEmail };
+	}
+
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn });
+		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -407,7 +500,9 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token);
+			decodedToken = this.jwtService.verify(token, {
+				audience: 'n8n-password-reset',
+			});
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

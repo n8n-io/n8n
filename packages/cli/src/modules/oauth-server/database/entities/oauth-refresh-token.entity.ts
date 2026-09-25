@@ -1,4 +1,4 @@
-import { User, WithTimestamps } from '@n8n/db';
+import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
 import { OAuthClient } from './oauth-client.entity';
@@ -29,4 +29,16 @@ export class RefreshToken extends WithTimestamps {
 	@Index()
 	@Column({ type: 'int' })
 	expiresAt: number;
+
+	/** OAuth scopes of the originating grant, reissued on every rotation. */
+	@JsonColumn()
+	scope: string[];
+
+	/**
+	 * RFC 8707 resource the grant was approved for — the audience of every access
+	 * token minted from it, carried unchanged across rotations. Never null: the
+	 * mint path resolves the default resource before the row is written.
+	 */
+	@Column({ type: 'varchar' })
+	resource: string;
 }

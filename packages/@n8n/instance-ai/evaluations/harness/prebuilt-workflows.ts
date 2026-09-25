@@ -20,8 +20,8 @@
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
+import type { BuildResult } from './build-workflow';
 import type { EvalLogger } from './logger';
-import type { BuildResult } from './runner';
 import type { N8nClient } from '../clients/n8n-client';
 
 export const prebuiltManifestSchema = z
@@ -67,6 +67,24 @@ export function pickPrebuiltWorkflowId(
 	const ids = manifest[fileSlug];
 	if (!ids || ids.length === 0) return undefined;
 	return ids[iteration % ids.length];
+}
+
+/**
+ * Split test cases by whether the manifest provides a build for them. Cases with
+ * no workflow in the manifest are skipped (the caller logs them) rather than
+ * silently orchestrator-built, which would mix builders in one result set.
+ */
+export function partitionByPrebuiltCoverage<T extends { fileSlug: string }>(
+	cases: T[],
+	manifest: PrebuiltManifest,
+): { covered: T[]; skipped: T[] } {
+	const covered: T[] = [];
+	const skipped: T[] = [];
+	for (const testCase of cases) {
+		if ((manifest[testCase.fileSlug]?.length ?? 0) > 0) covered.push(testCase);
+		else skipped.push(testCase);
+	}
+	return { covered, skipped };
 }
 
 /**

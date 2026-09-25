@@ -1,7 +1,8 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { AwsRekognition } from '../AwsRekognition.node';
 import * as GenericFunctions from '../GenericFunctions';
@@ -17,12 +18,12 @@ const mockRekognitionResponse = {
 
 describe('AWS Rekognition Node - binary data input', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let awsApiRequestSpy: jest.SpyInstance;
+	let awsApiRequestSpy: Mock;
 	const node = new AwsRekognition();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		vi.resetAllMocks();
+		awsApiRequestSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			accessKeyId: 'test-key',
 			secretAccessKey: 'test-secret',

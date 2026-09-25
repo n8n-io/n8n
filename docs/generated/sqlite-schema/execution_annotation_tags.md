@@ -22,18 +22,18 @@ CREATE TABLE "execution_annotation_tags" ("annotationId" integer NOT NULL, "tagI
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| annotationId | PRIMARY KEY | PRIMARY KEY (annotationId) |
-| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (tagId) REFERENCES annotation_tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (annotationId) REFERENCES execution_annotations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| annotationId | PRIMARY KEY | PRIMARY KEY (annotationId) |
 | sqlite_autoindex_execution_annotation_tags_1 | PRIMARY KEY | PRIMARY KEY (annotationId, tagId) |
+| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_c1519757391996eb06064f0e7c | CREATE INDEX "IDX_c1519757391996eb06064f0e7c" ON "execution_annotation_tags" ("annotationId")  |
 | IDX_a3697779b366e131b2bbdae297 | CREATE INDEX "IDX_a3697779b366e131b2bbdae297" ON "execution_annotation_tags" ("tagId")  |
+| IDX_c1519757391996eb06064f0e7c | CREATE INDEX "IDX_c1519757391996eb06064f0e7c" ON "execution_annotation_tags" ("annotationId")  |
 | sqlite_autoindex_execution_annotation_tags_1 | PRIMARY KEY (annotationId, tagId) |
 
 ## Relations
@@ -49,17 +49,17 @@ erDiagram
   varchar_24_ tagId PK
 }
 "execution_annotations" {
-  INTEGER id
-  INTEGER executionId FK
-  varchar_6_ vote
-  TEXT note
   datetime_3_ createdAt
+  INTEGER executionId FK
+  INTEGER id
+  TEXT note
   datetime_3_ updatedAt
+  varchar_6_ vote
 }
 "annotation_tag_entity" {
+  datetime_3_ createdAt
   varchar_16_ id PK
   varchar_24_ name
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

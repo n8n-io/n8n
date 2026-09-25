@@ -275,7 +275,6 @@ export class MicrosoftTeamsV1 implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -339,15 +338,17 @@ export class MicrosoftTeamsV1 implements INodeType {
 								`/v1.0/teams/${teamId}/channels`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
+							const limit = this.getNodeParameter('limit', i);
+							// list-channels doesn't support $top; the limit still stops pagination early
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
 								'GET',
 								`/v1.0/teams/${teamId}/channels`,
 								{},
+								{},
+								limit,
 							);
-							responseData = responseData.splice(0, qs.limit);
 						}
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-patch?view=graph-rest-beta&tabs=http
@@ -424,15 +425,16 @@ export class MicrosoftTeamsV1 implements INodeType {
 								`/beta/teams/${teamId}/channels/${channelId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
 								'GET',
 								`/beta/teams/${teamId}/channels/${channelId}/messages`,
 								{},
+								{ $top: limit },
+								limit,
 							);
-							responseData = responseData.splice(0, qs.limit);
 						}
 					}
 				}
@@ -484,15 +486,16 @@ export class MicrosoftTeamsV1 implements INodeType {
 								`/v1.0/chats/${chatId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
 								'GET',
 								`/v1.0/chats/${chatId}/messages`,
 								{},
+								{ $top: limit },
+								limit,
 							);
-							responseData = responseData.splice(0, qs.limit);
 						}
 					}
 				}
@@ -575,15 +578,18 @@ export class MicrosoftTeamsV1 implements INodeType {
 									`/v1.0/users/${memberId}/planner/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i);
+								const limit = this.getNodeParameter('limit', i);
+								// Planner endpoints don't support OData query params like $top;
+								// the limit still stops pagination early
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',
 									'GET',
 									`/v1.0/users/${memberId}/planner/tasks`,
 									{},
+									{},
+									limit,
 								);
-								responseData = responseData.splice(0, qs.limit);
 							}
 						} else {
 							//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
@@ -596,15 +602,16 @@ export class MicrosoftTeamsV1 implements INodeType {
 									`/v1.0/planner/plans/${planId}/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i);
+								const limit = this.getNodeParameter('limit', i);
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',
 									'GET',
 									`/v1.0/planner/plans/${planId}/tasks`,
 									{},
+									{},
+									limit,
 								);
-								responseData = responseData.splice(0, qs.limit);
 							}
 						}
 					}

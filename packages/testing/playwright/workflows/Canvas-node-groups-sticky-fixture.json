@@ -1,0 +1,88 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a1b2c3d4-0000-4000-8000-000000000001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0001",
+							"name": "v",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "a1b2c3d4-0000-4000-8000-000000000002",
+			"name": "Set A"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d8c0f6d-fb43-4d62-9c3d-1c8e2e3f0002",
+							"name": "v",
+							"value": "2",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "a1b2c3d4-0000-4000-8000-000000000003",
+			"name": "Set B"
+		},
+		{
+			"parameters": {
+				"content": "Group note",
+				"height": 140,
+				"width": 240
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [220, 180],
+			"id": "a1b2c3d4-0000-4000-8000-000000000004",
+			"name": "Sticky"
+		},
+		{
+			"parameters": {
+				"content": "Far note",
+				"height": 120,
+				"width": 200
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [760, 320],
+			"id": "a1b2c3d4-0000-4000-8000-000000000005",
+			"name": "Sticky far away"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Set A", "type": "main", "index": 0 }]]
+		},
+		"Set A": {
+			"main": [[{ "node": "Set B", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "canvas-node-groups-sticky-fixture"
+	}
+}

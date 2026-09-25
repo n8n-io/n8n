@@ -1,23 +1,29 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(),
-	TraceIndex: jest.fn().mockImplementation(() => ({
-		next: jest.fn(),
-	})),
-	IdRemapper: jest.fn().mockImplementation(() => ({
-		learn: jest.fn(),
-		remapInput: jest.fn(),
-		remapOutput: jest.fn(),
-	})),
-	TraceWriter: jest.fn().mockImplementation(() => ({
-		recordToolCall: jest.fn(),
-		getEvents: jest.fn().mockReturnValue([]),
-		toJsonl: jest.fn().mockReturnValue(''),
-	})),
+	buildAgentTreeFromEvents: vi.fn(),
+	TraceIndex: vi.fn().mockImplementation(function () {
+		return {
+			next: vi.fn(),
+		};
+	}),
+	IdRemapper: vi.fn().mockImplementation(function () {
+		return {
+			learn: vi.fn(),
+			remapInput: vi.fn(),
+			remapOutput: vi.fn(),
+		};
+	}),
+	TraceWriter: vi.fn().mockImplementation(function () {
+		return {
+			recordToolCall: vi.fn(),
+			getEvents: vi.fn().mockReturnValue([]),
+			toJsonl: vi.fn().mockReturnValue(''),
+		};
+	}),
 }));
 
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
@@ -29,7 +35,7 @@ describe('TraceReplayState', () => {
 
 	beforeEach(() => {
 		process.env = { ...originalEnv };
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterAll(() => {

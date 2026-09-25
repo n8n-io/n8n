@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ApprovalInput, ApprovalResume } from '../../composables/agentChatMessages';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 
 const props = defineProps<{
 	input: ApprovalInput;
@@ -18,12 +18,13 @@ const i18n = useI18n();
 
 const toolLabel = computed(() => props.input.displayName ?? props.input.toolName);
 
-const argsText = computed(() => {
-	if (props.input.args === undefined) return '';
+const detailsText = computed(() => {
+	const details = props.input.details ?? props.input.args;
+	if (details === undefined) return '';
 	try {
-		return JSON.stringify(props.input.args, null, 2) ?? '';
+		return JSON.stringify(details, null, 2) ?? '';
 	} catch {
-		return String(props.input.args);
+		return String(details);
 	}
 });
 
@@ -48,7 +49,14 @@ function submit(approved: boolean) {
 				}}
 			</N8nText>
 
-			<pre v-if="argsText" :class="$style.args">{{ argsText }}</pre>
+			<details v-if="detailsText" data-testid="agent-approval-tool-details">
+				<summary :class="$style.detailsSummary">
+					<N8nText size="small">
+						{{ i18n.baseText('agents.chat.approval.viewToolDetails') }}
+					</N8nText>
+				</summary>
+				<pre :class="$style.args">{{ detailsText }}</pre>
+			</details>
 
 			<div v-if="disabled && resolvedValue" :class="$style.resolved">
 				<N8nIcon
@@ -70,7 +78,6 @@ function submit(approved: boolean) {
 			<div v-else :class="$style.actions">
 				<N8nButton
 					size="medium"
-					type="primary"
 					:disabled="disabled"
 					data-testid="agent-approval-approve"
 					@click="submit(true)"
@@ -126,7 +133,7 @@ function submit(approved: boolean) {
 }
 
 .args {
-	margin: 0;
+	margin: var(--spacing--2xs) 0 0;
 	padding: var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
@@ -136,6 +143,10 @@ function submit(approved: boolean) {
 	line-height: var(--line-height--md);
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+.detailsSummary {
+	cursor: pointer;
 }
 
 .actions {

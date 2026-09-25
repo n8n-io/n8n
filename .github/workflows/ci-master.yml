@@ -7,22 +7,32 @@ on:
     paths-ignore:
       - packages/@n8n/task-runner-python/**
 
+permissions:
+  contents: read
+
 jobs:
-  build-github:
-    name: Build for Github Cache
-    runs-on: ubuntu-latest
+  build-and-format:
+    name: Build & format
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
+      NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
       QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
       QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
           # The default is build without typechecking, we want both
           build-command: pnpm build
+
+      - name: Report build critical path
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run format check
+        run: pnpm format:check
 
   unit-test:
     name: Unit tests
@@ -30,11 +40,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.22.3, 24.16.0]
+        node-version: [24.18.1, 26.5.1]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.16.0' }}
+      collectCoverage: ${{ matrix.node-version == '24.18.1' }}
     secrets: inherit
 
   lint:
@@ -43,16 +53,28 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
+  # CodSpeed benchmarks run post-merge only. On PRs they failed for reasons
+  # unrelated to the change, so the red check gave authors no usable signal.
   performance:
     name: Performance
     uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ github.sha }}
 
+  # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
+  verify-single-instance-npm:
+    name: Verify single-instance deps (npm-install)
+    uses: ./.github/workflows/test-single-instance-npm.yml
+    permissions:
+      contents: read
+    with:
+      scope: changed
+      base-ref: ${{ github.event.before }}
+
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [unit-test, lint, performance, build-github]
+    needs: [unit-test, lint, performance, build-and-format]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

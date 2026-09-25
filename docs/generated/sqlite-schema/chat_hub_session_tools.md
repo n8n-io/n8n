@@ -22,11 +22,11 @@ CREATE TABLE "chat_hub_session_tools" ("sessionId" varchar NOT NULL, "toolId" va
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| sessionId | PRIMARY KEY | PRIMARY KEY (sessionId) |
-| toolId | PRIMARY KEY | PRIMARY KEY (toolId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (sessionId) REFERENCES chat_hub_sessions (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| sessionId | PRIMARY KEY | PRIMARY KEY (sessionId) |
 | sqlite_autoindex_chat_hub_session_tools_1 | PRIMARY KEY | PRIMARY KEY (sessionId, toolId) |
+| toolId | PRIMARY KEY | PRIMARY KEY (toolId) |
 
 ## Indexes
 
@@ -47,29 +47,29 @@ erDiagram
   varchar toolId PK
 }
 "chat_hub_sessions" {
-  varchar id PK
-  varchar_256_ title
-  varchar ownerId FK
-  datetime_3_ lastMessageAt
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  varchar_36_ workflowId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ agentId FK
   varchar_128_ agentName
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar id PK
+  datetime_3_ lastMessageAt
+  varchar_64_ model
+  varchar ownerId FK
+  varchar_16_ provider
+  varchar_256_ title
   varchar_16_ type
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "chat_hub_tools" {
-  varchar id PK
-  varchar_255_ name
-  varchar_255_ type
-  REAL typeVersion
-  varchar ownerId FK
+  datetime_3_ createdAt
   TEXT definition
   boolean enabled
-  datetime_3_ createdAt
+  varchar id PK
+  varchar_255_ name
+  varchar ownerId FK
+  varchar_255_ type
+  REAL typeVersion
   datetime_3_ updatedAt
 }
 ```

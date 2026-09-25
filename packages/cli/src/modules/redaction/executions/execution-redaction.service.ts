@@ -1,15 +1,20 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { channelsToPolicy, WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
+import {
+	channelsToPolicy,
+	runDataUsedDynamicCredentials,
+	WorkflowExecuteMode,
+	WorkflowSettings,
+} from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
@@ -114,6 +119,15 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 					this.hasDynamicCredentials(execution) &&
 					!this.isOwnDynamicCredentialsExecution(execution, options.user.id)
 				) {
+					this.eventService.emit('execution-data-reveal-failure', {
+						user: options.user,
+						executionId: execution.id ?? '',
+						workflowId: execution.workflowId,
+						ipAddress: options.ipAddress ?? '',
+						userAgent: options.userAgent ?? '',
+						redactionPolicy: this.resolvePolicy(execution),
+						rejectionReason: 'Not the executing user of a private-credential execution',
+					});
 					throw new ForbiddenError();
 				}
 			}
@@ -262,16 +276,26 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	}
 
 	/**
-	 * Returns true when the execution used dynamic credential resolution.
-	 * Such executions must always be redacted with canReveal = false.
+	 * Returns true when the execution resolved a dynamic credential, or its
+	 * workflow references one. Such executions must always be redacted with
+	 * canReveal = false.
 	 *
-	 * Checks per-node `usedDynamicCredentials` flag which is only set when
-	 * resolution actually happened at runtime, rather than checking for the
-	 * mere presence of credential context infrastructure.
+	 * Two signals, either sufficient:
+	 * - the per-node `usedDynamicCredentials` runData flag, set only after a node
+	 *   resolves a private credential at runtime;
+	 * - the `usesDynamicCredentials` context flag, stamped at execution start when
+	 *   the workflow references a private credential. This covers a run that
+	 *   failed or stopped before the credential node ran, where no runData flag
+	 *   exists, so a failed/partial run redacts consistently with a successful one.
+	 *
+	 * Presence of encrypted credential context (`runtimeData.credentials`) is not
+	 * used: it is established for every identity-context run, including ordinary
+	 * manual runs that use no private credential.
 	 */
 	private hasDynamicCredentials(execution: RedactableExecution): boolean {
-		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
-			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+		return (
+			runDataUsedDynamicCredentials(execution.data.resultData?.runData) ||
+			execution.data.executionData?.runtimeData?.usesDynamicCredentials === true
 		);
 	}
 

@@ -47,7 +47,10 @@ describe(useNodeDirtiness, () => {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
-				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
+				historyHelper = useHistoryHelper(
+					{} as RouteLocationNormalizedLoaded,
+					shallowRef(null) as Parameters<typeof useHistoryHelper>[1],
+				);
 
 				workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 				provide(WorkflowDocumentStoreKey, shallowRef(workflowDocumentStore));
@@ -126,6 +129,50 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+	});
+
+	describe('replacing a node with one that reuses its name', () => {
+		it('should not mark the replacement as dirty', async () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a\u{1F6A8}\u2705 -> b\u2705');
+
+			// Delete and replace through the canvas the way the editor does, so the
+			// history records the replacement after the run. The new node reuses the
+			// freed name but never ran.
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			});
+
+			await canvasOperations.addNodes([createTestNode({ name: 'b', type: SET_NODE_TYPE })], {
+				trackHistory: true,
+			});
+
+			canvasOperations.createConnection(
+				{
+					source: workflowDocumentStore.nodesByName.a.id,
+					target: workflowDocumentStore.nodesByName.b.id,
+				},
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value.b).toBeUndefined();
+		});
+
+		it('should still mark the node that ran as dirty when its parameters change', () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a\u{1F6A8}\u2705 -> b\u2705');
+
+			workflowDocumentStore.setNodeParameters({
+				name: 'b',
+				value: { param: 'changed' },
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
 	});
@@ -384,28 +431,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
-			});
-		});
-	});
-
-	describe('renaming a node', () => {
-		it.todo('should preserve the dirtiness', async () => {
-			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
-
-			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
-
-			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
-				trackHistory: true,
-			}); // 'a' becomes new parent of 'c'
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
-			});
-
-			await canvasOperations.renameNode('c', 'd', { trackHistory: true });
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});

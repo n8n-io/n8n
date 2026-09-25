@@ -1,7 +1,11 @@
+import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+
+export { OTLP_PROTOCOLS, type OtlpProtocol };
 
 export const OTEL_ENV_VARS = {
 	enabled: 'N8N_OTEL_ENABLED',
+	exporterProtocol: 'N8N_OTEL_EXPORTER_OTLP_PROTOCOL',
 	exporterEndpoint: 'N8N_OTEL_EXPORTER_OTLP_ENDPOINT',
 	exporterTracingPath: 'N8N_OTEL_EXPORTER_OTLP_TRACING_PATH',
 	exporterHeaders: 'N8N_OTEL_EXPORTER_OTLP_HEADERS',
@@ -13,12 +17,16 @@ export const OTEL_ENV_VARS = {
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;
 
+export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
+
 export const ATTR = {
 	OTEL_SERVICE_NAME: ATTR_SERVICE_NAME,
 	OTEL_SERVICE_VERSION: ATTR_SERVICE_VERSION,
 
 	INSTANCE_ID: 'n8n.instance.id',
 	INSTANCE_ROLE: 'n8n.instance.role',
+
+	IS_TEST_TRACE: 'n8n.test',
 
 	PROJECT_ID: 'n8n.project.id',
 
@@ -34,6 +42,8 @@ export const ATTR = {
 	EXECUTION_IS_RETRY: 'n8n.execution.is_retry',
 	EXECUTION_RETRY_OF: 'n8n.execution.retry_of',
 	EXECUTION_ERROR_TYPE: 'n8n.execution.error_type',
+	EXECUTION_CRASH_DETECTOR: 'n8n.execution.crash.detector',
+	EXECUTION_RECONSTRUCTED: 'n8n.execution.reconstructed',
 
 	NODE_ID: 'n8n.node.id',
 	NODE_NAME: 'n8n.node.name',

@@ -14,11 +14,14 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleCacheService } from '@/services/role-cache.service';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import {
@@ -27,6 +30,7 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import {
 	createAdmin,
 	createManyUsers,
@@ -36,7 +40,6 @@ import {
 } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
-import { RoleCacheService } from '@/services/role-cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -93,7 +96,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /credentials', () => {
@@ -587,7 +590,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
-		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const redactSpy = vi.spyOn(credentialService, 'redact');
 		const credential = randomCredentialPayloadWithOauthTokenData();
 		const savedCredential = await saveCredential(credential, {
 			user: owner,
@@ -1538,3 +1541,128 @@ function validateMainCredentialData(credential: ListQueryDb.Credentials.WithOwne
 	expect(credential.homeProject).toBeDefined();
 	expect(Array.isArray(credential.sharedWithProjects)).toBe(true);
 }
+
+// ----------------------------------------
+// A custom instance role that can see credentials but not use them
+// ----------------------------------------
+
+describe('instance role with credential visibility but not use', () => {
+	// The see-not-use rung: the role holds `credential:list` + `credential:read`
+	// globally, so every credential on the instance is visible, but without
+	// `credential:use` none of them can be selected in a node, tested, probed or run.
+	const VIEW_SCOPES = ['credential:list', 'credential:read'];
+	const USE_SCOPES = [...VIEW_SCOPES, 'credential:use'];
+
+	// Stand in for the real tester so the assertions stay a permission signal and
+	// never reach the network.
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	const agentForRoleWith = async (scopeSlugs: string[]) => {
+		const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
+		const user = await createUser({ role });
+		return { user, agent: testServer.authAgentFor(user) };
+	};
+
+	test("GET /credentials lists another user's personal credential", async () => {
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { agent } = await agentForRoleWith(VIEW_SCOPES);
+
+		const response = await agent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(
+			response.body.data.map((c: ListQueryDb.Credentials.WithOwnedByAndSharedWith) => c.id),
+		).toContain(ownerCredential.id);
+	});
+
+	test('GET /credentials/:id?includeData=true returns metadata without the secret', async () => {
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { agent } = await agentForRoleWith(VIEW_SCOPES);
+
+		const response = await agent
+			.get(`/credentials/${ownerCredential.id}`)
+			.query({ includeData: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.id).toBe(ownerCredential.id);
+		expect(response.body.data.data).toBeUndefined();
+	});
+
+	test('GET /credentials/for-workflow omits it from the node picker', async () => {
+		await saveCredential(randomCredentialPayload(), { user: owner });
+		const { user, agent } = await agentForRoleWith(VIEW_SCOPES);
+		const ownWorkflow = await createWorkflow({}, user);
+
+		const response = await agent
+			.get('/credentials/for-workflow')
+			.query({ workflowId: ownWorkflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(0);
+	});
+
+	test('POST /credentials/test is refused', async () => {
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { agent } = await agentForRoleWith(VIEW_SCOPES);
+
+		const response = await agent.post('/credentials/test').send({
+			credentials: {
+				id: ownerCredential.id,
+				name: ownerCredential.name,
+				type: ownerCredential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	test('POST /credentials/:id/probe is refused', async () => {
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { agent } = await agentForRoleWith(VIEW_SCOPES);
+
+		const response = await agent.post(`/credentials/${ownerCredential.id}/probe`).send({});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('adding credential:use puts it back in the node picker', async () => {
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { user, agent } = await agentForRoleWith(USE_SCOPES);
+		const ownWorkflow = await createWorkflow({}, user);
+
+		const response = await agent
+			.get('/credentials/for-workflow')
+			.query({ workflowId: ownWorkflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((c: { id: string }) => c.id)).toContain(ownerCredential.id);
+	});
+
+	test('adding credential:use lets the credential be tested', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const { agent } = await agentForRoleWith(USE_SCOPES);
+
+		const response = await agent.post('/credentials/test').send({
+			credentials: {
+				id: ownerCredential.id,
+				name: ownerCredential.name,
+				type: ownerCredential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
+});

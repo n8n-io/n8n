@@ -8,7 +8,6 @@ import '@vue-flow/node-resizer/dist/style.css';
 
 import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
-// import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
 import '@/features/ai/assistant/aiBuilderDiff.scss';
@@ -18,6 +17,8 @@ import '@/app/dev/i18nHmr';
 import App from '@/app/App.vue';
 import router from '@/app/router';
 
+import { IconBodyLoaderKey } from '@n8n/design-system';
+import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { i18nInstance } from '@n8n/i18n';
 
 import { TelemetryPlugin } from '@/app/plugins/telemetry';
@@ -29,6 +30,10 @@ import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { registerEagerModals } from '@/app/modals.manifest';
+import { registerComponentSlots } from '@/app/componentSlots.manifest';
+import { registerShellCapabilities } from '@/app/capabilities.manifest';
+import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
@@ -39,11 +44,25 @@ const pinia = createPinia();
 
 const app = createApp(App);
 
+app.provide(IconBodyLoaderKey, loadLucideIconBody);
+
 app.use(SentryPlugin);
 
 // Register module routes
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
+
+// Always-on modals, needed before login — see modals.manifest.ts
+registerEagerModals();
+
+// Shell-hosted components modules render — see componentSlots.manifest.ts
+registerComponentSlots();
+
+// Shell actions modules call — see capabilities.manifest.ts
+registerShellCapabilities();
+
+// The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
+registerUpgradeRedirectGuard();
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);

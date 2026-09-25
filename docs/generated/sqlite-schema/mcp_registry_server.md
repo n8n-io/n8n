@@ -15,21 +15,21 @@ CREATE TABLE "mcp_registry_server" ("slug" varchar(255) PRIMARY KEY NOT NULL, "s
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| data | TEXT | '{}' | false |  |  |  |
+| registryUpdatedAt | datetime(3) |  | false |  |  |  |
 | slug | varchar(255) |  | false | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) |  |  |
 | status | varchar(50) |  | false |  |  |  |
-| version | varchar(50) |  | false |  |  |  |
-| registryUpdatedAt | datetime(3) |  | false |  |  |  |
-| data | TEXT | '{}' | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| version | varchar(50) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("status" IN ('active', 'deprecated')) |
 | slug | PRIMARY KEY | PRIMARY KEY (slug) |
 | sqlite_autoindex_mcp_registry_server_1 | PRIMARY KEY | PRIMARY KEY (slug) |
-| - | CHECK | CHECK ("status" IN ('active', 'deprecated')) |
 
 ## Indexes
 
@@ -45,22 +45,22 @@ erDiagram
 "instance_ai_mcp_registry_connections" }o--|| "mcp_registry_server" : "FOREIGN KEY (serverSlug) REFERENCES mcp_registry_server (slug) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "mcp_registry_server" {
+  datetime_3_ createdAt
+  TEXT data
+  datetime_3_ registryUpdatedAt
   varchar_255_ slug PK
   varchar_50_ status
-  varchar_50_ version
-  datetime_3_ registryUpdatedAt
-  TEXT data
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+  varchar_50_ version
 }
 "instance_ai_mcp_registry_connections" {
-  varchar id PK
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
+  varchar id PK
   varchar_255_ serverSlug FK
   TEXT toolFilter
-  varchar userId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
+  varchar userId FK
 }
 ```
 

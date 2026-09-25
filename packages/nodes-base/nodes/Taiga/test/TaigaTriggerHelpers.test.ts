@@ -8,11 +8,11 @@ describe('TaigaTriggerHelpers', () => {
 	const testPayload = Buffer.from('{"action":"create","type":"issue"}');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -20,7 +20,7 @@ describe('TaigaTriggerHelpers', () => {
 		it('should return true if no key is stored (backward compatibility)', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -32,7 +32,7 @@ describe('TaigaTriggerHelpers', () => {
 
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ key: testKey });
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
+				header: vi.fn().mockImplementation((name: string) => {
 					if (name === 'x-taiga-webhook-signature') return expectedSignature;
 					return null;
 				}),
@@ -45,7 +45,7 @@ describe('TaigaTriggerHelpers', () => {
 		it('should return false when signatures do not match', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ key: testKey });
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
+				header: vi.fn().mockImplementation((name: string) => {
 					if (name === 'x-taiga-webhook-signature') return 'a'.repeat(40);
 					return null;
 				}),
@@ -58,7 +58,7 @@ describe('TaigaTriggerHelpers', () => {
 		it('should return false when signature header is missing', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ key: testKey });
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -68,7 +68,7 @@ describe('TaigaTriggerHelpers', () => {
 		it('should return false when raw body is missing', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ key: testKey });
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue('a'.repeat(40)),
+				header: vi.fn().mockReturnValue('a'.repeat(40)),
 				rawBody: undefined,
 			});
 

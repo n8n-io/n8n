@@ -85,11 +85,13 @@ URL handling is locked down by `isAllowedWorkflowUrl` in
 host are accepted, both when reading the tool result and right before calling
 `openLink`. This is defense in depth on top of the host's own validation.
 
-The workflow preview iframe uses a server-provided `previewUrl` when available.
-Otherwise it uses the existing n8n preview service because instance routes are
-commonly blocked or unreachable from MCP hosts. The resource metadata declares
-broad `frameDomains` for `http` and `https` so hosts that enforce MCP Apps CSP
-can load instance-specific or configured preview URLs. The framed n8n server's
+The workflow preview iframe loads the shared n8n preview service
+(`WORKFLOW_PREVIEW_ORIGIN`). The preview is instance-agnostic: the workflow
+graph is pushed into the iframe via `postMessage` rather than fetched from the
+instance, so a single origin renders both cloud and self-hosted workflows. The
+resource metadata therefore declares exactly one `frameDomains` entry — the
+preview-service origin. Keep this list narrow: MCP hosts (e.g. the ChatGPT
+connector review) reject broad or wildcard frame domains. The framed server's
 own frame policy still applies, so the app falls back to the open-workflow
 button when the preview cannot load.
 

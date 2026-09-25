@@ -1,9 +1,12 @@
 import { BaseFilesystem } from '../../workspace/filesystem/base-filesystem';
 import type { BaseFilesystemOptions } from '../../workspace/filesystem/base-filesystem';
 import type {
+	AbortableOptions,
+	AppendOptions,
 	FileContent,
 	FileStat,
 	FileEntry,
+	MkdirOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
@@ -43,7 +46,7 @@ class TestFilesystem extends BaseFilesystem {
 		await this.ensureReady();
 	}
 
-	async appendFile(_path: string, _content: FileContent): Promise<void> {
+	async appendFile(_path: string, _content: FileContent, _options?: AppendOptions): Promise<void> {
 		await this.ensureReady();
 	}
 
@@ -59,7 +62,7 @@ class TestFilesystem extends BaseFilesystem {
 		await this.ensureReady();
 	}
 
-	async mkdir(_path: string, _options?: { recursive?: boolean }): Promise<void> {
+	async mkdir(_path: string, _options?: MkdirOptions): Promise<void> {
 		await this.ensureReady();
 	}
 
@@ -72,12 +75,12 @@ class TestFilesystem extends BaseFilesystem {
 		return [];
 	}
 
-	async exists(_path: string): Promise<boolean> {
+	async exists(_path: string, _options?: AbortableOptions): Promise<boolean> {
 		await this.ensureReady();
 		return false;
 	}
 
-	async stat(_path: string): Promise<FileStat> {
+	async stat(_path: string, _options?: AbortableOptions): Promise<FileStat> {
 		await this.ensureReady();
 		return {
 			name: 'test',

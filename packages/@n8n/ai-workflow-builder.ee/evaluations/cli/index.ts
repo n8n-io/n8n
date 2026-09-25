@@ -69,12 +69,7 @@ import {
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import {
-	setupTestEnvironment,
-	createAgent,
-	resolveNodesBasePath,
-	type ResolvedStageLLMs,
-} from '../support/environment';
+import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
 
 /**
@@ -526,13 +521,13 @@ export async function runV2Evaluation(): Promise<void> {
 				})
 			: undefined,
 	);
-	// Create pin data generator for mocking service node outputs in evaluations
-	const nodesBasePath = resolveNodesBasePath();
+	// Create pin data generator for mocking service node outputs in evaluations.
+	// No __schema__ lookup here: the harness isn't actively run, so pin data
+	// falls back to API-knowledge generation (see PR #33896 review discussion).
 	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
 		await generateEvalPinData(workflow, {
 			llm: env.llms.judge,
 			nodeTypes: env.parsedNodeTypes,
-			nodesBasePath,
 			logger,
 		});
 

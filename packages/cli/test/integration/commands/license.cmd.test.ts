@@ -13,20 +13,20 @@ test('license:clear invokes clear() to release any floating entitlements and del
 	const license = Container.get(License);
 
 	const manager = {
-		clear: jest.fn().mockImplementation(async () => {
+		clear: vi.fn().mockImplementation(async () => {
 			await license.saveCertStr('');
 		}),
 	};
 
-	const initSpy = jest.spyOn(license, 'init').mockImplementation(async () => {
+	const initSpy = vi.spyOn(license, 'init').mockImplementation(async () => {
 		Object.defineProperty(license, 'manager', {
 			value: manager,
 			writable: true,
 		});
 	});
 
-	const clearSpy = jest.spyOn(license, 'clear');
-	const saveCertStrSpy = jest.spyOn(license, 'saveCertStr');
+	const clearSpy = vi.spyOn(license, 'clear');
+	const saveCertStrSpy = vi.spyOn(license, 'saveCertStr');
 
 	await command.run();
 

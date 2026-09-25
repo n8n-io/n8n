@@ -2,8 +2,9 @@ import { testDb } from '@n8n/backend-test-utils';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { JwtService } from '../jwt.service';
@@ -19,7 +20,7 @@ let publicApiKeyService: PublicApiKeyService;
 describe('PublicApiKeyService', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['User']);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	beforeAll(async () => {
@@ -142,6 +143,28 @@ describe('PublicApiKeyService', () => {
 			// Assert
 
 			expect(result).toBe(false);
+		});
+
+		it('should let a member grant folder scopes, which apply to their own projects', async () => {
+			// Arrange
+			const folderScopes: ApiKeyScope[] = [
+				'folder:create',
+				'folder:read',
+				'folder:update',
+				'folder:delete',
+				'folder:list',
+			];
+
+			// Act
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				{
+					role: GLOBAL_MEMBER_ROLE,
+				},
+				folderScopes,
+			);
+
+			// Assert
+			expect(result).toBe(true);
 		});
 	});
 });

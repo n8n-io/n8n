@@ -1,0 +1,131 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You generate realistic mock output for n8n workflow node[\\s\\S]*Generate realistic mock output \\(pin-data items\\) for the following simulated n8n nodes\\.\\\\n\\\\nWorkflow: INS-164 mocked credent[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-ab0bcb8e268ae748085ba66b5a0f35b3-5d8477b204da57e4-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CeSpPP29hkoouKbEXpnkg"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-workspace-id": [
+        "wrkspc_01CX1ZSKRt7BzNiHusZETrjN"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-08-27T06:57:14Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26999000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-08-27T06:57:13Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-08-27T06:57:19Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-08-27T06:57:14Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22499000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Thu, 27 Aug 2026 06:57:19 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "a3192e48ce6e1579-HEL"
+      ]
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-6",
+        "id": "msg_011CeSpPPg6V7BjfM2KTWwkn",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "```json\n{\n  \"Post Slack Message\": [\n    {\n      \"json\": {\n        \"channel\": \"C04ABCD1234\",\n        \"message\": {\n          \"app_id\": \"A04XYZ5678\",\n          \"blocks\": [\n            {\n              \"block_id\": \"blk_001\",\n              \"elements\": [\n                {\n                  \"elements\": [\n                    {\n                      \"text\": \"Hello from n8n!\",\n                      \"type\": \"text\"\n                    }\n                  ],\n                  \"type\": \"rich_text_section\"\n                }\n              ],\n              \"type\": \"rich_text\"\n            }\n          ],\n          \"bot_id\": \"B04BOT9999\",\n          \"bot_profile\": {\n            \"app_id\": \"A04XYZ5678\",\n            \"deleted\": false,\n            \"icons\": {\n              \"image_36\": \"https://avatars.slack-edge.com/bot_36.png\",\n              \"image_48\": \"https://avatars.slack-edge.com/bot_48.png\",\n              \"image_72\": \"https://avatars.slack-edge.com/bot_72.png\"\n            },\n            \"id\": \"B04BOT9999\",\n            \"name\": \"n8n\",\n            \"team_id\": \"T04TEAM111\",\n            \"updated\": 1756285031\n          },\n          \"team\": \"T04TEAM111\",\n          \"text\": \"Hello from n8n!\",\n          \"ts\": \"1756285031.000100\",\n          \"type\": \"message\",\n          \"user\": \"U04BOT9999\"\n        },\n        \"message_timestamp\": \"1756285031.000100\"\n      }\n    }\n  ]\n}\n```"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 1503,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 441,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDExQ2VTcFBQZzZWN0JqZk0yS1RXd2tuIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiYGBganNvblxue1xuICBcIlBvc3QgU2xhY2sgTWVzc2FnZVwiOiBbXG4gICAge1xuICAgICAgXCJqc29uXCI6IHtcbiAgICAgICAgXCJjaGFubmVsXCI6IFwiQzA0QUJDRDEyMzRcIixcbiAgICAgICAgXCJtZXNzYWdlXCI6IHtcbiAgICAgICAgICBcImFwcF9pZFwiOiBcIkEwNFhZWjU2NzhcIixcbiAgICAgICAgICBcImJsb2Nrc1wiOiBbXG4gICAgICAgICAgICB7XG4gICAgICAgICAgICAgIFwiYmxvY2tfaWRcIjogXCJibGtfMDAxXCIsXG4gICAgICAgICAgICAgIFwiZWxlbWVudHNcIjogW1xuICAgICAgICAgICAgICAgIHtcbiAgICAgICAgICAgICAgICAgIFwiZWxlbWVudHNcIjogW1xuICAgICAgICAgICAgICAgICAgICB7XG4gICAgICAgICAgICAgICAgICAgICAgXCJ0ZXh0XCI6IFwiSGVsbG8gZnJvbSBuOG4hXCIsXG4gICAgICAgICAgICAgICAgICAgICAgXCJ0eXBlXCI6IFwidGV4dFwiXG4gICAgICAgICAgICAgICAgICAgIH1cbiAgICAgICAgICAgICAgICAgIF0sXG4gICAgICAgICAgICAgICAgICBcInR5cGVcIjogXCJyaWNoX3RleHRfc2VjdGlvblwiXG4gICAgICAgICAgICAgICAgfVxuICAgICAgICAgICAgICBdLFxuICAgICAgICAgICAgICBcInR5cGVcIjogXCJyaWNoX3RleHRcIlxuICAgICAgICAgICAgfVxuICAgICAgICAgIF0sXG4gICAgICAgICAgXCJib3RfaWRcIjogXCJCMDRCT1Q5OTk5XCIsXG4gICAgICAgICAgXCJib3RfcHJvZmlsZVwiOiB7XG4gICAgICAgICAgICBcImFwcF9pZFwiOiBcIkEwNFhZWjU2NzhcIixcbiAgICAgICAgICAgIFwiZGVsZXRlZFwiOiBmYWxzZSxcbiAgICAgICAgICAgIFwiaWNvbnNcIjoge1xuICAgICAgICAgICAgICBcImltYWdlXzM2XCI6IFwiaHR0cHM6Ly9hdmF0YXJzLnNsYWNrLWVkZ2UuY29tL2JvdF8zNi5wbmdcIixcbiAgICAgICAgICAgICAgXCJpbWFnZV80OFwiOiBcImh0dHBzOi8vYXZhdGFycy5zbGFjay1lZGdlLmNvbS9ib3RfNDgucG5nXCIsXG4gICAgICAgICAgICAgIFwiaW1hZ2VfNzJcIjogXCJodHRwczovL2F2YXRhcnMuc2xhY2stZWRnZS5jb20vYm90XzcyLnBuZ1wiXG4gICAgICAgICAgICB9LFxuICAgICAgICAgICAgXCJpZFwiOiBcIkIwNEJPVDk5OTlcIixcbiAgICAgICAgICAgIFwibmFtZVwiOiBcIm44blwiLFxuICAgICAgICAgICAgXCJ0ZWFtX2lkXCI6IFwiVDA0VEVBTTExMVwiLFxuICAgICAgICAgICAgXCJ1cGRhdGVkXCI6IDE3NTYyODUwMzFcbiAgICAgICAgICB9LFxuICAgICAgICAgIFwidGVhbVwiOiBcIlQwNFRFQU0xMTFcIixcbiAgICAgICAgICBcInRleHRcIjogXCJIZWxsbyBmcm9tIG44biFcIixcbiAgICAgICAgICBcInRzXCI6IFwiMTc1NjI4NTAzMS4wMDAxMDBcIixcbiAgICAgICAgICBcInR5cGVcIjogXCJtZXNzYWdlXCIsXG4gICAgICAgICAgXCJ1c2VyXCI6IFwiVTA0Qk9UOTk5OVwiXG4gICAgICAgIH0sXG4gICAgICAgIFwibWVzc2FnZV90aW1lc3RhbXBcIjogXCIxNzU2Mjg1MDMxLjAwMDEwMFwiXG4gICAgICB9XG4gICAgfVxuICBdXG59XG5gYGAifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTUwMywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQ0MSwib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6MH0sInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
+    }
+  },
+  "id": "0005-1787813855306-unknown-host-POST-_v1_messages-962c8e4b.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

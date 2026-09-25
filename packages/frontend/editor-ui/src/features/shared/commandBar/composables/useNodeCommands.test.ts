@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -15,6 +16,16 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { createTestNode } from '@/__tests__/mocks';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
@@ -211,6 +222,73 @@ describe('useNodeCommands', () => {
 			expect(addCommand?.children?.[1].id).toBe('n8n-nodes-base.slack');
 
 			expect(mockGenerateMergedNodesAndActionsFn).toHaveBeenCalled();
+		});
+
+		it('should list a restricted node last, disabled and locked, instead of hiding it', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-nodes-base.gmail', 'Gmail'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => child.id)).toEqual([
+				'n8n-nodes-base.slack',
+				'n8n-nodes-base.gmail',
+			]);
+			expect(children[0].disabled).toBe(false);
+			expect(children[1].disabled).toBe(true);
+			const restrictedTitle = children[1].title;
+			expect(typeof restrictedTitle === 'object' && restrictedTitle.props?.icon).toBe('lock');
+		});
+
+		it('should disable a credential-only node when HTTP Request is restricted', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-creds-base.sysdigApi', 'Sysdig'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => [child.id, child.disabled ?? false])).toEqual([
+				['n8n-nodes-base.slack', false],
+				['n8n-creds-base.sysdigApi', true],
+			]);
+		});
+
+		it('should disable a node type the policy restricts', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-nodes-base.httpRequest', 'HTTP Request'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => [child.id, child.disabled ?? false])).toEqual([
+				['n8n-nodes-base.httpRequest', false],
+				['n8n-nodes-base.slack', true],
+			]);
 		});
 	});
 

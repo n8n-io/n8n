@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useInstallNode } from '../composables/useInstallNode';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,

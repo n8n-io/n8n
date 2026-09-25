@@ -175,10 +175,6 @@ test.describe(
 					'My test workflow 2',
 				);
 
-				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-					'Workflow executed successfully',
-				);
-
 				await n8n.canvas.openNode('Set');
 
 				await n8n.ndv.getAssignmentExpressionToggle('assignments').click();
@@ -189,6 +185,10 @@ test.describe(
 				await n8n.ndv.typeInExpressionEditor('{{ $json.input[0].count');
 
 				await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('0');
+
+				// Clear any run-data-row hover and wait for the item selector to enable before using it.
+				await n8n.ndv.moveMouseAwayFromRunData();
+				await expect(n8n.ndv.getInlineExpressionEditorItemNextButton()).toBeEnabled();
 
 				await n8n.ndv.expressionSelectNextItem();
 				await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('1');

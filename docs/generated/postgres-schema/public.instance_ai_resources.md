@@ -4,20 +4,20 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(255) |  | false |  |  |  |
-| workingMemory | text |  | true |  |  |  |
-| metadata | json |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| id | varchar(255) |  | false |  |  |  |
+| metadata | json |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workingMemory | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_45b5b0b6f715dae4292b86603d8 | PRIMARY KEY | PRIMARY KEY (id) |
 | instance_ai_resources_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_ai_resources_id_not_null | n | NOT NULL id |
 | instance_ai_resources_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| PK_45b5b0b6f715dae4292b86603d8 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -32,11 +32,11 @@ erDiagram
 
 
 "public.instance_ai_resources" {
-  varchar_255_ id
-  text workingMemory
-  json metadata
   timestamp_3__with_time_zone createdAt
+  varchar_255_ id
+  json metadata
   timestamp_3__with_time_zone updatedAt
+  text workingMemory
 }
 ```
 

@@ -477,6 +477,12 @@ export class NextCloud implements INodeType {
 						value: 1,
 					},
 					{
+						name: 'Internal Link',
+						value: 200,
+						description:
+							'Generates an internal Nextcloud URL (not a public share). Uses the file/folder ID from a PROPFIND call. The output is { link: "..." }. Do not use with shareWith fields.',
+					},
+					{
 						name: 'Public Link',
 						value: 3,
 					},
@@ -876,18 +882,29 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
-		let endpoint = '';
-		let requestMethod: IHttpRequestMethods = 'GET';
-		let responseData: any;
-
-		let body: string | Buffer | IDataObject = '';
-		const headers: IDataObject = {};
-		let qs;
+		let resource: string = '';
+		let operation: string = '';
+		let lastOperationWasDownload = false;
 
 		for (let i = 0; i < items.length; i++) {
+			let endpoint = '';
+			let requestMethod: IHttpRequestMethods = 'GET';
+			let responseData: any;
+
+			let body: string | Buffer | IDataObject = '';
+			const headers: IDataObject = {};
+			let qs;
+			// Reinitialize per-iteration so state from a previous item never leaks.
+			let useWebDavEndpoint = true;
+
+			resource = this.getNodeParameter('resource', i);
+			operation = this.getNodeParameter('operation', i);
+
+			// Must be set before the try block so it still runs when download fails with continueOnFail
+			if (resource === 'file' && operation === 'download') {
+				lastOperationWasDownload = true;
+			}
+
 			try {
 				if (resource === 'file') {
 					if (operation === 'download') {
@@ -927,6 +944,7 @@ export class NextCloud implements INodeType {
 						//         list
 						// ----------------------------------
 
+						// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
 						requestMethod = 'PROPFIND' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 					}
@@ -963,32 +981,49 @@ export class NextCloud implements INodeType {
 						//         share
 						// ----------------------------------
 
-						requestMethod = 'POST';
+						const shareType = this.getNodeParameter('shareType', i) as number;
+						const sharePath = this.getNodeParameter('path', i) as string;
 
-						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+						if (shareType === 200) {
+							// Internal Link: not a real OCS share, derive the link from oc:fileid via PROPFIND.
+							// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
+							requestMethod = 'PROPFIND' as IHttpRequestMethods;
+							endpoint = sharePath;
+							headers['Content-Type'] = 'application/xml';
+							headers.Depth = '0';
+							body = `<?xml version="1.0"?>
+<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+  <d:prop><oc:fileid/></d:prop>
+</d:propfind>`;
+							// useWebDavEndpoint stays true (default) for WebDAV PROPFIND.
+						} else {
+							// Regular OCS share.
+							requestMethod = 'POST';
+							useWebDavEndpoint = false;
+							endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+							headers['OCS-APIRequest'] = true;
+							headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						headers['OCS-APIRequest'] = true;
-						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+							const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
 
-						const bodyParameters = this.getNodeParameter('options', i);
+							bodyParameters.path = sharePath;
+							bodyParameters.shareType = shareType;
 
-						bodyParameters.path = this.getNodeParameter('path', i) as string;
-						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
+							if (shareType === 0) {
+								bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
+							} else if (shareType === 7) {
+								bodyParameters.shareWith = this.getNodeParameter('circleId', i) as string;
+							} else if (shareType === 4) {
+								bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
+							} else if (shareType === 1) {
+								bodyParameters.shareWith = this.getNodeParameter('groupId', i) as string;
+							}
 
-						if (bodyParameters.shareType === 0) {
-							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
-						} else if (bodyParameters.shareType === 7) {
-							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
-						} else if (bodyParameters.shareType === 4) {
-							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
-						} else if (bodyParameters.shareType === 1) {
-							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+							body = new URLSearchParams(bodyParameters as Record<string, string>).toString();
 						}
-
-						// @ts-ignore
-						body = new URLSearchParams(bodyParameters).toString();
 					}
 				} else if (resource === 'user') {
+					useWebDavEndpoint = false;
 					if (operation === 'create') {
 						// ----------------------------------
 						//         user:create
@@ -1102,6 +1137,7 @@ export class NextCloud implements INodeType {
 						headers,
 						encoding,
 						qs,
+						useWebDavEndpoint,
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -1139,39 +1175,152 @@ export class NextCloud implements INodeType {
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
-					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(
-							responseData as string,
-							{
-								explicitArray: false,
-								tagNameProcessors: [sanitizeXmlName],
-								attrNameProcessors: [sanitizeXmlName],
-							},
-							(err, data) => {
-								if (err) {
-									return reject(err);
-								}
+					const shareType = this.getNodeParameter('shareType', i) as number;
 
-								if (data.ocs.meta.status !== 'ok') {
-									return reject(
-										new NodeApiError(
-											this.getNode(),
-											(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
-										),
-									);
-								}
+					if (shareType === 200) {
+						// Internal Link: responseData is the PROPFIND multistatus XML.
+						if (typeof responseData !== 'string') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve internal link: unexpected response type from NextCloud',
+								{ itemIndex: i },
+							);
+						}
 
-								resolve(data.ocs.data as IDataObject);
-							},
+						const propfindData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(
+								responseData,
+								{
+									explicitArray: false,
+									tagNameProcessors: [sanitizeXmlName],
+									attrNameProcessors: [sanitizeXmlName],
+								},
+								(err, data) => {
+									if (err) {
+										return reject(err);
+									}
+									if (!data || typeof data !== 'object') {
+										return reject(
+											new NodeOperationError(
+												this.getNode(),
+												'Could not retrieve internal link: invalid XML response structure',
+												{ itemIndex: i },
+											),
+										);
+									}
+									resolve(data);
+								},
+							);
+						});
+
+						const multistatus = propfindData['d:multistatus'] as IDataObject | undefined;
+						if (!multistatus) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve internal link: malformed PROPFIND response',
+								{ itemIndex: i },
+							);
+						}
+
+						const responses = multistatus['d:response'];
+						if (!responses) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve internal link: malformed PROPFIND response',
+								{ itemIndex: i },
+							);
+						}
+
+						const responseList: IDataObject[] = Array.isArray(responses)
+							? (responses as IDataObject[])
+							: [responses as IDataObject];
+
+						const matchedResponse = responseList[0];
+
+						let props: IDataObject | undefined;
+						const propstat = matchedResponse['d:propstat'];
+						if (Array.isArray(propstat)) {
+							props = (propstat[0] as IDataObject)['d:prop'] as IDataObject | undefined;
+						} else if (propstat && typeof propstat === 'object') {
+							props = (propstat as IDataObject)['d:prop'] as IDataObject | undefined;
+						}
+
+						const fileid = props?.['oc:fileid'];
+						if (typeof fileid !== 'string' || fileid.length === 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve internal link: oc:fileid not found in PROPFIND response',
+								{ itemIndex: i },
+							);
+						}
+
+						const webDavBase = (credentials.webDavUrl as string).replace(
+							/\/remote\.php\/webdav\/?$/,
+							'',
 						);
-					});
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(jsonResponseData),
-						{ itemData: { item: i } },
-					);
+						if (webDavBase === credentials.webDavUrl) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'WebDAV URL must end with /remote.php/webdav for generating an internal link. Please check your Nextcloud credentials.',
+								{ itemIndex: i },
+							);
+						}
 
-					returnData.push(...executionData);
+						const internalLink = `${webDavBase}/f/${fileid}`;
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData({ link: internalLink }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else {
+						if (typeof responseData !== 'string') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Unexpected response type from NextCloud OCS share endpoint',
+								{ itemIndex: i },
+							);
+						}
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(
+								responseData,
+								{
+									explicitArray: false,
+									tagNameProcessors: [sanitizeXmlName],
+									attrNameProcessors: [sanitizeXmlName],
+								},
+								(err, data) => {
+									if (err) {
+										return reject(err);
+									}
+
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message as JsonObject) ||
+													(data.ocs.meta.status as JsonObject),
+											),
+										);
+									}
+
+									if (!data?.ocs?.data || typeof data.ocs.data !== 'object') {
+										return reject(
+											new NodeApiError(this.getNode(), { error: 'Invalid OCS response structure' }),
+										);
+									}
+									resolve(data.ocs.data);
+								},
+							);
+						});
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData(jsonResponseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					}
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
@@ -1331,9 +1480,12 @@ export class NextCloud implements INodeType {
 				}
 				throw error;
 			}
+			if (resource === 'file' && operation === 'download') {
+				lastOperationWasDownload = true;
+			}
 		}
 
-		if (resource === 'file' && operation === 'download') {
+		if (lastOperationWasDownload) {
 			// For file downloads the files get attached to the existing items
 			return [items];
 		} else {

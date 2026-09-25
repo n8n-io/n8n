@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -10,13 +10,11 @@ import { Readable } from 'stream';
 import { getGoogleAccessToken } from '../../GenericFunctions';
 import { objectOperations } from '../ObjectDescription';
 
-jest.mock('../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn(),
+vi.mock('../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn(),
 }));
 
-const getGoogleAccessTokenMock = getGoogleAccessToken as jest.MockedFunction<
-	typeof getGoogleAccessToken
->;
+const getGoogleAccessTokenMock = vi.mocked(getGoogleAccessToken);
 
 // Extract the body-creation preSend (index 1 — index 0 handles query params/headers)
 type PreSendFn = (
@@ -30,11 +28,11 @@ const bodySend = createOption.routing!.send!.preSend![1] as unknown as PreSendFn
 const CHUNK_SIZE = 8 * 1024 * 1024;
 
 // Hoisted mocks shared across all tests
-const httpRequestWithAuthentication = jest.fn();
-const httpRequest = jest.fn();
-const assertBinaryData = jest.fn();
-const getBinaryMetadata = jest.fn();
-const getBinaryStream = jest.fn();
+const httpRequestWithAuthentication = vi.fn();
+const httpRequest = vi.fn();
+const assertBinaryData = vi.fn();
+const getBinaryMetadata = vi.fn();
+const getBinaryStream = vi.fn();
 
 describe('Google Cloud Storage - Create object resumable upload (preSend)', () => {
 	let ctx: MockProxy<IExecuteSingleFunctions>;
@@ -61,7 +59,7 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			type: 'n8n-nodes-base.googleCloudStorage',
 			typeVersion: 1.1,
 		} as never);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	/** Sets up getNodeParameter for the happy-path resumable upload. */
@@ -327,6 +325,59 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			);
 			expect(result.method).toBe('GET');
 			expect(result.url).toBe('/b/my-bucket/o/my-object');
+		});
+
+		it('keeps the bearer token on the follow-up metadata request', async () => {
+			const fileSize = 100;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer sa-token' });
+		});
+
+		it('merges encryption headers into the follow-up metadata request', async () => {
+			const fileSize = 100;
+			ctx.getNodeParameter
+				.mockReturnValueOnce('my-object') //     objectName  → metadata
+				.mockReturnValueOnce({}) //              createData
+				.mockReturnValueOnce(true) //            createFromBinary
+				.mockReturnValueOnce('data') //          createBinaryPropertyName
+				.mockReturnValueOnce('my-bucket') //     bucketName  → resumable path
+				.mockReturnValueOnce('my-object') //     objectName  → resumable path
+				.mockReturnValueOnce('serviceAccount') // authentication
+				.mockReturnValueOnce({ 'x-goog-encryption-algorithm': 'AES256' }); // encryptionHeaders
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sa-token',
+				'x-goog-encryption-algorithm': 'AES256',
+			});
 		});
 	});
 

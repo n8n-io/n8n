@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ChatHubLLMProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
@@ -171,7 +171,10 @@ watch(
 );
 
 watch(speechInput.error, (event) => {
-	if (event?.error === 'not-allowed') {
+	// vueuse v14 widened the error to `Error | SpeechRecognitionErrorEvent`; only the
+	// latter carries an `error` code.
+	const errorCode = event && 'error' in event ? event.error : undefined;
+	if (errorCode === 'not-allowed') {
 		toast.showError(
 			new Error(i18n.baseText('chatHub.chat.prompt.microphone.accessDenied')),
 			i18n.baseText('chatHub.chat.prompt.microphone.allowAccess'),
@@ -179,7 +182,7 @@ watch(speechInput.error, (event) => {
 		return;
 	}
 
-	if (event?.error === 'no-speech') {
+	if (errorCode === 'no-speech') {
 		toast.showMessage({
 			title: i18n.baseText('chatHub.chat.prompt.microphone.noSpeech'),
 			type: 'warning',

@@ -1,10 +1,11 @@
-import axios from 'axios';
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
-import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import { valid } from 'semver';
 
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
@@ -247,7 +248,7 @@ export async function executeNpmCommand(
  * @param path - Path to append after the registry URL (e.g. `${encodeURIComponent(pkg)}/${version}`)
  * @param options - Optional authToken, extra headers, and timeout override
  * @returns Parsed response body
- * @throws The original axios error after logging, so callers can fall back to the npm CLI
+ * @throws The original request error after logging, so callers can fall back to the npm CLI
  */
 export async function executeNpmRequest<T = unknown>(
 	registryUrl: string,
@@ -265,10 +266,16 @@ export async function executeNpmRequest<T = unknown>(
 	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
-		const { data } = await axios.get<T>(url, {
-			timeout,
-			headers: Object.keys(headers).length > 0 ? headers : undefined,
-		});
+		// User-configurable registry URL, so the default safe mode applies.
+		const data = (await Container.get(OutboundHttp)
+			.requests()
+			.request({
+				url,
+				method: 'GET',
+				timeout,
+				headers: Object.keys(headers).length > 0 ? headers : undefined,
+				json: true,
+			})) as T;
 		return data;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
@@ -315,11 +322,11 @@ export async function verifyIntegrity(
 		} catch (cliError) {
 			if (isDnsError(cliError) || isNpmError(cliError)) {
 				throw new UnexpectedError(
-					'Checksum verification failed. Please check your network connection and try again.',
+					'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 				);
 			}
 			throw new UnexpectedError(
-				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				'Failed to verify package checksum. Try restarting n8n and attempting the installation again.',
 			);
 		}
 	}

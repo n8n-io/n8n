@@ -4,94 +4,94 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| metaId | integer |  | false | [public.insights_raw](public.insights_raw.md) [public.insights_by_period](public.insights_by_period.md) |  |  |
-| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) |  |
+| metaId | integer |  | false | [public.insights_by_period](public.insights_by_period.md) [public.insights_raw](public.insights_raw.md) |  |  |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) |  |
-| workflowName | varchar(128) |  | false |  |  |  |
 | projectName | varchar(255) |  | false |  |  |  |
+| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) |  |
+| workflowName | varchar(128) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| insights_metadata_metaId_not_null | n | NOT NULL "metaId" |
-| insights_metadata_projectName_not_null | n | NOT NULL "projectName" |
-| insights_metadata_workflowName_not_null | n | NOT NULL "workflowName" |
 | FK_1d8ab99d5861c9388d2dc1cf733 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE SET NULL |
 | FK_2375a1eda085adb16b24615b69c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE SET NULL |
 | PK_f448a94c35218b6208ce20cf5a1 | PRIMARY KEY | PRIMARY KEY ("metaId") |
+| insights_metadata_metaId_not_null | n | NOT NULL "metaId" |
+| insights_metadata_projectName_not_null | n | NOT NULL "projectName" |
+| insights_metadata_workflowName_not_null | n | NOT NULL "workflowName" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_f448a94c35218b6208ce20cf5a1 | CREATE UNIQUE INDEX "PK_f448a94c35218b6208ce20cf5a1" ON public.insights_metadata USING btree ("metaId") |
 | IDX_1d8ab99d5861c9388d2dc1cf73 | CREATE UNIQUE INDEX "IDX_1d8ab99d5861c9388d2dc1cf73" ON public.insights_metadata USING btree ("workflowId") |
+| PK_f448a94c35218b6208ce20cf5a1 | CREATE UNIQUE INDEX "PK_f448a94c35218b6208ce20cf5a1" ON public.insights_metadata USING btree ("metaId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.insights_raw" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
 "public.insights_by_period" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
-"public.insights_metadata" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
+"public.insights_raw" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
 "public.insights_metadata" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
+"public.insights_metadata" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
 
 "public.insights_metadata" {
   integer metaId
-  varchar_36_ workflowId FK
   varchar_36_ projectId FK
-  varchar_128_ workflowName
   varchar_255_ projectName
-}
-"public.insights_raw" {
-  integer id
-  integer metaId FK
-  integer type
-  bigint value
-  timestamp_0__with_time_zone timestamp
+  varchar_36_ workflowId FK
+  varchar_128_ workflowName
 }
 "public.insights_by_period" {
   integer id
   integer metaId FK
+  timestamp_0__with_time_zone periodStart
+  integer periodUnit
   integer type
   bigint value
-  integer periodUnit
-  timestamp_0__with_time_zone periodStart
 }
-"public.workflow_entity" {
-  varchar_128_ name
-  boolean active
-  json nodes
-  json connections
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
-  text description
-  varchar_36_ activeVersionId FK
-  json nodeGroups
-  varchar sourceWorkflowId
+"public.insights_raw" {
+  integer id
+  integer metaId FK
+  timestamp_0__with_time_zone timestamp
+  integer type
+  bigint value
 }
 "public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  json icon
-  varchar_512_ description
-  uuid creatorId FK
-  json customTelemetryTags
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

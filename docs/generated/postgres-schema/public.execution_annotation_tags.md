@@ -11,19 +11,19 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_a3697779b366e131b2bbdae2976 | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES annotation_tag_entity(id) ON DELETE CASCADE |
+| FK_c1519757391996eb06064f0e7c8 | FOREIGN KEY | FOREIGN KEY ("annotationId") REFERENCES execution_annotations(id) ON DELETE CASCADE |
+| PK_979ec03d31294cca484be65d11f | PRIMARY KEY | PRIMARY KEY ("annotationId", "tagId") |
 | execution_annotation_tags_annotationId_not_null | n | NOT NULL "annotationId" |
 | execution_annotation_tags_tagId_not_null | n | NOT NULL "tagId" |
-| FK_c1519757391996eb06064f0e7c8 | FOREIGN KEY | FOREIGN KEY ("annotationId") REFERENCES execution_annotations(id) ON DELETE CASCADE |
-| FK_a3697779b366e131b2bbdae2976 | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES annotation_tag_entity(id) ON DELETE CASCADE |
-| PK_979ec03d31294cca484be65d11f | PRIMARY KEY | PRIMARY KEY ("annotationId", "tagId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_979ec03d31294cca484be65d11f | CREATE UNIQUE INDEX "PK_979ec03d31294cca484be65d11f" ON public.execution_annotation_tags USING btree ("annotationId", "tagId") |
 | IDX_a3697779b366e131b2bbdae297 | CREATE INDEX "IDX_a3697779b366e131b2bbdae297" ON public.execution_annotation_tags USING btree ("tagId") |
 | IDX_c1519757391996eb06064f0e7c | CREATE INDEX "IDX_c1519757391996eb06064f0e7c" ON public.execution_annotation_tags USING btree ("annotationId") |
+| PK_979ec03d31294cca484be65d11f | CREATE UNIQUE INDEX "PK_979ec03d31294cca484be65d11f" ON public.execution_annotation_tags USING btree ("annotationId", "tagId") |
 
 ## Relations
 
@@ -38,17 +38,17 @@ erDiagram
   varchar_24_ tagId FK
 }
 "public.execution_annotations" {
-  integer id
-  integer executionId FK
-  varchar_6_ vote
-  text note
   timestamp_3__with_time_zone createdAt
+  integer executionId FK
+  integer id
+  text note
   timestamp_3__with_time_zone updatedAt
+  varchar_6_ vote
 }
 "public.annotation_tag_entity" {
+  timestamp_3__with_time_zone createdAt
   varchar_16_ id
   varchar_24_ name
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 ```

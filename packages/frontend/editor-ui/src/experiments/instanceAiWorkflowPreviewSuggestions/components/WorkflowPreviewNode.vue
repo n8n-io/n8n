@@ -13,8 +13,9 @@ const props = withDefaults(
 		state?: NodeAnimationState;
 		trigger?: boolean;
 		iconOverride?: PreviewWorkflowNodeIcon;
+		interactive?: boolean;
 	}>(),
-	{ state: 'idle', trigger: false },
+	{ state: 'idle', trigger: false, interactive: false },
 );
 
 const style = computed(() => ({
@@ -37,6 +38,7 @@ const iconName = computed(() =>
 const iconSrc = computed(() =>
 	activeIcon.value.type === 'file' ? activeIcon.value.src : undefined,
 );
+const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 </script>
 
 <template>
@@ -47,12 +49,16 @@ const iconSrc = computed(() =>
 			props.state === 'running' && $style.running,
 			props.state === 'success' && $style.success,
 		]"
-		:style="style"
+		:style="[style, props.interactive ? { pointerEvents: 'auto' } : {}]"
 	>
 		<div :class="$style.iconWrapper" :style="iconWrapperStyle">
 			<N8nIcon v-if="iconName" :icon="iconName" :size="48" />
 			<Transition v-else-if="iconSrc" :name="$style.swipe" mode="out-in">
-				<img :key="iconSrc" :src="iconSrc" :class="$style.iconImage" />
+				<img
+					:key="iconSrc"
+					:src="iconSrc"
+					:class="[$style.iconImage, iconLightInvert && $style.lightInvert]"
+				/>
 			</Transition>
 			<span v-else :class="$style.iconFallback">{{ props.node.label.charAt(0) }}</span>
 		</div>
@@ -133,6 +139,20 @@ const iconSrc = computed(() =>
 	max-height: 48px;
 	width: auto;
 	height: auto;
+}
+
+.lightInvert {
+	filter: invert(1);
+}
+
+:global([data-theme='dark']) .lightInvert {
+	filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) .lightInvert {
+		filter: none;
+	}
 }
 
 .iconFallback {

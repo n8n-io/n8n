@@ -1,54 +1,27 @@
-import { getRenderHint } from '@n8n/api-types';
+import type { AgentDbMessage } from '@n8n/agents';
+import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
-	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
-import { cleanStoredUserMessage } from './internal-messages';
+import {
+	cleanStoredUserMessage,
+	extractAgentPreviewHandoffContext,
+	extractEditorContextResourceAttachments,
+} from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 
-const toolCallContentPartSchema = z.object({
-	type: z.literal('tool-call'),
-	toolCallId: z.string(),
-	toolName: z.string(),
-	input: z.unknown().optional(),
-	state: z.enum(['pending', 'resolved', 'rejected']).optional(),
-	output: z.unknown().optional(),
-	error: z.string().optional(),
-});
-
 const textContentPartSchema = z.object({ type: z.literal('text'), text: z.string() });
 const reasoningContentPartSchema = z.object({ type: z.literal('reasoning'), text: z.string() });
-const opaqueContentPartSchema = z
-	.object({ type: z.enum(['invalid-tool-call', 'file', 'citation', 'provider']) })
-	.passthrough();
-
-const contentPartSchema = z.union([
-	textContentPartSchema,
-	reasoningContentPartSchema,
-	toolCallContentPartSchema,
-	opaqueContentPartSchema,
-]);
 
 // ---------------------------------------------------------------------------
 // Persisted message shapes
 // ---------------------------------------------------------------------------
-
-interface StoredToolInvocation {
-	state: 'result' | 'call' | 'partial-call';
-	toolCallId: string;
-	toolName: string;
-	args: Record<string, unknown>;
-	result?: unknown;
-	error?: string;
-}
-
-type StoredContentPart = MessageContent;
 
 export interface StoredAgentMessage {
 	id: string;
@@ -69,7 +42,9 @@ type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractTextFromContent(content: unknown): string {
+/** Concatenated text blocks of a stored message's content. Exported for the
+ *  conversation-history service, which reads the same persisted rows. */
+export function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) return extractTextFromParts(content);
 	return '';
@@ -99,131 +74,25 @@ function extractReasoningFromParts(parts: unknown[]): string {
 		.join('');
 }
 
-function extractParts(content: unknown): StoredContentPart[] | undefined {
-	if (Array.isArray(content)) return content.filter(isStoredContentPart);
-	return undefined;
-}
-
-function isStoredContentPart(value: unknown): value is StoredContentPart {
-	return contentPartSchema.safeParse(value).success;
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: {};
-}
-
-function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocation | undefined {
-	if (part.type !== 'tool-call') return undefined;
-
-	const parsed = toolCallContentPartSchema.safeParse(part);
-	if (!parsed.success) return undefined;
-	const toolCall = parsed.data;
-
-	const args = toRecord(toolCall.input);
-	if (toolCall.state === 'resolved') {
-		return {
-			state: 'result',
-			toolCallId: toolCall.toolCallId,
-			toolName: toolCall.toolName,
-			args,
-			result: toolCall.output,
-		};
-	}
-	if (toolCall.state === 'rejected') {
-		return {
-			state: 'result',
-			toolCallId: toolCall.toolCallId,
-			toolName: toolCall.toolName,
-			args,
-			error: toolCall.error,
-		};
-	}
-	return {
-		state: 'call',
-		toolCallId: toolCall.toolCallId,
-		toolName: toolCall.toolName,
-		args,
-	};
-}
-
-function extractToolInvocations(content: unknown): StoredToolInvocation[] {
-	if (typeof content === 'string') return [];
-	if (Array.isArray(content))
-		return content.filter(isStoredContentPart).flatMap((part) => {
-			const invocation = nativeToolPartToInvocation(part);
-			return invocation ? [invocation] : [];
-		});
-	return [];
-}
-
-function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCallState {
-	const isCompleted = invocation.state === 'result';
-	return {
-		toolCallId: invocation.toolCallId,
-		toolName: invocation.toolName,
-		args: invocation.args,
-		result: isCompleted ? invocation.result : undefined,
-		error: isCompleted ? invocation.error : undefined,
-		isLoading: !isCompleted,
-		renderHint: getRenderHint(invocation.toolName),
-	};
-}
-
 /**
- * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
- * Falls back to tool-calls-first heuristic when parts aren't available.
+ * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
+ * e.g. a `cancelled` run whose events were lost before the
+ * snapshot was built — has none of these, so the message renders without a tree.
  */
-function buildTimeline(
-	textContent: string,
-	toolCalls: InstanceAiToolCallState[],
-	parts?: StoredContentPart[],
-): InstanceAiTimelineEntry[] {
-	// If parts are available, use their ordering (chronologically accurate)
-	if (parts?.length) {
-		const timeline: InstanceAiTimelineEntry[] = [];
-		for (const part of parts) {
-			if (part.type === 'text' && part.text) {
-				timeline.push({ type: 'text', content: part.text });
-			} else if (part.type === 'tool-call' && part.toolCallId) {
-				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
-			}
-		}
-		return timeline;
-	}
-
-	// No parts — heuristic: tool calls first, then text (most common agent pattern)
-	const timeline: InstanceAiTimelineEntry[] = [];
-	for (const tc of toolCalls) {
-		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId });
-	}
-	if (textContent) {
-		timeline.push({ type: 'text', content: textContent });
-	}
-	return timeline;
-}
-
-/**
- * Build a flat agent tree (orchestrator only) from tool invocations.
- * Used when no snapshot is available for a given run.
- */
-function buildFlatAgentTree(
-	textContent: string,
-	reasoning: string,
-	toolCalls: InstanceAiToolCallState[],
-	parts?: StoredContentPart[],
-): InstanceAiAgentNode {
-	return {
-		agentId: 'agent-001',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent,
-		reasoning,
-		toolCalls,
-		children: [],
-		timeline: buildTimeline(textContent, toolCalls, parts),
-	};
+function isRenderableTree(tree: InstanceAiAgentNode): boolean {
+	return (
+		tree.children.length > 0 ||
+		tree.toolCalls.length > 0 ||
+		tree.timeline.length > 0 ||
+		tree.textContent.length > 0 ||
+		tree.reasoning.length > 0 ||
+		(tree.planItems?.length ?? 0) > 0 ||
+		!!tree.tasks ||
+		!!tree.setupItemsByWorkflowId ||
+		!!tree.statusMessage ||
+		!!tree.result ||
+		!!tree.error
+	);
 }
 
 function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
@@ -271,7 +140,9 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 
 /**
  * Converts persisted native agent messages into rich InstanceAiMessage objects
- * with agent trees (from snapshots or reconstructed flat trees).
+ * with agent trees folded from the durable event log. A message whose run left
+ * no log rows (eval-seeded threads, pre-log dev instances) renders from its
+ * `content`/`reasoning` fields without a tree.
  */
 export function parseStoredMessages(
 	storedMessages: Array<AgentDbMessage | StoredAgentMessage>,
@@ -288,16 +159,17 @@ export function parseStoredMessages(
 	// orphan snapshots before, between, or after assistant rows.
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
-	// Messages whose `agentTree` originated from a snapshot (as opposed to
-	// being synthesized by `buildFlatAgentTree`). Used by the dedupe pass to
-	// prefer transferring snapshot trees forward in the in-flight HITL case.
+	// Messages whose `agentTree` is a renderable snapshot tree. Used by the
+	// dedupe pass to transfer snapshot trees forward in the in-flight HITL case.
 	const messagesWithSnapshotTree = new Set<InstanceAiMessage>();
 
 	let lastUserMessageId: string | undefined;
 
 	function pushSnapshotMessage(snapshot: AgentTreeSnapshot): void {
 		const built = buildSnapshotMessage(snapshot);
-		messagesWithSnapshotTree.add(built);
+		// A degenerate (empty) orphan snapshot must not count as authoritative in
+		// the dedup collapse. Mirrors the paired-row guard.
+		if (isRenderableTree(snapshot.tree)) messagesWithSnapshotTree.add(built);
 		messages.push(built);
 	}
 
@@ -351,6 +223,12 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
+			// Rebuild resource attachments from the durable JSON line inside
+			// `<thread-artifacts>` (or a legacy `<editor-context>`) so the UI can
+			// re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextResourceAttachments(text);
+			const context = extractAgentPreviewHandoffContext(text);
+
 			messages.push({
 				id: msg.id,
 				role: 'user',
@@ -358,26 +236,25 @@ export function parseStoredMessages(
 				content,
 				reasoning: '',
 				isStreaming: false,
+				...(attachments.length > 0 ? { attachments } : {}),
+				...(context ? { context } : {}),
 			});
 			continue;
 		}
 
 		if (msg.role === 'assistant') {
 			const reasoning = extractReasoningFromContent(msg.content);
-			const invocations = extractToolInvocations(msg.content);
-			const toolCalls = invocations.map(buildToolCallState);
-			const parts = extractParts(msg.content);
 
 			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
 
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
-			const agentTree =
-				snapshot?.tree ??
-				(toolCalls.length > 0 || text
-					? buildFlatAgentTree(text, reasoning, toolCalls, parts)
-					: undefined);
+			// A non-renderable tree (e.g. an empty `cancelled` tree from a run whose
+			// events were lost) is never authoritative — leave the tree undefined and
+			// let the message render from its own content instead.
+			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
+			const agentTree = snapshotIsRenderable ? snapshot.tree : undefined;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
@@ -391,7 +268,10 @@ export function parseStoredMessages(
 				isStreaming: false,
 				agentTree,
 			};
-			if (snapshot) messagesWithSnapshotTree.add(assistantMessage);
+			// Only treat the message as snapshot-backed when the snapshot tree is the one
+			// being rendered — a degenerate snapshot must not suppress the flat-tree
+			// aggregation in the dedup pass below.
+			if (snapshotIsRenderable) messagesWithSnapshotTree.add(assistantMessage);
 			messages.push(assistantMessage);
 			continue;
 		}
@@ -423,10 +303,9 @@ export function parseStoredMessages(
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).
 	//
-	// In-flight HITL turns are different: the snapshot is paired with a
-	// *middle* checkpoint message via timestamp matching, and the latest
-	// message in the turn has only an auto-generated flat tree from
-	// `buildFlatAgentTree`. Keeping just the latest would drop the
+	// In-flight HITL turns are different: the snapshot can pair with a
+	// *middle* row of the turn via timestamp matching, leaving the latest
+	// message without a tree. Keeping just the latest would drop the
 	// snapshot's tree (including its live confirmation cards), so transfer
 	// the snapshot's `agentTree` + `runIds` onto the kept message when the
 	// kept one's tree didn't come from a snapshot.
@@ -451,6 +330,10 @@ export function parseStoredMessages(
 	}
 	for (let i = messages.length - 1; i >= 0; i--) {
 		if (toRemove.has(i)) messages.splice(i, 1);
+	}
+
+	for (const msg of messages) {
+		if (msg.agentTree) normalizeAgentTree(msg.agentTree);
 	}
 
 	return messages;
@@ -511,7 +394,9 @@ function isActionableConfirmation(tc: InstanceAiToolCallState): boolean {
 	);
 }
 
-export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): string[] {
+export function collectConfirmationRequestIds(
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
+): string[] {
 	const requestIds: string[] = [];
 	for (const message of messages) {
 		if (!message.agentTree) continue;
@@ -533,7 +418,7 @@ export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): st
  * means "resolved", not "expired", so relabeling them would rewrite history.
  */
 export function markExpiredConfirmations(
-	messages: InstanceAiMessage[],
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
 	liveRequestIds: Set<string>,
 ): void {
 	for (const message of messages) {

@@ -17,7 +17,7 @@ export type DataTableRowOperation =
  * Data Table table operations
  * Used by the Data Table node for table-level management operations
  */
-export type DataTableTableOperation = 'create' | 'delete' | 'list' | 'update';
+export type DataTableTableOperation = 'create' | 'delete' | 'list' | 'update' | 'clear';
 
 export type DataTableColumn = {
 	id: string;
@@ -58,7 +58,17 @@ export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition:
+			| 'eq'
+			| 'neq'
+			| 'like'
+			| 'ilike'
+			| 'gt'
+			| 'gte'
+			| 'lt'
+			| 'lte'
+			| 'isEmpty'
+			| 'isNotEmpty';
 		value: DataTableColumnJsType;
 	}>;
 };
@@ -213,4 +223,6 @@ export interface IDataTableProjectService {
 	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
+
+	clearRows(): Promise<{ deletedCount: number }>;
 }

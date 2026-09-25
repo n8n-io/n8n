@@ -1,10 +1,11 @@
 import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
+import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -15,6 +16,27 @@ export class InstanceAiConfig {
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
+
+	/**
+	 * Google Cloud project for `google-vertex-anthropic/*` models.
+	 * Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT_ID')
+	vertexProjectId: string = '';
+
+	/**
+	 * Vertex location for `google-vertex-anthropic/*` models (e.g. `global`, `us-east5`).
+	 * Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
+	vertexLocation: string = '';
+
+	/**
+	 * Service-account JSON for `google-vertex-anthropic/*` models.
+	 * Omit to use ADC (`gcloud auth application-default login`).
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON')
+	vertexServiceAccountJson: string = '';
 
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
@@ -28,13 +50,20 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
-	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
-	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
-	subAgentMaxSteps: number = 100;
+	/**
+	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
+	 * Observer runs only after the turn, which keeps the prompt prefix stable
+	 * within a turn and improves provider prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
+	midRunObservation: boolean = false;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
+
+	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
+	browserUseEnabled: boolean = true;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
@@ -64,6 +93,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
@@ -73,8 +111,8 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
-	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
-	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
@@ -88,17 +126,17 @@ export class InstanceAiConfig {
 
 	/**
 	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
-	 * Default 7 days. `0` uses Daytona's maximum interval.
+	 * Default 1 hour. `0` uses Daytona's maximum interval.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
-	sandboxAutoArchiveMinutes: number = 7 * 24 * 60;
+	sandboxAutoArchiveMinutes: number = 60;
 
 	/**
-	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 30 days. A negative
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 7 days. A negative
 	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
-	sandboxAutoDeleteMinutes: number = 30 * 24 * 60;
+	sandboxAutoDeleteMinutes: number = 7 * 24 * 60;
 
 	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
@@ -126,9 +164,9 @@ export class InstanceAiConfig {
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
-	threadTtlDays: number = 90;
+	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -136,23 +174,105 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
+
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 
-	/** Scan and redact secrets/PII from agent output before it reaches the user. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
-	outputRedactionEnabled: boolean = true;
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
 
-	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
-	outputRedactionSecrets: boolean = true;
+	/** Enable extended thinking / reasoning for the orchestrator agent. */
+	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
+	thinkingEnabled: boolean = true;
 
-	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
-	outputRedactionPii: string = 'credit-card';
+	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
 
-	/** Replacement text substituted for each redacted match in agent output. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
-	outputRedactionPlaceholder: string = '[REDACTED]';
+	/**
+	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
+	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 *
+	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
+	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
+	 * with any other context surface, so a measurement can tell which one moved a result.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
+	nodeUsageEnabled: boolean = false;
+
+	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
+	 * Activation-capped trial variant for n8n cloud experiment.
+	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
+	activationCapped: boolean = false;
+
+	/**
+	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
+	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Max orchestrator runs executing concurrently on this process. A new user turn over
+	 * the cap is refused with HTTP 429; resumes and internal follow-up runs are always
+	 * admitted so an in-flight conversation is never stranded.
+	 *
+	 * `-1` (the default) means unlimited
+	 *
+	 * Size it against memory rather than throughput: measured peak is ~600MB
+	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
+	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
+	maxConcurrentRuns: number = -1;
+
+	/**
+	 * Max orchestrator runs one user may have executing at once, across all their threads.
+	 * Bounds credit overshoot: usage is only claimed when a run segment ends, so every run
+	 * a user can start in parallel is one more run's worth of spend that can land after
+	 * they cross quota.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * Counts executing runs only, a HITL-suspended run spends nothing while it waits,
+	 * and counting those would lock a user out for the whole confirmation timeout.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS_PER_USER', concurrencyLimitSchema)
+	maxConcurrentRunsPerUser: number = -1;
+
+	/**
+	 * Max background sub-agent tasks running concurrently on this process, across all
+	 * threads. Guards the fan-out case the per-thread limit misses: a handful of runs each
+	 * spawning their full complement of sub-agents. A spawn over the cap fails as a tool
+	 * error, which the orchestrator handles by doing the work inline or retrying later.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * The per-thread constant limit of MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD (5) applies regardless.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
+	maxConcurrentSubAgents: number = -1;
 }

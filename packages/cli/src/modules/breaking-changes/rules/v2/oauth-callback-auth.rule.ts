@@ -1,4 +1,6 @@
 import { BreakingChangeRule } from '@n8n/decorators';
+
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -27,7 +29,7 @@ export class OAuthCallbackAuthRule implements IBreakingChangeInstanceRule {
 		// If the env var is set explicitly, then the instance is not affected
 		// because the user has already made a choice
 		if (process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

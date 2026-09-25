@@ -60,5 +60,7 @@ export function makeWorkflowSetupSection(
 		credentialTargetNodes: overrides.credentialTargetNodes ?? [
 			{ id: finalNode.id, name: finalNode.name, type: finalNode.type },
 		],
+		...(overrides.setupHint ? { setupHint: overrides.setupHint } : {}),
+		...(overrides.preferNewCredential ? { preferNewCredential: true } : {}),
 	};
 }
