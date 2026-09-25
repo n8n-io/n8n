@@ -7281,6 +7281,8 @@
 	"instanceAi.previewTabBar.copyLink": "Copy link",
 	"instanceAi.previewTabBar.edited": "Edited",
 	"instanceAi.previewTabBar.draft": "Draft",
+	"instanceAi.previewTabBar.close": "Close tab",
+	"instanceAi.previewTabBar.closeTab": "Close {name}",
 	"instanceAi.confirmation.approve": "Allow once",
 	"instanceAi.confirmation.alwaysAllow": "Always allow",
 	"instanceAi.confirmation.alwaysAllowSuffix": "during this session",
