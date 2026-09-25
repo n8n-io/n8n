@@ -62,6 +62,14 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request().desired[0]?.firstRunAt).toEqual(new Date('2026-01-05T09:01:00.000Z'));
 	});
 
+	it('seeds a task that runs on provision at now', () => {
+		const { desired } = request({
+			placement: { scope: 'cluster', durable: true, runOnProvision: true },
+		});
+
+		expect(desired[0]?.firstRunAt).toEqual(NOW);
+	});
+
 	it('seeds a task with no timezone of its own in the instance timezone', () => {
 		// Now is already past 09:00 Berlin, so the first fire is the next day's, at
 		// 08:00Z in January. A UTC fallback would seed it an hour later.

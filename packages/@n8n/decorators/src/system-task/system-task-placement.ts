@@ -27,6 +27,12 @@ export type SystemTaskPlacement =
 			 * durable run.
 			 */
 			readonly runOnTakeover?: boolean;
+			/**
+			 * Runs one occurrence when the durable job is provisioned: inserted, or
+			 * redefined after a schedule change. A restart with an unchanged job does
+			 * not run it. Durable scheduler only: ignored on the in-memory timer.
+			 */
+			readonly runOnProvision?: boolean;
 	  }
 	| {
 			readonly scope: 'instance';

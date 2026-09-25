@@ -25,6 +25,7 @@ export class McpRegistryRefreshTask implements SystemTask {
 		scope: 'cluster',
 		durable: true,
 		runOnTakeover: true,
+		runOnProvision: true,
 	};
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}

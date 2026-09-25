@@ -104,7 +104,8 @@ export class McpRegistryService {
 	/**
 	 * Refreshes the registry from the remote API and reloads the generated node
 	 * types. Skips the write and the reload when nothing changed.
-	 * Callers must serialize runs.
+	 * Overlapping runs converge: the write is an upsert on `slug` and the loader
+	 * rebuild is republished as a whole.
 	 * @throws when the remote API or the database write fails, or when the
 	 * signal aborts before the write starts. The signal cancels the API requests.
 	 */

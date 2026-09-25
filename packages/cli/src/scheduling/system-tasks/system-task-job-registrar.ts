@@ -32,7 +32,11 @@ export function systemTaskProvisionRequest(
 	now: Date,
 ): ProvisionRequest {
 	const schedule = resolveSystemTaskSchedule(task);
-	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
+	const { placement } = task;
+	const firstRunAt =
+		placement.scope === 'cluster' && placement.runOnProvision
+			? now
+			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
 	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
 
