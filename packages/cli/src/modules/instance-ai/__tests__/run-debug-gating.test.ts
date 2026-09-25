@@ -76,11 +76,14 @@ describe('InstanceAiService run debug gating', () => {
 		// loop and its sub-agents (AGENT-453).
 		expect(streamOptions.abortSignal).toBe(signal);
 		expect(resumeOptions.abortSignal).toBe(signal);
-		// Both paths must carry the request-level Anthropic cache directive; without it
-		// on resume, HITL turns reprocess the whole conversation uncached (INS-759).
-		const cacheDirective = { anthropic: { cacheControl: { type: 'ephemeral' } } };
-		expect(streamOptions.providerOptions).toEqual(cacheDirective);
-		expect(resumeOptions.providerOptions).toEqual(cacheDirective);
+		// Both paths must carry the same request-level provider options. Instance AI
+		// owns conversation persistence, so OpenAI Responses must remain stateless.
+		const providerOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' } },
+			openai: { store: false },
+		};
+		expect(streamOptions.providerOptions).toEqual(providerOptions);
+		expect(resumeOptions.providerOptions).toEqual(providerOptions);
 	});
 
 	it('attaches step hooks and creates run records when run debug is enabled', () => {
