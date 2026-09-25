@@ -68,6 +68,8 @@ describe('ImportPackageSelectionRequestDto', () => {
 		{ name: 'a JSON object rather than array', selectedWorkflowIds: '{"a":"b"}' },
 		{ name: 'a non-string element', selectedWorkflowIds: '["WFA",1]' },
 		{ name: 'an empty-string element', selectedWorkflowIds: '["WFA",""]' },
+		{ name: 'whitespace-only (blank)', selectedWorkflowIds: '   ' },
+		{ name: 'a whitespace-only element', selectedWorkflowIds: '["WFA","   "]' },
 	])('rejects selectedWorkflowIds that is $name', ({ selectedWorkflowIds }) => {
 		expect(
 			ImportPackageSelectionRequestDto.safeParse({ selectedProjectId: 'P1', selectedWorkflowIds })
@@ -78,6 +80,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 	it.each([
 		{ name: 'invalid JSON', deletedWorkflowIds: 'not json' },
 		{ name: 'a non-string element', deletedWorkflowIds: '[1]' },
+		{ name: 'a whitespace-only element', deletedWorkflowIds: '["   "]' },
 	])('rejects deletedWorkflowIds that is $name', ({ deletedWorkflowIds }) => {
 		expect(
 			ImportPackageSelectionRequestDto.safeParse({ ...base, deletedWorkflowIds }).success,
@@ -87,6 +90,10 @@ describe('ImportPackageSelectionRequestDto', () => {
 	it.each([
 		{ name: 'absent', request: { selectedWorkflowIds: '["WFA"]' } },
 		{ name: 'empty', request: { selectedProjectId: '', selectedWorkflowIds: '["WFA"]' } },
+		{
+			name: 'whitespace-only',
+			request: { selectedProjectId: '   ', selectedWorkflowIds: '["WFA"]' },
+		},
 	])('rejects a $name selectedProjectId', ({ request }) => {
 		expect(ImportPackageSelectionRequestDto.safeParse(request).success).toBe(false);
 	});

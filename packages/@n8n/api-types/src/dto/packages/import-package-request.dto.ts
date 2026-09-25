@@ -133,7 +133,7 @@ const SELECTED_WORKFLOW_IDS_ERROR_MESSAGE =
 const DELETED_WORKFLOW_IDS_ERROR_MESSAGE =
 	'deletedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
 
-const idArraySchema = z.array(z.string().min(1));
+const idArraySchema = z.array(z.string().trim().min(1));
 
 function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string): string[] {
 	let parsed: unknown;
@@ -180,7 +180,7 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
 		});
 
 export class ImportPackageSelectionRequestDto extends Z.class({
-	selectedProjectId: z.string().min(1),
+	selectedProjectId: z.string().trim().min(1),
 	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
 	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),
 	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
