@@ -219,6 +219,19 @@ describe('deletePrefix', () => {
 		await expect(store.deletePrefix('../escape')).rejects.toThrow(UnexpectedError);
 		await expect(store.deletePrefix('.')).rejects.toThrow(UnexpectedError);
 	});
+
+	it('passes a retry budget to the recursive removal', async () => {
+		await store.write('wf/exec/binary_data/one.bin', body);
+		const rmSpy = vi.spyOn(fs, 'rm');
+
+		await store.deletePrefix('wf/exec/binary_data');
+
+		expect(rmSpy).toHaveBeenCalledWith(join(storagePath, 'wf/exec/binary_data'), {
+			recursive: true,
+			force: true,
+			maxRetries: 3,
+		});
+	});
 });
 
 describe('path traversal guard', () => {
