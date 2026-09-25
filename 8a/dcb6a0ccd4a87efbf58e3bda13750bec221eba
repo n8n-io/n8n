@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_dff57e7b253b23::t_0fde619bfc69a2 10,14-18,112-113,282-285,289-337,344-358,365-428
+  ai_agent 286-288,338-343,359-364
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useWorkflowTabSummaries.test.ts
+  s_dff57e7b253b23::t_270befc1d86605 1-20,23,25-71,73-75,77-89,91-153,155-156
+  s_dff57e7b253b23::t_f27430fc514263 21-22,24,72,76
+  ai_agent 90,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8adcb6a0ccd4a87efbf58e3bda13750bec221eba",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
