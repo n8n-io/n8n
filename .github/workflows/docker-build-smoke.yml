@@ -57,7 +57,7 @@ jobs:
     outputs:
       build: ${{ steps.gate.outputs.build }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # HEAD is the PR merge commit, so HEAD^1 is the base tip.
           fetch-depth: 2
@@ -93,7 +93,7 @@ jobs:
     needs: gate
     if: ${{ !github.event.pull_request.head.repo.fork && needs.gate.outputs.build == 'true' }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Login to DHI Registry (for base image)
         uses: ./.github/actions/docker-registry-login
@@ -113,7 +113,7 @@ jobs:
           # would write an empty snapshot over the release layers.
           docker-cache-key: docker-smoke
 
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - id: cloud-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -134,7 +134,7 @@ jobs:
     needs: [docker-smoke-test]
     if: needs.docker-smoke-test.result == 'failure' && github.event_name == 'schedule'
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
