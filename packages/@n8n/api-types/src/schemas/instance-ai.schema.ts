@@ -755,6 +755,8 @@ export const instanceAiQuestionSchema = z.object({
 	options: z.array(z.string()).optional(),
 	/** Hides Skip and blocks Next until the question has an answer. */
 	required: z.boolean().optional(),
+	/** Label of the built-in free-text row; the card shows "Something else" without it. */
+	freeTextLabel: z.string().optional(),
 	/**
 	 * Options that follow an earlier `single` question of the same card: the option selected for
 	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.

@@ -16,6 +16,12 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
+/** An option of two lines is a title and a description; the card shows the second line under the first. */
+function splitOption(option: string) {
+	const [label, ...rest] = option.split('\n');
+	return { label, description: rest.join(' ').trim() };
+}
+
 export type QuestionItem = InstanceAiQuestion;
 
 export interface QuestionAnswer {
@@ -422,7 +428,12 @@ function onOptionMouseEnter(idx: number) {
 							@mouseenter="onOptionMouseEnter(idx)"
 						>
 							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
-							<span :class="$style.optionLabel">{{ option }}</span>
+							<span :class="$style.optionText">
+								<span :class="$style.optionLabel">{{ splitOption(option).label }}</span>
+								<span v-if="splitOption(option).description" :class="$style.optionDescription">
+									{{ splitOption(option).description }}
+								</span>
+							</span>
 							<span :class="$style.arrowIndicator">
 								<N8nIcon
 									:class="$style.arrowIcon"
@@ -447,7 +458,10 @@ function onOptionMouseEnter(idx: number) {
 							<N8nInput
 								:model-value="currentAnswer.customText"
 								:disabled="disabled"
-								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+								:placeholder="
+									currentQuestion.freeTextLabel ??
+									i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')
+								"
 								size="small"
 								:class="$style.somethingElseInput"
 								data-test-id="instance-ai-something-else-input"
@@ -474,7 +488,12 @@ function onOptionMouseEnter(idx: number) {
 								:disabled="disabled"
 								@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
 							/>
-							<span :class="$style.optionLabel">{{ option }}</span>
+							<span :class="$style.optionText">
+								<span :class="$style.optionLabel">{{ splitOption(option).label }}</span>
+								<span v-if="splitOption(option).description" :class="$style.optionDescription">
+									{{ splitOption(option).description }}
+								</span>
+							</span>
 						</label>
 
 						<div
@@ -497,7 +516,10 @@ function onOptionMouseEnter(idx: number) {
 							<N8nInput
 								:model-value="currentAnswer.customText"
 								:disabled="disabled"
-								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+								:placeholder="
+									currentQuestion.freeTextLabel ??
+									i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')
+								"
 								size="small"
 								:class="$style.somethingElseInput"
 								data-test-id="instance-ai-something-else-input"
@@ -656,6 +678,19 @@ function onOptionMouseEnter(idx: number) {
 
 .optionLabel {
 	@include questionOptions.option-label;
+}
+
+.optionText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.optionDescription {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
 }
 
 .checkboxRow {

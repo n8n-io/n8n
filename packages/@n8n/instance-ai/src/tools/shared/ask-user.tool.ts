@@ -22,6 +22,10 @@ const questionSchema = z.object({
 		.boolean()
 		.optional()
 		.describe('true hides Skip: the user must answer before they can submit'),
+	freeTextLabel: z
+		.string()
+		.optional()
+		.describe('Label of the built-in free-text row, "Something else" by default'),
 });
 
 const answerSchema = z.object({

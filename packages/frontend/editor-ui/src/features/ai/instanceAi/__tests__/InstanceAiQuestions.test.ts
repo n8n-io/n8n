@@ -125,6 +125,28 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
+	it('shows the second line of an option as its description and submits the whole option', async () => {
+		vi.useFakeTimers();
+		const option = 'Capture new leads\nMove new enquiries into your sales process.';
+		const { emitted, getByText } = render([
+			{ ...singleQuestion, options: [option, 'Show me other ideas'] },
+		]);
+
+		expect(getByText('Move new enquiries into your sales process.')).toBeTruthy();
+		await fireEvent.click(getByText('Capture new leads'));
+		vi.advanceTimersByTime(250);
+
+		expect(emitted().submit[0][0][0]).toMatchObject({ selectedOptions: [option] });
+	});
+
+	it('shows the freeTextLabel of a question as the free-text placeholder', () => {
+		const { getByPlaceholderText } = render([
+			{ ...singleQuestion, freeTextLabel: 'Share more context' },
+		]);
+
+		expect(getByPlaceholderText('Share more context')).toBeTruthy();
+	});
+
 	it('keeps Submit disabled while an option is only highlighted, not selected', async () => {
 		const { container, getByTestId } = render([singleQuestion]);
 
