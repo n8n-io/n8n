@@ -18,6 +18,7 @@ const categoryLabels = computed(() => ({
 	folder: i18n.baseText('preferenceMining.category.folder'),
 	parameter: i18n.baseText('preferenceMining.category.parameter'),
 	naming: i18n.baseText('preferenceMining.category.naming'),
+	architecture: i18n.baseText('preferenceMining.category.architecture'),
 }));
 function readableContent(content: string) {
 	return content.replace(
@@ -55,6 +56,9 @@ function folderName(id: string | null) {
 				}}</N8nText>
 			</div>
 			<N8nText tag="p" :class="$style.content">{{ readableContent(preference.content) }}</N8nText>
+			<N8nText v-if="preference.category === 'credential'" size="small" :class="$style.content">
+				{{ i18n.baseText('preferenceMining.credentialId') }}: <code>{{ preference.value }}</code>
+			</N8nText>
 			<div v-if="!compact" :class="$style.row">
 				<N8nText size="small" color="text-light">{{ folderName(preference.folderId) }}</N8nText>
 				<N8nButton
@@ -80,6 +84,9 @@ function folderName(id: string | null) {
 				:id="`preference-evidence-${index}`"
 				:class="$style.evidence"
 			>
+				<N8nText v-if="preference.evidenceSummary" tag="p" size="small">{{
+					readableContent(preference.evidenceSummary)
+				}}</N8nText>
 				<div v-if="preference.share !== undefined" :class="$style.row">
 					<N8nText size="small"
 						>{{ i18n.baseText('preferenceMining.observedShare') }}:

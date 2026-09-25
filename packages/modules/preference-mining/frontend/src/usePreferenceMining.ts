@@ -3,6 +3,7 @@ import {
 	type PreferenceMiningOptions,
 	type PreferenceMiningRecall,
 	type PreferenceMiningRun,
+	type PreferenceMiningRunSummary,
 	type StartPreferenceMiningDto,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -25,13 +26,21 @@ export function usePreferenceMining() {
 	);
 	const projects = ref<Awaited<ReturnType<typeof getMiningProjects>>>([]);
 	const options = ref<PreferenceMiningOptions>({ assistant: { available: false, model: null } });
-	const approaches = ref<PreferenceMiningApproach[]>(['nodes', 'credentials']);
+	const approaches = ref<PreferenceMiningApproach[]>([
+		'folder-usage',
+		'exploration-tools',
+		'exploration',
+	]);
 	const model = ref<StartPreferenceMiningDto['model']>('assistant');
 	const maxOutputTokens = ref(16384);
+	const discoveryTask = ref(i18n.baseText('preferenceMining.discoveryTaskDefault'));
 	const minimumWorkflows = ref(3);
 	const minimumShare = ref(0.7);
 	const minimumMargin = ref(0.2);
 	const run = ref<PreferenceMiningRun>();
+	const history = ref<PreferenceMiningRunSummary[]>([]);
+	const historyTotal = ref(0);
+	const historyLoading = ref(false);
 	const loading = ref(false);
 	const starting = ref(false);
 	const error = ref('');
@@ -43,6 +52,7 @@ export function usePreferenceMining() {
 	const typeNames = ref<Record<string, string>>({});
 	const running = computed(() => run.value?.status === 'running');
 	let generation = 0;
+	let selection = 0;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	const labels = computed<Record<PreferenceMiningApproach, string>>(() => ({
@@ -52,6 +62,9 @@ export function usePreferenceMining() {
 		workflows: i18n.baseText('preferenceMining.approach.workflows'),
 		threads: i18n.baseText('preferenceMining.approach.threads'),
 		combined: i18n.baseText('preferenceMining.approach.combined'),
+		'folder-usage': i18n.baseText('preferenceMining.approach.folderUsage'),
+		'exploration-tools': i18n.baseText('preferenceMining.approach.explorationTools'),
+		exploration: i18n.baseText('preferenceMining.approach.exploration'),
 	}));
 	const statuses = computed(() => ({
 		running: i18n.baseText('preferenceMining.status.running'),
@@ -77,13 +90,10 @@ export function usePreferenceMining() {
 		projectId,
 		async () => {
 			const current = ++generation;
-			if (run.value?.status === 'running') {
-				void miningApi(rootStore.restApiContext, run.value.projectId)
-					.cancel(run.value.id)
-					.catch(() => {});
-			}
 			stopPolling();
 			run.value = undefined;
+			history.value = [];
+			historyTotal.value = 0;
 			preview.value = [];
 			error.value = '';
 			options.value = { assistant: { available: false, model: null } };
@@ -92,7 +102,13 @@ export function usePreferenceMining() {
 			loading.value = true;
 			try {
 				const loaded = await api().options();
-				if (current === generation) options.value = loaded;
+				if (current !== generation) return;
+				options.value = loaded;
+				await loadHistory();
+				if (current !== generation) return;
+				const runId =
+					typeof route.query.runId === 'string' ? route.query.runId : history.value[0]?.id;
+				if (runId) await openRun(runId);
 			} catch (cause) {
 				if (current === generation) showError(cause);
 			} finally {
@@ -102,24 +118,76 @@ export function usePreferenceMining() {
 		{ immediate: true },
 	);
 
-	async function poll(current: number) {
-		if (current !== generation || !run.value) return;
+	async function poll(current: number, selected = selection) {
+		if (current !== generation || selected !== selection || !run.value) return;
 		try {
 			const next = await api().get(run.value.id);
-			if (current !== generation) return;
+			if (current !== generation || selected !== selection) return;
 			run.value = next;
 			if (!contexts.value.length && next.sources) contexts.value = [...next.sources.contexts];
 			if (next.status === 'running')
 				timer = setTimeout(() => {
-					void poll(current);
+					void poll(current, selected);
 				}, 1500);
+			else await loadHistory();
 		} catch (cause) {
 			if (current === generation) showError(cause);
 		}
 	}
+	async function loadHistory(append = false) {
+		const current = generation;
+		historyLoading.value = true;
+		try {
+			const page = await api().list(append ? history.value.length : 0);
+			if (current !== generation) return;
+			history.value = append ? [...history.value, ...page.items] : page.items;
+			historyTotal.value = page.total;
+		} catch (cause) {
+			if (current === generation) showError(cause);
+		} finally {
+			if (current === generation) historyLoading.value = false;
+		}
+	}
+
+	async function openRun(id: string) {
+		const current = generation;
+		const selected = ++selection;
+		stopPolling();
+		preview.value = [];
+		error.value = '';
+		try {
+			const saved = await api().get(id);
+			if (current !== generation || selected !== selection) return;
+			run.value = saved;
+			if (saved.settings) {
+				approaches.value = [...saved.settings.approaches];
+				model.value = saved.settings.model;
+				maxOutputTokens.value = saved.settings.maxOutputTokens;
+				discoveryTask.value = saved.settings.discoveryTask;
+				minimumWorkflows.value = saved.settings.minimumWorkflows;
+				minimumShare.value = saved.settings.minimumShare;
+				minimumMargin.value = saved.settings.minimumMargin;
+			}
+			contexts.value = saved.sources?.contexts ?? [];
+			folderId.value = '';
+			await router.replace({ query: { ...route.query, runId: id } });
+			if (saved.status === 'running') await poll(current, selected);
+		} catch (cause) {
+			if (current === generation && selected === selection) showError(cause);
+		}
+	}
+
+	watch(
+		() => route.query.runId,
+		(id) => {
+			if (!loading.value && typeof id === 'string' && id !== run.value?.id) void openRun(id);
+		},
+	);
+
 	async function start() {
 		const current = generation;
 		const client = api();
+		selection++;
 		starting.value = true;
 		error.value = '';
 		preview.value = [];
@@ -130,15 +198,17 @@ export function usePreferenceMining() {
 				approaches: approaches.value,
 				model: model.value,
 				maxOutputTokens: maxOutputTokens.value,
+				discoveryTask: discoveryTask.value,
 				minimumWorkflows: minimumWorkflows.value,
 				minimumShare: minimumShare.value,
 				minimumMargin: minimumMargin.value,
 			});
 			if (current !== generation) {
-				await client.cancel(created.id);
 				return;
 			}
 			run.value = created;
+			await router.replace({ query: { ...route.query, runId: created.id } });
+			await loadHistory();
 			await poll(current);
 		} catch (cause) {
 			if (current === generation) showError(cause);
@@ -154,6 +224,7 @@ export function usePreferenceMining() {
 			if (current === generation) {
 				run.value = stopped;
 				stopPolling();
+				await loadHistory();
 			}
 		} catch (cause) {
 			if (current === generation) showError(cause);
@@ -198,10 +269,6 @@ export function usePreferenceMining() {
 	onBeforeUnmount(() => {
 		generation++;
 		stopPolling();
-		if (running.value && run.value)
-			void miningApi(rootStore.restApiContext, run.value.projectId)
-				.cancel(run.value.id)
-				.catch(() => {});
 	});
 
 	async function loadTypeNames() {
@@ -236,10 +303,16 @@ export function usePreferenceMining() {
 		approaches,
 		model,
 		maxOutputTokens,
+		discoveryTask,
 		minimumWorkflows,
 		minimumShare,
 		minimumMargin,
 		run,
+		history,
+		historyTotal,
+		historyLoading,
+		loadHistory,
+		openRun,
 		loading,
 		starting,
 		error,

@@ -1,3 +1,4 @@
+import { workflowUsageCoverageSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 const countSchema = z.number().int().nonnegative();
@@ -32,6 +33,7 @@ export const nodeUsageResponseSchema = z.object({
 		.optional(),
 	workflows: z.array(z.object({ workflowId: z.string().min(1) })).optional(),
 	truncated: z.boolean().optional(),
+	coverage: workflowUsageCoverageSchema.optional(),
 });
 
 export const nodeUsageSnapshotSchema = z.object({
@@ -47,6 +49,7 @@ export const nodeUsageSnapshotSchema = z.object({
 			workflowsInScope: countSchema,
 			workflowIds: z.array(z.string().min(1)),
 			truncated: z.boolean(),
+			coverage: workflowUsageCoverageSchema.optional(),
 		}),
 	),
 });
@@ -83,7 +86,7 @@ export async function captureNodeUsage(
 	const presentTypes = new Set(histogram.nodeTypes.map(({ nodeType }) => nodeType));
 	const requestedTypes = new Set(validatedGroups.flatMap((group) => group.nodeTypes));
 
-	if (!histogram.truncated) {
+	if (!histogram.truncated && histogram.coverage?.complete !== false) {
 		for (const nodeType of [...requestedTypes].sort()) {
 			if (!presentTypes.has(nodeType)) continue;
 			const usage = nodeUsageResponseSchema
@@ -93,6 +96,7 @@ export async function captureNodeUsage(
 				workflowsInScope: usage.workflowsInScope,
 				workflowIds: [...new Set(usage.workflows.map(({ workflowId }) => workflowId))].sort(),
 				truncated: usage.truncated ?? false,
+				coverage: usage.coverage,
 			};
 		}
 	}
@@ -163,6 +167,7 @@ function evaluateGroup(
 	group: NodePreferenceGroup,
 	thresholds: PreferenceThresholds,
 ): NodePreferenceSuggestion | AbstentionReason {
+	if (snapshot.histogram.coverage?.complete === false) return 'incomplete-evidence';
 	if (snapshot.histogram.truncated) return 'truncated-histogram';
 	const counts = new Map(
 		snapshot.histogram.nodeTypes.map(({ nodeType, workflowCount }) => [nodeType, workflowCount]),
@@ -175,7 +180,8 @@ function evaluateGroup(
 	for (const nodeType of group.nodeTypes) {
 		const count = counts.get(nodeType) ?? 0;
 		const usage = snapshot.usageByNodeType[nodeType];
-		if (count > 0 && (!usage || usage.truncated)) return 'incomplete-evidence';
+		if (count > 0 && (!usage || usage.truncated || usage.coverage?.complete === false))
+			return 'incomplete-evidence';
 		const workflowIds = [...new Set(usage?.workflowIds ?? [])].sort();
 		if (
 			workflowIds.length !== count ||

@@ -2,6 +2,7 @@ import type {
 	PreferenceMiningOptions,
 	PreferenceMiningRecall,
 	PreferenceMiningRun,
+	PreferenceMiningRunPage,
 	RecallPreferenceMiningDto,
 	StartPreferenceMiningDto,
 } from '@n8n/api-types';
@@ -10,6 +11,11 @@ import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 export function miningApi(context: IRestApiContext, projectId: string) {
 	const path = `/projects/${encodeURIComponent(projectId)}/preference-mining`;
 	return {
+		list: async (skip = 0) =>
+			await makeRestApiRequest<PreferenceMiningRunPage>(context, 'GET', `${path}/runs`, {
+				skip,
+				take: 20,
+			}),
 		options: async () =>
 			await makeRestApiRequest<PreferenceMiningOptions>(context, 'GET', `${path}/options`),
 		start: async (body: StartPreferenceMiningDto) =>

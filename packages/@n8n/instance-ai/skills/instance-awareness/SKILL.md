@@ -72,8 +72,9 @@ wiring, how a prompt is structured.
 Pass `full=true`. Without it a large workflow comes back as structure only,
 with its node parameters omitted — which is exactly what this rung is for.
 
-Read one, not several. If one example is not enough to see the pattern, there is
-probably no pattern to follow.
+Read one example for a specific workflow lookup. When the task asks for a shared
+convention and `preference-discovery` is available, follow that skill's bounded
+comparison of examples and counterexamples.
 
 ## What each surface can and cannot tell you
 

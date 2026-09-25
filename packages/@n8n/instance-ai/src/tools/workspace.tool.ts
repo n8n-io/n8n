@@ -58,6 +58,14 @@ const cleanupTestExecutionsAction = z.object({
 const listFoldersAction = z.object({
 	action: z.literal('list-folders').describe('List folders in a project'),
 	projectId: projectIdField,
+	offset: z.number().int().min(0).optional().describe('Number of folders to skip.'),
+	limit: z
+		.number()
+		.int()
+		.min(1)
+		.max(200)
+		.optional()
+		.describe('Maximum folders to return. Default 100.'),
 });
 
 const createFolderAction = z.object({
@@ -107,7 +115,14 @@ const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
-function buildInputSchema(context: InstanceAiContext) {
+function buildInputSchema(context: InstanceAiContext, readOnly = false) {
+	if (readOnly) {
+		return sanitizeInputSchema(
+			context.workspaceService?.listFolders
+				? z.discriminatedUnion('action', [listProjectsAction, listFoldersAction])
+				: listProjectsAction,
+		);
+	}
 	const baseActions = [
 		listProjectsAction,
 		listTagsAction,
@@ -233,8 +248,11 @@ async function handleListFolders(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'list-folders' }>,
 ) {
-	const folders = await context.workspaceService!.listFolders!(input.projectId);
-	return { folders };
+	const result = await context.workspaceService!.listFolders!(input.projectId, {
+		offset: input.offset,
+		limit: input.limit,
+	});
+	return Array.isArray(result) ? { folders: result } : result;
 }
 
 async function handleCreateFolder(
@@ -365,7 +383,10 @@ async function handleMoveWorkflowToFolder(
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
-export function createWorkspaceTool(context: InstanceAiContext) {
+export function createWorkspaceTool(
+	context: InstanceAiContext,
+	options: { readOnly?: boolean } = {},
+) {
 	if (!context.workspaceService) {
 		return (
 			new Tool('workspace')
@@ -379,14 +400,21 @@ export function createWorkspaceTool(context: InstanceAiContext) {
 		);
 	}
 
-	const inputSchema = buildInputSchema(context);
+	const inputSchema = buildInputSchema(context, options.readOnly);
 
 	return new Tool('workspace')
-		.description('Manage workspace resources — projects, tags, folders, and execution cleanup.')
+		.description(
+			options.readOnly
+				? 'Read projects and folders. This tool does not change workspace resources.'
+				: 'Manage workspace resources — projects, tags, folders, and execution cleanup.',
+		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(resumeSchema)
 		.handler(async (input: Input, ctx) => {
+			if (options.readOnly && !['list-projects', 'list-folders'].includes(input.action)) {
+				return { error: 'This action is not available during discovery.' };
+			}
 			switch (input.action) {
 				case 'list-projects':
 					return await handleListProjects(context);

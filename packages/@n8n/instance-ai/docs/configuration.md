@@ -49,6 +49,10 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
+This spike enables preference discovery in project conversations. Folder exploration,
+node usage, and credential usage need no feature flag. The discovery skill is
+available when the project has credential usage support.
+
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
 `variant` enables the async panel. `control` or an unavailable assignment uses
 the wizard. For local testing, set

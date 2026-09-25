@@ -137,12 +137,22 @@ describe('WorkflowIndexService', () => {
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-1',
-							dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-2',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								credentialType: 'httpAuth',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-2',
-							dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-2',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								credentialType: 'apiKey',
+							},
 						}),
 						// workflowCall dependencies (both string and object format)
 						expect.objectContaining({
@@ -371,17 +381,32 @@ describe('WorkflowIndexService', () => {
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-1',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								credentialType: 'httpAuth',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-2',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								credentialType: 'apiKey',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-3',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								credentialType: 'oAuth2',
+							},
 						}),
 					]),
 				}),
@@ -420,7 +445,12 @@ describe('WorkflowIndexService', () => {
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-1',
-						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+						dependencyInfo: {
+							nodeId: 'node-1',
+							nodeVersion: 1,
+							nodeType: 'n8n-nodes-base.httpRequest',
+							credentialType: 'httpAuth',
+						},
 					}),
 				]),
 			);

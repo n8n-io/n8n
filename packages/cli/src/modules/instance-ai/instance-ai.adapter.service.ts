@@ -448,17 +448,14 @@ export class InstanceAiAdapterService {
 			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
 			mcpConnectionsAvailable?: boolean;
-			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
-			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
+			/** Node-usage rollout gate for conversations without a project. */
 			nodeUsageEnabled?: boolean;
 			/** Instance activity gate. False disables the activity tool. */
 			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
-			/** Per-user folder-exploration gate (via `resolveExperimentGates`).
-			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
-			 *  folder attribution. */
+			/** Folder-exploration rollout gate for conversations without a project. */
 			folderExplorationEnabled?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
@@ -484,6 +481,11 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			modelId,
 		} = options ?? {};
+		const projectScoped = Boolean(projectId);
+		const foldersEnabled =
+			folderExplorationEnabled === true ||
+			projectScoped ||
+			(this.globalConfig.instanceAi?.folderExplorationEnabled ?? false);
 
 		// Record gateway availability once per context. Fire-and-forget: the
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
@@ -496,15 +498,37 @@ export class InstanceAiAdapterService {
 			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
+		const usageService = this.workflowDependencyQueryService;
+		if (projectId && usageService) {
+			const { resolveFolderScope } = this.createFolderScopeReader(user);
+			credentialService.usage = async (query = {}) => {
+				const resolved = await resolveFolderScope(projectId, query);
+				if ('folderResolution' in resolved) return resolved;
+				const usage = await usageService.getCredentialUsage(
+					user,
+					{
+						...query,
+						projectId,
+						parentFolderIds: resolved.folderIds,
+					},
+					await credentialService.list({ projectId }),
+				);
+				return { ...usage, scope: resolved.scope };
+			};
+		}
 		return {
 			userId: user.id,
 			projectId,
-			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(foldersEnabled ? { folderExplorationEnabled: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
-				nodeUsageGateOpen: nodeUsageEnabled === true,
-				folderExploration: folderExplorationEnabled === true,
+				nodeUsageGateOpen:
+					nodeUsageEnabled === true ||
+					projectScoped ||
+					(this.globalConfig.instanceAi?.nodeUsageEnabled ?? false),
+				folderExploration: foldersEnabled,
+				projectScoped,
 				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
@@ -529,7 +553,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
-			workspaceService: this.createWorkspaceAdapter(user, projectId),
+			workspaceService: this.createWorkspaceAdapter(user, projectId, projectScoped),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -887,77 +911,8 @@ export class InstanceAiAdapterService {
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
-	private createWorkflowAdapter(
-		user: User,
-		threadId?: string,
-		boundProjectId?: string,
-		options: {
-			nodeUsageGateOpen?: boolean;
-			folderExploration?: boolean;
-			setupPanelVariant?: 'control' | 'variant';
-		} = {},
-	): InstanceAiWorkflowService {
-		const setupExperimentProperties = options.setupPanelVariant
-			? {
-					variant: options.setupPanelVariant,
-					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
-				}
-			: {};
-		const foldersOn = options.folderExploration === true;
-		// Attribution reveals folder ids, names and paths on every row, so it needs
-		// the licence as well as the flag. Resolution stays on the flag alone so an
-		// unlicensed instance still answers a folder request loudly (`unsupported`).
-		const foldersAttributed = foldersOn && this.license.isLicensed('feat:folders');
-		const { folderRepository, folderFinderService, projectService } = this;
-		const {
-			workflowService,
-			workflowFinderService,
-			workflowRepository,
-			sharedWorkflowRepository,
-			aiBuilderTemporaryWorkflowRepository,
-			workflowHistoryService,
-			enterpriseWorkflowService,
-			executionRepository,
-			executionPersistence,
-			license,
-			allowSendingParameterValues,
-			telemetry,
-			collaborationService,
-			policyEnforcementService,
-			workflowDependencyQueryService,
-		} = this;
-		const logger = this.logger;
-		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
-		// Resolved once per context, upstream in `createContext`: the tool registers the action from
-		// the method's presence, so nothing downstream has to know a rollout flag exists.
-		const nodeUsageEnabled =
-			options.nodeUsageGateOpen === true && workflowDependencyQueryService !== undefined;
-
-		/**
-		 * Which project a read targets. An explicit `projectId` wins, otherwise the thread's own
-		 * project unless the caller widened to the whole instance. Shared by `list` and `nodeUsage`
-		 * so the two never disagree about what "this project" means.
-		 */
-		const resolveTargetProjectId = (options?: {
-			projectId?: string;
-			scope?: 'project' | 'instance';
-		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
-		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
-		const redactParameters = !allowSendingParameterValues;
-
-		/**
-		 * Instance AI writes bypass the REST controller, so the editor write lock
-		 * has to be honoured here — otherwise the agent silently overwrites the
-		 * work of whoever is editing the workflow on the canvas right now.
-		 */
-		const assertNotLockedByEditor = async (workflowId: string) => {
-			try {
-				await collaborationService.ensureWorkflowEditable(workflowId);
-			} catch (error) {
-				if (error instanceof LockedError) throw new WorkflowEditorLockedError(workflowId);
-				throw error;
-			}
-		};
+	private createFolderScopeReader(user: User) {
+		const { license, folderRepository, folderFinderService, projectService } = this;
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
@@ -1041,6 +996,150 @@ export class InstanceAiAdapterService {
 			return folders.map((folder) => ({ ...folder, path: paths.get(folder.id) ?? folder.name }));
 		};
 
+		const resolveFolderScope = async (
+			targetProjectId: string | undefined,
+			options: { folderId?: string; folderPath?: string; recursive?: boolean },
+		): Promise<
+			| {
+					folderIds?: string[];
+					scope: {
+						projectId?: string;
+						folderId?: string;
+						folderPath?: string;
+						recursive?: boolean;
+					};
+			  }
+			| { folderResolution: FolderResolutionFailure }
+		> => {
+			if (options.folderId === undefined && options.folderPath === undefined) {
+				return { scope: { projectId: targetProjectId } };
+			}
+			const requested = options.folderId ?? options.folderPath ?? '';
+			const projectIds = targetProjectId
+				? [targetProjectId]
+				: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
+			if (!targetProjectId && projectIds.length > FOLDER_SCAN_PROJECT_LIMIT) {
+				return { folderResolution: { requested, reason: 'scope-too-wide', candidates: [] } };
+			}
+			const folders = await readFoldersInScope(projectIds, options);
+			const resolved = resolveRequestedFolder(options, folders);
+			if (!('folderId' in resolved)) return { folderResolution: { requested, ...resolved } };
+			if (!folderFinderService)
+				return { folderResolution: { requested, reason: 'unsupported', candidates: [] } };
+			const folderIds = await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
+				resolved.folderId,
+				options.recursive !== false,
+			);
+			if (folderIds.length === 0)
+				return {
+					folderResolution: {
+						requested,
+						reason: 'not-found',
+						candidates: listCandidatePaths(folders ?? []),
+					},
+				};
+			const folder = folders?.find((candidate) => candidate.id === resolved.folderId);
+			return {
+				folderIds,
+				scope: {
+					projectId: folder?.projectId ?? targetProjectId,
+					folderId: resolved.folderId,
+					folderPath: folder?.path,
+					recursive: options.recursive !== false,
+				},
+			};
+		};
+		return { readFoldersInScope, resolveFolderScope };
+	}
+
+	private createWorkflowAdapter(
+		user: User,
+		threadId?: string,
+		boundProjectId?: string,
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			projectScoped?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
+	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
+		const foldersOn = options.folderExploration === true;
+		const projectScoped = options.projectScoped === true;
+		// Attribution reveals folder ids, names and paths on every row, so it needs
+		// the licence as well as the flag. Resolution stays on the flag alone so an
+		// unlicensed instance still answers a folder request loudly (`unsupported`).
+		const foldersAttributed = foldersOn && this.license.isLicensed('feat:folders');
+		const { folderRepository } = this;
+		const {
+			workflowService,
+			workflowFinderService,
+			workflowRepository,
+			sharedWorkflowRepository,
+			aiBuilderTemporaryWorkflowRepository,
+			workflowHistoryService,
+			enterpriseWorkflowService,
+			executionRepository,
+			executionPersistence,
+			license,
+			allowSendingParameterValues,
+			telemetry,
+			collaborationService,
+			policyEnforcementService,
+			workflowDependencyQueryService,
+		} = this;
+		const logger = this.logger;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		// Resolved once per context, upstream in `createContext`: the tool registers the action from
+		// the method's presence, so nothing downstream has to know a rollout flag exists.
+		const nodeUsageEnabled =
+			options.nodeUsageGateOpen === true && workflowDependencyQueryService !== undefined;
+
+		/** Keep project conversations scoped. Other conversations can select a project or instance. */
+		const resolveTargetProjectId = (options?: {
+			projectId?: string;
+			scope?: 'project' | 'instance';
+		}) => {
+			if (options?.projectId && projectScoped && options.projectId !== boundProjectId) {
+				throw new Error('Preference discovery is limited to the conversation project.');
+			}
+			return projectScoped
+				? boundProjectId
+				: (options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined));
+		};
+		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		const redactParameters = !allowSendingParameterValues;
+
+		/**
+		 * Instance AI writes bypass the REST controller, so the editor write lock
+		 * has to be honoured here — otherwise the agent silently overwrites the
+		 * work of whoever is editing the workflow on the canvas right now.
+		 */
+		const assertNotLockedByEditor = async (workflowId: string) => {
+			try {
+				await collaborationService.ensureWorkflowEditable(workflowId);
+			} catch (error) {
+				if (error instanceof LockedError) throw new WorkflowEditorLockedError(workflowId);
+				throw error;
+			}
+		};
+
+		const { readFoldersInScope, resolveFolderScope } = this.createFolderScopeReader(user);
+		const assertDiscoveryProject = async (workflowId: string) => {
+			if (
+				projectScoped &&
+				boundProjectId &&
+				!(await sharedWorkflowRepository.findProjectIds(workflowId)).includes(boundProjectId)
+			) {
+				throw new WorkflowNotFoundError(workflowId);
+			}
+		};
+
 		/** Tells open editors to reload, mirroring what the REST controller does after a write. */
 		const notifyWorkflowUpdated = async (workflowId: string) => {
 			try {
@@ -1094,14 +1193,22 @@ export class InstanceAiAdapterService {
 				? {
 						async nodeUsage(options): Promise<NodeUsageResult> {
 							const targetProjectId = resolveTargetProjectId(options);
+							const resolved = await resolveFolderScope(
+								targetProjectId,
+								foldersOn ? (options ?? {}) : {},
+							);
+							if ('folderResolution' in resolved) return { workflowsInScope: 0, ...resolved };
 							const result = await workflowDependencyQueryService.getNodeTypeUsage(user, {
 								...(targetProjectId ? { projectId: targetProjectId } : {}),
+								...(resolved.folderIds ? { parentFolderIds: resolved.folderIds } : {}),
 								...(options?.nodeType ? { nodeType: options.nodeType } : {}),
 								...(options?.limit !== undefined ? { limit: options.limit } : {}),
 							});
 
 							return {
 								workflowsInScope: result.workflowsInScope,
+								coverage: result.coverage,
+								scope: resolved.scope,
 								...(result.nodeTypes ? { nodeTypes: result.nodeTypes } : {}),
 								...(result.workflows
 									? {
@@ -1153,55 +1260,13 @@ export class InstanceAiAdapterService {
 					return { workflows: [], total: 0, totalInScope: 0, folderResolution };
 				};
 
-				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
-				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
-				let folderIds: string[] | undefined;
-				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
-					const requested = options.folderId ?? options.folderPath ?? '';
-					const projectIds = targetProjectId
-						? [targetProjectId]
-						: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
-					// One folder query per project, so a caller with access to very many
-					// projects is asked to name one instead of the instance paying for all.
-					if (targetProjectId === undefined && projectIds.length > FOLDER_SCAN_PROJECT_LIMIT) {
-						return failFolderResolution({ requested, reason: 'scope-too-wide', candidates: [] });
-					}
-					const foldersInScope = await readFoldersInScope(projectIds, {
-						folderPath: options.folderPath,
-						folderId: options.folderId,
-					});
-					const resolved = resolveRequestedFolder(
-						{ folderPath: options.folderPath, folderId: options.folderId },
-						foldersInScope,
-					);
-					if (!('folderId' in resolved)) {
-						return failFolderResolution({ requested, ...resolved });
-					}
-					// Recursion is part of the contract, so a missing finder is reported the
-					// same way an unlicensed instance is. Reading only the folder's top level
-					// would silently answer a different question.
-					if (!folderFinderService) {
-						return failFolderResolution({ requested, reason: 'unsupported', candidates: [] });
-					}
-					// Expanded here, not in the repository: the plain list query treats
-					// `parentFolderId` as an exact match, so relying on it would silently
-					// return only the folder's top level.
-					const expanded = await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
-						resolved.folderId,
-						options.recursive !== false,
-					);
-					// No ids means the folder went away between the scan and the expansion.
-					// The repository drops an empty `parentFolderIds` filter, which would
-					// list the whole scope, so report the miss instead.
-					if (expanded.length === 0) {
-						return failFolderResolution({
-							requested,
-							reason: 'not-found',
-							candidates: listCandidatePaths(foldersInScope ?? []),
-						});
-					}
-					folderIds = expanded;
-				}
+				const folderScopeResult = await resolveFolderScope(
+					targetProjectId,
+					foldersOn ? (options ?? {}) : {},
+				);
+				if ('folderResolution' in folderScopeResult)
+					return failFolderResolution(folderScopeResult.folderResolution);
+				const folderIds = folderScopeResult.folderIds;
 
 				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
@@ -1327,6 +1392,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async get(workflowId: string) {
+				await assertDiscoveryProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1425,6 +1491,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
+				await assertDiscoveryProject(workflowId);
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1771,6 +1838,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getVersion(workflowId, versionId) {
+				await assertDiscoveryProject(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
 				// Fetch the workflow to determine active/draft version IDs
@@ -3814,7 +3882,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createWorkspaceAdapter(user: User, boundProjectId?: string): InstanceAiWorkspaceService {
+	private createWorkspaceAdapter(
+		user: User,
+		boundProjectId?: string,
+		projectOnly = false,
+	): InstanceAiWorkspaceService {
 		const {
 			projectService,
 			folderService,
@@ -3838,11 +3910,13 @@ export class InstanceAiAdapterService {
 
 			async listProjects(): Promise<ProjectSummary[]> {
 				const projects = await projectService.getAccessibleProjects(user);
-				const summaries = projects.map((p) => ({
-					id: p.id,
-					name: p.name,
-					type: p.type,
-				}));
+				const summaries = projects
+					.filter((project) => !projectOnly || project.id === boundProjectId)
+					.map((p) => ({
+						id: p.id,
+						name: p.name,
+						type: p.type,
+					}));
 				if (teamProjectsLicensed) return summaries;
 				// An instance that loses its team-project license keeps its projects, and
 				// an admin still reads all of them. The user cannot work in those
@@ -3854,16 +3928,28 @@ export class InstanceAiAdapterService {
 
 			...(this.license.isLicensed('feat:folders')
 				? {
-						async listFolders(projectId: string): Promise<FolderSummary[]> {
+						async listFolders(projectId: string, options?: { offset?: number; limit?: number }) {
+							if (projectOnly && projectId !== boundProjectId)
+								throw new Error('Preference discovery is limited to the conversation project.');
 							await assertProjectScope(['folder:list'], projectId);
-							const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
-							return (
-								folders as Array<{ id: string; name: string; parentFolderId: string | null }>
-							).map((f) => ({
-								id: f.id,
-								name: f.name,
-								parentFolderId: f.parentFolderId,
-							}));
+							const limit = Math.min(options?.limit ?? 100, 200);
+							const offset = options?.offset ?? 0;
+							const [folders, total] = await folderService.getManyAndCount(projectId, {
+								take: limit,
+								skip: offset,
+								// Pagination needs the default sort column in the selected fields.
+								select: { name: true, parentFolder: true, path: true, updatedAt: true },
+							});
+							return {
+								folders: folders.map((f) => ({
+									id: f.id,
+									name: f.name,
+									parentFolderId: f.parentFolder?.id ?? null,
+									path: f.path?.join('/') ?? f.name,
+								})),
+								total,
+								hasMore: offset + folders.length < total,
+							};
 						},
 
 						async createFolder(
@@ -5129,6 +5215,13 @@ function toWorkflowDetail(
 				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,
+				disabled: n.disabled,
+				retryOnFail: n.retryOnFail,
+				maxTries: n.maxTries,
+				waitBetweenTries: n.waitBetweenTries,
+				onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
+				executeOnce: n.executeOnce,
+				alwaysOutputData: n.alwaysOutputData,
 			}),
 		),
 		connections: workflow.connections,

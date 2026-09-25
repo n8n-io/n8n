@@ -2672,15 +2672,18 @@ export class InstanceAiService {
 		}
 
 		// Hide disabled skills in each derived source. Keep the cached source unchanged.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
+		const disabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
 			instanceContextEnabled,
 		});
+		if (!context.projectId || !context.credentialService.usage) {
+			disabledSkillIds.push('preference-discovery');
+		}
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
 		const allRuntimeSkills =
-			flagDisabledSkillIds.length > 0
-				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
+			disabledSkillIds.length > 0
+				? filterRuntimeSkillSource(selectedRuntimeSkills, disabledSkillIds)
 				: selectedRuntimeSkills;
 		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);

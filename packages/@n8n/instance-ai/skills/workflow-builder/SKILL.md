@@ -357,6 +357,10 @@ decision after testing.
 
 ## Credential Rules
 
+When `preference-discovery` is available and the task names an environment or
+asks to follow local conventions, load it before selecting credentials. Its
+folder evidence can establish an unambiguous match under the rules below.
+
 - Call `credentials(action="list")` early when the task touches external
   services; note each credential's `id`, `name`, and `type` (the credential
   key, e.g. `slackApi`, comes from the node type definition).

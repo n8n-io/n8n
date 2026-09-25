@@ -277,7 +277,7 @@ export class WorkflowIndexService {
 		if (!node.credentials) {
 			return;
 		}
-		for (const credentialDetails of Object.values(node.credentials)) {
+		for (const [credentialType, credentialDetails] of Object.entries(node.credentials)) {
 			const { id } = credentialDetails;
 			if (!id) {
 				continue;
@@ -285,7 +285,12 @@ export class WorkflowIndexService {
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
-				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+				dependencyInfo: {
+					nodeId: node.id,
+					nodeVersion: node.typeVersion,
+					nodeType: node.type,
+					credentialType,
+				},
 			});
 		}
 	}

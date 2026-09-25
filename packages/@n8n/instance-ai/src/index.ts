@@ -42,6 +42,12 @@ import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
 import type * as SnapshotManagerMod from './workspace/snapshot-manager';
+import type { InstanceAiContext } from './types';
+
+export async function loadPreferenceDiscoveryTools(context: InstanceAiContext) {
+	const { createPreferenceDiscoveryTools } = await import('./tools/preference-discovery.tools.js');
+	return createPreferenceDiscoveryTools(context);
+}
 
 type LazyFunction = (...args: never[]) => unknown;
 type LazyConstructor = abstract new (...args: never[]) => unknown;

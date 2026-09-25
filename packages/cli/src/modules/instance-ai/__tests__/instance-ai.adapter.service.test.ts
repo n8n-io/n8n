@@ -2341,6 +2341,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(undefined),
 		makeOwner: vi.fn().mockResolvedValue(undefined),
+		findProjectIds: vi.fn().mockResolvedValue([overrides?.projectId ?? 'team-project-id']),
 	};
 
 	const mockAiBuilderTemporaryWorkflowRepository = {
@@ -2839,7 +2840,9 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	it('lists a caller-named project as a filter, leaving access resolution to getMany', async () => {
-		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests({
+			projectId: null,
+		});
 
 		await adapter.list({ projectId: 'other-project-id' });
 
@@ -2852,7 +2855,9 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	it('attributes the owning project only when the listing can span projects', async () => {
-		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests({
+			projectId: null,
+		});
 		mockWorkflowService.getMany.mockResolvedValue({
 			workflows: [{ ...savedWorkflow, homeProject: { id: 'p2', name: 'Primary', type: 'team' } }],
 			count: 1,
@@ -2867,7 +2872,9 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	it('omits attribution when the listed row carries no home project', async () => {
-		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests({
+			projectId: null,
+		});
 		mockWorkflowService.getMany.mockResolvedValue({ workflows: [savedWorkflow], count: 1 });
 
 		const result = await adapter.list({ scope: 'instance' });
@@ -2888,7 +2895,7 @@ describe('createWorkflowAdapter', () => {
 	describe('folder attribution', () => {
 		it('ignores folder options and adds no folder while folder exploration is off', async () => {
 			const { adapter, mockWorkflowService, mockUser, mockFolderRepository, savedWorkflow } =
-				createWorkflowAdapterForTests();
+				createWorkflowAdapterForTests({ projectId: null });
 			mockWorkflowService.getMany.mockResolvedValue({
 				workflows: [
 					{ ...savedWorkflow, parentFolder: { id: 'f1', name: 'Triggers', parentFolderId: null } },
@@ -2900,7 +2907,7 @@ describe('createWorkflowAdapter', () => {
 
 			expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
 				take: 50,
-				filter: { isArchived: false, projectId: 'team-project-id' },
+				filter: { isArchived: false },
 			});
 			expect(result.workflows[0]).not.toHaveProperty('folder');
 			expect(result).not.toHaveProperty('folderResolution');
@@ -3024,8 +3031,10 @@ describe('createWorkflowAdapter', () => {
 		]);
 
 		function withFolders(overrides?: {
+			folderExploration?: boolean;
 			foldersLicensed?: boolean;
 			omitFolderFinderService?: boolean;
+			projectId?: string | null;
 		}) {
 			const fixture = createWorkflowAdapterForTests({
 				folderExploration: true,
@@ -3105,8 +3114,10 @@ describe('createWorkflowAdapter', () => {
 				).rejects.toMatchObject({ folderResolution: { reason: 'unsupported' } });
 			});
 
-			it('ignores a folder target while folder exploration is off', async () => {
-				const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+			it('uses a folder target in project conversations without a flag', async () => {
+				const { adapter, mockWorkflowService, mockUser } = withFolders({
+					folderExploration: false,
+				});
 
 				await adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients/Acme' });
 
@@ -3114,7 +3125,7 @@ describe('createWorkflowAdapter', () => {
 					mockUser,
 					expect.anything(),
 					'wf-new',
-					{ source: 'n8n-ai' },
+					{ source: 'n8n-ai', parentFolderId: 'acme' },
 				);
 			});
 		});
@@ -3170,7 +3181,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it("checks folder:list against the workflow's home project, not the listing target, for a shared workflow", async () => {
-			const { adapter, mockWorkflowService, savedWorkflow } = withFolders();
+			const { adapter, mockWorkflowService, savedWorkflow } = withFolders({ projectId: 'p2' });
 			mockWorkflowService.getMany.mockResolvedValue({
 				workflows: [
 					{
@@ -3284,7 +3295,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it('scans only the named project for folders when projectId is given', async () => {
-			const { adapter, mockFolderRepository } = withFolders();
+			const { adapter, mockFolderRepository } = withFolders({ projectId: null });
 			mockFolderRepository.findManyByExactName.mockResolvedValue([
 				{ id: 'clients', name: 'Clients' },
 			]);
@@ -3297,7 +3308,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it('scans every accessible project for folders on an instance-wide listing', async () => {
-			const { adapter, mockFolderRepository } = withFolders();
+			const { adapter, mockFolderRepository } = withFolders({ projectId: null });
 
 			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
 
@@ -3305,7 +3316,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it('skips a project the user cannot list folders in, and never offers its folders', async () => {
-			const { adapter, mockFolderRepository } = withFolders();
+			const { adapter, mockFolderRepository } = withFolders({ projectId: null });
 			mockedUserHasScopes.mockImplementation(
 				async (_user, _scopes, _globalOnly, { projectId }) => projectId !== 'p2',
 			);
@@ -3330,7 +3341,7 @@ describe('createWorkflowAdapter', () => {
 
 		it('asks for a projectId instead of scanning when too many projects are in scope', async () => {
 			const { adapter, mockFolderRepository, mockWorkflowService, mockProjectService } =
-				withFolders();
+				withFolders({ projectId: null });
 			mockProjectService.getAccessibleProjects.mockResolvedValue(
 				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
 			);
@@ -3348,7 +3359,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it('tracks a too-wide scope with no candidates', async () => {
-			const { adapter, mockTelemetry, mockProjectService } = withFolders();
+			const { adapter, mockTelemetry, mockProjectService } = withFolders({ projectId: null });
 			mockProjectService.getAccessibleProjects.mockResolvedValue(
 				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
 			);
@@ -3446,7 +3457,7 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		it('tracks list calls with the flag off too, so folder-scoped calls have a denominator', async () => {
-			const { adapter, mockTelemetry } = createWorkflowAdapterForTests();
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests({ projectId: null });
 
 			await adapter.list({ query: 'x' });
 
@@ -4308,20 +4319,20 @@ describe('license-gated features', () => {
 		it('lists every accessible project when team projects are licensed', async () => {
 			const { context, mockProjectService } = createWorkflowAdapterForTests({
 				teamProjectsLicensed: true,
+				projectId: null,
 			});
 			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
 
 			await expect(context.workspaceService!.listProjects()).resolves.toEqual(accessibleProjects);
 		});
 
-		it('lists only the personal and the bound project when team projects are not licensed', async () => {
+		it('lists only the bound project when team projects are not licensed', async () => {
 			const { context, mockProjectService } = createWorkflowAdapterForTests({
 				teamProjectsLicensed: false,
 			});
 			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
 
 			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
-				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
 				{ id: 'team-project-id', name: 'Team', type: 'team' },
 			]);
 		});

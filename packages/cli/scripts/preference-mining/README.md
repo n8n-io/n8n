@@ -68,6 +68,100 @@ before using this spike in a deployment that charges Gateway credits.
 | Workflow extraction | Extract bounded candidates from each workflow. Consolidate supported groups in model batches. | Repeated patterns with exact source quotes |
 | Thread memory | Read the user's own AIA threads in the project. Capture user-stated preferences in order. Deduplicate and reflect after each thread. | Preferences with a memory timeline |
 | Combined | Combine all four source approaches. Prefer explicit thread evidence, then workflow evidence, then usage. | A shared preference set. Conflicting choices at equal priority abstain. |
+| Usage by folder | Run the deterministic node and credential miners for each folder subtree. | Separate defaults for environments such as Production and Testing. |
+| Explore with tools | Give an SDK agent the Assistant's read tools and a discovery task. | Findings with a trace of the supporting tool calls. |
+| Explore with tools and skill | Add the preference-discovery skill to the same agent and tools. | Folder-scoped findings, parameter conventions, and repeated architecture. |
+
+The Combined approach still merges the original four sources. The three new
+approaches are separate comparison arms.
+
+## Explore through Assistant tools
+
+Select **Compare AI discovery** on the lab page. This selects folder usage,
+tools-only exploration, and exploration with the skill. Enter a focused task.
+For example:
+
+> Find the Postgres and notification conventions in Production and Testing.
+> Compare credential bindings. Inspect examples for shared parameters and error handling.
+
+Both exploration arms use the selected Assistant model connection. They call
+the existing `workflows`, `credentials`, and `workspace` tools. They do not
+receive the workflow corpus in their prompt. The harness allows only read
+actions. It limits each run to 12 discovery calls and 6 workflow inspections.
+Each run has an 8-minute timeout and at most 16 model steps. Skill loading can
+add a model step. The call ledger includes that usage.
+
+Use **Run details** to read each tool input and output. Evidence IDs link the
+findings to those results. Validation checks source IDs, known entities, and
+folder scope. Parameter and architecture findings require two inspected
+workflows in scope. These checks establish provenance. They do not establish
+that a model's interpretation is correct.
+
+Protocol 5 separates build instructions from evidence. Each discovery candidate
+has a condition and an instruction. The harness adds its verified folder scope.
+Evidence counts and analysis appear under **Evidence**. Unsupported or ambiguous
+findings appear under **Observations**. Recall excludes these observations and
+older discovery findings without a structured instruction. Credential candidates
+require complete usage evidence, at least three supporting workflows, and a
+strict lead over each alternative. A candidate remains a suggestion. This check
+does not authorize an automatic credential binding. The harness builds credential
+instructions from verified counts. Alternatives require confirmation before
+binding. Existing bindings and explicit user choices take precedence.
+
+Discovery uses the SDK's streaming transport. It consumes the full response
+before it validates candidates. This keeps long provider responses active.
+The step callbacks still record tokens and costs. One format repair remains
+available. It reuses the same evidence.
+
+## Saved runs
+
+Each new run saves automatically in the n8n database. Open **Saved runs** to
+revisit its results, settings, source references, tool trace, tokens, and cost.
+The page URL identifies the selected run. Reloading the page restores it.
+Leaving the page does not cancel a run. Use **Cancel** to stop it.
+
+History belongs to the user and project that started the run. Project access
+is required to read it. Saving a run does not apply its candidates to the
+Assistant. Runs from before this change are not added to history.
+
+The service saves each completed approach and the final run. A stopped server
+leaves the last saved results available. An interrupted run does not resume.
+The spike runs jobs in one backend process. It does not coordinate jobs across
+multiple main processes.
+
+## Evidence and evaluation
+
+Node and credential tools use the dependency index. Credential rows record the
+source node type, so a credential used by one node is not attributed to another
+node in the same workflow. The tools return raw counts, ties, coverage, and
+truncation. Inaccessible credential bindings stay in the denominator. Their
+metadata stays private. Existing rows rebuild under index version 3. Wait for
+`coverage.complete` before interpreting an absence or a unanimous choice.
+
+The folder baseline uses the captured workflow data. The tools read the current
+index. Keep the project unchanged during a comparison. These are sequential
+reads, not a database snapshot. Compare the recorded counts and coverage before
+attributing a difference to agent reasoning.
+
+This spike enables preference discovery in ordinary project conversations.
+The skill, credential usage, node usage, and folder exploration need no
+environment variable or feature flag. The lab loads the skill only for the
+exploration-with-skill arm. The tools-only arm uses the same tools without it.
+
+Start a new conversation in the target project. Ask the Assistant to follow the
+conventions of a named folder when it builds a workflow. The skill preserves
+explicit choices and existing bindings. It permits inferred credential binding
+only with complete, unanimous evidence from at least three workflows. Weaker
+evidence remains a suggestion. Gateway credits policy still takes precedence.
+Findings remain in the current session. This change does not save global memory.
+
+For a build-quality comparison, hold out a workflow and its environment twin.
+Use the same request and model in each arm. Score the resulting credential IDs,
+folder placement, relevant parameters, and architecture. Include ambiguous
+environment requests, explicit overrides, child-folder exceptions, and an
+unrelated control. Do not execute production workflows for this evaluation.
+The lab currently measures discovery. A complete build evaluation remains a
+separate step. Preference counts and recall previews are not quality scores.
 
 Protocol 2 bounds each extraction to 12 candidates. Each workflow receives only
 catalog dimensions for its node types and credential references. Candidate
@@ -79,8 +173,9 @@ keeps all validated evidence, not only those examples.
 Workflow checkpoints record completed sources, candidates, and consolidation
 batches. A failed call does not erase this work. The model adapter retries only
 the failed request, not the completed source calls. Partial results remain failed
-and are not scored. Checkpoints expire with the run; they do not survive a server
-restart. The run records its protocol, input hash, source IDs, and limits. Each
+and are not scored. Checkpoints within an active approach remain in memory until
+that approach ends. Completed approaches survive a server restart. The run
+records its protocol, input hash, source IDs, and limits. Each
 model call records its request hash and source ID. Compare hashes before treating
 two model runs as a comparison on identical inputs.
 
@@ -124,14 +219,14 @@ The known subtotal stays available. Catalog estimates are not provider invoices.
 - Thread reads require an enabled n8n Assistant and `instanceAi:message`.
   They also require both the selected project and the requesting user's ID.
   Shared threads and other members' conversations are excluded.
-- Workflow scans stop at 100. Credential usage abstains if the scan is incomplete.
+- Workflow scans stop at 1,000. Credential and folder usage abstain if the scan is incomplete.
 - Workflow extraction uses up to 30 workflows. It skips workflows larger than
   60,000 characters. The result reports skipped workflows.
 - Thread extraction uses the 10 most recent threads and up to 10 recent user
   messages per thread. Messages over 20,000 characters are skipped. The page
   reports omitted history.
 - The folder list stops at 500. Node usage abstains on truncated index results.
-- Runs stop after 30 minutes. Each agent call has a 3-minute timeout.
+- Runs stop after 30 minutes. Each batch extraction call has a 3-minute timeout.
   A provider failure, call timeout, or invalid structured response gets one retry.
   Cancellation and an exhausted output allowance do not retry.
   Validation diagnostics retain field paths and issue codes. They omit response values.

@@ -23,6 +23,9 @@ export const APPROACHES: Approach[] = [
 	'workflows',
 	'threads',
 	'combined',
+	'folder-usage',
+	'exploration-tools',
+	'exploration',
 ];
 
 export function emptyResult(approach: Approach): LabResult {
@@ -507,6 +510,9 @@ const priority: Record<Approach, number> = {
 	workflows: 2,
 	threads: 3,
 	combined: 4,
+	'folder-usage': 1,
+	'exploration-tools': 2,
+	exploration: 2,
 };
 
 export function runCombined(results: LabResult[]): LabResult {
@@ -527,7 +533,9 @@ export function runCombined(results: LabResult[]): LabResult {
 		return result;
 	}
 	const groups = new Map<string, Preference[]>();
-	for (const p of results.flatMap((r) => r.preferences))
+	for (const p of results
+		.filter((r) => required.includes(r.approach))
+		.flatMap((r) => r.preferences))
 		groups.set(slot(p), [...(groups.get(slot(p)) ?? []), p]);
 	for (const candidates of groups.values()) {
 		candidates.sort((a, b) => priority[b.origin] - priority[a.origin]);
@@ -571,8 +579,11 @@ export function retrieve(
 ) {
 	const candidates = preferences.filter(
 		(p) =>
+			(!['exploration', 'exploration-tools'].includes(p.origin) || Boolean(p.application)) &&
 			p.projectId === probe.projectId &&
-			(!p.folderId || p.folderId === probe.folderId) &&
+			(!p.folderId ||
+				p.folderId === probe.folderId ||
+				Boolean(probe.folderId && p.folderIds?.includes(probe.folderId))) &&
 			p.contexts.some((c) => probe.contexts.includes(c)),
 	);
 	const byKey = new Map<string, Preference[]>();
@@ -582,13 +593,12 @@ export function retrieve(
 		group.sort(
 			(a, b) =>
 				Number(Boolean(b.folderId)) - Number(Boolean(a.folderId)) ||
+				(a.folderIds?.length ?? 1) - (b.folderIds?.length ?? 1) ||
 				priority[b.origin] - priority[a.origin],
 		);
 		const first = group[0];
 		const peers = group.filter(
-			(p) =>
-				Boolean(p.folderId) === Boolean(first.folderId) &&
-				priority[p.origin] === priority[first.origin],
+			(p) => p.folderId === first.folderId && priority[p.origin] === priority[first.origin],
 		);
 		if (peers.some((p) => p.value !== first.value)) continue;
 		applicable.push(first);

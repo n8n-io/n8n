@@ -27,10 +27,14 @@ import type {
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
+	CredentialUsageResult,
+	WorkflowUsageCoverage,
+	WorkflowUsageScope,
 } from '@n8n/api-types';
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
+	INode,
 	IDisplayOptions,
 	INodeInputConfiguration,
 	INodeTypes,
@@ -133,7 +137,17 @@ export interface WorkflowDetail extends WorkflowSummary {
 	checksum?: string;
 }
 
-export interface WorkflowNode {
+export interface WorkflowNode
+	extends Pick<
+		INode,
+		| 'disabled'
+		| 'retryOnFail'
+		| 'maxTries'
+		| 'waitBetweenTries'
+		| 'onError'
+		| 'executeOnce'
+		| 'alwaysOutputData'
+	> {
 	name: string;
 	type: string;
 	typeVersion?: number;
@@ -440,6 +454,9 @@ export interface NodeUsageResult {
 	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
 	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
 	truncated?: boolean;
+	coverage?: WorkflowUsageCoverage;
+	scope?: WorkflowUsageScope;
+	folderResolution?: FolderResolutionFailure;
 }
 
 export interface InstanceAiWorkflowService {
@@ -485,6 +502,9 @@ export interface InstanceAiWorkflowService {
 		limit?: number;
 		scope?: 'project' | 'instance';
 		projectId?: string;
+		folderId?: string;
+		folderPath?: string;
+		recursive?: boolean;
 	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
@@ -727,6 +747,15 @@ export interface CredentialHostInfo {
 }
 
 export interface InstanceAiCredentialService {
+	usage?(options?: {
+		folderId?: string;
+		folderPath?: string;
+		recursive?: boolean;
+		credentialType?: string;
+		nodeType?: string;
+		credentialId?: string;
+		limit?: number;
+	}): Promise<CredentialUsageResult | { folderResolution: FolderResolutionFailure }>;
 	/**
 	 * List credentials.
 	 *
@@ -1247,6 +1276,7 @@ export interface FolderSummary {
 	id: string;
 	name: string;
 	parentFolderId: string | null;
+	path?: string;
 }
 
 // ── Workspace service ───────────────────────────────────────────────────────
@@ -1257,7 +1287,10 @@ export interface InstanceAiWorkspaceService {
 	listProjects(): Promise<ProjectSummary[]>;
 
 	// Folders (licensed: feat:folders)
-	listFolders?(projectId: string): Promise<FolderSummary[]>;
+	listFolders?(
+		projectId: string,
+		options?: { offset?: number; limit?: number },
+	): Promise<FolderSummary[] | { folders: FolderSummary[]; total: number; hasMore: boolean }>;
 	createFolder?(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
 	deleteFolder?(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
 

@@ -20,6 +20,11 @@
 	],
 	"notTransferred": [
 		{
+			"name": "PreferenceMiningRunEntity",
+			"path": "packages/cli/src/modules/preference-mining/database/preference-mining-run.entity.ts",
+			"reason": "Mining history belongs to its user and project. It keeps the original workflow and folder references. The foreign keys delete this history when either owner is deleted."
+		},
+		{
 			"name": "ActivityEvent",
 			"path": "packages/@n8n/db/src/entities/activity-event.ts",
 			"reason": "Append-only record of what happened in the deleted project; re-homing entries would misstate where the events occurred. Dropped via FK cascade."

@@ -14,7 +14,9 @@ export const labDatasetSchema = z
 		dimensions: z.array(
 			z.object({ key: id, category, description: z.string(), contexts: z.array(id) }),
 		),
-		folders: z.array(z.object({ id, projectId: id, name: id })),
+		folders: z.array(
+			z.object({ id, projectId: id, name: id, parentFolderId: id.nullable().optional() }),
+		),
 		credentials: z.array(
 			z.object({
 				id,
@@ -44,7 +46,7 @@ export const labDatasetSchema = z
 					connections: z.record(z.unknown()),
 				}),
 			)
-			.max(100),
+			.max(1000),
 		threads: z
 			.array(
 				z.object({

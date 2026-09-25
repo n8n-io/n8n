@@ -18,11 +18,14 @@ import {
 	N8nInputNumber,
 	N8nNotice,
 	N8nOption,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
 	N8nSelect,
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import PreferenceList from './PreferenceList.vue';
 import { usePreferenceMining } from './usePreferenceMining';
@@ -35,10 +38,16 @@ const {
 	approaches,
 	model,
 	maxOutputTokens,
+	discoveryTask,
 	minimumWorkflows,
 	minimumShare,
 	minimumMargin,
 	run,
+	history,
+	historyTotal,
+	historyLoading,
+	loadHistory,
+	openRun,
 	loading,
 	starting,
 	error,
@@ -57,24 +66,55 @@ const {
 	recall,
 } = usePreferenceMining();
 const advanced = ref(false);
+const comparisonMode = ref('exploration');
+const resultFolder = ref('');
+const router = useRouter();
+const assistantUrl = computed(
+	() => router.resolve({ path: '/assistant', query: { projectId: projectId.value } }).href,
+);
 const filters = ref(false);
-const section = ref<'preferences' | 'recall' | 'details'>('preferences');
-const selectedApproach = ref<PreferenceMiningApproach>('nodes');
+const section = ref<'preferences' | 'observations' | 'recall' | 'details'>('preferences');
+const selectedApproach = ref<PreferenceMiningApproach>('exploration');
 const busy = computed(() => running.value || starting.value);
 const needsModel = computed(() =>
-	approaches.value.some((a) => ['workflows', 'threads', 'combined'].includes(a)),
+	approaches.value.some((a) =>
+		['workflows', 'threads', 'combined', 'exploration-tools', 'exploration'].includes(a),
+	),
+);
+const needsDiscoveryTask = computed(() =>
+	approaches.value.some((a) => a.startsWith('exploration')),
 );
 const canRun = computed(
 	() =>
 		!loading.value &&
 		!!projectId.value &&
 		approaches.value.length > 0 &&
+		(!needsDiscoveryTask.value || discoveryTask.value.trim().length > 0) &&
 		(!needsModel.value || options.value.assistant.available),
 );
 const selectedResult = computed(
 	() =>
 		run.value?.results.find((r) => r.approach === selectedApproach.value) ?? run.value?.results[0],
 );
+const visiblePreferences = computed(() =>
+	(selectedResult.value?.preferences ?? []).filter(
+		(preference) =>
+			!resultFolder.value ||
+			preference.folderId === null ||
+			preference.folderId === resultFolder.value ||
+			preference.folderIds?.includes(resultFolder.value),
+	),
+);
+const comparisonModes = computed(() => [
+	{ value: 'exploration', label: i18n.baseText('preferenceMining.mode.exploration') },
+	{ value: 'usage', label: i18n.baseText('preferenceMining.mode.usage') },
+	{ value: 'custom', label: i18n.baseText('preferenceMining.mode.custom') },
+]);
+watch(comparisonMode, (mode) => {
+	if (mode === 'exploration')
+		approaches.value = ['folder-usage', 'exploration-tools', 'exploration'];
+	else if (mode === 'usage') approaches.value = ['nodes', 'credentials', 'folder-usage'];
+});
 const selectedPreview = computed(() =>
 	preview.value.find((r) => r.approach === selectedResult.value?.approach),
 );
@@ -85,6 +125,10 @@ const tabOptions = computed(() => [
 		label: i18n.baseText('preferenceMining.tabs.recall'),
 		disabled: busy.value,
 	},
+	{
+		value: 'observations' as const,
+		label: `${i18n.baseText('preferenceMining.tabs.observations')} (${selectedResult.value?.observations?.length ?? 0})`,
+	},
 	{ value: 'details' as const, label: i18n.baseText('preferenceMining.tabs.details') },
 ]);
 const descriptions = computed<Record<PreferenceMiningApproach, string>>(() => ({
@@ -94,6 +138,9 @@ const descriptions = computed<Record<PreferenceMiningApproach, string>>(() => ({
 	workflows: i18n.baseText('preferenceMining.description.workflows'),
 	threads: i18n.baseText('preferenceMining.description.threads'),
 	combined: i18n.baseText('preferenceMining.description.combined'),
+	'folder-usage': i18n.baseText('preferenceMining.description.folderUsage'),
+	'exploration-tools': i18n.baseText('preferenceMining.description.explorationTools'),
+	exploration: i18n.baseText('preferenceMining.description.exploration'),
 }));
 const sharePercent = computed({
 	get: () => Math.round(minimumShare.value * 100),
@@ -118,7 +165,17 @@ function contextLabel(context: string) {
 }
 function toggleApproach(approach: PreferenceMiningApproach, selected: boolean) {
 	if (selected && approach === 'combined') {
-		approaches.value = [...preferenceMiningApproaches];
+		approaches.value = [
+			...new Set([
+				...approaches.value,
+				'baseline',
+				'nodes',
+				'credentials',
+				'workflows',
+				'threads',
+				'combined',
+			] satisfies PreferenceMiningApproach[]),
+		];
 		return;
 	}
 	const next = new Set(approaches.value);
@@ -133,6 +190,12 @@ function toggleApproach(approach: PreferenceMiningApproach, selected: boolean) {
 function statusVariant(status: PreferenceMiningResult['status']) {
 	return status === 'complete' ? 'success' : status === 'failed' ? 'danger' : 'warning';
 }
+function runDate(value: string) {
+	return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+		new Date(value),
+	);
+}
+
 function formatCost(value: number | null | undefined) {
 	return value === null || value === undefined
 		? i18n.baseText('preferenceMining.unknownCost')
@@ -158,8 +221,19 @@ function emptyDescription(result: PreferenceMiningResult) {
 watch(
 	() => run.value?.id,
 	() => {
+		const matches = (group: PreferenceMiningApproach[]) =>
+			group.length === approaches.value.length &&
+			group.every((approach) => approaches.value.includes(approach));
+		comparisonMode.value = matches(['folder-usage', 'exploration-tools', 'exploration'])
+			? 'exploration'
+			: matches(['nodes', 'credentials', 'folder-usage'])
+				? 'usage'
+				: 'custom';
 		section.value = 'preferences';
-		selectedApproach.value = 'nodes';
+		selectedApproach.value = approaches.value.includes('exploration')
+			? 'exploration'
+			: (approaches.value[0] ?? 'nodes');
+		resultFolder.value = '';
 	},
 );
 watch(
@@ -206,61 +280,101 @@ watch(
 				</N8nInputLabel>
 			</header>
 			<N8nNotice v-if="error" theme="danger" :content="error" />
+			<N8nCard :class="$style.stack">
+				<details>
+					<summary>
+						{{ i18n.baseText('preferenceMining.history.title') }} ({{ historyTotal }})
+					</summary>
+					<div :class="$style.stack">
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('preferenceMining.history.hint')
+						}}</N8nText>
+						<N8nText v-if="!history.length" size="small">{{
+							i18n.baseText('preferenceMining.history.empty')
+						}}</N8nText>
+						<div v-for="item in history" :key="item.id" :class="$style.historyRow">
+							<N8nButton variant="ghost" :disabled="busy" @click="openRun(item.id)">{{
+								runDate(item.createdAt)
+							}}</N8nButton>
+							<N8nText size="small">{{ item.approaches.map((a) => labels[a]).join(', ') }}</N8nText>
+							<N8nText size="small">{{
+								item.model ?? i18n.baseText('preferenceMining.history.noModel')
+							}}</N8nText>
+							<N8nBadge variant="subtle">{{ statuses[item.status] }}</N8nBadge>
+							<N8nText size="small">{{ formatCost(item.estimatedCost) }}</N8nText>
+						</div>
+						<N8nButton
+							v-if="history.length < historyTotal"
+							variant="ghost"
+							:loading="historyLoading"
+							@click="loadHistory(true)"
+							>{{ i18n.baseText('preferenceMining.history.more') }}</N8nButton
+						>
+					</div>
+				</details>
+			</N8nCard>
 			<div :class="$style.layout">
-				<aside>
-					<N8nCard :class="$style.setup">
-						<div :class="$style.stack">
-							<div :class="$style.sectionHeading">
-								<N8nHeading tag="h2" size="medium">{{
-									i18n.baseText('preferenceMining.configure')
-								}}</N8nHeading
-								><N8nText size="small" color="text-light">{{
-									i18n.baseText('preferenceMining.configureHint')
+				<N8nCard :class="$style.setup">
+					<form :class="$style.stack" @submit.prevent="canRun && !busy && start()">
+						<div :class="$style.sectionHeading">
+							<N8nHeading tag="h2" size="medium">{{
+								i18n.baseText('preferenceMining.configure')
+							}}</N8nHeading>
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('preferenceMining.configureHint')
+							}}</N8nText>
+						</div>
+						<N8nRadioGroup
+							v-model="comparisonMode"
+							orientation="horizontal"
+							:disabled="busy"
+							:aria-label="i18n.baseText('preferenceMining.comparisonType')"
+						>
+							<N8nRadioGroupItem
+								v-for="mode in comparisonModes"
+								:key="mode.value"
+								:value="mode.value"
+								:label="mode.label"
+							/>
+						</N8nRadioGroup>
+						<div v-if="comparisonMode === 'custom'" :class="$style.customApproaches">
+							<N8nCheckbox
+								v-for="approach in preferenceMiningApproaches"
+								:key="approach"
+								:model-value="approaches.includes(approach)"
+								:disabled="busy"
+								:label="labels[approach]"
+								@update:model-value="toggleApproach(approach, $event)"
+							/>
+							<N8nText :class="$style.fullWidth" size="small" color="text-light">{{
+								i18n.baseText('preferenceMining.combinedHint')
+							}}</N8nText>
+						</div>
+						<div v-else :class="$style.methodGrid">
+							<div v-for="approach in approaches" :key="approach" :class="$style.methodSummary">
+								<N8nText bold>{{ labels[approach] }}</N8nText>
+								<N8nText size="small" color="text-light">{{ descriptions[approach] }}</N8nText>
+							</div>
+						</div>
+						<div :class="$style.taskGrid">
+							<N8nInputLabel
+								v-if="needsDiscoveryTask"
+								:label="i18n.baseText('preferenceMining.discoveryTask')"
+								input-name="mining-discovery-task"
+							>
+								<N8nInput
+									id="mining-discovery-task"
+									v-model="discoveryTask"
+									type="textarea"
+									:rows="3"
+									:maxlength="4000"
+									:disabled="busy"
+								/>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('preferenceMining.discoveryTaskHint')
 								}}</N8nText>
-							</div>
-							<div :class="$style.presets">
-								<N8nButton
-									variant="subtle"
-									size="small"
-									:disabled="busy"
-									@click="approaches = ['nodes', 'credentials']"
-									>{{ i18n.baseText('preferenceMining.usageOnly') }}</N8nButton
-								><N8nButton
-									variant="ghost"
-									size="small"
-									:disabled="busy"
-									@click="approaches = [...preferenceMiningApproaches]"
-									>{{ i18n.baseText('preferenceMining.selectAll') }}</N8nButton
-								>
-							</div>
-							<div :class="$style.approaches">
-								<div
-									v-for="approach in preferenceMiningApproaches"
-									:key="approach"
-									:class="$style.approachOption"
-								>
-									<N8nCheckbox
-										:model-value="approaches.includes(approach)"
-										:disabled="busy"
-										:aria-label="labels[approach]"
-										@update:model-value="toggleApproach(approach, $event)"
-									>
-										<template #label
-											><span :class="$style.choice"
-												><N8nText bold>{{ labels[approach] }}</N8nText
-												><N8nText size="small" color="text-light">{{
-													descriptions[approach]
-												}}</N8nText></span
-											></template
-										>
-									</N8nCheckbox>
-								</div>
-							</div>
-							<div v-if="needsModel" :class="[$style.stack, $style.divider]">
-								<N8nHeading tag="h3" size="small">{{
-									i18n.baseText('preferenceMining.agentConnection')
-								}}</N8nHeading>
-								<N8nText v-if="options.assistant.model" bold>{{ options.assistant.model }}</N8nText>
+							</N8nInputLabel>
+							<div v-if="needsModel" :class="$style.modelSettings">
 								<N8nInputLabel
 									:label="i18n.baseText('preferenceMining.runModel')"
 									input-name="mining-model"
@@ -273,7 +387,9 @@ watch(
 									>
 										<N8nOption
 											value="assistant"
-											:label="i18n.baseText('preferenceMining.assistantModel')"
+											:label="
+												options.assistant.model || i18n.baseText('preferenceMining.assistantModel')
+											"
 										/>
 										<N8nOption
 											value="claude-sonnet-5"
@@ -282,110 +398,104 @@ watch(
 									</N8nSelect>
 								</N8nInputLabel>
 								<N8nText size="small" color="text-light">{{
-									i18n.baseText('preferenceMining.modelHint')
+									i18n.baseText('preferenceMining.connectionHint')
 								}}</N8nText>
 								<N8nNotice
 									v-if="!loading && !options.assistant.available"
 									:content="i18n.baseText('preferenceMining.assistantUnavailable')"
 								/>
 							</div>
-							<div :class="$style.divider">
-								<N8nButton
-									variant="ghost"
-									size="small"
-									:aria-expanded="advanced"
-									aria-controls="mining-advanced"
-									@click="advanced = !advanced"
-									><N8nIcon :icon="advanced ? 'chevron-up' : 'chevron-down'" size="small" />{{
-										i18n.baseText('preferenceMining.advanced')
-									}}</N8nButton
+						</div>
+						<div :class="$style.divider">
+							<N8nButton
+								variant="ghost"
+								size="small"
+								:aria-expanded="advanced"
+								aria-controls="mining-advanced"
+								@click="advanced = !advanced"
+								><N8nIcon :icon="advanced ? 'chevron-up' : 'chevron-down'" size="small" />{{
+									i18n.baseText('preferenceMining.advanced')
+								}}</N8nButton
+							>
+							<div v-if="advanced" id="mining-advanced" :class="$style.advancedGrid">
+								<N8nInputLabel
+									v-if="needsModel"
+									:label="i18n.baseText('preferenceMining.maxOutputTokens')"
+									input-name="mining-output-tokens"
 								>
-								<div v-if="advanced" id="mining-advanced" :class="[$style.stack, $style.advanced]">
-									<N8nInputLabel
-										v-if="needsModel"
-										:label="i18n.baseText('preferenceMining.maxOutputTokens')"
-										input-name="mining-output-tokens"
-									>
-										<N8nInputNumber
-											id="mining-output-tokens"
-											v-model="maxOutputTokens"
-											:min="1024"
-											:max="16384"
-											:step="1024"
-											:disabled="busy"
-										/>
-									</N8nInputLabel>
-									<N8nText size="small" color="text-light">{{
-										i18n.baseText('preferenceMining.thresholdHint')
-									}}</N8nText>
-									<N8nInputLabel
-										:label="i18n.baseText('preferenceMining.support')"
-										input-name="mining-support"
-										><N8nInputNumber
-											id="mining-support"
-											v-model="minimumWorkflows"
-											:min="1"
-											:max="100"
-											:disabled="busy"
-									/></N8nInputLabel>
-									<N8nInputLabel
-										:label="i18n.baseText('preferenceMining.share')"
-										input-name="mining-share"
-										><N8nInputNumber
-											id="mining-share"
-											v-model="sharePercent"
-											:min="50"
-											:max="100"
-											:step="5"
-											:disabled="busy"
-									/></N8nInputLabel>
-									<N8nInputLabel
-										:label="i18n.baseText('preferenceMining.margin')"
-										input-name="mining-margin"
-										><N8nInputNumber
-											id="mining-margin"
-											v-model="marginPercent"
-											:min="0"
-											:max="100"
-											:step="5"
-											:disabled="busy"
-									/></N8nInputLabel>
-								</div>
+									<N8nInputNumber
+										id="mining-output-tokens"
+										v-model="maxOutputTokens"
+										:min="1024"
+										:max="16384"
+										:step="1024"
+										:disabled="busy"
+									/>
+								</N8nInputLabel>
+								<N8nText :class="$style.fullWidth" size="small" color="text-light">{{
+									i18n.baseText('preferenceMining.thresholdHint')
+								}}</N8nText>
+								<N8nInputLabel
+									:label="i18n.baseText('preferenceMining.support')"
+									input-name="mining-support"
+									><N8nInputNumber
+										id="mining-support"
+										v-model="minimumWorkflows"
+										:min="1"
+										:max="100"
+										:disabled="busy"
+								/></N8nInputLabel>
+								<N8nInputLabel
+									:label="i18n.baseText('preferenceMining.share')"
+									input-name="mining-share"
+									><N8nInputNumber
+										id="mining-share"
+										v-model="sharePercent"
+										:min="50"
+										:max="100"
+										:step="5"
+										:disabled="busy"
+								/></N8nInputLabel>
+								<N8nInputLabel
+									:label="i18n.baseText('preferenceMining.margin')"
+									input-name="mining-margin"
+									><N8nInputNumber
+										id="mining-margin"
+										v-model="marginPercent"
+										:min="0"
+										:max="100"
+										:step="5"
+										:disabled="busy"
+								/></N8nInputLabel>
 							</div>
-							<div :class="$style.runActions">
-								<N8nButton
-									:disabled="!canRun || busy"
-									:loading="busy"
-									data-test-id="preference-mining-run"
-									@click="start"
-									><N8nIcon icon="play" size="small" />{{
-										i18n.baseText('preferenceMining.run')
-									}}</N8nButton
-								><N8nButton v-if="running" variant="outline" @click="cancel">{{
-									i18n.baseText('preferenceMining.cancel')
-								}}</N8nButton>
-							</div>
+						</div>
+						<div :class="$style.runActions">
+							<N8nButton
+								type="submit"
+								:disabled="!canRun || busy"
+								:loading="busy"
+								data-test-id="preference-mining-run"
+							>
+								<N8nIcon icon="play" size="small" />{{ i18n.baseText('preferenceMining.run') }}
+							</N8nButton>
+							<N8nButton v-if="running" variant="outline" @click="cancel">{{
+								i18n.baseText('preferenceMining.cancel')
+							}}</N8nButton>
 							<N8nText size="small" color="text-light">{{
-								i18n.baseText('preferenceMining.scopeHint')
+								i18n.baseText('preferenceMining.runCount', {
+									interpolate: { count: approaches.length },
+								})
 							}}</N8nText>
 						</div>
-					</N8nCard>
-				</aside>
+						<N8nText size="small" color="text-light">{{
+							needsModel
+								? i18n.baseText('preferenceMining.modelHint')
+								: i18n.baseText('preferenceMining.scopeHint')
+						}}</N8nText>
+					</form>
+				</N8nCard>
 				<section :class="$style.workspace" :aria-label="i18n.baseText('preferenceMining.compare')">
-					<N8nCard v-if="!run" :class="$style.emptyCard">
-						<N8nEmptyState
-							:icon="{ type: 'icon', value: 'flask-conical' }"
-							:heading="i18n.baseText('preferenceMining.ready')"
-							:description="i18n.baseText('preferenceMining.readyHint')"
-						/>
-						<div :class="$style.emptySteps">
-							<div v-for="(key, index) in ['choose', 'compare', 'inspect'] as const" :key="key">
-								<N8nBadge variant="subtle">{{ index + 1 }}</N8nBadge
-								><N8nText size="small">{{ i18n.baseText(`preferenceMining.step.${key}`) }}</N8nText>
-							</div>
-						</div>
-					</N8nCard>
-					<template v-else>
+					<template v-if="run">
 						<header :class="$style.resultHeader">
 							<N8nHeading tag="h2" size="large">{{
 								i18n.baseText('preferenceMining.compare')
@@ -418,45 +528,94 @@ watch(
 							v-if="run.sources?.warnings.length"
 							:content="i18n.baseText('preferenceMining.limitedSources')"
 						/>
-						<div
-							v-if="run.results.length"
-							:class="$style.resultGrid"
-							:aria-label="i18n.baseText('preferenceMining.approaches')"
-						>
-							<button
-								v-for="result in run.results"
-								:key="result.approach"
-								type="button"
-								:class="[
-									$style.resultButton,
-									{ [$style.selected]: selectedResult?.approach === result.approach },
-								]"
-								:aria-pressed="selectedResult?.approach === result.approach"
-								@click="selectedApproach = result.approach"
-							>
-								<N8nCard :class="$style.resultCard"
-									><div :class="$style.methodTitle">
-										<N8nText bold>{{ labels[result.approach] }}</N8nText
-										><N8nIcon
-											v-if="selectedResult?.approach === result.approach"
-											icon="check"
-											size="small"
-										/>
-									</div>
-									<div :class="$style.methodCount">
-										<strong>{{ result.preferences.length }}</strong
-										><N8nText size="small" color="text-light">{{
-											i18n.baseText('preferenceMining.preferences').toLowerCase()
-										}}</N8nText>
-									</div>
-									<N8nBadge :variant="statusVariant(result.status)">{{
-										statuses[result.status]
-									}}</N8nBadge></N8nCard
-								>
-							</button>
-						</div>
+						<N8nCard v-if="run.results.length" :class="$style.comparisonTable">
+							<div :class="$style.tableScroll">
+								<table :class="$style.table">
+									<caption>
+										{{
+											i18n.baseText('preferenceMining.metricsCaption')
+										}}
+									</caption>
+									<thead>
+										<tr>
+											<th>{{ i18n.baseText('preferenceMining.approach') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.status') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.preferences') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.calls') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.tokens') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.seconds') }}</th>
+											<th>{{ i18n.baseText('preferenceMining.cost') }}</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr
+											v-for="result in run.results"
+											:key="result.approach"
+											:class="{
+												[$style.selectedRow]: selectedResult?.approach === result.approach,
+											}"
+										>
+											<td>
+												<N8nButton
+													variant="ghost"
+													size="small"
+													:aria-pressed="selectedResult?.approach === result.approach"
+													@click="selectedApproach = result.approach"
+													>{{ labels[result.approach] }}</N8nButton
+												>
+											</td>
+											<td>
+												<N8nBadge :variant="statusVariant(result.status)">{{
+													statuses[result.status]
+												}}</N8nBadge>
+											</td>
+											<td>{{ result.preferences.length }}</td>
+											<td>{{ result.metrics.modelCalls }}</td>
+											<td>
+												{{ result.metrics.inputTokens.toLocaleString() }} /
+												{{ result.metrics.outputTokens.toLocaleString() }}
+												<N8nBadge v-if="result.metrics.usageComplete === false" variant="warning">{{
+													i18n.baseText('preferenceMining.partialUsage')
+												}}</N8nBadge>
+											</td>
+											<td>{{ (result.metrics.elapsedMs / 1000).toFixed(1) }}</td>
+											<td>{{ cost(result.metrics) }}</td>
+										</tr>
+									</tbody>
+									<tfoot v-if="run.metrics">
+										<tr>
+											<th colspan="3">{{ i18n.baseText('preferenceMining.totalOnce') }}</th>
+											<td>{{ run.metrics.modelCalls }}</td>
+											<td>
+												{{ run.metrics.inputTokens.toLocaleString() }} /
+												{{ run.metrics.outputTokens.toLocaleString() }}
+												<N8nBadge v-if="run.metrics.usageComplete === false" variant="warning">{{
+													i18n.baseText('preferenceMining.partialUsage')
+												}}</N8nBadge>
+											</td>
+											<td>{{ (run.metrics.elapsedMs / 1000).toFixed(1) }}</td>
+											<td>{{ cost(run.metrics) }}</td>
+										</tr>
+									</tfoot>
+								</table>
+							</div>
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('preferenceMining.compareHint')
+							}}</N8nText>
+						</N8nCard>
 						<N8nCard v-if="selectedResult" :class="$style.resultsPanel">
 							<div :class="$style.stack">
+								<N8nNotice
+									v-if="run.persistenceError"
+									theme="danger"
+									:content="run.persistenceError"
+								/>
+								<N8nText v-if="run.createdAt" size="small" color="text-light">{{
+									runDate(run.createdAt)
+								}}</N8nText>
+								<N8nText v-if="run.settings?.discoveryTask" size="small">{{
+									run.settings.discoveryTask
+								}}</N8nText>
 								<N8nTabs v-model="section" :options="tabOptions" variant="modern" />
 								<template v-if="section === 'preferences'">
 									<div :class="$style.sectionHeading">
@@ -467,16 +626,41 @@ watch(
 											descriptions[selectedResult.approach]
 										}}</N8nText>
 									</div>
-									<PreferenceList
+									<N8nInputLabel
 										v-if="selectedResult.preferences.length"
-										:preferences="selectedResult.preferences"
+										:label="i18n.baseText('preferenceMining.resultFolder')"
+										input-name="mining-result-folder"
+										:class="$style.resultFilter"
+									>
+										<N8nSelect
+											id="mining-result-folder"
+											v-model="resultFolder"
+											clearable
+											filterable
+											:placeholder="i18n.baseText('preferenceMining.allFolders')"
+										>
+											<N8nOption
+												v-for="folder in run.sources?.folders"
+												:key="folder.id"
+												:value="folder.id"
+												:label="folder.name"
+											/>
+										</N8nSelect>
+									</N8nInputLabel>
+									<PreferenceList
+										v-if="visiblePreferences.length"
+										:preferences="visiblePreferences"
 										:type-names="typeNames"
 										:folders="run.sources?.folders"
 									/>
 									<div v-else :class="$style.emptyResult">
 										<N8nEmptyState
 											:heading="i18n.baseText('preferenceMining.empty')"
-											:description="emptyDescription(selectedResult)"
+											:description="
+												resultFolder && selectedResult.preferences.length
+													? i18n.baseText('preferenceMining.noFolderFindings')
+													: emptyDescription(selectedResult)
+											"
 										/><N8nButton
 											v-if="selectedResult.notes.length"
 											variant="ghost"
@@ -484,6 +668,28 @@ watch(
 											>{{ i18n.baseText('preferenceMining.viewDetails') }}</N8nButton
 										>
 									</div>
+								</template>
+								<template v-else-if="section === 'observations'">
+									<N8nText size="small" color="text-light">{{
+										i18n.baseText('preferenceMining.observations.hint')
+									}}</N8nText>
+									<N8nText v-if="!selectedResult.observations?.length">{{
+										i18n.baseText('preferenceMining.observations.empty')
+									}}</N8nText>
+									<N8nCard
+										v-for="(observation, index) in selectedResult.observations"
+										:key="index"
+										:class="$style.stack"
+									>
+										<N8nText tag="p">{{ observation.content }}</N8nText>
+										<N8nText size="small" color="text-light">{{
+											run.sources?.folders.find((folder) => folder.id === observation.folderId)
+												?.name ?? i18n.baseText('preferenceMining.projectScope')
+										}}</N8nText>
+										<N8nText size="small" color="text-light">{{
+											observation.evidenceIds.join(', ')
+										}}</N8nText>
+									</N8nCard>
 								</template>
 								<template v-else-if="section === 'recall'">
 									<div :class="$style.sectionHeading">
@@ -619,58 +825,7 @@ watch(
 											i18n.baseText('preferenceMining.compareHint')
 										}}</N8nText>
 									</div>
-									<div :class="$style.tableScroll">
-										<table :class="$style.table">
-											<caption>
-												{{
-													i18n.baseText('preferenceMining.metricsCaption')
-												}}
-											</caption>
-											<thead>
-												<tr>
-													<th>{{ i18n.baseText('preferenceMining.approach') }}</th>
-													<th>{{ i18n.baseText('preferenceMining.calls') }}</th>
-													<th>{{ i18n.baseText('preferenceMining.tokens') }}</th>
-													<th>{{ i18n.baseText('preferenceMining.seconds') }}</th>
-													<th>{{ i18n.baseText('preferenceMining.cost') }}</th>
-												</tr>
-											</thead>
-											<tbody>
-												<tr v-for="result in run.results" :key="result.approach">
-													<td>{{ labels[result.approach] }}</td>
-													<td>{{ result.metrics.modelCalls }}</td>
-													<td>
-														{{ result.metrics.inputTokens.toLocaleString() }} /
-														{{ result.metrics.outputTokens.toLocaleString() }}
-														<N8nBadge
-															v-if="result.metrics.usageComplete === false"
-															variant="warning"
-															>{{ i18n.baseText('preferenceMining.partialUsage') }}</N8nBadge
-														>
-													</td>
-													<td>{{ (result.metrics.elapsedMs / 1000).toFixed(1) }}</td>
-													<td>{{ cost(result.metrics) }}</td>
-												</tr>
-											</tbody>
-											<tfoot v-if="run.metrics">
-												<tr>
-													<th>{{ i18n.baseText('preferenceMining.totalOnce') }}</th>
-													<td>{{ run.metrics.modelCalls }}</td>
-													<td>
-														{{ run.metrics.inputTokens.toLocaleString() }} /
-														{{ run.metrics.outputTokens.toLocaleString() }}
-														<N8nBadge
-															v-if="run.metrics.usageComplete === false"
-															variant="warning"
-															>{{ i18n.baseText('preferenceMining.partialUsage') }}</N8nBadge
-														>
-													</td>
-													<td>{{ (run.metrics.elapsedMs / 1000).toFixed(1) }}</td>
-													<td>{{ cost(run.metrics) }}</td>
-												</tr>
-											</tfoot>
-										</table>
-									</div>
+
 									<N8nText size="small" color="text-light">{{
 										i18n.baseText('preferenceMining.usageHint')
 									}}</N8nText>
@@ -686,6 +841,10 @@ watch(
 									<details v-if="selectedResult.metrics.calls?.length" :class="$style.trace">
 										<summary>{{ i18n.baseText('preferenceMining.callMeasurements') }}</summary>
 										<pre>{{ JSON.stringify(selectedResult.metrics.calls, null, 2) }}</pre>
+									</details>
+									<details v-if="selectedResult.discoveryTrace?.length" :class="$style.trace">
+										<summary>{{ i18n.baseText('preferenceMining.discoveryTrace') }}</summary>
+										<pre>{{ JSON.stringify(selectedResult.discoveryTrace, null, 2) }}</pre>
 									</details>
 									<N8nHeading tag="h4" size="small">{{
 										labels[selectedResult.approach]
@@ -731,6 +890,32 @@ watch(
 							</div>
 						</N8nCard>
 					</template>
+					<N8nCard :class="$style.testGuide">
+						<div :class="$style.guideGrid">
+							<div :class="$style.sectionHeading">
+								<N8nHeading tag="h2" size="medium">{{
+									i18n.baseText('preferenceMining.judgeResults')
+								}}</N8nHeading>
+								<ol :class="$style.notes">
+									<li>{{ i18n.baseText('preferenceMining.check.folder') }}</li>
+									<li>{{ i18n.baseText('preferenceMining.check.evidence') }}</li>
+									<li>{{ i18n.baseText('preferenceMining.check.cost') }}</li>
+								</ol>
+							</div>
+							<div :class="$style.chatGuide">
+								<N8nHeading tag="h2" size="medium">{{
+									i18n.baseText('preferenceMining.testInChat')
+								}}</N8nHeading>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('preferenceMining.testInChatHint')
+								}}</N8nText>
+								<N8nButton variant="outline" :href="assistantUrl" target="_blank"
+									>{{ i18n.baseText('preferenceMining.openAssistant')
+									}}<N8nIcon icon="arrow-up-right" size="small"
+								/></N8nButton>
+							</div>
+						</div>
+					</N8nCard>
 				</section>
 			</div>
 		</div>
@@ -739,6 +924,15 @@ watch(
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/breakpoints' as breakpoints;
+.historyRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+	border-bottom: var(--border);
+	padding-block: var(--spacing--xs);
+}
+
 .fullWidth {
 	grid-column: 1 / -1;
 }
@@ -748,7 +942,7 @@ watch(
 	background: var(--background--subtle);
 }
 .container {
-	max-width: calc(var(--spacing--5xl) * 6);
+	max-width: calc(var(--spacing--5xl) * 5);
 	margin-inline: auto;
 	padding: var(--spacing--xl);
 	display: flex;
@@ -778,7 +972,7 @@ watch(
 }
 .layout {
 	display: grid;
-	grid-template-columns: calc(var(--spacing--5xl) + var(--spacing--3xl)) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr);
 	gap: var(--spacing--lg);
 	align-items: start;
 }
@@ -793,51 +987,15 @@ watch(
 	gap: var(--spacing--lg);
 	min-width: 0;
 }
-.presets {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-wrap: wrap;
-}
-.approaches {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-}
-.approachOption {
-	display: flex;
-}
-.choice {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
 .divider {
 	border-top: var(--border);
 	padding-top: var(--spacing--sm);
 }
-.advanced {
-	margin-top: var(--spacing--sm);
-}
 .runActions {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-.emptyCard {
-	min-height: calc(var(--spacing--5xl) * 2);
-	--card--padding: var(--spacing--xl);
-}
-.emptySteps {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	align-self: center;
-	padding-block: var(--spacing--xl);
-}
-.emptySteps > div {
-	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
 }
 .sources {
 	display: flex;
@@ -851,60 +1009,11 @@ watch(
 	color: var(--text-color);
 	font-weight: var(--font-weight--bold);
 }
-.resultGrid {
-	display: grid;
-	grid-template-columns: repeat(
-		auto-fit,
-		minmax(calc(var(--spacing--4xl) + var(--spacing--2xl)), 1fr)
-	);
-	gap: var(--spacing--xs);
-}
-.resultButton {
-	appearance: none;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	text-align: left;
-	cursor: pointer;
-	border-radius: var(--radius--lg);
-	color: inherit;
-	font: inherit;
-}
-.resultButton:focus-visible {
-	outline: var(--focus--border-width) solid var(--focus--border-color);
-	outline-offset: var(--spacing--4xs);
-}
-.resultButton:hover .resultCard {
-	border-color: var(--border-color--stronger);
-}
-.selected .resultCard {
-	border-color: var(--color--primary);
-	background: var(--color--primary--tint-3);
-}
-.resultCard {
-	height: 100%;
-	--n8n--card-body--gap: var(--spacing--xs);
-}
-.resultCard :deep([data-test-id='card-content']) {
-	min-width: 0;
-}
 .methodTitle {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-}
-.methodCount {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--2xs);
-}
-.methodCount strong {
-	font-size: var(--font-size--2xl);
-	font-weight: var(--font-weight--bold);
-}
-.resultCard :global(.n8n-badge) {
-	align-self: flex-start;
 }
 .emptyResult {
 	padding-block: var(--spacing--lg);
@@ -975,6 +1084,58 @@ watch(
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
+
+.methodGrid,
+.customApproaches,
+.advancedGrid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--spacing--sm);
+}
+.methodSummary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	background: var(--background--subtle);
+	border-radius: var(--radius--xs);
+}
+.taskGrid,
+.guideGrid {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+	gap: var(--spacing--lg);
+}
+.taskGrid:empty {
+	display: none;
+}
+.taskGrid > *,
+.guideGrid > * {
+	min-width: 0;
+}
+.modelSettings,
+.chatGuide {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+}
+.modelSettings > :first-child {
+	width: 100%;
+}
+.advancedGrid {
+	margin-top: var(--spacing--sm);
+}
+.selectedRow {
+	background: var(--color--primary--tint-3);
+}
+.resultFilter {
+	max-width: calc(var(--spacing--5xl) + var(--spacing--4xl));
+}
+.comparisonTable,
+.testGuide {
+	--card--padding: var(--spacing--lg);
+}
 @include breakpoints.breakpoint('sm-and-down') {
 	.container {
 		padding: var(--spacing--sm);
@@ -987,6 +1148,11 @@ watch(
 		width: 100%;
 	}
 	.layout,
+	.methodGrid,
+	.taskGrid,
+	.guideGrid,
+	.advancedGrid,
+	.customApproaches,
 	.filterGrid,
 	.previewGrid {
 		grid-template-columns: minmax(0, 1fr);

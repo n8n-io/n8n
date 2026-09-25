@@ -63,6 +63,27 @@ describe('Instance AI folder-scoped workflow listing (integration)', () => {
 		await testDb.terminate();
 	});
 
+	it('lists folders and paths across pages', async () => {
+		const workspace = adapterService.createContext(owner, {
+			projectId: project.id,
+		}).workspaceService;
+		if (!workspace?.listFolders) throw new Error('Folder listing is unavailable.');
+		const first = await workspace.listFolders(project.id, { limit: 2 });
+		const second = await workspace.listFolders(project.id, { limit: 2, offset: 2 });
+		if (Array.isArray(first) || Array.isArray(second)) {
+			throw new Error('Folder listing did not return pagination metadata.');
+		}
+		expect(first).toMatchObject({ total: 3, hasMore: true });
+		expect(second).toMatchObject({ total: 3, hasMore: false });
+		const folders = [...first.folders, ...second.folders];
+		expect(new Set(folders.map((folder) => folder.id)).size).toBe(3);
+		expect(folders.map((folder) => folder.path).sort()).toEqual([
+			'Clients',
+			'Clients/Acme',
+			'Clients/Acme/Archive',
+		]);
+	});
+
 	it('returns only the folder members, not the same-named root workflow', async () => {
 		const result = await listFor(owner, project.id).list({ folderPath: 'Clients/Acme' });
 

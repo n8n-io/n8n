@@ -16,7 +16,8 @@ import type { WorkflowEntity } from './workflow-entity';
 // start then reindexes every workflow whose rows carry an older version.
 // Version 2: the indexer records `workflowCall` rows for sub-workflow tool and
 // retriever nodes, not only for the Execute Sub-workflow node.
-export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 2;
+// Version 3: credential rows include the credential type and source node type.
+export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 3;
 
 export type DependencyType =
 	| 'credentialId'

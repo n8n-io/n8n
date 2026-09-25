@@ -77,6 +77,8 @@ import {
 	type MaterializedSourceStatus,
 } from './workflows/workflow-source-materializer';
 
+import { folderScopeFields } from './folder-scope.schema';
+
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 // `list`, `node-usage` and `setup` share these fields, and the schema sanitizer rejects
@@ -103,15 +105,6 @@ const QUERY_FIELD_DESCRIPTION =
 // mutually exclusive variants (see `pickListAction`) and only one registers
 // per run, so `folderScopeFields.query` below can carry a different
 // description than `listActionBase.query` without ever conflicting.
-const FOLDER_PATH_FIELD_DESCRIPTION =
-	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
-
-const FOLDER_ID_FIELD_DESCRIPTION =
-	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said. When both are given, `folderId` wins.';
-
-const RECURSIVE_FIELD_DESCRIPTION =
-	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
-
 // Separate objects per capability combination, rather than optional-and-ignored fields, so a
 // flag-off state's schema is byte-identical to the pre-feature tool. An A/B needs a control that
 // cannot see the capability, not one told to avoid it.
@@ -140,7 +133,7 @@ const listActionWithoutFolderScope = listActionBase.extend({
 	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
 });
 
-const folderScopeFields = {
+const listFolderScopeFields = {
 	query: z
 		.string()
 		.optional()
@@ -148,14 +141,12 @@ const folderScopeFields = {
 			QUERY_FIELD_DESCRIPTION +
 				' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.',
 		),
-	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
-	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
-	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
+	...folderScopeFields,
 };
 
 /** `list` with folder scope but without the dependency index. Advertised when
  *  folder exploration is on and node usage is off. */
-const listActionWithFolderScope = listActionBase.extend(folderScopeFields);
+const listActionWithFolderScope = listActionBase.extend(listFolderScopeFields);
 
 /**
  * The cheap rung of preference discovery. `list` filters on the workflow name only, so learning
@@ -188,7 +179,7 @@ const nodeUsageAction = z.object({
 });
 
 /** Both node usage and folder exploration on. */
-const listAction = listActionWithoutFolderScope.extend(folderScopeFields);
+const listAction = listActionWithoutFolderScope.extend(listFolderScopeFields);
 
 function pickListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
 	if (hasNodeUsage) {
@@ -196,6 +187,8 @@ function pickListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
 	}
 	return context.folderExplorationEnabled === true ? listActionWithFolderScope : listActionBase;
 }
+
+const nodeUsageWithFolderScopeAction = nodeUsageAction.extend(folderScopeFields);
 
 const getAction = z.object({
 	action: z
@@ -398,7 +391,7 @@ interface WorkflowToolContext {
 // regardless of which dynamic subset the schema actually includes.
 type Input =
 	| z.infer<typeof listAction>
-	| z.infer<typeof nodeUsageAction>
+	| z.infer<typeof nodeUsageWithFolderScopeAction>
 	| z.infer<typeof getAction>
 	| z.infer<typeof getAsCodeAction>
 	| z.infer<typeof deleteAction>
@@ -492,7 +485,13 @@ function getSupportedWorkflowActionSchemas(
 
 	return {
 		list: pickListAction(context, hasNodeUsage),
-		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
+		...(hasNodeUsage
+			? {
+					'node-usage': context.folderExplorationEnabled
+						? nodeUsageWithFolderScopeAction
+						: nodeUsageAction,
+				}
+			: {}),
 		get: getAction,
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
@@ -580,11 +579,22 @@ async function handleNodeUsage(
 		...(input.limit !== undefined ? { limit: input.limit } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
 		...(input.projectId ? { projectId: input.projectId } : {}),
+		...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
+		...(input.folderPath !== undefined ? { folderPath: input.folderPath } : {}),
+		...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
 	});
+
+	if (result.folderResolution)
+		return {
+			folderResolution: result.folderResolution,
+			note: formatFolderResolutionNote(result.folderResolution),
+		};
 
 	if (input.nodeType) {
 		return {
 			nodeType: input.nodeType,
+			scope: result.scope,
+			coverage: result.coverage,
 			workflowsInScope: result.workflowsInScope,
 			workflows: result.workflows ?? [],
 			...(result.truncated ? { truncated: true } : {}),
@@ -594,21 +604,26 @@ async function handleNodeUsage(
 	// What an absence means depends on whether the list is complete. On a full list, a missing
 	// type is a choice the user has not made, and saying so is most of the value. On a cut list
 	// it means nothing at all, and the note must withdraw the claim rather than repeat it.
-	const absence = result.truncated
-		? 'This list is CUT at the top ' +
-			`${result.nodeTypes?.length ?? 0} most-used types — a type missing from it may still be ` +
-			'in use, so do not read an absence as evidence. Raise `limit`, or narrow with `projectId`.'
-		: 'A type absent from this list is used by no workflow in scope.';
+	const absence =
+		result.coverage?.complete === false
+			? 'The index does not cover all current workflows. Do not infer a preference or absence until indexing completes.'
+			: result.truncated
+				? 'This list is CUT at the top ' +
+					`${result.nodeTypes?.length ?? 0} most-used types — a type missing from it may still be ` +
+					'in use, so do not read an absence as evidence. Raise `limit`, or narrow with `projectId`.'
+				: 'A type absent from this list is used by no workflow in scope.';
 
 	return {
 		workflowsInScope: result.workflowsInScope,
+		scope: result.scope,
+		coverage: result.coverage,
 		nodeTypes: result.nodeTypes ?? [],
 		...(result.truncated ? { truncated: true } : {}),
 		// The limit of the surface is named so counts are never quoted as parameter-level house style.
 		note:
 			`Counts are how many workflows use each type, out of workflowsInScope. ${absence} ` +
 			'Node types only — for parameter-level convention (retry settings, naming, model ' +
-			'options), read one workflow with `get`.',
+			'options), inspect several relevant workflows with `get`.',
 	};
 }
 

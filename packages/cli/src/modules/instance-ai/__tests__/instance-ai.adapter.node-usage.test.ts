@@ -176,8 +176,7 @@ describe('InstanceAiAdapterService node usage', () => {
 	describe('capability gate', () => {
 		// The tool registers the action from the method's presence, so absence here is what actually
 		// removes the surface from the agent — not a check further down.
-		// Default-off is the point of the rollout gate: a context created without an explicit
-		// decision must not carry the surface.
+		// Conversations without a project still use the existing rollout gate.
 		it('omits nodeUsage when the caller passes no gate decision', () => {
 			const service = buildAdapter({
 				dependencyQueryService: mock<WorkflowDependencyQueryService>(),
@@ -216,7 +215,7 @@ describe('InstanceAiAdapterService node usage', () => {
 	});
 
 	describe('nodeUsage()', () => {
-		it("defaults to the thread's bound project", async () => {
+		it("exposes node usage for the thread's bound project without a flag", async () => {
 			const dependencyQueryService = mock<WorkflowDependencyQueryService>();
 			dependencyQueryService.getNodeTypeUsage.mockResolvedValue({
 				workflowsInScope: 3,
@@ -226,20 +225,23 @@ describe('InstanceAiAdapterService node usage', () => {
 
 			const context = service.createContext(user, {
 				projectId: 'bound-project',
-				nodeUsageEnabled: true,
 			});
+			expect(context.credentialService.usage).toBeDefined();
+			expect(context.folderExplorationEnabled).toBe(true);
 			const result = await context.workflowService.nodeUsage?.();
 
 			expect(dependencyQueryService.getNodeTypeUsage).toHaveBeenCalledWith(user, {
 				projectId: 'bound-project',
 			});
 			expect(result).toEqual({
+				scope: { projectId: 'bound-project' },
+				coverage: undefined,
 				workflowsInScope: 3,
 				nodeTypes: [{ nodeType: 'n8n-nodes-base.slack', workflowCount: 2 }],
 			});
 		});
 
-		it('drops the project filter when the caller widens to the instance', async () => {
+		it('keeps the bound project when the caller requests instance scope', async () => {
 			const dependencyQueryService = mock<WorkflowDependencyQueryService>();
 			dependencyQueryService.getNodeTypeUsage.mockResolvedValue({
 				workflowsInScope: 0,
@@ -249,11 +251,12 @@ describe('InstanceAiAdapterService node usage', () => {
 
 			const context = service.createContext(user, {
 				projectId: 'bound-project',
-				nodeUsageEnabled: true,
 			});
 			await context.workflowService.nodeUsage?.({ scope: 'instance' });
 
-			expect(dependencyQueryService.getNodeTypeUsage).toHaveBeenCalledWith(user, {});
+			expect(dependencyQueryService.getNodeTypeUsage).toHaveBeenCalledWith(user, {
+				projectId: 'bound-project',
+			});
 		});
 
 		it('serialises workflow timestamps for the agent', async () => {
@@ -277,6 +280,8 @@ describe('InstanceAiAdapterService node usage', () => {
 			});
 
 			expect(result).toEqual({
+				scope: {},
+				coverage: undefined,
 				workflowsInScope: 5,
 				workflows: [
 					{ workflowId: 'wf-1', name: 'Daily sync', updatedAt: '2026-01-02T03:04:05.000Z' },

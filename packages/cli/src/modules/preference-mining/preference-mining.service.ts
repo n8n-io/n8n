@@ -1,19 +1,24 @@
 import type { ModelConfig } from '@n8n/agents';
+import { redactSecrets } from '@n8n/ai-utilities';
 import type {
 	PreferenceMiningRun,
 	RecallPreferenceMiningDto,
 	StartPreferenceMiningDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { PreferenceMiningRunRepository } from './database/preference-mining-run.repository';
 import { PreferenceMiningDataService } from './preference-mining-data.service';
+import { runFolderUsage } from '../workflow-index/preference-mining/folder-usage';
 import {
 	createMiningModel,
 	loadMiningMemory,
@@ -48,6 +53,7 @@ interface MiningJob {
 	run: PreferenceMiningRun;
 	controller: AbortController;
 	expiresAt: number;
+	completion?: Promise<void>;
 }
 
 const MINING_RUN_TIMEOUT_MS = 30 * 60_000;
@@ -60,14 +66,26 @@ export class PreferenceMiningService {
 		private readonly dataService: PreferenceMiningDataService,
 		private readonly nodeUsage: WorkflowDependencyQueryService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly runs: PreferenceMiningRunRepository,
+		private readonly logger: Logger,
 	) {}
 
 	async start(user: User, projectId: string, dto: StartPreferenceMiningDto) {
 		this.assertCapacity(user.id);
-		const selected = dto.approaches.includes('combined') ? APPROACHES : dto.approaches;
+		const selected = dto.approaches.includes('combined')
+			? [
+					...new Set([
+						...dto.approaches,
+						...APPROACHES.filter(
+							(approach) =>
+								!['folder-usage', 'exploration-tools', 'exploration'].includes(approach),
+						),
+					]),
+				]
+			: dto.approaches;
 		let modelConfig: ModelConfig | undefined;
 		let model: PreferenceMiningRun['model'];
-		const requiresModel = selected.some((a) => a === 'workflows' || a === 'threads');
+		const requiresModel = selected.some(requiresModelApproach);
 		try {
 			const options = await this.dataService.options(user);
 			if (requiresModel && !options.assistant.available) {
@@ -113,28 +131,58 @@ export class PreferenceMiningService {
 				projectId,
 				status: 'running',
 				stage: 'Loading project data',
+				createdAt: new Date().toISOString(),
+				settings: dto,
 				...(model ? { model } : {}),
 				results: [],
 			},
 		};
 		this.jobs.set(job.run.id, job);
-		void this.execute(job, user, dto, selected, modelConfig);
+		try {
+			await this.runs.saveRun(user.id, job.run);
+		} catch (error) {
+			this.jobs.delete(job.run.id);
+			throw error;
+		}
+		job.completion = this.execute(job, user, dto, selected, modelConfig);
 		return job.run;
 	}
 
-	get(user: User, projectId: string, runId: string) {
-		return this.find(user, projectId, runId).run;
+	async list(user: User, projectId: string, skip: number, take: number) {
+		const page = await this.runs.listRuns(user.id, projectId, skip, take);
+		for (const item of page.items) {
+			if (item.status === 'running')
+				item.status = (await this.get(user, projectId, item.id)).status;
+		}
+		return page;
 	}
 
-	cancel(user: User, projectId: string, runId: string) {
-		const job = this.find(user, projectId, runId);
-		job.controller.abort();
-		if (job.run.status === 'running') job.run.status = 'cancelled';
-		return job.run;
+	async get(user: User, projectId: string, runId: string) {
+		const job = this.jobs.get(runId);
+		if (job?.userId === user.id && job.run.projectId === projectId) return job.run;
+		const run = await this.runs.findRun(user.id, projectId, runId);
+		if (!run) throw new NotFoundError('Preference scan not found.');
+		if (run.status === 'running') {
+			run.status = 'cancelled';
+			run.stage = 'The server stopped before this run finished. Saved results remain available.';
+			run.finishedAt = new Date().toISOString();
+			await this.runs.saveRun(user.id, run);
+		}
+		return run;
+	}
+
+	async cancel(user: User, projectId: string, runId: string) {
+		const run = await this.get(user, projectId, runId);
+		const job = this.jobs.get(runId);
+		if (job && run.status === 'running') {
+			job.controller.abort();
+			await job.completion;
+		}
+		return run;
 	}
 
 	async recall(user: User, projectId: string, runId: string, dto: RecallPreferenceMiningDto) {
-		const { run } = this.find(user, projectId, runId);
+		const run = await this.get(user, projectId, runId);
 		if (dto.folderId && !run.sources?.folders.some((f) => f.id === dto.folderId)) {
 			throw new BadRequestError('Select a folder from this project.');
 		}
@@ -168,18 +216,10 @@ export class PreferenceMiningService {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		for (const job of this.jobs.values()) job.controller.abort();
+		await Promise.allSettled([...this.jobs.values()].map(async (job) => await job.completion));
 		this.jobs.clear();
-	}
-
-	private find(user: User, projectId: string, runId: string) {
-		this.prune();
-		const job = this.jobs.get(runId);
-		if (!job || job.userId !== user.id || job.run.projectId !== projectId) {
-			throw new NotFoundError('Preference scan not found.');
-		}
-		return job;
 	}
 
 	private assertCapacity(userId: string) {
@@ -214,17 +254,14 @@ export class PreferenceMiningService {
 			job.run.stage = text;
 		};
 		try {
-			const { data, sources, completeWorkflowScan, threadsAvailable } = await this.dataService.load(
-				user,
-				job.run.projectId,
-				selected.includes('threads'),
-				signal,
-			);
+			const { data, sources, completeWorkflowScan, completeFolderScan, threadsAvailable } =
+				await this.dataService.load(user, job.run.projectId, selected.includes('threads'), signal);
 			job.run.sources = sources;
 			const options = labOptionsSchema.parse({ projectId: job.run.projectId, thresholds: dto });
 			const bounded = data.workflows.filter((w) => JSON.stringify(w).length <= 60000).slice(0, 30);
 			job.run.experiment = {
-				protocolVersion: 2,
+				protocolVersion: 5,
+				discoveryTask: dto.discoveryTask,
 				inputHash: createHash('sha256').update(JSON.stringify({ data, options })).digest('hex'),
 				workflowIds: bounded.map((workflow) => workflow.id),
 				maximumCandidatesPerSource: MAXIMUM_CANDIDATES_PER_SOURCE,
@@ -232,6 +269,7 @@ export class PreferenceMiningService {
 				runTimeoutMs: MINING_RUN_TIMEOUT_MS,
 				callTimeoutMs: MINING_CALL_TIMEOUT_MS,
 			};
+			await this.runs.saveRun(user.id, job.run);
 			for (const approach of APPROACHES.filter((a) => selected.includes(a))) {
 				progress(`Running ${approach}`);
 				const started = performance.now();
@@ -261,6 +299,46 @@ export class PreferenceMiningService {
 						}
 					}
 					if (approach === 'combined') result = runCombined(job.run.results);
+					if (approach === 'folder-usage') {
+						if (completeWorkflowScan && completeFolderScan) {
+							result = await runFolderUsage(data, options);
+						} else {
+							result.status = 'unavailable';
+							result.notes.push('Folder comparison requires a complete workflow and folder scan.');
+						}
+					}
+					if (approach === 'exploration-tools' || approach === 'exploration') {
+						if (!modelConfig)
+							throw new BadRequestError('Configure n8n Assistant before discovery.');
+						const { InstanceAiAdapterService } = await import(
+							'../instance-ai/instance-ai.adapter.service.js'
+						);
+						const { runPreferenceDiscovery, DISCOVERY_TIMEOUT_MS } = await import(
+							'./preference-discovery.js'
+						);
+						job.run.experiment.discovery = {
+							snapshotWorkflowIds: data.workflows.map((workflow) => workflow.id),
+							timeoutMs: DISCOVERY_TIMEOUT_MS,
+							maximumToolCalls: 12,
+							maximumWorkflowInspections: 6,
+							maximumModelSteps: 16,
+						};
+						const context = Container.get(InstanceAiAdapterService).createContext(user, {
+							projectId: options.projectId,
+						});
+						result = await runPreferenceDiscovery({
+							context,
+							config: modelConfig,
+							outboundHttp: this.outboundHttp,
+							data,
+							task: dto.discoveryTask,
+							withSkill: approach === 'exploration',
+							signal,
+							pricing: job.run.model?.pricing,
+							maxOutputTokens: dto.maxOutputTokens,
+							progress,
+						});
+					}
 					if (approach === 'workflows' || approach === 'threads') {
 						if (approach === 'threads' && !threadsAvailable) {
 							result.status = 'unavailable';
@@ -294,16 +372,23 @@ export class PreferenceMiningService {
 								);
 						}
 					}
-				} catch {
+				} catch (error) {
 					result.status = 'failed';
 					result.notes.push(
 						'The approach did not finish. Completed workflow checkpoints and call measurements are retained. Partial preferences are not scored.',
 					);
+					result.notes.push(redactSecrets(ensureError(error).message).slice(0, 500));
+					if (requiresModelApproach(approach) && !result.metrics.modelCalls && !model) {
+						result.metrics.usageComplete = false;
+						result.metrics.estimatedCost = null;
+					}
 				}
 				result.metrics = {
 					...result.metrics,
 					...model?.metrics(),
-					elapsedMs: result.metrics.elapsedMs + Math.round(performance.now() - started),
+					elapsedMs:
+						(approach === 'combined' ? result.metrics.elapsedMs : 0) +
+						Math.round(performance.now() - started),
 				};
 				const failedCall = result.metrics.calls?.findLast((call) => call.status === 'failed');
 				if (failedCall)
@@ -314,18 +399,33 @@ export class PreferenceMiningService {
 				job.run.metrics = sumMiningMetrics(
 					job.run.results.filter((r) => r.approach !== 'combined').map((r) => r.metrics),
 				);
+				await this.runs.saveRun(user.id, job.run);
 				signal.throwIfAborted();
 			}
 			job.run.status = job.run.results.some((r) => r.status === 'failed') ? 'failed' : 'complete';
 			job.run.stage = 'Finished';
-		} catch {
+		} catch (error) {
 			job.run.status = signal.aborted ? 'cancelled' : 'failed';
 			job.run.stage = signal.aborted
 				? 'Stopped or reached the 30 minute limit'
-				: 'Could not load project data';
+				: redactSecrets(ensureError(error).message).slice(0, 500);
 		} finally {
+			job.run.finishedAt = new Date().toISOString();
+			try {
+				await this.runs.saveRun(user.id, job.run);
+			} catch (error) {
+				job.run.persistenceError =
+					'The latest results could not be saved. Download the run data before leaving this page.';
+				this.logger.error('Could not save preference mining results', {
+					error: ensureError(error),
+				});
+			}
 			job.expiresAt = Date.now() + 15 * 60_000;
 			setTimeout(() => this.jobs.delete(job.run.id), 15 * 60_000).unref();
 		}
 	}
+}
+
+function requiresModelApproach(approach: PreferenceMiningRun['results'][number]['approach']) {
+	return approach === 'workflows' || approach === 'threads' || approach.startsWith('exploration');
 }

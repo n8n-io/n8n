@@ -88,6 +88,16 @@ export class PreferenceMiningDataService {
 			['workflow:read'],
 			{ filters: { projectId, isArchived: false }, limit: 100 },
 		);
+		while (rows.length < count && rows.length < 1000) {
+			signal.throwIfAborted();
+			const page = await this.workflowFinder.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { projectId, isArchived: false },
+				offset: rows.length,
+				limit: 100,
+			});
+			if (page.workflows.length === 0) break;
+			rows.push(...page.workflows);
+		}
 		signal.throwIfAborted();
 		const visible = rows.filter((w) => !w.isArchived);
 		const canListFolders = await userHasScopes(user, ['folder:list'], false, { projectId });
@@ -133,7 +143,7 @@ export class PreferenceMiningDataService {
 		});
 		if (count > rows.length)
 			warnings.push(
-				'The workflow scan stopped at 100. Credential usage will abstain. Workflow extraction uses this sample.',
+				'The workflow scan is incomplete. The lab accepts up to 1,000 workflows. Deterministic credential comparisons will abstain.',
 			);
 		const threads: LabDataset['threads'] = [];
 		let totalThreads = 0;
@@ -252,7 +262,9 @@ export class PreferenceMiningDataService {
 			projects: [{ id: projectId, name: projectId }],
 			groups: GROUPS,
 			dimensions,
-			folders: folders.slice(0, 500).map((f) => ({ id: f.id, name: f.name, projectId })),
+			folders: folders
+				.slice(0, 500)
+				.map((f) => ({ id: f.id, name: f.path, parentFolderId: f.parentFolderId, projectId })),
 			credentials: credentials.map((c) => ({ ...c, projectIds: [projectId], usable: true })),
 			workflows,
 			threads,
@@ -269,6 +281,12 @@ export class PreferenceMiningDataService {
 			contexts: [...new Set(dimensions.flatMap((d) => d.contexts))],
 			warnings,
 		};
-		return { data, sources, completeWorkflowScan: count <= rows.length, threadsAvailable };
+		return {
+			data,
+			sources,
+			completeWorkflowScan: count <= rows.length,
+			completeFolderScan: canListFolders && folders.length <= 500,
+			threadsAvailable,
+		};
 	}
 }

@@ -1,3 +1,4 @@
+import type { WorkflowUsageCoverage } from '@n8n/api-types';
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
@@ -26,6 +27,13 @@ export interface NodeUsageScope {
 	workflowRoles: string[];
 	/** Narrow to a single project. Omit to span every project the user can read. */
 	projectId?: string;
+	/** Resolved folder IDs, including descendants when requested. Empty matches nothing. */
+	parentFolderIds?: string[];
+}
+
+export interface CredentialUsageFilter {
+	credentialType?: string;
+	nodeType?: string;
 }
 
 /**
@@ -128,6 +136,102 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		return Number(total?.total ?? 0);
 	}
 
+	async getUsageCoverage(user: User, scope: NodeUsageScope): Promise<WorkflowUsageCoverage> {
+		const total = await this.buildReadableWorkflowQuery(user, scope).getCount();
+		const indexed = await this.countWorkflowsInScope(user, scope);
+		return { totalWorkflows: total, indexedWorkflows: indexed, complete: total === indexed };
+	}
+
+	async countCredentialUsage(
+		user: User,
+		scope: NodeUsageScope,
+		filter: CredentialUsageFilter,
+		usableCredentialIds: string[],
+		limit: number,
+	) {
+		const query = this.buildCredentialUsageQuery(user, scope, filter);
+		const eligible = await query
+			.clone()
+			.select('COUNT(DISTINCT dependency.workflowId)', 'total')
+			.getRawOne<{ total: number | string }>();
+		const unavailable = await query
+			.clone()
+			.andWhere(
+				usableCredentialIds.length
+					? 'dependency.dependencyKey NOT IN (:...usableCredentialIds)'
+					: '1 = 1',
+				{ usableCredentialIds },
+			)
+			.select('COUNT(DISTINCT dependency.workflowId)', 'total')
+			.getRawOne<{ total: number | string }>();
+		const rows = await query
+			.andWhere(
+				usableCredentialIds.length
+					? 'dependency.dependencyKey IN (:...usableCredentialIds)'
+					: '1 = 0',
+				{ usableCredentialIds },
+			)
+			.select('dependency.dependencyKey', 'credentialId')
+			.addSelect('COUNT(DISTINCT dependency.workflowId)', 'workflowCount')
+			.groupBy('dependency.dependencyKey')
+			.orderBy('COUNT(DISTINCT dependency.workflowId)', 'DESC')
+			.addOrderBy('dependency.dependencyKey', 'ASC')
+			.limit(limit + 1)
+			.getRawMany<{ credentialId: string; workflowCount: number | string }>();
+		return {
+			eligibleWorkflowCount: Number(eligible?.total ?? 0),
+			unavailableWorkflowCount: Number(unavailable?.total ?? 0),
+			credentials: rows.slice(0, limit).map((row) => ({
+				credentialId: row.credentialId,
+				workflowCount: Number(row.workflowCount),
+			})),
+			truncated: rows.length > limit,
+		};
+	}
+
+	async findWorkflowsUsingCredential(
+		user: User,
+		scope: NodeUsageScope,
+		filter: CredentialUsageFilter,
+		credentialId: string,
+		limit: number,
+	) {
+		const rows = await this.buildCredentialUsageQuery(user, scope, filter)
+			.andWhere('dependency.dependencyKey = :credentialId', { credentialId })
+			.select('dependency.workflowId', 'workflowId')
+			.addSelect('MAX(workflow.name)', 'name')
+			.addSelect('MAX(workflow.updatedAt)', 'updatedAt')
+			.groupBy('dependency.workflowId')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.addOrderBy('dependency.workflowId', 'ASC')
+			.limit(limit)
+			.getRawMany<{ workflowId: string; name: string; updatedAt: Date | string }>();
+		return rows.map((row) => ({
+			...row,
+			updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+		}));
+	}
+
+	private buildCredentialUsageQuery(
+		user: User,
+		scope: NodeUsageScope,
+		filter: CredentialUsageFilter,
+	) {
+		const query = this.buildScopedDependencyQuery(user, scope).andWhere(
+			'dependency.dependencyType = :dependencyType',
+			{ dependencyType: 'credentialId' },
+		);
+		for (const key of ['credentialType', 'nodeType'] as const) {
+			if (!filter[key]) continue;
+			const column =
+				this.databaseConfig.type === 'postgresdb'
+					? `dependency.dependencyInfo ->> '${key}'`
+					: `JSON_EXTRACT(dependency.dependencyInfo, '$.${key}')`;
+			query.andWhere(`${column} = :${key}`, { [key]: filter[key] });
+		}
+		return query;
+	}
+
 	/**
 	 * Which workflows in scope use a given node type, most recently updated first.
 	 *
@@ -168,19 +272,40 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * thing here to drift into a leak — and keeps the scope out of the bind parameters, so the query
 	 * does not grow with the estate.
 	 */
-	private buildScopedDependencyQuery(user: User, scope: NodeUsageScope) {
+	private buildReadableWorkflowQuery(user: User, scope: NodeUsageScope) {
 		const readable = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
 			projectRoles: scope.projectRoles,
 			workflowRoles: scope.workflowRoles,
 			...(scope.projectId ? { projectId: scope.projectId } : {}),
 		});
 
+		const query = this.manager
+			.getRepository(WorkflowEntity)
+			.createQueryBuilder('workflow')
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere(`workflow.id IN (${readable.getQuery()})`)
+			.setParameters(readable.getParameters());
+		if (scope.parentFolderIds !== undefined) {
+			query.andWhere(
+				scope.parentFolderIds.length ? 'workflow.parentFolderId IN (:...parentFolderIds)' : '1 = 0',
+				{ parentFolderIds: scope.parentFolderIds },
+			);
+		}
+		return query;
+	}
+
+	private buildScopedDependencyQuery(user: User, scope: NodeUsageScope) {
+		const readable = this.buildReadableWorkflowQuery(user, scope).select('workflow.id');
 		return (
 			this.createQueryBuilder('dependency')
 				.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
 				// Draft rows describe what a workflow currently contains; what someone is building is a
 				// better statement of preference than what happens to be published.
 				.where('dependency.publishedVersionId IS NULL')
+				.andWhere('dependency.workflowVersionId = workflow.versionCounter')
+				.andWhere('dependency.indexVersionId = :indexVersion', {
+					indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+				})
 				// Archived workflows are what a project used to do.
 				.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
 				.andWhere(`dependency.workflowId IN (${readable.getQuery()})`)

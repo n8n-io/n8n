@@ -3,6 +3,8 @@ import type {
 	DependencyCountsBatchResponse,
 	DependencyResourceType,
 	ResolvedDependency,
+	CredentialUsageResult,
+	WorkflowUsageCoverage,
 } from '@n8n/api-types';
 import {
 	CredentialsRepository,
@@ -46,6 +48,7 @@ export interface NodeTypeUsage {
 	 * when it is true.
 	 */
 	truncated?: boolean;
+	coverage?: WorkflowUsageCoverage;
 }
 
 interface RawDepMaps {
@@ -85,7 +88,12 @@ export class WorkflowDependencyQueryService {
 	 */
 	async getNodeTypeUsage(
 		user: User,
-		options: { projectId?: string; nodeType?: string; limit?: number } = {},
+		options: {
+			projectId?: string;
+			parentFolderIds?: string[];
+			nodeType?: string;
+			limit?: number;
+		} = {},
 	): Promise<NodeTypeUsage> {
 		// The same scopes-to-roles step the workflow listing performs, so this reads exactly the
 		// workflows a listing would return rather than applying a rule of its own.
@@ -97,14 +105,19 @@ export class WorkflowDependencyQueryService {
 			projectRoles,
 			workflowRoles,
 			...(options.projectId ? { projectId: options.projectId } : {}),
+			...(options.parentFolderIds !== undefined
+				? { parentFolderIds: options.parentFolderIds }
+				: {}),
 		};
+		const coverage = await this.dependencyRepository.getUsageCoverage(user, scope);
 
 		if (!options.nodeType) {
-			return await this.dependencyRepository.countNodeTypeUsage(
+			const result = await this.dependencyRepository.countNodeTypeUsage(
 				user,
 				scope,
 				options.limit ?? DEFAULT_NODE_USAGE_TYPE_LIMIT,
 			);
+			return { ...result, coverage };
 		}
 
 		const limit = options.limit ?? DEFAULT_NODE_USAGE_WORKFLOW_LIMIT;
@@ -121,8 +134,81 @@ export class WorkflowDependencyQueryService {
 
 		return {
 			workflowsInScope,
+			coverage,
 			workflows: rows.slice(0, limit),
 			...(rows.length > limit ? { truncated: true } : {}),
+		};
+	}
+
+	async getCredentialUsage(
+		user: User,
+		options: {
+			projectId: string;
+			parentFolderIds?: string[];
+			credentialType?: string;
+			nodeType?: string;
+			credentialId?: string;
+			limit?: number;
+		},
+		usableCredentials: Array<{ id: string; name: string; type: string }>,
+	): Promise<Omit<CredentialUsageResult, 'scope'>> {
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+		const scope = {
+			projectRoles,
+			workflowRoles,
+			projectId: options.projectId,
+			parentFolderIds: options.parentFolderIds,
+		};
+		const usable = new Map(usableCredentials.map((credential) => [credential.id, credential]));
+		const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+		const [coverage, usage] = await Promise.all([
+			this.dependencyRepository.getUsageCoverage(user, scope),
+			this.dependencyRepository.countCredentialUsage(
+				user,
+				scope,
+				options,
+				[...usable.keys()],
+				limit,
+			),
+		]);
+		const workflows =
+			options.credentialId && usable.has(options.credentialId)
+				? await this.dependencyRepository.findWorkflowsUsingCredential(
+						user,
+						scope,
+						options,
+						options.credentialId,
+						limit + 1,
+					)
+				: [];
+		return {
+			...usage,
+			workflowsInScope: coverage.indexedWorkflows,
+			coverage,
+			credentials: usage.credentials.flatMap((row) => {
+				const credential = usable.get(row.credentialId);
+				return credential
+					? [
+							{
+								id: credential.id,
+								name: credential.name,
+								type: credential.type,
+								workflowCount: row.workflowCount,
+							},
+						]
+					: [];
+			}),
+			...(options.credentialId
+				? {
+						workflows: workflows
+							.slice(0, limit)
+							.map((workflow) => ({ ...workflow, updatedAt: workflow.updatedAt.toISOString() })),
+					}
+				: {}),
+			truncated: usage.truncated || workflows.length > limit,
 		};
 	}
 
