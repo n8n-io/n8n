@@ -1,116 +1,305 @@
 import type { CredentialCheckResult } from 'n8n-workflow';
 
 import { MessageFormatter } from '../MessageFormatter';
+import type { ContentBlock } from '@modelcontextprotocol/sdk/types.js';
+
+function getTextContent(blocks: ContentBlock[]): string {
+	return (blocks[0] as { type: 'text'; text: string }).text;
+}
 
 describe('MessageFormatter', () => {
 	describe('formatToolResult', () => {
-		it('should format object result as JSON string in content array', () => {
-			const result = { data: 'value', count: 42 };
-			expect(MessageFormatter.formatToolResult(result)).toEqual({
-				content: [{ type: 'text', text: '{"data":"value","count":42}' }],
+		describe('MCP content array pass-through', () => {
+			it('should pass through single text content block', () => {
+				const result = [{ type: 'text', text: 'Hello world' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: 'Hello world' }],
+				});
+			});
+
+			it('should pass through mixed text and image content blocks', () => {
+				const result = [
+					{ type: 'text', text: 'Image description' },
+					{ type: 'image', data: 'base64data', mimeType: 'image/png' },
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
+			it('should pass through with isError=true', () => {
+				const result = [{ type: 'text', text: 'Error occurred' }];
+				expect(MessageFormatter.formatToolResult(result, true)).toEqual({
+					isError: true,
+					content: [{ type: 'text', text: 'Error occurred' }],
+				});
+			});
+
+			it('should pass through audio content block', () => {
+				const result = [{ type: 'audio', data: 'base64audio', mimeType: 'audio/mpeg' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
+			it('should pass through resource content block', () => {
+				const result = [
+					{ type: 'resource', resource: { uri: 'file:///test.txt', text: 'content' } },
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
+			it('should pass through resource content block with blob payload', () => {
+				const result = [
+					{ type: 'resource', resource: { uri: 'file:///test.bin', blob: 'base64data' } },
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
+			it('should pass through resource_link content block', () => {
+				const result = [
+					{
+						type: 'resource_link',
+						uri: 'https://example.com/resource',
+						name: 'Example resource',
+					},
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
 			});
 		});
 
-		it('should format string result directly without double-quoting', () => {
-			expect(MessageFormatter.formatToolResult('hello world')).toEqual({
-				content: [{ type: 'text', text: 'hello world' }],
+		describe('fallback to stringify + wrap for invalid MCP content arrays', () => {
+			it('should stringify array with invalid type', () => {
+				const result = [{ type: 'invalid', text: 'hello' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[{"type":"invalid","text":"hello"}]' }],
+				});
+			});
+
+			it('should stringify array with text block missing text', () => {
+				const result = [{ type: 'text' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[{"type":"text"}]' }],
+				});
+			});
+
+			it('should stringify array with image block missing data', () => {
+				const result = [{ type: 'image', mimeType: 'image/png' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[{"type":"image","mimeType":"image/png"}]' }],
+				});
+			});
+
+			it('should stringify array with image block missing mimeType', () => {
+				const result = [{ type: 'image', data: 'base64data' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[{"type":"image","data":"base64data"}]' }],
+				});
+			});
+
+			it('should stringify array with resource block missing nested uri', () => {
+				const result = [{ type: 'resource', resource: { text: 'content' } }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"text":"content"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource block missing text or blob', () => {
+				const result = [{ type: 'resource', resource: { uri: 'file:///test.txt' } }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"uri":"file:///test.txt"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource block containing text and blob', () => {
+				const result = [
+					{
+						type: 'resource',
+						resource: { uri: 'file:///test.txt', text: 'content', blob: 'base64data' },
+					},
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource","resource":{"uri":"file:///test.txt","text":"content","blob":"base64data"}}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource_link block missing uri', () => {
+				const result = [{ type: 'resource_link', name: 'Example resource' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource_link","name":"Example resource"}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with resource_link block missing name', () => {
+				const result = [{ type: 'resource_link', uri: 'https://example.com/resource' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"resource_link","uri":"https://example.com/resource"}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify array with mixed valid and invalid blocks', () => {
+				const result = [
+					{ type: 'text', text: 'valid' },
+					{ type: 'invalid', text: 'not valid' },
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [
+						{
+							type: 'text',
+							text: '[{"type":"text","text":"valid"},{"type":"invalid","text":"not valid"}]',
+						},
+					],
+				});
+			});
+
+			it('should stringify empty array', () => {
+				const result: unknown[] = [];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[]' }],
+				});
 			});
 		});
 
-		it('should format number as string', () => {
-			expect(MessageFormatter.formatToolResult(42)).toEqual({
-				content: [{ type: 'text', text: '42' }],
+		describe('existing behavior unchanged for non-MCP arrays', () => {
+			it('should format object result as JSON string in content array', () => {
+				const result = { data: 'value', count: 42 };
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '{"data":"value","count":42}' }],
+				});
 			});
-		});
 
-		it('should format zero as string', () => {
-			expect(MessageFormatter.formatToolResult(0)).toEqual({
-				content: [{ type: 'text', text: '0' }],
+			it('should format string result directly without double-quoting', () => {
+				expect(MessageFormatter.formatToolResult('hello world')).toEqual({
+					content: [{ type: 'text', text: 'hello world' }],
+				});
 			});
-		});
 
-		it('should format negative number as string', () => {
-			expect(MessageFormatter.formatToolResult(-123)).toEqual({
-				content: [{ type: 'text', text: '-123' }],
+			it('should format number as string', () => {
+				expect(MessageFormatter.formatToolResult(42)).toEqual({
+					content: [{ type: 'text', text: '42' }],
+				});
 			});
-		});
 
-		it('should format float as string', () => {
-			expect(MessageFormatter.formatToolResult(3.14159)).toEqual({
-				content: [{ type: 'text', text: '3.14159' }],
+			it('should format zero as string', () => {
+				expect(MessageFormatter.formatToolResult(0)).toEqual({
+					content: [{ type: 'text', text: '0' }],
+				});
 			});
-		});
 
-		it('should format boolean true as string', () => {
-			expect(MessageFormatter.formatToolResult(true)).toEqual({
-				content: [{ type: 'text', text: 'true' }],
+			it('should format negative number as string', () => {
+				expect(MessageFormatter.formatToolResult(-123)).toEqual({
+					content: [{ type: 'text', text: '-123' }],
+				});
 			});
-		});
 
-		it('should format boolean false as string', () => {
-			expect(MessageFormatter.formatToolResult(false)).toEqual({
-				content: [{ type: 'text', text: 'false' }],
+			it('should format float as string', () => {
+				expect(MessageFormatter.formatToolResult(3.14159)).toEqual({
+					content: [{ type: 'text', text: '3.14159' }],
+				});
 			});
-		});
 
-		it('should format null as JSON string "null"', () => {
-			expect(MessageFormatter.formatToolResult(null)).toEqual({
-				content: [{ type: 'text', text: 'null' }],
+			it('should format boolean true as string', () => {
+				expect(MessageFormatter.formatToolResult(true)).toEqual({
+					content: [{ type: 'text', text: 'true' }],
+				});
 			});
-		});
 
-		it('should format undefined as string "undefined"', () => {
-			expect(MessageFormatter.formatToolResult(undefined)).toEqual({
-				content: [{ type: 'text', text: 'undefined' }],
+			it('should format boolean false as string', () => {
+				expect(MessageFormatter.formatToolResult(false)).toEqual({
+					content: [{ type: 'text', text: 'false' }],
+				});
 			});
-		});
 
-		it('should handle nested objects correctly', () => {
-			const result = { outer: { inner: { deep: 'value' } } };
-			const formatted = MessageFormatter.formatToolResult(result);
-			expect(formatted.content[0].text).toBe(JSON.stringify(result));
-		});
-
-		it('should handle arrays', () => {
-			const result = [1, 2, 3];
-			expect(MessageFormatter.formatToolResult(result)).toEqual({
-				content: [{ type: 'text', text: '[1,2,3]' }],
+			it('should format null as JSON string "null"', () => {
+				expect(MessageFormatter.formatToolResult(null)).toEqual({
+					content: [{ type: 'text', text: 'null' }],
+				});
 			});
-		});
 
-		it('should handle empty array', () => {
-			expect(MessageFormatter.formatToolResult([])).toEqual({
-				content: [{ type: 'text', text: '[]' }],
+			it('should format undefined as string "undefined"', () => {
+				expect(MessageFormatter.formatToolResult(undefined)).toEqual({
+					content: [{ type: 'text', text: 'undefined' }],
+				});
 			});
-		});
 
-		it('should handle empty object', () => {
-			expect(MessageFormatter.formatToolResult({})).toEqual({
-				content: [{ type: 'text', text: '{}' }],
+			it('should handle nested objects correctly', () => {
+				const result = { outer: { inner: { deep: 'value' } } };
+				const formatted = MessageFormatter.formatToolResult(result);
+				expect(getTextContent(formatted.content)).toBe(JSON.stringify(result));
 			});
-		});
 
-		it('should handle array of objects', () => {
-			const result = [{ id: 1 }, { id: 2 }];
-			const formatted = MessageFormatter.formatToolResult(result);
-			expect(formatted.content[0].text).toBe(JSON.stringify(result));
-		});
-
-		it('should handle object with special characters in values', () => {
-			const result = { message: 'Hello "world" with\nnewline' };
-			const formatted = MessageFormatter.formatToolResult(result);
-			expect(formatted.content[0].text).toBe(JSON.stringify(result));
-		});
-
-		it('should handle empty string result', () => {
-			expect(MessageFormatter.formatToolResult('')).toEqual({
-				content: [{ type: 'text', text: '' }],
+			it('should handle arrays', () => {
+				const result = [1, 2, 3];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: '[1,2,3]' }],
+				});
 			});
-		});
 
-		it('should handle string with unicode characters', () => {
-			expect(MessageFormatter.formatToolResult('Hello')).toEqual({
-				content: [{ type: 'text', text: 'Hello' }],
+			it('should handle empty array', () => {
+				expect(MessageFormatter.formatToolResult([])).toEqual({
+					content: [{ type: 'text', text: '[]' }],
+				});
+			});
+
+			it('should handle empty object', () => {
+				expect(MessageFormatter.formatToolResult({})).toEqual({
+					content: [{ type: 'text', text: '{}' }],
+				});
+			});
+
+			it('should handle array of objects', () => {
+				const result = [{ id: 1 }, { id: 2 }];
+				const formatted = MessageFormatter.formatToolResult(result);
+				expect(getTextContent(formatted.content)).toBe(JSON.stringify(result));
+			});
+
+			it('should handle object with special characters in values', () => {
+				const result = { message: 'Hello "world" with\nnewline' };
+				const formatted = MessageFormatter.formatToolResult(result);
+				expect(getTextContent(formatted.content)).toBe(JSON.stringify(result));
+			});
+
+			it('should handle empty string result', () => {
+				expect(MessageFormatter.formatToolResult('')).toEqual({
+					content: [{ type: 'text', text: '' }],
+				});
+			});
+
+			it('should handle string with unicode characters', () => {
+				expect(MessageFormatter.formatToolResult('Hello')).toEqual({
+					content: [{ type: 'text', text: 'Hello' }],
+				});
 			});
 		});
 	});
@@ -183,7 +372,7 @@ describe('MessageFormatter', () => {
 		it('should set isError when flag is true', () => {
 			const result = MessageFormatter.formatToolResult('There was an error: "Unauthorized"', true);
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toBe('There was an error: "Unauthorized"');
+			expect(getTextContent(result.content)).toBe('There was an error: "Unauthorized"');
 		});
 
 		it('should not set isError when flag is false', () => {
@@ -200,7 +389,7 @@ describe('MessageFormatter', () => {
 			const errorObj = { error: { message: 'Bad request', name: 'NodeApiError' } };
 			const result = MessageFormatter.formatToolResult(errorObj, true);
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toBe(JSON.stringify(errorObj));
+			expect(getTextContent(result.content)).toBe(JSON.stringify(errorObj));
 		});
 	});
 
@@ -211,7 +400,7 @@ describe('MessageFormatter', () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.content[0].type).toBe('text');
-			expect(result.content[0].text).toContain('Error: Something went wrong');
+			expect(getTextContent(result.content)).toContain('Error: Something went wrong');
 		});
 
 		it('should handle error with empty message', () => {
@@ -219,7 +408,7 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatError(error);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('Error: ');
+			expect(getTextContent(result.content)).toContain('Error: ');
 		});
 
 		it('should handle error with special characters in message', () => {
@@ -227,7 +416,7 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatError(error);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('Error: Failed: "invalid" <value>');
+			expect(getTextContent(result.content)).toContain('Error: Failed: "invalid" <value>');
 		});
 
 		it('should handle error with newlines in message', () => {
@@ -235,7 +424,7 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatError(error);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('Error: Line 1\nLine 2');
+			expect(getTextContent(result.content)).toContain('Error: Line 1\nLine 2');
 		});
 
 		it('should handle TypeError', () => {
@@ -243,7 +432,9 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatError(error);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('TypeError: Cannot read property of undefined');
+			expect(getTextContent(result.content)).toContain(
+				'TypeError: Cannot read property of undefined',
+			);
 		});
 
 		it('should handle custom error subclass', () => {
@@ -257,7 +448,7 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatError(error);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('CustomError: Custom error message');
+			expect(getTextContent(result.content)).toContain('CustomError: Custom error message');
 		});
 
 		it('should not include stack trace in the response', () => {
@@ -266,8 +457,8 @@ describe('MessageFormatter', () => {
 				'Error: Test error\n    at Context.<anonymous> (test.ts:1:1)\n    at /internal/path/node.js:100:5';
 			const result = MessageFormatter.formatError(error);
 
-			expect(result.content[0].text).toBe('Error: Test error');
-			expect(result.content[0].text).not.toContain('internal/path');
+			expect(getTextContent(result.content)).toBe('Error: Test error');
+			expect(getTextContent(result.content)).not.toContain('internal/path');
 		});
 	});
 
@@ -290,9 +481,9 @@ describe('MessageFormatter', () => {
 			const result = MessageFormatter.formatCredentialGate(gateResult);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			expect(getTextContent(result.content)).toContain('My Slack (slackOAuth2Api)');
 			// The URL is emitted raw on its own line (not wrapped in prose).
-			expect(result.content[0].text.split('\n')).toContain(
+			expect(getTextContent(result.content).split('\n')).toContain(
 				'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
 			);
 			// The structured field carries the full result (raw URLs) for programmatic clients.
@@ -321,7 +512,7 @@ describe('MessageFormatter', () => {
 				],
 			};
 
-			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+			const text = getTextContent(MessageFormatter.formatCredentialGate(gateResult).content);
 
 			expect(text).toContain('Missing Cred (notionOAuth2Api)');
 			expect(text).not.toContain('Connected Cred');
@@ -340,7 +531,7 @@ describe('MessageFormatter', () => {
 				],
 			};
 
-			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+			const text = getTextContent(MessageFormatter.formatCredentialGate(gateResult).content);
 
 			expect(text).toContain('No URL Cred (httpHeaderAuth): not connected');
 		});
@@ -353,10 +544,10 @@ describe('MessageFormatter', () => {
 			]);
 
 			expect(result.isError).toBeUndefined();
-			expect(result.content[0].text).toContain('retry the request');
-			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			expect(getTextContent(result.content)).toContain('retry the request');
+			expect(getTextContent(result.content)).toContain('My Slack (slackOAuth2Api)');
 			// The raw URL is never relayed as text on the elicitation path.
-			expect(result.content[0].text).not.toContain('http');
+			expect(getTextContent(result.content)).not.toContain('http');
 		});
 
 		it('should flag an error and list credentials that were declined or cancelled', () => {
@@ -367,10 +558,10 @@ describe('MessageFormatter', () => {
 			]);
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
-			expect(result.content[0].text).toContain('still need to be connected');
-			expect(result.content[0].text).toContain('My Notion (notionOAuth2Api)');
-			expect(result.content[0].text).toContain('My GitHub (githubOAuth2Api)');
+			expect(getTextContent(result.content)).toContain('My Slack (slackOAuth2Api)');
+			expect(getTextContent(result.content)).toContain('still need to be connected');
+			expect(getTextContent(result.content)).toContain('My Notion (notionOAuth2Api)');
+			expect(getTextContent(result.content)).toContain('My GitHub (githubOAuth2Api)');
 		});
 	});
 });

@@ -1,6 +1,7 @@
 import type { CredentialCheckResult } from 'n8n-workflow';
 
 import type { McpToolResult } from './types';
+import { isMcpContentArray, type McpContentBlock } from '../../shared/utils';
 
 /**
  * Result of presenting a single missing credential's connection URL to the
@@ -16,24 +17,29 @@ export interface CredentialGateElicitationOutcome {
 
 export class MessageFormatter {
 	static formatToolResult(result: unknown, isError = false): McpToolResult {
-		let content: McpToolResult['content'];
+		let content: McpContentBlock[];
 
-		if (typeof result === 'object' && result !== null) {
-			content = [{ type: 'text', text: JSON.stringify(result) }];
+		if (isMcpContentArray(result)) {
+			content = result; // pass-through
+		} else if (typeof result === 'object' && result !== null) {
+			content = [{ type: 'text' as const, text: JSON.stringify(result) }];
 		} else if (typeof result === 'string') {
-			content = [{ type: 'text', text: result }];
+			content = [{ type: 'text' as const, text: result }];
 		} else if (result === null || result === undefined) {
-			content = [{ type: 'text', text: String(result) }];
+			content = [{ type: 'text' as const, text: String(result) }];
 		} else if (
 			typeof result === 'number' ||
 			typeof result === 'boolean' ||
 			typeof result === 'bigint'
 		) {
-			content = [{ type: 'text', text: result.toString() }];
+			content = [{ type: 'text' as const, text: result.toString() }];
 		} else {
 			// Remaining types: symbol, function - convert to string representation
 			content = [
-				{ type: 'text', text: String(result as symbol | ((...args: unknown[]) => unknown)) },
+				{
+					type: 'text' as const,
+					text: String(result),
+				},
 			];
 		}
 
@@ -68,7 +74,7 @@ export class MessageFormatter {
 	static formatError(error: Error): McpToolResult {
 		return {
 			isError: true,
-			content: [{ type: 'text', text: `${error.name}: ${error.message}` }],
+			content: [{ type: 'text' as const, text: `${error.name}: ${error.message}` }],
 		};
 	}
 
@@ -96,7 +102,7 @@ export class MessageFormatter {
 
 		return {
 			isError: true,
-			content: [{ type: 'text', text }],
+			content: [{ type: 'text' as const, text }],
 			credentialGate: result,
 		};
 	}
@@ -127,7 +133,7 @@ export class MessageFormatter {
 			);
 		}
 
-		const content = [{ type: 'text', text: lines.join('\n') }];
+		const content = [{ type: 'text' as const, text: lines.join('\n') }];
 		// Omit `isError` when nothing is left to connect, matching formatToolResult.
 		return skipped.length > 0 ? { isError: true, content } : { content };
 	}
