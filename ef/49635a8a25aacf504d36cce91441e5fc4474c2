@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_088272d4812bff::t_8a20b96bf2fcf6 166-169
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_088272d4812bff::t_8d5e2a6e645981 98-101
+  s_088272d4812bff::t_5196b208953623 104-106
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_088272d4812bff::t_0cddf9f5b45c41 24-28,32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ef49635a8a25aacf504d36cce91441e5fc4474c2",
+  "prompts": {},
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
