@@ -115,7 +115,7 @@ export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
 
-/** The user who started the flow. A dynamic-credential flow may have none. */
+/** The user who started the flow. An externally started dynamic-credential flow has none. */
 const csrfUserId = (csrfData: CreateCsrfStateData) =>
 	typeof csrfData.userId === 'string' ? csrfData.userId : undefined;
 
@@ -614,7 +614,8 @@ export class OauthService {
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
-		const additionalData = await this.getAdditionalData(req.user?.id);
+		// The state holds the verified starter; the callback request may carry no user at all.
+		const additionalData = await this.getAdditionalData(csrfUserId(state));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
 			credential,
 			additionalData,

@@ -1443,6 +1443,8 @@ describe('OauthService', () => {
 
 			// Should succeed despite no user because origin is dynamic-credential
 			expect(result[0]).toEqual(mockCredential);
+			// The starter comes from the state, since the callback carries no user.
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({ userId: 'user-id' });
 			expect(result[1]).toEqual(mockDecryptedData);
 			expect(result[2]).toEqual(mockOAuthCredentials);
 			expect(result[3]).toMatchObject({
