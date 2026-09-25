@@ -11,7 +11,12 @@ import type {
 	SourceChangedResult,
 } from '../promotions.types';
 
-const props = defineProps<{ open: boolean; blockedResult: BlockedApplyResult }>();
+const props = defineProps<{
+	open: boolean;
+	blockedResult: BlockedApplyResult;
+	// Forwarded to the dialog when the apply resumes a workflow selection.
+	continueWith?: { projectId: string; workflowIds: string[] };
+}>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	applied: [result: AppliedResult];
@@ -31,6 +36,7 @@ const { createBinding, createdProjects, updatePreflight } = usePromotionBindingC
 		:open="open"
 		:blocked-result="blockedResult"
 		:create-binding="createBinding"
+		:continue-with="continueWith"
 		@update:open="emit('update:open', $event)"
 		@preflight-updated="updatePreflight"
 		@applied="emit('applied', $event)"
