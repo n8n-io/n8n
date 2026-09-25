@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8e9cae71c7c159::t_847243acef9d22 159
+  s_8e9cae71c7c159::t_7a1af0aa7dddce 156
+  s_8e9cae71c7c159::t_cd5288622db6b0 143,145
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.vue
+  s_8e9cae71c7c159::t_47d87834f6f955 86-90
+  s_8e9cae71c7c159::t_0ac248bf189aaf 98,104
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8e9cae71c7c159::t_21ec040cc1d612 8963
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8e9cae71c7c159::t_75dbc7f086fe32 216-217
+  s_8e9cae71c7c159::t_63ad74c2cd7f16 1
+  s_8e9cae71c7c159::t_b5a5093da33285 213
+  h_760178ed151f13 83
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.eventBus.ts
+  s_8e9cae71c7c159::t_b37bf6449b408e 6
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_8e9cae71c7c159::t_c1228d29601b0c 12-14
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_8e9cae71c7c159::t_f75ec352edb6cf 65-66
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  s_8e9cae71c7c159::t_7e7544f3bd851c 167-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3bc666138edc51285d63edf5083cf6ef668af0e4",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8e9cae71c7c159": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93946471-1d3e-40e1-a7f0-dd60bb59d865",
+        "model": "composer-2.5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
