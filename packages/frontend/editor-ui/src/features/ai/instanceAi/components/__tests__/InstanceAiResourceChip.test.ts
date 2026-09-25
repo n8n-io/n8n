@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderComponent } from '@/__tests__/render';
 import InstanceAiResourceChip from '../InstanceAiResourceChip.vue';
 
@@ -46,9 +46,10 @@ describe('InstanceAiResourceChip', () => {
 	});
 
 	it('forwards attributes and listeners to the chip root', async () => {
-		const { getByTestId, emitted } = renderComponent(InstanceAiResourceChip, {
+		const onClick = vi.fn();
+		const { getByTestId } = renderComponent(InstanceAiResourceChip, {
 			props: { label: 'A', testId: TEST_ID },
-			attrs: { role: 'group', tabindex: '0', 'aria-label': 'A', onClick: () => {} },
+			attrs: { role: 'group', tabindex: '0', 'aria-label': 'A', onClick },
 		});
 
 		const chip = getByTestId(TEST_ID);
@@ -58,7 +59,7 @@ describe('InstanceAiResourceChip', () => {
 
 		await fireEvent.click(chip);
 
-		expect(emitted().click).toHaveLength(1);
+		expect(onClick).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps the remove control labelled for assistive tech without a native title', async () => {
