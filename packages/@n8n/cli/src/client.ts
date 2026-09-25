@@ -108,13 +108,43 @@ export type PromotePackageResult = {
 	git: PromotionGitResult;
 };
 
-/** Outcome of applying a package to the instance. */
-export type ApplyPackageResult = {
+/** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
+export interface PromotionExpectedSource {
+	configId: string;
+	branchName: string;
+	commitSha: string;
+}
+
+/** References in a package that must be set up on this instance before Apply can import it. */
+export interface PromotionBindingPreflight {
+	missingProjects: Array<Record<string, unknown>>;
+	missingBindings: Array<Record<string, unknown>>;
+	accessRequirements: Array<Record<string, unknown>>;
+	conflicts: Array<Record<string, unknown>>;
+	warnings: Array<Record<string, unknown>>;
+}
+
+type ApplyPackageIdentity = {
 	connectionId: string;
 	configId: string;
-	counts: ImportPackageCounts;
 	git: PromotionGitResult;
 };
+
+/** Outcome of applying a package to the instance. Only `applied` imported anything. */
+export type ApplyPackageResult =
+	| (ApplyPackageIdentity & {
+			status: 'applied';
+			counts: ImportPackageCounts;
+			warnings: Array<Record<string, unknown>>;
+	  })
+	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'source-changed' });
+
+export interface PromotionChangesQuery {
+	search?: string;
+	sort?: 'name' | 'updatedAt' | 'status';
+	order?: 'asc' | 'desc';
+}
 
 /** One workflow that differs between a project and its configured branch. */
 export interface PromotableResourceSummary {
@@ -391,13 +421,27 @@ export class N8nClient {
 		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
 	}
 
-	async applyPackage(id: string) {
-		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
+	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/connections/${id}/apply`,
+			expectedSource ? { expectedSource } : undefined,
+		);
 	}
 
-	async listProjectPromotionChanges(projectId: string, direction: PromotionDirection) {
+	async continueApplyPackage(id: string, expectedSource: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
+			expectedSource,
+		});
+	}
+
+	async listProjectPromotionChanges(
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQuery = {},
+	) {
 		return await this.get<ProjectPromotionChanges>(
 			`/promotions/projects/${projectId}/changes/${direction}`,
+			{ ...query },
 		);
 	}
 
