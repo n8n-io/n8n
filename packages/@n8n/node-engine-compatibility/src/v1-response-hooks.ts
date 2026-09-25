@@ -82,7 +82,8 @@ function hasBody(value: unknown): value is { body: unknown } {
 /**
  * The body the Respond to Webhook node produces in a stored binary data mode.
  * Without an `id` the bytes are inline in `data`, and the node produces a
- * Buffer for that case instead, so a reference without `id` is refused.
+ * Buffer for that case instead, so a reference without `id` is refused. The
+ * control plane streams a reference only when its `id` is non-empty.
  */
 function isStoredBinaryReference(body: unknown): body is { binaryData: IBinaryData } {
 	if (!hasBinaryData(body)) return false;
@@ -92,7 +93,8 @@ function isStoredBinaryReference(body: unknown): body is { binaryData: IBinaryDa
 		typeof binaryData === 'object' &&
 		binaryData !== null &&
 		'id' in binaryData &&
-		typeof binaryData.id === 'string'
+		typeof binaryData.id === 'string' &&
+		binaryData.id.length > 0
 	);
 }
 
