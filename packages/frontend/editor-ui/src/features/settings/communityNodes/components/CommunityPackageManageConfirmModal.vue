@@ -6,7 +6,7 @@ import {
 } from '../communityNodes.constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { isNodesApiVersionError } from '../communityNodes.utils';
+import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -195,17 +195,13 @@ const onUpdate = async () => {
 	}
 };
 
-async function fetchPackageInfo(packageName: string) {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	const nodeType = nodeTypesStore.visibleNodeTypes.find((nodeType) =>
-		nodeType.name.includes(packageName),
+async function fetchPackageInfo() {
+	const nodeTypes = communityStorePackage.value?.installedNodes.map((node) => node.type) ?? [];
+	const communityNodeAttributes = await findVettedCommunityNodeAttributes(
+		nodeTypes,
+		nodeTypesStore.getCommunityNodeAttributes,
 	);
-
-	if (nodeType) {
-		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
-
-		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
-	}
+	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 
 function setIsVerifiedLatestPackage() {
@@ -233,7 +229,7 @@ const onClick = async () => {
 
 onMounted(async () => {
 	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+		await fetchPackageInfo();
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {
