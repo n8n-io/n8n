@@ -38,6 +38,7 @@ import {
 	responseModePropertyStreaming,
 } from './description';
 import { WebhookAuthorizationError } from './error';
+import { checkTriggerConditions, triggerConditionsProperty } from './trigger-conditions';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
@@ -206,18 +207,19 @@ export class Webhook extends Node {
 					},
 				},
 			},
-
 			{
 				...optionsProperty,
-				options: [...(optionsProperty.options as INodeProperties[]), responseCodeOption].sort(
-					(a, b) => {
-						const nameA = a.displayName.toUpperCase();
-						const nameB = b.displayName.toUpperCase();
-						if (nameA < nameB) return -1;
-						if (nameA > nameB) return 1;
-						return 0;
-					},
-				),
+				options: [
+					...(optionsProperty.options as INodeProperties[]),
+					responseCodeOption,
+					triggerConditionsProperty,
+				].sort((a, b) => {
+					const nameA = a.displayName.toUpperCase();
+					const nameB = b.displayName.toUpperCase();
+					if (nameA < nameB) return -1;
+					if (nameA > nameB) return 1;
+					return 0;
+				}),
 			},
 		],
 	};
@@ -285,17 +287,26 @@ export class Webhook extends Node {
 		}
 
 		const node = context.getNode();
-		const rawOptions = node.parameters?.options as { onlyRunIf?: unknown } | undefined;
-		const rawOnlyRunIf = rawOptions?.onlyRunIf;
-		if (typeof rawOnlyRunIf === 'string' && rawOnlyRunIf.startsWith('=')) {
-			try {
-				const result = context.evaluateExpression(rawOnlyRunIf.slice(1), 0);
-				if (!result) return {};
-			} catch (error) {
-				context.logger.warn(
-					`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
-					{ nodeName: node.name },
-				);
+		if (nodeVersion >= 2.2) {
+			const requestMatches = checkTriggerConditions(
+				node,
+				{ body: req.body, query: req.query, headers: req.headers },
+				context.logger,
+			);
+			if (!requestMatches) return {};
+		} else {
+			const rawOptions = node.parameters?.options as { onlyRunIf?: unknown } | undefined;
+			const rawOnlyRunIf = rawOptions?.onlyRunIf;
+			if (typeof rawOnlyRunIf === 'string' && rawOnlyRunIf.startsWith('=')) {
+				try {
+					const result = context.evaluateExpression(rawOnlyRunIf.slice(1), 0);
+					if (!result) return {};
+				} catch (error) {
+					context.logger.warn(
+						`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
+						{ nodeName: node.name },
+					);
+				}
 			}
 		}
 

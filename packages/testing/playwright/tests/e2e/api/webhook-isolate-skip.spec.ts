@@ -146,6 +146,98 @@ test.describe(
 			expect(await response.json()).toMatchObject({ result: 'static-ok' });
 		});
 
+		test('evaluates a matching trigger condition natively on typeVersion 2.2', async ({ api }) => {
+			const response = await triggerTransformed(
+				api,
+				(node) => {
+					node.typeVersion = 2.2;
+					node.parameters.options = {
+						triggerConditions: {
+							conditions: [
+								{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'invite' },
+							],
+						},
+					};
+				},
+				{
+					headers: { 'content-type': 'application/json' },
+					data: { campaign: { id: 'invite' } },
+				},
+			);
+
+			expect(response.ok()).toBe(true);
+			expect(await response.json()).toMatchObject({ result: 'static-ok' });
+		});
+
+		test('rejects a non-matching trigger condition without creating an execution', async ({
+			api,
+		}) => {
+			const response = await triggerTransformed(
+				api,
+				(node) => {
+					node.typeVersion = 2.2;
+					node.parameters.options = {
+						triggerConditions: {
+							conditions: [
+								{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'invite' },
+							],
+						},
+					};
+				},
+				{
+					headers: { 'content-type': 'application/json' },
+					data: { campaign: { id: 'other' } },
+				},
+			);
+
+			// 200 with the generic message: the request was filtered before an
+			// execution was created, still without a webhook-phase isolate.
+			expect(response.status()).toBe(200);
+			expect(await response.json()).toMatchObject({ message: 'Webhook call received' });
+		});
+
+		test('trigger conditions cost fewer acquires than the expression variant', async ({ api }) => {
+			// Comparative, like the headline test: the 2.2 conditions variant stays on
+			// the skip path while the deprecated expression variant acquires per request.
+			// Import first — activation itself acquires, and only the request matters.
+			const { webhookPath } = await api.workflows.importWorkflowFromFile(
+				'webhook-isolate-skip-static.json',
+				{
+					transform: (workflow) => {
+						const node = workflow.nodes![0] as unknown as {
+							typeVersion: number;
+							parameters: Record<string, unknown>;
+						};
+						node.typeVersion = 2.2;
+						node.parameters.options = {
+							triggerConditions: {
+								conditions: [{ source: 'body', property: 'campaign', operator: 'exists' }],
+							},
+						};
+						return workflow;
+					},
+				},
+			);
+
+			const before = await isolateAcquires(api);
+			const conditionsResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				data: { campaign: 'x' },
+			});
+			expect(conditionsResponse.ok()).toBe(true);
+			expect(await conditionsResponse.json()).toMatchObject({ result: 'static-ok' });
+			const conditionsAcquires = (await isolateAcquires(api)) - before;
+
+			const expressionAcquires = await acquiresForTrigger(
+				api,
+				'webhook-isolate-skip-expression.json',
+				'expression-ok',
+			);
+
+			expect(expressionAcquires).toBeGreaterThan(conditionsAcquires);
+		});
+
 		test('acquires for typeVersion 1, whose body parsing evaluates a template', async ({ api }) => {
 			// Same comparative shape as the headline test: v1 must fall back to the
 			// engine, so it costs strictly more acquires than the gated v2 request.
