@@ -973,6 +973,15 @@ onMounted(async () => {
 	width: 100%;
 }
 
+/* N8nSelect still resolves its sizes to the legacy element-plus heights (large = 42px),
+   so it never lines up with N8nInput. Pin the picker to the token N8nInput "large" uses,
+   which is the height of every other input on this page. */
+.userSelect :global(.el-select .el-input__inner) {
+	height: var(--height--lg);
+	min-height: var(--height--lg);
+	line-height: var(--height--lg);
+}
+
 /* Ensure textarea uses regular UI font, not monospace */
 .projectDescriptionInput :global(textarea) {
 	font-family: var(--font-family);
