@@ -25,6 +25,8 @@ import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesMode from './NodesMode.vue';
 
+const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
+
 const mockDocumentStoreState = {
 	allNodes: [],
 	workflowTriggerNodes: [],
@@ -43,7 +45,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		isFeatureEnabled: () => false,
+		isFeatureEnabled: mockIsFeatureEnabled,
 		getFeatureFlagPayload: (key: string) =>
 			key === SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY
 				? 'https://example.com/suggest-service'
@@ -102,6 +104,7 @@ describe('NodesMode', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockIsFeatureEnabled.mockReturnValue(true);
 		pinia = createPinia();
 		setActivePinia(pinia);
 	});
@@ -293,6 +296,27 @@ describe('NodesMode', () => {
 		expect(emitted('emptyGroupSelected')).toEqual([[]]);
 		expect(emitted('nodeTypeSelected')).toBeUndefined();
 	});
+
+	it.each([TRIGGER_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW] as const)(
+		'does not render or select the Group item when empty groups are disabled in the %s view',
+		async (rootView) => {
+			mockIsFeatureEnabled.mockReturnValue(false);
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView,
+				hasSearch: true,
+				items: [groupCommandElement()],
+			});
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+			expect(emitted('emptyGroupSelected')).toBeUndefined();
+		},
+	);
 
 	it.each(['group', 'organisational', 'container'])(
 		'shows the Group item when searching for %s',

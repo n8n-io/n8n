@@ -171,9 +171,11 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -257,6 +259,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
 	// router guards) as well as inside the editor, so derive the NDV store from
@@ -662,6 +665,7 @@ export function useCanvasOperations() {
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
 		const shouldRestoreEmptyGroupAnchor =
+			emptyCanvasGroupsEnabled.value &&
 			preserveEmptyGroupAnchor &&
 			group?.nodeIds.length === 1 &&
 			node.type !== STICKY_NODE_TYPE &&
@@ -3143,6 +3147,10 @@ export function useCanvasOperations() {
 			return {};
 		}
 
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+		}
+
 		// Filter out nodes with missing type to prevent crashes
 		if (workflowData.nodes) {
 			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
@@ -3464,6 +3472,12 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
+			if (isEmptyGroupAnchor(node)) {
+				nodeSaveData.parameters = {
+					...nodeSaveData.parameters,
+					emptyGroupAnchor: true,
+				};
+			}
 			const pinDataForNode = pinDataToExecutionData(
 				workflowDocumentStore.value.pinnedDataByNodeName,
 			)[node.name];
@@ -3570,7 +3584,9 @@ export function useCanvasOperations() {
 		if (hasRestrictedNode) return false;
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
-
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
+		}
 		workflowData.meta = {
 			...workflowData.meta,
 			...workflowDocumentStore.value.meta,

@@ -52,6 +52,8 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 
 // Dependency submenu ids (`<type>:<id>`) share the menu with the fixed actions.
 type WorkflowMenuItem = DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS | string>;
@@ -91,6 +93,7 @@ const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 const { getDependencies, fetchDependencies, fetchDependencyCounts, hasDependencies } =
 	useDependencies();
 const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 // Prefetch the lightweight counts so the menu knows whether to show the entry.
 watch(
@@ -461,6 +464,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 					return tag;
 				}),
 			};
+			if (!emptyCanvasGroupsEnabled.value) {
+				removeEmptyCanvasGroupsFromWorkflowData(exportData);
+			}
 
 			const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 				type: 'application/json;charset=utf-8',
