@@ -78,11 +78,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign(
+		const accessToken = this.jwtService.signForResource(
 			{
 				iss: this.urlService.getInstanceBaseUrl(),
 				sub: userId,
-				aud: audience,
 				client_id: clientId,
 				jti: randomUUID(),
 				iat: Math.floor(Date.now() / 1000),
@@ -95,6 +94,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					isOAuth: true,
 				},
 			},
+			audience,
 			{
 				header: {
 					typ: 'at+jwt',
@@ -478,14 +478,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		try {
-			return this.jwtService.verify(token, {
-				audience: audiences as [string, ...string[]],
-			});
+			return this.jwtService.verifyForResource(token, audiences as [string, ...string[]]);
 		} catch (error) {
 			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
-					return this.jwtService.verify(token, { audience });
+					return this.jwtService.verifyForResource(token, audience);
 				} catch {
 					continue;
 				}

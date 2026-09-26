@@ -1,4 +1,6 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -11,8 +13,6 @@ describe('JwtService', () => {
 	const iat = 1699984313;
 	const jwtSecret = 'random-string';
 	const payload = { sub: 1 };
-	const signedToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTY5OTk4NDMxM30.xNZOAmcidW5ovEF_mwIOzCWkJ70FEO6MFNLK2QRDOeQ';
 
 	const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 	let globalConfig: GlobalConfig;
@@ -31,13 +31,13 @@ describe('JwtService', () => {
 	describe('secret initialization', () => {
 		it('should read the secret from config, when set', () => {
 			globalConfig.userManagement.jwtSecret = jwtSecret;
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 			expect(getJwtSecret(jwtService)).toEqual(jwtSecret);
 		});
 
 		it('should derive the secret from encryption key when not set in config', () => {
 			globalConfig.userManagement.jwtSecret = '';
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 			expect(getJwtSecret(jwtService)).toEqual(
 				'e9e2975005eddefbd31b2c04a0b0f2d9c37d9d718cf3676cddf76d65dec555cb',
 			);
@@ -55,23 +55,98 @@ describe('JwtService', () => {
 
 		beforeEach(() => {
 			globalConfig.userManagement.jwtSecret = jwtSecret;
-			jwtService = new JwtService(instanceSettings, globalConfig);
+			jwtService = new JwtService(instanceSettings, globalConfig, mock());
 		});
 
-		it('should sign', () => {
-			const token = jwtService.sign(payload);
-			expect(token).toEqual(signedToken);
+		it('should bind a signed token to the audience of its purpose', () => {
+			const token = jwtService.sign('session', payload);
+
+			expect(jwt.decode(token)).toMatchObject({ sub: 1, iat, aud: 'n8n:session' });
 		});
 
 		it('should decode and verify payload', () => {
-			const decodedToken = jwtService.verify(signedToken);
+			const token = jwtService.sign('session', payload);
+
+			const decodedToken = jwtService.verify('session', token);
+
 			expect(decodedToken.sub).toEqual(1);
 			expect(decodedToken.iat).toEqual(iat);
 		});
 
 		it('should throw an error on verify if the token is expired', () => {
-			const expiredToken = jwt.sign(payload, jwtSecret, { expiresIn: -10 });
-			expect(() => jwtService.verify(expiredToken)).toThrow(jwt.TokenExpiredError);
+			const expiredToken = jwtService.sign('session', payload, { expiresIn: -10 });
+
+			expect(() => jwtService.verify('session', expiredToken)).toThrow(jwt.TokenExpiredError);
+		});
+
+		it('should reject a token signed for a different purpose', () => {
+			const token = jwtService.sign('passwordReset', payload);
+
+			expect(() => jwtService.verify('emailChange', token)).toThrow(jwt.JsonWebTokenError);
+		});
+
+		it('should bind a resource token to the audience it is given', () => {
+			const resource = 'https://n8n.example.com/mcp-server/http';
+			const token = jwtService.signForResource(payload, resource);
+
+			expect(jwtService.verifyForResource(token, resource)).toMatchObject({ sub: 1 });
+			expect(() => jwtService.verifyForResource(token, 'https://other.example.com')).toThrow(
+				jwt.JsonWebTokenError,
+			);
+		});
+
+		describe('tokens minted before audience binding', () => {
+			it('should accept one for a purpose that used to be minted unbound', () => {
+				const unbound = jwt.sign(payload, jwtSecret);
+
+				expect(jwtService.verify('session', unbound)).toMatchObject({ sub: 1 });
+			});
+
+			it('should reject one for a purpose that always carried an audience', () => {
+				const unbound = jwt.sign(payload, jwtSecret);
+
+				expect(() => jwtService.verify('publicApiKey', unbound)).toThrow(jwt.JsonWebTokenError);
+			});
+
+			it.each(['oidcState', 'oidcNonce', 'oauthSession'] as const)(
+				'should reject one for %s, which is too short-lived to outlive an upgrade',
+				(purpose) => {
+					const unbound = jwt.sign(payload, jwtSecret);
+
+					expect(() => jwtService.verify(purpose, unbound)).toThrow(jwt.JsonWebTokenError);
+				},
+			);
+
+			it('should not let a bound token stand in for another purpose', () => {
+				const boundElsewhere = jwtService.sign('invite', payload);
+
+				expect(() => jwtService.verify('session', boundElsewhere)).toThrow(jwt.JsonWebTokenError);
+			});
+
+			it('should report a purpose at most once per interval, not once per request', () => {
+				const logger = mock<Logger>();
+				const service = new JwtService(instanceSettings, globalConfig, logger);
+				const unbound = jwt.sign(payload, jwtSecret);
+
+				// A session cookie is verified on every request.
+				for (let i = 0; i < 20; i++) service.verify('session', unbound);
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+
+				// A different purpose is reported on its own.
+				service.verify('invite', unbound);
+				expect(logger.warn).toHaveBeenCalledTimes(2);
+
+				// The signal comes back once the interval has passed.
+				vi.advanceTimersByTime(Time.hours.toMilliseconds + 1);
+				service.verify('session', unbound);
+				expect(logger.warn).toHaveBeenCalledTimes(3);
+			});
+
+			it('should still reject an unbound token with a bad signature', () => {
+				const unbound = jwt.sign(payload, 'a-different-secret');
+
+				expect(() => jwtService.verify('session', unbound)).toThrow(jwt.JsonWebTokenError);
+			});
 		});
 	});
 
@@ -88,7 +163,7 @@ describe('JwtService', () => {
 		it('should use jwtSecret from config and skip DB entirely when set', async () => {
 			globalConfig.userManagement.jwtSecret = 'env-pinned-secret';
 			const repo = makeRepo();
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 
 			await jwtService.initialize(repo);
 
@@ -100,7 +175,7 @@ describe('JwtService', () => {
 		it('should use the value from the active DB row when one exists', async () => {
 			const repo = makeRepo();
 			repo.findActiveSigningSecret.mockResolvedValue('db-stored-secret');
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 
 			await jwtService.initialize(repo);
 
@@ -115,7 +190,7 @@ describe('JwtService', () => {
 		it('should persist the derived jwtSecret when no active DB row exists', async () => {
 			const repo = makeRepo();
 			repo.findActiveSigningSecret.mockResolvedValue(null);
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 			const derivedSecret = getJwtSecret(jwtService);
 
 			await jwtService.initialize(repo);
@@ -130,7 +205,7 @@ describe('JwtService', () => {
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce('winner-secret');
 			repo.seedSigningSecret.mockResolvedValue(undefined);
-			const jwtService = new JwtService(instanceSettings, globalConfig);
+			const jwtService = new JwtService(instanceSettings, globalConfig, mock());
 
 			await jwtService.initialize(repo);
 

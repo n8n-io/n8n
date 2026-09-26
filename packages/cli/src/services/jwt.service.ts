@@ -1,15 +1,45 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings, type DeploymentStateRepo } from 'n8n-core';
+
+import {
+	LEGACY_UNBOUND_PURPOSES,
+	TOKEN_PURPOSES,
+	type TokenPurpose,
+} from '@/services/token-purposes';
+
+/**
+ * The session cookie is verified on every request, so an unthrottled notice
+ * would fill the log for as long as one pre-upgrade token is in use. Whether
+ * legacy tokens are still arriving is what matters, not how often.
+ */
+const UNBOUND_WARNING_INTERVAL_MS = Time.hours.toMilliseconds;
+
+/**
+ * `audience` is omitted on purpose: it is derived from the token's purpose, so
+ * a caller cannot bind a token to the wrong audience or forget to bind it.
+ */
+export type PurposedSignOptions = Omit<jwt.SignOptions, 'audience'>;
+export type PurposedVerifyOptions = Omit<jwt.VerifyOptions, 'audience'>;
 
 @Service()
 export class JwtService {
 	private jwtSecret: string = '';
 	private readonly jwtSecretFromEnv: boolean;
 
-	constructor({ encryptionKey }: InstanceSettings, globalConfig: GlobalConfig) {
+	/** Last time an unbound token was reported, per purpose. At most one entry per legacy purpose. */
+	private readonly unboundWarnedAt = new Map<TokenPurpose, number>();
+
+	constructor(
+		{ encryptionKey }: InstanceSettings,
+		globalConfig: GlobalConfig,
+		private readonly logger: Logger,
+	) {
 		this.jwtSecretFromEnv = Boolean(globalConfig.userManagement.jwtSecret);
 		this.jwtSecret = globalConfig.userManagement.jwtSecret;
 		if (!this.jwtSecret) {
@@ -48,16 +78,93 @@ export class JwtService {
 		if (winner !== null) this.jwtSecret = winner;
 	}
 
-	sign(payload: object, options: jwt.SignOptions = {}): string {
-		return jwt.sign(payload, this.jwtSecret, options);
+	/** Signs a token bound to the audience of `purpose`. */
+	sign(purpose: TokenPurpose, payload: object, options: PurposedSignOptions = {}): string {
+		return jwt.sign(payload, this.jwtSecret, {
+			...options,
+			audience: TOKEN_PURPOSES[purpose],
+		});
 	}
 
-	decode<T = JwtPayload>(token: string) {
+	/**
+	 * Signs a token bound to a protected resource rather than to a fixed
+	 * purpose. Only OAuth access tokens need this: their audience is the
+	 * requested resource indicator (RFC 8707), known at runtime.
+	 */
+	signForResource(payload: object, audience: string, options: PurposedSignOptions = {}): string {
+		return jwt.sign(payload, this.jwtSecret, { ...options, audience });
+	}
+
+	/**
+	 * Reads the claims without checking the signature. Use only to route a
+	 * token to the code that then verifies it — never to make a decision.
+	 */
+	decodeUnverified<T = JwtPayload>(token: string) {
 		return jwt.decode(token) as T;
 	}
 
-	verify<T = JwtPayload>(token: string, options: jwt.VerifyOptions = {}) {
-		return jwt.verify(token, this.jwtSecret, options) as T;
+	/** Verifies a token and requires it to carry the audience of `purpose`. */
+	verify<T = JwtPayload>(
+		purpose: TokenPurpose,
+		token: string,
+		options: PurposedVerifyOptions = {},
+	) {
+		try {
+			return jwt.verify(token, this.jwtSecret, {
+				...options,
+				audience: TOKEN_PURPOSES[purpose],
+			}) as T;
+		} catch (error) {
+			return this.verifyUnbound<T>(purpose, token, options, error);
+		}
+	}
+
+	/** Verifies an OAuth access token against the resource(s) it may be used for. */
+	verifyForResource<T = JwtPayload>(
+		token: string,
+		audience: string | [string, ...string[]],
+		options: PurposedVerifyOptions = {},
+	) {
+		return jwt.verify(token, this.jwtSecret, { ...options, audience }) as T;
+	}
+
+	/**
+	 * Accepts a token minted before its purpose carried an `aud` claim. A
+	 * session lasts a week and an invite link three months, so those tokens are
+	 * still in flight after an upgrade.
+	 *
+	 * This only admits a token that carries no audience at all. A token bound to
+	 * a different audience still fails, so the allowance cannot be used to
+	 * present one kind of bound token as another.
+	 *
+	 * DEPRECATED: removed on the v3 line, by which point every token in flight
+	 * carries an audience.
+	 */
+	private verifyUnbound<T>(
+		purpose: TokenPurpose,
+		token: string,
+		options: PurposedVerifyOptions,
+		verifyError: unknown,
+	): T {
+		if (!LEGACY_UNBOUND_PURPOSES.has(purpose)) throw verifyError;
+
+		const claims = jwt.decode(token);
+		if (!isRecord(claims) || 'aud' in claims) throw verifyError;
+
+		const payload = jwt.verify(token, this.jwtSecret, options) as T;
+		this.reportUnbound(purpose);
+		return payload;
+	}
+
+	/** Reports at most one unbound token per purpose per interval. */
+	private reportUnbound(purpose: TokenPurpose): void {
+		const now = Date.now();
+		if (now - (this.unboundWarnedAt.get(purpose) ?? 0) < UNBOUND_WARNING_INTERVAL_MS) return;
+
+		this.unboundWarnedAt.set(purpose, now);
+		this.logger.warn('Accepted a token minted before its purpose carried an audience', {
+			purpose,
+		});
 	}
 }
 

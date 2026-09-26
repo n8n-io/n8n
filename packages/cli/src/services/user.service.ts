@@ -215,6 +215,7 @@ export class UserService {
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				// Always use JWT-based tamper-proof invite links
 				const token = this.jwtService.sign(
+					'invite',
 					{
 						inviterId: owner.id,
 						inviteeId: id,
@@ -457,7 +458,10 @@ export class UserService {
 		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
 		try {
-			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(
+				'invite',
+				token,
+			);
 			if (!decoded.inviterId || !decoded.inviteeId) {
 				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
 				throw new BadRequestError('Invalid invite URL');

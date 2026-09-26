@@ -24,7 +24,7 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
 
 let logger: Mocked<Logger>;
 let userRepository: Mocked<UserRepository>;
@@ -97,7 +97,7 @@ describe('OAuthTokenService', () => {
 
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
-			const decoded = jwtService.decode(accessToken);
+			const decoded = jwtService.decodeUnverified(accessToken);
 			expect(decoded.iss).toBe(TEST_BASE_URL);
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
@@ -123,7 +123,7 @@ describe('OAuthTokenService', () => {
 				[],
 			);
 
-			const decoded = jwtService.decode(accessToken);
+			const decoded = jwtService.decodeUnverified(accessToken);
 			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
 		});
 
@@ -133,14 +133,14 @@ describe('OAuthTokenService', () => {
 				'execution:read',
 			]);
 
-			const decoded = jwtService.decode(accessToken);
+			const decoded = jwtService.decodeUnverified(accessToken);
 			expect(decoded.scope).toBe('workflow:read execution:read');
 		});
 
 		it('should mint an empty scope claim for scope-less grants', () => {
 			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, []);
 
-			const decoded = jwtService.decode(accessToken);
+			const decoded = jwtService.decodeUnverified(accessToken);
 			expect(decoded.scope).toBe('');
 		});
 
@@ -263,7 +263,7 @@ describe('OAuthTokenService', () => {
 				'https://n8n.example.com/mcp-server/http',
 			);
 
-			const decoded = jwtService.decode(result.access_token);
+			const decoded = jwtService.decodeUnverified(result.access_token);
 			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
 		});
 
@@ -287,7 +287,9 @@ describe('OAuthTokenService', () => {
 			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
 
 			expect(result.scope).toBe('workflow:read execution:read');
-			expect(jwtService.decode(result.access_token).scope).toBe('workflow:read execution:read');
+			expect(jwtService.decodeUnverified(result.access_token).scope).toBe(
+				'workflow:read execution:read',
+			);
 			expect(refreshTokenRepository.insertToken).toHaveBeenCalledWith(
 				expect.objectContaining({ scope: ['workflow:read', 'execution:read'] }),
 				expect.anything(),
@@ -384,7 +386,7 @@ describe('OAuthTokenService', () => {
 			const result = await boundService.validateAndRotateRefreshToken(REFRESH_TOKEN, CLIENT_ID);
 
 			// Not the default resource, which is what a resource-less mint would fall back to.
-			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+			expect(jwtService.decodeUnverified(result.access_token).aud).toBe(GRANTED_URL);
 		});
 
 		it('accepts a request naming the granted resource', async () => {
@@ -394,7 +396,7 @@ describe('OAuthTokenService', () => {
 				GRANTED_URL,
 			);
 
-			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+			expect(jwtService.decodeUnverified(result.access_token).aud).toBe(GRANTED_URL);
 		});
 
 		it('accepts an equivalent spelling of the granted resource', async () => {
@@ -405,7 +407,7 @@ describe('OAuthTokenService', () => {
 			);
 
 			// Minted from the stored spelling, which the resource also accepts.
-			expect(jwtService.decode(result.access_token).aud).toBe(GRANTED_URL);
+			expect(jwtService.decodeUnverified(result.access_token).aud).toBe(GRANTED_URL);
 		});
 
 		it('rejects a request naming a different resource, leaving the token usable', async () => {
@@ -469,11 +471,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should throw error for wrong audience', async () => {
-			const wrongAudienceToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'wrong-audience', // Matches neither legacy literal nor resource URL
-				client_id: 'client-456',
-			});
+			const wrongAudienceToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				'wrong-audience',
+			); // Matches neither legacy literal nor resource URL;
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
 				'JWT Verification Failed',
@@ -482,11 +483,10 @@ describe('OAuthTokenService', () => {
 
 		it('should accept tokens with canonical audience when expected audience is provided', async () => {
 			const audience = 'https://n8n.example.com/mcp-server/http';
-			const canonicalAudienceToken = jwtService.sign({
-				sub: 'user-123',
-				aud: audience,
-				client_id: 'client-456',
-			});
+			const canonicalAudienceToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				audience,
+			);
 
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({
@@ -508,11 +508,10 @@ describe('OAuthTokenService', () => {
 
 		it('should accept legacy audience when expected audience is provided', async () => {
 			const audience = 'https://n8n.example.com/mcp-server/http';
-			const legacyAudienceToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				client_id: 'client-456',
-			});
+			const legacyAudienceToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				'mcp-server-api',
+			);
 
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({
@@ -533,11 +532,10 @@ describe('OAuthTokenService', () => {
 		it('should accept token whose aud is the legacy literal (backward compat)', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const legacyToken = jwtService.sign({
-				sub: userId,
-				aud: 'mcp-server-api',
-				client_id: clientId,
-			});
+			const legacyToken = jwtService.signForResource(
+				{ sub: userId, client_id: clientId },
+				'mcp-server-api',
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: legacyToken, clientId, userId }),
 			);
@@ -551,11 +549,10 @@ describe('OAuthTokenService', () => {
 		it('should accept token whose aud is the resource URL', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const urlToken = jwtService.sign({
-				sub: userId,
-				aud: TEST_RESOURCE_URL,
-				client_id: clientId,
-			});
+			const urlToken = jwtService.signForResource(
+				{ sub: userId, client_id: clientId },
+				TEST_RESOURCE_URL,
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: urlToken, clientId, userId }),
 			);
@@ -793,11 +790,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should reject a token whose aud belongs to another resource', async () => {
-			const tokenForResourceA = jwtService.sign({
-				sub: 'user-123',
-				aud: RESOURCE_A_URL,
-				client_id: 'client-456',
-			});
+			const tokenForResourceA = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				RESOURCE_A_URL,
+			);
 
 			await expect(
 				multiResourceService.verifyAccessToken(tokenForResourceA, RESOURCE_B_URL),
@@ -805,11 +801,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should not accept the legacy audience at a non-default resource', async () => {
-			const legacyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: LEGACY_AUDIENCE,
-				client_id: 'client-456',
-			});
+			const legacyToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				LEGACY_AUDIENCE,
+			);
 
 			await expect(
 				multiResourceService.verifyAccessToken(legacyToken, RESOURCE_B_URL),
@@ -817,11 +812,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should accept a token at its own resource', async () => {
-			const tokenForResourceB = jwtService.sign({
-				sub: 'user-123',
-				aud: RESOURCE_B_URL,
-				client_id: 'client-456',
-			});
+			const tokenForResourceB = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				RESOURCE_B_URL,
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: tokenForResourceB, clientId: 'client-456', userId: 'user-123' }),
 			);
@@ -832,11 +826,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should still accept the legacy audience at the default (instance MCP) resource', async () => {
-			const legacyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: LEGACY_AUDIENCE,
-				client_id: 'client-456',
-			});
+			const legacyToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				LEGACY_AUDIENCE,
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: legacyToken, clientId: 'client-456', userId: 'user-123' }),
 			);
@@ -900,11 +893,10 @@ describe('OAuthTokenService', () => {
 		it('treats a token without a scope claim as having no scopes', async () => {
 			// cannot occur legitimately: migration 1784000000047 deleted every
 			// access token minted before scoping shipped
-			const legacyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: TEST_RESOURCE_URL,
-				client_id: 'client-456',
-			});
+			const legacyToken = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				TEST_RESOURCE_URL,
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: legacyToken, clientId: 'client-456', userId: 'user-123' }),
 			);
@@ -1002,11 +994,10 @@ describe('OAuthTokenService', () => {
 			['the instance-base-URL-derived resource URL', TEST_RESOURCE_URL],
 			['the legacy audience', LEGACY_AUDIENCE],
 		])('should accept a token whose aud is %s', async (_, audience) => {
-			const token = jwtService.sign({
-				sub: 'user-123',
-				aud: audience,
-				client_id: 'client-456',
-			});
+			const token = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				audience,
+			);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token, clientId: 'client-456', userId: 'user-123' }),
 			);
@@ -1017,11 +1008,10 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should reject a token whose aud is an unconfigured host', async () => {
-			const token = jwtService.sign({
-				sub: 'user-123',
-				aud: 'https://other.example.com/mcp-server/http',
-				client_id: 'client-456',
-			});
+			const token = jwtService.signForResource(
+				{ sub: 'user-123', client_id: 'client-456' },
+				'https://other.example.com/mcp-server/http',
+			);
 
 			await expect(
 				configuredService.verifyAccessToken(token, CONFIGURED_RESOURCE_URL),
