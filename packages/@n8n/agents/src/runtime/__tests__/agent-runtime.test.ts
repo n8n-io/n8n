@@ -6533,6 +6533,64 @@ describe('tool systemInstruction merging', () => {
 		expect(afterSecond).toContain('Always confirm before using deferred_capability.');
 		expect(afterFirst).not.toContain('Always confirm before using deferred_capability.');
 	});
+
+	it("keeps a mode-scoped tool's systemInstruction out of the cached system message across a mode switch", async () => {
+		const coreTool: BuiltTool = {
+			name: 'core_tool',
+			description: 'Core tool',
+			systemInstruction: 'Core rule.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+		const modeTool: BuiltTool = {
+			name: 'mode_b_tool',
+			description: 'Mode b tool',
+			systemInstruction: 'Mode b rule.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool, modeTool],
+			toolModes: {
+				modes: {
+					a: { description: 'Mode a.', tools: [] },
+					b: { description: 'Mode b.', tools: ['mode_b_tool'] },
+				},
+				initialMode: 'a',
+				announceMode: false,
+			},
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-switch', toolName: 'switch_mode', args: { mode: 'b' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('switch to mode b');
+
+		const calls = generateText.mock.calls as Array<
+			[{ instructions: Array<{ content: string }> | { content: string } }]
+		>;
+		const systemParts = (index: number) => {
+			const system = calls[index][0].instructions;
+			return Array.isArray(system) ? system.map((entry) => entry.content) : [system.content];
+		};
+		const [beforeFirst, ...beforeRest] = systemParts(0);
+		const [afterFirst, ...afterRest] = systemParts(1);
+
+		expect(beforeFirst).toContain('Core rule.');
+		expect(afterFirst).toBe(beforeFirst);
+		expect([beforeFirst, ...beforeRest].join('')).not.toContain('Mode b rule.');
+		expect(afterFirst).not.toContain('Mode b rule.');
+		expect(afterRest.join('')).toContain('Mode b rule.');
+	});
 });
 
 describe('instruction providerOptions', () => {
