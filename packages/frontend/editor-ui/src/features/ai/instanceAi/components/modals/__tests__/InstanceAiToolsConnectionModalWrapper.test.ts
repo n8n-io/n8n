@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
@@ -13,6 +14,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
+const confirmRemoveMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -45,17 +47,20 @@ const {
 	mockConnectWithCredential,
 	mockIgnorePendingConnectResult,
 	mockUpdateConnection,
+	mockDisconnect,
 	mockIsConnectLocked,
 	mcpStoreMock,
 } = vi.hoisted(() => {
 	const mockConnect = vi.fn();
 	const mockUpdateConnection = vi.fn();
+	const mockDisconnect = vi.fn();
 	return {
 		mockConnect,
 		mockConnectServer: vi.fn(),
 		mockConnectWithCredential: vi.fn(),
 		mockIgnorePendingConnectResult: vi.fn(),
 		mockUpdateConnection,
+		mockDisconnect,
 		mockIsConnectLocked: vi.fn(),
 		mcpStoreMock: {
 			connections: [] as Array<{
@@ -63,7 +68,7 @@ const {
 				serverSlug: string;
 				credentialId: string;
 				status: 'connecting' | 'connected' | 'disconnected';
-				toolFilter: null;
+				toolPermissions: ToolConnectionSettings;
 			}>,
 			catalog: [] as Array<{
 				slug: string;
@@ -88,7 +93,7 @@ const {
 			fetchConnectionToolsLazy: vi.fn(),
 			connect: mockConnect,
 			updateConnection: mockUpdateConnection,
-			disconnect: vi.fn(),
+			disconnect: mockDisconnect,
 		},
 	};
 });
@@ -131,11 +136,11 @@ const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock 
 			trackModalOpened: vi.fn(),
 		},
 		telemetryMock: {
-			trackToolFilterSettingsUpdated: vi.fn(),
 			trackFirstCredentialConnectionStart: vi.fn(),
 			trackCredentialDropdownOpened: vi.fn(),
 			trackExistingCredentialSelected: vi.fn(),
 			trackNewCredentialConnectionStart: vi.fn(),
+			trackToolPermissionsUpdated: vi.fn(),
 		},
 		uiStoreMock: {
 			modalsById: {
@@ -189,6 +194,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmRemoveMock }),
+}));
+
 const linearItem: McpServerConnectionItem = {
 	id: 'linear',
 	kind: 'mcp-server',
@@ -198,17 +207,17 @@ const linearItem: McpServerConnectionItem = {
 	availableTools: [],
 };
 
+const toolSettings: ToolConnectionSettings = {
+	categories: { read: 'always_allow', write: 'require_approval' },
+	tools: { search: 'always_allow' },
+};
+
 const connectedLinearItem: McpServerConnectionItem = {
 	...linearItem,
 	id: 'conn-1',
 	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
-};
-
-const toolSettings: ToolConnectionSettings = {
-	inclusionMode: 'selected',
-	selectedTools: ['search'],
-	excludedTools: [],
+	settings: toolSettings,
 };
 
 let modalListeners: Record<string, unknown> = {};
@@ -217,7 +226,15 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['open', 'detailItem', 'detailMode', 'items'],
+	props: [
+		'open',
+		'detailItem',
+		'detailMode',
+		'hideBackButton',
+		'items',
+		'categories',
+		'showSuggestionFooter',
+	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -244,6 +261,10 @@ function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args
 
 function emitSave(settings: ToolConnectionSettings): void {
 	emitModalEvent('onSave', connectedLinearItem, settings);
+}
+
+function emitDisconnect(): void {
+	emitModalEvent('onDisconnect', connectedLinearItem);
 }
 
 function emitSelectCredential(): void {
@@ -303,29 +324,97 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		mockConnectServer.mockResolvedValue(null);
 		mockConnectWithCredential.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+		mockDisconnect.mockResolvedValue(true);
+		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
 	});
 
 	it('configures the suggestion footer copy', () => {
 		const { getByText } = renderComponent();
 
+		expect(modalProps.categories).toEqual(['all']);
+		expect(modalProps.showSuggestionFooter).toBe(true);
 		expect(getByText('instanceAi.connections.modal.suggestion.prompt')).toBeInTheDocument();
 		expect(getByText('instanceAi.connections.modal.suggestion.action')).toBeInTheDocument();
 	});
 
-	it('keeps the modal open after saving settings opened from the tools list', async () => {
+	it('closes the modal after saving settings opened from the tools list', async () => {
 		renderComponent();
 
 		emitSave(toolSettings);
 		await flushPromises();
 
 		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
-			inclusionMode: 'selected',
-			selectedTools: ['search'],
-			excludedTools: [],
+			toolPermissions: toolSettings,
 		});
-		expect(telemetryMock.trackToolFilterSettingsUpdated).toHaveBeenCalledWith('linear', 'selected');
-		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
+	});
+
+	it('tracks changed MCP tool permissions after saving', async () => {
+		renderComponent();
+		const changedSettings: ToolConnectionSettings = {
+			categories: { read: 'blocked', write: 'require_approval' },
+			tools: { search: 'always_allow' },
+		};
+
+		emitSave(changedSettings);
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).toHaveBeenCalledWith(
+			'linear',
+			changedSettings,
+		);
+	});
+
+	it('does not track unchanged MCP tool permissions', async () => {
+		renderComponent();
+
+		emitSave({
+			categories: { ...toolSettings.categories },
+			tools: { ...toolSettings.tools },
+		});
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
+	});
+
+	it('does not track MCP tool permissions when saving fails', async () => {
+		mockUpdateConnection.mockResolvedValue(null);
+		renderComponent();
+
+		emitSave({
+			categories: { read: 'blocked', write: 'require_approval' },
+			tools: { search: 'always_allow' },
+		});
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
+	});
+
+	it('keeps the connector when removal is cancelled', async () => {
+		confirmRemoveMock.mockResolvedValue(MODAL_CANCEL);
+		renderComponent();
+
+		emitDisconnect();
+		await flushPromises();
+
+		expect(confirmRemoveMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.description',
+			expect.objectContaining({
+				title: 'tools.connection.settings.removeConfirm.title',
+				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
+			}),
+		);
+		expect(mockDisconnect).not.toHaveBeenCalled();
+	});
+
+	it('removes the connector after confirmation', async () => {
+		renderComponent();
+
+		emitDisconnect();
+		await flushPromises();
+
+		expect(mockDisconnect).toHaveBeenCalledWith('conn-1');
 	});
 
 	it('closes the modal after saving settings opened directly', async () => {
@@ -355,7 +444,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'disconnected' as const,
-			toolFilter: null,
+			toolPermissions: {
+				categories: { read: 'always_allow' as const, write: 'require_approval' as const },
+			},
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
@@ -369,6 +460,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			status: 'disconnected',
 		});
 		expect(modalProps.detailMode).toBe('settings');
+		expect(modalProps.hideBackButton).toBe(true);
 		expect(mcpStoreMock.fetchConnectionToolsLazy).toHaveBeenCalledWith('conn-1');
 	});
 
@@ -380,13 +472,18 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'connected' as const,
-			toolFilter: null,
+			toolPermissions: {
+				categories: { read: 'always_allow' as const, write: 'require_approval' as const },
+			},
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		mcpStoreMock.connectionToolsById = new Map([
+			['conn-1', [{ name: 'search', description: 'Search issues', category: 'read' }]],
+		]);
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 
-		const { getByTestId, getByText } = renderComponent({
+		const { getAllByText, getByTestId } = renderComponent({
 			global: {
 				stubs: {
 					ToolsConnectionModal: false,
@@ -395,22 +492,24 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			},
 		});
 		await flushPromises();
-		const inclusionInput = () =>
-			getByTestId('tools-connection-settings-inclusion').querySelector('input')!;
-		await fireEvent.click(inclusionInput());
-		await fireEvent.click(getByText('All Except'));
+		const readPermissionInput = () =>
+			getByTestId('tools-connection-permission-read').querySelector('input')!;
+		await fireEvent.click(readPermissionInput());
+		await fireEvent.click(getAllByText('Block')[0]);
 
 		isLocked.value = true;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connecting')).toBeVisible();
-		expect(inclusionInput()).toHaveValue('All Except');
+		expect(readPermissionInput()).toHaveValue('Block');
 
 		isLocked.value = false;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeVisible();
-		expect(inclusionInput()).toHaveValue('All Except');
+		expect(readPermissionInput()).toHaveValue('Block');
+		expect(() => getByTestId('tools-connection-settings-tab-settings')).toThrow();
+		expect(() => getByTestId('tools-connection-settings-back')).toThrow();
 	});
 
 	it('keeps a new connection in the detail view while the connection is locked', () => {
@@ -420,15 +519,36 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		renderComponent();
 
 		expect(modalProps.detailItem).toMatchObject({ id: 'linear', status: 'connecting' });
-		expect(modalProps.detailMode).toBe('detail');
+		expect(modalProps.detailMode).toBe('settings');
+	});
+
+	it('does not open the old detail view for an unconnected registry server', async () => {
+		renderComponent();
+
+		const unconnected = (modalProps.items as McpServerConnectionItem[]).find(
+			(item) => item.kind === 'mcp-server' && item.status === 'none',
+		);
+		emitModalEvent('onUpdate:detailItem', unconnected);
+		await nextTick();
+
+		expect(modalProps.detailItem).toBeNull();
 	});
 
 	it('hides and restores the selected connection while editing a credential', async () => {
-		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'linear' };
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			status: 'connected' as const,
+			toolPermissions: toolSettings,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 		renderComponent();
 
 		expect(modalProps.open).toBe(true);
-		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+		expect(modalProps.detailItem).toMatchObject({ id: 'conn-1' });
 
 		uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 		await nextTick();
@@ -440,7 +560,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await nextTick();
 
 		expect(modalProps.open).toBe(true);
-		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+		expect(modalProps.detailItem).toMatchObject({ id: 'conn-1' });
 
 		emitModalEvent('onUpdate:open', false);
 		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');

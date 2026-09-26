@@ -27,6 +27,18 @@ describe('components', () => {
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
+		it('should render a borderless trigger with the ghost theme', () => {
+			const { container } = render(N8nSelect, {
+				props: { theme: 'ghost' },
+			});
+
+			const select = container.querySelector('.el-select');
+			expect(select).not.toBeNull();
+			expect(Array.from(select!.classList).some((className) => className.includes('ghost'))).toBe(
+				true,
+			);
+		});
+
 		it('should select an option', async () => {
 			const n8nSelectTestComponent = defineComponent({
 				props: {

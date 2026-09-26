@@ -2250,31 +2250,51 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
-	describe('executeMcpTool permission', () => {
+	describe('MCP tool permissions', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 		});
 
-		it('defaults to require_approval', async () => {
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe(
-				'require_approval',
-			);
+		it('defaults read tools to always allow and write tools to require approval', async () => {
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+			});
 		});
 
 		it('persists and reflects an update', async () => {
 			const result = await service.updateAdminSettings({
-				permissions: { executeMcpTool: 'always_allow' },
+				permissions: { mcpRead: 'blocked', mcpWrite: 'always_allow' },
 			});
 
-			expect(result.permissions.executeMcpTool).toBe('always_allow');
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe('always_allow');
+			expect(result.permissions).toMatchObject({
+				mcpRead: 'blocked',
+				mcpWrite: 'always_allow',
+			});
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'blocked', write: 'always_allow' },
+			});
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
-					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
+					value: expect.stringContaining('"mcpRead":"blocked","mcpWrite":"always_allow"'),
 				}),
 				['key'],
 			);
+		});
+
+		it('loads persisted category permissions without global tool overrides', async () => {
+			persistedSettingsValue = JSON.stringify({
+				permissions: {
+					mcpRead: 'blocked',
+					mcpWrite: 'require_approval',
+				},
+			});
+
+			await service.loadFromDb();
+
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'blocked', write: 'require_approval' },
+			});
 		});
 	});
 
@@ -2381,6 +2401,17 @@ describe('InstanceAiSettingsService', () => {
 
 		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
+		});
+
+		it('flags mcpSettingsChanged when MCP tool permissions change', async () => {
+			await service.updateAdminSettings({
+				permissions: { mcpRead: 'blocked' },
+			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-settings-updated',

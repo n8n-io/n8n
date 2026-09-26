@@ -1,4 +1,5 @@
 import type { InjectionKey, Ref } from 'vue';
+import type { McpToolPermissions } from '@n8n/api-types';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -25,6 +26,8 @@ export interface ToolCredentialRef {
  */
 export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
 
+export type ToolConnectionFailureReason = 'server_unavailable' | 'authentication' | 'unknown';
+
 /** Whether a connection exists or is currently being established. */
 export function hasToolConnection(status: ToolConnectionStatus): boolean {
 	return status !== 'none';
@@ -36,6 +39,7 @@ export interface BaseConnectionItem {
 	description?: string;
 	iconSource?: ToolIconSource;
 	status: ToolConnectionStatus;
+	connectionFailureReason?: ToolConnectionFailureReason;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
@@ -84,19 +88,14 @@ export interface PublisherInfo {
 	url?: string;
 }
 
-export type McpToolInclusionMode = 'all' | 'selected' | 'except';
-
-export interface McpToolSettings {
-	inclusionMode: McpToolInclusionMode;
-	selectedTools: string[];
-	excludedTools: string[];
-}
+export type McpToolSettings = McpToolPermissions;
 
 export type ToolConnectionSettings = McpToolSettings;
 
 export interface McpServerConnectionItem extends BaseConnectionItem {
 	kind: 'mcp-server';
 	availableTools: McpServerTool[];
+	isOfficial?: boolean;
 	settings?: McpToolSettings;
 	publisher?: PublisherInfo;
 	version?: string;

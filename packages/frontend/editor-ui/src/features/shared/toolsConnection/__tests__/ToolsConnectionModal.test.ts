@@ -91,6 +91,7 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		showSuggestionFooter: boolean;
 		createAction: {
 			category: ToolCategoryKey;
 			label: string;
@@ -105,6 +106,7 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			showSuggestionFooter: props.showSuggestionFooter,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -185,6 +187,19 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeTruthy();
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+	});
+
+	it('supports a flat all-items list with a suggestion footer', () => {
+		const { getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all'],
+			showSuggestionFooter: true,
+		});
+
+		expect(queryByTestId('tab-all')).not.toBeInTheDocument();
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('GitHub')).toBeTruthy();
+		expect(queryByText('OpenAI')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
 	});
 
 	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
@@ -284,15 +299,12 @@ describe('ToolsConnectionModal', () => {
 			status: 'none' as const,
 			settings: undefined,
 		};
-		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
+		const { queryByTestId, queryByText } = renderWith({
 			detailItem: unconnectedMcp,
 		});
 
 		expect(queryByTestId('tools-connection-detail')).toBeTruthy();
-		const chips = queryAllByTestId('tools-connection-detail-tool');
-		expect(chips.length).toBeGreaterThan(0);
-		expect(queryByText('search')).toBeTruthy();
-		expect(queryByText('create-pages')).toBeTruthy();
+		expect(queryByText(connectedMcpFixture.longDescription ?? '')).toBeTruthy();
 		expect(queryByTestId('tools-connection-search')).toBeNull();
 	});
 
@@ -308,7 +320,7 @@ describe('ToolsConnectionModal', () => {
 	it('renders the slotted settings body when a consumer supplies #settings-body', () => {
 		const { queryByTestId } = renderWithMcpSettingsSlot(connectedMcpFixture);
 		expect(queryByTestId('tools-connection-settings')).toBeTruthy();
-		expect(queryByTestId('tools-connection-settings-inclusion')).toBeTruthy();
+		expect(queryByTestId('tools-connection-permission-read')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-save')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-remove')).toBeTruthy();
 	});

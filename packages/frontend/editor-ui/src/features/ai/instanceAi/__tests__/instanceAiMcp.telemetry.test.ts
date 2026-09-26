@@ -58,15 +58,17 @@ describe('instance ai mcp telemetry', () => {
 		);
 	});
 
-	test('tracks MCP tool filter updates', () => {
-		useInstanceAiMcpTelemetry().trackToolFilterSettingsUpdated('brave', 'selected');
+	test('tracks MCP tool permission updates', () => {
+		useInstanceAiMcpTelemetry().trackToolPermissionsUpdated('brave', {
+			categories: { read: 'always_allow', write: 'require_approval' },
+			tools: { search: 'blocked' },
+		});
 
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED,
-			{
-				server_slug: 'brave',
-				inclusion_mode: 'selected',
-			},
-		);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_PERMISSIONS_UPDATED, {
+			server_slug: 'brave',
+			read_permission: 'always_allow',
+			write_permission: 'require_approval',
+			tool_override_count: 1,
+		});
 	});
 });

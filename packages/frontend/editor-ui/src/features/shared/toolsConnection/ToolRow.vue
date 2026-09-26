@@ -82,6 +82,12 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
+const serviceActionLabel = computed(() =>
+	i18n.baseText(
+		props.item.status === 'connected' ? 'generic.settings' : 'tools.connection.action.setup',
+	),
+);
+
 const actionLabel = computed(() => {
 	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
 	if (props.item.status === 'disconnected') {
@@ -95,6 +101,7 @@ const installBlocked = computed(
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+const isRowNavigable = computed(() => props.item.kind !== 'service');
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -129,12 +136,13 @@ function handleConnect() {
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<button
-			type="button"
-			:class="$style.mainAction"
-			:disabled="isDisabled || item.status === 'connecting'"
+		<component
+			:is="isRowNavigable ? 'button' : 'div'"
+			:type="isRowNavigable ? 'button' : undefined"
+			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
 			data-test-id="tools-connection-row-main"
-			@click="handleRowClick"
+			@click="isRowNavigable && handleRowClick()"
 		>
 			<template v-if="item.kind === 'workflow'">
 				<span :class="$style.workflowIcon" aria-hidden="true">
@@ -191,7 +199,7 @@ function handleConnect() {
 					</N8nText>
 				</span>
 			</template>
-		</button>
+		</component>
 
 		<div :class="$style.action">
 			<N8nTooltip
@@ -210,6 +218,14 @@ function handleConnect() {
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
 			</N8nTooltip>
+			<N8nButton
+				v-else-if="item.kind === 'service'"
+				variant="outline"
+				size="small"
+				:label="serviceActionLabel"
+				data-test-id="tools-connection-row-service-action"
+				@click="handleRowClick"
+			/>
 			<ToolCredentialPicker
 				v-else-if="shouldShowCredentialPicker"
 				:item="item"
@@ -341,6 +357,10 @@ function handleConnect() {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
+}
+
+.mainActionStatic {
+	cursor: default;
 }
 
 .row--workflow {

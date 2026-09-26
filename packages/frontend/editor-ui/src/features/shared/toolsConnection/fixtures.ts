@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import type {
 	AgentConnectionItem,
 	DataStoreConnectionItem,
@@ -30,9 +32,11 @@ const connectedNotion: McpServerConnectionItem = {
 	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-notion-1', required: true }],
 	settings: {
-		inclusionMode: 'except',
-		selectedTools: [],
-		excludedTools: ['notion.update-database'],
+		categories: {
+			read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
+			write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
+		},
+		tools: { 'notion.update-database': 'blocked' },
 	},
 	longDescription:
 		'Notion MCP helps you plug tools into your Notion workspace, allowing you to create, edit, search and organize content directly from n8n. Get contextual and relevant assistance from n8n, while keeping knowledge organized in Notion.',

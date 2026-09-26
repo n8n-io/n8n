@@ -98,6 +98,16 @@ const renderModelDialog = ({ props }: { props: Record<string, unknown> }) =>
 const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'search', ...props } });
 
+async function selectOption(select: HTMLElement, label: string) {
+	const listboxId = select.querySelector('input')?.getAttribute('aria-controls');
+	expect(listboxId).toBeTruthy();
+	const option = Array.from(
+		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
+	).find((element) => element.textContent === label);
+	expect(option).toBeDefined();
+	await fireEvent.click(option!);
+}
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
 	instanceAi: FrontendModuleSettings['instance-ai'],
@@ -600,22 +610,69 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 
-		it('shows the Execute MCP tools permission when the group is expanded', async () => {
-			const { getByTestId, getByLabelText } = renderComponent();
+		it('shows the MCP tool category permissions when the group is expanded', async () => {
+			const { getByTestId, getByLabelText, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
 
-			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible());
+			await waitFor(() => {
+				expect(getByTestId('n8n-agent-permission-mcpRead')).toBeVisible();
+				expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible();
+			});
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it.each([
+			{
+				permissions: { mcpRead: 'always_allow' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.default',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.exception',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'always_allow' as const },
+				summary: 'settings.n8nAgent.permissions.group.exceptions',
+			},
+		])('shows $summary for MCP tool category permissions', ({ permissions, summary }) => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					permissions,
+				},
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-mcp').textContent).toContain(summary);
 		});
 
 		it('locks the MCP permission group when MCP access is disabled', () => {
 			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
 
-			const { getByText, queryByTestId, queryByLabelText } = renderComponent();
+			const { queryByTestId, queryByLabelText } = renderComponent();
 
-			expect(getByText('settings.n8nAgent.permissions.group.mcpDisabled')).toBeVisible();
 			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpRead')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpWrite')).toBeNull();
+		});
+
+		it('persists an MCP tool category permission change', async () => {
+			const setPermission = vi.spyOn(store, 'setPermission');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible());
+
+			await selectOption(
+				getByTestId('n8n-agent-permission-mcpWrite'),
+				'settings.n8nAgent.permissions.blocked',
+			);
+
+			expect(setPermission).toHaveBeenCalledWith('mcpWrite', 'blocked');
+			expect(save).toHaveBeenCalled();
 		});
 
 		it('offers only always_allow and blocked for createPreference', async () => {
@@ -623,21 +680,27 @@ describe('SettingsInstanceAiView', () => {
 			// body and only mounts it once open, so the options never show up in
 			// `select.textContent`. Open the select and read the teleported list
 			// instead of the select's own DOM subtree.
-			const { getByTestId, getByLabelText, queryAllByText } = renderComponent();
+			const { getByTestId, getByLabelText } = renderComponent();
 			await fireEvent.click(
 				getByLabelText('Toggle settings.n8nAgent.permissions.group.preferences'),
 			);
 			const select = await waitFor(() => getByTestId('n8n-agent-permission-createPreference'));
 			expect(select).toBeVisible();
 
-			await fireEvent.click(select.querySelector('input')!);
-			await waitFor(() =>
-				expect(queryAllByText('settings.n8nAgent.permissions.alwaysAllow').length).toBeGreaterThan(
-					0,
-				),
-			);
-			expect(queryAllByText('settings.n8nAgent.permissions.blocked').length).toBeGreaterThan(0);
-			expect(queryAllByText('settings.n8nAgent.permissions.needsApproval')).toHaveLength(0);
+			const input = select.querySelector('input')!;
+			await fireEvent.click(input);
+			const listboxId = input.getAttribute('aria-controls');
+			const options = await waitFor(() => {
+				const listbox = document.getElementById(listboxId!);
+				expect(listbox).not.toBeNull();
+				return Array.from(listbox!.querySelectorAll('[role="option"]')).map(
+					(option) => option.textContent,
+				);
+			});
+			expect(options).toEqual([
+				'settings.n8nAgent.permissions.alwaysAllow',
+				'settings.n8nAgent.permissions.blocked',
+			]);
 		});
 	});
 

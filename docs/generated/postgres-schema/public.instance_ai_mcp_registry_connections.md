@@ -8,7 +8,7 @@
 | credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
 | id | uuid |  | false |  |  |  |
 | serverSlug | varchar(255) |  | false |  | [public.mcp_registry_server](public.mcp_registry_server.md) |  |
-| toolFilter | json |  | true |  |  | Optional MCP tool filter per registry connection: { mode: "allow" \| "exclude", tools: string[] } |
+| toolPermissions | json |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
@@ -24,6 +24,7 @@
 | instance_ai_mcp_registry_connections_credentialId_not_null | n | NOT NULL "credentialId" |
 | instance_ai_mcp_registry_connections_id_not_null | n | NOT NULL id |
 | instance_ai_mcp_registry_connections_serverSlug_not_null | n | NOT NULL "serverSlug" |
+| instance_ai_mcp_registry_connections_toolPermissions_not_null | n | NOT NULL "toolPermissions" |
 | instance_ai_mcp_registry_connections_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | instance_ai_mcp_registry_connections_userId_not_null | n | NOT NULL "userId" |
 
@@ -48,7 +49,7 @@ erDiagram
   varchar_36_ credentialId FK
   uuid id
   varchar_255_ serverSlug FK
-  json toolFilter
+  json toolPermissions
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

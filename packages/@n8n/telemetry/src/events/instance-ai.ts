@@ -252,12 +252,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user started connecting a new credential for an MCP server.',
 		properties: z.object({ server_slug: z.string() }),
 	},
-	MCP_TOOL_FILTER_SETTINGS_UPDATED: {
-		name: 'Instance AI mcp tool filter settings updated',
-		description: 'The user updated which tools are enabled for an MCP server.',
+	MCP_TOOL_PERMISSIONS_UPDATED: {
+		name: 'User updated Instance AI MCP tool permissions',
+		description:
+			'The user saved changed read, write, or tool-specific permissions for an MCP server.',
 		properties: z.object({
 			server_slug: z.string(),
-			inclusion_mode: z.enum(['all', 'selected', 'except']),
+			read_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			write_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			tool_override_count: z.number().int().nonnegative(),
 		}),
 	},
 	BROWSER_USE_MODAL_OPENED: {

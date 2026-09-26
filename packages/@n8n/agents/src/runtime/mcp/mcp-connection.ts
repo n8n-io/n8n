@@ -4,7 +4,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
-import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';
+import type {
+	McpServerConfig,
+	McpToolCallSettledEvent,
+	McpToolDescriptor,
+	McpRequireApproval,
+} from '../../types/sdk/mcp';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 /** The raw result returned by an MCP tool call. */
@@ -155,11 +160,18 @@ export class McpConnection {
 	async listTools(): Promise<BuiltTool[]> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const result = await this.client.listTools();
+		const descriptors: McpToolDescriptor[] = result.tools.map((tool) => ({
+			name: tool.name,
+			...(tool.annotations ? { annotations: tool.annotations } : {}),
+		}));
+		const configured = this.config.configureTools?.(descriptors);
+		const toolFilter = configured?.toolFilter ?? this.config.toolFilter;
+		const requireApproval = configured?.requireApproval ?? this.config.requireApproval;
 		const resolver = new McpToolResolver();
-		const filteredRawTools = applyToolFilter(result.tools, this.config.toolFilter);
+		const filteredRawTools = applyToolFilter(result.tools, toolFilter);
 		const tools = resolver.resolve(this, filteredRawTools);
 		return tools.map((t) =>
-			t.suspendSchema || !this.shouldRequireToolApproval(t)
+			t.suspendSchema || !this.shouldRequireToolApproval(t, requireApproval)
 				? t
 				: wrapToolForApproval(t, { requireApproval: true }),
 		);
@@ -172,8 +184,10 @@ export class McpConnection {
 	 * - `config.requireApproval` is `true` (all tools on this server), OR
 	 * - `config.requireApproval` is a string array that includes the tool's original (un-prefixed) name.
 	 */
-	private shouldRequireToolApproval(tool: BuiltTool): boolean {
-		const { requireApproval } = this.config;
+	private shouldRequireToolApproval(
+		tool: BuiltTool,
+		requireApproval: McpRequireApproval | undefined,
+	): boolean {
 		if (requireApproval === true) return true;
 
 		if (Array.isArray(requireApproval) && requireApproval.length > 0) {
@@ -248,9 +262,11 @@ export class McpConnection {
 	 * without requiring a network connection.
 	 */
 	declaresApproval(): boolean {
-		const { requireApproval } = this.config;
+		const { configureTools, requireApproval } = this.config;
 		return (
-			requireApproval === true || (Array.isArray(requireApproval) && requireApproval.length > 0)
+			configureTools !== undefined ||
+			requireApproval === true ||
+			(Array.isArray(requireApproval) && requireApproval.length > 0)
 		);
 	}
 

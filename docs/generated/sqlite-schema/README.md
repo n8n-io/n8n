@@ -1086,7 +1086,7 @@ erDiagram
   varchar_36_ credentialId FK
   varchar id PK
   varchar_255_ serverSlug FK
-  TEXT toolFilter
+  TEXT toolPermissions
   datetime_3_ updatedAt
   varchar userId FK
 }

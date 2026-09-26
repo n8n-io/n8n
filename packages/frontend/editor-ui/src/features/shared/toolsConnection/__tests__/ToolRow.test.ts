@@ -9,12 +9,19 @@ import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
+	type ServiceConnectionItem,
 	type WorkflowConnectionItem,
 } from '../types';
 
 const renderRow = createComponentRenderer(ToolRow);
 
-function render(item: McpServerConnectionItem | NodeConnectionItem | WorkflowConnectionItem) {
+function render(
+	item:
+		| McpServerConnectionItem
+		| NodeConnectionItem
+		| ServiceConnectionItem
+		| WorkflowConnectionItem,
+) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
 }
 
@@ -67,6 +74,15 @@ const baseWorkflow: WorkflowConnectionItem = {
 	title: 'Summariser',
 	status: 'none',
 	workflowId: 'wf-1234',
+};
+
+const baseService: ServiceConnectionItem = {
+	id: 'service-1',
+	kind: 'service',
+	title: 'Browser',
+	description: 'Use a managed browser',
+	status: 'none',
+	serviceId: 'browser-use',
 };
 
 describe('ToolRow', () => {
@@ -171,6 +187,25 @@ describe('ToolRow', () => {
 
 		await fireEvent.click(getByTestId('tools-connection-row-main'));
 		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+	});
+
+	it('uses an explicit Set up action for an available service', async () => {
+		const { getByTestId, emitted } = render(baseService);
+
+		expect(getByTestId('tools-connection-row-main').tagName).toBe('DIV');
+		expect(getByTestId('tools-connection-row-service-action')).toHaveTextContent('Set up');
+
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
+		expect(emitted()['open-detail']).toBeUndefined();
+
+		await fireEvent.click(getByTestId('tools-connection-row-service-action'));
+		expect(emitted()['open-detail']?.[0]).toEqual([baseService]);
+	});
+
+	it('uses an explicit Settings action for a connected service', () => {
+		const { getByTestId } = render({ ...baseService, status: 'connected' });
+
+		expect(getByTestId('tools-connection-row-service-action')).toHaveTextContent('Settings');
 	});
 
 	it('keeps row actions as sibling interactive controls', () => {

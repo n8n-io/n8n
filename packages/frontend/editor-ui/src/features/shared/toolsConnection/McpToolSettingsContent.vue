@@ -1,30 +1,79 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { McpServerConnectionItem, McpToolInclusionMode, McpToolSettings } from './types';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialogFooter,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { MODAL_CANCEL } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import McpDetailBody from './McpDetailBody.vue';
+import type { McpServerConnectionItem, McpToolSettings } from './types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type McpToolCategory,
+	type McpToolPermission,
+} from '@n8n/api-types';
 
-const props = defineProps<{
-	item: McpServerConnectionItem;
-}>();
+const props = withDefaults(
+	defineProps<{
+		item: McpServerConnectionItem;
+		actor?: 'assistant' | 'agent';
+	}>(),
+	{
+		actor: 'assistant',
+	},
+);
 
 const emit = defineEmits<{
 	save: [settings: McpToolSettings];
 	disconnect: [];
+	cancel: [];
+	reconnect: [];
+	retry: [];
 }>();
 
 const i18n = useI18n();
+const message = useMessage();
+const isConnectionUnhealthy = computed(() => props.item.status === 'disconnected');
+const arePermissionsDisabled = computed(() => props.item.status !== 'connected');
+const failureMessageKey = computed<BaseTextKey>(() => {
+	switch (props.item.connectionFailureReason) {
+		case 'authentication':
+			return 'tools.connection.failure.authentication';
+		case 'server_unavailable':
+			return 'tools.connection.failure.serverUnavailable';
+		default:
+			return 'tools.connection.failure.unknown';
+	}
+});
+const recoveryActionKey = computed<BaseTextKey>(() =>
+	props.item.connectionFailureReason === 'authentication'
+		? 'tools.connection.action.reconnect'
+		: 'generic.retry',
+);
+const writeConfirmationDescriptionKey = computed<BaseTextKey>(() =>
+	props.actor === 'agent'
+		? 'tools.connection.permissions.write.confirm.description.agent'
+		: 'tools.connection.permissions.write.confirm.description.assistant',
+);
 
 const initialSettings = (): McpToolSettings =>
 	props.item.settings ?? {
-		inclusionMode: 'all',
-		selectedTools: [],
-		excludedTools: [],
+		categories: {
+			read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
+			write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
+		},
 	};
 
-const inclusionMode = ref<McpToolInclusionMode>(initialSettings().inclusionMode);
-const selectedTools = ref<string[]>([...initialSettings().selectedTools]);
-const excludedTools = ref<string[]>([...initialSettings().excludedTools]);
+const categories = ref({ ...initialSettings().categories });
+const toolPermissions = ref({ ...initialSettings().tools });
+const expandedCategory = ref<McpToolCategory | null>(null);
 const hasSavedBefore = ref(false);
 
 watch(
@@ -32,128 +81,265 @@ watch(
 	() => {
 		hasSavedBefore.value = false;
 		const next = initialSettings();
-		inclusionMode.value = next.inclusionMode;
-		selectedTools.value = [...next.selectedTools];
-		excludedTools.value = [...next.excludedTools];
+		categories.value = { ...next.categories };
+		toolPermissions.value = { ...next.tools };
+		expandedCategory.value = null;
 	},
 );
 
-const inclusionOptions: Array<{ value: McpToolInclusionMode; label: string }> = [
-	{ value: 'all', label: i18n.baseText('tools.connection.settings.inclusion.all') },
-	{ value: 'selected', label: i18n.baseText('tools.connection.settings.inclusion.selected') },
-	{ value: 'except', label: i18n.baseText('tools.connection.settings.inclusion.except') },
-];
+watch(
+	() => props.item.status,
+	(status) => {
+		if (status !== 'connected') expandedCategory.value = null;
+	},
+);
 
-const toolOptions = computed(() =>
-	props.item.availableTools.map((tool) => ({
-		value: tool.id,
-		label: tool.name,
-		description: tool.description,
+const permissionOptions: Array<{ value: McpToolPermission; label: string }> = [
+	{
+		value: 'always_allow',
+		label: i18n.baseText('tools.connection.permissions.alwaysAllow'),
+	},
+	{
+		value: 'require_approval',
+		label: i18n.baseText('tools.connection.permissions.requireApproval'),
+	},
+	{ value: 'blocked', label: i18n.baseText('tools.connection.permissions.blocked') },
+];
+const customPermissionLabel = i18n.baseText('tools.connection.permissions.custom');
+
+const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
+	read: {
+		title: 'tools.connection.permissions.read.title',
+		description: 'tools.connection.permissions.read.description',
+	},
+	write: {
+		title: 'tools.connection.permissions.write.title',
+		description: 'tools.connection.permissions.write.description',
+	},
+};
+
+const groups = computed(() =>
+	(['read', 'write'] as const).map((category) => ({
+		category,
+		title: i18n.baseText(categoryContent[category].title),
+		description: i18n.baseText(categoryContent[category].description),
+		tools: props.item.availableTools.filter((tool) => (tool.category ?? 'write') === category),
 	})),
 );
 
-const showToolList = computed(
-	() => inclusionMode.value === 'selected' || inclusionMode.value === 'except',
-);
-const toolListLabel = computed(() =>
-	inclusionMode.value === 'selected'
-		? i18n.baseText('tools.connection.settings.toolsToInclude')
-		: i18n.baseText('tools.connection.settings.toolsToExclude'),
-);
-const toolListTestId = computed(() =>
-	inclusionMode.value === 'selected'
-		? 'tools-connection-settings-selected'
-		: 'tools-connection-settings-excluded',
-);
-const toolListSelection = computed<string[]>({
-	get: () => (inclusionMode.value === 'except' ? excludedTools.value : selectedTools.value),
-	set: (value) => {
-		if (inclusionMode.value === 'except') excludedTools.value = value;
-		else selectedTools.value = value;
-	},
-});
+async function updateCategory(category: McpToolCategory, permission: McpToolPermission) {
+	if (
+		category === 'write' &&
+		permission === 'always_allow' &&
+		categories.value.write !== 'always_allow'
+	) {
+		const writeToolCount = props.item.availableTools.filter(
+			(tool) => (tool.category ?? 'write') === 'write',
+		).length;
+		const confirmed = await message.confirm(
+			i18n.baseText(writeConfirmationDescriptionKey.value, {
+				interpolate: { server: props.item.title, count: writeToolCount },
+			}),
+			{
+				title: i18n.baseText('tools.connection.permissions.write.confirm.title'),
+				confirmButtonText: i18n.baseText('tools.connection.permissions.write.confirm.keepAsk'),
+				cancelButtonText: i18n.baseText('tools.connection.permissions.write.confirm.allow'),
+			},
+		);
+		if (confirmed !== MODAL_CANCEL) return;
+	}
 
-function toolsKey(tools: string[]): string {
-	return JSON.stringify([...tools].sort());
+	categories.value[category] = permission;
+	const next = { ...toolPermissions.value };
+	for (const tool of props.item.availableTools) {
+		if ((tool.category ?? 'write') === category) delete next[tool.id];
+	}
+	toolPermissions.value = next;
+}
+
+function updateTool(toolId: string, category: McpToolCategory, permission: McpToolPermission) {
+	const next = { ...toolPermissions.value };
+	if (permission === categories.value[category]) delete next[toolId];
+	else next[toolId] = permission;
+	toolPermissions.value = next;
+}
+
+function isPermission(value: unknown): value is McpToolPermission {
+	return value === 'always_allow' || value === 'require_approval' || value === 'blocked';
+}
+
+function onCategoryChange(category: McpToolCategory, value: unknown) {
+	if (isPermission(value)) void updateCategory(category, value);
+}
+
+function onToolChange(toolId: string, category: McpToolCategory, value: unknown) {
+	if (isPermission(value)) updateTool(toolId, category, value);
+}
+
+function hasCategoryOverrides(category: McpToolCategory): boolean {
+	return props.item.availableTools.some(
+		(tool) =>
+			(tool.category ?? 'write') === category && toolPermissions.value[tool.id] !== undefined,
+	);
 }
 
 const hasChanges = computed(() => {
 	if (!hasSavedBefore.value) return true;
-	const saved = initialSettings();
-	if (inclusionMode.value !== saved.inclusionMode) return true;
-	if (inclusionMode.value === 'selected') {
-		return toolsKey(selectedTools.value) !== toolsKey(saved.selectedTools);
-	}
-	if (inclusionMode.value === 'except') {
-		return toolsKey(excludedTools.value) !== toolsKey(saved.excludedTools);
-	}
-	return false;
+	return (
+		JSON.stringify({ categories: categories.value, tools: toolPermissions.value }) !==
+		JSON.stringify({
+			categories: initialSettings().categories,
+			tools: initialSettings().tools ?? {},
+		})
+	);
 });
 
 function handleSave() {
 	if (!hasChanges.value) return;
 	hasSavedBefore.value = true;
 	emit('save', {
-		inclusionMode: inclusionMode.value,
-		selectedTools: [...selectedTools.value],
-		excludedTools: [...excludedTools.value],
+		categories: { ...categories.value },
+		...(Object.keys(toolPermissions.value).length > 0
+			? { tools: { ...toolPermissions.value } }
+			: {}),
 	});
+}
+
+function handleRecovery() {
+	if (props.item.connectionFailureReason === 'authentication') emit('reconnect');
+	else emit('retry');
 }
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.body">
-			<div :class="$style.field">
-				<N8nText :class="$style.fieldLabel" tag="label" size="small">
-					{{ i18n.baseText('tools.connection.settings.toolInclusion') }}
-				</N8nText>
-				<N8nSelect
-					v-model="inclusionMode"
-					size="small"
-					data-test-id="tools-connection-settings-inclusion"
-				>
-					<N8nOption
-						v-for="opt in inclusionOptions"
-						:key="opt.value"
-						:value="opt.value"
-						:label="opt.label"
-					/>
-				</N8nSelect>
-			</div>
+			<McpDetailBody :item="item" />
 
-			<div v-if="showToolList" :class="$style.field">
-				<N8nText :class="$style.fieldLabel" tag="label" size="small">
-					{{ toolListLabel }}
-				</N8nText>
-				<N8nSelect
-					v-model="toolListSelection"
-					multiple
-					filterable
-					size="small"
-					:class="$style.multiSelect"
-					:placeholder="i18n.baseText('tools.connection.settings.toolsPlaceholder')"
-					:data-test-id="toolListTestId"
-				>
-					<N8nOption
-						v-for="opt in toolOptions"
-						:key="opt.value"
-						:value="opt.value"
-						:label="opt.label"
+			<N8nCallout
+				v-if="isConnectionUnhealthy"
+				:class="$style.failureCallout"
+				theme="danger"
+				data-test-id="tools-connection-failure"
+			>
+				{{ i18n.baseText(failureMessageKey) }}
+				<template #actions>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						data-test-id="tools-connection-recovery"
+						@click="handleRecovery"
 					>
-						<div :class="$style.listOption">
-							<div :class="$style.optionHeadline">{{ opt.label }}</div>
-							<div v-if="opt.description" :class="$style.optionDescription">
-								{{ opt.description }}
+						{{ i18n.baseText(recoveryActionKey) }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
+
+			<div :class="$style.permissions">
+				<N8nText :class="$style.fieldLabel" tag="h3" size="medium" bold>
+					{{ i18n.baseText('tools.connection.permissions.title') }}
+				</N8nText>
+
+				<div
+					:class="[
+						$style.permissionGroups,
+						{ [$style.permissionGroupsDisabled]: arePermissionsDisabled },
+					]"
+					:data-disabled="arePermissionsDisabled || undefined"
+				>
+					<div v-for="group in groups" :key="group.category" :class="$style.permissionGroup">
+						<div :class="$style.groupHeader">
+							<div :class="$style.groupSummary">
+								<div :class="$style.groupTitle">
+									<N8nText :class="$style.groupTitleText">{{ group.title }}</N8nText>
+									<span
+										:class="$style.countBadge"
+										:data-test-id="`tools-connection-count-${group.category}`"
+									>
+										<N8nText size="xsmall" bold compact>
+											{{ arePermissionsDisabled ? '—' : group.tools.length }}
+										</N8nText>
+									</span>
+								</div>
+								<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
+							</div>
+							<!-- Show "Custom" as selected value when there are overrides -->
+							<N8nSelect
+								:class="$style.permissionSelect"
+								:model-value="
+									hasCategoryOverrides(group.category)
+										? customPermissionLabel
+										: categories[group.category]
+								"
+								size="small"
+								theme="ghost"
+								:disabled="arePermissionsDisabled"
+								:data-test-id="`tools-connection-permission-${group.category}`"
+								@update:model-value="onCategoryChange(group.category, $event)"
+							>
+								<N8nOption
+									v-for="option in permissionOptions"
+									:key="option.value"
+									:value="option.value"
+									:label="option.label"
+								/>
+							</N8nSelect>
+							<N8nButton
+								variant="outline"
+								size="small"
+								icon-only
+								:disabled="arePermissionsDisabled"
+								:aria-label="group.title"
+								:aria-expanded="expandedCategory === group.category"
+								@click="
+									expandedCategory = expandedCategory === group.category ? null : group.category
+								"
+							>
+								<N8nIcon
+									:icon="expandedCategory === group.category ? 'chevron-up' : 'chevron-down'"
+									:size="16"
+								/>
+							</N8nButton>
+						</div>
+
+						<div v-if="expandedCategory === group.category" :class="$style.toolList">
+							<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
+								<div :class="$style.toolSummary">
+									<N8nText size="small">{{ tool.name }}</N8nText>
+									<N8nText
+										v-if="tool.description"
+										:class="$style.toolDescription"
+										:title="tool.description"
+										size="small"
+										color="text-light"
+									>
+										{{ tool.description }}
+									</N8nText>
+								</div>
+								<N8nSelect
+									:class="$style.permissionSelect"
+									:model-value="toolPermissions[tool.id] ?? categories[group.category]"
+									size="small"
+									:disabled="arePermissionsDisabled"
+									@update:model-value="onToolChange(tool.id, group.category, $event)"
+								>
+									<N8nOption
+										v-for="option in permissionOptions"
+										:key="option.value"
+										:value="option.value"
+										:label="option.label"
+									/>
+								</N8nSelect>
 							</div>
 						</div>
-					</N8nOption>
-				</N8nSelect>
+					</div>
+				</div>
 			</div>
 		</div>
 
-		<footer :class="$style.footer">
+		<N8nDialogFooter :class="$style.footer">
 			<N8nButton
+				:class="$style.removeButton"
 				variant="outline"
 				size="small"
 				data-test-id="tools-connection-settings-remove"
@@ -163,14 +349,21 @@ function handleSave() {
 				<span>{{ i18n.baseText('tools.connection.settings.remove') }}</span>
 			</N8nButton>
 			<N8nButton
+				variant="subtle"
+				size="small"
+				:label="i18n.baseText('generic.cancel')"
+				data-test-id="tools-connection-settings-cancel"
+				@click="emit('cancel')"
+			/>
+			<N8nButton
 				variant="solid"
 				size="small"
-				:label="i18n.baseText('tools.connection.settings.save')"
-				:disabled="!hasChanges"
+				:label="i18n.baseText('generic.save')"
+				:disabled="!hasChanges || arePermissionsDisabled"
 				data-test-id="tools-connection-settings-save"
 				@click="handleSave"
 			/>
-		</footer>
+		</N8nDialogFooter>
 	</div>
 </template>
 
@@ -178,68 +371,133 @@ function handleSave() {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	min-height: 100%;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .body {
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
 }
 
-.field {
+.failureCallout {
+	margin-top: var(--spacing--sm);
+}
+
+.permissions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-.multiSelect {
-	// Cap the chip-container height so a long selection scrolls instead of
-	// blowing up the dialog vertically. Matches the tighter Figma rhythm.
-	:global(.el-select__wrapper) {
-		min-height: 40px;
-		max-height: 96px;
-		overflow-y: auto;
-	}
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xl);
 }
 
 .fieldLabel {
 	color: var(--color--text);
 }
 
-.listOption {
-	margin: 6px 0;
-	padding-right: 20px;
-	white-space: normal;
+.permissionGroups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
-.optionHeadline {
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--md);
-	overflow-wrap: break-word;
+.permissionGroupsDisabled {
+	opacity: 0.5;
 }
 
-.optionDescription {
-	margin-top: 2px;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--xl);
+.permissionGroup {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
+	border: var(--border);
+	border-radius: var(--radius--xs);
+}
+
+.groupHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	min-height: var(--height--4xl);
+	padding-inline: var(--spacing--sm);
+}
+
+.groupSummary,
+.toolSummary {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.groupSummary {
+	padding-block: var(--spacing--xs);
+}
+
+.groupTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.groupTitleText {
+	font-weight: var(--font-weight--medium);
+}
+
+.countBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: var(--height--3xs);
+	height: var(--height--3xs);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: var(--radius--full);
+	background: var(--background--active);
+	color: var(--text-color--subtler);
+}
+
+.toolList {
+	display: flex;
+	flex-direction: column;
+	margin-inline: var(--spacing--sm);
+	padding-block: var(--spacing--4xs);
+	border-top: 1px solid var(--border-color--subtle);
+}
+
+.toolRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding-block: var(--spacing--2xs);
+}
+
+.toolDescription {
 	display: -webkit-box;
-	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 	-webkit-box-orient: vertical;
-	text-overflow: ellipsis;
+	-webkit-line-clamp: 2;
+}
+
+.permissionSelect {
+	flex: 0 0 auto;
+	width: auto;
 }
 
 .footer {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	flex-shrink: 0;
 	padding-top: var(--spacing--md);
-	border-top: 1px solid var(--color--foreground--shade-1);
+	border-top: var(--border);
+}
+
+.removeButton {
+	margin-right: auto;
 }
 
 .footerIcon {

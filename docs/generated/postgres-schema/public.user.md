@@ -265,7 +265,7 @@ erDiagram
   varchar_36_ credentialId FK
   uuid id
   varchar_255_ serverSlug FK
-  json toolFilter
+  json toolPermissions
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

@@ -167,11 +167,6 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
-const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
-	'require_approval',
-	'always_allow',
-];
-
 const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
 
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
@@ -234,7 +229,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'mcp',
 		labelKey: 'settings.n8nAgent.permissions.group.mcp',
-		keys: ['executeMcpTool'],
+		keys: ['mcpRead', 'mcpWrite'],
 	},
 ];
 
@@ -273,7 +268,6 @@ function groupSummary(group: PermissionGroup) {
 }
 
 function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	if (key === 'executeMcpTool') return MCP_TOOL_PERMISSION_OPTIONS;
 	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
 	return PERMISSION_OPTIONS;
 }

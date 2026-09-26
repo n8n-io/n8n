@@ -931,7 +931,6 @@ export class InstanceAiService {
 				});
 			});
 		});
-
 		this.liveness.start();
 	}
 

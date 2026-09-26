@@ -46,6 +46,7 @@ const props = withDefaults(
 		hideBackButton?: boolean;
 		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
 		size?: DialogSize;
+		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
 		emptyMessage?: string;
@@ -64,6 +65,7 @@ const props = withDefaults(
 		detailItem: null,
 		detailMode: 'detail',
 		size: 'xlarge',
+		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
 		emptyMessage: undefined,
@@ -227,7 +229,9 @@ const toolRows = computed<FlattenedRow[]>(() =>
 );
 
 const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+	isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -426,7 +430,7 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
 						</div>
-						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 							<slot name="suggestion-footer" />
 						</div>
 					</template>
