@@ -97,6 +97,36 @@ catalogs:
 		expect(violations[0].message).toContain('"catalog:frontend"');
 	});
 
+	it('ignores peer dependency ranges that are also available in the catalog', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  ts-morph: ^27.0.0
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/janitor/package.json',
+			JSON.stringify(
+				{
+					name: 'janitor',
+					peerDependencies: { 'ts-morph': '>=20.0.0' },
+					devDependencies: { 'ts-morph': 'catalog:' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
+	});
+
 	it('ignores deps that already use catalog reference', async () => {
 		writeFile(
 			tmpDir,
