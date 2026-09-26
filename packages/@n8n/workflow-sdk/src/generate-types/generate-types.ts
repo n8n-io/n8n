@@ -272,6 +272,12 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 		isArray: false,
 		canBeMultiple: false,
 	},
+	ai_decisionModel: {
+		fieldName: 'decisionModel',
+		instanceType: 'DecisionModelInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
 };
 
 // =============================================================================

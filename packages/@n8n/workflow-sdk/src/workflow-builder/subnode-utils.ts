@@ -166,6 +166,8 @@ function processSubnodes(
 	if (subnodes.textSplitter)
 		addSingleSubnode(nodes, subnodes.textSplitter, 'ai_textSplitter', 0, parentName);
 	addSubnodeFlat(nodes, subnodes.reranker, 'ai_reranker', parentName);
+	if (subnodes.decisionModel)
+		addSingleSubnode(nodes, subnodes.decisionModel, 'ai_decisionModel', 0, parentName);
 }
 
 /**
