@@ -280,6 +280,40 @@ describe('runtime', () => {
 
 			expect(tools[0]).not.toHaveProperty('metadata.attribution');
 		});
+
+		it('throws downstream tool errors from registry-backed tools', async () => {
+			const client = mock<Client>({
+				callTool: vi.fn().mockResolvedValue({
+					isError: true,
+					content: [{ type: 'text', text: 'Registry tool failed' }],
+				}),
+			});
+			vi.spyOn(utils, 'connectMcpClientForCredential').mockResolvedValue({
+				ok: true,
+				result: client,
+			});
+			vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+			const ctx = createSupplyDataCtx({
+				getNode: vi.fn(() =>
+					mock<INode>({
+						type: '@n8n/mcp-registry.example',
+						typeVersion: 1.1,
+						name: 'MCP Registry Client',
+					}),
+				),
+			});
+			const result = await buildMcpToolkit(ctx, 0, createRegistryConfig());
+			const [tool] = (result.response as StructuredToolkit).getTools();
+
+			await expect(tool.invoke({ query: 'sales' })).rejects.toThrow('Registry tool failed');
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.objectContaining({ message: 'Registry tool failed' }),
+			);
+		});
 	});
 
 	describe('executeMcpTool', () => {
@@ -471,6 +505,32 @@ describe('runtime', () => {
 
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
 				'MCP error -32602: bad arguments',
+			);
+		});
+
+		it('throws with the tool error text for registry nodes before v1.3', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'Registry tool failed' }],
+			});
+
+			const ctx = createExecuteCtx(
+				[{ json: { tool: buildMcpToolName('MCP Registry Client', 'search') } }],
+				{
+					getNode: vi.fn(() =>
+						mock<INode>({
+							type: '@n8n/mcp-registry.example',
+							typeVersion: 1.1,
+							name: 'MCP Registry Client',
+						}),
+					),
+				},
+			);
+
+			await expect(executeMcpTool(ctx, () => createRegistryConfig())).rejects.toThrow(
+				'Registry tool failed',
 			);
 		});
 
