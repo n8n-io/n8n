@@ -66,17 +66,18 @@ export class ScheduledTaskManager {
 	 */
 	register(ctx: ScheduledTaskContext, onTick: (scheduledTime: Date) => void): boolean {
 		const { group, targetId, timezone, expression, recurrence } = ctx;
+		const logFields = {
+			groupType: group.type,
+			groupId: group.id,
+			targetId,
+			timezone,
+			expression,
+			recurrence,
+			instanceRole: this.instanceSettings.instanceRole,
+		};
 
 		if (!this.instanceSettings.isLeader) {
-			this.logger.debug('Skipped cron registration on follower instance', {
-				groupType: group.type,
-				groupId: group.id,
-				targetId,
-				timezone,
-				expression,
-				recurrence,
-				instanceRole: this.instanceSettings.instanceRole,
-			});
+			this.logger.debug('Skipped cron registration on follower instance', logFields);
 			return false;
 		}
 
@@ -88,15 +89,7 @@ export class ScheduledTaskManager {
 		const key = this.toCronKey(ctx);
 
 		if (groupCrons?.has(key)) {
-			this.logger.warn('Skipped registration for already registered cron', {
-				groupType: group.type,
-				groupId: group.id,
-				targetId,
-				timezone,
-				expression,
-				recurrence,
-				instanceRole: this.instanceSettings.instanceRole,
-			});
+			this.logger.warn('Skipped registration for already registered cron', logFields);
 			return false;
 		}
 
