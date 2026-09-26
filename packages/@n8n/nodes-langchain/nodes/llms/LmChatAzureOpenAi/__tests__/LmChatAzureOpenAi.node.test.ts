@@ -1,7 +1,7 @@
 import { AzureChatOpenAI } from '@langchain/openai';
 import { getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeHelpers, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAzureOpenAi } from '../LmChatAzureOpenAi.node';
 
@@ -105,5 +105,54 @@ describe('LmChatAzureOpenAi', () => {
 			if (previous === undefined) delete process.env.AZURE_OPENAI_ENDPOINT;
 			else process.env.AZURE_OPENAI_ENDPOINT = previous;
 		}
+	});
+
+	describe('model parameter', () => {
+		const { description } = new LmChatAzureOpenAi();
+		// `@n8n/ai-utilities` is mocked, so the connection-hint property is undefined here.
+		const modelPropertyAt = (typeVersion: number) =>
+			description.properties.filter(
+				(p) =>
+					p?.name === 'model' && NodeHelpers.displayParameter({}, p, { typeVersion }, description),
+			);
+
+		it('keeps the plain text field on version 1', () => {
+			const shown = modelPropertyAt(1);
+			expect(shown).toHaveLength(1);
+			expect(shown[0].type).toBe('string');
+		});
+
+		it('shows a deployment list backed by searchModels on version 1.1', () => {
+			const shown = modelPropertyAt(1.1);
+			expect(shown).toHaveLength(1);
+			expect(shown[0].type).toBe('resourceLocator');
+			expect(shown[0].modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			expect(shown[0].modes?.[0].typeOptions?.searchListMethod).toBe('searchModels');
+			expect(description.defaultVersion).toBe(1.1);
+		});
+
+		it('resolves a version 1.1 picker value to the deployment name', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential);
+			// Mirrors the real helper: a picker value is unwrapped only when `extractValue` is set.
+			ctx.getNodeParameter = vi
+				.fn()
+				.mockImplementation(
+					(paramName: string, _i: number, _d: unknown, opts?: { extractValue?: boolean }) => {
+						if (paramName === 'authentication') return 'azureOpenAiApi';
+						if (paramName === 'model') {
+							return opts?.extractValue ? 'gpt-4o' : { __rl: true, mode: 'list', value: 'gpt-4o' };
+						}
+						if (paramName === 'options') return {};
+						return undefined;
+					},
+				);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
+				model: 'gpt-4o',
+				azureOpenAIApiDeploymentName: 'gpt-4o',
+			});
+		});
 	});
 });
