@@ -128,7 +128,9 @@ export class AgentsToolsService {
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
 					'Returns tool node IDs, display names, versions, and descriptions. ' +
-					'After finding a node, call get_node_types to get its parameter schema.',
+					'After finding a node, call get_node_types to get its parameter schema. ' +
+					'Also consider n8n Connect covered services relevant to the task (they run on Gateway ' +
+					'credits, no API key needed) — e.g. web search, scraping, or document parsing services.',
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
