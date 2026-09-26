@@ -232,6 +232,17 @@ function lazyValue<T>(factory: () => T): () => T {
 }
 
 /**
+ * Derives the target URL of a dispatch from the request target `opts.path`, which is an absolute
+ * URI behind a forward proxy and path-only otherwise. A path-only target that starts with `//` is
+ * not a protocol-relative URL, so the authority always comes from `opts.origin`, whose own
+ * re-parse keeps any userinfo out of the URL we hand to the caller.
+ */
+function resolveTargetUrl(opts: Dispatcher.DispatchOptions): URL {
+	if (!opts.origin || !opts.path.startsWith('/')) return new URL(opts.path);
+	return new URL(new URL(opts.origin).origin + opts.path);
+}
+
+/**
  * undici `compose` interceptor that runs SSRF validation against the target URL
  * of every dispatched request.
  *
@@ -248,12 +259,8 @@ export function createSsrfInterceptor(
 	bridge: Pick<TransportSsrfPolicy, 'validateUrl'>,
 ): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
-		let targetUrl: URL;
 		try {
-			// `opts.path` is the request target.
-			// Behind a forward proxy it can be an absolute URI, otherwise it is path-only and resolved against the origin.
-			// Either form yields the final target URL.
-			targetUrl = new URL(opts.path, opts.origin?.toString());
+			const targetUrl = resolveTargetUrl(opts);
 			bridge.validateUrl(targetUrl).then(
 				(result) => {
 					if (result.ok) {
@@ -286,9 +293,8 @@ export function createAuthorizationInterceptor(
 	authorize: RequestAuthorizer,
 ): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
-		let targetUrl: URL;
 		try {
-			targetUrl = new URL(opts.path, opts.origin?.toString());
+			const targetUrl = resolveTargetUrl(opts);
 			authorize(targetUrl).then(
 				() => dispatch(opts, handler),
 				(error: unknown) => failDispatch(handler, ensureError(error)),
