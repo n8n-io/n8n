@@ -26,6 +26,10 @@ import {
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
 import { isSetupPanelEnabled } from './setup-items';
+import {
+	applyPendingSetupCredentialSelections,
+	markSetupCredentialSelectionsApplied,
+} from './setup-credential-selections';
 import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
@@ -1161,13 +1165,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
+			const setupSelections = await applyPendingSetupCredentialSelections(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+			);
+			const setupPreferences =
+				isSetupPanelEnabled(context) && binding.setupPreferences?.runId === context.runId
+					? binding.setupPreferences
+					: undefined;
+			const selectedTypes = new Set(
+				Object.values(setupSelections.resolvedCredentialsByNode)
+					.flat()
+					.map((credential) => credential.type),
+			);
+			// Keep a saved choice when the model repeats setup flags during a repair.
+			const preferNewCredentialTypes = [
+				...new Set([
+					...(setupPreferences?.preferNewCredentialTypes ?? []),
+					...(input.preferNewCredentials ?? []),
+				]),
+			].filter(
+				(type) =>
+					!selectedTypes.has(type) && !setupPreferences?.satisfiedCredentialTypes.includes(type),
+			);
 			const mockResult = await resolveCredentials(
 				json,
 				targetWorkflowId,
 				context,
 				credentialMap,
-				input.preferNewCredentials,
+				[...preferNewCredentialTypes, ...setupSelections.unavailableCredentialTypes],
+				setupSelections.resolvedCredentialsByNode,
 			);
+			for (const [nodeName, selections] of Object.entries(
+				setupSelections.resolvedCredentialsByNode,
+			)) {
+				mockResult.resolvedCredentialsByNode[nodeName] = [
+					...(mockResult.resolvedCredentialsByNode[nodeName] ?? []).filter(
+						(credential) => !selections.some((selection) => selection.type === credential.type),
+					),
+					...selections,
+				];
+			}
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
@@ -1405,15 +1445,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					},
 					operation: 'create' | 'update',
 				) => {
+					await markSetupCredentialSelectionsApplied(context, setupSelections.consumedSelections);
 					// The setup panel lists bound slots too (rendered as done), so its
 					// snapshot needs the settled requests the routing below must not see.
 					const setupItemsEmitter = isSetupPanelEnabled(context)
 						? context.setupItemsEmitter
 						: undefined;
 					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
-						...(input.preferNewCredentials
-							? { preferNewCredentialTypes: input.preferNewCredentials }
-							: {}),
+						...(preferNewCredentialTypes.length > 0 ? { preferNewCredentialTypes } : {}),
 						...(setupItemsEmitter ? { includeSettled: true } : {}),
 					});
 					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
@@ -1463,6 +1502,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						setupPending: undefined,
+						...(setupPreferences
+							? {
+									setupPreferences: {
+										...setupPreferences,
+										preferNewCredentialTypes,
+										satisfiedCredentialTypes: [
+											...new Set([...setupPreferences.satisfiedCredentialTypes, ...selectedTypes]),
+										],
+									},
+								}
+							: {}),
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.
@@ -1622,7 +1673,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						updateOptions,
 					);
-					return await createSuccessResponse(updated, 'update');
+					return await createSuccessResponse(updated, binding.setupPending ? 'create' : 'update');
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {

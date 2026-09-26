@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { computed, defineComponent, h, reactive, type PropType } from 'vue';
+import { computed, defineComponent, h, reactive, ref, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { getActivePinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +9,7 @@ import { flushPromises } from '@vue/test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	deepCopy,
 	NodeConnectionTypes,
@@ -26,7 +27,10 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '@/features/credentials/credentials.types';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
@@ -34,6 +38,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS } from '@/app/constants/localStorage';
 import { getWorkflowExecutionStateStoreId } from '@/app/stores/workflowExecutionState.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -46,6 +51,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelState';
 import type { ThreadRuntime } from '../../../instanceAi.store';
+import { fetchThread, updateThreadMetadata } from '../../../instanceAi.memory.api';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 
 const { showMessage, testCredentialInBackground, authorize } = vi.hoisted(() => ({
@@ -84,7 +90,20 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 
 let thread: SetupPanelThreadSource &
 	Pick<ThreadRuntime, 'id' | 'sendMessage' | 'rememberManualExecution'>;
-vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
+let threadMetadata = ref<Record<string, unknown>>({});
+vi.mock('../../../instanceAi.store', () => ({
+	useThread: () => thread,
+	useInstanceAiStore: () => ({
+		getThreadMetadata: () => threadMetadata.value,
+		setThreadMetadata: (_id: string, metadata: Record<string, unknown>) => {
+			threadMetadata.value = metadata;
+		},
+	}),
+}));
+vi.mock('../../../instanceAi.memory.api', () => ({
+	fetchThread: vi.fn(),
+	updateThreadMetadata: vi.fn(),
+}));
 
 const accounts = [
 	mock<ICredentialsResponse>({
@@ -241,6 +260,19 @@ describe('InstanceAiSetupPanel interactions', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		threadMetadata = ref({});
+		vi.mocked(updateThreadMetadata).mockResolvedValue({
+			thread: { id: 'thread-1', resourceId: 'user-1', createdAt: '', updatedAt: '' },
+		});
+		vi.mocked(fetchThread).mockImplementation(async () => ({
+			thread: {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				createdAt: '',
+				updatedAt: '',
+				metadata: threadMetadata.value,
+			},
+		}));
 		localStorage.clear();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mockedStore(useProjectsStore).myProjects = [mock<ProjectListItem>({ id: 'project-1' })];
@@ -485,7 +517,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 
 	it('binds a credential announced without bindings after the build ends', async () => {
 		startBuild();
-		const { getByRole, findByRole, getByTestId, queryByRole } = renderPanel();
+		const { getByRole, findByRole, getByTestId, getAllByTestId, getByLabelText, queryByRole } =
+			renderPanel();
 		await flushPromises();
 		await fireEvent.click(await findByRole('button', { name: /Slack/ }));
 		const picker = getByRole('combobox');
@@ -495,18 +528,25 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(updateWorkflow).not.toHaveBeenCalled();
 		await fireEvent.change(picker, { target: { value: 'cred-2' } });
 		expect(updateWorkflow).not.toHaveBeenCalled();
-		expect(getByTestId('selected-account')).toHaveTextContent('Second account');
+		await waitFor(() =>
+			expect(getByTestId('selected-account')).toHaveTextContent('Second account'),
+		);
 		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+		expect(getAllByTestId('setup-panel-row')).toHaveLength(1);
 		await fireEvent.click(getByRole('button', { name: 'Slack Complete' }));
 		expect(getByRole('combobox')).toHaveValue('cred-2');
 		expect(queryByRole('button', { name: 'Execute' })).toBeNull();
 		// The user's explicit choice replaces the SDK's selection when writes resume.
 		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
+		documentStore.hydrate(deepCopy(saved));
 		thread.messages = [];
 		await flushPromises();
 		expect(updateWorkflow).toHaveBeenCalledTimes(1);
 		expect(saved.nodes[0].credentials?.slackApi).toEqual({ id: 'cred-2', name: 'Second account' });
 		expect(testCredentialInBackground).toHaveBeenCalledWith('cred-2', 'Second account', 'slackApi');
+		expect(getAllByTestId('setup-panel-row')).toHaveLength(1);
+		expect(getByRole('combobox')).toHaveValue('cred-2');
+		expect(getByLabelText('Channel')).toBeVisible();
 	});
 
 	it.each([false, true])(
@@ -649,6 +689,111 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(restored.getByRole('button', { name: /Slack/ })).toBeVisible();
 		expect(restored.queryByRole('button', { name: 'Execute' })).toBeNull();
 	});
+
+	it.each([
+		{ count: 0, preferNew: false },
+		{ count: 1, preferNew: false },
+		{ count: 2, preferNew: false },
+		{ count: 1, preferNew: true },
+	])(
+		'selects an early account only when its scoped choice is unique: %s',
+		async ({ count, preferNew }) => {
+			startBuild();
+			saved.nodes = [];
+			thread.setupItemsByWorkflowId['wf-1'] = [
+				{
+					id: 'wf-1:credential:slackApi',
+					kind: 'credential',
+					credentialType: 'slackApi',
+					preferNew,
+				},
+			];
+			mockedStore(useCredentialsStore).usableCredentials = Object.fromEntries(
+				accounts.slice(0, count).map((account) => [account.id, account]),
+			);
+			const view = renderPanel(false);
+			await flushPromises();
+			if (count === 1 && !preferNew) {
+				expect(updateThreadMetadata).toHaveBeenCalledTimes(1);
+				expect(view.queryByRole('button', { name: /Slack/ })).toBeNull();
+			} else {
+				expect(updateThreadMetadata).not.toHaveBeenCalled();
+				expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();
+			}
+			expect(updateWorkflow).not.toHaveBeenCalled();
+		},
+	);
+
+	it('shows the early service when automatic account selection fails', async () => {
+		startBuild();
+		saved.nodes = [];
+		mockedStore(useCredentialsStore).usableCredentials = { [accounts[0].id]: accounts[0] };
+		vi.mocked(updateThreadMetadata).mockRejectedValueOnce(new Error('Request failed'));
+		const view = renderPanel(false);
+		await flushPromises();
+		expect(updateThreadMetadata).toHaveBeenCalledTimes(1);
+		expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Slack Complete' })).toBeNull();
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it.each([true, false])(
+		'waits for an early OAuth account status before remembering its row, connected: %s',
+		async (connected) => {
+			startBuild();
+			saved.nodes = [];
+			useUsersStore().currentUserId = 'user-1';
+			const item: InstanceAiSetupItem = {
+				id: 'wf-1:credential:gmailOAuth2',
+				kind: 'credential',
+				credentialType: 'gmailOAuth2',
+			};
+			thread.setupItemsByWorkflowId['wf-1'] = [item];
+			const credential = mock<ICredentialsResponse>({
+				id: 'gmail-account',
+				name: 'Gmail account',
+				type: 'gmailOAuth2',
+				isResolvable: false,
+				scopes: ['credential:read', 'credential:update'],
+			});
+			const credentials = mockedStore(useCredentialsStore);
+			credentials.setCredentials([credential]);
+			credentials.usableCredentials = { [credential.id]: credential };
+			vi.mocked(credentials.getCredentialTypeByName).mockImplementation((name) => ({
+				name,
+				displayName: 'Gmail OAuth2',
+				extends: name === 'gmailOAuth2' ? ['oAuth2Api'] : undefined,
+				properties: [],
+			}));
+			const read = Promise.withResolvers<ICredentialsDecryptedResponse>();
+			credentials.getCredentialData.mockReturnValue(read.promise);
+			const shownItemsKey = LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS('user-1', 'thread-1', 'wf-1');
+			const view = renderPanel(false);
+			await flushPromises();
+			expect(updateThreadMetadata).toHaveBeenCalledTimes(1);
+			expect(credentials.getCredentialData).toHaveBeenCalledWith({ id: credential.id });
+			expect(view.queryByTestId('setup-panel-row')).toBeNull();
+			expect(localStorage.getItem(shownItemsKey)).toBeNull();
+
+			read.resolve({
+				...credential,
+				data: { oauthTokenData: connected },
+			});
+			await flushPromises();
+			if (connected) {
+				expect(view.queryByTestId('setup-panel-row')).toBeNull();
+				expect(localStorage.getItem(shownItemsKey)).toBeNull();
+				view.unmount();
+				const restored = renderPanel(false);
+				await flushPromises();
+				expect(restored.queryByTestId('setup-panel-row')).toBeNull();
+				expect(localStorage.getItem(shownItemsKey)).toBeNull();
+			} else {
+				expect(view.getByRole('button', { name: /Gmail/ })).toBeVisible();
+				expect(localStorage.getItem(shownItemsKey)).toBe(JSON.stringify([item.id]));
+			}
+		},
+	);
 
 	it('opens a remaining bound node and passes its recipe to the picker', async () => {
 		startBuild();

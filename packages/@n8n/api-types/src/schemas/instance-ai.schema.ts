@@ -1161,6 +1161,7 @@ export const setupItemSchema = z.discriminatedUnion('kind', [
 		kind: z.literal('credential'),
 		credentialType: z.string(),
 		appDisplayName: z.string().optional(),
+		preferNew: z.boolean().optional(),
 		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
 		setupHint: credentialSetupHintSchema.optional(),
 		/** Why the app is needed, e.g. "for the docs search". */

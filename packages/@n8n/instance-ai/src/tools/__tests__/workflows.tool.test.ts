@@ -3904,7 +3904,14 @@ describe('workflows(action="setup") — setup panel', () => {
 	});
 
 	it('keeps explicit credential replacement in the selection card', async () => {
-		const replacement = { ...openSlack, preferNewCredential: true };
+		const replacement = {
+			...openSlack,
+			node: {
+				...openSlack.node,
+				credentials: { slackApi: { id: 'old-account', name: 'Old account' } },
+			},
+			preferNewCredential: true,
+		};
 		(analyzeWorkflow as Mock).mockResolvedValue([replacement, boundGmail]);
 		const { context, emitter, markWorkflowSetupHandled } = panelContext();
 		const suspend = vi.fn();
@@ -3918,6 +3925,73 @@ describe('workflows(action="setup") — setup panel', () => {
 		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ setupRequests: [replacement] }));
 		expect(emitter.announce).not.toHaveBeenCalled();
 		expect(markWorkflowSetupHandled).not.toHaveBeenCalled();
+	});
+
+	it('announces unbound new-account requirements without opening a setup card', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{ ...openSlack, preferNewCredential: true },
+			boundGmail,
+			sheetParams,
+		]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.announce).toHaveBeenCalledWith(
+			'wf1',
+			expect.arrayContaining([
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+				expect.objectContaining({ credentialType: 'gmailOAuth2' }),
+				expect.objectContaining({ parameterNames: ['documentId'] }),
+			]),
+		);
+		expect(markWorkflowSetupHandled).toHaveBeenCalledWith('wf1');
+	});
+
+	it('does not reopen an account selected during the current build', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([boundGmail]);
+		const { context } = panelContext({
+			runId: 'run-early',
+			threadId: 'thread-early',
+			threadMemory: {
+				getThread: vi.fn().mockResolvedValue({
+					id: 'thread-early',
+					resourceId: 'user-1',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					metadata: {
+						instanceAiWorkflowSourceFiles: {
+							'src/workflows/main.ts': {
+								filePath: 'src/workflows/main.ts',
+								workflowId: 'wf1',
+								setupPreferences: {
+									runId: 'run-early',
+									satisfiedCredentialTypes: ['gmailOAuth2'],
+									preferNewCredentialTypes: [],
+								},
+							},
+						},
+					},
+				}),
+				saveThread: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['gmailOAuth2'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true, open: [] });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+			includeSettled: true,
+		});
 	});
 
 	it('keeps failed connection checks in the announcement', async () => {

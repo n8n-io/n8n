@@ -1,6 +1,6 @@
 import { computed, reactive, ref, toValue } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import type { InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 import { useSetupPanelState, type SetupPanelThreadSource } from '../composables/useSetupPanelState';
@@ -32,6 +32,7 @@ function createHarness(
 		workflowId?: string;
 		agentEditing?: boolean;
 		workflowAvailable?: boolean;
+		hasWorkflowNodes?: boolean;
 		eventItems?: InstanceAiSetupItem[];
 		derivedItems?: InstanceAiSetupItem[];
 	} = {},
@@ -40,6 +41,7 @@ function createHarness(
 	const {
 		agentEditing = false,
 		workflowAvailable = false,
+		hasWorkflowNodes = true,
 		eventItems = [eventItem],
 		derivedItems = [derivedItem],
 	} = options;
@@ -53,7 +55,10 @@ function createHarness(
 	vi.mocked(isAgentEditingWorkflow).mockImplementation(() => editing.value);
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
 		credentialsAvailable: computed(() => true),
+		savedWorkflowChecksum: computed(() => undefined),
+		isCheckingOAuthCredentials: computed(() => false),
 		isWorkflowAvailable: computed(() => available.value),
+		hasWorkflowNodes: computed(() => hasWorkflowNodes),
 		workflowProjectId: computed(() => undefined),
 		derivedItems: computed(() => derived.value),
 		derivedCredentialItems: computed(() =>
@@ -67,7 +72,20 @@ function createHarness(
 	});
 
 	const thread: SetupPanelThreadSource = reactive({
-		messages: [{ agentTree: {} as InstanceAiAgentNode }],
+		messages: [
+			{
+				agentTree: {
+					agentId: 'root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					toolCalls: [],
+					children: [],
+				},
+			},
+		],
 		setupItemsByWorkflowId: { [WORKFLOW_ID]: eventItems },
 	});
 
@@ -99,6 +117,33 @@ describe('useSetupPanelState', () => {
 
 		expect(state.rowSource.value).toBe('events');
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
+	});
+
+	it('keeps early requirements after restoring an empty workflow', () => {
+		const { state, thread } = createHarness({
+			workflowAvailable: true,
+			hasWorkflowNodes: false,
+			derivedItems: [],
+		});
+		thread.messages[0].agentTree!.toolCalls.push({
+			toolCallId: 'setup',
+			toolName: 'credentials',
+			args: { action: 'setup' },
+			isLoading: false,
+			result: { success: true, preBuild: true, workflowId: WORKFLOW_ID },
+		});
+		expect(state.isAwaitingFirstBuild.value).toBe(true);
+		expect(state.rowSource.value).toBe('events');
+		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
+		thread.messages[0].agentTree!.toolCalls.push({
+			toolCallId: 'build',
+			toolName: 'build-workflow',
+			args: {},
+			isLoading: false,
+			result: { success: true, workflowId: WORKFLOW_ID },
+		});
+		expect(state.rows.value).toEqual([]);
+		expect(state.isAwaitingFirstBuild.value).toBe(false);
 	});
 
 	it('resolves event bindings and keeps the recipe as saved rows change', () => {

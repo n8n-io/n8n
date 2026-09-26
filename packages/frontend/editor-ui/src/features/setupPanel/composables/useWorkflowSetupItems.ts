@@ -9,6 +9,7 @@ import {
 } from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -64,6 +65,11 @@ export function useWorkflowSetupItems(
 	const oauth = useCredentialOAuth();
 	const oauthConnections = shallowReactive(
 		new Map<string, { key: string; status: OAuthConnectionStatus }>(),
+	);
+	const checkedCredentialIds = shallowReactive(new Set<string>());
+	watch(
+		() => toValue(workflowId),
+		() => checkedCredentialIds.clear(),
 	);
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
@@ -197,12 +203,22 @@ export function useWorkflowSetupItems(
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
 
-	const boundOAuthCredentials = computed(() => {
-		const ids = new Set(
-			(workflowNodes.value ?? []).flatMap((node) =>
-				Object.values(node.credentials ?? {}).map((credential) => credential.id),
+	const boundCredentialIds = computed(
+		() =>
+			new Set(
+				(workflowNodes.value ?? []).flatMap((node) =>
+					Object.values(node.credentials ?? {}).map((credential) => credential.id),
+				),
 			),
-		);
+	);
+	// Workflow bindings take over tracking once an early selection is saved.
+	watch(boundCredentialIds, (ids) => {
+		for (const id of checkedCredentialIds) {
+			if (ids.has(id)) checkedCredentialIds.delete(id);
+		}
+	});
+	const boundOAuthCredentials = computed(() => {
+		const ids = new Set([...boundCredentialIds.value, ...checkedCredentialIds]);
 		return [...ids].flatMap((id) => {
 			const credential = getBoundCredential(id);
 			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
@@ -220,6 +236,12 @@ export function useWorkflowSetupItems(
 				: [];
 		});
 	});
+	const isCheckingOAuthCredentials = computed(() =>
+		boundOAuthCredentials.value.some(({ id, key }) => {
+			const connection = oauthConnections.get(id);
+			return connection?.key !== key || connection.status === 'loading';
+		}),
+	);
 	watch(
 		boundOAuthCredentials,
 		async (credentials) => {
@@ -234,7 +256,9 @@ export function useWorkflowSetupItems(
 					if (cached?.key === key && cached.status !== 'error') return;
 					const connection = { key, status: 'loading' as const };
 					oauthConnections.set(id, connection);
-					let status: OAuthConnectionStatus = 'error';
+					const permissions = getResourcePermissions(getBoundCredential(id)?.scopes).credential;
+					let status: OAuthConnectionStatus =
+						permissions.read && !permissions.update ? 'unknown' : 'error';
 					try {
 						const loaded = await credentialsStore.getCredentialData({ id });
 						const data = loaded?.data;
@@ -246,13 +270,9 @@ export function useWorkflowSetupItems(
 								) || hasOAuthTokenData(loaded)
 									? 'connected'
 									: 'disconnected';
-						} else {
-							// Shared credentials without data keep the existing completion behavior.
-							// Add a scoped status API if setup must verify their authorization.
-							status = 'unknown';
 						}
 					} catch {
-						// A failed read cannot confirm completion. Retry on the next credential refresh.
+						// Read-only credentials can remain usable without access to their data.
 					}
 					// A removed or changed credential must not accept an older response.
 					if (oauthConnections.get(id) === connection) oauthConnections.set(id, { key, status });
@@ -410,6 +430,7 @@ export function useWorkflowSetupItems(
 		if (!isBoundCredential(assigned)) return false;
 		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
 		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
+			if (!boundCredentialIds.value.has(credential.id)) checkedCredentialIds.add(credential.id);
 			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
 			const status = oauthConnections.get(credential.id)?.status;
 			return status === 'connected' || status === 'unknown';
@@ -448,7 +469,10 @@ export function useWorkflowSetupItems(
 
 	return {
 		credentialsAvailable,
+		savedWorkflowChecksum: computed(() => fetchedWorkflow.value?.checksum),
+		isCheckingOAuthCredentials,
 		isWorkflowAvailable,
+		hasWorkflowNodes: computed(() => (workflowNodes.value?.length ?? 0) > 0),
 		workflowProjectId,
 		derivedItems,
 		derivedCredentialItems,
