@@ -23,7 +23,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import {
 	useWorkflowDocumentStore,
@@ -121,6 +121,7 @@ describe('useContextMenu', () => {
 	beforeEach(() => {
 		groupViewState.current = undefined;
 		setActivePinia(createPinia());
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 			branchReadOnly: false,
@@ -188,8 +189,9 @@ describe('useContextMenu', () => {
 
 	describe('extract_sub_workflow gating', () => {
 		it('hides convert to sub-workflow when executeWorkflow is excluded', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+				(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+			);
 
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
@@ -198,8 +200,9 @@ describe('useContextMenu', () => {
 		});
 
 		it('hides convert to sub-workflow on a group target when executeWorkflow is excluded', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+				(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+			);
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 
 			const { open, actions } = useContextMenu();
@@ -498,6 +501,16 @@ describe('useContextMenu', () => {
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.add_node?.disabled).toBe(true);
 			expect(byId.add_sticky?.disabled).toBe(true);
+		});
+
+		it('leaves out add sticky when the sticky note type is not loaded', () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === STICKY_NODE_TYPE,
+			);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			expect(actions.value.some((action) => action.id === 'add_sticky')).toBe(false);
 		});
 
 		it('keeps the mutating actions enabled when the target is not read-only', () => {

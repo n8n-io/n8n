@@ -7,7 +7,11 @@ import { createApp, shallowRef } from 'vue';
 import { useSelectionValidation } from './useSelectionValidation';
 
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createWorkflowDocumentId,
@@ -808,5 +812,24 @@ describe('useSelectionValidation', () => {
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
+	});
+
+	describe('isSubworkflowConversionDisabled', () => {
+		it.each([EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE])(
+			'returns true when %s is not loaded',
+			(missingType) => {
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+					(type) => type === missingType,
+				);
+
+				expect(useSelectionValidation().isSubworkflowConversionDisabled()).toBe(true);
+			},
+		);
+
+		it('returns false when both sub-workflow node types are loaded', () => {
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
+
+			expect(useSelectionValidation().isSubworkflowConversionDisabled()).toBe(false);
+		});
 	});
 });

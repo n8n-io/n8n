@@ -1557,6 +1557,20 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addNodesAndConnections', () => {
+		it('should add nothing and clear the connection context when a node type is not loaded', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReturnValue(true);
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: 'type' }], [], {});
+
+			expect(addedNodes).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
+		});
+	});
+
 	describe('addNodes', () => {
 		it('should add nodes at specified positions', async () => {
 			const nodeTypesStore = useNodeTypesStore();

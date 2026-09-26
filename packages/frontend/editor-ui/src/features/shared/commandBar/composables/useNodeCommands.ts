@@ -2,6 +2,7 @@ import { type Component, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
@@ -197,7 +198,7 @@ export function useNodeCommands(options: {
 				},
 			},
 			...rootOpenNodeCommandItems.value,
-			...(hasPermission('update')
+			...(hasPermission('update') && !nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)
 				? [
 						{
 							id: ITEM_ID.ADD_STICKY,

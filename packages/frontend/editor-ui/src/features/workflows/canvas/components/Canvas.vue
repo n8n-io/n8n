@@ -12,6 +12,7 @@ import {
 	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
 	CanvasKey,
 	MODAL_CONFIRM,
+	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
@@ -454,7 +455,7 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
-const { isSelectionExtractable } = useSelectionValidation();
+const { isSelectionExtractable, isSubworkflowConversionDisabled } = useSelectionValidation();
 const { allowTriggerInGroup } = useNodeGroupRules();
 
 // Groups that start the workflow themselves
@@ -473,7 +474,7 @@ const groupIdsWithTrigger = computed(() => {
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
-	if (settingsStore.isSubworkflowConversionDisabled) return ids;
+	if (isSubworkflowConversionDisabled()) return ids;
 	for (const group of workflowDocumentStore.value.allGroups) {
 		if (isSelectionExtractable(group.nodeIds).valid) {
 			ids.add(group.id);
@@ -567,7 +568,10 @@ const keyMap = computed(() => {
 				props.eventBus.emit('deprecated:tab-shortcut');
 			},
 		},
-		shift_s: () => emit('create:sticky'),
+		shift_s: {
+			disabled: () => nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE),
+			run: () => emit('create:sticky'),
+		},
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: {
 			disabled: () => settingsStore.isCanvasOnly,
@@ -582,7 +586,7 @@ const keyMap = computed(() => {
 		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: {
-			disabled: () => settingsStore.isSubworkflowConversionDisabled,
+			disabled: () => isSubworkflowConversionDisabled(),
 			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		},
 		c: () => emit('start-chat'),

@@ -14,7 +14,11 @@ import {
 import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
@@ -28,6 +32,13 @@ export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { allowTriggerInGroup, allowMultipleBoundaryNodes } = useNodeGroupRules();
+
+	function isSubworkflowConversionDisabled(): boolean {
+		return (
+			nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE) ||
+			nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
+		);
+	}
 
 	/**
 	 * Expands a selection of node ids to include all sub-nodes (memory, tools,
@@ -134,6 +145,7 @@ export function useSelectionValidation() {
 	}
 
 	return {
+		isSubworkflowConversionDisabled,
 		isSelectionExtractable,
 		isSelectionGroupable,
 		expandSelectionWithSubNodes,

@@ -22,6 +22,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';
 
 const mockDocumentStoreState = {
@@ -91,6 +92,7 @@ describe('NodesMode', () => {
 		vi.clearAllMocks();
 		pinia = createPinia();
 		setActivePinia(pinia);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -226,6 +228,26 @@ describe('NodesMode', () => {
 
 			await userEvent.click(screen.getByText('Webhook'));
 			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.webhook' }]]]);
+		});
+
+		it('drops a node type that is not loaded from the empty-search suggestions', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === HTTP_REQUEST_NODE_TYPE,
+			);
+			useViewStacks().pushViewStack({
+				title: 'What triggers this workflow?',
+				mode: 'nodes',
+				rootView: TRIGGER_NODE_CREATOR_VIEW,
+				search: 'missing node',
+				items: [],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('No results for "missing node"')).toBeInTheDocument();
+			expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+			expect(screen.getByText('Webhook')).toBeInTheDocument();
 		});
 
 		it('still adds an available node on Enter', async () => {

@@ -25,7 +25,8 @@ import {
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { EXECUTE_WORKFLOW_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
@@ -177,6 +178,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 	workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 
 	renderComponent = createComponentRenderer(Canvas, {
@@ -1047,7 +1049,9 @@ describe('Canvas', () => {
 		});
 
 		it('hides the convert button when executeWorkflow is excluded', async () => {
-			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+				(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+			);
 
 			const rendered = await setupExpandedGroupWithLooseNodes();
 

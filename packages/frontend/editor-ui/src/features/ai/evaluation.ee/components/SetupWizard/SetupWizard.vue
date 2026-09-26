@@ -11,6 +11,8 @@ import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useWorkflowEvaluationState } from '../../composables/useWorkflowEvaluationState';
 defineEmits<{
 	runTest: [];
@@ -20,6 +22,7 @@ const router = useRouter();
 const locale = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const evaluationStore = useEvaluationStore();
+const nodeTypesStore = useNodeTypesStore();
 const evaluationState = useWorkflowEvaluationState();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -119,7 +122,10 @@ function onSeePlans() {
 						</li>
 					</ul>
 
-					<div :class="$style.actionButton">
+					<div
+						v-if="!nodeTypesStore.isNodeTypeUnavailable(EVALUATION_TRIGGER_NODE_TYPE)"
+						:class="$style.actionButton"
+					>
 						<N8nButton
 							variant="subtle"
 							size="small"
