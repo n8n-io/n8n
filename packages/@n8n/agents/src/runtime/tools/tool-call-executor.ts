@@ -26,6 +26,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
 	BuiltTool,
+	GuardrailsOptions,
 	PendingToolCall,
 	ToolSuspendOptions,
 } from '../../types';
@@ -36,6 +37,7 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
 import type { WorkspaceFilesystem } from '../../workspace/types';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
@@ -137,6 +139,7 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -156,9 +159,12 @@ interface ProcessToolCallParams {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** The call already suspended, so `beforeTool` already ran. */
+	previouslySuspended?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
 	suspendPayload?: unknown;
 	/** Checkpointed private continuation of the tool call being resumed. */
@@ -378,6 +384,7 @@ export class ToolCallExecutor {
 							persistence: ctx.persistence,
 							resolvedTelemetry,
 							executionCounter,
+							guardrails: ctx.guardrails,
 							abortSignal,
 							countToolCall: true,
 						}),
@@ -666,6 +673,7 @@ export class ToolCallExecutor {
 				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
+				guardrails: ctx.guardrails,
 				abortSignal,
 				isAborted: ctx.isAborted,
 			});
@@ -718,6 +726,25 @@ export class ToolCallExecutor {
 		const validation = await this.validateToolInput(params, builtTool);
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
+
+		const guardrails = GuardrailRunner.from(params.guardrails);
+		const guardCtx = guardrails?.toolCallContext({
+			toolCallId,
+			toolName,
+			input,
+			runId: params.runId,
+		});
+		// Skip only a call that already suspended. An unexecuted pending call
+		// is still a first execution, even when resume data is present.
+		if (guardrails && guardCtx && !params.previouslySuspended) {
+			const stop = await guardrails.beforeTool(guardCtx);
+			if (stop) {
+				return await this.toolError(
+					params,
+					new Error(`Tool call stopped by guardrail: ${stop.code}`),
+				);
+			}
+		}
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
@@ -779,6 +806,9 @@ export class ToolCallExecutor {
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
+
+		// Final result only: a call that suspended reports once, after resume.
+		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
 
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
@@ -847,8 +877,10 @@ export class ToolCallExecutor {
 			resumeData,
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
+			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
+			previouslySuspended: entry.suspended,
 			...(entry.suspended
 				? {
 						suspendPayload: entry.suspendPayload,

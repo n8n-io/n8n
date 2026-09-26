@@ -6,7 +6,12 @@ import type { z } from 'zod';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
-import type { ModelCallContext, RunOutputSink, RunServices } from './run-output-sink';
+import type {
+	ModelCallContext,
+	ModelTurnResult,
+	RunOutputSink,
+	RunServices,
+} from './run-output-sink';
 import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -53,10 +58,12 @@ import type {
 	PromptCachingConfig,
 	ResumeOptions,
 } from '../../types/sdk/agent';
+import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
@@ -818,6 +825,24 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const guardrails = GuardrailRunner.from(options?.guardrails);
+		let guardrailStop: GuardrailStop | undefined;
+		// Returns undefined when a guardrail stops the call; the loop then ends the run.
+		const guardedCallModel = async (
+			modelCallContext: ModelCallContext,
+		): Promise<ModelTurnResult | undefined> => {
+			const guardCtx = guardrails?.modelCallContext('turn', this.modelIdString);
+			if (guardrails && guardCtx) {
+				const stop = await guardrails.before(guardCtx);
+				if (stop) {
+					guardrailStop = stop;
+					return undefined;
+				}
+			}
+			const turn = await sink.callModel(modelCallContext);
+			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
+			return turn;
+		};
 		const inputMessages = new Set(list.inputDelta());
 		const inputIds = new Set([...inputMessages].map((message) => message.id));
 
@@ -840,6 +865,7 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			guardrails: options?.guardrails,
 			abortSignal: abortScope.signal,
 			isAborted: () => abortScope.isAborted,
 		});
@@ -979,7 +1005,7 @@ export class AgentRuntime {
 							}
 						: undefined,
 			};
-			let turn = await sink.callModel(modelCallContext);
+			let turn = await guardedCallModel(modelCallContext);
 
 			// Some providers occasionally return a `stop` turn with no output at
 			// all mid-task, which would silently end the run with work half-done.
@@ -987,7 +1013,7 @@ export class AgentRuntime {
 			// turn; each discarded attempt still bills its usage.
 			for (
 				let emptyRetry = 0;
-				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				turn && emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
 				emptyRetry++
 			) {
 				totalUsage = mergeUsage(totalUsage, turn.usage);
@@ -996,7 +1022,15 @@ export class AgentRuntime {
 				// and the retry still bills those tokens via getTerminalFinish().
 				sink.reportUsage(totalUsage);
 				this.assertNotAborted(abortScope);
-				turn = await sink.callModel(modelCallContext);
+				turn = await guardedCallModel(modelCallContext);
+			}
+
+			// A guardrail refused the call. Usage from any discarded empty attempt
+			// is already folded in above; end the run without a new model turn.
+			if (!turn) {
+				lastFinishReason = 'guardrail';
+				reachedStopCondition = true;
+				break;
 			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
@@ -1061,6 +1095,7 @@ export class AgentRuntime {
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			structuredOutput,
+			guardrail: guardrailStop,
 		});
 	}
 

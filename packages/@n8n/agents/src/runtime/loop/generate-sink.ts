@@ -104,6 +104,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(this.toolCallSummary.length > 0 && { toolCalls: this.toolCallSummary }),
 			getState: () => this.services.getState(),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		};
 	}
 }
