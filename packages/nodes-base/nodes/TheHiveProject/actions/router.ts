@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import * as alert from './alert';
 import * as case_ from './case';
@@ -66,10 +66,31 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
+				let description: string | null = null;
+				let httpCode: string | null = null;
+				if (error instanceof NodeApiError) {
+					// for e.g. connection errors the detail is only in `messages`, not `description`
+					description =
+						error.description ??
+						(error.messages.length ? [...new Set(error.messages)].join(' | ') : null);
+					httpCode = error.httpCode ?? null;
+				}
 				executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: error.message }),
+					this.helpers.returnJsonArray({ error: error.message, description, httpCode }),
 					{ itemData: { item: i } },
 				);
+				if (this.getNode().onError === 'continueErrorOutput') {
+					// core routes an item to the error output only if `item.error` is set
+					// (or `json` is exactly `{error}` / `{error, message}`), see
+					// WorkflowExecute.handleNodeErrorOutput
+					const nodeError =
+						error instanceof NodeApiError || error instanceof NodeOperationError
+							? error
+							: new NodeOperationError(this.getNode(), error as Error);
+					for (const item of executionData) {
+						item.error = nodeError;
+					}
+				}
 				returnData.push(...executionData);
 				continue;
 			}
