@@ -330,6 +330,7 @@ export const stepRequest = (
 		mode: 'manual',
 		iteration: 0,
 		callerContext: { hostMode: 'manual' },
+		responseExpectation: { kind: 'none' },
 	},
 	respond: noopResponseEmitter,
 });

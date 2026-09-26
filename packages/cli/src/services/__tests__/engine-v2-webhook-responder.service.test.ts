@@ -10,6 +10,7 @@ import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-cha
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,
+	type ResponseStream,
 	SUBSCRIBE_TIMEOUT_MS,
 } from '@/services/engine-v2-webhook-responder.service';
 
@@ -17,6 +18,7 @@ const TIMEOUT_MS = 50_000;
 
 const runEnd = { kind: 'runEnd' } as const;
 const stepResponse = { kind: 'stepResponse' } as const;
+const stream = { kind: 'stream' } as const;
 
 /**
  * Stands in for the receiver. Only `src/modules/engine-v2/**` may import
@@ -287,6 +289,210 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(responder.waitForResponse(executionId, runEnd)).rejects.toThrow(
 			'already waits for a response for this execution',
 		);
+	});
+
+	it('refuses to wait for a stream without a response stream', async () => {
+		await expect(responder.waitForResponse(createExecutionIdV2(), stream)).rejects.toThrow(
+			'without a response stream',
+		);
+	});
+
+	it.each([runEnd, stepResponse, { kind: 'none' } as const])(
+		'does not deliver chunks when the expectation is %j',
+		async (expectation) => {
+			const responseStream = mock<ResponseStream>();
+			const pending = await responder.waitForResponse(
+				createExecutionIdV2(),
+				expectation,
+				responseStream,
+			);
+
+			deliver({
+				type: 'chunk',
+				executionId: pending.executionId,
+				payload: { type: 'item', content: 'ignored' },
+			});
+
+			expect(responseStream.write).not.toHaveBeenCalled();
+			pending.release();
+		},
+	);
+
+	describe('streaming', () => {
+		const failedStep = {
+			status: 'failed',
+			lastStep: {
+				nodeId: 'c',
+				nodeName: 'C',
+				status: 'failed',
+				outputs: null,
+				error: { name: 'NodeOperationError', message: 'it broke' },
+			},
+		};
+
+		const waitForStream = async (responseStream: ResponseStream) =>
+			await responder.waitForResponse(createExecutionIdV2(), stream, responseStream);
+
+		it('writes a chunk to the open response as one NDJSON line', async () => {
+			const responseStream = mock<ResponseStream>({ writableEnded: false });
+			const pending = await waitForStream(responseStream);
+
+			const chunk = { type: 'item', content: 'hi' };
+			deliver({ type: 'chunk', executionId: pending.executionId, payload: chunk });
+
+			expect(responseStream.write).toHaveBeenCalledWith(JSON.stringify(chunk) + '\n');
+			expect(responseStream.flush).toHaveBeenCalledTimes(1);
+			pending.release();
+		});
+
+		it('ignores a Respond node result', async () => {
+			const responseStream = mock<ResponseStream>();
+			const pending = await waitForStream(responseStream);
+
+			deliver({
+				type: 'response',
+				executionId: pending.executionId,
+				payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
+			});
+			deliver(endedResponse(pending.executionId));
+
+			await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+			expect(responseStream.write).not.toHaveBeenCalled();
+		});
+
+		it('ends a successful stream without an error chunk', async () => {
+			const responseStream = mock<ResponseStream>();
+			const pending = await waitForStream(responseStream);
+
+			deliver(endedResponse(pending.executionId));
+			await pending.settled;
+
+			expect(responseStream.write).not.toHaveBeenCalled();
+			expect(responseStream.end).toHaveBeenCalledTimes(1);
+		});
+
+		it('writes one fallback error chunk before a failed stream ends', async () => {
+			const responseStream = mock<ResponseStream>();
+			const pending = await waitForStream(responseStream);
+
+			deliver(endedResponse(pending.executionId, failedStep));
+			await pending.settled;
+
+			expect(responseStream.write).toHaveBeenCalledTimes(1);
+			expect(responseStream.write).toHaveBeenCalledWith(expect.stringContaining('"type":"error"'));
+			expect(responseStream.flush).toHaveBeenCalledTimes(1);
+			expect(responseStream.write.mock.invocationCallOrder[0]).toBeLessThan(
+				responseStream.end.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not add a fallback error after the executor sent one', async () => {
+			const responseStream = mock<ResponseStream>();
+			const pending = await waitForStream(responseStream);
+			const errorChunk = {
+				type: 'error' as const,
+				content: 'it broke',
+				metadata: { nodeId: 'c', nodeName: 'C', runIndex: 0, itemIndex: 0, timestamp: 1 },
+			};
+
+			deliver({ type: 'chunk', executionId: pending.executionId, payload: errorChunk });
+			deliver(endedResponse(pending.executionId, failedStep));
+			await pending.settled;
+
+			expect(responseStream.write).toHaveBeenCalledTimes(1);
+			expect(responseStream.write).toHaveBeenCalledWith(`${JSON.stringify(errorChunk)}\n`);
+			expect(responseStream.end).toHaveBeenCalledTimes(1);
+		});
+
+		it('writes and flushes an undeliverable response before it ends the stream', async () => {
+			const flush = vi.fn();
+			const responseStream = mock<ResponseStream>({ flush });
+			const pending = await waitForStream(responseStream);
+
+			deliver({
+				type: 'undeliverable',
+				executionId: pending.executionId,
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			});
+
+			await expect(pending.settled).resolves.toEqual({
+				status: 'undeliverable',
+				error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			});
+			expect(responseStream.write).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'"nodeId":"unknown","nodeName":"unknown","runIndex":0,"itemIndex":0',
+				),
+			);
+			expect(flush).toHaveBeenCalledTimes(1);
+			expect(responseStream.end).toHaveBeenCalledTimes(1);
+			expect(flush.mock.invocationCallOrder[0]).toBeLessThan(
+				responseStream.end.mock.invocationCallOrder[0],
+			);
+		});
+
+		describe('heartbeat', () => {
+			it('writes and flushes a keepalive after 30 seconds', async () => {
+				const responseStream = mock<ResponseStream>({ writableEnded: false, destroyed: false });
+				const pending = await waitForStream(responseStream);
+
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(responseStream.write).toHaveBeenCalledWith('{"type":"keepalive"}\n');
+				expect(responseStream.flush).toHaveBeenCalledTimes(1);
+				pending.release();
+			});
+
+			it.each(['finish', 'close'] as const)('stops after the response emits %s', async (event) => {
+				const responseStream = mock<ResponseStream>({ writableEnded: false, destroyed: false });
+				const pending = await waitForStream(responseStream);
+				const handler = responseStream.once.mock.calls.find(
+					([registered]) => registered === event,
+				)?.[1];
+
+				handler?.();
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(responseStream.write).not.toHaveBeenCalled();
+				pending.release();
+			});
+
+			it('stops when the pending response is released', async () => {
+				const responseStream = mock<ResponseStream>({ writableEnded: false, destroyed: false });
+				const pending = await waitForStream(responseStream);
+
+				pending.release();
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(responseStream.write).not.toHaveBeenCalled();
+			});
+
+			it('stops when the subscription fails', async () => {
+				const failing = newResponder();
+				failing.useReceiver({
+					receive: async () => {
+						throw new Error('Redis is unavailable');
+					},
+					stop: async () => {},
+				});
+				const responseStream = mock<ResponseStream>({ writableEnded: false, destroyed: false });
+
+				await expect(
+					failing.waitForResponse(createExecutionIdV2(), stream, responseStream),
+				).rejects.toThrow('Redis is unavailable');
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(responseStream.write).not.toHaveBeenCalled();
+			});
+
+			it('does not start for non-streaming delivery', async () => {
+				const setIntervalSpy = vi.spyOn(global, 'setInterval');
+				const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
+
+				expect(setIntervalSpy).not.toHaveBeenCalled();
+				pending.release();
+			});
+		});
 	});
 });
 

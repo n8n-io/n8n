@@ -1200,7 +1200,7 @@ export async function executeWebhook(
 				{ executionId },
 			);
 			// TODO: Add check for streaming nodes here
-			runData.httpResponse = res;
+			if (!routesToEngineV2) runData.httpResponse = res;
 			runData.streamingEnabled = true;
 			// No `responder.respondWith()` here, unlike the formPage and hostedChat
 			// branches: streaming requires the trigger to have taken over the
@@ -1214,11 +1214,18 @@ export async function executeWebhook(
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
+		if (
+			routesToEngineV2 &&
+			(responseMode === 'lastNode' ||
+				responseMode === 'responseNode' ||
+				responseMode === 'streaming')
+		) {
 			const engineExecutionId = createExecutionIdV2();
+			// The responder writes to `res` only when the expectation is `stream`.
 			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
 				toResponseExpectation(responseMode),
+				res,
 			);
 			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
@@ -1367,9 +1374,13 @@ export async function executeWebhook(
 					workflowId: workflowData.id,
 					...(isUndeliverable ? { error: outcome.error } : {}),
 				});
-				// The webhook node can answer before the execution starts. Do not send a
-				// second response when the execution response later settles.
-				if (!responder.hasResponded) {
+				// The trigger already sent the stream headers, so the stream ends
+				// instead of carrying an error response.
+				if (responseMode === 'streaming') {
+					if (!res.writableEnded) res.end();
+				} else if (!responder.hasResponded) {
+					// The webhook node can answer before the execution starts. Do not send a
+					// second response when the execution response later settles.
 					responder.respondWith({
 						data: { message: errorResponse.responseMessage },
 						responseCode: errorResponse.responseCode,

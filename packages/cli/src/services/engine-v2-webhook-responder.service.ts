@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EndedMessage, ExecutionResponse, ResponseExpectation } from '@n8n/engine';
-import { decodeBufferBody } from 'n8n-core';
+import type { ExecutionResponse, ResponseExpectation } from '@n8n/engine';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -10,11 +9,20 @@ import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
 } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type {
+	ResponseStream,
+	WebhookResponseDelivery,
+} from '@/services/engine-v2-webhook-response-delivery';
+import { NonStreamingWebhookResponseDelivery } from '@/services/non-streaming-webhook-response-delivery';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
+import { StreamingWebhookResponseDelivery } from '@/services/streaming-webhook-response-delivery';
+
+export type { ResponseStream } from '@/services/engine-v2-webhook-response-delivery';
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = {
 	response: PendingWebhookResponse;
+	delivery: WebhookResponseDelivery;
 	unsubscribe: UnsubscribeExecutionResponse;
 };
 
@@ -63,14 +71,18 @@ export class EngineV2WebhookResponder {
 	 * `StartExecution`.
 	 * @param expectation What the request waits for. Pass the same value to
 	 * `StartExecution`.
-	 * @throws {UnexpectedError} If the execution response receiver is not set, or
-	 * if the service already waits for this execution.
+	 * @param responseStream The HTTP response to write chunks to. The service
+	 * uses it only when the expectation is `stream`, and then it is required.
+	 * @throws {UnexpectedError} If the execution response receiver is not set,
+	 * if the service already waits for this execution, or if a stream is
+	 * expected without a response stream.
 	 * @throws {OperationalError} If the service is at capacity, or if it cannot
 	 * listen for the response within `SUBSCRIBE_TIMEOUT_MS`.
 	 */
 	async waitForResponse(
 		executionId: ExecutionIdV2,
 		expectation: ResponseExpectation,
+		responseStream?: ResponseStream,
 	): Promise<PendingWebhookResponse> {
 		const { receiver } = this;
 		if (!receiver) {
@@ -90,19 +102,30 @@ export class EngineV2WebhookResponder {
 			});
 		}
 
+		if (expectation.kind === 'stream' && !responseStream) {
+			throw new UnexpectedError('Engine v2 cannot stream a response without a response stream', {
+				extra: { executionId },
+			});
+		}
+
 		const response = new PendingWebhookResponse({
 			executionId,
 			expectation,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
+		const delivery: WebhookResponseDelivery =
+			expectation.kind === 'stream' && responseStream
+				? new StreamingWebhookResponseDelivery(response, responseStream)
+				: new NonStreamingWebhookResponseDelivery(response);
 
 		// Hold the slot before the subscription is ready, so requests that arrive
-		// meanwhile still count against the limit.
-		const pending: PendingWebhook = { response, unsubscribe: () => {} };
+		// meanwhile still count against the limit. A failed subscription releases
+		// the slot, which also stops the delivery.
+		const pending: PendingWebhook = { response, delivery, unsubscribe: () => {} };
 		this.pendingWebhooks.set(executionId, pending);
 
-		pending.unsubscribe = await this.subscribe(receiver, response);
+		pending.unsubscribe = await this.subscribe(receiver, response, delivery);
 
 		return response;
 	}
@@ -117,10 +140,11 @@ export class EngineV2WebhookResponder {
 	private async subscribe(
 		receiver: ExecutionResponseReceiver,
 		response: PendingWebhookResponse,
+		delivery: WebhookResponseDelivery,
 	): Promise<UnsubscribeExecutionResponse> {
 		const { executionId } = response;
 		const subscription = receiver.receive(executionId, (received) =>
-			this.handle(received, response),
+			this.handle(received, delivery),
 		);
 		let timeoutTimer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
@@ -153,9 +177,9 @@ export class EngineV2WebhookResponder {
 		return result;
 	}
 
-	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
+	private handle(received: ExecutionResponse, delivery: WebhookResponseDelivery): void {
 		try {
-			this.route(received, response);
+			delivery.handle(received);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine v2 response', {
 				executionId: received.executionId,
@@ -165,46 +189,11 @@ export class EngineV2WebhookResponder {
 		}
 	}
 
-	private route(received: ExecutionResponse, response: PendingWebhookResponse): void {
-		switch (received.type) {
-			case 'undeliverable':
-				response.resolve({
-					status: 'undeliverable',
-					error: { name: received.error.code, message: received.error.message },
-				});
-				return;
-
-			case 'response':
-				// A Buffer body arrives base64-encoded, because the channel is JSON.
-				response.resolveResponse(decodeBufferBody(received.payload));
-				return;
-
-			case 'ended':
-				this.onEnded(received, response);
-				return;
-		}
-	}
-
-	private onEnded(received: EndedMessage, response: PendingWebhookResponse): void {
-		const { nodeName, outputs, error } = received.lastStep;
-
-		if (received.status === 'failed') {
-			// The step that ended a failed run is the one that failed, so its name
-			// and error are what the caller reports.
-			response.resolve({ status: 'failed', nodeName, error });
-			return;
-		}
-
-		response.resolve({
-			status: 'completed',
-			// A skipped or failed step carries nothing to answer with.
-			lastNode: outputs ? { nodeName, outputs } : undefined,
-		});
-	}
-
 	/** Ends the run's subscription: nothing more can arrive for it. */
 	private release(executionId: string): void {
-		this.pendingWebhooks.get(executionId)?.unsubscribe();
+		const pending = this.pendingWebhooks.get(executionId);
+		pending?.delivery.dispose?.();
+		pending?.unsubscribe();
 		this.pendingWebhooks.delete(executionId);
 	}
 }
