@@ -573,6 +573,27 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
 
+		it('should handle arrow navigation without bubbling to canvas shortcuts', async () => {
+			const { getByTestId, findByRole } = render();
+			const overview = getByTestId('logs-overview');
+			const documentKeydown = vi.fn();
+			document.addEventListener('keydown', documentKeydown);
+
+			try {
+				await waitFor(async () =>
+					expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
+				);
+				await fireEvent.keyDown(overview, { key: 'ArrowUp' });
+
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+				await fireEvent.keyDown(overview, { key: 'ArrowDown' });
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+				expect(documentKeydown).not.toHaveBeenCalled();
+			} finally {
+				document.removeEventListener('keydown', documentKeydown);
+			}
+		});
+
 		it('should not select a log for the selected node on canvas if sync is disabled', async () => {
 			logsStore.toggleLogSelectionSync(false);
 

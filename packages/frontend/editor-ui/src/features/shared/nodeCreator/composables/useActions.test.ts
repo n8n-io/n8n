@@ -118,6 +118,25 @@ describe('useActions', () => {
 			});
 		});
 
+		test.each([
+			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+		])('should not insert a manual trigger when opened from %s', (openSource) => {
+			const nodeCreatorStore = useNodeCreatorStore();
+
+			mockDocumentStoreState.workflowTriggerNodes = [];
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(openSource);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
+				connections: [],
+				nodes: [{ type: HTTP_REQUEST_NODE_TYPE, openDetail: true }],
+			});
+		});
+
 		test('should not insert a manual trigger node when there is a trigger in the workflow', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 

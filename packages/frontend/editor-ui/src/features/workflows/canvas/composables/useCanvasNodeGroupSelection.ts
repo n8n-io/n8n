@@ -1,4 +1,4 @@
-import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -16,6 +16,7 @@ export interface UseCanvasNodeGroupSelectionDeps {
 	isEnabled: MaybeRefOrGetter<boolean>;
 	getGroupById: (groupId: string) => IWorkflowGroup | undefined;
 	getGroupForNode: (nodeId: string) => IWorkflowGroup | undefined;
+	isEmptyGroup: (groupId: string) => boolean;
 	isGroupCollapsed: (groupId: string) => boolean;
 }
 
@@ -47,6 +48,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 	// Selection snapshot from the last reconciliation — diffing against it
 	// tells user-driven changes apart from our own.
 	let lastSelectedIds = new Set<string>();
+	const explicitlySelectedGroupIds = ref<Set<string>>(new Set());
 
 	const selectedIds = computed(() => new Set(getSelectedNodes.value.map((node) => node.id)));
 
@@ -110,7 +112,10 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 			// mounts around an already-selected member is a grouping operation, so
 			// it must still fold the selection into the new group.
 			const isDirectMemberSelection =
-				group.nodeIds.length === 1 && !target.has(groupNodeId) && added.includes(group.nodeIds[0]);
+				group.nodeIds.length === 1 &&
+				!deps.isEmptyGroup(group.id) &&
+				!target.has(groupNodeId) &&
+				added.includes(group.nodeIds[0]);
 			if (isDirectMemberSelection) continue;
 			if (group.nodeIds.every((memberId) => target.has(memberId))) {
 				target.add(groupNodeId);
@@ -171,6 +176,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 
 	watch([selectedIds, userSelectionActive, mountedGroupNodeIdsKey], () => {
 		if (!toValue(deps.isEnabled)) {
+			explicitlySelectedGroupIds.value = new Set();
 			lastSelectedIds = selectedIds.value;
 			return;
 		}
@@ -179,6 +185,18 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		if (userSelectionActive.value) return;
 
 		const currentIds = selectedIds.value;
+		const added = [...currentIds].filter((id) => !lastSelectedIds.has(id));
+		const removed = [...lastSelectedIds].filter((id) => !currentIds.has(id));
+		const nextExplicitlySelectedGroupIds = new Set(explicitlySelectedGroupIds.value);
+		for (const id of added) {
+			const groupId = parseCanvasGroupNodeId(id);
+			if (groupId) nextExplicitlySelectedGroupIds.add(groupId);
+		}
+		for (const id of removed) {
+			const groupId = parseCanvasGroupNodeId(id);
+			if (groupId) nextExplicitlySelectedGroupIds.delete(groupId);
+		}
+		explicitlySelectedGroupIds.value = nextExplicitlySelectedGroupIds;
 		const target = reconcile(currentIds);
 		const isInSync =
 			target.size === currentIds.size && [...target].every((id) => currentIds.has(id));
@@ -234,5 +252,6 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		fullySelectedGroupMemberIds,
 		selectedElementCount,
 		selectionBoxBounds,
+		explicitlySelectedGroupIds: computed(() => explicitlySelectedGroupIds.value),
 	};
 }
