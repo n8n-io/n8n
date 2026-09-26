@@ -8,6 +8,7 @@ import {
 } from '../response-channel/redis-execution-response-receiver';
 import {
 	RedisExecutionResponseSender,
+	SHUTDOWN_DRAIN_TIMEOUT_MS,
 	type RedisResponsePublisher,
 } from '../response-channel/redis-execution-response-sender';
 
@@ -58,6 +59,51 @@ describe('Redis execution response sender', () => {
 		expect(publisher.disconnect).toHaveBeenCalledTimes(1);
 		expect(publisher.publish).not.toHaveBeenCalled();
 	});
+
+	it('waits for an in-flight publish before it disconnects', async () => {
+		const publisher = mock<RedisResponsePublisher>();
+		let finishPublish: (() => void) | undefined;
+		publisher.publish.mockReturnValue(
+			new Promise((resolve) => {
+				finishPublish = () => resolve(1);
+			}),
+		);
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, mockLogger());
+		sender.send(ended());
+
+		const stop = sender.stop();
+		await Promise.resolve();
+
+		expect(publisher.disconnect).not.toHaveBeenCalled();
+		finishPublish?.();
+		await stop;
+		expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+	});
+
+	it('disconnects after the drain timeout when a publish never settles', async () => {
+		vi.useFakeTimers();
+		try {
+			const publisher = mock<RedisResponsePublisher>();
+			publisher.publish.mockReturnValue(new Promise(() => {}));
+			const logger = mockLogger();
+			const sender = new RedisExecutionResponseSender(publisher, getChannelName, logger);
+			sender.send(ended());
+
+			const stop = sender.stop();
+			await vi.advanceTimersByTimeAsync(SHUTDOWN_DRAIN_TIMEOUT_MS - 1);
+			expect(publisher.disconnect).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1);
+			await stop;
+			expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Execution responses were still being published at shutdown',
+				{ count: 1 },
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });
 
 describe('Redis execution response receiver', () => {
@@ -65,6 +111,16 @@ describe('Redis execution response receiver', () => {
 		const registration = subscriber.on.mock.calls.find(([event]) => event === 'message');
 		expect(registration).toBeDefined();
 		return registration![1];
+	};
+
+	const connectionHandler = (
+		subscriber: MockProxy<RedisResponseSubscriber>,
+		event: 'close' | 'ready',
+	): (() => void) => {
+		// Mock calls are typed by the last overload, which is the `message` one.
+		const registration = subscriber.on.mock.calls.find(([name]) => (name as string) === event);
+		expect(registration).toBeDefined();
+		return registration![1] as () => void;
 	};
 
 	it('refuses to receive before it starts', async () => {
@@ -173,7 +229,6 @@ describe('Redis execution response receiver', () => {
 	it('removes handlers and disconnects during shutdown', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
-		subscriber.unsubscribe.mockResolvedValue(1);
 		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		const handler = vi.fn();
 		await receiver.start();
@@ -185,9 +240,80 @@ describe('Redis execution response receiver', () => {
 		await receiver.stop();
 
 		expect(handler).not.toHaveBeenCalled();
-		expect(subscriber.unsubscribe).toHaveBeenCalledExactlyOnceWith(executionChannel);
+		// Closing the connection ends its subscriptions, so shutdown sends no UNSUBSCRIBE.
+		expect(subscriber.unsubscribe).not.toHaveBeenCalled();
 		expect(subscriber.off).toHaveBeenCalledWith('message', onMessage);
+		expect(subscriber.off).toHaveBeenCalledWith('close', connectionHandler(subscriber, 'close'));
+		expect(subscriber.off).toHaveBeenCalledWith('ready', connectionHandler(subscriber, 'ready'));
 		expect(subscriber.disconnect).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops without waiting for a subscription that is still in flight', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		subscriber.subscribe.mockReturnValue(new Promise(() => {}));
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
+		await receiver.start();
+		void receiver.receive('exec-1', vi.fn());
+
+		await receiver.stop();
+
+		expect(subscriber.unsubscribe).not.toHaveBeenCalled();
+		expect(subscriber.disconnect).toHaveBeenCalledTimes(1);
+	});
+
+	it('subscribes again to active executions after Redis recovers', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		subscriber.subscribe.mockResolvedValue(1);
+		subscriber.unsubscribe.mockResolvedValue(1);
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
+		await receiver.start();
+		await receiver.receive('exec-1', vi.fn());
+		await receiver.receive('exec-2', vi.fn());
+		const leave = await receiver.receive('exec-3', vi.fn());
+		leave();
+		subscriber.subscribe.mockClear();
+
+		connectionHandler(subscriber, 'close')();
+		connectionHandler(subscriber, 'ready')();
+
+		await vi.waitFor(() =>
+			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(
+				executionChannel,
+				getChannelName('exec-2'),
+			),
+		);
+	});
+
+	it('does not subscribe again when the connection becomes ready for the first time', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		subscriber.subscribe.mockResolvedValue(1);
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
+		await receiver.start();
+		await receiver.receive('exec-1', vi.fn());
+		subscriber.subscribe.mockClear();
+
+		connectionHandler(subscriber, 'ready')();
+
+		expect(subscriber.subscribe).not.toHaveBeenCalled();
+	});
+
+	it('logs a failure to subscribe again and retries on the next recovery', async () => {
+		const subscriber = mock<RedisResponseSubscriber>();
+		subscriber.subscribe.mockResolvedValue(1);
+		const logger = mockLogger();
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, logger);
+		await receiver.start();
+		await receiver.receive('exec-1', vi.fn());
+		subscriber.subscribe.mockClear();
+		subscriber.subscribe.mockRejectedValueOnce(new Error('Redis is unavailable'));
+		const onReady = connectionHandler(subscriber, 'ready');
+
+		connectionHandler(subscriber, 'close')();
+		onReady();
+		await vi.waitFor(() => expect(logger.error).toHaveBeenCalled());
+		onReady();
+
+		await vi.waitFor(() => expect(subscriber.subscribe).toHaveBeenCalledTimes(2));
 	});
 
 	it('removes the execution after its subscription fails', async () => {
