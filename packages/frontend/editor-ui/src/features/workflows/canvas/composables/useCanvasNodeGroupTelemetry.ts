@@ -1,8 +1,12 @@
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { getEmptyGroupAnchor, type IWorkflowGroup } from 'n8n-workflow';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { NodeCreatorOpenSource } from '@/Interface';
+import { countGroupExternalConnections } from './nodeGroupTelemetry.utils';
+import { useEmptyCanvasGroupsFlag } from './useEmptyCanvasGroupsFlag';
 
 export type CanvasNodeGroupEventSource =
 	| 'group-toolbar'
@@ -10,7 +14,9 @@ export type CanvasNodeGroupEventSource =
 	| 'keyboard-shortcut'
 	| 'context-menu'
 	| 'update-blocked-toast'
-	| 'sub-workflow-extraction';
+	| 'sub-workflow-extraction'
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	| 'node-creator';
 
 /**
  * Telemetry for canvas node groups: capturing how users
@@ -20,6 +26,8 @@ export function useCanvasNodeGroupTelemetry() {
 	const telemetry = useTelemetry();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const rootStore = useRootStore();
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 	function buildProperties(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
 		return {
@@ -33,9 +41,55 @@ export function useCanvasNodeGroupTelemetry() {
 		};
 	}
 
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	function buildGroupedProperties(
+		group: IWorkflowGroup,
+		source: CanvasNodeGroupEventSource,
+		nodeCreatorOpenSource?: NodeCreatorOpenSource,
+	) {
+		if (!emptyCanvasGroupsEnabled.value) return buildProperties(group, source);
+
+		const isEmpty = getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes) !== undefined;
+
+		return {
+			...buildProperties(group, source),
+			node_ids: isEmpty ? [] : group.nodeIds,
+			node_count: isEmpty ? 0 : group.nodeIds.length,
+			is_empty: isEmpty,
+			...(nodeCreatorOpenSource ? { node_creator_open_source: nodeCreatorOpenSource } : {}),
+		};
+	}
+
 	return {
-		trackGrouped(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
-			telemetry.track('User grouped nodes', buildProperties(group, source));
+		trackGrouped(
+			group: IWorkflowGroup,
+			source: CanvasNodeGroupEventSource,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			nodeCreatorOpenSource?: NodeCreatorOpenSource,
+		) {
+			telemetry.track(
+				TELEMETRY_EVENT.WORKFLOW.USER_GROUPED_NODES,
+				buildGroupedProperties(group, source, nodeCreatorOpenSource),
+			);
+		},
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		trackInitialEmptyGroupConnection(group: IWorkflowGroup) {
+			if (!emptyCanvasGroupsEnabled.value) return;
+
+			const connectionCount = countGroupExternalConnections(
+				group,
+				workflowDocumentStore.value.allNodes,
+				workflowDocumentStore.value.connectionsBySourceNode,
+			);
+			if (connectionCount === 0) return;
+
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP, {
+				workflow_id: workflowDocumentStore.value.workflowId,
+				group_id: group.id,
+				push_ref: rootStore.pushRef,
+				// The connection already existed when the group was created around its anchor.
+				was_first_connection: false,
+			});
 		},
 		trackUngrouped(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
 			telemetry.track('User ungrouped nodes', buildProperties(group, source));

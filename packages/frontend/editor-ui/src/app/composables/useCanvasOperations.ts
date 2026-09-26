@@ -137,6 +137,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	getEmptyGroupAnchor,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -145,7 +146,7 @@ import {
 	isHitlToolType,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -164,6 +165,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
+import { countGroupExternalConnections } from '@/features/workflows/canvas/composables/nodeGroupTelemetry.utils';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -310,6 +312,32 @@ export function useCanvasOperations() {
 			? workflowDocumentStore.value.getNodeById(uiStore.lastInteractedWithNodeId)
 			: null,
 	);
+
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	function getGroupConnectionCount(group: IWorkflowGroup): number {
+		return countGroupExternalConnections(
+			group,
+			workflowDocumentStore.value.allNodes,
+			workflowDocumentStore.value.connectionsBySourceNode,
+		);
+	}
+
+	function groupEventIdentity(groupId: string) {
+		return {
+			workflow_id: workflowDocumentStore.value.workflowId,
+			group_id: groupId,
+			push_ref: rootStore.pushRef,
+		};
+	}
+
+	function trackEmptyGroupEvent<T extends TelemetryEventDef>(
+		event: T,
+		properties: InferTelemetryProps<T>,
+	) {
+		if (!emptyCanvasGroupsEnabled.value) return;
+
+		telemetry.track(event, properties);
+	}
 
 	/**
 	 * Node operations
@@ -637,7 +665,11 @@ export function useCanvasOperations() {
 								index: outgoingConnection.index,
 							}),
 						},
-						{ validateNodeGroups },
+						{
+							validateNodeGroups,
+							// Reconnecting around a deleted node is an internal operation.
+							trackEmptyGroupTelemetry: false,
+						},
 					);
 				}
 			}
@@ -664,6 +696,8 @@ export function useCanvasOperations() {
 		}
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const wasEmptyGroup = group?.nodeIds.length === 1 && isEmptyGroupAnchor(node);
 		const shouldRestoreEmptyGroupAnchor =
 			emptyCanvasGroupsEnabled.value &&
 			preserveEmptyGroupAnchor &&
@@ -694,6 +728,11 @@ export function useCanvasOperations() {
 			);
 			const didReplace = replaceNode(id, anchor.id, { trackHistory, trackBulk: false });
 			if (didReplace) {
+				if (group) {
+					trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_DELETED_LAST_NODE_FROM_GROUP, {
+						...groupEventIdentity(group.id),
+					});
+				}
 				if (trackHistory && trackBulk) {
 					historyStore.stopRecordingUndo();
 				}
@@ -715,20 +754,21 @@ export function useCanvasOperations() {
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		// Snapshot the group first so its membership change is reverted with the node.
-		const groupBeforeDelete = trackHistory
-			? workflowDocumentStore.value.getGroupForNode(id)
-			: undefined;
-		const groupSnapshot = groupBeforeDelete
-			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
-			: undefined;
+		const groupBeforeDelete = group;
+		const groupSnapshot =
+			trackHistory && groupBeforeDelete
+				? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
+				: undefined;
 
 		useWorkflowExecutionStateStore(
 			workflowDocumentStore.value.documentId,
 		).clearActiveNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
+		const groupAfterDelete = groupBeforeDelete
+			? workflowDocumentStore.value.getGroupById(groupBeforeDelete.id)
+			: undefined;
 		if (groupSnapshot) {
-			const groupAfterDelete = workflowDocumentStore.value.getGroupById(groupSnapshot.id);
 			if (!groupAfterDelete) {
 				historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(groupSnapshot, Date.now()));
 			} else {
@@ -740,6 +780,12 @@ export function useCanvasOperations() {
 					),
 				);
 			}
+		}
+		if (groupBeforeDelete && !groupAfterDelete) {
+			trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_DELETED_GROUP, {
+				...groupEventIdentity(groupBeforeDelete.id),
+				was_empty: wasEmptyGroup,
+			});
 		}
 
 		if (trackHistory) {
@@ -916,6 +962,8 @@ export function useCanvasOperations() {
 				createConnection(newCanvasConnection, {
 					trackHistory,
 					validateNodeGroups: false,
+					// Replacing a connection is an internal operation.
+					trackEmptyGroupTelemetry: false,
 				});
 				didReplace = true;
 			}
@@ -1000,6 +1048,8 @@ export function useCanvasOperations() {
 			createConnection(connection, {
 				trackHistory,
 				validateNodeGroups: false,
+				// Replacing a grouped node's connections is an internal operation.
+				trackEmptyGroupTelemetry: false,
 			});
 			revalidateNodeInputConnections(connection.target);
 			revalidateNodeOutputConnections(connection.source);
@@ -2383,7 +2433,13 @@ export function useCanvasOperations() {
 
 	function createConnection(
 		connection: Connection,
-		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
+		{
+			trackHistory = false,
+			keepPristine = false,
+			validateNodeGroups = true,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			trackEmptyGroupTelemetry = true,
+		} = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
@@ -2421,6 +2477,27 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const emptyGroupsBeforeConnection = new Map<
+			string,
+			{ group: IWorkflowGroup; connectionCount: number }
+		>();
+		for (const node of trackEmptyGroupTelemetry && emptyCanvasGroupsEnabled.value
+			? [sourceNode, targetNode]
+			: []) {
+			const group = workflowDocumentStore.value.getGroupForNode(node.id);
+			if (
+				group &&
+				!emptyGroupsBeforeConnection.has(group.id) &&
+				getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes)
+			) {
+				emptyGroupsBeforeConnection.set(group.id, {
+					group,
+					connectionCount: getGroupConnectionCount(group),
+				});
+			}
+		}
+
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new AddConnectionCommand(mappedConnection, Date.now()));
 		}
@@ -2428,6 +2505,14 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.addConnection({
 			connection: mappedConnection,
 		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		for (const { group, connectionCount } of emptyGroupsBeforeConnection.values()) {
+			trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP, {
+				...groupEventIdentity(group.id),
+				was_first_connection: connectionCount === 0,
+			});
+		}
 
 		if (ownsBulk) {
 			historyStore.stopRecordingUndo();
@@ -2584,6 +2669,8 @@ export function useCanvasOperations() {
 		// Undo restores an already-valid state, so don't re-gate it on group validation.
 		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
 			validateNodeGroups: false,
+			// Restoring an existing connection during undo is an internal operation.
+			trackEmptyGroupTelemetry: false,
 		});
 	}
 
@@ -3792,6 +3879,21 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		// An empty group contains only its internal anchor, which the selected node must replace.
+		const replacementTargetId = options.replaceNodeId;
+		const replacementTarget = replacementTargetId
+			? workflowDocumentStore.value.getNodeById(replacementTargetId)
+			: undefined;
+		const replacementGroup = replacementTargetId
+			? workflowDocumentStore.value.getGroupForNode(replacementTargetId)
+			: undefined;
+		const emptyGroupAnchorId =
+			replacementTarget && replacementGroup && isEmptyGroupAnchor(replacementTarget)
+				? replacementTarget.id
+				: undefined;
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const connectionCountBeforeFill =
+			emptyGroupAnchorId && replacementGroup ? getGroupConnectionCount(replacementGroup) : 0;
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -3886,6 +3988,22 @@ export function useCanvasOperations() {
 						),
 					);
 				}
+			}
+		}
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		if (emptyGroupAnchorId && replacementGroupId) {
+			const groupAfterFill = workflowDocumentStore.value.getGroupById(replacementGroupId);
+			if (groupAfterFill) {
+				const nodeCountAfter = groupAfterFill.nodeIds.filter((nodeId) => {
+					const node = workflowDocumentStore.value.getNodeById(nodeId);
+					return node !== undefined && !isEmptyGroupAnchor(node);
+				}).length;
+				trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_FILLED_EMPTY_GROUP, {
+					...groupEventIdentity(groupAfterFill.id),
+					node_count_after: nodeCountAfter,
+					connection_count_before_fill: connectionCountBeforeFill,
+				});
 			}
 		}
 

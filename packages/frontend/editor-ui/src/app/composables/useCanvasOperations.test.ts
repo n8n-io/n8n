@@ -3096,6 +3096,57 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.markStateDirty).toHaveBeenCalled();
 		});
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('tracks the first connection added to an empty group', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), { validateNodeGroups: false });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+					was_first_connection: true,
+				},
+			);
+		});
+
+		it('does not track internal connection rewiring', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), {
+				validateNodeGroups: false,
+				trackEmptyGroupTelemetry: false,
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.anything(),
+			);
+		});
+
 		it('should not set UI state as dirty if keepPristine is true', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);

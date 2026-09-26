@@ -95,4 +95,21 @@ describe('replaceCanvasConnection', () => {
 
 		expect(policy).toHaveBeenCalledWith(expect.objectContaining({ trackHistory: false }));
 	});
+
+	it('disables empty-group telemetry for replacement connections', () => {
+		const input = buildInput();
+
+		replaceCanvasConnection(input);
+
+		expect(input.createConnection).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			expect.objectContaining({ trackEmptyGroupTelemetry: false }),
+		);
+		expect(input.createConnection).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			expect.objectContaining({ trackEmptyGroupTelemetry: false }),
+		);
+	});
 });

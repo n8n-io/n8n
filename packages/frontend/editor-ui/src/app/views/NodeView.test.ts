@@ -46,9 +46,22 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import { usePostHog } from '@/app/stores/posthog.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+const mockGroupTelemetry = vi.hoisted(() => ({
+	trackGrouped: vi.fn(),
+	trackInitialEmptyGroupConnection: vi.fn(),
+	trackUngrouped: vi.fn(),
+	trackCollapsed: vi.fn(),
+	trackExpanded: vi.fn(),
+}));
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
 	useMcpJsonNudgeTrigger: () => ({ gate: mockMcpJsonNudgeGate }),
+}));
+
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+vi.mock('@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry', () => ({
+	useCanvasNodeGroupTelemetry: () => mockGroupTelemetry,
 }));
 
 const routerMock = vi.hoisted(() => ({
@@ -260,6 +273,15 @@ describe('NodeView', () => {
 				name: 'Group 1',
 				nodeIds: [anchor.id],
 			});
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			expect(mockGroupTelemetry.trackGrouped).toHaveBeenCalledWith(
+				workflowDocumentStore.allGroups[0],
+				'node-creator',
+				'',
+			);
+			expect(mockGroupTelemetry.trackInitialEmptyGroupConnection).toHaveBeenCalledWith(
+				workflowDocumentStore.allGroups[0],
+			);
 
 			const historyStore = useHistoryStore();
 			expect(historyStore.undoStack).toHaveLength(1);
@@ -299,6 +321,8 @@ describe('NodeView', () => {
 
 			expect(workflowDocumentStore.allGroups).toHaveLength(0);
 			expect(workflowDocumentStore.allNodes).toHaveLength(0);
+			expect(mockGroupTelemetry.trackGrouped).not.toHaveBeenCalled();
+			expect(mockGroupTelemetry.trackInitialEmptyGroupConnection).not.toHaveBeenCalled();
 		});
 
 		it('ignores overlapping empty-group creation requests', async () => {
