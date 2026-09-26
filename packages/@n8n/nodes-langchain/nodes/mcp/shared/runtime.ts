@@ -113,6 +113,10 @@ async function connectAndGetTools(
 	}
 }
 
+function shouldThrowMcpToolError(node: INode): boolean {
+	return node.typeVersion >= 1.3 || node.type?.startsWith('@n8n/mcp-registry.') === true;
+}
+
 /**
  * Build a {@link StructuredToolkit} from a connected MCP server.
  *
@@ -126,8 +130,6 @@ export async function buildMcpToolkit(
 	config: ResolvedMcpConfig,
 ): Promise<SupplyData> {
 	const node = ctx.getNode();
-	const shouldThrowToolError =
-		node.typeVersion >= 1.3 || node.type?.startsWith('@n8n/mcp-registry.') === true;
 
 	const setError = (error: NodeOperationError): SupplyData => {
 		ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
@@ -173,11 +175,12 @@ export async function buildMcpToolkit(
 						config.timeout,
 						(errorMessage) => {
 							const callError = new NodeOperationError(node, errorMessage, { itemIndex });
-							void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
 							ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
 								error: callError,
 							});
-							if (shouldThrowToolError) throw callError;
+							if (shouldThrowMcpToolError(node)) throw callError;
+
+							void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
 						},
 						() => ctx.getExecutionCancelSignal(),
 					),
@@ -265,7 +268,7 @@ async function runToolCall(opts: {
 			},
 		);
 
-		if (node.typeVersion >= 1.3 && result.isError) {
+		if (shouldThrowMcpToolError(node) && result.isError) {
 			const errorMessage =
 				getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
 			throw new NodeOperationError(node, errorMessage, { itemIndex });
