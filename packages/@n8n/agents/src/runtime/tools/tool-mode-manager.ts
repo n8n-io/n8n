@@ -62,8 +62,9 @@ export class ToolModeManager {
 		);
 	}
 
-	/** Uncached note that tells the model which mode is active. */
-	instructions(): string {
+	/** Uncached note that tells the model which mode is active, unless the host announces it. */
+	instructions(): string | undefined {
+		if (this.config.announceMode === false) return undefined;
 		return `<tool_mode>Your current tool mode is "${this.currentMode}". Call ${SWITCH_MODE_TOOL_NAME} when you need a tool from another mode.</tool_mode>`;
 	}
 

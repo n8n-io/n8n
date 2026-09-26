@@ -159,6 +159,11 @@ export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
 	return `<current-date-time>\n${dateTimeSection.trim()}\n</current-date-time>`;
 }
 
+/** The tool mode this turn starts in. Lives here, not in the system prompt, so a mode change keeps the cached prefix. */
+export function buildToolModeBlock(mode: string): string {
+	return `<tool_mode>\nYour current tool mode is "${mode}". Call switch_mode when you need a tool from another mode.\n</tool_mode>`;
+}
+
 export function buildProjectContextBlock(projectSection: string): string {
 	return `${PROJECT_CONTEXT_OPEN_TAG}\n${projectSection}\n${PROJECT_CONTEXT_CLOSE_TAG}`;
 }

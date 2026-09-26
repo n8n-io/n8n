@@ -13,4 +13,9 @@ export interface ToolModesConfig {
 	modes: Record<string, ToolModeDefinition>;
 	/** The mode that each run starts in. */
 	initialMode: string;
+	/**
+	 * When false, the runtime does not add the `<tool_mode>` note to the
+	 * instructions; the host tells the model the active mode itself. Defaults to true.
+	 */
+	announceMode?: boolean;
 }

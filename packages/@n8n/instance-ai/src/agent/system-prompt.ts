@@ -38,22 +38,6 @@ export function getDateTimeSection(timeZone?: string): string {
 	return `The user's current local date and time is: ${isoTime}${tzLabel}. When you need to reference "now", use this date and time.`;
 }
 
-function getToolDiscoverySection(
-	toolSearchEnabled?: boolean,
-	mcpToolSearchEnabled?: boolean,
-): string {
-	if (!toolSearchEnabled) return '';
-
-	const mcpSearchGuidance = mcpToolSearchEnabled
-		? 'For a connected service or MCP integration, call `search_tools` with the service name and task keywords (e.g. "notion page") before you say it is unavailable or ask the user to connect it.\n'
-		: '';
-
-	return `## Tool Discovery
-
-${mcpSearchGuidance}If a loaded skill names a tool you do not see, find it with \`search_tools\` by name and load it with \`load_tool\`.
-`;
-}
-
 /**
  * Rendered from `projectId` as a presence flag only — never interpolate the id
  * (or any other per-thread value) into the text. The whole system prompt is one
@@ -210,13 +194,38 @@ const TOOL_MODE_SKILLS: Record<InstanceAiToolMode, string> = {
 };
 
 /**
- * Rendered only when the run binds tools by mode. The mode list is static and
- * the `agents` line depends only on the instance-wide agents module, so the
- * section never fragments the prompt cache within one instance.
+ * Tool discovery guidance, shown only with tool search on: without it nothing is
+ * deferred, so there is nothing to discover.
  */
-function getToolModesSection(toolModesEnabled?: boolean, agentBuildingEnabled?: boolean): string {
-	if (!toolModesEnabled) return '';
-	const modes = TOOL_MODE_ORDER.filter((name) => name !== 'agents' || agentBuildingEnabled)
+function getToolDiscoveryGuidance(toolSearchEnabled?: boolean, mcpToolSearchEnabled?: boolean) {
+	if (!toolSearchEnabled) return '';
+	const mcpSearchGuidance = mcpToolSearchEnabled
+		? 'For a connected service or MCP integration, call `search_tools` with the service name and task keywords (e.g. "notion page") before you say it is unavailable or ask the user to connect it.\n'
+		: '';
+	return `${mcpSearchGuidance}If a loaded skill names a tool you do not see in any mode, find it with \`search_tools\` by name and load it with \`load_tool\`.`;
+}
+
+/**
+ * Tool modes and tool discovery in one section. The mode list is static and the
+ * `agents` line depends only on the instance-wide agents module, so the section
+ * never fragments the prompt cache within one instance. Without tool modes only
+ * the discovery guidance renders.
+ */
+function getToolsSection(options: {
+	toolModesEnabled?: boolean;
+	agentBuildingEnabled?: boolean;
+	toolSearchEnabled?: boolean;
+	mcpToolSearchEnabled?: boolean;
+}): string {
+	const discovery = getToolDiscoveryGuidance(
+		options.toolSearchEnabled,
+		options.mcpToolSearchEnabled,
+	);
+	if (!options.toolModesEnabled) {
+		return discovery ? `## Tool Discovery\n\n${discovery}\n` : '';
+	}
+
+	const modes = TOOL_MODE_ORDER.filter((name) => name !== 'agents' || options.agentBuildingEnabled)
 		.map(
 			(name) =>
 				`- **${name}**: ${INSTANCE_AI_TOOL_MODES[name].description} Skill: ${TOOL_MODE_SKILLS[name]}.`,
@@ -224,11 +233,13 @@ function getToolModesSection(toolModesEnabled?: boolean, agentBuildingEnabled?: 
 		.join('\n');
 	return `## Tool Modes
 
-Your tools are grouped into modes. Only the tools of the active mode are bound, plus a few that every mode has (such as \`ask-user\` and \`load_skill\`). The \`<tool_mode>\` note tells you the active mode.
+Your tools are grouped into modes. Only the tools of the active mode are bound, plus a few that every mode has (such as \`ask-user\` and \`load_skill\`). The \`<tool_mode>\` block in \`<thread-context>\` names the mode the turn starts in; a \`switch_mode\` result tells you when it changes.
+
+**Pick the mode first.** Before you load any skill or call any other tool, decide which mode fits the user's request. When it is not the active mode, call \`switch_mode\` first, and only then load the skill for that mode. A skill loaded in the wrong mode names tools you cannot call.
 
 ${modes}
 
-Choose the mode before you load any skill or call any other tool. Decide which mode fits the user's request; when it is not the active mode, call \`switch_mode\` first, then load the skill for that mode. Switch again when the work moves to another mode (for example, to \`build\` for a workflow that an Agent needs, then back to \`agents\`). Do not switch for a reply that needs no tools.
+Switch again when the work moves to another mode (for example, to \`build\` for a workflow that an Agent needs, then back to \`agents\`). Do not switch for a reply that needs no tools.${discovery ? `\n\n${discovery}` : ''}
 `;
 }
 
@@ -267,8 +278,7 @@ ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
-${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${getToolModesSection(toolModesEnabled, agentBuildingEnabled)}
+${getToolsSection({ toolModesEnabled, agentBuildingEnabled, toolSearchEnabled, mcpToolSearchEnabled })}
 ## Communication Style
 
 - Be concise. No emojis unless the user asks for them.

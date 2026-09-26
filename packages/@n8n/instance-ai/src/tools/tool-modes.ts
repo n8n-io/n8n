@@ -121,7 +121,10 @@ export interface RuntimeModeTools {
 	workspaceToolNames?: ReadonlySet<string>;
 }
 
-/** Builds the SDK config, and drops tools that this run does not register. */
+/**
+ * Builds the SDK config, and drops tools that this run does not register. The
+ * host announces the mode in `<thread-context>`, so the runtime adds no note.
+ */
 export function createToolModesConfig(
 	initialMode: InstanceAiToolMode,
 	registeredToolNames: ReadonlySet<string>,
@@ -140,5 +143,5 @@ export function createToolModesConfig(
 		}
 		modes[name] = { description: mode.description, tools };
 	}
-	return { modes, initialMode };
+	return { modes, initialMode, announceMode: false };
 }

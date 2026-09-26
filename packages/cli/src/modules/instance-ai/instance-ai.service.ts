@@ -204,6 +204,7 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildToolModeBlock,
 	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
@@ -3511,6 +3512,9 @@ export class InstanceAiService {
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
 				aiPreferencesTurn?.block,
+				orchestrationContext.toolMode
+					? buildToolModeBlock(orchestrationContext.toolMode)
+					: undefined,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
 			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
