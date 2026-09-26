@@ -1,0 +1,139 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"docId": {
+					"__rl": true,
+					"value": "doc1",
+					"mode": "list"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"returnAll": true,
+				"additionalOptions": {}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Read Rows",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"docId": {
+					"__rl": true,
+					"value": "doc2",
+					"mode": "list"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null,
+					"matchingColumns": []
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Copy Rows",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Read Rows",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Rows": {
+			"main": [
+				[
+					{
+						"node": "Copy Rows",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Read Rows": [
+			{
+				"json": {
+					"id": 1,
+					"First": "Ada",
+					"Email": "ada@example.com",
+					"Sizes": ["L", "M", "XL"],
+					"Letters": "[\"C\",\"B\",\"A\"]",
+					"FullName": "Ada <ada@example.com>"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"First": "Alan",
+					"Email": "alan@example.com",
+					"Sizes": null,
+					"Letters": "",
+					"FullName": "Alan <alan@example.com>"
+				}
+			}
+		],
+		"Copy Rows": [
+			{
+				"json": {
+					"id": 7,
+					"First": "Ada",
+					"Email": "ada@example.com",
+					"Sizes": ["L", "M", "XL"],
+					"Letters": "[\"C\",\"B\",\"A\"]"
+				}
+			},
+			{
+				"json": {
+					"id": 8,
+					"First": "Alan",
+					"Email": "alan@example.com",
+					"Sizes": null,
+					"Letters": ""
+				}
+			}
+		]
+	}
+}
