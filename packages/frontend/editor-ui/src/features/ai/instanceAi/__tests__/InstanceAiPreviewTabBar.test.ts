@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
@@ -13,6 +14,11 @@ const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
 const mockSearchWorkflows = vi.hoisted(() => vi.fn());
 const mockFetchDataTablesApi = vi.hoisted(() => vi.fn());
+const mockListAgentsPage = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: mockListAgentsPage,
+}));
 
 vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 	fetchDataTablesApi: mockFetchDataTablesApi,
@@ -70,8 +76,9 @@ const Wrapper = defineComponent({
 		isExpanded: { type: Boolean, default: false },
 		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
+		projectId: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded', 'closeTab'],
+	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
@@ -81,8 +88,10 @@ const Wrapper = defineComponent({
 					isExpanded: props.isExpanded,
 					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
+					projectId: props.projectId,
 					onTogglePreview: () => emit('togglePreview'),
 					onCloseTab: (tabId: string) => emit('closeTab', tabId),
+					onOpenTab: (tab: ArtifactTab) => emit('openTab', tab),
 					onToggleExpanded: () => emit('toggleExpanded'),
 				}),
 			);
@@ -119,6 +128,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		mockSearchWorkflows.mockResolvedValue([]);
 		mockFetchDataTablesApi.mockReset();
 		mockFetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
+		mockListAgentsPage.mockReset();
+		mockListAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -225,6 +236,58 @@ describe('InstanceAiPreviewTabBar', () => {
 			await fireEvent.keyDown(trigger!, { key: 'Delete' });
 
 			expect(emitted().closeTab).toEqual([['wf-1']]);
+		});
+	});
+
+	describe('new tab picker', () => {
+		it('hides the new tab button when the thread has no project', () => {
+			const { queryByTestId } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			expect(queryByTestId('instance-ai-new-tab-button')).toBeNull();
+		});
+
+		it('lists the resources of the project that are not open, and opens the picked one', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{ id: 'wf-1', name: 'My Workflow', updatedAt: '2026-09-24T10:00:00.000Z' },
+				{ id: 'wf-2', name: 'Other Workflow', updatedAt: '2026-09-23T10:00:00.000Z' },
+			]);
+			mockListAgentsPage.mockResolvedValue({
+				count: 1,
+				data: [{ id: 'agent-9', name: 'Picked Agent', updatedAt: '2026-09-22T10:00:00.000Z' }],
+			});
+			const { getByTestId, emitted } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1', projectId: 'proj-1' },
+			});
+
+			await userEvent.click(getByTestId('instance-ai-new-tab-button'));
+
+			let items: HTMLElement[] = [];
+			await waitFor(() => {
+				items = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'Other Workflow',
+					'Picked Agent',
+				]);
+			});
+			expect(mockSearchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'proj-1' }),
+			);
+
+			await userEvent.click(items[1]);
+
+			expect(emitted().openTab).toEqual([
+				[
+					{
+						type: 'agent',
+						id: 'agent-9',
+						name: 'Picked Agent',
+						icon: 'robot',
+						projectId: 'proj-1',
+					},
+				],
+			]);
 		});
 	});
 

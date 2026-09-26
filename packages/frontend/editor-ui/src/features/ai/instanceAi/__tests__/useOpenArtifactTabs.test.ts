@@ -152,6 +152,25 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.reopenTab('wf-1')).toBe(false);
 	});
 
+	it('opens a picked resource at the end and removes it from the closed tabs', () => {
+		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
+		tabs.closeTab('wf-2');
+
+		tabs.openTab(dataTableTab('dt-1'));
+		tabs.openTab(workflowTab('wf-2'));
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'dt-1', 'wf-2']);
+		expect(tabs.openTabs.value[1]).toEqual(dataTableTab('dt-1'));
+	});
+
+	it('keeps the place of a picked resource that is open already', () => {
+		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
+
+		tabs.openTab(workflowTab('wf-1'));
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2']);
+	});
+
 	it('waits for the save delay and sends one save for many changes', async () => {
 		const { storage, save, finishLoad } = createStorage();
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')], storage);
