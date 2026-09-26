@@ -16,6 +16,7 @@ import {
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 	ProjectRepository,
@@ -129,6 +130,7 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
+		Container.get(WorkflowPublicationRetryStateRepository), // retryStateRepository
 	);
 });
 
@@ -156,6 +158,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -936,6 +939,19 @@ describe('workflow publication outbox', () => {
 	});
 
 	describe('when feature flag is disabled', () => {
+		test('clears retry suppression after reapplying the same version', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const retryStateRepository = Container.get(WorkflowPublicationRetryStateRepository);
+			await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+			await workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: workflow.versionId,
+			});
+
+			expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
+		});
+
 		test('should not run the trigger node id check', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);

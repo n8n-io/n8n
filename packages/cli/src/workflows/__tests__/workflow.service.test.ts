@@ -8,6 +8,7 @@ import type {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
@@ -134,6 +135,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -508,6 +510,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 
 			vi.clearAllMocks();
@@ -1234,6 +1237,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
 		let workflowPublishHistoryRepositoryMock: MockProxy<WorkflowPublishHistoryRepository>;
 		let outboxRepositoryMock: MockProxy<WorkflowPublicationOutboxRepository>;
+		let retryStateRepositoryMock: MockProxy<WorkflowPublicationRetryStateRepository>;
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
@@ -1289,6 +1293,7 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock = mock();
 			workflowPublishHistoryRepositoryMock = mock();
 			outboxRepositoryMock = mock();
+			retryStateRepositoryMock = mock();
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 			});
@@ -1352,6 +1357,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				retryStateRepositoryMock, // retryStateRepository
 			);
 
 			// Bypass validation internals
@@ -1466,6 +1472,7 @@ describe('WorkflowService', () => {
 			});
 
 			expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
+			expect(retryStateRepositoryMock.clearRetrySuppression).toHaveBeenCalledWith(WORKFLOW_ID);
 		});
 
 		test('does not check publisher credential access when re-applying the published version', async () => {
@@ -1571,6 +1578,7 @@ describe('WorkflowService', () => {
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+			expect(retryStateRepositoryMock.clearRetrySuppression).not.toHaveBeenCalled();
 		});
 
 		test('first-time activate blocked by hook leaves the workflow row untouched', async () => {
@@ -2109,6 +2117,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -2250,6 +2259,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -2556,6 +2566,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -2726,6 +2737,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -2907,6 +2919,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
@@ -3010,6 +3023,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // retryStateRepository
 			);
 		});
 
