@@ -81,7 +81,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
-	it('sends private execution and task updates only to the owner through the relay', async () => {
+	it('sends private execution, task, and queue updates only to the owner through the relay', async () => {
 		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
 		threadRepository.findOneBy.mockResolvedValue({
 			...thread,
@@ -90,7 +90,8 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		});
 		broadcaster.notify(update);
 		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
-		await vi.waitFor(() => expect(publisher.publishCommand).toHaveBeenCalledTimes(2));
+		broadcaster.notifyQueueUpdated('thread-1');
+		await vi.waitFor(() => expect(publisher.publishCommand).toHaveBeenCalledTimes(3));
 		for (const [command] of publisher.publishCommand.mock.calls) {
 			expect(command).toMatchObject({ payload: { userIds: ['user-2'] } });
 		}
@@ -134,12 +135,13 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
-	it('delivers relayed task updates without another relay', () => {
+	it.each([
+		['handleBackgroundJobsRelay', 'agentBackgroundTasksUpdated'],
+		['handleQueueRelay', 'agentMessageQueueUpdated'],
+	] as const)('delivers %s updates without another relay', (handler, type) => {
 		const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
-		broadcaster.handleBackgroundJobsRelay({ data, userIds: ['user-2'] });
-		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentBackgroundTasksUpdated', data }, [
-			'user-2',
-		]);
+		broadcaster[handler]({ data, userIds: ['user-2'] });
+		expect(push.sendToUsers).toHaveBeenCalledWith({ type, data }, ['user-2']);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 

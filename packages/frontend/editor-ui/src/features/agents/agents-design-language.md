@@ -164,3 +164,23 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Preview composer queue
+
+Use one action on the right. Show Stop when a turn can be stopped and the
+composer has no text or attachments. Otherwise, show Send. Keep file and voice
+input available during a turn.
+Stack the background task card above the composer. Attach pending messages to
+the top of the composer. Use a subtle background and dividers between messages.
+Use muted gray for queue text and icons. Use the same gray for all queue icons.
+Give text more contrast than icons. Keep text contrast at least 4.5:1.
+Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
+Keep the first two messages visible.
+Put the third and later messages in a collapsed activity group. Show the number
+of additional pending messages in its header. Keep messages in queue order when
+expanded.
+Keep pending messages out of the conversation until processing starts. Give each
+message a Remove action. Hide an empty queue section. Removal discards the
+message. It does not restore the composer draft.
+
+Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.

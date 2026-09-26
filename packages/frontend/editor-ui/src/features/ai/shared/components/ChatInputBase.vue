@@ -19,6 +19,8 @@ const props = withDefaults(
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
+		/** Override the action button separately from the composer busy state. */
+		showStopButton?: boolean;
 		canSubmit: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
@@ -43,6 +45,7 @@ const props = withDefaults(
 	}>(),
 	{
 		placeholder: undefined,
+		showStopButton: undefined,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
@@ -262,7 +265,7 @@ defineExpose({
 			ref="inputRef"
 			:model-value="modelValue"
 			:placeholder="placeholder"
-			:streaming="isStreaming"
+			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
 			:button-label="props.buttonLabel"

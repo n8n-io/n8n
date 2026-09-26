@@ -178,6 +178,8 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			checkpointStorage,
 			connection ? new AgentRepository(connection) : agentRepo,
+			attachmentService,
+			mock<AgentExecutionUpdateBroadcaster>(),
 		);
 		return {
 			txRunner,
@@ -1057,6 +1059,157 @@ describe('AgentExecutionRepository', () => {
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			await services.queue.enqueue(input(threadId, 'active', 'new'));
+			const active = await claim(services, threadId);
+			const pendingInput = input(threadId, 'pending');
+			pendingInput.payload.attachments = [
+				{ id: 'pending-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const pending = await services.queue.enqueue(pendingInput);
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				pending.id,
+			]);
+			await expect(
+				services.queue.removePending({ ...target, queueId: active.item.id }),
+			).rejects.toThrow('already started');
+			await expect(
+				services.queue.removePending({ ...target, userId: 'other-user', queueId: pending.id }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.listPending({ ...target, agentId: 'other-agent' }),
+			).rejects.toThrow('Session not found');
+			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			await services.queue.removePending({ ...target, queueId: pending.id });
+			expect(await services.queue.listPending(target)).toEqual({ items: [] });
+			expect(services.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
+			expect((await repository.findOneByOrFail({ id: active.admission.executionId })).status).toBe(
+				'running',
+			);
+			await finish(services, active);
+		});
+
+		it('edits pending text without changing identity, attachments, or queue position', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const data = input(threadId, 'original', 'new');
+			data.payload.attachments = [
+				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const first = await services.queue.enqueue(data);
+			const second = await services.queue.enqueue(input(threadId, 'second'));
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				queueId: first.id,
+				message: 'updated',
+			};
+			await expect(
+				services.queue.updatePending({ ...target, userId: 'other-user' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, agentId: 'other-agent' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, queueId: second.id, message: ' ' }),
+			).rejects.toThrow('message or attachment');
+			await services.queue.updatePending({ ...target, message: ' ' });
+			expect((await services.queue.listPending(target)).items[0]).toMatchObject({
+				message: '',
+				attachments: data.payload.attachments,
+			});
+			await services.queue.updatePending(target);
+			const stored = await services.queueRepository.findOneByOrFail({ id: first.id });
+			expect(stored).toMatchObject({
+				id: first.id,
+				createdAt: first.createdAt,
+				source: first.source,
+				payload: { ...first.payload, message: 'updated' },
+			});
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				first.id,
+				second.id,
+			]);
+			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			const claimed = await claim(services, threadId);
+			expect(claimed.item.payload.message).toBe('updated');
+			await finish(services, claimed);
+			await expect(services.queue.updatePending(target)).rejects.toThrow(
+				'Queued message not found',
+			);
+		});
+
+		it.each([
+			['claim', 'remove'],
+			['remove', 'remove'],
+			['claim', 'edit'],
+			['edit', 'edit'],
+		] as const)(
+			'serializes concurrent connections when %s wins the claim-versus-%s race',
+			async (winner, operation) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				const item = await local.queue.enqueue(input(threadId, 'first', 'new'));
+				const target = { projectId, agentId, threadId, userId: owner.id, queueId: item.id };
+				const acquired = createDeferredPromise();
+				const release = createDeferredPromise();
+				const lock = local.threads.lockById.bind(local.threads);
+				vi.spyOn(local.threads, 'lockById').mockImplementationOnce(async (...args) => {
+					const thread = await lock(...args);
+					acquired.resolve();
+					await release.promise;
+					return thread;
+				});
+				const observe = observePeerTransaction();
+				const mutate = async (services: ReturnType<typeof recordingServices>) =>
+					operation === 'edit'
+						? await services.queue.updatePending({ ...target, message: 'edited' })
+						: await services.queue.removePending(target);
+				const first =
+					winner === 'claim' ? local.queue.claimNext(threadId, async () => true) : mutate(local);
+				await acquired.promise;
+				const second =
+					winner === 'claim' ? mutate(remote) : remote.queue.claimNext(threadId, async () => true);
+				const results = Promise.allSettled([first, second]);
+				try {
+					await observe.started;
+				} finally {
+					release.resolve();
+					observe.restore();
+				}
+				const settled = await results;
+				expect(settled[0].status).toBe('fulfilled');
+				if (winner === 'claim') {
+					expect(settled[1]).toMatchObject({
+						status: 'rejected',
+						reason: { message: 'This message has already started' },
+					});
+					const claimed = await first;
+					if (!claimed) throw new Error('Expected a claim');
+					expect(await local.queueRepository.findOneByOrFail({ id: item.id })).toMatchObject({
+						threadId,
+						executionId: claimed.admission.executionId,
+					});
+					await finish(local, claimed);
+				} else if (operation === 'edit') {
+					const claimed = await second;
+					if (!claimed) throw new Error('Expected a claim');
+					expect(claimed.item.payload.message).toBe('edited');
+					await finish(remote, claimed);
+				} else {
+					expect(settled[1]).toEqual({ status: 'fulfilled', value: null });
+					expect(await repository.countBy({ threadId })).toBe(0);
+				}
+				expect(await local.queueRepository.countBy({ threadId })).toBe(0);
+			},
+		);
 
 		it('serializes acceptance and claims across connections while other sessions progress', async () => {
 			const local = recordingServices();
