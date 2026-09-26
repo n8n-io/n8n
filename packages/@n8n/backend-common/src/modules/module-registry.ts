@@ -78,6 +78,7 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'instance-ai',
 		'agents',
+		'inbound-auth-core',
 	];
 
 	private readonly activeModules: string[] = [];
