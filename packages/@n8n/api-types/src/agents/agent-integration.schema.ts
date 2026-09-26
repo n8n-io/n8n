@@ -104,6 +104,9 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AgentWhatsAppSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
 /**
  * Where the Teams app may be used, and how much it may read there.
  *
@@ -169,6 +172,7 @@ export const AgentIntegrationSettingsSchema = z.union([
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
 	// Teams was left out while it aliased the shared shape, when the entry was a
 	// no-op. Its settings now differ, so leaving it out would reject them.
 	AgentTeamsSettingsSchema,
@@ -191,6 +195,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -208,6 +215,9 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
 	}),
 	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),

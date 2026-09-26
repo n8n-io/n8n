@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,7 +20,7 @@ import {
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
+const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleWebhookVerification']);
 
 function makeController({
 	managementService = mock<AgentIntegrationManagementService>(),
@@ -28,6 +29,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	instanceSettings = mock<InstanceSettings>(),
 	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
@@ -36,6 +38,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	instanceSettings?: Mocked<InstanceSettings>;
 	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
@@ -49,6 +52,7 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			instanceSettings,
 			collaborationService,
 		),
 		managementService,
@@ -344,6 +348,129 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('delegates GET webhook verification to the same handling as POST for whatsapp', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'whatsapp',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('rejects GET webhook verification for a platform other than whatsapp without looking up a handler', async () => {
+		// Every platform but WhatsApp only ever sends POST — a GET here is never
+		// meaningful, so it should 404 immediately rather than reach a handler
+		// built for a POST-shaped request.
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationRegistry.get).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
+	});
+
+	it('sends a raw-text response for an unauthenticated webhook handshake without a live connection', async () => {
+		// WhatsApp's verification handshake expects the raw hub.challenge value
+		// back verbatim — JSON-encoding it would wrap it in quotes, which Meta
+		// treats as a mismatch (see `UnauthenticatedWebhookResponse.raw`).
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const handleUnauthenticatedWebhook = vi
+			.fn()
+			.mockReturnValue({ status: 200, body: 'the-challenge', raw: true });
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({ handleUnauthenticatedWebhook } as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			type: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl:
+					'/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=abc&hub.challenge=the-challenge',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': 'abc',
+					'hub.challenge': 'the-challenge',
+				},
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(handleUnauthenticatedWebhook).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			method: 'GET',
+			query: {
+				'hub.mode': 'subscribe',
+				'hub.verify_token': 'abc',
+				'hub.challenge': 'the-challenge',
+			},
+			headers: { host: 'localhost' },
+			body: {},
+		});
+		expect(res.status).toHaveBeenCalledWith(200);
+		// A caller-controlled challenge value must never be sent as text/html —
+		// Express defaults a string res.send() to html, which would let it be
+		// interpreted as markup instead of an inert plain-text echo.
+		expect(res.type).toHaveBeenCalledWith('text/plain');
+		expect(res.send).toHaveBeenCalledWith('the-challenge');
+		expect(res.json).not.toHaveBeenCalled();
 	});
 
 	it('does not look up a handler when the platform reports no match', async () => {

@@ -10,6 +10,7 @@ import type {
 	AgentFileDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
@@ -274,6 +275,18 @@ export const getIntegrationStatus = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
+	);
+};
+
+export const getWhatsAppVerifyToken = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentWhatsAppVerifyTokenResponse> => {
+	return await makeRestApiRequest<AgentWhatsAppVerifyTokenResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/whatsapp/verify-token`,
 	);
 };
 

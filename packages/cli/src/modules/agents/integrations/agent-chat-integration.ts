@@ -59,6 +59,23 @@ export interface AgentIntegrationRemovalContext {
 export interface UnauthenticatedWebhookResponse {
 	status: number;
 	body: unknown;
+	/**
+	 * Send `body` as plain text instead of JSON-encoding it. Meta's WhatsApp
+	 * webhook handshake expects the raw `hub.challenge` value back verbatim —
+	 * JSON-encoding a string wraps it in quotes, which Meta then treats as a
+	 * mismatch. Slack's `url_verification` challenge, by contrast, is echoed
+	 * back as JSON, so this defaults to JSON to keep that behavior unchanged.
+	 */
+	raw?: boolean;
+}
+
+/** Context handed to `handleUnauthenticatedWebhook` for a request with no live connection yet. */
+export interface UnauthenticatedWebhookContext {
+	agentId: string;
+	method: string;
+	query: Readonly<Record<string, string | string[] | undefined>>;
+	headers: Readonly<Record<string, string | string[] | undefined>>;
+	body: unknown;
 }
 
 export interface WebhookRequestContext {
@@ -276,6 +293,20 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * Minutes of inactivity after which this platform starts a fresh session by
+	 * default, when the channel's own `sessionIdleTimeoutMinutes` setting is
+	 * unset. Every platform lets the user configure that setting explicitly;
+	 * this only supplies the value used before they ever touch it. `null`
+	 * (default) means no idle-based rotation until the user opts in.
+	 *
+	 * WhatsApp overrides this because it has no native "/new" slash command
+	 * equivalent that reliably reaches the bridge, so a sensible default reset
+	 * threshold matters more there than on platforms with an explicit reset
+	 * command.
+	 */
+	readonly defaultSessionIdleTimeoutMinutes: number | null = null;
+
+	/**
 	 * True to deliver a suspension card only to the user whose turn raised it,
 	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
 	 * verifies who clicks. The card still goes to the whole conversation where
@@ -334,17 +365,23 @@ export abstract class AgentChatIntegration {
 	 * (i.e. before credentials are configured). The canonical case is Slack's
 	 * `url_verification` challenge — sent when the user creates a Slack app
 	 * from the manifest, before they have pasted bot token / signing secret
-	 * into n8n. Without this hook, the standard handler returns 404 and the
-	 * user has to manually re-verify URLs after configuring the credential.
+	 * into n8n. WhatsApp's Meta app verification handshake (GET with
+	 * `hub.mode`/`hub.verify_token`/`hub.challenge`) is the other: its verify
+	 * token is derivable from the agent ID alone, so it needs no credential
+	 * either. Without this hook, the standard handler returns 404 and the user
+	 * has to connect (and, for WhatsApp, publish) the agent before Meta's
+	 * "Verify and save" can succeed.
 	 *
-	 * Implementations inspect the parsed JSON body; return a response to send
-	 * back, or undefined to fall through to the standard 404.
+	 * Implementations inspect the request; return a response to send back, or
+	 * undefined to fall through to the standard 404.
 	 *
 	 * Security note: this hook bypasses signature verification, so it must
 	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
 	 * in the request itself).
 	 */
-	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+	handleUnauthenticatedWebhook?(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Resolve platform-specific routing before selecting a connected adapter.
