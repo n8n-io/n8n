@@ -11,6 +11,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { TRANSFER_MAX_DEPTH, TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from './transfer';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -81,6 +82,82 @@ export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
 	callHost: BridgeCallback;
+}
+
+interface TransferredCopy {
+	copy: (options?: { release?: boolean }) => unknown;
+}
+
+function isTransferredCopy(value: unknown): value is TransferredCopy {
+	if (typeof value !== 'object' || value === null || !('copy' in value)) return false;
+	return typeof value.copy === 'function';
+}
+
+interface UnusableMarker {
+	[TRANSFER_UNUSABLE_KEY]: true;
+	message: string;
+}
+
+/** A marker holds its flag and one payload key, so user data of a wider shape stays data. */
+function isFramed(value: unknown, key: string): value is Record<string, unknown> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		key in value &&
+		(value as Record<string, unknown>)[key] === true &&
+		Object.keys(value).length === 2
+	);
+}
+
+function isUnusableMarker(value: unknown): value is UnusableMarker {
+	return isFramed(value, TRANSFER_UNUSABLE_KEY) && typeof value.message === 'string';
+}
+
+interface SanitisedEnvelope {
+	[TRANSFER_SANITISED_KEY]: true;
+	value: unknown;
+}
+
+function isSanitisedEnvelope(value: unknown): value is SanitisedEnvelope {
+	return isFramed(value, TRANSFER_SANITISED_KEY) && 'value' in value;
+}
+
+function defineUnusable(owner: object, key: string, message: string): void {
+	Object.defineProperty(owner, key, {
+		enumerable: true,
+		configurable: true,
+		get() {
+			throw new ExpressionError(message);
+		},
+	});
+}
+
+function reviveUnusable(value: unknown, depth: number): void {
+	if (value === null || typeof value !== 'object' || depth >= TRANSFER_MAX_DEPTH) return;
+	for (const key of Object.keys(value)) {
+		const member = (value as Record<string, unknown>)[key];
+		if (isUnusableMarker(member)) {
+			defineUnusable(value, key, member.message);
+			continue;
+		}
+		reviveUnusable(member, depth + 1);
+	}
+}
+
+function unwrapSanitised(result: unknown): unknown {
+	if (!isSanitisedEnvelope(result)) return result;
+
+	const inner: unknown = result.value;
+	if (isUnusableMarker(inner)) throw new ExpressionError(inner.message);
+	reviveUnusable(inner, 0);
+	return inner;
+}
+
+function sendHostCall(callbacks: BridgeCallbacks, message: unknown): unknown {
+	const raw = callbacks.callHost(message);
+	const result = isTransferredCopy(raw) ? raw.copy({ release: true }) : raw;
+	throwIfErrorSentinel(result);
+	return unwrapSanitised(result);
 }
 
 /**
@@ -190,11 +267,8 @@ export function buildContext(
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
-			return (branchIndex?: number, runIndex?: number) => {
-				const result = callbacks.callHost({ type, nodeName, branchIndex, runIndex });
-				throwIfErrorSentinel(result);
-				return result;
-			};
+			return (branchIndex?: number, runIndex?: number) =>
+				sendHostCall(callbacks, { type, nodeName, branchIndex, runIndex });
 		};
 		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
 		// `.item`. Each surface form has its own typed-RPC discriminator
@@ -202,19 +276,9 @@ export function buildContext(
 		// because the host's resolver closes over the literal property
 		// name to pick error messages and getter-vs-method semantics.
 		// The bridge handler for each reads the matching property name.
-		const sendPairedRpc = (
-			type: 'getNodePairedItem' | 'getNodeItemMatching',
-			itemIndex?: number,
-		) => {
-			const result = callbacks.callHost({ type, nodeName, itemIndex });
-			throwIfErrorSentinel(result);
-			return result;
-		};
-		const sendGetNodeItem = () => {
-			const result = callbacks.callHost({ type: 'getNodeItem', nodeName });
-			throwIfErrorSentinel(result);
-			return result;
-		};
+		const sendPairedRpc = (type: 'getNodePairedItem' | 'getNodeItemMatching', itemIndex?: number) =>
+			sendHostCall(callbacks, { type, nodeName, itemIndex });
+		const sendGetNodeItem = () => sendHostCall(callbacks, { type: 'getNodeItem', nodeName });
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
 				if (isKeyOf(NODE_RPC_TYPES, prop)) {
@@ -253,11 +317,7 @@ export function buildContext(
 	// properties) to a lazy proxy on `$input`.
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
 	const sendInputMethod = (type: InputRpcType) => {
-		return () => {
-			const result = callbacks.callHost({ type });
-			throwIfErrorSentinel(result);
-			return result;
-		};
+		return () => sendHostCall(callbacks, { type });
 	};
 	target.$input = new Proxy({} as Record<string, unknown>, {
 		get(_emptyTarget, prop) {
@@ -274,11 +334,8 @@ export function buildContext(
 	// the host enforces nothing structural here, the schema validates the
 	// args, and the host's `WorkflowDataProxy.$items` applies its own
 	// defaults when fields are undefined.
-	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-		const result = callbacks.callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
-		throwIfErrorSentinel(result);
-		return result;
-	};
+	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) =>
+		sendHostCall(callbacks, { type: 'getItems', nodeName, outputIndex, runIndex });
 
 	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
 	// All three host aliases route to the same `handleFromAi` callback;
@@ -291,17 +348,14 @@ export function buildContext(
 		description?: string,
 		valueType?: string,
 		defaultValue?: unknown,
-	) => {
-		const result = callbacks.callHost({
+	) =>
+		sendHostCall(callbacks, {
 			type: 'fromAi',
 			name,
 			description,
 			valueType,
 			defaultValue,
 		});
-		throwIfErrorSentinel(result);
-		return result;
-	};
 	target.$fromAI = sendFromAi;
 	target.$fromAi = sendFromAi;
 	target.$fromai = sendFromAi;
@@ -310,11 +364,8 @@ export function buildContext(
 	// inner expression string to the host, which re-invokes the engine.
 	// Under the VM engine this re-enters the bridge on a fresh evaluation;
 	// the legacy engine handles it inline.
-	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
-		const result = callbacks.callHost({ type: 'evaluateExpression', expression, itemIndex });
-		throwIfErrorSentinel(result);
-		return result;
-	};
+	target.$evaluateExpression = (expression: string, itemIndex?: number) =>
+		sendHostCall(callbacks, { type: 'evaluateExpression', expression, itemIndex });
 
 	// $getPairedItem — walks the paired-item ancestry chain back to the
 	// named upstream node. The host validates the structural shape of
@@ -325,16 +376,13 @@ export function buildContext(
 		destinationNodeName: string,
 		incomingSourceData: unknown,
 		initialPairedItem: unknown,
-	) => {
-		const result = callbacks.callHost({
+	) =>
+		sendHostCall(callbacks, {
 			type: 'getPairedItem',
 			destinationNodeName,
 			incomingSourceData,
 			initialPairedItem,
 		});
-		throwIfErrorSentinel(result);
-		return result;
-	};
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
