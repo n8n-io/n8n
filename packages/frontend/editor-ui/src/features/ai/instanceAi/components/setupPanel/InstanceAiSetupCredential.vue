@@ -790,6 +790,7 @@ onScopeDispose(() => {
 					<N8nCopyInput
 						:class="$style.redirectInput"
 						:value="redirectUrl"
+						:label="i18n.baseText('instanceAi.setupPanel.redirectUrl')"
 						:copy-label="i18n.baseText('instanceAi.setupPanel.copyRedirectUrl')"
 						size="small"
 					/>
