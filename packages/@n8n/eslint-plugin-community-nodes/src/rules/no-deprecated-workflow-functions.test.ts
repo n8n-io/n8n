@@ -49,6 +49,25 @@ function test(options: IRequestOptions) {
 	return options.url;
 }`,
 		},
+		{
+			name: 'other helpers and shadowed bindings should not trigger',
+			code: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+import type { IExecuteFunctions as OtherContext } from 'other-package';
+
+function test(context: ExecutionContext, other: OtherContext) {
+	const { helpers } = { helpers: { request: () => null } };
+	helpers.request();
+	other.helpers.requestOAuth2();
+	let alias = context;
+	alias = other;
+	alias.helpers.requestOAuth2();
+	{
+		const context = { helpers: { request: () => null } };
+		context.helpers.request();
+	}
+}`,
+		},
 	],
 	invalid: [
 		// CE-2165: Report deprecated helpers on execution-context bindings.
@@ -107,6 +126,37 @@ function makeOutput(this: IExecuteFunctions) {
 				{
 					messageId: 'deprecatedWithoutReplacement',
 					data: { functionName: 'prepareOutputData' },
+				},
+			],
+		},
+		{
+			name: 'deprecated helper through an aliased context and destructured helpers',
+			code: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+
+function fetchData(ctx: ExecutionContext) {
+	const execution = ctx;
+	const { helpers: nodeHelpers } = execution;
+	return nodeHelpers.requestOAuth1();
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth1', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'requestOAuth1', replacement: 'httpRequestWithAuthentication' },
+							output: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+
+function fetchData(ctx: ExecutionContext) {
+	const execution = ctx;
+	const { helpers: nodeHelpers } = execution;
+	return nodeHelpers.httpRequestWithAuthentication();
+}`,
+						},
+					],
 				},
 			],
 		},
