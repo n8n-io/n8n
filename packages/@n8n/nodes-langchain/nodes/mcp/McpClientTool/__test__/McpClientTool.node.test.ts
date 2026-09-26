@@ -596,7 +596,7 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult = await tools[0].invoke({ location: 'Berlin' });
-			expect(toolResult).toEqual('Weather unknown at location');
+			expect(toolResult).toEqual('There was an error: "Weather unknown at location"');
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,
