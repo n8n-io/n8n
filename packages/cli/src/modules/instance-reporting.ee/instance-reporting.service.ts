@@ -120,7 +120,8 @@ export class InstanceReportingService {
 	 *
 	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
 	 *
-	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
+	 * @throws when delivery fails and a retry may succeed, or another process created
+	 * today's report, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
@@ -154,7 +155,12 @@ export class InstanceReportingService {
 				});
 			}
 
-			report = await this.reportRepository.createPending(await this.collectDataPoints(days));
+			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
+			if (!report) {
+				throw new OperationalError(
+					'Another process already created the instance report for today. Check that only one main reports for this database.',
+				);
+			}
 		}
 
 		const payload = {

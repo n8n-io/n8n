@@ -21,7 +21,10 @@ import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { createOwner } from '@test-integration/db/users';
 
-import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -190,25 +193,25 @@ describe('instance reporting retries', () => {
 		);
 	}
 
-	/**
-	 * The database stamps `createdAt` with the real clock, not the fake one, so
-	 * a row from a fake "yesterday" reads as today's. Pin it to the day meant.
-	 */
-	async function stampCreatedAt(id: string, createdAt: Date) {
-		await repository.update({ id }, { createdAt });
+	async function createPendingOn(createdAt: Date, dataPoints: InstanceReportDataPoint[]) {
+		const report = await repository.createPending(dataPoints, createdAt);
+		if (!report) throw new Error(`A report was already created on ${createdAt.toISOString()}`);
+		// The database stamps `createdAt` with the real clock, not the fake one.
+		await repository.update({ id: report.id }, { createdAt });
+
+		return report;
 	}
 
 	/** A delivered report that covers `day`, generated the morning after it. */
 	async function seedDeliveredReport(day: string) {
-		const report = await repository.createPending([
-			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
-			{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
-		]);
-		await repository.markDelivered(report.id, new Date());
-		await stampCreatedAt(
-			report.id,
+		const report = await createPendingOn(
 			new Date(new Date(`${day}T07:43:00.000Z`).getTime() + Time.days.toMilliseconds),
+			[
+				{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
+				{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
+			],
 		);
+		await repository.markDelivered(report.id, new Date());
 		return report;
 	}
 
@@ -232,7 +235,7 @@ describe('instance reporting retries', () => {
 			createdAt,
 		}: { attempts: number; lastAttemptAt: Date; createdAt: Date },
 	) {
-		const report = await repository.createPending([
+		const report = await createPendingOn(createdAt, [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
 			{ kind: 'daily', name: 'billableExecutions', value: 5, date: day },
 		]);
@@ -240,7 +243,6 @@ describe('instance reporting retries', () => {
 			{ id: report.id },
 			{ attempts, lastError: 'ECONNREFUSED', lastAttemptAt },
 		);
-		await stampCreatedAt(report.id, createdAt);
 		return report;
 	}
 
@@ -328,8 +330,6 @@ describe('instance reporting retries', () => {
 		const [abandoned] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(abandoned).toMatchObject({ attempts: MAX_ATTEMPTS });
 		expect(dailyPoints(sentPayload(harness, 0))).toEqual([{ date: '2026-03-25', value: 5 }]);
-		// Keep the abandoned row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(abandoned.id, new Date(AFTER_SLOT));
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
 		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
@@ -369,8 +369,6 @@ describe('instance reporting retries', () => {
 		const [rejected] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(rejected).toMatchObject({ attempts: 1 });
 		expectArmedFor(harness, NEXT_SLOT);
-		// Keep the rejected row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(rejected.id, new Date(AFTER_SLOT));
 
 		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -699,5 +697,36 @@ describe('instance reporting retries', () => {
 
 		const dates = await deliveredDailyDates();
 		expect(new Set(dates).size).toBe(dates.length);
+	});
+
+	test('retries after the delay and sends the report of a process that created it first and stopped', async () => {
+		const otherPoints: InstanceReportDataPoint[] = [
+			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
+		];
+		let other: InstanceMonitoringReport | undefined;
+
+		// Another process inserts today's report after this one found nothing pending.
+		const insights = Container.get(InsightsService);
+		const measure = insights.getInsightsByTime.bind(insights);
+		vi.spyOn(insights, 'getInsightsByTime').mockImplementation(async (args) => {
+			other = await createPendingOn(new Date(), otherPoints);
+			return await measure(args);
+		});
+
+		const harness = makeHarness([accepted()]);
+		harness.scheduler.start();
+		await armed(harness, 1);
+
+		expect(harness.httpRequest).not.toHaveBeenCalled();
+		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
+
+		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		await armed(harness, 2);
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		expect(sentPayload(harness, 0)).toMatchObject({ batchId: other?.id, dataPoints: otherPoints });
+		await expect(repository.find()).resolves.toEqual([
+			expect.objectContaining({ id: other?.id, status: 'delivered' }),
+		]);
 	});
 });

@@ -1,5 +1,6 @@
+import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { InstanceReportDataPoint } from '../entities/instance-monitoring-report';
@@ -47,20 +48,33 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	 * lost — only a delivered report crosses a day off.
 	 */
 	async hasSettledToday(now: Date): Promise<boolean> {
-		return await this.existsBy({
-			createdAt: MoreThanOrEqual(startOfUtcDay(now)),
-			status: Not('pending'),
-		});
+		return await this.existsBy({ reportDate: utcDay(now), status: Not('pending') });
 	}
 
 	/**
 	 * Record a freshly measured report, with its data points, before any attempt
 	 * to deliver it. A row therefore always carries the measurement it stands for.
+	 *
+	 * `null` when a report was already created on `now`'s UTC day.
 	 */
-	async createPending(dataPoints: InstanceReportDataPoint[]): Promise<InstanceMonitoringReport> {
-		return await this.save(
-			this.create({ id: uuid(), dataPoints, status: 'pending', deliveredAt: null }),
-		);
+	async createPending(
+		dataPoints: InstanceReportDataPoint[],
+		now: Date,
+	): Promise<InstanceMonitoringReport | null> {
+		try {
+			return await this.save(
+				this.create({
+					id: uuid(),
+					reportDate: utcDay(now),
+					dataPoints,
+					status: 'pending',
+					deliveredAt: null,
+				}),
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) return null;
+			throw error;
+		}
 	}
 
 	/**
@@ -112,14 +126,15 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 		await this.update({ id }, { lastAttemptAt: failedAt, lastError: error });
 	}
 
-	/** Stop trying to deliver this report. Its days are covered by the next one. */
+	/**
+	 * Stop trying to deliver this report. Its days are covered by the next one.
+	 * Already delivered report stays delivered.
+	 */
 	async markSkipped(id: string): Promise<void> {
-		await this.update({ id }, { status: 'skipped_after_max_retries' });
+		await this.update({ id, status: 'pending' }, { status: 'skipped_after_max_retries' });
 	}
 }
 
-function startOfUtcDay(instant: Date): Date {
-	return new Date(
-		Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate(), 0, 0, 0, 0),
-	);
+function utcDay(instant: Date): string {
+	return instant.toISOString().slice(0, 10);
 }

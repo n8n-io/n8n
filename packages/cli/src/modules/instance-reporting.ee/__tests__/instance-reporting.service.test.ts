@@ -330,11 +330,27 @@ describe('InstanceReportingService', () => {
 
 			await service.sendReport();
 
-			expect(reportRepository.createPending).toHaveBeenCalledWith([
-				{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
-				{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
-			]);
+			expect(reportRepository.createPending).toHaveBeenCalledWith(
+				[
+					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+					{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
+				],
+				new Date('2026-03-26T07:42:00.000Z'),
+			);
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
+		});
+
+		test('throws without sending when another process already created the report for today', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			reportRepository.createPending.mockResolvedValue(null);
+
+			await expect(service.sendReport()).rejects.toThrow(
+				'Another process already created the instance report for today',
+			);
+
+			expect(http.request).not.toHaveBeenCalled();
+			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
 		test('records the failure and rethrows when the request fails', async () => {
