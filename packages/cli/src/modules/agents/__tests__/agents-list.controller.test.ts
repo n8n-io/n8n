@@ -15,13 +15,14 @@ describe('AgentsListController', () => {
 		const response = { count: 2, data: [{ id: 'agent-1' }, { id: 'agent-2' }] } as never;
 		const res = mock<Response>();
 		const query = { skip: 0, take: 50, sortBy: 'updatedAt:desc' } as never;
-		const req = { user: { id: 'user-1' } } as never;
+		const user = { id: 'user-1' } as never;
+		const req = { user } as never;
 
 		agentsService.findByUserPaginated.mockResolvedValue(response);
 
 		await controller.list(req, res, query);
 
-		expect(agentsService.findByUserPaginated).toHaveBeenCalledWith('user-1', query);
+		expect(agentsService.findByUserPaginated).toHaveBeenCalledWith(user, query);
 		expect(res.json).toHaveBeenCalledWith(response);
 	});
 
@@ -29,13 +30,14 @@ describe('AgentsListController', () => {
 		const { controller, agentsService } = makeController();
 		const res = mock<Response>();
 		const query = { skip: 0, take: 10, filter: { query: 'support' } } as never;
-		const req = { user: { id: 'user-1' } } as never;
+		const user = { id: 'user-1' } as never;
+		const req = { user } as never;
 
 		agentsService.findByUserPaginated.mockResolvedValue({ count: 0, data: [] } as never);
 
 		await controller.list(req, res, query);
 
-		expect(agentsService.findByUserPaginated).toHaveBeenCalledWith('user-1', query);
+		expect(agentsService.findByUserPaginated).toHaveBeenCalledWith(user, query);
 	});
 
 	it('returns an empty page when the user has no accessible agents', async () => {

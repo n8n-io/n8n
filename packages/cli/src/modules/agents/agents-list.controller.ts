@@ -9,6 +9,10 @@ import { AgentsService } from './agents.service';
  * Global (cross-project) agents list endpoint.
  * Returns all agents the requesting user has access to, across all their projects.
  * Used by the overview page where there is no project context.
+ *
+ * The route carries no project in its URL, so it takes no `@ProjectScope`
+ * decorator. `AgentsService` enforces the per-project scope instead, the same
+ * reasoning as `AgentMcpAccessController`.
  */
 @RestController('/agents/v2')
 export class AgentsListController {
@@ -16,6 +20,6 @@ export class AgentsListController {
 
 	@Get('/')
 	async list(req: AuthenticatedRequest, res: Response, @Query query: ListAgentsQueryDto) {
-		res.json(await this.agentsService.findByUserPaginated(req.user.id, query));
+		res.json(await this.agentsService.findByUserPaginated(req.user, query));
 	}
 }
