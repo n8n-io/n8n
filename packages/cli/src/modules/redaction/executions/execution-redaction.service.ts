@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
@@ -113,7 +114,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						['execution:reveal'],
 					)
 				: Promise.resolve(new Set<string>()),
-			this.resolveCredentialInaccessibleExecutions(processable, options.user.id),
+			this.resolveCredentialInaccessibleExecutions(processable, options.user),
 		]);
 
 		// Reveal path: validate all permissions atomically before any processing.
@@ -309,7 +310,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],
-		userId: string,
+		user: User,
 	): Promise<Set<RedactableExecution>> {
 		if (!isCredSharingEnabled()) return new Set();
 
@@ -327,7 +328,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		const inaccessibleIds =
 			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
-				userId,
+				user,
 				[...allCredentialIds],
 				{ ignoreGlobalUseScope: true },
 			);

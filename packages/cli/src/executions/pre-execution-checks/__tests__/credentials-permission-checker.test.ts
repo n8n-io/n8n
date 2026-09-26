@@ -1049,47 +1049,71 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	describe('resolveInaccessibleCredentialIdsForUser', () => {
-		const userId = 'user-123';
+		const user = mock<User>({ role: GLOBAL_OWNER_ROLE });
 
 		it('skips the check for a global-use user by default', async () => {
-			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 			credentialsRepository.findExistingIds.mockResolvedValueOnce([credentialId]);
 
 			await expect(
-				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId]),
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId]),
 			).resolves.toEqual([]);
 			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
 		it('does not skip a global-use user when ignoreGlobalUseScope is true', async () => {
-			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 			// No personal grant on this credential: the finder reports it inaccessible.
 			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(new Set());
 
 			await expect(
-				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId], {
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId], {
 					ignoreGlobalUseScope: true,
 				}),
 			).resolves.toEqual([credentialId]);
 			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
 				[credentialId],
-				expect.objectContaining({ role: GLOBAL_OWNER_ROLE }),
+				user,
 				['credential:read'],
 				{ ignoreGlobalOverride: true },
 			);
 		});
 
 		it('still allows a global-use user who is personally granted the credential, even with ignoreGlobalUseScope', async () => {
-			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValueOnce(
 				new Set([credentialId]),
 			);
 
 			await expect(
-				permissionChecker.resolveInaccessibleCredentialIdsForUser(userId, [credentialId], {
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId], {
 					ignoreGlobalUseScope: true,
 				}),
 			).resolves.toEqual([]);
+		});
+	});
+
+	describe('resolveInaccessibleCredentialIdsForUserId', () => {
+		const userId = 'user-123';
+
+		it('fails closed when the user cannot be found', async () => {
+			userRepository.findOne.mockResolvedValueOnce(null);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUserId(userId, [credentialId]),
+			).resolves.toEqual([credentialId]);
+		});
+
+		it('loads the user with the role relation and delegates to the core check', async () => {
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_OWNER_ROLE }),
+			);
+			credentialsRepository.findExistingIds.mockResolvedValueOnce([credentialId]);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUserId(userId, [credentialId]),
+			).resolves.toEqual([]);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: userId },
+				relations: ['role'],
+			});
 		});
 	});
 });

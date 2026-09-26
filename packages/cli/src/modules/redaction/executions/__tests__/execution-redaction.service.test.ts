@@ -1208,7 +1208,7 @@ describe('ExecutionRedactionService', () => {
 
 			expect(
 				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-			).toHaveBeenCalledWith(mockUser.id, ['cred-1'], { ignoreGlobalUseScope: true });
+			).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 		});
 

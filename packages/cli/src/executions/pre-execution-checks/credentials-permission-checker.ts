@@ -1,4 +1,4 @@
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -73,7 +73,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUserId(
 			userId,
 			workflowCredIds,
 		);
@@ -97,7 +97,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return [];
 
-		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUserId(
 			userId,
 			workflowCredIds,
 		);
@@ -127,11 +127,15 @@ export class CredentialsPermissionChecker {
 		return credentialId;
 	}
 
-	/** The ids among `credentialIds` that `userId` personally cannot use. */
-	async resolveInaccessibleCredentialIdsForUser(
+	/**
+	 * Id-based sibling of {@link resolveInaccessibleCredentialIdsForUser}, for a caller
+	 * that only has a user id and not an already-loaded `User` (e.g. a triggering user
+	 * looked up from a sub-workflow's parameter data).
+	 */
+	async resolveInaccessibleCredentialIdsForUserId(
 		userId: string,
 		credentialIds: string[],
-		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
+		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
@@ -142,7 +146,15 @@ export class CredentialsPermissionChecker {
 			// Cannot resolve the triggering user - fail closed.
 			return credentialIds;
 		}
+		return await this.resolveInaccessibleCredentialIdsForUser(user, credentialIds, options);
+	}
 
+	/** The ids among `credentialIds` that `user` personally cannot use. */
+	async resolveInaccessibleCredentialIdsForUser(
+		user: User,
+		credentialIds: string[],
+		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<string[]> {
 		const unavailableCredentials =
 			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
 		const unavailableIds = unavailableCredentials.map((c) => c.id);
