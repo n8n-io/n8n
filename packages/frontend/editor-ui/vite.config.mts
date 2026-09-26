@@ -16,17 +16,13 @@ import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
 import { editorUiAliases } from './vite/aliases.mjs';
-import { DEFAULT_BACKEND_PORT, devServerPlugin, readDevPort } from './vite/dev-ports.mjs';
+import { devServerPlugin } from './vite/dev-ports.mjs';
 // Imported from source, not from `@n8n/constants`: this file must resolve with no build step.
 import { HTML_NONCE_PLACEHOLDER } from '../../@n8n/constants/src/csp';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
-
-// Only reachable through the dev server (see the `ctx.server` guard below),
-// which `devServerPlugin` has already validated by the time it runs.
-const devBackendPort = readDevPort(process.env, 'N8N_PORT', DEFAULT_BACKEND_PORT);
 
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
@@ -144,7 +140,12 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
+						.replace(
+							'<script src="/{{BASE_PATH}}/static/base-path.js" type="text/javascript"></script>',
+							'<script type="text/javascript">window.BASE_PATH = "/";</script>',
+						)
+						.replaceAll('/{{BASE_PATH}}/', '/')
+						.replaceAll('/{{BASE_PATH}}', '')
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
