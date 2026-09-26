@@ -9,14 +9,42 @@ The initial profiles are `default@1` and `progressive@1`. The general system
 prompt is the same in both. The progressive profile changes the workflow
 skills and removes the planning skill and `create-tasks` tool.
 
+`concise@1` (INS-1195) keeps every `default@1` policy and skill. It changes only
+the system prompt version, which selects a different `## Communication Style`
+block: sentence-level limits, one concrete next step, light formatting, and a
+worked example. Each published system prompt version binds one style block
+through `createSystemPromptRenderer`, so the general prompt body holds no
+profile-specific conditions.
+
+Measured against `default@1` over three runs each of the LangTracer case
+`response-style-verbose-recap` (baseline suite, `response-style` tier): 30% less
+emitted text, roughly half the bold and bullet density, and the share of
+sentences longer than 20 words down from 18% to 15%. That case grades whichever
+profile the lane runs, so set `N8N_EVAL_PROMPT_VERSION=concise@1` to measure
+this arm.
+
 ## Selection and recovery
 
-A request's `promptVersion` takes precedence over `mode`. Without a version pin,
-an explicit mode selects its current profile. Without either override, the
-backend experiment assignment selects the profile.
+Selection reads a version and a mode, and **any version beats any mode**.
 
-Internal follow-ups retain the selected version. Checkpoints store it in
-`persistence.hostMetadata.promptVersion`. If that version is no longer registered
+The version is the first of: the request's `promptVersion` for this turn, the
+version already selected for the thread (both share one slot, so a request pin
+replaces the thread's), then the instance-wide operator pin
+`N8N_INSTANCE_AI_PROMPT_VERSION`. Only when all three are empty does the mode
+decide: the thread's stored build mode, else the backend experiment assignment.
+
+Because a version outranks a mode, pinning a `default`-mode profile such as
+`concise@1` also overrides a progressive building assignment. The operator pin
+is instance-wide so the two system prompts never fragment the prompt cache
+within one instance. An unknown pin fails the run instead of silently serving
+the default profile; the rest of n8n is unaffected.
+
+Internal follow-ups retain the selected version. Checkpoints store the request
+pin in `persistence.hostMetadata.promptVersion`. They do not store the operator
+pin or the experiment assignment, so a resumed run derives those again. Change
+or remove `N8N_INSTANCE_AI_PROMPT_VERSION` while a run is suspended, and the
+resumed run uses the new value. Build mode differs: the checkpoint stores it and
+recovery restores it exactly. If a stored version is no longer registered
 after deployment, recovery selects the default profile and records `fallbackFrom`.
 Legacy checkpoints use their saved mode, or default when no valid mode exists.
 An unknown explicit request pin is rejected instead of silently falling back.
@@ -51,6 +79,7 @@ From this package:
 ```sh
 pnpm prompts:print --profile default@1
 pnpm prompts:print --profile progressive@1
+pnpm prompts:print --profile concise@1
 ```
 
 The output contains the system prompt, selected skill bodies, and a manifest.

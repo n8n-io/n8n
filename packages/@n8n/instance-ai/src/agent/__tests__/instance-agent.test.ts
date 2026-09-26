@@ -102,6 +102,8 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 
 vi.mock('../system-prompt', () => ({
 	getSystemPrompt: vi.fn().mockReturnValue('system prompt'),
+	// `prompt-profiles` builds the other published system prompt versions with this.
+	createSystemPromptRenderer: vi.fn(() => vi.fn().mockReturnValue('system prompt')),
 }));
 
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
