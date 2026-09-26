@@ -44,6 +44,16 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Like {@link createWorkflow}, but returns the raw response instead of throwing
+	 * on a non-2xx status — for asserting a refused create.
+	 */
+	async createWorkflowRaw(workflow: Partial<IWorkflowBase>, projectId: string) {
+		return await this.api.request.post('/rest/workflows', {
+			data: { ...this.withDefaultSettings(workflow), projectId },
+		});
+	}
+
 	/** Creates a workflow in a project with optional folder placement. */
 	async createInProject(
 		project: string,
@@ -96,6 +106,13 @@ export class WorkflowApiHelper {
 		if (!response.ok()) {
 			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
 		}
+	}
+
+	/** Like {@link activate}, but returns the raw response — for asserting a refused publish. */
+	async activateRaw(workflowId: string, versionId: string): Promise<APIResponse> {
+		return await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
+			data: { versionId },
+		});
 	}
 
 	async getPublicationStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
