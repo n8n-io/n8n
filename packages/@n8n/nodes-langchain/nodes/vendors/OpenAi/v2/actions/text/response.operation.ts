@@ -17,7 +17,8 @@ import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
 import type { ChatResponse } from '../../../helpers/interfaces';
 import { formatToOpenAIResponsesTool } from '../../../helpers/utils';
 import { pollUntilAvailable } from '../../../helpers/polling';
-import { apiRequest } from '../../../transport';
+import { collectStreamedResponse } from '../../../helpers/streaming';
+import { apiRequest, apiRequestStream } from '../../../transport';
 import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
 import { createRequest } from './helpers/responses';
 
@@ -186,6 +187,19 @@ const properties: INodeProperties[] = [
 				description:
 					'The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation after this response completes.',
 				type: 'string',
+			},
+			{
+				displayName: 'Stream Responses',
+				name: 'streaming',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.4 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Include Additional Data',
@@ -618,9 +632,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools,
 		builtInTools,
 	});
-	let response = (await apiRequest.call(this, 'POST', '/responses', {
-		body,
-	})) as ChatResponse;
+
+	// Background mode polls for the result, so it never holds a long request open
+	const useStreaming =
+		this.getNode().typeVersion >= 2.4 &&
+		get(options, 'streaming', true) !== false &&
+		!body.background;
+
+	const requestResponse = async (): Promise<ChatResponse> => {
+		if (!useStreaming) {
+			return (await apiRequest.call(this, 'POST', '/responses', { body })) as ChatResponse;
+		}
+
+		const stream = await apiRequestStream.call(this, 'POST', '/responses', {
+			body: { ...body, stream: true },
+			abortSignal,
+		});
+
+		return await collectStreamedResponse(this, stream, { abortSignal });
+	};
+
+	let response: ChatResponse = await requestResponse();
 
 	if (body.background) {
 		const timeoutSeconds = get(options, 'backgroundMode.values.timeout', 300) as number;
@@ -698,9 +730,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			}
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/responses', {
-			body,
-		})) as ChatResponse;
+		response = await requestResponse();
 
 		if (response.usage) {
 			accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);

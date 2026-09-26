@@ -13,6 +13,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
+
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
@@ -42,6 +45,25 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 const OPENAI_MODEL_BUILDER_HINT = {
 	propertyHint: MODEL_SELECTION_HINT,
 };
+
+function readErrorMessage(error: unknown): string {
+	if (isRecord(error) && typeof error.message === 'string') return error.message;
+	return getErrorMessage(error);
+}
+
+function isStreamingNotSupportedError(error: unknown): boolean {
+	const message = readErrorMessage(error);
+	if (!message) return false;
+
+	// Word boundaries keep unrelated proxy failures that only say "upstream" out of this branch
+	const namesStreamingParam = /\b(stream|streaming|stream_options|include_usage)\b/i.test(message);
+	const rejectsParam =
+		/\b(unsupported|not supported|does not support|unrecognized|unknown|invalid|not allowed|not permitted|extra_forbidden|must be verified|not verified)\b/i.test(
+			message,
+		);
+
+	return namesStreamingParam && rejectsParam;
+}
 
 const completionsResponseFormat: INodeProperties = {
 	displayName: 'Response Format',
@@ -87,7 +109,7 @@ export class LmChatOpenAi implements INodeType {
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenAI Chat Model',
@@ -594,6 +616,19 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Stream Responses',
+						name: 'streaming',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.4 } }],
+							},
+						},
+					},
+					{
 						displayName: 'Top P',
 						name: 'topP',
 						default: 1,
@@ -777,6 +812,8 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
+		const shouldUseStreaming = version >= 1.4 && options.streaming !== false;
+
 		const timeout = options.timeout;
 		configuration.fetchOptions = {
 			dispatcher: getProxyAgent(
@@ -840,6 +877,7 @@ export class LmChatOpenAi implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
+			...(shouldUseStreaming ? { streaming: true, streamUsage: true } : {}),
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
@@ -847,7 +885,17 @@ export class LmChatOpenAi implements INodeType {
 				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
 			],
 			modelKwargs,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error) => {
+				if (shouldUseStreaming && isStreamingNotSupportedError(error)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The model or the endpoint rejected the streaming request. Turn off "Stream Responses" in the OpenAI Chat Model node options to send one non-streamed request.',
+						{ itemIndex, description: readErrorMessage(error) },
+					);
+				}
+
+				openAiFailedAttemptHandler(error);
+			}),
 			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)
 			// that reject strict: null in tool definitions
 			supportsStrictToolCalling: false,
