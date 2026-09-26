@@ -39,4 +39,42 @@ describe('AgentExecutionRepository', () => {
 			expect(result).toBeNull();
 		});
 	});
+
+	describe('incrementCost', () => {
+		it('is a no-op for zero or negative cost and never issues an UPDATE', async () => {
+			await repository.incrementCost('execution-1', 0);
+			await repository.incrementCost('execution-1', -1);
+
+			// incrementCost builds the query from the context manager
+			// (`managerFor(ctx).createQueryBuilder()`), so the no-op guard
+			// must keep it from reaching the entity manager's query builder.
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('issues an atomic cost increment UPDATE for a positive cost', async () => {
+			const execute = vi.fn().mockResolvedValue(undefined);
+			const qb = {
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				setParameters: vi.fn().mockReturnThis(),
+				execute,
+			};
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.incrementCost('execution-1', 0.00125);
+
+			expect(qb.update).toHaveBeenCalledWith(AgentExecution);
+			expect(qb.set).toHaveBeenCalledTimes(1);
+			// The cost value is a SQL-fragment function; invoke it to verify the
+			// accumulating expression. `COALESCE` keeps a nullable `cost` from
+			// collapsing to `NULL + :cost = NULL` when no main-turn usage is priced.
+			const setArg = qb.set.mock.calls[0][0] as { cost: () => string };
+			expect(typeof setArg.cost).toBe('function');
+			expect(setArg.cost()).toBe('COALESCE(cost, 0) + :cost');
+			expect(qb.where).toHaveBeenCalledWith('id = :executionId', { executionId: 'execution-1' });
+			expect(qb.setParameters).toHaveBeenCalledWith({ cost: 0.00125 });
+			expect(execute).toHaveBeenCalledTimes(1);
+		});
+	});
 });

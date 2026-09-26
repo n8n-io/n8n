@@ -1,6 +1,11 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	SerializableAgentState,
+	TokenUsage,
+} from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -254,9 +259,23 @@ export interface EpisodicMemoryReflectorInput {
 	executionCounter?: AgentExecutionCounter;
 }
 
+export interface EpisodicMemoryReflectResult {
+	reflection: EpisodicMemoryReflection;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the reflection. */
+	model: string;
+}
+
+/**
+ * Reflect a cluster of episodic entries. Returns the reflection, or a
+ * `{ reflection, usage, model }` result that also carries token usage for the
+ * host to price. Bare `EpisodicMemoryReflection` returns are accepted for
+ * backward compatibility.
+ */
 export type EpisodicMemoryReflectFn = (
 	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection>;
+) => Promise<EpisodicMemoryReflection | EpisodicMemoryReflectResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];

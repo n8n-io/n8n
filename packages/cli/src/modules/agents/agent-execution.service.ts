@@ -142,6 +142,22 @@ export class AgentExecutionService {
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
 
+	/**
+	 * Side-call cost report ids already applied to an execution+thread in this
+	 * process. Used to keep the title/observer/reflector/episodic cost
+	 * increments idempotent when a report is delivered more than once.
+	 */
+	private readonly appliedSideCallReportIds = new Set<string>();
+
+	/**
+	 * Side-call cost report ids with an in-flight transaction. Concurrent
+	 * deliveries of the same `reportId` coalesce onto the in-flight promise
+	 * instead of each running its own transaction, which would double-count.
+	 * The entry is removed when the attempt settles; a failed attempt is not
+	 * claimed, so a later replay can retry.
+	 */
+	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -765,6 +781,10 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
+		// Cost is applied additively (below) rather than assigned here, so a
+		// side-call `incrementCost` that lands before this terminal write is not
+		// overwritten by `cost = record.totalCost`. `record.totalCost` is the
+		// main-loop cost only; side calls price themselves onto the same column.
 		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 			status,
 			stoppedAt,
@@ -773,7 +793,6 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
 			storedAt: 'db',
 			error: record.error,
@@ -784,6 +803,12 @@ export class AgentExecutionService {
 			throw new OperationalError('Agent execution is no longer running', {
 				extra: { executionId },
 			});
+		}
+		// Add the main-loop cost onto whatever side-call increments already
+		// settled. `incrementCost` no-ops for zero/null and is not gated on
+		// `status = 'running'`, so this also covers the finalized row.
+		if (record.totalCost) {
+			await this.agentExecutionRepository.incrementCost(executionId, record.totalCost);
 		}
 	}
 
@@ -871,6 +896,77 @@ export class AgentExecutionService {
 					error: result.reason,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Apply a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto its execution row
+	 * and thread totals. The SDK prices the call and sends `{ task, model,
+	 * usage, cost, reportId }`; the host only adds `cost`. Idempotent per
+	 * `reportId` so a replayed report does not double-count. Best-effort: a
+	 * failure logs a warning and never breaks the run.
+	 *
+	 * Both totals are updated in one transaction, and the `reportId` is
+	 * claimed only after the transaction commits — a partial failure can never
+	 * commit one total while suppressing the replay, so the execution and
+	 * thread costs cannot diverge for this report. Concurrent deliveries of the
+	 * same `reportId` coalesce onto a single in-flight transaction so they
+	 * cannot both pass the duplicate check and double-count.
+	 */
+	async recordSideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		if (this.appliedSideCallReportIds.has(report.reportId)) return;
+		// Register the in-flight promise synchronously (before any await) so a
+		// concurrent delivery observes it and waits on the same attempt rather
+		// than starting a second transaction that would double-count.
+		let attempt = this.sideCallReportInFlight.get(report.reportId);
+		if (attempt === undefined) {
+			attempt = this.applySideCallUsage(executionId, threadId, report);
+			this.sideCallReportInFlight.set(report.reportId, attempt);
+		}
+		try {
+			await attempt;
+		} finally {
+			// Only the caller that created the attempt clears the slot, so a
+			// coalesced delivery does not delete a later attempt's entry.
+			if (this.sideCallReportInFlight.get(report.reportId) === attempt) {
+				this.sideCallReportInFlight.delete(report.reportId);
+			}
+		}
+	}
+
+	private async applySideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);
+				await this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					0,
+					0,
+					report.cost,
+					0,
+					ctx,
+				);
+			});
+			// Acknowledge the report only after both totals are durably committed,
+			// so a failed transaction is not suppressed on a later replay.
+			this.appliedSideCallReportIds.add(report.reportId);
+		} catch (error) {
+			this.logger.warn('Failed to record agent side-call usage', {
+				executionId,
+				threadId,
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
 		}
 	}
 

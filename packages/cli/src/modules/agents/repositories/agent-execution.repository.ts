@@ -257,6 +257,31 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.execute();
 	}
 
+	/**
+	 * Atomically add a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto an execution row.
+	 * Side calls can settle before or after the terminal row write, so this is
+	 * an unconditional increment — not gated on `status = 'running'`. `cost` is
+	 * nullable (an execution may have no priced main-turn usage yet), so
+	 * `COALESCE` keeps the increment from collapsing to `NULL + :cost = NULL`.
+	 * Pass the `ctx` from `TransactionRunner.run` to apply the increment inside
+	 * the same transaction as the matching thread-total update.
+	 */
+	async incrementCost(
+		executionId: string,
+		cost: number,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		if (cost <= 0) return;
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentExecution)
+			.set({ cost: () => 'COALESCE(cost, 0) + :cost' })
+			.where('id = :executionId', { executionId })
+			.setParameters({ cost })
+			.execute();
+	}
+
 	/** Delete every run in a thread. Caller must verify ownership first. */
 	async deleteByThreadId(threadId: string): Promise<void> {
 		await this.delete({ threadId });

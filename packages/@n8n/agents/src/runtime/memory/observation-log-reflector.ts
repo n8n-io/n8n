@@ -2,8 +2,9 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
-import type { AgentExecutionCounter } from '../../types/sdk/agent';
+import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
@@ -49,6 +50,13 @@ export interface RunObservationLogReflectorOpts {
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the reflector model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed reflector call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogReflectorResult =
@@ -60,6 +68,10 @@ export type RunObservationLogReflectorResult =
 			overBudgetAfterReflection: boolean;
 			reflection: ObservationLogReflection;
 			result: ObservationLogReflectionResult;
+			/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+			usage?: TokenUsage;
+			/** Stable model id string of the model that produced the reflection. */
+			model?: string;
 	  };
 
 export function parseObservationLogReflectionJson(output: string): ObservationLogReflection {
@@ -180,7 +192,7 @@ export async function runObservationLogReflector(
 
 	const now = opts.now ?? new Date();
 	const renderedObservationLog = renderObservationLogForReflection(activeObservationLog);
-	const output = await opts.reflect({
+	const reflectResult = await opts.reflect({
 		observationScopeId,
 		now,
 		activeObservationLog,
@@ -190,6 +202,14 @@ export async function runObservationLogReflector(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
+	const output = typeof reflectResult === 'string' ? reflectResult : reflectResult.text;
+	const reflectUsage = typeof reflectResult === 'string' ? undefined : reflectResult.usage;
+	const reflectModel = typeof reflectResult === 'string' ? undefined : reflectResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed reflector turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort reflection.
+	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage);
 	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
@@ -225,6 +245,8 @@ export async function runObservationLogReflector(
 		overBudgetAfterReflection,
 		reflection,
 		result,
+		usage: reflectUsage,
+		model: reflectModel,
 	};
 }
 

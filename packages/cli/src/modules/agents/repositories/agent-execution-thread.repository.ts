@@ -299,13 +299,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });
 	}
 
-	/** Atomically increment token and cost counters on a thread in a single UPDATE. */
+	/** Atomically increment token and cost counters on a thread in a single UPDATE.
+	 * Pass the `ctx` from `TransactionRunner.run` to apply the increment inside
+	 * the same transaction as the matching execution-cost update. */
 	async incrementUsage(
 		threadId: string,
 		promptTokens: number,
 		completionTokens: number,
 		cost: number,
 		duration: number,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		const set: Record<string, () => string> = {
 			totalPromptTokens: () => '"totalPromptTokens" + :promptTokens',
@@ -318,7 +321,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			set.totalDuration = () => '"totalDuration" + :duration';
 		}
 
-		await this.createQueryBuilder()
+		await this.managerFor(ctx)
+			.createQueryBuilder()
 			.update(AgentExecutionThread)
 			.set(set)
 			.where('id = :threadId', { threadId })

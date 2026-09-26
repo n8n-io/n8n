@@ -134,6 +134,123 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('recordSideCallUsage', () => {
+		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.00125,
+				reportId: 'report-1',
+			});
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			// Both increments run inside the same transaction context.
+			const txCtx = txRunner.run.mock.calls[0][0];
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
+				'execution-1',
+				0.00125,
+				txCtx,
+			);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+				'thread-1',
+				0,
+				0,
+				0.00125,
+				0,
+				txCtx,
+			);
+		});
+
+		it('claims the reportId only after the transaction commits', async () => {
+			// A failed transaction must not claim the reportId, so a later
+			// replay can reapply both totals atomically instead of being
+			// suppressed while one total already diverged.
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+			const report = { task: 'title', model: 'openai/gpt-4o', cost: 0.001, reportId: 'retry-1' };
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', report),
+			).resolves.toBeUndefined();
+
+			// Not claimed: the failed transaction is replayable. The replay runs
+			// both increments again — `incrementCost` is retried (2 calls); the
+			// first attempt threw before reaching `incrementUsage`, so it runs
+			// only on the successful replay (1 call).
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not apply the same reportId twice (idempotent)', async () => {
+			const report = { task: 'observer', model: 'openai/gpt-4o', cost: 0.0007, reportId: 'dup-1' };
+
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('coalesces concurrent deliveries of the same reportId onto one transaction', async () => {
+			// Two deliveries of the same reportId racing past the duplicate
+			// check must not double-count: the second delivery awaits the
+			// in-flight attempt instead of starting its own transaction.
+			let resolveIncrement!: () => void;
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => {
+					resolveIncrement = resolve;
+				});
+			});
+			const report = {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.0007,
+				reportId: 'race-1',
+			};
+
+			const a = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			const b = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			// The first transaction is in flight; release it so both settle.
+			resolveIncrement();
+			await Promise.all([a, b]);
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies two different reportIds separately', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'report-a',
+			});
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.002,
+				reportId: 'report-b',
+			});
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('swallows repository errors so a side-call cost failure never breaks the run', async () => {
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', {
+					task: 'title',
+					model: 'openai/gpt-4o',
+					cost: 0.001,
+					reportId: 'report-err',
+				}),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	describe('startExecutionRecording', () => {
 		it('stores the signal before publishing the execution update', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
@@ -1057,6 +1174,47 @@ describe('AgentExecutionService', () => {
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
 			);
+		});
+
+		it('applies the terminal main-loop cost additively so in-flight side-call increments survive', async () => {
+			// A side-call `incrementCost` that lands before the terminal write must
+			// not be overwritten by `cost = record.totalCost`. The terminal write
+			// therefore omits `cost` from `updateIfRunning` and adds the main-loop
+			// cost through the same additive `incrementCost` path the side calls use.
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const [, terminalPayload] = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			expect(terminalPayload).not.toHaveProperty('cost');
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith('execution-1', 0.05);
+			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.incrementCost.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not issue a cost increment when the terminal run has no priced usage', async () => {
+			const record = makeMessageRecord({ totalCost: null });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
 		});
 
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
