@@ -861,7 +861,7 @@ describe('CredentialsFinderService', () => {
 	});
 
 	describe('findCredentialIdsWithScopeForUser', () => {
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE, id: 'owner123' });
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
@@ -900,6 +900,47 @@ describe('CredentialsFinderService', () => {
 					credentials: { usageScope: 'project' },
 				},
 			});
+		});
+
+		test('ignoreGlobalOverride forces role-based filtering even for a global owner', async () => {
+			const ids = ['cred-1', 'cred-2'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
+				ids,
+				owner,
+				['credential:read'],
+				{ ignoreGlobalOverride: true },
+			);
+
+			expect(result).toEqual(new Set(['cred-1']));
+			// Owner now goes through role resolution, same as a regular member would.
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
+			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+				select: { credentialsId: true },
+				where: {
+					credentialsId: In(ids),
+					credentials: { usageScope: 'project' },
+					role: In(['credential:owner', 'credential:user']),
+					project: {
+						projectRelations: {
+							role: In([
+								PROJECT_ADMIN_ROLE_SLUG,
+								PROJECT_OWNER_ROLE_SLUG,
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
+							]),
+							userId: 'owner123',
+						},
+					},
+				},
+			});
+			// The global-credential merge is also an instance-wide override; it must
+			// not run (or query the DB) when ignoreGlobalOverride is set.
+			expect(credentialsRepository.find).not.toHaveBeenCalled();
 		});
 
 		test('should filter by roles for regular member', async () => {
@@ -955,6 +996,25 @@ describe('CredentialsFinderService', () => {
 				where: { id: In(ids), isGlobal: true, usageScope: 'project' },
 				select: ['id'],
 			});
+		});
+
+		test('ignoreGlobalOverride excludes a global credential the user has no personal access to', async () => {
+			const ids = ['cred-1', 'global-1'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
+				ids,
+				owner,
+				['credential:read'],
+				{ ignoreGlobalOverride: true },
+			);
+
+			// Being flagged `isGlobal` is itself an instance-wide grant, not personal
+			// access, so it must not satisfy the check either.
+			expect(result).toEqual(new Set(['cred-1']));
+			expect(credentialsRepository.find).not.toHaveBeenCalled();
 		});
 
 		test('should include global end-user credentials for connect scope', async () => {

@@ -16,6 +16,11 @@ export interface RedactionContext {
 	 *  credentials AND the requesting user is not the one it ran as. Drives the
 	 *  `dynamic_credentials` redaction reason. */
 	readonly enforceDynCredRedaction: boolean;
+	/** True when redaction must be enforced because the requesting user cannot
+	 *  use a credential the execution's workflow references — independent of
+	 *  dynamic credentials. Drives the `credential_inaccessible` redaction
+	 *  reason. */
+	readonly enforceCredentialUsabilityRedaction: boolean;
 	/** Generic memo store — strategies may cache intermediate results here
 	 *  to avoid redundant computation across requiresRedaction/apply calls.
 	 *  Keyed by strategy name. */
