@@ -1,6 +1,12 @@
 import get from 'lodash/get';
+import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	deepCopy,
+	NodeConnectionTypes,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -21,7 +27,7 @@ export class SplitOut implements INodeType {
 		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Turn a list inside item(s) into separate items',
 		defaults: {
 			name: 'Split Out',
@@ -127,6 +133,7 @@ export class SplitOut implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const fieldsTracker = new FieldsTracker();
+		const nodeVersion = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
 			const fieldsToSplitOut = prepareFieldsArray(
@@ -154,11 +161,29 @@ export class SplitOut implements INodeType {
 				| 'selectedOtherFields'
 				| 'allOtherFields'
 				| 'noOtherFields';
+			const supportsDestinationPaths =
+				nodeVersion >= 1.1 && !disableDotNotation && destinationFields.length > 0;
 
 			const multiSplit = fieldsToSplitOut.length > 1;
 
 			const item = { ...items[i].json };
 			const splited: INodeExecutionData[] = [];
+			const pendingDestinationWrites: Array<Array<[field: string, value: IDataObject[string]]>> =
+				[];
+			const setOutputField = (
+				target: IDataObject,
+				elementIndex: number,
+				field: string,
+				value: IDataObject[string],
+			) => {
+				if (supportsDestinationPaths) {
+					pendingDestinationWrites[elementIndex] ??= [];
+					pendingDestinationWrites[elementIndex].push([field, deepCopy(value)]);
+				} else {
+					setSafeObjectProperty(target, field, value);
+				}
+			};
+
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
 
@@ -219,15 +244,15 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						setOutputField(splited[elementIndex].json, elementIndex, fieldName, element);
 					}
 				}
 			}
 
-			for (const splitEntry of splited) {
+			for (const [elementIndex, splitEntry] of splited.entries()) {
 				let newItem: INodeExecutionData = splitEntry;
 
 				if (include === 'allOtherFields') {
@@ -263,6 +288,14 @@ export class SplitOut implements INodeType {
 					}
 
 					newItem = splitEntry;
+				}
+
+				const destinationWrites = pendingDestinationWrites[elementIndex] ?? [];
+				if (destinationWrites.length > 0) {
+					newItem.json = deepCopy(newItem.json);
+				}
+				for (const [field, value] of destinationWrites) {
+					set(newItem.json, field, value);
 				}
 
 				const includeBinary = options.includeBinary as boolean;
