@@ -5,6 +5,7 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
@@ -32,6 +33,7 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
+	InstanceAiThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -81,6 +83,7 @@ import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.servi
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -127,6 +130,7 @@ export class InstanceAiController {
 		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
+		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -961,6 +965,37 @@ export class InstanceAiController {
 			metadata: payload.metadata,
 		});
 		return { thread };
+	}
+
+	@Get('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async getThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
+	}
+
+	@Put('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async saveThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiThreadTabsRequestDto,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const state = {
+			tabs: payload.tabs,
+			closedTabs: payload.closedTabs,
+			activeTab: payload.activeTab,
+		};
+		await this.threadTabsService.saveState(threadId, req.user.id, state);
+		return { state };
 	}
 
 	/**
