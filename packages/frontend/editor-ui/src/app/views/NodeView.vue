@@ -60,6 +60,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
+	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
@@ -90,7 +91,8 @@ import type {
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { historyBus } from '@/app/models/history';
+import { AddNodeGroupCommand, historyBus } from '@/app/models/history';
+import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
@@ -189,6 +191,7 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const historyStore = useHistoryStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionState = computed(() =>
@@ -986,6 +989,7 @@ function removeImportEventBindings() {
  * Node creator
  */
 const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
+const isAddingEmptyGroup = ref(false);
 
 function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
@@ -1020,6 +1024,42 @@ async function onAddNodesAndConnections(
 	if (addedNodes.length > 0) {
 		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
 		selectNodes([lastAddedNodeId]);
+	}
+}
+
+async function onAddEmptyGroup(position: XYPosition, connectToLastInteractedNode = false) {
+	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
+	isAddingEmptyGroup.value = true;
+
+	const ownsUndoBulk = historyStore.currentBulkAction === null;
+	if (ownsUndoBulk) historyStore.startRecordingUndo();
+
+	try {
+		const { addedNodes } = await addNodesAndConnections(
+			[
+				{
+					type: NO_OP_NODE_TYPE,
+					position,
+					parameters: { emptyGroupAnchor: true },
+					isAutoAdd: !connectToLastInteractedNode,
+					openDetail: false,
+				},
+			],
+			[],
+			{ viewport: viewportBoundaries.value, trackBulk: false },
+		);
+		const anchor = addedNodes[0];
+		if (!anchor) return;
+
+		const name = workflowDocumentStore.value.getNextDefaultName(
+			i18n.baseText('canvas.nodeGroup.defaultTitle'),
+		);
+		const group = workflowDocumentStore.value.createGroup([anchor.id], name);
+		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+		selectNodes([anchor.id]);
+	} finally {
+		if (ownsUndoBulk) historyStore.stopRecordingUndo();
+		isAddingEmptyGroup.value = false;
 	}
 }
 
@@ -2199,6 +2239,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onAddEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>

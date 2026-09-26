@@ -5,7 +5,9 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodeCreation from './NodeCreation.vue';
-import type { AddedNodesAndConnections } from '@/Interface';
+import type { AddedNodesAndConnections, XYPosition } from '@/Interface';
+import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
+import { useNodeCreatorStore } from '../nodeCreator.store';
 
 const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(() => ({
 	nodes: [],
@@ -27,12 +29,14 @@ vi.mock('vue', async (importOriginal) => {
 		...actual,
 		defineAsyncComponent: () => ({
 			name: 'NodeCreatorStub',
-			emits: ['node-type-selected', 'close-node-creator'],
+			emits: ['node-type-selected', 'empty-group-selected', 'close-node-creator'],
 			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
 				return { emit };
 			},
-			template:
-				'<button data-test-id="node-creator-stub-select" @click="emit(\'node-type-selected\', [{ type: \'n8n-nodes-base.slack\' }])" />',
+			template: `<>
+				<button data-test-id="node-creator-stub-select" @click="emit('node-type-selected', [{ type: 'n8n-nodes-base.slack' }])" />
+				<button data-test-id="node-creator-stub-group" @click="emit('empty-group-selected')" />
+			</>`,
 		}),
 	};
 });
@@ -116,6 +120,31 @@ describe('NodeCreation', () => {
 		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
 	});
 
+	it('emits the anchor position when Group is selected in the node creator', async () => {
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
+		expect(addEmptyGroupEvents[0][0]).toEqual([expect.any(Number), expect.any(Number)]);
+		expect(addEmptyGroupEvents[0][1]).toBe(false);
+		expect(emitted('toggleNodeCreator')).toEqual([
+			[{ createNodeActive: false, hasAddedNodes: true }],
+		]);
+	});
+
+	it('connects Group when the node creator was opened from a connection', async () => {
+		const nodeCreatorStore = useNodeCreatorStore();
+		nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION;
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
+		expect(addEmptyGroupEvents[0][1]).toBe(true);
+	});
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 

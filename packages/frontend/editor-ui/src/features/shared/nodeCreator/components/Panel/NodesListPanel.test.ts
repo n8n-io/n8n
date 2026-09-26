@@ -11,6 +11,11 @@ import NodesListPanel from './NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
@@ -95,7 +100,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(10);
 		});
 
 		it('should render regular nodes', async () => {
@@ -156,7 +161,7 @@ describe('NodesListPanel', () => {
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
@@ -213,6 +218,20 @@ describe('NodesListPanel', () => {
 
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 		});
+
+		it('should find Group when the workflow has nodes but no trigger', async () => {
+			getWrapperComponent(() => {
+				useWorkflowDocumentStore(createWorkflowDocumentId('')).setNodes([createTestNode()]);
+			});
+			await nextTick();
+
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'group' },
+			});
+
+			await waitFor(() => expect(screen.getByText('Group')).toBeInTheDocument());
+		});
+
 		it('should not be visible if subcategory contains less than 9 items', async () => {
 			renderComponent();
 			await nextTick();

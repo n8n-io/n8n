@@ -28,6 +28,7 @@ import {
 	TriggerView,
 	type NodeView,
 } from '../../views/viewsData';
+import { getNodeCreatorSearchItems } from '../../nodeCreator.utils';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
@@ -224,8 +225,8 @@ watch(
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);
