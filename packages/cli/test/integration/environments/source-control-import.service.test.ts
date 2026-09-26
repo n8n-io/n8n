@@ -12,8 +12,10 @@ import {
 import {
 	type CredentialsEntity,
 	CredentialsRepository,
+	WorkflowDependencyRepository,
 	type Folder,
 	generateNanoId,
+	type IWorkflowDb,
 	type Project,
 	type TagEntity,
 	TagRepository,
@@ -42,11 +44,13 @@ import { readFile } from 'node:fs/promises';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -54,6 +58,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
+import { retryUntil } from '@test-integration/retry-until';
 
 import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
@@ -148,6 +153,7 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
+			Container.get(WorkflowIndexService),
 		);
 	});
 
@@ -155,6 +161,7 @@ describe('SourceControlImportService', () => {
 		await testDb.truncate([
 			'WorkflowPublishHistory',
 			'WorkflowHistory',
+			'WorkflowDependency',
 			'SharedWorkflow',
 			'WorkflowTagMapping',
 			'SharedCredentials',
@@ -1834,6 +1841,69 @@ describe('SourceControlImportService', () => {
 				}
 				return mockFileData.get(pathStr)!;
 			});
+		});
+
+		it('updates draft credential dependencies when a source-control pull changes a workflow (ADO-5931)', async () => {
+			const importingUser = await getGlobalOwner();
+			const oldNode = {
+				id: 'node-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+				credentials: { httpAuth: { id: 'old-credential', name: 'Old credential' } },
+			};
+			const workflow = await createWorkflowWithHistory({ nodes: [oldNode] }, importingUser);
+			const dependencyRepository = Container.get(WorkflowDependencyRepository);
+			const indexService = Container.get(WorkflowIndexService);
+			const eventService = Container.get(EventService);
+			const onSave = async ({ workflow: saved }: { workflow: IWorkflowDb }) => {
+				await indexService.updateIndexForDraft(saved);
+			};
+			eventService.on('workflow-saved', onSave);
+
+			try {
+				// The workflow fixture indexes only node types. Replace that row with the full index.
+				await dependencyRepository.delete({ workflowId: workflow.id });
+				await indexService.updateIndexForDraft(workflow);
+				expect(
+					await dependencyRepository.findBy({
+						workflowId: workflow.id,
+						dependencyKey: 'old-credential',
+					}),
+				).toHaveLength(1);
+
+				const imported = makeWorkflowImport({
+					id: workflow.id,
+					nodes: [
+						{
+							...oldNode,
+							credentials: { httpAuth: { id: 'new-credential', name: 'New credential' } },
+						},
+					],
+				});
+				const file = putWorkflowFile(workflow.id, imported);
+				// ADO-5931: A pull changes the draft without a normal workflow save.
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual(imported.nodes);
+				await retryUntil(async () => {
+					const dependencies = await dependencyRepository.findBy({ workflowId: workflow.id });
+					const draftCredentials = dependencies
+						.filter(
+							(dep) => dep.publishedVersionId === null && dep.dependencyType === 'credentialId',
+						)
+						.map((dep) => dep.dependencyKey);
+					expect(draftCredentials).toEqual(['new-credential']);
+				});
+			} finally {
+				eventService.off('workflow-saved', onSave);
+			}
 		});
 
 		describe('workflow history', () => {
