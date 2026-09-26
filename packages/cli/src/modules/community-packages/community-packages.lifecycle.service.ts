@@ -109,6 +109,8 @@ export class CommunityPackagesLifecycleService {
 				await executeNpmCommand(['outdated', '--json'], {
 					doNotHandleError: true,
 					cwd: this.instanceSettings.nodesDownloadDir,
+					registry: this.communityPackagesConfig.registry,
+					authToken: this.communityPackagesConfig.authToken || undefined,
 				});
 			} catch (error) {
 				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
