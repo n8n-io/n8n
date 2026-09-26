@@ -75,6 +75,7 @@ component_management:
         - packages/@n8n/expression-runtime/**
         - packages/@n8n/extension-sdk/**
         - packages/@n8n/imap/**
+        - packages/@n8n/inbound-auth/**
         - packages/@n8n/local-gateway/**
         - packages/@n8n/permissions/**
         - packages/@n8n/scan-community-package/**

@@ -231,6 +231,7 @@ packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
+packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 # LiGo
 

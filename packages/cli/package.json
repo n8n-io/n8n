@@ -170,6 +170,7 @@
     "@n8n/engine": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
     "@n8n/instance-ai": "workspace:*",
     "@n8n/mcp-apps": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
