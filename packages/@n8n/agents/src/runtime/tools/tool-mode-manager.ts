@@ -1,11 +1,23 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import { SKILL_LOAD_TOOL_NAME } from '../../skills/types';
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { ToolModesConfig } from '../../types/sdk/tool-modes';
+import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from './deferred-tool-manager';
 
 export const SWITCH_MODE_TOOL_NAME = 'switch_mode';
+
+/**
+ * Discovery tools do not change the mode, so the model must pick the mode first.
+ * The hints stay the same in every mode, so a switch does not rewrite them.
+ */
+const MODE_HINTS: Record<string, string> = {
+	[SKILL_LOAD_TOOL_NAME]: `Call ${SWITCH_MODE_TOOL_NAME} to the mode that the skill's work needs before you load it: a skill names tools that only that mode has.`,
+	[SEARCH_TOOLS_TOOL_NAME]: `Searches only the tools that can be loaded in the current mode. If the tool you need belongs to another mode, call ${SWITCH_MODE_TOOL_NAME} instead.`,
+	[LOAD_TOOL_TOOL_NAME]: `Loading a tool does not change the mode. Call ${SWITCH_MODE_TOOL_NAME} first if the task belongs to another mode.`,
+};
 
 const switchModeOutputSchema = z.object({
 	status: z.enum(['switched', 'unchanged']),
@@ -26,6 +38,8 @@ export class ToolModeManager {
 	private readonly scopedToolNames: Set<string>;
 
 	private readonly switchTool: BuiltTool;
+
+	private readonly hintedTools = new WeakMap<BuiltTool, BuiltTool>();
 
 	/** Set by a switch and cleared when the runtime takes it at a loop boundary. */
 	private switchPending = false;
@@ -50,6 +64,18 @@ export class ToolModeManager {
 
 	getControllerTool(): BuiltTool {
 		return this.switchTool;
+	}
+
+	/** Adds a pick-the-mode-first hint to the skill and tool discovery tools; returns other tools as-is. */
+	withModeHint(tool: BuiltTool): BuiltTool {
+		const hint = MODE_HINTS[tool.name];
+		if (!hint) return tool;
+		let hinted = this.hintedTools.get(tool);
+		if (!hinted) {
+			hinted = { ...tool, description: `${tool.description} ${hint}` };
+			this.hintedTools.set(tool, hinted);
+		}
+		return hinted;
 	}
 
 	/** True when at least one mode names the tool. */

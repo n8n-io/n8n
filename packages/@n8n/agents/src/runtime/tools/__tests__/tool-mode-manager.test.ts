@@ -158,6 +158,44 @@ describe('RuntimeContextBuilder with tool modes', () => {
 		]);
 	});
 
+	it('tells the discovery tools to pick the mode first, in every mode', () => {
+		const manager = new ToolModeManager(config);
+		const builder = new RuntimeContextBuilder(
+			{
+				name: 'agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Test agent.',
+				tools: ['load_skill', 'nodes'].map(makeTool),
+			},
+			undefined,
+			manager,
+		);
+		const descriptions = () =>
+			Object.fromEntries(builder.getCurrentTools().map((tool) => [tool.name, tool.description]));
+
+		const inBuild = descriptions();
+		manager.switchTo('debug');
+		const inDebug = descriptions();
+
+		expect(inBuild.load_skill).toMatch(/^load_skill tool Call switch_mode/);
+		expect(inBuild.nodes).toBe('nodes tool');
+		expect(inDebug.load_skill).toBe(inBuild.load_skill);
+	});
+
+	it('leaves discovery tool descriptions unchanged without tool modes', () => {
+		const builder = new RuntimeContextBuilder(
+			{
+				name: 'agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Test agent.',
+				tools: [makeTool('load_skill')],
+			},
+			undefined,
+		);
+
+		expect(builder.getCurrentTools()[0].description).toBe('load_skill tool');
+	});
+
 	it('names the current mode in the uncached instructions', () => {
 		const { manager, builder } = makeBuilder();
 		manager.switchTo('debug');

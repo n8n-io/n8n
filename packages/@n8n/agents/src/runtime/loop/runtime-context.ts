@@ -163,6 +163,10 @@ export class RuntimeContextBuilder {
 				: []),
 		];
 
+		if (modeManager) {
+			for (let i = 0; i < tools.length; i++) tools[i] = modeManager.withModeHint(tools[i]);
+		}
+
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
 		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
 		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
@@ -263,11 +267,11 @@ export class RuntimeContextBuilder {
 	 *   (base tools, deferred-tool controllers, the recall tool) plus the
 	 *   user's instructions. Sent as the cached system message.
 	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
-	 *   conversation via `load_tool`. Kept out of the cached message —
-	 *   growing it the moment a tool loads would invalidate the whole
-	 *   prefix (OpenAI's automatic cache, and the Anthropic breakpoint) for
-	 *   the rest of the conversation. Sent as the uncached system message
-	 *   instead (see `buildSystemMessages`).
+	 *   conversation via `load_tool`, and from tools bound to a tool mode.
+	 *   Kept out of the cached message — growing it the moment a tool loads,
+	 *   or changing it on a mode switch, would invalidate the whole prefix
+	 *   (OpenAI's automatic cache, and the Anthropic breakpoint). Sent as the
+	 *   uncached system message instead (see `buildSystemMessages`).
 	 */
 	private composeEffectiveInstructions(tools: BuiltTool[]): {
 		instructions: string;
@@ -276,6 +280,8 @@ export class RuntimeContextBuilder {
 		const loadedToolNames = new Set(
 			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
 		);
+		const isVolatile = (tool: BuiltTool) =>
+			loadedToolNames.has(tool.name) || (this.toolModeManager?.isModeScoped(tool.name) ?? false);
 		const stableFragments: string[] = [];
 		const volatileFragments: string[] = [];
 		for (const tool of tools) {
@@ -285,17 +291,15 @@ export class RuntimeContextBuilder {
 			) {
 				continue;
 			}
-			(loadedToolNames.has(tool.name) ? volatileFragments : stableFragments).push(
-				tool.systemInstruction,
-			);
+			(isVolatile(tool) ? volatileFragments : stableFragments).push(tool.systemInstruction);
 		}
 
 		// Define the untrusted-data boundary ahead of the first wrapped result.
-		// Goes in the cached block unless the only untrusted tools were loaded
-		// mid-conversation, mirroring the fragment split above.
+		// Goes in the cached block unless every untrusted tool is volatile,
+		// mirroring the fragment split above.
 		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
 		if (untrustedTools.length > 0) {
-			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+			const target = untrustedTools.some((tool) => !isVolatile(tool))
 				? stableFragments
 				: volatileFragments;
 			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
