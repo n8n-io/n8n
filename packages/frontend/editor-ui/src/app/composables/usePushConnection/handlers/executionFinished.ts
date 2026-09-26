@@ -69,6 +69,20 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
+	// A sub-execution finishing is not the run finishing: no clearing the active
+	// id, re-fetching, or toasting. Its data stays on display, so only its status
+	// and running indicator settle here.
+	if (workflowExecutionStateStore.isTrackedSubExecution(data.executionId)) {
+		markSubExecutionFinished(data, documentId);
+		// With "wait for sub-workflow" off the parent run ends first, so no parent
+		// finish is coming to backfill this one's item payloads. Superseded
+		// iterations are already unregistered, so this is the surviving one.
+		if (workflowExecutionStateStore.activeExecutionId === undefined) {
+			await backfillSubExecutionRunData(documentId);
+		}
+		return;
+	}
+
 	// Only act on the finish of the execution this document is actually tracking.
 	// Normal match is on the execution id; when the active execution is still
 	// pending (null) because this finish raced ahead of `executionStarted`, fall
@@ -103,6 +117,8 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	// running state. `clearNodeExecutionQueue` also resets `lastAddedExecutingNode`.
 	if (belongsToThisDocument || activeExecutionId === undefined) {
 		workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
+		// The run is over, so nothing in its sub-executions can still be running.
+		workflowExecutionStateStore.subExecutingNode.clearNodeExecutionQueue();
 	}
 
 	if (!belongsToThisDocument) {
@@ -200,7 +216,43 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	setRunExecutionData(execution, runExecutionData, documentId);
 
+	await backfillSubExecutionRunData(documentId);
+
 	continueEvaluationLoop(execution, options);
+}
+
+/**
+ * Sub-executions stream node metadata but not item payloads, so their run data
+ * holds trimmed placeholders while the run is live. This replaces those with the
+ * real data for the sub-executions still on display.
+ *
+ * Costs one request per calling node rather than one per loop iteration:
+ * superseded iterations are already out of the registry, and iterations that have
+ * not finished are skipped — with "wait for sub-workflow" off the parent can
+ * finish while a child is still going, and its data would be incomplete.
+ */
+async function backfillSubExecutionRunData(documentId: WorkflowDocumentId) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+	const workflowsStore = useWorkflowsStore();
+	const links = [...workflowExecutionStateStore.subExecutionLinks];
+
+	await Promise.all(
+		links.map(async (link) => {
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(link.executionId));
+			const status = executionDataStore.execution?.status;
+			if (status === undefined || status === 'running' || status === 'waiting') return;
+
+			try {
+				const fetched = await workflowsStore.fetchExecutionDataById(link.executionId);
+				if (!fetched?.data) return;
+				// `setExecutionRunData` keeps `workflowData` — for a workflow calling
+				// itself that is the canvas snapshot the overlay reads from.
+				executionDataStore.setExecutionRunData(fetched.data);
+			} catch {
+				// Placeholders stay; the log view still fetches on expand.
+			}
+		}),
+	);
 }
 
 /**
@@ -264,6 +316,20 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 			rerunTriggerNode: true,
 		});
 	}
+}
+
+/**
+ * Settles a finished sub-execution: records its terminal status and clears the
+ * running indicator. Its live-pushed run data is kept as-is here — item payloads
+ * are not streamed for sub-executions, so the placeholders stand until
+ * {@link backfillSubExecutionRunData} replaces them when the parent run ends.
+ */
+function markSubExecutionFinished(data: ExecutionFinished['data'], documentId: WorkflowDocumentId) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+
+	executionDataStore.setExecutionStatus(data.status, new Date());
+	workflowExecutionStateStore.markSubExecutionFinished(data.executionId);
 }
 
 /**
