@@ -67,7 +67,11 @@ function executeContext(overrides: Record<string, unknown> = {}) {
 		(name, _index, fallback?: unknown) => (params[name] ?? fallback) as NodeParameterValueType,
 	);
 	ctx.evaluateExpression.mockReturnValue('What is 17 times 23?');
-	ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100/', apiToken: 'secret' });
+	ctx.getCredentials.mockImplementation(async (type) =>
+		type === 'cerebroApi'
+			? { baseUrl: 'https://cerebro.example', apiKey: 'cerebro_sk_test' }
+			: { baseUrl: 'http://localhost:3100/', apiToken: 'secret' },
+	);
 	ctx.getNode.mockReturnValue(node);
 	ctx.getWorkflow.mockReturnValue(workflow);
 	ctx.getExecutionId.mockReturnValue('31');
@@ -89,7 +93,11 @@ function webhookContext(body: IDataObject, overrides: Record<string, unknown> = 
 	ctx.getWebhookName.mockReturnValue('default');
 	ctx.getRequestObject.mockReturnValue({ method: 'POST' } as express.Request);
 	ctx.getBodyData.mockReturnValue(body);
-	ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100/', apiToken: 'secret' });
+	ctx.getCredentials.mockImplementation(async (type) =>
+		type === 'cerebroApi'
+			? { baseUrl: 'https://cerebro.example', apiKey: 'cerebro_sk_test' }
+			: { baseUrl: 'http://localhost:3100/', apiToken: 'secret' },
+	);
 	// The webhook signature has no item index: (name, fallback)
 	ctx.getNodeParameter.mockImplementation(
 		(name, fallback?: unknown) => (params[name] ?? fallback) as NodeParameterValueType,
@@ -259,11 +267,14 @@ describe('AgentHumanReview', () => {
 			expect(otlp.headers).toMatchObject({ 'x-hitl-token': 'secret' });
 		});
 
-		it('should resolve the selected agent and send its id with the registration and the trace', async () => {
-			const ctx = executeContext({ agentId: 'support-assistant' });
+		it('should resolve the agent from Cerebro and ingest the trace to its endpoint', async () => {
+			const ctx = executeContext({ agentId: 'ag_1' });
 			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
-				if (opts.url.endsWith('/api/agents/support-assistant')) {
-					return { id: 'support-assistant', name: 'Support Assistant', tags: { team: 'support' } };
+				if (opts.url.endsWith('/config/v1/auth/api-keys/token')) {
+					return { access_token: 'jwt-abc', token_type: 'Bearer', expires_in: 300 };
+				}
+				if (opts.url.endsWith('/config/v1/agents')) {
+					return { items: [{ agent_id: 'ag_1', agent_name: 'Support Assistant' }] };
 				}
 				if (opts.url.endsWith('/hitl')) return ACK;
 				return {};
@@ -275,35 +286,13 @@ describe('AgentHumanReview', () => {
 				ctx,
 				expect.any(String),
 				expect.any(Object),
-				expect.objectContaining({
-					agentId: 'support-assistant',
-					agentName: 'Support Assistant',
-					agentTags: { team: 'support' },
-				}),
+				expect.objectContaining({ agentId: 'ag_1', agentName: 'Support Assistant' }),
 			);
-			const registration = ctx.helpers.httpRequest.mock.calls
+			const ingest = ctx.helpers.httpRequest.mock.calls
 				.map((c) => c[0])
-				.find((r) => r.url === 'http://localhost:3100/hitl')!;
-			expect(registration.body).toMatchObject({ agentId: 'support-assistant' });
-		});
-
-		it('should still register with the id when the agent lookup fails', async () => {
-			const ctx = executeContext({ agentId: 'support-assistant' });
-			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
-				if (opts.url.includes('/api/agents/')) throw new Error('boom');
-				if (opts.url.endsWith('/hitl')) return ACK;
-				return {};
-			});
-
-			await agentNode.execute.call(ctx);
-
-			expect(runAgentOnce).toHaveBeenCalledWith(
-				ctx,
-				expect.any(String),
-				expect.any(Object),
-				expect.objectContaining({ agentId: 'support-assistant' }),
-			);
-			expect(ctx.putExecutionToWait).toHaveBeenCalled();
+				.find((r) => r.url.includes('/ingest/v1/agents/'))!;
+			expect(ingest.url).toBe('https://cerebro.example/ingest/v1/agents/ag_1/traces');
+			expect(ingest.headers).toMatchObject({ Authorization: 'Bearer jwt-abc' });
 		});
 
 		it('should omit agentId when none is selected', async () => {
@@ -318,11 +307,24 @@ describe('AgentHumanReview', () => {
 
 		it('should send no token header when the credential has none', async () => {
 			const ctx = executeContext();
-			ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://review.example.com' });
+			ctx.getCredentials.mockImplementation(async (type) =>
+				type === 'cerebroApi'
+					? { baseUrl: 'https://cerebro.example', apiKey: 'k' }
+					: { baseUrl: 'https://review.example.com' },
+			);
+			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.endsWith('/config/v1/auth/api-keys/token'))
+					return { access_token: 'j', expires_in: 300 };
+				if (opts.url.endsWith('/config/v1/agents')) return { items: [] };
+				return ACK;
+			});
 
 			await agentNode.execute.call(ctx);
 
-			expect(ctx.helpers.httpRequest.mock.calls[0][0]).toMatchObject({
+			const registration = ctx.helpers.httpRequest.mock.calls
+				.map((c) => c[0])
+				.find((r) => r.url.endsWith('/hitl'))!;
+			expect(registration).toMatchObject({
 				url: 'https://review.example.com/hitl',
 				headers: {},
 			});
@@ -457,43 +459,38 @@ describe('AgentHumanReview', () => {
 	});
 
 	describe('loadOptions.getAgents', () => {
-		it('should list agents from the review service using the credential', async () => {
+		function loadCtx(items: unknown) {
 			const helpers = mock<ILoadOptionsFunctions['helpers']>();
 			const ctx = mock<ILoadOptionsFunctions>({ helpers });
-			ctx.getCredentials.mockResolvedValue({
-				baseUrl: 'http://localhost:3100/',
-				apiToken: 'secret',
+			ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://cerebro.example', apiKey: 'k' });
+			helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.endsWith('/config/v1/auth/api-keys/token')) {
+					return { access_token: 'jwt-abc', expires_in: 300 };
+				}
+				return { items };
 			});
-			helpers.httpRequest.mockResolvedValue({
-				agents: [
-					{ id: 'support-assistant', name: 'Support Assistant', description: 'Tier-1 replies' },
-					{ id: 'sales-bot', name: 'Sales Bot' },
-				],
-			});
+			return { ctx, helpers };
+		}
+
+		it('should exchange the key and list agents from Cerebro', async () => {
+			const { ctx, helpers } = loadCtx([
+				{ agent_id: 'ag_1', agent_name: 'Support Assistant', status: 'configuring' },
+				{ agent_id: 'ag_2', agent_name: 'Sales Bot' },
+			]);
 
 			const options = await agentNode.methods.loadOptions.getAgents.call(ctx);
 
 			expect(helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: 'http://localhost:3100/api/agents',
-					headers: { 'x-hitl-token': 'secret' },
-				}),
+				expect.objectContaining({ url: 'https://cerebro.example/config/v1/agents' }),
 			);
 			expect(options).toEqual([
-				{
-					name: 'Support Assistant',
-					value: 'support-assistant',
-					description: 'ID support-assistant — Tier-1 replies',
-				},
-				{ name: 'Sales Bot', value: 'sales-bot', description: 'ID sales-bot' },
+				{ name: 'Support Assistant', value: 'ag_1', description: 'ID ag_1 — configuring' },
+				{ name: 'Sales Bot', value: 'ag_2', description: 'ID ag_2' },
 			]);
 		});
 
-		it('should return a placeholder when the service has no agents', async () => {
-			const helpers = mock<ILoadOptionsFunctions['helpers']>();
-			const ctx = mock<ILoadOptionsFunctions>({ helpers });
-			ctx.getCredentials.mockResolvedValue({ baseUrl: 'http://localhost:3100' });
-			helpers.httpRequest.mockResolvedValue({ agents: [] });
+		it('should return a placeholder when Cerebro has no agents', async () => {
+			const { ctx } = loadCtx([]);
 
 			const options = await agentNode.methods.loadOptions.getAgents.call(ctx);
 

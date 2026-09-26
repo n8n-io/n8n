@@ -19,6 +19,12 @@ import type {
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 import {
+	CEREBRO_CREDENTIAL,
+	cerebroAgentInfo,
+	cerebroIngestTraces,
+	cerebroListAgents,
+} from './helpers/cerebro';
+import {
 	newSpanId,
 	newTraceId,
 	toOtlp,
@@ -29,7 +35,6 @@ import {
 	buildRegistrationBody,
 	buildTrail,
 	exportOtlp,
-	fetchAgentInfo,
 	fetchRoundsSent,
 	fetchSuggestionsHistory,
 	getServiceConfig,
@@ -89,6 +94,11 @@ export class AgentHumanReview implements INodeType {
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['Approved', 'Rejected'],
 		credentials: [
+			{
+				name: CEREBRO_CREDENTIAL,
+				required: true,
+				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
+			},
 			{
 				name: HITL_CREDENTIAL,
 				required: true,
@@ -391,33 +401,20 @@ export class AgentHumanReview implements INodeType {
 	methods = {
 		loadOptions: {
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials<{
-					baseUrl: string;
-					apiToken?: string;
-					allowUnauthorizedCerts?: boolean;
-				}>(HITL_CREDENTIAL);
-				const baseUrl = credentials.baseUrl.replace(/\/+$/, '');
-				const response = (await this.helpers.httpRequest({
-					url: `${baseUrl}/api/agents`,
-					method: 'GET',
-					json: true,
-					skipSslCertificateValidation: credentials.allowUnauthorizedCerts ?? false,
-					headers: credentials.apiToken ? { 'x-hitl-token': credentials.apiToken } : {},
-				})) as { agents?: Array<{ id: string; name: string; description?: string }> };
-				const agents = response.agents ?? [];
+				const agents = await cerebroListAgents(this);
 				if (agents.length === 0) {
 					return [
 						{
-							name: 'No Agents Registered Yet',
+							name: 'No Agents Found for This API Key',
 							value: '',
-							description: 'Add one in the review service (Agents panel), then reload this list',
+							description: 'Create an agent in Cerebro, then reload this list',
 						},
 					];
 				}
 				return agents.map((a) => ({
-					name: a.name,
-					value: a.id,
-					description: a.description ? `ID ${a.id} — ${a.description}` : `ID ${a.id}`,
+					name: a.agent_name,
+					value: a.agent_id,
+					description: a.status ? `ID ${a.agent_id} — ${a.status}` : `ID ${a.agent_id}`,
 				}));
 			},
 		},
@@ -438,10 +435,7 @@ export class AgentHumanReview implements INodeType {
 
 		const reviewMode = this.getNodeParameter('reviewMode', 0, 'sync') as ReviewMode;
 		const agentId = getParam(this, 'agentId', '') || undefined;
-		const agentInfo =
-			reviewMode === 'none'
-				? { agentId }
-				: await fetchAgentInfo(this, await getServiceConfig(this), agentId);
+		const agentInfo = reviewMode === 'none' ? { agentId } : await cerebroAgentInfo(this, agentId);
 
 		const input = getPromptInput(this);
 		const { output, trace } = await runAgentOnce(
@@ -474,13 +468,12 @@ export class AgentHumanReview implements INodeType {
 
 		// Register first. Parking after a failed registration would strand the
 		// execution forever, since nothing would exist to call the resume URL.
-		const ack = await registerDraft(this, service, output, {
-			trail,
-			otel,
-			mode: reviewMode,
-			agentId: getParam(this, 'agentId', '') || undefined,
-		});
-		const traceResult = otel ? await exportTrace(this, service, trace, otel, ack) : undefined;
+		// The agent belongs to Cerebro, not the review service; its id rides on the
+		// trace and ingest, not this registration.
+		const ack = await registerDraft(this, service, output, { trail, otel, mode: reviewMode });
+		const traceResult = otel
+			? await exportTrace(this, service, trace, otel, ack, agentId)
+			: undefined;
 		const sent = sentRecord(service, ack.sentBody, traceResult);
 
 		// Background review: the draft goes downstream now; the decision is an audit record.
@@ -600,17 +593,23 @@ export class AgentHumanReview implements INodeType {
 						threadId: body.threadId,
 						previousRequestId: body.requestId,
 						reviewerFeedback: body.suggestions,
-						...(await fetchAgentInfo(this, service, getParam(this, 'agentId', '') || undefined)),
+						...(await cerebroAgentInfo(this, getParam(this, 'agentId', '') || undefined)),
 					}),
 				);
 				const otel = getParam(this, 'includeAgentTrace', true)
 					? { traceId: newTraceId(), rootSpanId: newSpanId() }
 					: undefined;
-				const ack = await registerDraft(this, service, output, {
-					otel,
-					agentId: getParam(this, 'agentId', '') || undefined,
-				});
-				const traceResult = otel ? await exportTrace(this, service, trace, otel, ack) : undefined;
+				const ack = await registerDraft(this, service, output, { otel });
+				const traceResult = otel
+					? await exportTrace(
+							this,
+							service,
+							trace,
+							otel,
+							ack,
+							getParam(this, 'agentId', '') || undefined,
+						)
+					: undefined;
 				// No workflowData: the execution stays parked on the same resume URL
 				// and the service now holds the next round for review.
 				return {
@@ -670,7 +669,12 @@ async function exportTrace(
 	trace: AgentTrace,
 	otel: OtlpIds,
 	ack: RegisterAck,
-): Promise<{ exported: boolean; payload: ExportTraceServiceRequest }> {
+	agentId: string | undefined,
+): Promise<{
+	exported: boolean;
+	payload: ExportTraceServiceRequest;
+	destination: IDataObject;
+}> {
 	const options = getParam<{ otlpRecordContent?: boolean }>(ctx, 'options', {});
 	const payload = toOtlp(
 		trace,
@@ -678,7 +682,28 @@ async function exportTrace(
 		{ requestId: ack.requestId, threadId: ack.threadId, round: ack.round },
 		{ recordContent: options.otlpRecordContent ?? true, serviceName: 'n8n' },
 	);
-	return { exported: await exportOtlp(ctx, service, payload), payload };
+	// Traces go to Cerebro's agent-scoped ingest. Without an agent there is no
+	// ingest path, so fall back to the review service's own OTLP receiver.
+	if (agentId) {
+		const r = await cerebroIngestTraces(ctx, agentId, payload);
+		return {
+			exported: r.delivered,
+			payload,
+			destination: {
+				system: 'cerebro',
+				url: r.url,
+				acceptedSpans: r.acceptedSpans,
+				rejectedSpans: r.rejectedSpans,
+				error: r.error,
+			},
+		};
+	}
+	const exported = await exportOtlp(ctx, service, payload);
+	return {
+		exported,
+		payload,
+		destination: { system: 'review-service', url: service.otlpEndpoint },
+	};
 }
 
 /**
@@ -689,7 +714,7 @@ async function exportTrace(
 function sentRecord(
 	service: ServiceConfig,
 	registrationBody: IDataObject,
-	traceResult?: { exported: boolean; payload: ExportTraceServiceRequest },
+	traceResult?: { exported: boolean; payload: ExportTraceServiceRequest; destination: IDataObject },
 ): IDataObject {
 	return {
 		registration: {
@@ -701,8 +726,7 @@ function sentRecord(
 		trace: traceResult
 			? {
 					method: 'POST',
-					url: service.otlpEndpoint,
-					headers: Object.keys(service.otlpHeaders),
+					...traceResult.destination,
 					delivered: traceResult.exported,
 					body: traceResult.payload as unknown as IDataObject,
 				}
