@@ -1,8 +1,10 @@
+import type { InstanceAiToolMode } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { INSTANCE_AI_TOOL_MODES } from '../tools/tool-modes';
 import type { ComputerUseState } from '../types';
 
 interface SystemPromptOptions {
@@ -23,6 +25,8 @@ interface SystemPromptOptions {
 	setupPanelEnabled?: boolean;
 	/** `select-agent` is registered, so a new automation can be a workflow or an n8n Agent. */
 	agentBuildingEnabled?: boolean;
+	/** The run binds tools by mode, so the model must pick a mode with `switch_mode`. */
+	toolModesEnabled?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -194,6 +198,40 @@ For a blocked operation, explain the read-only mode. Suggest making the change o
 `;
 }
 
+/** The skill that owns each mode's work, so the model can pair a mode with a skill. */
+const TOOL_MODE_ORDER: InstanceAiToolMode[] = ['general', 'build', 'debug', 'data', 'agents'];
+
+const TOOL_MODE_SKILLS: Record<InstanceAiToolMode, string> = {
+	general: '`n8n-docs-assistant` for product questions',
+	build: '`workflow-builder`',
+	debug: '`debugging-executions`',
+	data: '`data-table-manager`',
+	agents: '`agent-builder`',
+};
+
+/**
+ * Rendered only when the run binds tools by mode. The mode list is static and
+ * the `agents` line depends only on the instance-wide agents module, so the
+ * section never fragments the prompt cache within one instance.
+ */
+function getToolModesSection(toolModesEnabled?: boolean, agentBuildingEnabled?: boolean): string {
+	if (!toolModesEnabled) return '';
+	const modes = TOOL_MODE_ORDER.filter((name) => name !== 'agents' || agentBuildingEnabled)
+		.map(
+			(name) =>
+				`- **${name}**: ${INSTANCE_AI_TOOL_MODES[name].description} Skill: ${TOOL_MODE_SKILLS[name]}.`,
+		)
+		.join('\n');
+	return `## Tool Modes
+
+Your tools are grouped into modes. Only the tools of the active mode are bound, plus a few that every mode has (such as \`ask-user\` and \`load_skill\`). The \`<tool_mode>\` note tells you the active mode.
+
+${modes}
+
+Choose the mode before you load any skill or call any other tool. Decide which mode fits the user's request; when it is not the active mode, call \`switch_mode\` first, then load the skill for that mode. Switch again when the work moves to another mode (for example, to \`build\` for a workflow that an Agent needs, then back to \`agents\`). Do not switch for a reply that needs no tools.
+`;
+}
+
 /**
  * Setup panel v2 changes what `workflows(action="setup")` does: it announces the
  * checklist and returns instead of opening a card. Instance-wide flag, so the
@@ -219,6 +257,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		preferenceSavingEnabled,
 		setupPanelEnabled,
 		agentBuildingEnabled,
+		toolModesEnabled,
 	} = options;
 
 	return `You are the n8n Instance Agent, an AI assistant embedded in an n8n instance. Understand the user's request and use the skills in the catalog to achieve it. Learn a loaded skill in depth before you continue, and load more skills whenever the conversation needs them. Tool descriptions state any load-before-call gates (\`load_skill\` / \`load_tool\`).
@@ -229,6 +268,7 @@ ${getExistingResourcesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${getToolModesSection(toolModesEnabled, agentBuildingEnabled)}
 ## Communication Style
 
 - Be concise. No emojis unless the user asks for them.

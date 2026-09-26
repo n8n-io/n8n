@@ -210,6 +210,7 @@ export async function createInstanceAgent(
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			agentBuildingEnabled: allOrchestratorTools.has(ORCHESTRATION_TOOL_IDS.SELECT_AGENT),
+			toolModesEnabled: orchestrationContext?.toolMode !== undefined,
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
