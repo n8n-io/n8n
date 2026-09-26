@@ -310,6 +310,13 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	/** Like {@link transfer}, but returns the raw response — for asserting a refused transfer. */
+	async transferRaw(workflowId: string, destinationProjectId: string): Promise<APIResponse> {
+		return await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
+			data: { destinationProjectId },
+		});
+	}
+
 	/**
 	 * Set tags on a workflow via API
 	 * @param workflowId - The workflow ID
