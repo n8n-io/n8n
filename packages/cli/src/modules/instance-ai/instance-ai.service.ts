@@ -1274,6 +1274,7 @@ export class InstanceAiService {
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
+				openai: { store: false },
 			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
@@ -1308,11 +1309,11 @@ export class InstanceAiService {
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
-			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
-			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
-			// reprocesses the whole conversation uncached on every resume (~100K tokens).
+			// Must mirror buildOrchestratorAgentStreamOptions: preserve request-level
+			// provider options across resumed turns. Anthropic needs cache control.
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
+				openai: { store: false },
 			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
