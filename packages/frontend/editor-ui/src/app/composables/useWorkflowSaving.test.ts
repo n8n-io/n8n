@@ -57,6 +57,15 @@ vi.mock('@/app/composables/useMessage', () => {
 });
 
 const showMessageSpy = vi.hoisted(() => vi.fn());
+const showPolicyViolationToastSpy = vi.hoisted(() => vi.fn());
+const closePolicyViolationToastSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: () => ({
+		showPolicyViolationToast: showPolicyViolationToastSpy,
+		closePolicyViolationToast: closePolicyViolationToastSpy,
+	}),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
@@ -917,6 +926,65 @@ describe('useWorkflowSaving', () => {
 			);
 			expect(documentStore.allGroups).toHaveLength(1);
 			expect(showMessageSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves a save refused by policy to the policy violation toast', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-policy-refused');
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
+
+			const violations = [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }];
+			const refusal = new ResponseError('Blocked by an instance policy', {
+				httpStatusCode: 403,
+				meta: { violations },
+			});
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(refusal);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
+			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
+				violations,
+				'Problem saving workflow',
+				'save',
+				createWorkflowDocumentId(workflow.id),
+			);
+			expect(showMessageSpy).not.toHaveBeenCalled();
+		});
+
+		it('closes the policy violation toast once a save succeeds', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-policy-settled');
+			setDocumentStoreActive(workflow.id);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(true);
+			expect(closePolicyViolationToastSpy).toHaveBeenCalledWith('save');
+		});
+
+		it('shows the generic error toast when a refused save carries no violations', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-refused-without-violations');
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
+
+			const refusal = new ResponseError('Forbidden', { httpStatusCode: 403 });
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(refusal);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
+			expect(showPolicyViolationToastSpy).not.toHaveBeenCalled();
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Problem saving workflow',
+					message: 'Forbidden',
+					type: 'error',
+				}),
+			);
 		});
 	});
 

@@ -10,7 +10,11 @@ import {
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -55,6 +59,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 	}),
+}));
+
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: () => ({ showPolicyViolationToast: mockShowPolicyViolationToast }),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -986,6 +996,53 @@ describe('manual execution stats tracking', () => {
 			);
 
 			expect(incrementSpy).toHaveBeenCalledWith('error');
+		});
+
+		it('leaves a run refused by policy to the policy violation toast for the document that ran', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+			const violations = [{ kind: 'workflow-start-denied', checkId: 'c', message: 'Blocked' }];
+			const error = Object.assign(
+				new WorkflowOperationError('Workflow start is blocked by a project policy'),
+				{ violations },
+			);
+			// A mock would turn the violation fields it lacks into functions, so the run data stays plain.
+			const runExecutionData = createRunExecutionData({ resultData: { error } });
+			const execution = mock<SimplifiedExecution>({ status: 'error' });
+			execution.data = runExecutionData;
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				runExecutionData,
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
+				violations,
+				'Problem executing workflow',
+				'execute',
+				createWorkflowDocumentId(''),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows the generic error toast when the run error carries no violations', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+
+			const error = { message: 'test error', name: 'Error' };
+			const execution = mock<SimplifiedExecution>({
+				status: 'error',
+				data: { resultData: { error } },
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error } }),
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
 		it('does not increment stats for canceled executions', () => {
