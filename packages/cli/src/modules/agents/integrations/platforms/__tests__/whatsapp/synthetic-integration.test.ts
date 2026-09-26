@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
 import { encodeIntegrationMessageContext } from '../../../integration-message-context';
@@ -22,6 +22,7 @@ vi.mock('../../../esm-loader', () => ({
 	loadChatSdk: async () => await import('chat'),
 	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
 	loadWhatsAppAdapter: async () => await import('@chat-adapter/whatsapp'),
+	loadChatAdapterShared: async () => await import('@chat-adapter/shared'),
 }));
 
 const buttons = (count: number): SuspendComponent[] =>
@@ -235,6 +236,130 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				})();
 				await expect(ctx.adapter.stream(threadId, textStream)).rejects.toThrow(UserError);
 				expect(ctx.apiCalls).toHaveLength(0);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
+	describe('rate limit backoff', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries a send after transient rate-limit errors and eventually succeeds', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 2, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+				await vi.runAllTimersAsync();
+
+				await expect(promise).resolves.toBeDefined();
+				// 2 rate-limited attempts, then a 3rd that succeeds.
+				expect(ctx.apiCalls).toHaveLength(3);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('exhausts retries and throws an OperationalError the shared rate-limit guard can detect', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+
+				let caught: unknown;
+				const assertion = promise.catch((error: unknown) => {
+					caught = error;
+				});
+				await vi.runAllTimersAsync();
+				await assertion;
+
+				expect(caught).toBeInstanceOf(OperationalError);
+				// Shaped so `httpStatusFromError` (and the shared ChannelRateLimitGuard
+				// that reads it via `caughtIntegrationError`) recognises this as a 429.
+				expect((caught as { response?: { status?: number } }).response?.status).toBe(429);
+				// Every attempt is rate-limited, so all WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS
+				// are used up before giving up.
+				expect(ctx.apiCalls).toHaveLength(4);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('lets the shared rate-limit guard block a WhatsApp connection after retries exhaust', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				// Built directly rather than through a webhook: `respond` only needs
+				// `target.threadId`, and no `replyExpectation` means the "already
+				// replied this turn" precondition never triggers.
+				const currentMessageContext = {
+					integrationConnectionId: 'whatsapp:cred-whatsapp',
+					platform: 'whatsapp',
+					target: { type: 'thread' as const, threadId, channelId: threadId },
+					messageId: 'wamid.SYNTHETIC',
+					updatedAt: new Date().toISOString(),
+				};
+				const execute = async () =>
+					await ctx.actionExecutor.execute({
+						descriptor: ctx.descriptor,
+						action: 'respond',
+						input: { message: { text: 'Still there?' } },
+						awaitResponse: false,
+						currentMessageContext,
+					});
+
+				// First call: retries exhaust, the shared guard records the block.
+				const firstResultPromise = execute();
+				await vi.runAllTimersAsync();
+				const firstResult = await firstResultPromise;
+
+				expect(firstResult).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('WhatsApp') },
+				});
+				const callsAfterFirst = ctx.apiCalls.length;
+
+				// Second call on the same connection: blocked before any API call —
+				// no new backoff attempts, no new send.
+				const secondResult = await execute();
+
+				expect(secondResult).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('WhatsApp') },
+				});
+				expect(ctx.apiCalls).toHaveLength(callsAfterFirst);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not retry a non-rate-limit failure', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				// A template rejected for negative feedback (131051) is a real
+				// content problem, not a transient rate limit.
+				failureSequence: { count: Infinity, code: 131051 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				await expect(
+					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
+				).rejects.toThrow();
+				expect(ctx.apiCalls).toHaveLength(1);
 			} finally {
 				await ctx.shutdown();
 			}
