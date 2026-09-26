@@ -1,0 +1,52 @@
+{
+	"name": "APITemplate.io V1 image create on a node with no stored resource",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11111111-1111-4111-8111-111111111111",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"imageTemplateId": "tpl-img",
+				"jsonParameters": true,
+				"overridesJson": "[{\"name\": \"text_1\", \"text\": \"hello world\"}]"
+			},
+			"id": "11111111-1111-4111-8111-111111111112",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/banner.png",
+					"template_id": "tpl-img"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
