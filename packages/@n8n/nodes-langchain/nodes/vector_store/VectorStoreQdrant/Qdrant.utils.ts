@@ -6,9 +6,23 @@ export type QdrantCredential = {
 	apiKey: string;
 };
 
-function parseQdrantUrl(url: string): { protocol: string; host: string; port: number } {
+function parseQdrantUrl(url: string): {
+	protocol: string;
+	host: string;
+	port: number;
+	prefix: string;
+} {
 	try {
 		const parsedUrl = new URL(url);
+		// Preserve a reverse-proxy subpath (e.g. `/qdrant`) so it can be carried
+		// as the Qdrant client's `prefix`. Root URLs stay prefix-less and a
+		// trailing slash is trimmed so the client never emits a double slash.
+		let prefix = parsedUrl.pathname;
+		if (!prefix || prefix === '/') {
+			prefix = '';
+		} else if (prefix.length > 1 && prefix.endsWith('/')) {
+			prefix = prefix.replace(/\/+$/, '');
+		}
 		return {
 			protocol: parsedUrl.protocol,
 			host: parsedUrl.hostname,
@@ -17,6 +31,7 @@ function parseQdrantUrl(url: string): { protocol: string; host: string; port: nu
 				: parsedUrl.protocol === 'https:'
 					? 443
 					: 80,
+			prefix,
 		};
 	} catch (error) {
 		throw new UserError(
@@ -26,13 +41,14 @@ function parseQdrantUrl(url: string): { protocol: string; host: string; port: nu
 }
 
 export function createQdrantClient(credentials: QdrantCredential): QdrantClient {
-	const { protocol, host, port } = parseQdrantUrl(credentials.qdrantUrl);
+	const { protocol, host, port, prefix } = parseQdrantUrl(credentials.qdrantUrl);
 
 	const qdrantClient = new QdrantClient({
 		host,
 		apiKey: credentials.apiKey,
 		https: protocol === 'https:',
 		port,
+		...(prefix ? { prefix } : {}),
 	});
 
 	return qdrantClient;
