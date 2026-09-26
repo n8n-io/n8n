@@ -75,7 +75,7 @@ export const createCallTool =
 			const errorDescription =
 				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
 			onError(errorDescription);
-			return `There was an error: "${errorDescription}"`;
+			return errorDescription;
 		}
 
 		try {

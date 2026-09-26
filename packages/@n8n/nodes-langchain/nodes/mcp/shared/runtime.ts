@@ -175,6 +175,7 @@ export async function buildMcpToolkit(
 							ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
 								error: callError,
 							});
+							if (node.typeVersion >= 1.3) throw callError;
 						},
 						() => ctx.getExecutionCancelSignal(),
 					),

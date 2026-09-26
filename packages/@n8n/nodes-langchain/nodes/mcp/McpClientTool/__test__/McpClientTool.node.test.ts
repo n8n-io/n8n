@@ -596,7 +596,54 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult = await tools[0].invoke({ location: 'Berlin' });
-			expect(toolResult).toEqual('There was an error: "Weather unknown at location"');
+			expect(toolResult).toEqual('Weather unknown at location');
+			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.objectContaining({ message: 'Weather unknown at location' }),
+			);
+		});
+
+		it('throws a downstream MCP error for version 1.3 and later', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				toolResult: 'Weather unknown at location',
+				content: [{ text: 'Weather unknown at location' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Weather Tool',
+						description: 'Gets the current weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataFunctions = mock<ISupplyDataFunctions>({
+				...egressHelpers<ISupplyDataFunctions>(),
+				getNode: vi.fn(() =>
+					mock<INode>({
+						typeVersion: 1.3,
+						name: 'MCP Client',
+					}),
+				),
+				logger: { debug: vi.fn(), error: vi.fn() },
+				addInputData: vi.fn(() => ({ index: 0 })),
+				getNodeParameter: vi.fn((key: string) => {
+					const parameters: Record<string, unknown> = {
+						authentication: 'none',
+					};
+					return parameters[key] as never;
+				}),
+			});
+			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+
+			await expect(tools[0].invoke({ location: 'Berlin' })).rejects.toThrow(
+				'Weather unknown at location',
+			);
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,

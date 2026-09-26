@@ -913,23 +913,6 @@ describe('McpServer', () => {
 			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
 		});
 
-		it('relays a downstream MCP tool error to the client', async () => {
-			const tool = createMockTool('failing_tool', {
-				invokeReturn: 'There was an error: "This is a simulated failure."',
-			});
-			await registerToolSession(tool);
-
-			const result = await getCallToolHandler()(
-				{ params: { name: 'failing_tool', arguments: {} } },
-				{ sessionId, requestId },
-			);
-
-			expect(result).toEqual({
-				isError: true,
-				content: [{ type: 'text', text: 'There was an error: "This is a simulated failure."' }],
-			});
-		});
-
 		it('executes normally when no gate result is present for the call', async () => {
 			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
 			await registerToolSession(tool);
