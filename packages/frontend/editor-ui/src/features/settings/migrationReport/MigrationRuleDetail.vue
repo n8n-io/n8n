@@ -29,7 +29,7 @@ import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import SeverityTag from './components/SeverityTag.vue';
+import ImpactTag from './components/ImpactTag.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -53,7 +53,7 @@ const { state, isLoading } = useAsyncState(
 		ruleId: '',
 		ruleTitle: '',
 		ruleDescription: '',
-		ruleSeverity: 'low',
+		ruleImpact: 'capabilityRemoved',
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
@@ -257,7 +257,7 @@ const sortedWorkflows = computed(() => {
 					style="display: flex; align-items: center; gap: 4px"
 				>
 					{{ state.ruleTitle }}
-					<SeverityTag :severity="state.ruleSeverity" />
+					<ImpactTag :impact="state.ruleImpact" />
 					<N8nBadge>
 						{{
 							i18n.baseText('settings.migrationReport.detail.affectedTag', {

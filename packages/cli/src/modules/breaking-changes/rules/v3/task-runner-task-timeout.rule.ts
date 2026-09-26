@@ -19,7 +19,7 @@ export class TaskRunnerTaskTimeoutRule implements IBreakingChangeInstanceRule {
 			description:
 				'The default of N8N_RUNNERS_TASK_TIMEOUT is reduced from 300 seconds (5 minutes) to 60 seconds (1 minute). Code node tasks running longer than the new default will be aborted.',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'behaviorChanges',
 		};
 	}
 

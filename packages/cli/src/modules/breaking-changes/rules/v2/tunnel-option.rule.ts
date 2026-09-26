@@ -17,7 +17,7 @@ export class TunnelOptionRule implements IBreakingChangeInstanceRule {
 			title: 'Remove n8n --tunnel option',
 			description: 'The --tunnel CLI option has been removed and will be ignored',
 			category: BreakingChangeCategory.instance,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#remove-n8n-tunnel-option',
 		};
 	}

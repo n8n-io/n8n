@@ -19,7 +19,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			description:
 				'The default maximum decompressed size is reduced from 2 GiB to 256 MiB and the default maximum number of ZIP entries from 5000 to 1000. Compression nodes handling archives beyond the new limits will fail.',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'behaviorChanges',
 		};
 	}
 

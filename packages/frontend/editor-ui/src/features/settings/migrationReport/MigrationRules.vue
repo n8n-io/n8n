@@ -18,10 +18,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
 import orderBy from 'lodash/orderBy';
-import SeverityTag from './components/SeverityTag.vue';
+import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import type { BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const $style = useCssModule();
@@ -84,21 +85,19 @@ const tabs = computed(() => {
 	];
 });
 
-const workflowTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.workflowTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.workflowTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.workflowTooltip.low'),
-	} as const;
-});
+const workflowTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.workflowTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.workflowTooltip.executionsFail'),
+	behaviorChanges: i18n.baseText('settings.migrationReport.workflowTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.workflowTooltip.capabilityRemoved'),
+}));
 
-const instanceTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.instanceTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.instanceTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.instanceTooltip.low'),
-	} as const;
-});
+const instanceTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.instanceTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.instanceTooltip.executionsFail'),
+	behaviorChanges: i18n.baseText('settings.migrationReport.instanceTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.instanceTooltip.capabilityRemoved'),
+}));
 
 const compatibleWorkflowsCount = computed(() => {
 	if (!state.value) return 0;
@@ -108,14 +107,20 @@ const compatibleWorkflowsCount = computed(() => {
 	);
 });
 
-// Severity order: critical (highest) -> medium -> low (lowest)
-const severityOrder = { critical: 0, medium: 1, low: 2 };
+// Impact order: the impact that blocks the update comes first, the one with no
+// runtime effect comes last.
+const impactOrder: Record<BreakingChangeRuleImpact, number> = {
+	upgradeBlocked: 0,
+	executionsFail: 1,
+	behaviorChanges: 2,
+	capabilityRemoved: 3,
+};
 
 const sortedWorkflowResults = computed(() => {
 	if (!state.value?.report.workflowResults) return [];
 	return orderBy(
 		state.value.report.workflowResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
+		[(issue) => impactOrder[issue.ruleImpact]],
 		['asc'],
 	);
 });
@@ -124,7 +129,7 @@ const sortedInstanceResults = computed(() => {
 	if (!state.value?.report.instanceResults) return [];
 	return orderBy(
 		state.value.report.instanceResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
+		[(issue) => impactOrder[issue.ruleImpact]],
 		['asc'],
 	);
 });
@@ -190,11 +195,11 @@ const sortedInstanceResults = computed(() => {
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
-									:content="workflowTooltips[issue.ruleSeverity]"
+									:content="workflowTooltips[issue.ruleImpact]"
 									placement="top"
 									:enterable="false"
 								>
-									<SeverityTag :severity="issue.ruleSeverity" />
+									<ImpactTag :impact="issue.ruleImpact" />
 								</N8nTooltip>
 							</div>
 							<N8nText tag="p" color="text-base">
@@ -255,11 +260,11 @@ const sortedInstanceResults = computed(() => {
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
-									:content="instanceTooltips[issue.ruleSeverity]"
+									:content="instanceTooltips[issue.ruleImpact]"
 									placement="top"
 									:enterable="false"
 								>
-									<SeverityTag :severity="issue.ruleSeverity" />
+									<ImpactTag :impact="issue.ruleImpact" />
 								</N8nTooltip>
 							</div>
 							<N8nText tag="p" color="text-base">

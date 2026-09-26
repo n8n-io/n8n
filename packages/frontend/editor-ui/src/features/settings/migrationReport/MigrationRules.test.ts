@@ -21,7 +21,7 @@ const mockWorkflowIssue = {
 	ruleId: 'rule-1',
 	ruleTitle: 'Test Rule 1',
 	ruleDescription: 'This is a test rule description',
-	ruleSeverity: 'critical' as const,
+	ruleImpact: 'executionsFail' as const,
 	ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 	recommendations: [
 		{
@@ -37,7 +37,7 @@ const mockInstanceIssue = {
 	ruleId: 'rule-2',
 	ruleTitle: 'Instance Rule 1',
 	ruleDescription: 'This is an instance rule description',
-	ruleSeverity: 'medium' as const,
+	ruleImpact: 'behaviorChanges' as const,
 	ruleDocumentationUrl: 'https://docs.example.com/rule-2',
 	recommendations: [
 		{
@@ -195,8 +195,8 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('This is a test rule description.')).toBeInTheDocument();
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
-				// Severity tag
-				expect(screen.getByText('Critical')).toBeInTheDocument();
+				// Impact tag
+				expect(screen.getByText('Executions fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -232,7 +232,7 @@ describe('MigrationRules', () => {
 			});
 		});
 
-		it('should display multiple workflow issues with different severities', async () => {
+		it('should display multiple workflow issues sorted by impact', async () => {
 			const multipleIssues = createMockReport({
 				report: {
 					generatedAt: new Date('2024-01-01'),
@@ -244,15 +244,22 @@ describe('MigrationRules', () => {
 							...mockWorkflowIssue,
 							ruleId: 'rule-2',
 							ruleTitle: 'Test Rule 2',
-							ruleSeverity: 'medium' as const,
+							ruleImpact: 'behaviorChanges' as const,
 							nbAffectedWorkflows: 3,
 						},
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-3',
 							ruleTitle: 'Test Rule 3',
-							ruleSeverity: 'low' as const,
+							ruleImpact: 'upgradeBlocked' as const,
 							nbAffectedWorkflows: 1,
+						},
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-4',
+							ruleTitle: 'Test Rule 4',
+							ruleImpact: 'capabilityRemoved' as const,
+							nbAffectedWorkflows: 2,
 						},
 					],
 					instanceResults: [],
@@ -267,10 +274,18 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Critical')).toBeInTheDocument();
-				expect(screen.getByText('Medium')).toBeInTheDocument();
-				expect(screen.getByText('Low')).toBeInTheDocument();
+				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
+				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
+				expect(screen.getByText('Capability removed')).toBeInTheDocument();
 			});
+
+			// Rules that block the update come first and capability removals last,
+			// whatever the response order.
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2', 'Test Rule 4']);
 		});
 	});
 
@@ -285,8 +300,8 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('This is an instance rule description.')).toBeInTheDocument();
 
-				// Severity tag
-				expect(screen.getByText('Medium')).toBeInTheDocument();
+				// Impact tag
+				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -320,7 +335,7 @@ describe('MigrationRules', () => {
 			});
 		});
 
-		it('should display multiple instance issues', async () => {
+		it('should display multiple instance issues sorted by impact', async () => {
 			const multipleIssues = createMockReport({
 				report: {
 					generatedAt: new Date('2024-01-01'),
@@ -333,7 +348,19 @@ describe('MigrationRules', () => {
 							...mockInstanceIssue,
 							ruleId: 'rule-3',
 							ruleTitle: 'Instance Rule 2',
-							ruleSeverity: 'critical' as const,
+							ruleImpact: 'executionsFail' as const,
+						},
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-4',
+							ruleTitle: 'Instance Rule 3',
+							ruleImpact: 'capabilityRemoved' as const,
+						},
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-5',
+							ruleTitle: 'Instance Rule 4',
+							ruleImpact: 'upgradeBlocked' as const,
 						},
 					],
 				},
@@ -348,7 +375,21 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 2')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 3')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 4')).toBeInTheDocument();
 			});
+
+			// Same order as the workflow tab: upgradeBlocked, executionsFail,
+			// behaviorChanges, capabilityRemoved.
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual([
+				'Instance Rule 4',
+				'Instance Rule 2',
+				'Instance Rule 1',
+				'Instance Rule 3',
+			]);
 		});
 	});
 
@@ -486,29 +527,34 @@ describe('MigrationRules', () => {
 	describe('tooltips', () => {
 		it.each([
 			{
-				severity: 'critical',
-				label: 'Critical',
-				tooltipText: 'will break',
+				impact: 'upgradeBlocked',
+				label: 'Upgrade blocked',
+				tooltipText: 'cannot proceed',
 			},
 			{
-				severity: 'medium',
-				label: 'Medium',
-				tooltipText: 'incorrect results',
+				impact: 'executionsFail',
+				label: 'Executions fail',
+				tooltipText: 'will fail',
 			},
 			{
-				severity: 'low',
-				label: 'Low',
-				tooltipText: 'slightly',
+				impact: 'behaviorChanges',
+				label: 'Behavior changes',
+				tooltipText: 'keep running',
+			},
+			{
+				impact: 'capabilityRemoved',
+				label: 'Capability removed',
+				tooltipText: 'not affected',
 			},
 		] as const)(
-			'should show $severity severity tooltip on hover',
-			async ({ severity, label, tooltipText }) => {
+			'should show $impact impact tooltip on hover',
+			async ({ impact, label, tooltipText }) => {
 				const report = createMockReport({
 					report: {
 						generatedAt: new Date('2024-01-01'),
 						targetVersion: '2.0.0',
 						currentVersion: '1.0.0',
-						workflowResults: [{ ...mockWorkflowIssue, ruleSeverity: severity }],
+						workflowResults: [{ ...mockWorkflowIssue, ruleImpact: impact }],
 						instanceResults: [],
 					},
 				});
@@ -521,7 +567,7 @@ describe('MigrationRules', () => {
 					expect(screen.getByText(label)).toBeInTheDocument();
 				});
 
-				// Verify tooltip shows severity description on hover
+				// Verify tooltip shows the impact description on hover
 				const labelElement = screen.getByText(label);
 				await hoverTooltipTrigger(labelElement);
 				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));

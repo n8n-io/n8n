@@ -77,7 +77,7 @@ export class BreakingChangeService {
 						ruleId: rule.id,
 						ruleTitle: rule.getMetadata().title,
 						ruleDescription: rule.getMetadata().description,
-						ruleSeverity: rule.getMetadata().severity,
+						ruleImpact: rule.getMetadata().impact,
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
@@ -105,7 +105,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
@@ -154,7 +154,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
@@ -271,7 +271,7 @@ export class BreakingChangeService {
 	async refreshDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		await this.cacheService.delete(`${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`);
+		await this.cacheService.delete(this.getCacheKey(targetVersion));
 		return await this.getDetectionResults(targetVersion);
 	}
 
@@ -295,10 +295,16 @@ export class BreakingChangeService {
 		}
 	}
 
+	// The rule set changes with every release, so a report from an older build is stale.
+	// The n8n version in the key rotates the entry on deploy; the old key ages out by TTL.
+	private getCacheKey(targetVersion: BreakingChangeVersion): string {
+		return `${BreakingChangeService.CACHE_KEY_PREFIX}${N8N_VERSION}:${targetVersion}`;
+	}
+
 	private async detectWithCache(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
+		const cacheKey = this.getCacheKey(targetVersion);
 
 		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
 		if (cachedResult) {

@@ -25,7 +25,7 @@ describe('RemovedNodesV3Rule', () => {
 			title: 'Removed nodes',
 			description: 'Several nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 		});
 		await expect(rule.getRecommendations([])).resolves.toEqual([
 			{
