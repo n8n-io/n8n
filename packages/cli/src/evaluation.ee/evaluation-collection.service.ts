@@ -21,7 +21,6 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { OperationalError, type IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -518,13 +517,10 @@ export class EvaluationCollectionService {
 		const lastRuns =
 			history.length === 0
 				? []
-				: await this.testRunRepo.find({
-						where: {
-							evaluationConfigId,
-							workflowVersionId: In(history.map((h) => h.versionId)),
-						},
-						order: { createdAt: 'DESC' },
-					});
+				: await this.testRunRepo.findByConfigAndVersions(
+						evaluationConfigId,
+						history.map((h) => h.versionId),
+					);
 		// Surface only the latest *completed* run per version (the wizard offers it
 		// for reuse), so a version whose last run failed shows "no run yet" instead.
 		const latestRunByVersion = new Map<string, TestRun>();

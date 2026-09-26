@@ -240,23 +240,16 @@ export default defineConfig(
 			'./src/workflows/workflow.service.ee.ts',
 			'./src/workflows/workflow.service.ts',
 			'./src/workflows/workflows.controller.ts',
-			// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
+			// services/
 			'./src/services/export.service.ts',
 			'./src/services/folder.service.ts',
-			'./src/services/folder-finder.service.ts',
 			'./src/services/hooks.service.ts',
 			'./src/services/import.service.ts',
-			'./src/services/ownership.service.ts',
 			'./src/services/ownership-transfer/ownership-transfer-handler.registry.ts',
 			'./src/services/project.service.ee.ts',
 			'./src/services/public-api-key.service.ts',
-			'./src/services/tag.service.ts',
 			// commands / controllers / eventbus / evaluation / public-api
 			'./src/commands/import/credentials.ts',
-			'./src/commands/ldap/reset.ts',
-			'./src/controllers/project.controller.ts',
-			'./src/eventbus/message-event-bus/message-event-bus.ts',
-			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',

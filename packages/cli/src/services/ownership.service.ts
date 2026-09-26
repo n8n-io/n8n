@@ -14,8 +14,6 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
-import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -257,23 +255,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.exists({
-			where: [
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					lastActiveAt: Not(IsNull()),
-				},
-				// OR
-				// This condition only exists because of PAY-4247
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					password: Not(IsNull()),
-				},
-			],
-			relations: ['role'],
-		});
+		return await this.userRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(

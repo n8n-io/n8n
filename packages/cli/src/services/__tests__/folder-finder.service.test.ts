@@ -22,7 +22,7 @@ function makeFolder(overrides: Partial<Folder> = {}): Folder {
 
 function makeFinder(found: Folder[]) {
 	const folderRepository = mock<FolderRepository>();
-	folderRepository.find.mockResolvedValue(found);
+	folderRepository.findByIdsForProjectRoles.mockResolvedValue(found);
 	folderRepository.findExistingIds.mockResolvedValue(new Set(found.map(({ id }) => id)));
 	const roleService = mock<RoleService>();
 	roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
@@ -37,7 +37,7 @@ describe('FolderFinderService', () => {
 		const result = await finder.findFoldersByIdsForUser([], nonGlobalUser, ['folder:read']);
 
 		expect(result).toEqual([]);
-		expect(folderRepository.find.mock.calls).toHaveLength(0);
+		expect(folderRepository.findByIdsForProjectRoles).not.toHaveBeenCalled();
 	});
 
 	it('returns the folders the repository resolves', async () => {
@@ -49,36 +49,29 @@ describe('FolderFinderService', () => {
 		expect(result).toEqual(folders);
 	});
 
-	it('merges distinct folders returned from different chunks', async () => {
-		const firstFolder = makeFolder({ id: 'first' });
-		const lastFolder = makeFolder({ id: 'last' });
-		const { finder, folderRepository } = makeFinder([]);
-		folderRepository.find.mockResolvedValueOnce([firstFolder]).mockResolvedValueOnce([lastFolder]);
-		const folderIds = [
-			...Array.from({ length: 10_000 }, (_, index) => `folder-${index}`),
-			lastFolder.id,
-		];
-
-		const result = await finder.findFoldersByIdsForUser(folderIds, nonGlobalUser, ['folder:read']);
-
-		expect(folderRepository.find).toHaveBeenCalledTimes(2);
-		expect(result).toEqual([firstFolder, lastFolder]);
-		const secondChunk = folderRepository.find.mock.calls[1][0]?.where as unknown as {
-			id: { value: string[] };
-		};
-		expect(secondChunk.id.value).toEqual([lastFolder.id]);
-	});
-
-	it('filters by the requested project scope for non-global users', async () => {
+	it('scopes by the user and resolved project roles for non-global users', async () => {
 		const { finder, folderRepository, roleService } = makeFinder([makeFolder()]);
 
 		await finder.findFoldersByIdsForUser(['fld-1'], nonGlobalUser, ['folder:read']);
 
-		expect(roleService.rolesWithScope.mock.calls[0]).toEqual(['project', ['folder:read']]);
-		const where = folderRepository.find.mock.calls[0][0]?.where as {
-			homeProject: { projectRelations: { userId: string } };
-		};
-		expect(where.homeProject.projectRelations.userId).toBe('user-1');
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['folder:read']);
+		expect(folderRepository.findByIdsForProjectRoles).toHaveBeenCalledWith(['fld-1'], {
+			userId: 'user-1',
+			roleSlugs: ['project:admin', 'project:editor'],
+		});
+	});
+
+	it('applies no access restriction for global-scope users', async () => {
+		const globalUser = {
+			id: 'admin-1',
+			role: { slug: 'global:owner', scopes: [{ slug: 'folder:read' }] },
+		} as unknown as User;
+		const { finder, folderRepository, roleService } = makeFinder([makeFolder()]);
+
+		await finder.findFoldersByIdsForUser(['fld-1'], globalUser, ['folder:read']);
+
+		expect(folderRepository.findByIdsForProjectRoles).toHaveBeenCalledWith(['fld-1'], null);
+		expect(roleService.rolesWithScope).not.toHaveBeenCalled();
 	});
 
 	describe('findFolderSubtreesForUser', () => {
@@ -100,10 +93,10 @@ describe('FolderFinderService', () => {
 				['parentA', 'parentB'],
 			]);
 			// requested ids + descendant id, deduped, are authorized in one query
-			const where = folderRepository.find.mock.calls[0][0]?.where as unknown as {
-				id: { value: string[] };
-			};
-			expect(where.id.value).toEqual(['parentA', 'parentB', 'childA']);
+			expect(folderRepository.findByIdsForProjectRoles).toHaveBeenCalledWith(
+				['parentA', 'parentB', 'childA'],
+				expect.anything(),
+			);
 		});
 
 		it('returns an empty list for an empty request without querying', async () => {
@@ -113,7 +106,7 @@ describe('FolderFinderService', () => {
 
 			expect(result).toEqual([]);
 			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls).toHaveLength(0);
-			expect(folderRepository.find.mock.calls).toHaveLength(0);
+			expect(folderRepository.findByIdsForProjectRoles.mock.calls).toHaveLength(0);
 		});
 	});
 
@@ -126,7 +119,7 @@ describe('FolderFinderService', () => {
 			]);
 
 			expect(result).toEqual(new Map());
-			expect(folderRepository.find.mock.calls).toHaveLength(0);
+			expect(folderRepository.findByIdsForProjectRoles.mock.calls).toHaveLength(0);
 		});
 
 		it('climbs the parent links level by level and orders the chain root-first', async () => {
@@ -134,7 +127,7 @@ describe('FolderFinderService', () => {
 			const mid = makeFolder({ id: 'mid', parentFolderId: 'root' });
 			const root = makeFolder({ id: 'root', parentFolderId: null });
 			const { finder, folderRepository } = makeFinder([]);
-			folderRepository.find
+			folderRepository.findByIdsForProjectRoles
 				.mockResolvedValueOnce([leaf])
 				.mockResolvedValueOnce([mid])
 				.mockResolvedValueOnce([root]);
@@ -145,7 +138,7 @@ describe('FolderFinderService', () => {
 
 			expect(result.get('leaf')).toEqual([root, mid, leaf]);
 			// One query per level of the chain, climbing one parent at a time.
-			expect(folderRepository.find.mock.calls).toHaveLength(3);
+			expect(folderRepository.findByIdsForProjectRoles.mock.calls).toHaveLength(3);
 		});
 
 		it('fetches a shared ancestor once for multiple requested folders', async () => {
@@ -153,7 +146,9 @@ describe('FolderFinderService', () => {
 			const b = makeFolder({ id: 'b', parentFolderId: 'shared' });
 			const shared = makeFolder({ id: 'shared', parentFolderId: null });
 			const { finder, folderRepository } = makeFinder([]);
-			folderRepository.find.mockResolvedValueOnce([a, b]).mockResolvedValueOnce([shared]);
+			folderRepository.findByIdsForProjectRoles
+				.mockResolvedValueOnce([a, b])
+				.mockResolvedValueOnce([shared]);
 
 			const result = await finder.findFolderAncestorChainsForUser(['a', 'b'], nonGlobalUser, [
 				'folder:read',
@@ -162,18 +157,17 @@ describe('FolderFinderService', () => {
 			expect(result.get('a')).toEqual([shared, a]);
 			expect(result.get('b')).toEqual([shared, b]);
 			// Two rounds only: the deduped shared ancestor is resolved in one query.
-			expect(folderRepository.find.mock.calls).toHaveLength(2);
-			const secondRoundIds = folderRepository.find.mock.calls[1][0]?.where as unknown as {
-				id: { value: string[] };
-			};
-			expect(secondRoundIds.id.value).toEqual(['shared']);
+			expect(folderRepository.findByIdsForProjectRoles.mock.calls).toHaveLength(2);
+			expect(folderRepository.findByIdsForProjectRoles.mock.calls[1][0]).toEqual(['shared']);
 		});
 
 		it('truncates the chain when an ancestor is inaccessible', async () => {
 			const leaf = makeFolder({ id: 'leaf', parentFolderId: 'mid' });
 			const { finder, folderRepository } = makeFinder([]);
 			// The requested folder resolves, but its parent is filtered out by access.
-			folderRepository.find.mockResolvedValueOnce([leaf]).mockResolvedValueOnce([]);
+			folderRepository.findByIdsForProjectRoles
+				.mockResolvedValueOnce([leaf])
+				.mockResolvedValueOnce([]);
 
 			const result = await finder.findFolderAncestorChainsForUser(['leaf'], nonGlobalUser, [
 				'folder:read',
@@ -184,7 +178,7 @@ describe('FolderFinderService', () => {
 
 		it('omits a requested folder that is itself inaccessible', async () => {
 			const { finder, folderRepository } = makeFinder([]);
-			folderRepository.find.mockResolvedValueOnce([]);
+			folderRepository.findByIdsForProjectRoles.mockResolvedValueOnce([]);
 
 			const result = await finder.findFolderAncestorChainsForUser(['no-access'], nonGlobalUser, [
 				'folder:read',
