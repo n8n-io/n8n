@@ -169,34 +169,49 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 				@click="expanded = !expanded"
 			>
 				{{ expanded ? t('resultCard.hideDetails') : t('resultCard.details') }}
-				<N8nIcon
-					:icon="expanded ? 'chevron-up' : 'chevron-down'"
-					size="xsmall"
-					:class="$style.chevron"
-				/>
+				<!-- one glyph, rotated by state: swapping icons and rotating would cancel out -->
+				<N8nIcon icon="chevron-down" size="xsmall" :class="$style.chevron" />
 			</button>
 		</footer>
 
-		<div
-			v-if="expandable && expanded"
-			:id="detailsId"
-			:class="$style.details"
-			data-test-id="result-card-details"
+		<!--
+			Details open along a grid-row track (0fr → 1fr) so the card grows instead of jumping;
+			the same path runs in reverse on close, faster. Transitions, not keyframes: a quick
+			re-toggle retargets mid-motion instead of restarting.
+		-->
+		<Transition
+			:enter-from-class="$style.detailsHidden"
+			:enter-active-class="$style.detailsEntering"
+			:leave-active-class="$style.detailsLeaving"
+			:leave-to-class="$style.detailsHidden"
 		>
-			<pre :class="$style.json">{{ detailsJson }}</pre>
-			<button
-				v-if="executionLink"
-				type="button"
-				:class="$style.executionLink"
-				@click="emit('openExecution')"
+			<div
+				v-if="expandable && expanded"
+				:id="detailsId"
+				:class="$style.details"
+				data-test-id="result-card-details"
 			>
-				{{ t('resultCard.openExecution') }} <N8nIcon icon="external-link" size="xsmall" />
-			</button>
-		</div>
+				<div :class="$style.detailsClip">
+					<div :class="$style.detailsPanel">
+						<pre :class="$style.json">{{ detailsJson }}</pre>
+						<button
+							v-if="executionLink"
+							type="button"
+							:class="$style.executionLink"
+							@click="emit('openExecution')"
+						>
+							{{ t('resultCard.openExecution') }} <N8nIcon icon="external-link" size="xsmall" />
+						</button>
+					</div>
+				</div>
+			</div>
+		</Transition>
 	</article>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 /* ---- motion primitives (shared by the bodies through :global class names) ---- */
 @keyframes rc-pop {
 	from {
@@ -511,8 +526,9 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 		border-radius: 4px;
 	}
 }
+/* the chevron turns on the same clock as the panel it points at */
 .chevron {
-	transition: transform 300ms var(--rc-ease);
+	transition: transform motion.$blur-motion-duration motion.$blur-motion-easing;
 }
 .toggle[aria-expanded='true'] .chevron {
 	transform: rotate(180deg);
@@ -520,14 +536,90 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 
 /* ---- details ---- */
 .details {
+	display: grid;
+	grid-template-rows: 1fr;
+	margin: var(--spacing--xs) calc(-1 * var(--spacing--2xs)) 0;
+	opacity: 1;
+}
+/* the clip carries no padding, so a 0fr track really is zero pixels tall */
+.detailsClip {
+	min-height: 0;
+	overflow: hidden;
+}
+/*
+	The design system's blur motion (N8nSettingsRow, N8nAnimatedCollapsibleContent): a height
+	change paired with an opacity fade and a 4px blur that reads as motion blur, 350ms on the
+	drawer curve. The DS ships it as keyframes; here it is a transition so a quick re-toggle
+	retargets mid-motion instead of restarting. `filter: none` when settled: a resting blur(0)
+	would keep a compositing surface alive under the JSON.
+*/
+$details-enter: motion.$blur-motion-duration;
+$details-leave: 250ms;
+$details-ease: motion.$blur-motion-easing;
+$details-blur: var(--animation--collapsible-slide-blurred--blur, 4px);
+
+.detailsPanel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin: var(--spacing--xs) calc(-1 * var(--spacing--2xs)) 0;
 	padding: var(--spacing--xs);
 	border-radius: var(--rc-radius-inner);
 	background: var(--rc-panel);
-	animation: rc-fade 0.25s var(--rc-ease) both;
+	transform: translateY(0);
+	filter: none;
+}
+.detailsHidden {
+	grid-template-rows: 0fr;
+	margin-top: 0;
+	opacity: 0;
+	.detailsPanel {
+		transform: translateY(-6px);
+		filter: blur($details-blur);
+	}
+}
+.detailsEntering {
+	transition:
+		grid-template-rows $details-enter $details-ease,
+		margin-top $details-enter $details-ease,
+		opacity $details-enter $details-ease;
+	.detailsPanel {
+		transition:
+			transform $details-enter $details-ease,
+			filter $details-enter $details-ease;
+	}
+}
+/* exits are softer and quicker than enters, along the same path */
+.detailsLeaving {
+	transition:
+		grid-template-rows $details-leave $details-ease,
+		margin-top $details-leave $details-ease,
+		opacity $details-leave $details-ease;
+	.detailsPanel {
+		transition:
+			transform $details-leave $details-ease,
+			filter $details-leave $details-ease;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	/* no height travel, no blur: a short cross-fade keeps the state change legible */
+	.detailsHidden {
+		grid-template-rows: 1fr;
+		margin-top: var(--spacing--xs);
+		.detailsPanel {
+			transform: none;
+			filter: none;
+		}
+	}
+	.detailsEntering,
+	.detailsLeaving {
+		transition: opacity 150ms ease;
+		.detailsPanel {
+			transition: none;
+		}
+	}
+	.chevron {
+		transition: none;
+	}
 }
 .json {
 	margin: 0;
