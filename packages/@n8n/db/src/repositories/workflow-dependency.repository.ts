@@ -6,6 +6,7 @@ import {
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
+	Raw,
 	Repository,
 	Not,
 } from '@n8n/typeorm';
@@ -285,6 +286,20 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 				deleteResult.affected !== null &&
 				deleteResult.affected > 0
 			);
+		});
+	}
+
+	async removeDependenciesOfUnpublishedVersions(workflowId?: string): Promise<void> {
+		const activeVersionIds = this.manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.select('workflow.activeVersionId')
+			.where('workflow.activeVersionId IS NOT NULL');
+
+		await this.delete({
+			...(workflowId && { workflowId }),
+			publishedVersionId: Raw(
+				(column) => `${column} IS NOT NULL AND ${column} NOT IN (${activeVersionIds.getQuery()})`,
+			),
 		});
 	}
 

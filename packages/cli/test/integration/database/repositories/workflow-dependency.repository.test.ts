@@ -1,8 +1,10 @@
 import {
 	testDb,
 	createWorkflow,
+	createWorkflowHistory,
 	createTeamProject,
 	linkUserToProject,
+	setActiveVersion,
 } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import {
@@ -367,6 +369,75 @@ describe('WorkflowDependencyRepository', () => {
 			// ASSERT
 			//
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('removeDependenciesOfUnpublishedVersions()', () => {
+		const indexCredential = async (workflowId: string, publishedVersionId: string | null) => {
+			const dependencies = new WorkflowDependencies(workflowId, 1, publishedVersionId);
+			dependencies.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflowId, dependencies);
+		};
+
+		const getIndexedVersions = async (workflowId: string) =>
+			(await workflowDependencyRepository.findBy({ workflowId }))
+				.map((dep) => dep.publishedVersionId)
+				.sort();
+
+		const createPublishedWorkflow = async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			return workflow;
+		};
+
+		it('should keep the draft and the active version, and remove other versions', async () => {
+			const workflow = await createPublishedWorkflow();
+			await indexCredential(workflow.id, null);
+			await indexCredential(workflow.id, workflow.versionId);
+			await indexCredential(workflow.id, 'older-version');
+
+			await workflowDependencyRepository.removeDependenciesOfUnpublishedVersions(workflow.id);
+
+			expect(await getIndexedVersions(workflow.id)).toEqual([null, workflow.versionId].sort());
+		});
+
+		it('should remove all versions of a workflow that is not published', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			await indexCredential(workflow.id, null);
+			await indexCredential(workflow.id, 'unpublished-version');
+
+			await workflowDependencyRepository.removeDependenciesOfUnpublishedVersions(workflow.id);
+
+			expect(await getIndexedVersions(workflow.id)).toEqual([null]);
+		});
+
+		it('should only change the given workflow', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const otherWorkflow = await createWorkflow({ nodes: [] });
+			await indexCredential(workflow.id, 'unpublished-version');
+			await indexCredential(otherWorkflow.id, 'unpublished-version');
+
+			await workflowDependencyRepository.removeDependenciesOfUnpublishedVersions(workflow.id);
+
+			expect(await getIndexedVersions(workflow.id)).toEqual([]);
+			expect(await getIndexedVersions(otherWorkflow.id)).toEqual(['unpublished-version']);
+		});
+
+		it('should change all workflows when no workflow is given', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const publishedWorkflow = await createPublishedWorkflow();
+			await indexCredential(workflow.id, 'unpublished-version');
+			await indexCredential(publishedWorkflow.id, publishedWorkflow.versionId);
+
+			await workflowDependencyRepository.removeDependenciesOfUnpublishedVersions();
+
+			expect(await getIndexedVersions(workflow.id)).toEqual([]);
+			expect(await getIndexedVersions(publishedWorkflow.id)).toEqual([publishedWorkflow.versionId]);
 		});
 	});
 });

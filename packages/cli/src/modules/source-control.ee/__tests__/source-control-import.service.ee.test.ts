@@ -42,6 +42,7 @@ import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.se
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -92,6 +93,7 @@ describe('SourceControlImportService', () => {
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const workflowIndexService = mock<WorkflowIndexService>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const credentialsService = mock<CredentialsService>();
 	const transactionManager = mock<EntityManager>();
@@ -140,6 +142,7 @@ describe('SourceControlImportService', () => {
 		workflowPublishGuard,
 		workflowMutationHooks,
 		workflowFinderService,
+		workflowIndexService,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -403,6 +406,42 @@ describe('SourceControlImportService', () => {
 			expect(workflowRepository.upsertImportedContent).toHaveBeenCalledTimes(1);
 			const [upsertedWorkflow] = workflowRepository.upsertImportedContent.mock.calls[0];
 			expect('description' in upsertedWorkflow).toBe(false);
+		});
+
+		it('should update the draft dependency index with the stored workflow after the upsert', async () => {
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'personal-project-id-123', type: 'personal' }),
+			);
+			const workflowData = {
+				id: '1',
+				name: 'Workflow 1',
+				active: false,
+				nodes: [],
+				connections: {},
+				versionId: 'v1',
+				owner: { type: 'personal', personalEmail: 'user@example.com' },
+				parentFolderId: null,
+				nodeGroups: [],
+			};
+			const storedWorkflow = mock<WorkflowEntity>({ id: '1', versionCounter: 7 });
+
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsertImportedContent.mockResolvedValue('1');
+			workflowRepository.findOneByOrFail.mockResolvedValue(storedWorkflow);
+			fsReadFile.mockResolvedValue(JSON.stringify(workflowData));
+
+			await service.importWorkflowFromWorkFolder(
+				[mock<SourceControlledFile>({ file: '/mock/workflow.json', id: '1' })],
+				'user-id-123',
+			);
+
+			expect(workflowRepository.findOneByOrFail).toHaveBeenCalledWith({ id: '1' });
+			expect(workflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(storedWorkflow);
+			expect(workflowRepository.upsertImportedContent.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowIndexService.updateIndexForDraft.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should log and throw an error if a workflow file cannot be parsed', async () => {

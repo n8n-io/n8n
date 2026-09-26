@@ -66,6 +66,10 @@ export class WorkflowIndexService {
 			}
 			// At activation time, the draft nodes are the published nodes.
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
+			await this.removeDependenciesOfUnpublishedVersions(workflow.id);
+		});
+		this.eventService.on('workflow-deactivated', async ({ workflowId }) => {
+			await this.removeDependenciesOfUnpublishedVersions(workflowId);
 		});
 	}
 
@@ -78,6 +82,8 @@ export class WorkflowIndexService {
 						await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
 					'draft',
 				);
+
+				await this.removeDependenciesOfUnpublishedVersions();
 
 				const publishedCount = await this.buildIndexInternal(
 					async (batchSize) =>
@@ -185,6 +191,14 @@ export class WorkflowIndexService {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private async removeDependenciesOfUnpublishedVersions(workflowId?: string) {
+		try {
+			await this.dependencyRepository.removeDependenciesOfUnpublishedVersions(workflowId);
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
 	}
 
 	/**
