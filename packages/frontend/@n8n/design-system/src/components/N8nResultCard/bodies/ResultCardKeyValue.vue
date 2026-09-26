@@ -87,7 +87,8 @@ const rest = computed(() => (lead.value ? shown.value.slice(1) : shown.value));
 .pairs {
 	display: grid;
 	grid-template-columns: minmax(0, 42%) 1fr;
-	column-gap: var(--spacing--xs);
+	/* no column gap: the hairlines must read as one continuous rule per row */
+	column-gap: 0;
 	row-gap: 0;
 	margin: 0;
 }
@@ -98,6 +99,7 @@ const rest = computed(() => (lead.value ? shown.value.slice(1) : shown.value));
 	border-top: 1px solid var(--rc-hairline);
 }
 .key {
+	padding-right: var(--spacing--xs);
 	color: var(--rc-ink-muted);
 	overflow: hidden;
 	text-overflow: ellipsis;

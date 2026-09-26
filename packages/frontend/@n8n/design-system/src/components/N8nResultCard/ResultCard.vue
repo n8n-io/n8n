@@ -304,13 +304,22 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 	background-image:
 		linear-gradient(
 			180deg,
-			oklch(20% 0.02 260 / 0.15) 0%,
-			oklch(20% 0.02 260 / 0.35) 45%,
-			oklch(18% 0.02 260 / 0.88) 100%
+			oklch(18% 0.02 260 / 0.3) 0%,
+			oklch(18% 0.02 260 / 0.45) 40%,
+			oklch(16% 0.02 260 / 0.9) 100%
 		),
 		var(--rc-cover);
 	background-size: cover;
 	background-position: center;
+}
+
+/* over a photo the data sits on a glass panel so hairlines and small text stay legible */
+.covered .body {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--rc-radius-inner);
+	background: oklch(15% 0.02 260 / 0.38);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
 }
 
 .animated {

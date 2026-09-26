@@ -19,6 +19,7 @@ export function makeFacts(
 		params: {},
 		fields: profileItems(items),
 		isFinalOutput: false,
+		chainNodeTypes: ['@n8n/n8n-nodes-langchain.chatTrigger', overrides.nodeType],
 		workflow,
 		...overrides,
 	};

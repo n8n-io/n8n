@@ -44,6 +44,11 @@ export interface NodeRunFacts {
 	fields: FieldInfo[];
 	/** True for the `lastNodeExecuted` — the only node that may produce a generic card */
 	isFinalOutput: boolean;
+	/**
+	 * Node types on the path to this outcome, in run order and ending with this node
+	 * (trigger … this node, ≤ 4). Rendered as the card's icon cluster.
+	 */
+	chainNodeTypes: string[];
 	workflow: { name: string; description?: string };
 }
 

@@ -135,6 +135,7 @@ export function genericEnvelope(facts: NodeRunFacts) {
 		nodeName: truncate(facts.nodeName, MAX_NODE_NAME),
 		itemCount: facts.itemCount,
 		source: 'mapped' as const,
+		...(facts.chainNodeTypes.length > 0 ? { nodeTypes: facts.chainNodeTypes.slice(0, 4) } : {}),
 	};
 }
 

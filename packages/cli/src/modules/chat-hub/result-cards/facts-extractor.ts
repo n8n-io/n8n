@@ -35,6 +35,20 @@ const NEVER_GENERIC_NODE_TYPES = new Set<string>([CHAT_TRIGGER_NODE_TYPE, CHAT_N
 /** Identity of one node run within an execution, stable across resumes. */
 export const nodeRunKey = (nodeName: string, runIndex: number) => `${nodeName}#${runIndex}`;
 
+const MAX_CHAIN_NODE_TYPES = 4;
+
+/**
+ * The icon-cluster chain for a node: the first node that ran (usually the trigger), the
+ * nodes that ran right before this one, and this node last — at most four types, no repeats.
+ */
+export function chainTo(executionOrder: Array<{ name: string; type: string }>, nodeName: string) {
+	const index = executionOrder.findIndex((entry) => entry.name === nodeName);
+	const path = index === -1 ? executionOrder : executionOrder.slice(0, index + 1);
+	const types = path.map((entry) => entry.type).filter((type, i, all) => all.indexOf(type) === i);
+	if (types.length <= MAX_CHAIN_NODE_TYPES) return types;
+	return [types[0], ...types.slice(-(MAX_CHAIN_NODE_TYPES - 1))];
+}
+
 export interface ExtractOptions {
 	/**
 	 * Whether the `lastNodeExecuted` may become a generic (non-registry) candidate. False in
@@ -90,6 +104,7 @@ export class ResultCardFactsExtractor {
 		const runData = runExecutionData?.resultData?.runData ?? {};
 		const lastNodeExecuted = runExecutionData?.resultData?.lastNodeExecuted;
 		const nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
+		const executionOrder = this.executionOrder(runData, nodesByName);
 		const collected: Array<{ fact: NodeRunFacts; isGeneric: boolean }> = [];
 		let registryCollected = 0;
 
@@ -145,6 +160,7 @@ export class ResultCardFactsExtractor {
 							params,
 							fields: profileItems(json),
 							isFinalOutput: isFinal,
+							chainNodeTypes: chainTo(executionOrder, nodeName),
 							workflow: { name: workflow.name, description: workflow.description ?? undefined },
 						},
 					});
@@ -161,6 +177,28 @@ export class ResultCardFactsExtractor {
 		return collected
 			.sort((a, b) => Number(a.isGeneric) - Number(b.isGeneric))
 			.map(({ fact }) => fact);
+	}
+
+	/** Enabled, non-sticky nodes that ran, ordered by the start of their first run. */
+	private executionOrder(
+		runData: IRunExecutionData['resultData']['runData'],
+		nodesByName: Map<string, INode>,
+	): Array<{ name: string; type: string }> {
+		const entries: Array<{ name: string; type: string; startedAt: number }> = [];
+		for (const [name, runs] of Object.entries(runData)) {
+			const node = nodesByName.get(name);
+			if (!node || node.disabled || node.type === 'n8n-nodes-base.stickyNote') continue;
+			if (!Array.isArray(runs) || runs.length === 0) continue;
+			const first = runs[0];
+			const startedAt =
+				isObjectLiteral(first) && typeof first.startTime === 'number'
+					? first.startTime
+					: Number.MAX_SAFE_INTEGER;
+			entries.push({ name, type: node.type, startedAt });
+		}
+		return entries
+			.sort((a, b) => a.startedAt - b.startedAt)
+			.map(({ name, type }) => ({ name, type }));
 	}
 
 	/** Output items whose `json` is a plain object; anything else cannot be profiled or rendered. */

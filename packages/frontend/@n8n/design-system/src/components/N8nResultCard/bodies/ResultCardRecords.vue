@@ -72,6 +72,10 @@ const remaining = computed(() => Math.max(0, props.card.total - shownRows.value.
 	table-layout: fixed;
 	border-collapse: collapse;
 	font-size: var(--font-size--2xs);
+	/* the leading column is usually a name; give it room before the others share the rest */
+	th:first-child {
+		width: 32%;
+	}
 	th,
 	td {
 		padding: 7px var(--spacing--3xs);

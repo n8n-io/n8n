@@ -2,7 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import type { IRun, IWorkflowBase, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ResultCardFactsExtractor } from '@/modules/chat-hub/result-cards/facts-extractor';
+import {
+	chainTo,
+	ResultCardFactsExtractor,
+} from '@/modules/chat-hub/result-cards/facts-extractor';
 import type { NodeTypes } from '@/node-types';
 
 const resolveNodeParametersFromRun = vi.hoisted(() => vi.fn());
@@ -176,8 +179,24 @@ describe('ResultCardFactsExtractor', () => {
 			isFinalOutput: false,
 			params: { sendTo: 'anna@example.com', subject: 'Invoice', message: 'Approved.' },
 			workflow: { name: 'Inbox assistant', description: 'Replies to emails' },
+			// the icon-cluster chain: trigger → extractor → this node, never the nodes after it
+			chainNodeTypes: [
+				'@n8n/n8n-nodes-langchain.chatTrigger',
+				'@n8n/n8n-nodes-langchain.informationExtractor',
+				'n8n-nodes-base.gmail',
+			],
 		});
 		expect(facts[0].fields.map((f) => f.path)).toEqual(['id', 'threadId', 'labelIds']);
+	});
+
+	it('caps the chain at four types, keeping the first and the last three', () => {
+		const order = ['trigger', 'a', 'b', 'c', 'd', 'gmail', 'after'].map((name) => ({
+			name,
+			type: `t.${name}`,
+		}));
+		expect(chainTo(order, 'gmail')).toEqual(['t.trigger', 't.c', 't.d', 't.gmail']);
+		expect(chainTo(order, 'a')).toEqual(['t.trigger', 't.a']);
+		expect(chainTo([], 'gmail')).toEqual([]);
 	});
 
 	it('includes a structured final output as a generic candidate and skips declared cards', async () => {

@@ -27,14 +27,22 @@ export function useCountUp(
 		const delay = options.delayMs ?? 250;
 		display.value = formatDisplayNumber(0, parsed.decimals);
 		let start: number | null = null;
+		let settled = false;
+		const settle = () => {
+			settled = true;
+			display.value = value();
+		};
 		const tick = (now: number) => {
+			if (settled) return;
 			if (start === null) start = now;
 			const progress = Math.min(1, (now - start) / duration);
 			display.value = formatDisplayNumber(parsed.value * EASE_OUT(progress), parsed.decimals);
 			if (progress < 1) requestAnimationFrame(tick);
-			else display.value = value();
+			else settle();
 		};
 		setTimeout(() => requestAnimationFrame(tick), delay);
+		// rAF is paused in hidden tabs; never leave the hero stuck at 0
+		setTimeout(settle, delay + duration + 150);
 	});
 
 	return display;

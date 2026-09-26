@@ -171,6 +171,19 @@ describe('N8nResultCard', () => {
 		expect(container.querySelector('polyline')).toBeNull();
 	});
 
+	it('hides a metric caption that merely repeats the node name', () => {
+		const withCaption = renderCard({
+			card: { ...DEMO_CARDS.metric, title: 'Leads this week', nodeName: 'Weekly summary' },
+		});
+		expect(withCaption.container.querySelector('.caption')).toHaveTextContent('Leads this week');
+		withCaption.unmount();
+
+		const withoutCaption = renderCard({
+			card: { ...DEMO_CARDS.metric, title: 'Weekly summary', nodeName: 'Weekly summary' },
+		});
+		expect(withoutCaption.container.querySelector('.caption')).toBeNull();
+	});
+
 	it('draws a sparkline for a trend-only metric', () => {
 		const { container, getByTestId } = renderCard({ card: DEMO_CARDS.metricTrend });
 		expect(getByTestId('result-card')).toHaveAttribute('data-tone', 'graphite');
@@ -202,7 +215,9 @@ describe('N8nResultCard', () => {
 
 		const telegram = renderCard({ card: DEMO_CARDS.telegram });
 		expect(telegram.container.querySelector('.bubbleBox')).not.toBeNull();
-		expect(telegram.getByText('Jan')).toBeInTheDocument();
+		// the hero sentence already names the recipient; the bubble must not repeat it
+		expect(telegram.queryByText('Jan')).toBeNull();
+		expect(telegram.getByText(DEMO_CARDS.telegram.title)).toBeInTheDocument();
 	});
 
 	it('renders an unsplash cover and ignores other hosts', () => {

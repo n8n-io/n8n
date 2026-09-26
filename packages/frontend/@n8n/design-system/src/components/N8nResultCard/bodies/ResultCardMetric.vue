@@ -9,6 +9,14 @@ const props = defineProps<{ card: MetricCardData; light: boolean; animated: bool
 
 const display = useCountUp(() => props.card.value, { enabled: () => props.animated });
 
+const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+/** A title that only repeats the node's name ("Respond", "Weekly summary") is noise above the hero */
+const showCaption = computed(
+	() =>
+		props.card.title.trim().length > 0 &&
+		normalize(props.card.title) !== normalize(props.card.nodeName ?? ''),
+);
+
 const bars = computed(() => {
 	const rows = (props.card.breakdown ?? []).slice(0, 6);
 	const max = Math.max(...rows.map((row) => row.value), 0) || 1;
@@ -35,14 +43,17 @@ const sparkline = computed(() => {
 	return { line, area, width, height };
 });
 
-const deltaGlyph = computed(() =>
-	props.card.delta?.direction === 'up' ? '↑' : props.card.delta?.direction === 'down' ? '↓' : '→',
-);
+const deltaText = computed(() => {
+	const delta = props.card.delta;
+	if (!delta) return '';
+	const glyph = delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→';
+	return [glyph, delta.value, delta.label].filter(Boolean).join(' ');
+});
 </script>
 
 <template>
 	<div :class="$style.metric">
-		<p v-if="card.title" :class="[$style.caption, $style.reveal]" style="--rc-delay: 0.05s">
+		<p v-if="showCaption" :class="[$style.caption, $style.reveal]" style="--rc-delay: 0.05s">
 			{{ card.title }}
 		</p>
 		<div :class="[$style.heroRow, $style.reveal]" style="--rc-delay: 0.1s">
@@ -52,8 +63,7 @@ const deltaGlyph = computed(() =>
 			<span :class="$style.label">{{ card.label }}</span>
 		</div>
 		<span v-if="card.delta" :class="[$style.delta, $style.reveal]" style="--rc-delay: 0.3s">
-			{{ deltaGlyph }} {{ card.delta.value
-			}}<template v-if="card.delta.label"> {{ card.delta.label }}</template>
+			{{ deltaText }}
 		</span>
 
 		<div v-if="bars.length" :class="$style.chart">
@@ -187,7 +197,7 @@ const deltaGlyph = computed(() =>
 .bars {
 	display: flex;
 	align-items: flex-end;
-	gap: 6px;
+	gap: 10px;
 	height: 108px;
 }
 .barColumn {
@@ -198,6 +208,8 @@ const deltaGlyph = computed(() =>
 	justify-content: flex-end;
 	gap: 4px;
 	min-width: 0;
+	/* a few categories should still read as bars, not slabs */
+	max-width: 72px;
 }
 .barValue {
 	font-size: var(--font-size--3xs);
@@ -216,7 +228,7 @@ const deltaGlyph = computed(() =>
 }
 .axis {
 	display: flex;
-	gap: 6px;
+	gap: 10px;
 	margin-top: 6px;
 	padding-top: 6px;
 	border-top: 1px solid var(--rc-hairline);
@@ -224,6 +236,7 @@ const deltaGlyph = computed(() =>
 .axisLabel {
 	flex: 1;
 	min-width: 0;
+	max-width: 72px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -240,8 +253,9 @@ const deltaGlyph = computed(() =>
 	overflow: visible;
 }
 .sparkArea {
+	/* fill-opacity, not opacity: the fade-in keyframe animates opacity to 1 */
 	fill: var(--rc-ink);
-	opacity: 0.12;
+	fill-opacity: 0.14;
 }
 .sparkLine {
 	stroke: var(--rc-bar);

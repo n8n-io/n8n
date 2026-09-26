@@ -22,6 +22,7 @@ const gmailFacts: NodeRunFacts = {
 	params: { sendTo: 'a@x.com', subject: 'Hi', message: 'Body' },
 	fields: [{ path: 'id', type: 'string', sample: '1', presence: 1, distinct: 1 }],
 	isFinalOutput: false,
+	chainNodeTypes: ['n8n-nodes-base.gmail'],
 	workflow: { name: 'w' },
 };
 
@@ -38,6 +39,7 @@ const summaryFacts: NodeRunFacts = {
 	params: {},
 	fields: profileItems(summaryItems),
 	isFinalOutput: true,
+	chainNodeTypes: ['n8n-nodes-base.code'],
 	workflow: { name: 'Leads log' },
 };
 

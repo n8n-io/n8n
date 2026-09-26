@@ -54,7 +54,6 @@ const variant = computed(() =>
 					/></span>
 				</div>
 			</div>
-			<p :class="[$style.recipient, $style.chrome]" style="--rc-delay: 0.7s">{{ card.to }}</p>
 		</template>
 	</div>
 </template>
@@ -217,13 +216,6 @@ const variant = computed(() =>
 	color: oklch(60% 0.13 243);
 	line-height: 1;
 }
-.recipient {
-	margin: 0;
-	text-align: right;
-	font-size: var(--font-size--3xs);
-	color: var(--rc-ink-muted);
-}
-
 .reveal,
 .chrome {
 	opacity: 1;
