@@ -63,6 +63,11 @@ describe('CommunityPackagesLifecycleService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `vi.clearAllMocks()` does not restore plain-property assignments, so a test that
+		// points the config at a custom registry would keep every later test there.
+		communityPackagesConfig.unverifiedEnabled = true;
+		communityPackagesConfig.registry = 'https://registry.npmjs.org';
+		communityPackagesConfig.authToken = '';
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 	});
 
@@ -244,7 +249,6 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 		it('should run npm outdated when unverifiedEnabled is true', async () => {
-			communityPackagesConfig.unverifiedEnabled = true;
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([installedPackage]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
 				{ ...installedPackage, updateAvailable: '2.0.0' },
@@ -255,6 +259,24 @@ describe('CommunityPackagesLifecycleService', () => {
 			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(['outdated', '--json'], {
 				doNotHandleError: true,
 				cwd: '/tmp/n8n-nodes-download',
+				registry: 'https://registry.npmjs.org',
+				authToken: '',
+			});
+		});
+
+		it('should run npm outdated against the configured custom registry', async () => {
+			communityPackagesConfig.registry = 'https://internal.example.com/api/npm/n8n';
+			communityPackagesConfig.authToken = 'secret-token';
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([installedPackage]);
+			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([installedPackage]);
+
+			await lifecycle.listInstalledPackages();
+
+			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(['outdated', '--json'], {
+				doNotHandleError: true,
+				cwd: '/tmp/n8n-nodes-download',
+				registry: 'https://internal.example.com/api/npm/n8n',
+				authToken: 'secret-token',
 			});
 		});
 
