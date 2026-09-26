@@ -159,8 +159,9 @@ export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nResultCard } from './N8nResultCard';
 export {
-	resolveResultCardSkin,
-	RESULT_CARD_SKINS,
+	resolveResultCardTone,
+	resolveResultCardService,
+	RESULT_CARD_TONES,
 	DEMO_CARDS as RESULT_CARD_DEMO_CARDS,
 } from './N8nResultCard';
 export type * from './N8nResultCard/ResultCard.types';

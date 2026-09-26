@@ -2,115 +2,133 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../../composables/useI18n';
-import type { RecordsCardData, ResultCardSkin } from '../ResultCard.types';
+import type { RecordsCardData } from '../ResultCard.types';
+import { stagger } from '../utils';
 
-const props = defineProps<{ card: RecordsCardData; skin: ResultCardSkin }>();
+const props = defineProps<{ card: RecordsCardData; light: boolean; animated: boolean }>();
 const { t } = useI18n();
 
-const MAX_ROWS = 5;
-const isGrid = computed(() => props.skin.grammar === 'grid');
+const MAX_ROWS = 3;
 const shownRows = computed(() => props.card.rows.slice(0, MAX_ROWS));
 const remaining = computed(() => Math.max(0, props.card.total - shownRows.value.length));
 </script>
 
 <template>
-	<div :class="[$style.records, { [$style.grid]: isGrid }]">
+	<div :class="[$style.sheet, $style.reveal]" style="--rc-delay: 0.25s">
 		<table :class="$style.table">
 			<thead>
 				<tr>
-					<th v-if="isGrid" :class="$style.corner" scope="col"></th>
-					<th v-for="(column, index) in card.columns" :key="index" scope="col">
-						<span v-if="isGrid" :class="$style.letter">{{ String.fromCharCode(65 + index) }}</span>
-						{{ column }}
-					</th>
+					<th v-for="(column, index) in card.columns" :key="index" scope="col">{{ column }}</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="(row, rowIndex) in shownRows" :key="rowIndex">
-					<th v-if="isGrid" :class="$style.rowNumber" scope="row">{{ rowIndex + 1 }}</th>
+				<tr
+					v-for="(row, rowIndex) in shownRows"
+					:key="rowIndex"
+					:class="$style.row"
+					:style="{ '--rc-delay': stagger(rowIndex, 0.4, 0.09) }"
+				>
 					<td v-for="(_, columnIndex) in card.columns" :key="columnIndex">
 						{{ row[columnIndex] ?? '' }}
 					</td>
 				</tr>
 			</tbody>
 		</table>
-		<p v-if="remaining > 0" :class="$style.more">
+		<p v-if="remaining > 0" :class="[$style.more, $style.chrome]" style="--rc-delay: 0.8s">
 			{{ t('resultCard.more', { count: String(remaining) }) }}
 		</p>
 	</div>
 </template>
 
 <style lang="scss" module>
-.records {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	overflow: hidden;
+@keyframes rc-pop {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+		filter: blur(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+		filter: blur(0);
+	}
+}
+@keyframes rc-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
+.sheet {
+	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--2xs);
+	border-radius: var(--rc-radius-inner);
+	background: var(--rc-panel);
+}
 .table {
 	width: 100%;
 	table-layout: fixed;
 	border-collapse: collapse;
 	font-size: var(--font-size--2xs);
-
 	th,
 	td {
-		padding: var(--spacing--5xs) var(--spacing--3xs);
+		padding: 7px var(--spacing--3xs);
 		text-align: left;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
 	th {
+		font-size: var(--font-size--4xs);
 		font-weight: var(--font-weight--medium);
-		color: var(--text-color--subtle);
-		border-bottom: 1px solid var(--border-color);
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--rc-ink-muted);
+		border-bottom: 1px solid var(--rc-hairline);
 	}
-
 	td {
-		border-bottom: 1px solid var(--border-color--subtle);
+		color: var(--rc-ink);
+		border-bottom: 1px solid var(--rc-hairline);
+	}
+	tr:last-child td {
+		border-bottom: 0;
+	}
+	td:first-child {
+		font-weight: var(--font-weight--medium);
 	}
 }
-
-.grid .table {
-	th {
-		background: var(--result-card--accent-soft);
-		color: var(--text-color);
-	}
-
-	th,
-	td {
-		border: 1px solid var(--border-color--subtle);
-	}
-
-	// Row numbers are `<th scope="row">` for a11y but stay visually quiet like the corner cell.
-	.rowNumber {
-		font-weight: var(--font-weight--regular);
-		color: var(--text-color--subtler);
-	}
-}
-
-.letter {
-	display: inline-block;
-	margin-right: var(--spacing--4xs);
-	font-size: var(--font-size--4xs);
-	font-weight: var(--font-weight--regular);
-	color: var(--text-color--subtler);
-}
-
-.corner,
-.rowNumber {
-	width: 1.6em;
-	text-align: center;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--4xs);
-}
-
 .more {
-	margin: 0;
+	margin: var(--spacing--3xs) 0 0;
+	text-align: right;
 	font-size: var(--font-size--3xs);
-	color: var(--text-color--subtler);
+	color: var(--rc-ink-muted);
+}
+
+.reveal,
+.chrome,
+.row {
+	opacity: 1;
+}
+:global(.rc-animated) .reveal {
+	animation: rc-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--rc-delay, 0s);
+}
+:global(.rc-animated) .row {
+	animation: rc-fade 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--rc-delay, 0s);
+}
+:global(.rc-animated) .chrome {
+	animation: rc-fade 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--rc-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+	:global(.rc-animated) .reveal,
+	:global(.rc-animated) .row,
+	:global(.rc-animated) .chrome {
+		animation: rc-fade 0.2s ease both;
+		animation-delay: 0s;
+	}
 }
 </style>

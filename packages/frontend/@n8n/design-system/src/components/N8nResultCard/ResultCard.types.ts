@@ -16,6 +16,9 @@ interface ResultCardBase {
 	itemCount?: number;
 	source?: ResultCardSource;
 	actions?: ResultCardAction[];
+	tone?: ResultCardTone;
+	cover?: ResultCardCover;
+	nodeTypes?: string[];
 }
 
 export interface EmailCardData extends ResultCardBase {
@@ -77,15 +80,19 @@ export type ResultCardData =
 	| ListCardData
 	| KeyValueCardData;
 
-export type ResultCardSkinId = 'gmail' | 'slack' | 'telegram' | 'googleSheets' | 'neutral';
-/** The service's visual grammar the body borrows. Bodies must render with any grammar. */
-export type ResultCardGrammar = 'inboxRow' | 'bubbleLeft' | 'bubbleRight' | 'grid' | 'none';
+export type ResultCardTone =
+	| 'terracotta'
+	| 'aubergine'
+	| 'forest'
+	| 'sky'
+	| 'lavender'
+	| 'mint'
+	| 'paper'
+	| 'graphite';
 
-export interface ResultCardSkin {
-	id: ResultCardSkinId;
-	/** CSS colour used only for the accent bar, the icon tile and small marks — never for text */
-	accent: string;
-	grammar: ResultCardGrammar;
+export interface ResultCardCover {
+	src: string;
+	alt?: string;
 }
 
 export interface ResultCardIcon {
@@ -102,11 +109,15 @@ export interface ResultCardFooter {
 
 export interface ResultCardProps {
 	card: ResultCardData;
-	skin?: ResultCardSkin;
+	/** Node icons shown as an overlapping cluster bottom-left, in run order (≤ 4) */
+	icons?: ResultCardIcon[];
+	/** Back-compat: a single icon, equivalent to `icons: [icon]` */
 	icon?: ResultCardIcon;
 	footer?: ResultCardFooter;
 	/** Show the Details expander (default true) */
 	expandable?: boolean;
 	/** Show "Open execution" inside Details and emit `openExecution` (default false) */
 	executionLink?: boolean;
+	/** Entrance choreography (default true). Off for tests and static previews. */
+	animated?: boolean;
 }

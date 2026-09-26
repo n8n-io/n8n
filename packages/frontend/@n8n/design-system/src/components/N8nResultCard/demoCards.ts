@@ -15,6 +15,11 @@ export const DEMO_EMAIL: EmailCardData = {
 	statusLabel: 'Sent',
 	nodeType: 'n8n-nodes-base.gmail',
 	nodeName: 'Gmail',
+	nodeTypes: [
+		'@n8n/n8n-nodes-langchain.chatTrigger',
+		'@n8n/n8n-nodes-langchain.informationExtractor',
+		'n8n-nodes-base.gmail',
+	],
 	itemCount: 1,
 	source: 'mapped',
 	direction: 'sent',
@@ -33,6 +38,7 @@ export const DEMO_RECORDS: RecordsCardData = {
 	statusLabel: 'Added',
 	nodeType: 'n8n-nodes-base.googleSheets',
 	nodeName: 'Google Sheets',
+	nodeTypes: ['@n8n/n8n-nodes-langchain.chatTrigger', 'n8n-nodes-base.googleSheets'],
 	itemCount: 1,
 	source: 'jev',
 	target: 'Leads 2026',
@@ -42,6 +48,7 @@ export const DEMO_RECORDS: RecordsCardData = {
 	total: 1,
 };
 
+/** Five rows on the wire, three on the card → "+9 more" */
 export const DEMO_RECORDS_MANY: RecordsCardData = {
 	...DEMO_RECORDS,
 	title: '12 rows added to Leads 2026',
@@ -73,7 +80,22 @@ export const DEMO_METRIC: MetricCardData = {
 		{ label: 'Referral', value: 3, share: 0.25 },
 		{ label: 'Website', value: 2, share: 0.17 },
 	],
-	trend: [3, 5, 4, 8, 6, 9, 12],
+};
+
+/** Trend only → sparkline on graphite */
+export const DEMO_METRIC_TREND: MetricCardData = {
+	type: 'metric',
+	title: 'Slack status updates',
+	eyebrow: 'Slack · Weekly summary',
+	status: 'info',
+	nodeType: 'n8n-nodes-base.slack',
+	nodeName: 'Slack',
+	itemCount: 1,
+	source: 'jev',
+	tone: 'graphite',
+	value: '31',
+	label: 'status changes this week',
+	trend: [3, 5, 4, 8, 6, 9, 12, 7],
 };
 
 export const DEMO_SLACK: MessageCardData = {
@@ -127,6 +149,7 @@ export const DEMO_LIST: ListCardData = {
 		{ title: 'Payments migration', subtitle: 'billing · opened today', meta: '#421' },
 	],
 	total: 3,
+	actions: [{ label: 'Review now', href: 'https://github.com/n8n-io/n8n/pulls' }],
 };
 
 export const DEMO_KEY_VALUE: KeyValueCardData = {
@@ -138,6 +161,11 @@ export const DEMO_KEY_VALUE: KeyValueCardData = {
 	nodeName: 'Fetch ranking',
 	itemCount: 1,
 	source: 'mapped',
+	tone: 'forest',
+	cover: {
+		src: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=800&q=70',
+		alt: 'Tennis court',
+	},
 	pairs: [
 		{ key: 'Ranking', value: '#184' },
 		{ key: 'Change', value: '+6 this week' },
@@ -146,13 +174,21 @@ export const DEMO_KEY_VALUE: KeyValueCardData = {
 	],
 };
 
+export const DEMO_KEY_VALUE_PAPER: KeyValueCardData = {
+	...DEMO_KEY_VALUE,
+	cover: undefined,
+	tone: 'paper',
+};
+
 export const DEMO_CARDS = {
 	email: DEMO_EMAIL,
 	records: DEMO_RECORDS,
 	recordsMany: DEMO_RECORDS_MANY,
 	metric: DEMO_METRIC,
+	metricTrend: DEMO_METRIC_TREND,
 	slack: DEMO_SLACK,
 	telegram: DEMO_TELEGRAM,
 	list: DEMO_LIST,
 	keyValue: DEMO_KEY_VALUE,
+	keyValuePaper: DEMO_KEY_VALUE_PAPER,
 };

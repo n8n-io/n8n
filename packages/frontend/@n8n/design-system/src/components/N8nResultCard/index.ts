@@ -1,6 +1,6 @@
 import N8nResultCard from './ResultCard.vue';
 
 export default N8nResultCard;
-export { resolveResultCardSkin, RESULT_CARD_SKINS } from './skins';
+export { resolveResultCardTone, resolveResultCardService, RESULT_CARD_TONES } from './tones';
 export { DEMO_CARDS } from './demoCards';
 export type * from './ResultCard.types';

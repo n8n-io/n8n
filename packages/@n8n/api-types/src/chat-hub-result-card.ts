@@ -30,6 +30,18 @@ export type ResultCardStatus = z.infer<typeof resultCardStatusSchema>;
 export const resultCardSourceSchema = z.enum(['mapped', 'declared', 'jev']);
 export type ResultCardSource = z.infer<typeof resultCardSourceSchema>;
 
+export const resultCardTones = [
+	'terracotta',
+	'aubergine',
+	'forest',
+	'sky',
+	'lavender',
+	'mint',
+	'paper',
+	'graphite',
+] as const;
+export type ResultCardTone = (typeof resultCardTones)[number];
+
 const envelope = {
 	title: text(80),
 	eyebrow: optionalText(40),
@@ -44,6 +56,22 @@ const envelope = {
 		.array(z.object({ label: text(40), href: httpsUrl }))
 		.max(2)
 		.optional(),
+	/** Finite surface palette in the Daily Brief hue; the renderer picks a default per service/archetype when absent */
+	tone: z.enum(resultCardTones).optional(),
+	/** Optional cover photo (Unsplash only) rendered behind a gradient shade */
+	cover: z
+		.object({
+			src: z
+				.string()
+				.max(2048)
+				.refine((value) => value.startsWith('https://images.unsplash.com/'), {
+					message: 'Cover images must come from images.unsplash.com',
+				}),
+			alt: optionalText(120),
+		})
+		.optional(),
+	/** Node types involved in producing this outcome, in run order (trigger … side effect); the renderer shows their icons */
+	nodeTypes: z.array(text(120)).max(4).optional(),
 };
 
 export const emailCardSchema = z.object({

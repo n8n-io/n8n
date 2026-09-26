@@ -71,6 +71,24 @@ describe('resultCardSchema', () => {
 				.success,
 		).toBe(false);
 	});
+
+	it('accepts tone, unsplash cover and nodeTypes, rejects other cover hosts', () => {
+		const base = { type: 'keyValue', title: 't', pairs: [{ key: 'k', value: 'v' }] };
+		expect(
+			resultCardSchema.safeParse({ ...base, tone: 'forest', nodeTypes: ['n8n-nodes-base.gmail'] })
+				.success,
+		).toBe(true);
+		expect(
+			resultCardSchema.safeParse({
+				...base,
+				cover: { src: 'https://images.unsplash.com/photo-1?w=800', alt: 'court' },
+			}).success,
+		).toBe(true);
+		expect(
+			resultCardSchema.safeParse({ ...base, cover: { src: 'https://example.com/a.jpg' } }).success,
+		).toBe(false);
+		expect(resultCardSchema.safeParse({ ...base, tone: 'neon' }).success).toBe(false);
+	});
 });
 
 describe('chatHubMessageWithButtonsSchema', () => {

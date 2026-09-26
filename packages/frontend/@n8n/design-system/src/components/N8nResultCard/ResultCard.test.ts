@@ -1,181 +1,317 @@
 import { fireEvent, render } from '@testing-library/vue';
 
 import ResultCard from './ResultCard.vue';
+import type { ResultCardData, ResultCardProps } from './ResultCard.types';
 import { DEMO_CARDS } from './demoCards';
-import { resolveResultCardSkin } from './skins';
+import { resolveResultCardService, resolveResultCardTone } from './tones';
+import { formatDisplayNumber, isSafeCoverSrc, parseDisplayNumber, stagger } from './utils';
 
-describe('resolveResultCardSkin', () => {
-	it('maps base node types (with Tool / Trigger suffixes) to skins and falls back to neutral', () => {
-		expect(resolveResultCardSkin('n8n-nodes-base.slackTool').id).toBe('slack');
-		expect(resolveResultCardSkin('n8n-nodes-base.gmailTrigger').id).toBe('gmail');
-		expect(resolveResultCardSkin(undefined).id).toBe('neutral');
-		expect(resolveResultCardSkin('n8n-nodes-community.foo').id).toBe('neutral');
+/** Motion is off by default so bodies render their final state synchronously. */
+const renderCard = (props: ResultCardProps) =>
+	render(ResultCard, { props: { animated: false, ...props } });
+
+describe('resolveResultCardTone', () => {
+	it('prefers an explicit tone, then the service, then the archetype', () => {
+		expect(resolveResultCardTone({ type: 'list', tone: 'mint' }).id).toBe('mint');
+		expect(resolveResultCardTone({ type: 'list', nodeType: 'n8n-nodes-base.slackTool' }).id).toBe(
+			'aubergine',
+		);
+		expect(
+			resolveResultCardTone({ type: 'records', nodeType: 'n8n-nodes-base.googleSheetsTrigger' }).id,
+		).toBe('forest');
+		expect(resolveResultCardTone({ type: 'metric' }).id).toBe('terracotta');
+		expect(resolveResultCardTone({ type: 'message' }).id).toBe('graphite');
+		expect(resolveResultCardTone({ type: 'list', nodeType: 'n8n-nodes-community.foo' }).id).toBe(
+			'lavender',
+		);
+	});
+
+	it('flags light and dark tones', () => {
+		expect(resolveResultCardTone({ type: 'metric' }).kind).toBe('dark');
+		expect(resolveResultCardTone({ type: 'email' }).kind).toBe('light');
+	});
+});
+
+describe('resolveResultCardService', () => {
+	it('derives the service grammar from the node type', () => {
+		expect(resolveResultCardService('n8n-nodes-base.gmailTool')).toBe('gmail');
+		expect(resolveResultCardService('n8n-nodes-base.slack')).toBe('slack');
+		expect(resolveResultCardService('n8n-nodes-base.telegramTrigger')).toBe('telegram');
+		expect(resolveResultCardService('n8n-nodes-base.googleSheets')).toBe('googleSheets');
+		expect(resolveResultCardService('n8n-nodes-base.code')).toBe('generic');
+		expect(resolveResultCardService(undefined)).toBe('generic');
+	});
+});
+
+describe('utils', () => {
+	it('parses and formats display numbers', () => {
+		expect(parseDisplayNumber('12')).toEqual({ value: 12, decimals: 0 });
+		expect(parseDisplayNumber('1,204')).toEqual({ value: 1204, decimals: 0 });
+		expect(parseDisplayNumber('9,787.32')).toEqual({ value: 9787.32, decimals: 2 });
+		expect(parseDisplayNumber('-3')).toEqual({ value: -3, decimals: 0 });
+		expect(parseDisplayNumber('$12')).toBeNull();
+		expect(parseDisplayNumber('12%')).toBeNull();
+		expect(parseDisplayNumber('')).toBeNull();
+		expect(formatDisplayNumber(1204, 0)).toBe('1,204');
+		expect(formatDisplayNumber(9787.3, 2)).toBe('9,787.30');
+	});
+
+	it('allow-lists cover images to unsplash', () => {
+		expect(isSafeCoverSrc('https://images.unsplash.com/photo-1?w=800')).toBe(true);
+		expect(isSafeCoverSrc('https://evil.example/x.jpg')).toBe(false);
+		expect(isSafeCoverSrc('http://images.unsplash.com/photo-1')).toBe(false);
+		expect(isSafeCoverSrc(undefined)).toBe(false);
+	});
+
+	it('staggers delays in seconds', () => {
+		expect(stagger(0, 0.5)).toBe('0.50s');
+		expect(stagger(2, 0.5)).toBe('0.66s');
+		expect(stagger(1, 0.3, 0.09)).toBe('0.39s');
 	});
 });
 
 describe('N8nResultCard', () => {
-	it('renders the shell with eyebrow, title, status and footer', () => {
-		const { getByText, getByTestId } = render(ResultCard, {
-			props: {
-				card: DEMO_CARDS.email,
-				footer: { workflowName: 'Inbox assistant', time: '12:04' },
-			},
+	it('shows the workflow name as the top line and falls back to the eyebrow', () => {
+		const withFooter = renderCard({
+			card: DEMO_CARDS.email,
+			footer: { workflowName: 'Inbox assistant', time: '12:04' },
 		});
-		expect(getByTestId('result-card')).toHaveAttribute('data-skin', 'gmail');
-		expect(getByText('Gmail · Email sent')).toBeInTheDocument();
-		expect(getByText('Reply sent to Anna Kowalski')).toBeInTheDocument();
-		expect(getByText('Sent')).toBeInTheDocument();
-		expect(getByText('via Inbox assistant')).toBeInTheDocument();
+		expect(withFooter.getByTestId('result-card-top')).toHaveTextContent('Inbox assistant');
+		expect(withFooter.getByText('12:04')).toBeInTheDocument();
+		withFooter.unmount();
+
+		const withoutFooter = renderCard({ card: DEMO_CARDS.email });
+		expect(withoutFooter.getByTestId('result-card-top')).toHaveTextContent('Gmail · Email sent');
 	});
 
-	it('renders each archetype body', () => {
-		// Each render is unmounted before the next: render() queries are bound to
-		// document.body, and demo cards share strings (e.g. 'LinkedIn').
-		const email = render(ResultCard, { props: { card: DEMO_CARDS.email } });
-		expect(email.getByText('anna.kowalski@allegro.pl')).toBeInTheDocument();
-		expect(email.getByText('invoice-1042.pdf')).toBeInTheDocument();
-		email.unmount();
-
-		const records = render(ResultCard, { props: { card: DEMO_CARDS.recordsMany } });
-		expect(records.getByText('Marta Nowak')).toBeInTheDocument();
-		expect(records.getByText('+7 more')).toBeInTheDocument();
-		records.unmount();
-
-		const metric = render(ResultCard, { props: { card: DEMO_CARDS.metric } });
-		expect(metric.getByText('12')).toBeInTheDocument();
-		expect(metric.getByText('LinkedIn')).toBeInTheDocument();
-		metric.unmount();
-
-		const message = render(ResultCard, { props: { card: DEMO_CARDS.slack } });
-		expect(message.getByText('#marketing-feedback')).toBeInTheDocument();
-		message.unmount();
-
-		const keyValue = render(ResultCard, { props: { card: DEMO_CARDS.keyValue } });
-		expect(keyValue.getByText('#184')).toBeInTheDocument();
+	it('resolves the tone from the explicit tone, the service or the archetype', () => {
+		const cases: Array<[ResultCardData, string]> = [
+			[DEMO_CARDS.email, 'paper'],
+			[DEMO_CARDS.slack, 'aubergine'],
+			[DEMO_CARDS.telegram, 'sky'],
+			[DEMO_CARDS.recordsMany, 'forest'],
+			[{ ...DEMO_CARDS.metric, nodeType: undefined }, 'terracotta'],
+			[DEMO_CARDS.list, 'lavender'],
+			[{ ...DEMO_CARDS.slack, tone: 'mint' }, 'mint'],
+		];
+		for (const [card, tone] of cases) {
+			const view = renderCard({ card });
+			expect(view.getByTestId('result-card')).toHaveAttribute('data-tone', tone);
+			view.unmount();
+		}
 	});
 
-	it('escapes text and only links https hrefs', () => {
-		const { container, getByText } = render(ResultCard, {
-			props: {
-				card: {
-					type: 'list',
-					title: '<b>bold</b> title',
-					items: [
-						{ title: 'Safe', href: 'https://example.com' },
-						{ title: 'Unsafe', href: 'javascript:alert(1)' },
-					],
-				},
-			},
-		});
-		expect(getByText('<b>bold</b> title')).toBeInTheDocument();
-		expect(container.querySelector('b')).toBeNull();
-		const links = container.querySelectorAll('a');
-		expect(links).toHaveLength(1);
-		expect(links[0]).toHaveAttribute('href', 'https://example.com');
-		expect(links[0]).toHaveAttribute('rel', 'noopener noreferrer');
+	it('marks light and dark tones and the service on the shell', () => {
+		const light = renderCard({ card: DEMO_CARDS.email });
+		expect(light.getByTestId('result-card')).toHaveClass('light');
+		expect(light.getByTestId('result-card')).toHaveAttribute('data-service', 'gmail');
+		light.unmount();
+
+		const dark = renderCard({ card: DEMO_CARDS.slack });
+		expect(dark.getByTestId('result-card')).toHaveClass('dark');
+		expect(dark.getByTestId('result-card')).toHaveAttribute('data-archetype', 'message');
 	});
 
-	it('toggles details and emits openExecution', async () => {
-		const { getByText, queryByTestId, emitted } = render(ResultCard, {
-			props: { card: DEMO_CARDS.metric, executionLink: true },
-		});
-		expect(queryByTestId('result-card-details')).toBeNull();
-		await fireEvent.click(getByText('Details'));
-		expect(queryByTestId('result-card-details')).not.toBeNull();
-		await fireEvent.click(getByText('Open execution'));
-		expect(emitted().openExecution).toHaveLength(1);
+	it('colours the status dot', () => {
+		const { container } = renderCard({ card: DEMO_CARDS.email });
+		const dot = container.querySelector('header span[aria-hidden="true"]');
+		expect(dot).toHaveClass('dot-success');
 	});
 
-	it('falls back to the neutral skin and a generic status label', () => {
-		const { getByTestId, getByText } = render(ResultCard, {
-			props: {
-				card: {
-					...DEMO_CARDS.keyValue,
-					nodeType: 'n8n-nodes-community.foo',
-					statusLabel: undefined,
-				},
-			},
-		});
-		expect(getByTestId('result-card')).toHaveAttribute('data-skin', 'neutral');
-		expect(getByText('Info')).toBeInTheDocument();
+	it('caps records rows at 3 and reports the remainder', () => {
+		const { container, getByText } = renderCard({ card: DEMO_CARDS.recordsMany });
+		expect(DEMO_CARDS.recordsMany.rows).toHaveLength(5);
+		expect(container.querySelectorAll('tbody tr')).toHaveLength(3);
+		expect(getByText('Marta Nowak')).toBeInTheDocument();
+		expect(getByText('+9 more')).toBeInTheDocument();
 	});
 
-	it('falls back to the generic status label when statusLabel is an empty string', () => {
-		const { getByText } = render(ResultCard, {
-			props: { card: { ...DEMO_CARDS.keyValue, status: 'success', statusLabel: '' } },
+	it('caps list items at 4 and reports the remainder', () => {
+		const items = Array.from({ length: 6 }, (_, index) => ({ title: `Item ${index + 1}` }));
+		const { container, getByText } = renderCard({
+			card: { ...DEMO_CARDS.list, items, total: undefined },
 		});
-		expect(getByText('Done')).toBeInTheDocument();
-	});
-
-	it('renders only safe action links, without empty list items', () => {
-		const { container } = render(ResultCard, {
-			props: {
-				card: {
-					...DEMO_CARDS.keyValue,
-					actions: [
-						{ label: 'Open', href: 'https://x.y' },
-						{ label: 'Bad', href: 'javascript:alert(1)' },
-					],
-				},
-			},
-		});
-		const links = container.querySelectorAll('a');
-		expect(links).toHaveLength(1);
-		expect(links[0]).toHaveAttribute('href', 'https://x.y');
-		expect(links[0]).toHaveTextContent('Open');
-		expect(container.querySelectorAll('li')).toHaveLength(1);
-	});
-
-	it('caps records rows at 5 and reports the remainder', () => {
-		const rows = Array.from({ length: 7 }, (_, index) => [`Row ${index + 1}`, 'x', 'y', 'z']);
-		const { container, getByText } = render(ResultCard, {
-			props: { card: { ...DEMO_CARDS.records, rows, total: 7 } },
-		});
-		expect(container.querySelectorAll('tbody tr')).toHaveLength(5);
+		expect(container.querySelectorAll('ol li')).toHaveLength(4);
 		expect(getByText('+2 more')).toBeInTheDocument();
 	});
 
-	it('caps list items at 5 and reports the remainder', () => {
-		const items = Array.from({ length: 6 }, (_, index) => ({ title: `Item ${index + 1}` }));
-		const { container, getByText } = render(ResultCard, {
-			props: { card: { ...DEMO_CARDS.list, items, total: undefined } },
-		});
-		expect(container.querySelectorAll('ol li')).toHaveLength(5);
-		expect(getByText('+1 more')).toBeInTheDocument();
-	});
-
-	it('labels the card region with its title', () => {
-		const { getByTestId } = render(ResultCard, { props: { card: DEMO_CARDS.email } });
-		expect(getByTestId('result-card')).toHaveAttribute('aria-label', DEMO_CARDS.email.title);
-	});
-
-	it('clamps metric breakdown bar widths to 0–100%', () => {
-		const { container } = render(ResultCard, {
-			props: {
-				card: {
-					...DEMO_CARDS.metric,
-					breakdown: [
-						{ label: 'Refunds', value: -4 },
-						{ label: 'Sales', value: 8 },
-						{ label: 'Over', value: 5, share: 1.5 },
-					],
-				},
-			},
-		});
-		const widths = Array.from(container.querySelectorAll('li span span')).map(
-			(fill) => (fill as HTMLElement).style.width,
-		);
-		expect(widths).toEqual(['0%', '100%', '100%']);
-	});
-
-	it('caps key/value pairs at 6', () => {
+	it('turns the first short pair into the lead stat and caps the rest at 5', () => {
 		const pairs = Array.from({ length: 8 }, (_, index) => ({
 			key: `Key ${index + 1}`,
 			value: `Value ${index + 1}`,
 		}));
-		const { container } = render(ResultCard, {
-			props: { card: { ...DEMO_CARDS.keyValue, pairs } },
+		const { container, getByText } = renderCard({
+			card: { ...DEMO_CARDS.keyValue, cover: undefined, pairs },
 		});
-		expect(container.querySelectorAll('dt')).toHaveLength(6);
+		expect(getByText('Value 1')).toHaveClass('leadValue');
+		expect(container.querySelectorAll('dt')).toHaveLength(5);
+	});
+
+	it('keeps a long first pair in the grid instead of making it the lead', () => {
+		const { container } = renderCard({
+			card: {
+				...DEMO_CARDS.keyValue,
+				cover: undefined,
+				pairs: [
+					{ key: 'Next tournament', value: 'Warsaw Open · 3 Oct 2026' },
+					{ key: 'Points', value: '312' },
+				],
+			},
+		});
+		expect(container.querySelector('.leadValue')).toBeNull();
+		expect(container.querySelectorAll('dt')).toHaveLength(2);
+	});
+
+	it('renders the metric value immediately without motion, one bar per breakdown row', () => {
+		const { container, getByTestId, getByText } = renderCard({ card: DEMO_CARDS.metric });
+		expect(getByTestId('result-card-metric-value')).toHaveTextContent('12');
+		expect(getByText('new leads since Monday')).toBeInTheDocument();
+		expect(container.querySelectorAll('.bar')).toHaveLength(DEMO_CARDS.metric.breakdown!.length);
+		expect(getByText('LinkedIn')).toBeInTheDocument();
+		expect(container.querySelector('polyline')).toBeNull();
+	});
+
+	it('draws a sparkline for a trend-only metric', () => {
+		const { container, getByTestId } = renderCard({ card: DEMO_CARDS.metricTrend });
+		expect(getByTestId('result-card')).toHaveAttribute('data-tone', 'graphite');
+		expect(getByTestId('result-card-metric-value')).toHaveTextContent('31');
+		expect(container.querySelectorAll('polyline')).toHaveLength(1);
+		expect(container.querySelectorAll('.bar')).toHaveLength(0);
+	});
+
+	it('renders the email as a letter with capped chips', () => {
+		const { container, getByText } = renderCard({
+			card: { ...DEMO_CARDS.email, attachments: ['a.pdf', 'b.pdf', 'c.pdf'] },
+		});
+		expect(getByText('Re: Invoice #1042')).toBeInTheDocument();
+		expect(getByText('To')).toBeInTheDocument();
+		expect(getByText('anna.kowalski@allegro.pl')).toBeInTheDocument();
+		expect(container.querySelectorAll('li')).toHaveLength(3);
+		expect(getByText('a.pdf')).toBeInTheDocument();
+		expect(getByText('b.pdf')).toBeInTheDocument();
+		expect(container.textContent).not.toContain('c.pdf');
+		expect(getByText('+1 more')).toBeInTheDocument();
+	});
+
+	it('renders slack messages as a channel post and telegram as a bubble', () => {
+		const slack = renderCard({ card: DEMO_CARDS.slack });
+		expect(slack.getByText('#marketing-feedback')).toBeInTheDocument();
+		expect(slack.container.querySelector('.post')).not.toBeNull();
+		expect(slack.container.querySelector('.bubbleBox')).toBeNull();
+		slack.unmount();
+
+		const telegram = renderCard({ card: DEMO_CARDS.telegram });
+		expect(telegram.container.querySelector('.bubbleBox')).not.toBeNull();
+		expect(telegram.getByText('Jan')).toBeInTheDocument();
+	});
+
+	it('renders an unsplash cover and ignores other hosts', () => {
+		const safe = renderCard({ card: DEMO_CARDS.keyValue });
+		expect(DEMO_CARDS.keyValue.cover?.src.startsWith('https://images.unsplash.com/')).toBe(true);
+		expect(safe.container.querySelector('.cover')).not.toBeNull();
+		expect(safe.getByTestId('result-card')).toHaveClass('covered');
+		expect(safe.getByTestId('result-card')).toHaveClass('dark');
+		safe.unmount();
+
+		const unsafe = renderCard({
+			card: { ...DEMO_CARDS.keyValue, cover: { src: 'https://evil.example/x.jpg' } },
+		});
+		expect(unsafe.container.querySelector('.cover')).toBeNull();
+		expect(unsafe.getByTestId('result-card')).not.toHaveClass('covered');
+		expect(unsafe.getByTestId('result-card').getAttribute('style')).not.toContain('evil.example');
+	});
+
+	it('escapes text and only links https hrefs', () => {
+		const { container, getByText } = renderCard({
+			card: {
+				type: 'list',
+				title: '<b>bold</b> title',
+				items: [
+					{ title: 'Safe', href: 'https://example.com' },
+					{ title: 'Unsafe', href: 'javascript:alert(1)' },
+				],
+				actions: [
+					{ label: 'Open', href: 'https://x.y' },
+					{ label: 'Bad', href: 'javascript:alert(1)' },
+				],
+			},
+		});
+		expect(getByText('<b>bold</b> title')).toBeInTheDocument();
+		expect(container.querySelector('b')).toBeNull();
+		const links = Array.from(container.querySelectorAll('a'));
+		expect(links.map((link) => link.getAttribute('href'))).toEqual([
+			'https://example.com',
+			'https://x.y',
+		]);
+		for (const link of links) {
+			expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+			expect(link).toHaveAttribute('target', '_blank');
+		}
+		expect(getByText('Open')).toHaveClass('pillPrimary');
+		expect(container.textContent).not.toContain('Bad');
+	});
+
+	it('toggles details and emits openExecution', async () => {
+		const { getByText, getByTestId, queryByTestId, emitted } = renderCard({
+			card: DEMO_CARDS.metric,
+			executionLink: true,
+		});
+		expect(queryByTestId('result-card-details')).toBeNull();
+		expect(getByTestId('result-card-toggle')).toHaveAttribute('aria-expanded', 'false');
+		await fireEvent.click(getByText('Details'));
+		expect(queryByTestId('result-card-details')).not.toBeNull();
+		expect(getByTestId('result-card-toggle')).toHaveAttribute('aria-expanded', 'true');
+		expect(getByTestId('result-card-toggle')).toHaveAttribute(
+			'aria-controls',
+			getByTestId('result-card-details').id,
+		);
+		await fireEvent.click(getByText('Open execution'));
+		expect(emitted().openExecution).toHaveLength(1);
+		await fireEvent.click(getByText('Hide details'));
+		expect(queryByTestId('result-card-details')).toBeNull();
+	});
+
+	it('hides the expander and the execution link when asked', () => {
+		const { queryByTestId } = renderCard({ card: DEMO_CARDS.metric, expandable: false });
+		expect(queryByTestId('result-card-toggle')).toBeNull();
+	});
+
+	it('labels the card region with its title', () => {
+		const { getByTestId } = renderCard({ card: DEMO_CARDS.email });
+		expect(getByTestId('result-card')).toHaveAttribute('aria-label', DEMO_CARDS.email.title);
+	});
+
+	it('renders up to four node icons as a cluster and skips unknown ones', () => {
+		const { container } = renderCard({
+			card: DEMO_CARDS.email,
+			icons: [
+				{ type: 'icon', name: 'bot' },
+				{ type: 'unknown' },
+				{ type: 'icon', name: 'mail' },
+				{ type: 'icon', name: 'table' },
+				{ type: 'icon', name: 'circle-check' },
+				{ type: 'icon', name: 'external-link' },
+			],
+		});
+		expect(container.querySelectorAll('.clusterItem')).toHaveLength(4);
+	});
+
+	it('accepts a single icon for back-compat', () => {
+		const { container } = renderCard({
+			card: DEMO_CARDS.email,
+			icon: { type: 'icon', name: 'mail' },
+		});
+		expect(container.querySelectorAll('.clusterItem')).toHaveLength(1);
+	});
+
+	it('adds the global motion class only when animated', () => {
+		const animated = render(ResultCard, { props: { card: DEMO_CARDS.keyValuePaper } });
+		expect(animated.getByTestId('result-card')).toHaveClass('rc-animated');
+		animated.unmount();
+
+		const still = render(ResultCard, {
+			props: { card: DEMO_CARDS.keyValuePaper, animated: false },
+		});
+		expect(still.getByTestId('result-card')).not.toHaveClass('rc-animated');
 	});
 });

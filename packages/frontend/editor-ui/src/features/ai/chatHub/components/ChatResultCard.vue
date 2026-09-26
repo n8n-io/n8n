@@ -19,22 +19,30 @@ const chatStore = useChatStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 
+/** Node types behind this outcome, in run order (trigger … side effect); falls back to the single producing node */
+const iconNodeTypes = computed<string[]>(() =>
+	card.nodeTypes?.length ? card.nodeTypes : card.nodeType ? [card.nodeType] : [],
+);
+
 onMounted(async () => {
-	if (card.nodeType && !nodeTypesStore.getNodeType(card.nodeType)) {
+	if (iconNodeTypes.value.some((type) => !nodeTypesStore.getNodeType(type))) {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 	}
 });
 
-const icon = computed<ResultCardIcon | undefined>(() => {
-	if (!card.nodeType) return undefined;
-	// prefer the full description so named icons (e.g. `fa:code`) resolve, not only `iconUrl`
-	const description = nodeTypesStore.getNodeType(card.nodeType);
-	const source = getNodeIconSource(description ?? card.nodeType, null, null);
-	if (!source) return undefined;
-	return source.type === 'file'
-		? { type: 'file', src: source.src }
-		: { type: 'icon', name: source.name, color: source.color };
-});
+const icons = computed<ResultCardIcon[]>(() =>
+	iconNodeTypes.value.flatMap((type): ResultCardIcon[] => {
+		// prefer the full description so named icons (e.g. `fa:code`) resolve, not only `iconUrl`
+		const description = nodeTypesStore.getNodeType(type);
+		const source = getNodeIconSource(description ?? type, null, null);
+		if (!source) return [];
+		return [
+			source.type === 'file'
+				? { type: 'file', src: source.src }
+				: { type: 'icon', name: source.name, color: source.color },
+		];
+	}),
+);
 
 const workflowName = computed(() => {
 	const model = unflattenModel(message);
@@ -67,7 +75,7 @@ function openExecution() {
 <template>
 	<N8nResultCard
 		:card="card"
-		:icon="icon"
+		:icons="icons"
 		:footer="{ workflowName, time }"
 		:execution-link="hasExecution"
 		:class="$style.card"

@@ -1,8 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMockMessage } from '../__test__/data';
@@ -89,5 +91,40 @@ describe('ChatResultCard', () => {
 		await fireEvent.click(getByTestId('result-card-toggle'));
 		expect(getByTestId('result-card-details')).toBeInTheDocument();
 		expect(queryByText('Open execution')).not.toBeInTheDocument();
+	});
+
+	it('renders without icons when none of the node types are known', () => {
+		const pinia = createTestingPinia();
+		mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(null);
+		const message = createMockMessage({ type: 'ai', provider: 'n8n', content: [] });
+		const { getByTestId, container } = renderComponent({
+			props: { message, card: { ...card, nodeType: undefined, nodeTypes: ['a', 'b'] } },
+			pinia,
+		});
+
+		expect(getByTestId('result-card')).toBeInTheDocument();
+		expect(container.querySelectorAll('.n8n-node-icon')).toHaveLength(0);
+	});
+
+	it('renders one node icon per resolvable node type, in run order', () => {
+		const pinia = createTestingPinia();
+		const descriptions: Record<string, INodeTypeDescription> = {
+			a: { name: 'a', icon: 'icon:bot', defaults: {} } as unknown as INodeTypeDescription,
+			b: { name: 'b', iconUrl: 'icons/b.svg', defaults: {} } as unknown as INodeTypeDescription,
+		};
+		mockedStore(useNodeTypesStore).getNodeType = vi.fn(
+			(type: string) => descriptions[type] ?? null,
+		);
+		const message = createMockMessage({ type: 'ai', provider: 'n8n', content: [] });
+		const { container } = renderComponent({
+			props: { message, card: { ...card, nodeType: undefined, nodeTypes: ['a', 'b', 'c'] } },
+			pinia,
+		});
+
+		expect(container.querySelectorAll('.n8n-node-icon')).toHaveLength(2);
+		expect(container.querySelector('.n8n-node-icon img')).toHaveAttribute(
+			'src',
+			expect.stringContaining('icons/b.svg'),
+		);
 	});
 });
