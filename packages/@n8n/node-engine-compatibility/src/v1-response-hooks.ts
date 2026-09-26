@@ -48,6 +48,17 @@ export function attachResponseHooks(
 			throw result.error;
 		}
 	});
+
+	// Only when the caller expects a stream. `isStreaming()` reads both this
+	// flag and the handler, and a node that streams never calls `sendResponse`,
+	// so setting it unconditionally would break the `responseNode` mode.
+	if (context.responseExpectation.kind === 'stream') {
+		additionalData.streamingEnabled = true;
+		additionalData.hooks.addHandler('sendChunk', (chunk) => {
+			const result = respond.chunk(() => toJsonPayload(chunk));
+			if (!result.ok) throw result.error;
+		});
+	}
 }
 
 /**

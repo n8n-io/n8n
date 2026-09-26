@@ -185,6 +185,7 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
+				responseExpectation: execution.responseExpectation,
 			},
 			respond: createResponseEmitter(this.responseSender, execution),
 		});

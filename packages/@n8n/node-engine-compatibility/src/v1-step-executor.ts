@@ -193,6 +193,21 @@ export class V1StepExecutor implements IStepExecutor {
 		}
 
 		if (!result.ok) {
+			const description =
+				typeof result.error === 'object' &&
+				result.error !== null &&
+				'description' in result.error &&
+				typeof result.error.description === 'string'
+					? result.error.description
+					: result.error instanceof Error
+						? result.error.message
+						: String(result.error);
+			try {
+				await context.sendChunk('error', 0, description);
+			} catch {
+				// The node's own error is the one to report. The response channel
+				// already tells the caller when it cannot carry the error chunk.
+			}
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}
