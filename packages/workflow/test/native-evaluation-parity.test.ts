@@ -364,7 +364,10 @@ describe('Expression - fast native evaluation parity', () => {
 			const viaEngine = evaluateExotic('={{ $json.item.dt }}', false);
 			expect(native).not.toBeInstanceOf(DateTime);
 			expect(viaEngine instanceof DateTime).toBe(legacy);
-			if (!legacy) expect(native).toStrictEqual(viaEngine);
+			// Both copies carry the instant; their cloned Luxon internals (locale
+			// and zone caches) depend on the host environment, so compare only
+			// what the expression author can observe.
+			expect((native as { ts: number }).ts).toBe((viaEngine as { ts: number }).ts);
 			// Member reads keep working on both paths.
 			expect(evaluateExotic('={{ $json.item.dt.year }}', true)).toBe(2026);
 		});
