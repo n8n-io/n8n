@@ -61,7 +61,7 @@ export async function contentfulApiRequestAllItems(
 
 	do {
 		responseData = await contentfulApiRequest.call(this, method, resource, body, query);
-		query.skip = (query.skip + 1) * query.limit;
+		query.skip = (query.skip as number) + (query.limit as number);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
