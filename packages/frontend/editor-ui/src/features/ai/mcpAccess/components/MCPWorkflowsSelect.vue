@@ -3,7 +3,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption } from '@n8n/design-system';
 import { computed, onMounted, ref, useCssModule } from 'vue';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -29,7 +29,7 @@ const isLoading = ref(false);
 const hasFetched = ref(false);
 const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
-const workflowOptions = ref<WorkflowListItem[]>([]);
+const workflowOptions = ref<McpWorkflow[]>([]);
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const showEmptyState = computed(() => {
