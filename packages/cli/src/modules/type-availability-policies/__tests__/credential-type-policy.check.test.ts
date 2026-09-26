@@ -285,6 +285,34 @@ describe('CredentialTypePolicyCheck', () => {
 				GMAIL_OAUTH,
 			]);
 		});
+
+		it.each(transports)(
+			'vetoes a credential import of a denied type on a %s import',
+			async (transport) => {
+				const result = await check.onContentImport({
+					credential: { id: null, type: SLACK_API },
+					projectId: 'project-1',
+					transport,
+				});
+
+				expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+				expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+					'credential-types',
+					'project-1',
+					[SLACK_API],
+				);
+			},
+		);
+
+		it('hands over a credential import whose type is available', async () => {
+			const result = await check.onContentImport({
+				credential: { id: 'cred-1', type: HTTP_BASIC },
+				projectId: 'project-1',
+				transport: 'cli',
+			});
+
+			expect(result.violations).toEqual([]);
+		});
 	});
 
 	describe('onCredentialSave', () => {

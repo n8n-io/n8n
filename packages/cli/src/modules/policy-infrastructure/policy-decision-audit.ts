@@ -1,7 +1,6 @@
 import type {
-	CredentialDecryptContext,
-	CredentialSaveContext,
 	EnforcementPoint,
+	PolicedWorkflow,
 	PolicyCheckFailure,
 	PolicyDecision,
 	PolicyViolation,
@@ -77,14 +76,15 @@ const auditedViolation = ({
  * than a committed row — the seal discards it for the same reason. `workflowName` is what
  * identifies a create.
  */
-const policedWorkflowId = (
-	context: Exclude<AnyPolicyContext, CredentialDecryptContext | CredentialSaveContext>,
-) => ('storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id);
+const policedWorkflowId = (context: {
+	workflow: PolicedWorkflow;
+	storedWorkflow?: PolicedWorkflow | null;
+}) => ('storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id);
 
 /** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
 	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
-	if ('credential' in context) {
+	if ('storedCredential' in context) {
 		return {
 			credentialId: context.storedCredential?.id ?? null,
 			credentialType: context.credential.type,
@@ -97,6 +97,23 @@ function targetOf(context: AnyPolicyContext) {
 			credentialId: context.credentialId,
 			credentialType: context.credentialType,
 			consumerNodeType: context.consumer?.nodeType,
+			projectId: context.projectId,
+		};
+	}
+
+	// contentImport: the one point whose context can be either shape.
+	if ('transport' in context) {
+		if ('credential' in context) {
+			return {
+				credentialId: context.credential.id,
+				credentialType: context.credential.type,
+				projectId: context.projectId,
+			};
+		}
+
+		return {
+			workflowId: policedWorkflowId(context),
+			workflowName: context.workflow.name,
 			projectId: context.projectId,
 		};
 	}

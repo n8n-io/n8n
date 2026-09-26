@@ -122,11 +122,16 @@ export type CredentialDecryptContext = {
  */
 export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
 
+/**
+ * What's being imported, plus where it's landing and how it arrived.
+ *
+ * Exactly one of `workflow` / `credential` is set; narrow with `'workflow' in context`. No
+ * `?: never` on the other arm, because that breaks the `in` narrowing.
+ */
 export type ContentImportContext = {
-	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
 	readonly transport: ContentImportTransport;
-};
+} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {

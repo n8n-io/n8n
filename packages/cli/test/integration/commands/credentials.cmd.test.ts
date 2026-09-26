@@ -2,18 +2,22 @@ import { GlobalConfig } from '@n8n/config';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
+import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as fs from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import * as os from 'os';
 import * as path from 'path';
+import type { MockInstance } from 'vitest';
 
 import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import {
@@ -805,6 +809,108 @@ test('`import:credential --projectId ... --userId ...` fails explaining that onl
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+describe('content-import policy', () => {
+	const violation: PolicyViolation = {
+		kind: 'credential-type-unavailable',
+		checkId: 'test.check',
+		message: 'not allowed',
+	};
+
+	let enforceContentImport: MockInstance<PolicyEnforcementService['enforceContentImport']>;
+	let temporaryDirectory: string;
+
+	// Blocks one credential type and lets the real service clear everything else, so the
+	// sealed write still receives a genuine clearance for what the policy did not object to.
+	const blockType = (blockedType: string) => {
+		const service = Container.get(PolicyEnforcementService);
+		// The prototype method, not `service.enforceContentImport`: that is the spy itself.
+		const clearance = PolicyEnforcementService.prototype.enforceContentImport;
+		enforceContentImport.mockImplementation(async (context: ContentImportContext) => {
+			if ('credential' in context && context.credential.type === blockedType) {
+				throw new PolicyViolationError([violation]);
+			}
+			return await clearance.call(service, context);
+		});
+	};
+
+	const writeInput = (credentials: object[]) => {
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(inputPath, JSON.stringify(credentials));
+		return inputPath;
+	};
+
+	beforeEach(() => {
+		enforceContentImport = vi.spyOn(
+			Container.get(PolicyEnforcementService),
+			'enforceContentImport',
+		);
+		temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+	});
+
+	afterEach(() => {
+		enforceContentImport.mockRestore();
+		fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+	});
+
+	test('skips a blocked credential and still imports the rest of the batch', async () => {
+		const owner = await createOwner();
+		const ownerProject = await getPersonalProject(owner);
+		blockType('slackApi');
+		const inputPath = writeInput([
+			{ id: 'clean', name: 'Clean', type: 'aws', data: { region: 'eu-west-1' } },
+			{ id: 'blocked', name: 'Blocked', type: 'slackApi', data: { accessToken: 'x' } },
+		]);
+
+		await command.run([`--input=${inputPath}`]);
+
+		expect(enforceContentImport).toHaveBeenCalledWith({
+			credential: { id: 'blocked', type: 'slackApi' },
+			projectId: ownerProject.id,
+			transport: 'cli',
+		});
+		const after = {
+			credentials: await getAllCredentials(),
+			sharings: await getAllSharedCredentials(),
+		};
+		expect(after).toMatchObject({
+			credentials: [expect.objectContaining({ id: 'clean' })],
+			sharings: [expect.objectContaining({ credentialsId: 'clean', projectId: ownerProject.id })],
+		});
+	});
+
+	test('enforces an existing credential against its owner project, not the importing user', async () => {
+		await createOwner();
+		const member = await createMember();
+		const memberProject = await getPersonalProject(member);
+		const inputPath = writeInput([
+			{ id: 'existing', name: 'Existing', type: 'aws', data: { region: 'eu-west-1' } },
+		]);
+		await command.run([`--input=${inputPath}`, `--userId=${member.id}`]);
+		enforceContentImport.mockClear();
+
+		// Flagless re-import: the batch target is the owner's project, but the row stays the member's.
+		await command.run([`--input=${inputPath}`]);
+
+		expect(enforceContentImport).toHaveBeenCalledWith({
+			credential: { id: 'existing', type: 'aws' },
+			projectId: memberProject.id,
+			transport: 'cli',
+		});
+	});
+
+	test('fails the import when the policy layer errors', async () => {
+		await createOwner();
+		enforceContentImport.mockRejectedValueOnce(new Error('backend unavailable'));
+		const inputPath = writeInput([
+			{ id: 'clean', name: 'Clean', type: 'aws', data: { region: 'eu-west-1' } },
+		]);
+
+		await expect(command.run([`--input=${inputPath}`])).rejects.toThrow('backend unavailable');
+
+		expect(await getAllCredentials()).toEqual([]);
+	});
 });
 
 afterEach(() => {

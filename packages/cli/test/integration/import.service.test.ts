@@ -531,7 +531,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const flagged = newWorkflow({ id: uuid(), name: 'Flagged' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Flagged') throw new PolicyViolationError([violation]);
+				if ('workflow' in context && context.workflow.name === 'Flagged') {
+					throw new PolicyViolationError([violation]);
+				}
 				return await clearance(context);
 			});
 
@@ -606,7 +608,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 
@@ -624,7 +628,9 @@ describe('ImportService', () => {
 			const active = await createActiveWorkflow({ name: 'Active' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 

@@ -203,6 +203,17 @@ describe('NodeTypePolicyCheck', () => {
 
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK, GMAIL]);
 		});
+
+		it('has nothing to say about a credential import — there are no node types to check', async () => {
+			const result = await check.onContentImport({
+				credential: { id: null, type: 'slackApi' },
+				projectId: 'project-1',
+				transport: 'cli',
+			});
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('onCredentialDecrypt', () => {
