@@ -516,15 +516,18 @@ describe('runtime', () => {
 				content: [{ type: 'text', text: 'Registry tool failed' }],
 			});
 
-			const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }], {
-				getNode: vi.fn(() =>
-					mock<INode>({
-						type: '@n8n/mcp-registry.example',
-						typeVersion: 1.1,
-						name: 'MCP Registry Client',
-					}),
-				),
-			});
+			const ctx = createExecuteCtx(
+				[{ json: { tool: buildMcpToolName('MCP Registry Client', 'search') } }],
+				{
+					getNode: vi.fn(() =>
+						mock<INode>({
+							type: '@n8n/mcp-registry.example',
+							typeVersion: 1.1,
+							name: 'MCP Registry Client',
+						}),
+					),
+				},
+			);
 
 			await expect(executeMcpTool(ctx, () => createRegistryConfig())).rejects.toThrow(
 				'Registry tool failed',
