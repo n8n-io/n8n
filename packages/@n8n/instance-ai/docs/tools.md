@@ -474,21 +474,20 @@ List recent workflow executions.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `workflowId` | string | no | — | Filter by workflow |
-| `status` | string | no | — | `success`, `error`, `running`, `waiting` |
+| `status` | enum | no | — | An n8n execution status: `canceled`, `crashed`, `error`, `new`, `running`, `success`, `unknown`, `waiting` |
 | `limit` | number | no | 20 | Max results (1–100) |
 
 **Returns**: `{ executions: [{ id, workflowId, workflowName, status, startedAt, finishedAt, mode }] }`
 
 ### `executions(action="run")`
 
-Execute a workflow, wait for completion (with timeout), and return the result.
-Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
+Execute a workflow, wait for completion, and return the result. The wait is
+5 minutes. On timeout, the execution is cancelled.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `workflowId` | string | yes | — | Workflow to run |
 | `inputData` | object | no | — | Data passed to the trigger node |
-| `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 | `triggerNodeName` | string | no | — | Trigger node to use when a workflow has more than one trigger |
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
@@ -530,8 +529,6 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
 | `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
-| `versionId` | string | no | current draft | Run a past version's graph |
-| `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
 **Returns**: `{ executionId, status, nodeName, inputMode, mockedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
 
@@ -675,7 +672,9 @@ Get execution status without blocking.
 |-------|------|----------|-------------|
 | `executionId` | string | yes | Execution ID |
 
-**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
+**Returns**: `{ executionId, workflowId?, status, data?, error?, startedAt?, finishedAt?, ranPublishedVersion? }`.
+`ranPublishedVersion` is set when the workflow is known; it is true only when the
+run used the published version.
 
 ### `executions(action="debug")`
 

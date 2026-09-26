@@ -1,17 +1,9 @@
 ---
 name: model-selection
 description: >-
-  Guides AI model choices in new workflows, existing workflows, pasted workflow
-  JSON, and model-availability questions. Load before recommending, selecting,
-  replacing, or judging a model. Preserve working or explicitly requested IDs.
-  An unfamiliar name or generic 404 does not establish that a model is invalid.
-  Do not claim otherwise or suggest a replacement without provider evidence.
-  Prefer credential-specific resource lookup when available. Use searchModels
-  only to choose an unspecified model without a relevant credential or suitable
-  named recommendation, never to validate a supplied ID or diagnose an existing
-  failure. For a new choice, do not narrow discovery to a remembered model ID.
-  Do not choose GPT-4-family or Claude 3.x for an unspecified model unless verified
-  access constraints require them. Also activated when inspecting a model-bearing
+  Load before recommending, selecting, replacing, or judging an AI model in a
+  new workflow, an existing workflow, pasted workflow JSON, or a
+  model-availability question. Also activated when inspecting a model-bearing
   node.
 dependencies:
   tools:

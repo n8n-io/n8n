@@ -79,22 +79,22 @@ import {
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
-// `list`, `node-usage` and `setup` share these fields, and the schema sanitizer rejects
+// `list` and `node-usage` share these fields, and the schema sanitizer rejects
 // conflicting descriptions for one field name across the union, so each has to read correctly
 // for every action that uses it.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. For `list` and `node-usage`: read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+	'Project ID from `workspace(action="list-projects")`. Reads only that project. Read-only: it does not change where you can write.';
 
 const SCOPE_FIELD_DESCRIPTION =
-	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
+	"Defaults to this conversation's project. Use 'instance' only with a clear reason to read every project you can access.";
 
 const LIMIT_FIELD_DESCRIPTION = 'Max results to return';
 
 const NODE_TYPES_FIELD_DESCRIPTION =
-	'Full node types, e.g. ["n8n-nodes-base.slack"]. Matched against the nodes a workflow actually contains, from an index — so it finds users of a node however the workflow is named, and costs one call however many workflows exist. Keeps only workflows containing at least one of these.';
+	'Full node types, e.g. ["n8n-nodes-base.slack"]. Keeps workflows that contain at least one of them, matched on actual nodes, not names.';
 
 const QUERY_FIELD_DESCRIPTION =
-	'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.';
+	'Filter on the workflow name only. Omit it to get the full inventory in scope.';
 
 // Shared-field descriptions live in constants: `sanitizeInputSchema` flattens the
 // action union into one object and throws when one field name carries two
@@ -104,13 +104,11 @@ const QUERY_FIELD_DESCRIPTION =
 // per run, so `folderScopeFields.query` below can carry a different
 // description than `listActionBase.query` without ever conflicting.
 const FOLDER_PATH_FIELD_DESCRIPTION =
-	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
+	'Folder as the user named it, e.g. "Clients/Acme". The only correct folder filter: workflow names do not encode folders.';
 
-const FOLDER_ID_FIELD_DESCRIPTION =
-	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said. When both are given, `folderId` wins.';
+const FOLDER_ID_FIELD_DESCRIPTION = 'Folder ID from an earlier listing. Wins over `folderPath`.';
 
-const RECURSIVE_FIELD_DESCRIPTION =
-	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
+const RECURSIVE_FIELD_DESCRIPTION = 'Include nested subfolders. Defaults to true.';
 
 // Separate objects per capability combination, rather than optional-and-ignored fields, so a
 // flag-off state's schema is byte-identical to the pre-feature tool. An A/B needs a control that
@@ -121,16 +119,14 @@ const listActionBase = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			'List workflows accessible to the current user. Use for workflow inspection. Call it without `query` to get the complete inventory in scope — the result reports how many workflows a filter or the limit left out.',
+			'List workflows. Omit `query` for the complete inventory; the result reports what a filter or `limit` left out.',
 		),
 	query: z.string().optional().describe(QUERY_FIELD_DESCRIPTION),
 	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	status: z
 		.enum(['active', 'archived', 'all'])
 		.optional()
-		.describe(
-			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
-		),
+		.describe('Defaults to active. Use archived to find workflows to restore.'),
 	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
@@ -144,10 +140,7 @@ const folderScopeFields = {
 	query: z
 		.string()
 		.optional()
-		.describe(
-			QUERY_FIELD_DESCRIPTION +
-				' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.',
-		),
+		.describe(QUERY_FIELD_DESCRIPTION + ' For a folder, use `folderPath`.'),
 	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
 	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
 	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
@@ -166,16 +159,14 @@ const nodeUsageAction = z.object({
 	action: z
 		.literal('node-usage')
 		.describe(
-			'Node types the workflows in scope use, with counts, most-used first. Read it BEFORE ' +
-				"opening workflows to learn a project's conventions and integrations. With `nodeType`, " +
-				'returns the workflows using that type, most recently updated first.',
+			"Node types used in scope, with counts. Read it BEFORE opening workflows to learn a project's " +
+				'conventions. With `nodeType`, returns the workflows that use it.',
 		),
 	nodeType: z
 		.string()
 		.optional()
 		.describe(
-			'A single full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit it for the ' +
-				'overview of every type in use.',
+			'One full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit for the overview.',
 		),
 	// Caps both shapes: node types in the overview, workflows when a `nodeType` is given. The
 	// ceiling is above the overview's default so raising it after a truncated answer works.
@@ -239,47 +230,46 @@ const setupAction = z.object({
 			'Configure workflow credentials and parameters after a build. Follow the returned guidance for a setup panel announcement, selection card, or approval.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+	credentialProjectId: z
+		.string()
+		.optional()
+		.describe('Project to create credentials in. Used only when the conversation has no project.'),
 	credentialHints: z
 		.array(
 			setupHintField.extend({
 				nodeName: z
 					.string()
 					.optional()
-					.describe(
-						'Restrict the recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
-					),
+					.describe('Restrict the recipe to one node when several use Simplified Custom Auth.'),
 			}),
 		)
 		.optional()
 		.describe(
-			'Simplified Custom Auth recipes, one per templated credential; the setup form pre-fills the template. REQUIRED first: load the `credential-recipe-research` skill and follow it — the template and testUrl come from fetched provider pages, never from memory.',
+			'Simplified Custom Auth recipes, one per templated credential. Load the `credential-recipe-research` skill first.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
 		.optional()
 		.describe(
-			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+			'Set only when the user chose a plain generic auth type, or the workflow already used it.',
 		),
 	preferNewCredentials: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — only when the ' +
-				'user asked for a new credential or must replace an invalid or rotated secret. Never a ' +
-				'default. Pass the same list you passed to build-workflow.',
+			'Credential types to create fresh, only when the user asked for a new one or must replace a secret. Pass the same list as build-workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types or node names the user just asked to configure after skipping them (e.g. ["slackApi"] for "connect Slack now"); use the `reopenWith` value setup reported. Skipped cards the user did not ask about stay out.',
+			'Skipped cards the user now asked to configure. Use the `reopenWith` value setup reported.',
 		),
 	includeAllNodes: z
 		.boolean()
 		.optional()
 		.describe(
-			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch. Cards the user skipped stay out unless named in `reopenSkipped`.',
+			'Cover every node, not only the ones the last build changed. Only when the user asked.',
 		),
 });
 
@@ -317,9 +307,7 @@ const publishBaseAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only after you told the user the workflow is not fully verified and they still ' +
-				'asked to publish. Publishing is refused without this while the latest verification left ' +
-				'nodes unreached or simulated. Never set it to skip the disclosure.',
+			'Set only after you told the user verification is incomplete and they still asked to publish.',
 		),
 });
 
@@ -410,7 +398,7 @@ type PublishRollbackResult = {
 	rolledBackWorkflowIds: string[];
 	rollbackErrors: Array<{ workflowId: string; error: string }>;
 };
-export type WorkflowAction =
+type WorkflowAction =
 	| 'list'
 	| 'node-usage'
 	| 'get'
@@ -426,15 +414,6 @@ export type WorkflowAction =
 	| 'update-version';
 
 type WorkflowActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
-
-export interface WorkflowsToolOptions {
-	allowedActions?: readonly WorkflowAction[];
-	descriptionPrefix?: string;
-	descriptionSuffix?: string;
-	surface?: 'full' | 'orchestrator';
-}
-
-type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
@@ -470,10 +449,6 @@ const WORKFLOW_ACTION_LABELS = {
 	'update-version': 'update version metadata',
 } satisfies Record<WorkflowAction, string>;
 
-function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToolOptions {
-	return typeof options === 'string' ? { surface: options } : options;
-}
-
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
@@ -507,29 +482,15 @@ function getSupportedWorkflowActionSchemas(
 
 function getWorkflowActions(
 	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
-	options: WorkflowsToolOptions,
 ): WorkflowAction[] {
-	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
-	return WORKFLOW_ACTION_ORDER.filter(
-		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
-	);
+	return WORKFLOW_ACTION_ORDER.filter((action) => supportedSchemas[action] !== undefined);
 }
 
-function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
+function buildInputSchema(context: InstanceAiContext) {
 	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
-	const actionSchemas: WorkflowActionSchema[] = [];
-	for (const action of getWorkflowActions(supportedSchemas, options)) {
-		const schema = supportedSchemas[action];
-		if (schema) actionSchemas.push(schema);
-	}
-
-	if (actionSchemas.length === 0) {
-		throw new Error('Workflows tool requires at least one allowed action');
-	}
-
-	if (actionSchemas.length === 1) {
-		return sanitizeInputSchema(actionSchemas[0]);
-	}
+	const actionSchemas = getWorkflowActions(supportedSchemas).flatMap(
+		(action) => supportedSchemas[action] ?? [],
+	);
 
 	return sanitizeInputSchema(
 		z.discriminatedUnion(
@@ -1208,7 +1169,7 @@ async function handleSetupTestTrigger(
 	// The thread-bound project is authoritative for credential scoping; without
 	// it the frontend falls back to the user's personal project and offers
 	// credentials from outside the conversation's project.
-	const projectId = context.projectId ?? input.projectId;
+	const projectId = context.projectId ?? input.credentialProjectId;
 
 	return await ctx.suspend({
 		requestId: state.currentRequestId,
@@ -1776,7 +1737,7 @@ async function handleSetup(
 		// The thread-bound project is authoritative for credential scoping; without
 		// it the frontend falls back to the user's personal project and offers
 		// credentials from outside the conversation's project.
-		const projectId = context.projectId ?? input.projectId;
+		const projectId = context.projectId ?? input.credentialProjectId;
 
 		return await ctx.suspend({
 			requestId: state.currentRequestId,
@@ -2240,36 +2201,25 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
 }
 
-function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
+function getToolDescription(context: InstanceAiContext): string {
 	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
-	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
-	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
-	const suffix =
-		options.descriptionSuffix ??
-		(options.descriptionPrefix
-			? undefined
-			: 'Workflow results use activeVersionId: null for unpublished workflows.');
-
-	return suffix ? `${description} ${suffix}` : description;
+	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas));
+	return `Manage workflows — ${actionList}. Workflow results use activeVersionId: null for unpublished workflows.`;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
-export function createWorkflowsTool(
-	context: InstanceAiContext,
-	optionsInput: WorkflowsToolOptionsInput = {},
-) {
-	const options = normalizeOptions(optionsInput);
+export function createWorkflowsTool(context: InstanceAiContext) {
 	// Closure state for the setup action's suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
 		currentRequestId: null,
 		preTestSnapshot: null,
 	};
 
-	const inputSchema = buildInputSchema(context, options);
+	const inputSchema = buildInputSchema(context);
 
 	return new Tool('workflows')
-		.description(getToolDescription(context, options))
+		.description(getToolDescription(context))
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(workflowsResumeSchema)

@@ -76,9 +76,7 @@ describe('executions tool', () => {
 			expect(suspend).not.toHaveBeenCalled();
 			if (approved) {
 				expect(result).toMatchObject({ executionId: 'exec-1', status: 'success' });
-				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', savedInput.inputData, {
-					timeout: undefined,
-				});
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', savedInput.inputData, {});
 			} else {
 				expect(result).toMatchObject({ denied: true });
 				expect(context.executionService.run).not.toHaveBeenCalled();
@@ -156,6 +154,13 @@ describe('executions tool', () => {
 				status: 'error',
 				limit: 5,
 			});
+		});
+
+		it('should reject a status filter that is not an execution status', () => {
+			const schema = createExecutionsTool(createMockContext()).inputSchema as z.ZodType;
+
+			expect(schema.safeParse({ action: 'list', status: 'failed' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'list', status: 'crashed' }).success).toBe(true);
 		});
 
 		it('should report the version each run used next to the published one', async () => {
@@ -286,6 +291,37 @@ describe('executions tool', () => {
 			expect(context.executionService.getStatus).toHaveBeenCalledWith('exec-1');
 			expect(result).toEqual(executionStatus);
 		});
+
+		it.each([
+			{ workflowVersionId: 'published-1', expected: true },
+			{ workflowVersionId: 'draft-2', expected: false },
+			{ workflowVersionId: null, expected: false },
+		])(
+			'reports ranPublishedVersion $expected for version $workflowVersionId',
+			async ({ workflowVersionId, expected }) => {
+				const context = createMockContext();
+				(context.workflowService.getWorkflowHead as Mock).mockResolvedValue({
+					versionId: 'draft-2',
+					activeVersionId: 'published-1',
+					updatedAt: 0,
+				});
+				(context.executionService.getStatus as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					workflowId: 'wf-1',
+					status: 'success',
+					workflowVersionId,
+				});
+
+				const result = await executeTool(
+					createExecutionsTool(context),
+					{ action: 'get' as const, executionId: 'exec-1' },
+					{} as never,
+				);
+
+				expect(context.workflowService.getWorkflowHead).toHaveBeenCalledWith('wf-1');
+				expect(result).toMatchObject({ ranPublishedVersion: expected });
+			},
+		);
 	});
 
 	// ── run ─────────────────────────────────────────────────────────────────
@@ -401,16 +437,11 @@ describe('executions tool', () => {
 					action: 'run' as const,
 					workflowId: 'wf-1',
 					inputData: { key: 'value' },
-					timeout: 30_000,
 				},
 				createAgentCtx({ resumeData: { approved: true } }) as never,
 			);
 
-			expect(context.executionService.run).toHaveBeenCalledWith(
-				'wf-1',
-				{ key: 'value' },
-				{ timeout: 30_000 },
-			);
+			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', { key: 'value' }, {});
 			expect(result).toEqual(executionResult);
 		});
 
@@ -434,9 +465,7 @@ describe('executions tool', () => {
 			);
 
 			expect(suspendFn).not.toHaveBeenCalled();
-			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
-				timeout: undefined,
-			});
+			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {});
 			expect(result).toEqual(executionResult);
 		});
 
@@ -457,9 +486,7 @@ describe('executions tool', () => {
 				createAgentCtx() as never,
 			);
 
-			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
-				timeout: undefined,
-			});
+			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {});
 		});
 
 		it('forwards the requested trigger node so a multi-trigger workflow runs the right branch', async () => {
@@ -675,9 +702,7 @@ describe('executions tool', () => {
 				);
 
 				expect(suspendFn).not.toHaveBeenCalled();
-				expect(context.executionService.run).toHaveBeenCalledWith('wf-built', undefined, {
-					timeout: undefined,
-				});
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-built', undefined, {});
 			});
 
 			it('still requires HITL for a pre-existing workflow the agent did not create', async () => {
@@ -746,19 +771,13 @@ describe('executions tool', () => {
 			expect(context.executionService.runStep).not.toHaveBeenCalled();
 		});
 
-		it('reports unavailable when the host did not wire step execution', async () => {
+		it('is not advertised when the host did not wire step execution', () => {
 			const context = createMockContext({ permissions: {} });
 			delete (context.executionService as { runStep?: unknown }).runStep;
 
 			const tool = createExecutionsTool(context);
-			const result = await executeTool(tool, stepInput, createAgentCtx() as never);
 
-			expect(result).toEqual({
-				executionId: '',
-				status: 'error',
-				denied: true,
-				reason: 'Running a single node is not available on this instance',
-			});
+			expect((tool.inputSchema as z.ZodType).safeParse(stepInput).success).toBe(false);
 		});
 
 		it('suspends for confirmation naming the node and the workflow', async () => {
@@ -809,8 +828,6 @@ describe('executions tool', () => {
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
 					toolArguments: { title: 'Login fails' },
-					versionId: 'v-2',
-					timeout: 30_000,
 				},
 				createAgentCtx({ resumeData: { approved: true } }) as never,
 			);
@@ -822,8 +839,6 @@ describe('executions tool', () => {
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
 					toolArguments: { title: 'Login fails' },
-					versionId: 'v-2',
-					timeout: 30_000,
 				}),
 			);
 		});

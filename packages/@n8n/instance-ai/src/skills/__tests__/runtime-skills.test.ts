@@ -175,12 +175,14 @@ describe('Instance AI runtime skills', () => {
 			'config-eval-playbook',
 			'config-evals',
 			'credential-recipe-research',
+			'credential-setup-preference',
 			'credential-setup-with-computer-use',
 			'error-workflows',
 			'model-selection',
 			'one-off-operations',
 			'post-build-flow',
 			'trigger-input-data-shapes',
+			'trigger-url-sharing',
 		]);
 
 		const loaded = skillLoadText(
@@ -398,19 +400,7 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.recommendedTools).toEqual([
-			'read_file',
-			'write_file',
-			'edit_file',
-			'execute_command',
-			'build-workflow',
-			'workflows',
-			'nodes',
-			'data-tables',
-			'credentials',
-			'verify-built-workflow',
-			'executions',
-		]);
+		expect(skill?.recommendedTools).toBeUndefined();
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
 		expect(skill?.description).toContain('workflow-sdk validate');
@@ -418,7 +408,6 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('build them one at a time with this skill');
 
 		const loaded = await source.loadSkill('workflow-builder');
-		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
@@ -432,8 +421,8 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
-		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
+		expect(loaded?.instructions).toMatch(/follow the inlined\s+`postBuildFlow\.instructions`/);
+		expect(loaded?.instructions).toMatch(/do not call\s+`verify-built-workflow` directly/);
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('the `error-workflows` reference');
@@ -442,29 +431,39 @@ describe('Instance AI runtime skills', () => {
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
 		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
-		expect(loaded?.instructions).toContain('knowledge base');
+		expect(loaded?.instructions).toContain('**Knowledge base**');
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
-		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
-		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
-		expect(loaded?.instructions).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
+		expect(loaded?.instructions).toContain('load the `trigger-url-sharing` reference');
+		expect(loaded?.instructions).toContain('knowledge-base/reference/workflow-sdk-patterns.md');
+		expect(loaded?.instructions).toContain('`credential-setup-preference`');
+		expect(loaded?.instructions).toContain('batch `nodes(action="type-definition")`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('build them one at a time in dependency order');
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
-		expect(loaded?.instructions).toContain(
-			'never ask for\nsetup values before the first successful build',
-		);
+		expect(loaded?.instructions).toMatch(/inline setup card in the\s+n8n Assistant panel/);
+		expect(loaded?.instructions).toContain('Never fake a value');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
 		expect(loaded?.instructions).toContain('never reaches the builder');
+
+		expect(
+			source.registry.skills.find((entry) => entry.id === 'trigger-url-sharing')?.parents,
+		).toEqual(['workflow-builder']);
+		const urlSharing = await source.loadSkill('trigger-url-sharing');
+		expect(urlSharing?.instructions).toContain('{formBaseUrl}/{path}');
+		expect(urlSharing?.instructions).toContain('**Open chat** button');
+		expect(urlSharing?.instructions).toContain('{webhookBaseUrl}/{webhookId}/chat');
+
+		const setupPreference = await source.loadSkill('credential-setup-preference');
+		expect(setupPreference?.instructions).toContain('setupCompletionPercent');
+		expect(setupPreference?.instructions).toContain('ask exactly one `single` question');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
