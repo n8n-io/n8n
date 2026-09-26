@@ -1,13 +1,13 @@
 /**
  * list-agent-capabilities — read-only orchestration tool that exposes the
  * agents module's authoritative supported integrations (and
- * their builder guidance) to the Instance AI orchestrator because
- * the orchestrator cannot see the subagent builder's toolset.
+ * their builder guidance) to the Instance AI orchestrator, so it can check a
+ * requested channel before it chooses between a workflow and an Agent.
  *
  * Returns each supported channel's `type`, `label`, `credentialTypes`, and
  * builder guidance (`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`),
  * plus a concise agent-level limitations note. Read-only; channels are
- * configured via the builder (`build-agent`).
+ * configured with the Agent Builder tools (`configure_channel`, `finish_setup`).
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';

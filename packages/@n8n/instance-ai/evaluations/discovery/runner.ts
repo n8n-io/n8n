@@ -16,8 +16,10 @@
 // can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
+import { Tool, type BuiltTool } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
 	buildConfirmationPolicy,
@@ -47,7 +49,6 @@ import {
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import type {
-	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
 	ComputerUseState,
@@ -274,20 +275,29 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-function completedBuilderTurn(): BuilderTurnStream {
-	return {
-		fullStream: (async function* () {
-			await Promise.resolve();
-			yield {
-				type: 'tool-call',
-				toolCallId: 'discovery-write',
-				toolName: 'write_config',
-				input: {},
-			};
-			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
-		})(),
-		text: Promise.resolve('Agent configured for discovery evaluation.'),
-	};
+/** Stub Agent Builder tools: discovery grades routing, so the tools only acknowledge. */
+function createStubBuilderTools(): BuiltTool[] {
+	const acknowledge = (name: string, description: string, output: Record<string, unknown>) =>
+		new Tool(name)
+			.description(description)
+			.input(z.object({}).passthrough())
+			.handler(async () => await Promise.resolve(output))
+			.build();
+	return [
+		acknowledge('read_config', 'Read the latest persisted agent configuration.', {
+			ok: true,
+			config: null,
+			configHash: null,
+		}),
+		acknowledge('write_config', 'Create or replace the agent configuration.', {
+			ok: true,
+			configMutated: true,
+		}),
+		acknowledge('patch_config', 'Apply JSON Patch operations to the agent configuration.', {
+			ok: true,
+			configMutated: true,
+		}),
+	];
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
@@ -298,10 +308,9 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 				projectId: 'discovery-project',
 				name,
 			}),
-		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		findOpenSuspensions: async () => await Promise.resolve([]),
-		cancelOpenSuspension: async () => await Promise.resolve(),
+		createBuilderTools: () => createStubBuilderTools(),
+		getRuntimeSkills: async () => await Promise.resolve([]),
+		getAgentPreviewPath: (agentId) => `/projects/discovery-project/agents/${agentId}`,
 		listAgents: async () => await Promise.resolve([]),
 		listAgentCapabilities: async () =>
 			await Promise.resolve({

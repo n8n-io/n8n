@@ -14,7 +14,11 @@ import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 
 import { emitTraceOnlyChildRun } from './langsmith-tracing';
 import { AGENT_SNAPSHOT_TRACE_RUN_NAME } from '../tools/tool-ids';
-import type { InstanceAiTraceContext } from '../types';
+import type {
+	InstanceAiBuilderDelegate,
+	InstanceAiTraceContext,
+	OrchestrationContext,
+} from '../types';
 
 /** Matches the compiled-workflow gate: LangSmith rejects an oversized run whole. */
 const MAX_AGENT_SNAPSHOT_TRACE_CHARS = 1_000_000;
@@ -102,4 +106,33 @@ export async function emitAgentSnapshotTraceEvent(
 		);
 		return 'failed';
 	}
+}
+
+/** Read an agent through the delegate and emit its snapshot. Best-effort at both ends. */
+export async function snapshotAgent(
+	context: Pick<OrchestrationContext, 'tracing' | 'logger'>,
+	delegate: InstanceAiBuilderDelegate,
+	target: { agentId: string; projectId: string },
+	reason: AgentSnapshotReason,
+): Promise<void> {
+	// No trace, no read — the delegate read costs a scope check and two queries.
+	if (!context.tracing) return;
+	let artifact: AgentSnapshotArtifact | null = null;
+	try {
+		// An optional method may be absent, or return a non-promise on a mocked host.
+		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
+	} catch (error) {
+		context.logger.debug(
+			`[agent-snapshot] ${reason} read for ${target.agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	if (!artifact) return;
+	await emitAgentSnapshotTraceEvent(context.tracing, {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		reason,
+		artifact,
+		logger: context.logger,
+	});
 }

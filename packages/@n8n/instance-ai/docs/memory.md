@@ -74,10 +74,11 @@ All memory is thread-scoped (isolated per conversation):
 - **Observational memory** — compressed operational history
 - **Task checklist** — the build and verify rows of the current workflow builds
 
-### Embedded agent memory
+### Agent building state
 
-The Agent Builder owns its session state separately from the orchestrator's
-observational memory. Generic background-task state stays thread-scoped.
+Instance AI builds Agents in its own conversation, so Agent builds share the
+orchestrator's memory. The target Agent binding lives in thread metadata.
+Generic background-task state stays thread-scoped.
 
 ### Cross-user isolation
 

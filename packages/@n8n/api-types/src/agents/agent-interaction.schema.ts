@@ -18,36 +18,6 @@ import { channelConfigSchema, credentialRequestSchema } from '../schemas/instanc
 export const ASK_QUESTIONS_TOOL_NAME = 'ask_questions' as const;
 export const CONFIGURE_CHANNEL_TOOL_NAME = 'configure_channel' as const;
 
-/**
- * Stable code on `BuilderNotConfiguredError` (`packages/cli/src/modules/agents/builder/errors.ts`)
- * so callers that can't import that class directly (e.g. instance AI) can
- * still detect the unconfigured state by matching the thrown error's `code`.
- */
-export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
-
-/**
- * Stable code on `BuilderCheckpointUnavailableError`
- * (`packages/cli/src/modules/agents/builder/errors.ts`), thrown by
- * `AgentsBuilderService.resumeBuild` when the checkpoint being resumed has
- * expired or no longer exists. Pinned here so
- * `isBuilderCheckpointUnavailableError` in instance AI's `build-agent.tool.ts`
- * can detect the state by matching the thrown error's `code`.
- */
-export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILABLE' as const;
-
-/**
- * Agent-builder tools whose success should set `configUpdated` on `build-agent`
- * (refresh the agent artifact preview). Includes config writers and publish
- * lifecycle tools. Values must match `BUILDER_TOOLS` in
- * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
- */
-export const CONFIG_MUTATION_TOOL_NAMES = [
-	'write_config',
-	'patch_config',
-	'publish_agent',
-	'unpublish_agent',
-] as const;
-
 // ---------------------------------------------------------------------------
 // ask_questions
 // ---------------------------------------------------------------------------

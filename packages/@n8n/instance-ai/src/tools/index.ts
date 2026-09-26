@@ -46,9 +46,13 @@ const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
-const loadBuildAgentTool = lazyMod(
+const loadSelectAgentTool = lazyMod(
 	() =>
-		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+		require('./orchestration/select-agent.tool') as typeof import('./orchestration/select-agent.tool'),
+);
+const loadAgentBuilderTools = lazyMod(
+	() =>
+		require('./orchestration/agent-builder-tools') as typeof import('./orchestration/agent-builder-tools'),
 );
 const loadListAgentCapabilitiesTool = lazyMod(
 	() =>
@@ -102,7 +106,7 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
@@ -179,7 +183,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (workflow verification, Agent Builder).
+ * Creates orchestration-only tools (workflow verification, Agent building).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
@@ -205,9 +209,12 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 
 	if (context.domainContext?.builderDelegate) {
 		tools.push([
-			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
-			loadBuildAgentTool().createBuildAgentTool(context),
+			ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
+			loadSelectAgentTool().createSelectAgentTool(context),
 		]);
+		const builderTools = loadAgentBuilderTools().createAgentBuilderTools(context);
+		context.agentBuilderToolNames = new Set(builderTools.keys());
+		tools.push(...builderTools);
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
 			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),

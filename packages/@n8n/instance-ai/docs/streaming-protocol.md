@@ -214,10 +214,10 @@ The orchestrator has started a child or embedded specialist agent.
   "agentId": "agent-002",
   "payload": {
     "parentId": "agent-001",
-    "role": "agent-builder",
+    "role": "workflow-builder",
     "tools": [],
-    "kind": "agent-builder",
-    "title": "Building agent"
+    "kind": "builder",
+    "title": "Building workflow"
   }
 }
 ```
@@ -236,8 +236,8 @@ A child or embedded specialist agent has finished its work.
   "runId": "run_abc123",
   "agentId": "agent-002",
   "payload": {
-    "role": "agent-builder",
-    "result": "Updated the support agent"
+    "role": "workflow-builder",
+    "result": "Built the workflow"
   }
 }
 ```
@@ -482,18 +482,16 @@ The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
 
-### Agent Builder Child Agent
+### Agent Build
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "build-agent", args: {name: "Support agent", message: "Add a support task"}}}
-← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "agent-builder", tools: [], kind: "agent-builder"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", toolName: "read_config", args: {}}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", result: {...}}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", toolName: "write_config", args: {...}}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", result: {...}}}
-← agent-completed {runId: "r1", agentId: "a2", payload: {role: "agent-builder", result: "Updated the support agent"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {ok: true, agentId: "agent-123", configUpdated: true}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "select-agent", args: {name: "Support agent"}}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {ok: true, agentId: "agent-123", mode: "create"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", toolName: "read_config", args: {}}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: {...}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc3", toolName: "write_config", args: {...}}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc3", result: {ok: true, configMutated: true, agentId: "agent-123"}}}
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "The support agent is ready."}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
@@ -605,12 +603,9 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 credentials → [slack-bot, weather-api]
 ├── 🔧 build-workflow → wf-123
-├── 🔧 build-agent → agent-123
-│
-├── 🤖 Agent Builder
-│   ├── 🔧 read_config → agent-123
-│   ├── 🔧 write_config → agent-123
-│   └── ✅ "Updated the support agent"
+├── 🔧 select-agent → agent-123
+├── 🔧 read_config → agent-123
+├── 🔧 write_config → agent-123
 │
 └── 💬 "The support agent is ready."
 ```

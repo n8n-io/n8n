@@ -18,7 +18,7 @@ import { InstanceAiMemoryService } from './instance-ai-memory.service';
  *
  * The frontend mints the agent id before anything is saved, so two writers can
  * reach the same id: this path (the user configuring the artifact by hand) and
- * the chat's `build-agent` tool. Whichever inserts first may configure the row
+ * the chat's `select-agent` tool. Whichever inserts first may configure the row
  * before the other collides, so the loser has to converge on it rather than
  * fail — hence create-or-adopt rather than create.
  *

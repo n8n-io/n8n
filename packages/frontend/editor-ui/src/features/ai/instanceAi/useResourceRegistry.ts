@@ -128,6 +128,7 @@ const ARTIFACT_TOOLS = new Set([
 	'build-workflow',
 	'build-workflow-with-agent',
 	'build-agent',
+	'select-agent',
 	'submit-workflow',
 	'apply-workflow-credentials',
 	'workflows',
@@ -223,16 +224,21 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// build-agent: { agentId, agentName? } — produced. Follow-up calls may omit
-	// the name, so fall back to the existing entry before regressing to
-	// 'Untitled'. projectId is preserved from the agent-spawned entry by
-	// recordProduced's merge.
-	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
+	// select-agent (and the retired build-agent): { agentId, agentName?,
+	// projectId? } — produced. A call may omit the name, so fall back to the
+	// existing entry before regressing to 'Untitled'. recordProduced's merge
+	// keeps a projectId recorded earlier.
+	if (
+		(tc.toolName === 'select-agent' || tc.toolName === 'build-agent') &&
+		typeof result.agentId === 'string'
+	) {
 		const existing = col.produced.get(result.agentId);
+		const projectId = optionalString(result.projectId);
 		recordProduced(col, {
 			type: 'agent',
 			id: result.agentId,
 			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+			...(projectId !== undefined ? { projectId } : {}),
 		});
 	}
 

@@ -1,4 +1,4 @@
-import { createSkillLoadTool } from '@n8n/agents';
+import { createRuntimeSkillSource, createSkillLoadTool } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
+	withHostRuntimeSkills,
 } from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
@@ -601,3 +602,41 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
 	return loadInstanceAiRuntimeSkillSource();
 }
+
+describe('withHostRuntimeSkills', () => {
+	const bundled = createRuntimeSkillSource([
+		{
+			id: 'agent-builder',
+			name: 'agent-builder',
+			description: 'Builds agents',
+			instructions: 'Build.',
+		},
+	]);
+	const guide = {
+		id: 'agent-builder-guide',
+		name: 'Agent Builder Guide',
+		description: 'The build procedure',
+		instructions: 'Follow the procedure.',
+		parents: ['agent-builder'],
+	};
+
+	it('keeps a host skill whose parent is a bundled skill, as a reference of that parent', async () => {
+		const merged = withHostRuntimeSkills(bundled, [guide]);
+
+		expect(
+			merged.registry.skills.find((skill) => skill.id === 'agent-builder-guide'),
+		).toMatchObject({ parents: ['agent-builder'] });
+		await expect(merged.loadSkill('agent-builder-guide')).resolves.toMatchObject({
+			instructions: 'Follow the procedure.',
+		});
+		await expect(merged.loadSkill('agent-builder')).resolves.toMatchObject({
+			instructions: 'Build.',
+		});
+	});
+
+	it('changes the skills hash when host skills are added', () => {
+		const merged = withHostRuntimeSkills(bundled, [guide]);
+
+		expect(merged.registry.skillsHash).not.toBe(bundled.registry.skillsHash);
+	});
+});

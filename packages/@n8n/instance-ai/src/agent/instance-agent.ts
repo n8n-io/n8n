@@ -59,12 +59,12 @@ function resolveModalSessionModelId(
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
-function splitDeferredTools(tools: InstanceAiToolRegistry) {
+function splitDeferredTools(tools: InstanceAiToolRegistry, alsoLoaded: ReadonlySet<string>) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
 
 	for (const [name, tool] of tools) {
-		if (ALWAYS_LOADED_TOOL_NAMES.has(name)) {
+		if (ALWAYS_LOADED_TOOL_NAMES.has(name) || alsoLoaded.has(name)) {
 			coreTools.set(name, tool);
 		} else {
 			deferredTools.set(name, tool);
@@ -167,11 +167,6 @@ export async function createInstanceAgent(
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
-	if (orchestrationContext) {
-		const builderMcpTools = mergeToolRegistries(safeLocalMcpTools, safeMcpTools);
-		if (builderMcpTools.size > 0) orchestrationContext.mcpTools = builderMcpTools;
-	}
-
 	domainContext.connectedMcpServices = listConnectedMcpServices(mcpServers, safeMcpTools);
 	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
@@ -188,7 +183,13 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
-	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
+	// Agent Builder tools stay loaded: an agent build calls many of them in a
+	// row, and each deferred one would cost a search_tools + load_tool round.
+	const agentBuilderToolNames = orchestrationContext?.agentBuilderToolNames ?? new Set<string>();
+	const { coreTools, deferredTools } = splitDeferredTools(
+		tracedOrchestratorTools,
+		agentBuilderToolNames,
+	);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
@@ -208,7 +209,7 @@ export async function createInstanceAgent(
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
-			agentBuildingEnabled: allOrchestratorTools.has(ORCHESTRATION_TOOL_IDS.BUILD_AGENT),
+			agentBuildingEnabled: allOrchestratorTools.has(ORCHESTRATION_TOOL_IDS.SELECT_AGENT),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
@@ -238,7 +239,12 @@ export async function createInstanceAgent(
 		.checkpoint(options.checkpointStore ?? 'memory');
 	if (orchestrationContext?.toolMode) {
 		agent.toolModes(
-			createToolModesConfig(orchestrationContext.toolMode, new Set(runtimeTools.keys())),
+			createToolModesConfig(orchestrationContext.toolMode, new Set(runtimeTools.keys()), {
+				agentBuilderToolNames,
+				workspaceToolNames: new Set(
+					orchestrationContext.workspace?.getTools().map((tool) => tool.name) ?? [],
+				),
+			}),
 		);
 	}
 	if (mcpConnectionFailures.length > 0) {

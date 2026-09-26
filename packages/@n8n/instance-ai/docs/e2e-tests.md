@@ -212,7 +212,7 @@ The `TraceIndex` groups events by `agentRole` with independent cursors per role.
 ```
 orchestrator: [nodes, build-workflow, executions-suspend, executions-resume]
                 ^cursor=0
-agent-builder: [read_config, write_config]
+workflow-builder: [nodes, build-workflow]
                ^cursor=0
 ```
 

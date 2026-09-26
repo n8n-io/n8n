@@ -662,11 +662,17 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved `select-agent` (or retired `build-agent`) call, ordered by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
  */
+/** Tools whose outputs carry the targeted agentId; `build-agent` is the retired sub-agent tool. */
+const SEED_TARGETING_TOOL_NAMES = new Set<string>([
+	ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
+	'build-agent',
+]);
+
 export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 	const stamp = (m: Record<string, unknown>) => {
 		const raw = m.createdAt;
@@ -682,7 +688,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			if (!SEED_TARGETING_TOOL_NAMES.has(String(block.toolName))) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}

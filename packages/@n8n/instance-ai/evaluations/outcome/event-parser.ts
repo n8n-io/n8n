@@ -8,6 +8,7 @@ import {
 	DATA_TABLES_TOOL_ID,
 	DOMAIN_TOOL_IDS,
 	EVAL_CONFIG_TOOL_ID,
+	ORCHESTRATION_TOOL_IDS,
 } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
@@ -106,6 +107,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				// Config-eval rides the same tool-result signal (eval-config create).
 				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
+				captureSelectedAgentRef(toolName, result, artifactRefsByKey);
 				break;
 			}
 
@@ -156,7 +158,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
 
-				// The build-agent sub-agent announces the created agent via targetResource.
+				// Runs recorded before select-agent announced the agent via targetResource.
 				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
@@ -241,9 +243,23 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
- * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
- * signal (its tool result carries no id). Deduped by type+id.
+ * Capture an agent ref from a `select-agent` result, which carries the selected
+ * `agentId` for every create, adopt, and switch. Deduped by type+id.
+ */
+function captureSelectedAgentRef(
+	toolName: string,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (toolName !== ORCHESTRATION_TOOL_IDS.SELECT_AGENT) return;
+	const record = toResultRecord(result);
+	const id = record?.ok === true ? getString(record, 'agentId') : undefined;
+	if (id) out.set(`agent:${id}`, { type: 'agent', id });
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`, as the
+ * retired `build-agent` sub-agent announced it. Deduped by type+id.
  */
 function captureAgentRef(
 	targetResource: Record<string, unknown> | undefined,

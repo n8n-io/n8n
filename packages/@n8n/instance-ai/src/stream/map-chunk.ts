@@ -17,6 +17,9 @@ import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quot
 
 export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
+/** Agent Builder test-run tool: its approval suspensions come from the target Agent's tools. */
+const TARGET_AGENT_TEST_TOOL_NAME = 'call_agent';
+
 const questionItemSchema = z.object({
 	id: z.string(),
 	question: z.string(),
@@ -344,9 +347,10 @@ function mapSuspendedChunk(
 		suspendPayload.mcpConnectRequest,
 		mcpConnectRequestSchema,
 	);
-	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
-		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
-		: undefined;
+	const targetApprovalResult =
+		chunk.toolName === TARGET_AGENT_TEST_TOOL_NAME
+			? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+			: undefined;
 	const targetApproval = targetApprovalResult?.success
 		? {
 				toolName: targetApprovalResult.data.toolName,

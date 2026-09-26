@@ -3,7 +3,7 @@ import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-type
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
-	getLatestAgentBuilderTarget,
+	getLatestAgentSelection,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
@@ -284,52 +284,41 @@ describe('getLatestBuilderTarget', () => {
 	});
 });
 
-describe('getLatestAgentBuilderTarget', () => {
-	test('returns undefined for node with no children', () => {
-		expect(getLatestAgentBuilderTarget(makeAgentNode())).toBeUndefined();
+describe('getLatestAgentSelection', () => {
+	test('returns undefined for node with no tool calls', () => {
+		expect(getLatestAgentSelection(makeAgentNode())).toBeUndefined();
 	});
 
-	test('returns undefined when no agent-builder node is present', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-existing' },
+	test('ignores loading and failed selections', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({ toolName: 'select-agent', isLoading: true }),
+				makeToolCall({
+					toolCallId: 'tc-failed',
+					toolName: 'select-agent',
+					result: { ok: false, error: 'Unknown `agentRef`.' },
+				}),
+			],
 		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
+		expect(getLatestAgentSelection(node)).toBeUndefined();
 	});
 
-	test('returns undefined when targetResource.type is not agent', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			kind: 'agent-builder',
-			status: 'active',
-			targetResource: { type: 'workflow', id: 'wf-1' },
+	test('returns the agent of the most recent successful selection', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-a',
+					toolName: 'select-agent',
+					result: { ok: true, agentId: 'agent-a' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-b',
+					toolName: 'select-agent',
+					result: { ok: true, agentId: 'agent-b' },
+				}),
+			],
 		});
-		const parent = makeAgentNode({ children: [builder] });
-		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
-	});
-
-	test('returns agentId and targetAgentId when the most recent agent-builder child has an agent targetResource', () => {
-		const builderA = makeAgentNode({
-			agentId: 'agent-builder-a',
-			kind: 'agent-builder',
-			status: 'completed',
-			targetResource: { type: 'agent', id: 'agent-a', projectId: 'project-1' },
-		});
-		const builderB = makeAgentNode({
-			agentId: 'agent-builder-b',
-			kind: 'agent-builder',
-			status: 'active',
-			targetResource: { type: 'agent', id: 'agent-b', projectId: 'project-1' },
-		});
-		const parent = makeAgentNode({ children: [builderA, builderB] });
-		expect(getLatestAgentBuilderTarget(parent)).toEqual({
-			agentId: 'agent-builder-b',
-			targetAgentId: 'agent-b',
-		});
+		expect(getLatestAgentSelection(node)).toEqual({ agentId: 'agent-b', toolCallId: 'tc-b' });
 	});
 });
 

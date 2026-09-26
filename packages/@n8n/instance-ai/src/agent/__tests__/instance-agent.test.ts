@@ -724,16 +724,9 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		const agentTools = getDeferredTools();
-		const mcpContextTools = orchestrationContext.mcpTools as Map<
-			string,
-			ReturnType<typeof mockBuiltTool>
-		>;
 		expect(agentTools.shared_tool).toMatchObject({ marker: 'local-shared' });
 		expect(agentTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
-		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
-		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
-		expect(mcpContextTools.get('custom_plan')).toMatchObject({ marker: 'custom-plan' });
 	});
 
 	it('keeps native orchestrator-only tools when an MCP tool claims the same name', async () => {
@@ -793,13 +786,6 @@ describe('createInstanceAgent', () => {
 			parse_file: { name: 'parse_file' },
 		});
 		expect(getAttachedTools()['mcp-servers']).toMatchObject({ name: 'mcp-servers' });
-		expect(orchestrationContext.mcpTools).toEqual(
-			new Map([
-				['eval-config', expect.objectContaining({ name: 'eval-config' })],
-				['parse_file', expect.objectContaining({ name: 'parse_file' })],
-				['mcp-servers', expect.objectContaining({ name: 'mcp-servers' })],
-			]),
-		);
 	});
 
 	it('rejects normalized MCP collisions with active conditional native tools', async () => {

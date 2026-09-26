@@ -509,7 +509,7 @@ export function buildThreadArtifactsBlock(
 	const pendingAgentGuidance = resourceAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, call `select-agent` with a name (the new-agent path); do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
 
 	const currentGuidance = activeId

@@ -248,13 +248,11 @@ import {
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
 	threadProvenanceMetadata,
-	type BuilderUsageItem,
 	type WorkSummary,
 	type SuspendedRunState,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type ModelConfig,
-	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
@@ -832,11 +830,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
-					claimSubAgentUsage?: (
-						dedupeId: string,
-						usage: BuilderUsageItem[],
-						status: TraceStatus,
-					) => Promise<void>;
 				};
 			}>;
 			settingsService: {
@@ -1052,53 +1045,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			{ id: 'data-table-manager' },
 		]);
 
-		// The credit-metering hook is wired to the instance-AI thread/user in
-		// scope here, not whatever thread the sub-agent stream itself is keyed to.
-		const usageItem: BuilderUsageItem = {
-			type: 'llmTokens',
-			model: 'anthropic/claude-sonnet',
-			uncachedInput: 80,
-			cacheRead: 20,
-			cacheWrite: 0,
-			output: 20,
-		};
-		await environment.orchestrationContext.claimSubAgentUsage?.(
-			'dedupe-1',
-			[usageItem],
-			'completed',
-		);
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
-			fakeUser,
-			'thread-1',
-			'dedupe-1',
-			[usageItem],
-			'completed',
-		);
-
-		// An unexpected claim rejection must not reject the awaited hook, and is
-		// reported centrally, then logged, instead of breaking the builder flow.
-		const claimError = new Error('claim failed');
-		service.creditService.claimRunUsage.mockRejectedValueOnce(claimError);
-		await expect(
-			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
-		).resolves.toBeUndefined();
-		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(claimError, {
-			component: 'instance-ai-agent-builder-usage',
-			threadId: 'thread-1',
-			runId: 'run-1',
-			userId: fakeUser.id,
-			projectId: 'project-1',
-		});
-		expect(service.logger.warn).toHaveBeenCalledWith('Failed to claim agent-builder usage', {
-			threadId: 'thread-1',
-			runId: 'run-1',
-			dedupeId: 'dedupe-2',
-			error: 'claim failed',
-		});
-		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
-			service.logger.warn.mock.invocationCallOrder.at(-1)!,
-		);
-
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
 			.workspace as { ensureWorkspace: () => Promise<unknown> };
@@ -1186,11 +1132,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
-					claimSubAgentUsage?: (
-						dedupeId: string,
-						usage: BuilderUsageItem[],
-						status: TraceStatus,
-					) => Promise<void>;
 				};
 			}>;
 			settingsService: {

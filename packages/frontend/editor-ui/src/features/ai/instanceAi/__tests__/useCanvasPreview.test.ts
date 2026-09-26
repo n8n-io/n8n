@@ -830,19 +830,19 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-open agent preview', () => {
-		test('auto-opens preview when an agent-builder sub-agent spawns, before any build-agent result', async () => {
+		test('auto-opens preview when select-agent targets an agent, before any config write', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
 
 			ctx.thread.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								kind: 'agent-builder',
-								status: 'active',
-								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+						status: 'active',
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-select',
+								toolName: 'select-agent',
+								result: { ok: true, agentId: 'agent-7', projectId: 'p1' },
 							}),
 						],
 					}),
@@ -854,7 +854,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('does not auto-open on agent-builder spawn while hydrating historical messages', async () => {
+		test('does not auto-open on an agent selection while hydrating historical messages', async () => {
 			const ctx = setup();
 			ctx.thread.isHydratingThread = true;
 			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
@@ -862,12 +862,11 @@ describe('useCanvasPreview', () => {
 			ctx.thread.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								kind: 'agent-builder',
-								status: 'completed',
-								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-select',
+								toolName: 'select-agent',
+								result: { ok: true, agentId: 'agent-7', projectId: 'p1' },
 							}),
 						],
 					}),

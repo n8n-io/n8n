@@ -35,7 +35,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
-	BUILD_AGENT: 'build-agent',
+	SELECT_AGENT: 'select-agent',
 	LIST_AGENT_CAPABILITIES: 'list-agent-capabilities',
 	GET_SESSION: 'get-session',
 } as const;
@@ -85,11 +85,12 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// build-agent is the primary route for agent-anchored intents; deferring it
-	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
-	// on every agent build.
-	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
-	// Paired with build-agent: the model must be able to check supported agent
+	// select-agent opens every agent build; deferring it costs 2 LLM rounds
+	// (search_tools + load_tool) and a prompt-cache rewrite on every agent build.
+	// The Agent Builder tools the host supplies are always loaded too: see
+	// `agentBuilderToolNames` in `createInstanceAgent`.
+	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.SELECT_AGENT] : []),
+	// Paired with select-agent: the model must be able to check supported agent
 	// channels/capabilities while it chooses a workflow or Agent — before committing to a
 	// path — so an unsupported channel (e.g. WhatsApp) is explained rather than
 	// improvised as a workflow. Deferring it costs a search_tools + load_tool

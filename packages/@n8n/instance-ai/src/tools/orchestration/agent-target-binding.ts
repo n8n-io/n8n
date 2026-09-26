@@ -178,9 +178,13 @@ function idOf(message: Record<string, unknown>): string {
 	return typeof message.id === 'string' ? message.id : '';
 }
 
+/** Tools whose outputs carry the resolved target identity. `build-agent` is the
+ *  retired sub-agent tool, which seeded histories recorded before the move. */
+const TARGETING_TOOL_NAMES = new Set<string>([ORCHESTRATION_TOOL_IDS.SELECT_AGENT, 'build-agent']);
+
 /**
  * Binding metadata for a seeded thread, reconstructed from the seeded history
- * rather than invented. The model authored the refs its own `build-agent` calls
+ * rather than invented. The model authored the refs its own targeting calls
  * carry, and the LAST such call is what "most recently targeted" meant — array
  * order in the seed is an authoring artifact, not conversation order. An agent
  * the history never targeted keeps its display name as the ref and sorts first,
@@ -205,9 +209,9 @@ export function seedAgentBuilderTargetMetadata(
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
-			// `targetIdentity` stamps the resolved identity on every build-agent
-			// output, so the output is authoritative over the call's own input.
+			if (typeof block.toolName !== 'string' || !TARGETING_TOOL_NAMES.has(block.toolName)) continue;
+			// Every targeting output carries the resolved identity, so the output is
+			// authoritative over the call's own input.
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId !== 'string') continue;
 			if (typeof output.agentRef === 'string') refById.set(output.agentId, output.agentRef);

@@ -1282,88 +1282,71 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
-## Agent Builder Tool
+## Agent Builder Tools
 
-### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+Instance AI builds n8n Agents itself. The agents backend module supplies the
+builder tools and their guidance through `builderDelegate`; both are absent
+when the module is off. `createOrchestrationTools` registers them only when the
+host provides `builderDelegate`. They are always loaded, and among the tool
+modes only `agents` binds them.
 
-Delegates agent building to the agents-module builder chat
-(`AgentsBuilderService`) running as an embedded sub-agent: one conversational
-turn per call. Registered in `createOrchestrationTools` only when the host
-provides `builderDelegate` (agents module active). The builder's own prompt
-and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
-`call_agent` target-tool approvals) and
-lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
-the sub-agent session no longer excludes them. Forward publish/unpublish/
-activate/make-live intents to `build-agent`; never tell the user to open the
-agent editor and click Publish. The builder also inherits the orchestrator's
-validated, approval-wrapped MCP connector tools so it can use the same external
-context while designing the agent; connector tools that conflict with a native
-builder tool name are skipped. Builder session state is keyed to
-instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
-appears in the agents-module builder UI.
+### `select-agent` *(orchestration tool — requires the `agents` backend module)*
+
+Selects the target Agent that the builder tools act on, and persists it in
+thread metadata so follow-up turns keep editing it.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
-| `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
+| `agentRef` | string | no | Stable addressing key for an Agent in this conversation; a repeated key switches back to it |
+| `name` | string | no | Display name for a new Agent; also the key when `agentRef` is omitted |
+| `agentId` | string | no | Existing Agent id to adopt (checked for existence and read access before it binds) |
+| `createNew` | boolean | no | Create an additional Agent while one is already bound |
 
-**Returns**: `{ ok: true, builderReply, configUpdated, agentId,
-agentName?, requiredArtifacts? }` on success, or `{ ok: false, error,
-configUpdated?, agentId?, agentName?, requiredArtifacts? }` on failure
-(`agentId`/`agentName` identify the targeted agent
-once a builder turn was dispatched; precondition failures before any turn
-omit them). `configUpdated` is optional: it's included (reporting mutations
-from passes that already ran) once a builder turn has actually been
-dispatched — mid-turn failures and resume failures that still carry a prior
-checkpoint ref — but omitted for precondition failures before any turn
-starts (agents module not configured, missing `name`/`agentId`, no project
-context to bind `agentId`, or a resume whose suspend payload has no
-checkpoint ref to carry).
+**Returns**: `{ ok: true, agentId, agentRef?, agentName?, projectId, mode,
+previewPath }` or `{ ok: false, error }`. `mode: "create"` marks a new Agent
+with no config yet (an initial build). A fresh key while an Agent is bound
+continues that Agent (`mode: "continued"`) unless `createNew` is set, so naming
+an Agent never strands the one the user has open behind a duplicate.
 
-`requiredArtifacts` contains structured workflows or data tables that the
-embedded builder cannot create. Build an `agent-tool` workflow and pass it back
-through `workflowContext`. Build an `agent-entrypoint` workflow around the
-returned Agent ID and never attach it to the Agent; this is used for unsupported
-chat channels whose trigger and reply nodes live in a workflow. Requirements
-reported before an interactive suspension are carried across its checkpoint.
+### Builder tools *(host-supplied — requires the `agents` backend module)*
 
-**Interactive requests:** when the builder suspends on one of its interactive
-tools (batched questions, a credential picker, channel setup, or a standard SDK
-approval requested by a target-agent test run), this tool
-cascades the suspension through its own suspend/resume so it renders as a
-chat card directly in the assistant conversation — no manual relaying, and the
-suspension survives a process restart. On resume, the tool takes the target
-agent from the checkpoint ref carried in the suspend payload (falling back
-to the persisted active binding for older checkpoints), re-derives the
-builder's open suspension from persistence, and verifies they match the
-suspension it originally cascaded before routing the answer back; a stale
-or superseded suspension fails the call instead of silently resuming the
-wrong one.
+`read_config`, `write_config`, `patch_config`, `build_custom_tool`,
+`create_skills`, `list_skills`, `read_skill`, `update_skill`, `create_tasks`,
+`list_tasks`, `update_task`, `list_workflows`, `list_integration_types`,
+`list_sub_agents`, `get_resource_locator_options`, `resolve_llm`,
+`resolve_integration`, `search_mcp_servers`, `verify_mcp_server`,
+`search_nodes`, `get_node_types`, `list_credentials`, `call_agent`,
+`publish_agent`, `unpublish_agent`, the interactive `ask_questions`,
+`ask_credential`, `ask_embedding_credential`, `configure_channel`,
+`finish_setup`, and `write_todos`.
 
-**Targeting:** the first call must pass `name` (new agent) or `agentId`
-(existing agent); the active target is persisted to thread metadata so
-follow-up calls keep editing the same agent without repeating them. The
-target is rebindable: a `name` matching an agent already targeted this
-conversation switches back to it (tracked in a per-thread registry), while
-an unmatched name creates another agent and switches to it (the same name
-as the active target just continues it), a different `agentId` switches to
-that agent (persisted only once the builder turn settles, so a bad id
-cannot clobber the existing binding), and `agentId` wins when both are
-given. Prefer switching by the `agentId` returned from earlier calls; the
-name lookup is the fallback when the id is unknown.
+The agents module builds each tool for one Agent. The adapter keeps the
+schemas of a schema-only build and routes every call to the tool built for the
+target that `select-agent` bound, so the tools follow a switch within a run
+and survive a suspend/resume across processes. Every call needs the
+`agent:update` project scope. Without a selected Agent, a call returns
+`{ ok: false, errors }` that tells the model to call `select-agent`.
+
+Interactive builder tools and `call_agent` approvals suspend the orchestrator
+run directly, so they render as chat cards and survive a process restart like
+any other suspended tool. A successful config mutation returns
+`configMutated: true` with the `agentId`; the frontend refreshes the Agent
+artifact from it, and the orchestrator refreshes the bound Agent name and
+emits an `agent-snapshot` trace event.
+
+The builder guidance is not in the system prompt. The host serves it as
+runtime skills (`agent-builder-guide` and the `agent-builder-*` skills), each
+with `agent-builder` as its parent, so loading `agent-builder` offers them.
 
 ### `agents` *(domain tool — requires the `agents` backend module)*
 
 Read-only listing of the project's n8n Agent artifacts. One action, `list`:
 returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
-recently updated first. Registered alongside `build-agent` (agents module
+recently updated first. Registered alongside `select-agent` (agents module
 active + project-bound conversation, `agent:read` scope enforced in the
 adapter). Use it to answer questions about existing agents and to find the
-`agentId` for `build-agent` when editing an agent not built in this
-conversation. Creation and editing stay on `build-agent`.
+`agentId` for `select-agent` when editing an agent not built in this
+conversation.
 
 ## MCP Registry Tool
 
@@ -1460,9 +1443,8 @@ full-definition replacements. It receives the full six-action `nodes` tool.
 External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 
-The embedded Agent Builder uses the agents-module builder's own tool surface
-through `build-agent`. It does not receive the Instance AI domain registry. It
-inherits the orchestrator's safe MCP connector tools.
+When the agents module is active, the orchestrator also receives
+`select-agent` and the host-supplied Agent Builder tools.
 
 ---
 

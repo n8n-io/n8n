@@ -3,7 +3,7 @@ name: n8n:create-agent-builder-eval
 description: >-
   Authors and calibrates Instance AI evaluations that build standalone n8n
   Agents through Agent Builder. Use when a change under
-  packages/cli/src/modules/agents affects build-agent routing, Agent setup,
+  packages/cli/src/modules/agents affects select-agent routing, Agent setup,
   model or credential selection, tools, MCP servers, integrations, skills,
   tasks, testing, or user-facing build responses. Requires LangTracer access
   before authoring so each finished case can be published.
@@ -156,7 +156,7 @@ credential such as `EVAL_OPENAI_API_KEY`. A build-only case does not need one.
 ## Calibrate and publish
 
 1. Run the case once with `--concurrency 1`.
-2. Confirm that Instance AI called `build-agent`.
+2. Confirm that Instance AI called `select-agent` and the Agent Builder tools.
 3. Confirm that the expected Agent artifact was captured.
 4. Classify each red as a product gap, harness limitation, or non-determinism.
 5. Use `--iterations 5` before adding a case to a gating tier.

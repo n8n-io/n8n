@@ -462,7 +462,7 @@ Two constraints that bite: an artifact `id` must be ≥8 characters (the id rema
 refuses shorter ones), and a seeded `build-workflow` tool call's
 `output.workflowId` must match the seeded workflow's `id` — otherwise the remap
 separates them and the agent can't find the workflow it should act on. The same
-applies to a seeded `build-agent` result's `output.agentId`.
+applies to a seeded `select-agent` result's `output.agentId`.
 
 The seed sits in the case body, not a sibling file, so it travels with the case
 whether it comes off disk, out of a LangTracer suite, or from a dispatched case
@@ -533,7 +533,7 @@ live turn:
 it on a dev instance, fetch both, scrub, paste. Things worth knowing:
 
 - **The thread is bound to the seeded agent**, exactly as the conversation that
-  built it would have left it, so the live turn's `build-agent` call continues
+  built it would have left it, so the live turn's builder tool calls continue
   that agent directly. Without the binding the call is rejected (`Unknown
   agentRef`) and the model recovers from the agent id in its seeded history —
   measured at 3/3 runs recovering correctly, but it burns a turn, and the
@@ -736,11 +736,8 @@ Two limits to know before you write a cost expectation:
 - It needs `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test.
   Without it the blocks render `(no run debug captured)` and the expectation is
   unjudgeable — it fails or passes at random.
-- The capture hooks **only the orchestrator's own stream**. A workflow build
-  runs inside that loop, so a workflow case's numbers are its real cost. A
-  delegated **Agent** build (the `build-agent` tool) runs on a separate stream
-  with no hooks, so its tokens are missing from every block. Don't write a cost
-  expectation on an `data/agents/` case.
+- The capture hooks **only the orchestrator's own stream**. Workflow builds and
+  Agent builds both run inside that loop, so their numbers are their real cost.
 
 ### `requiresMemoryCompaction` — grade the post-compaction window
 

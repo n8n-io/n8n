@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import {
 	buildTimelineBlocks,
+	extractAgentBuildArtifacts,
 	extractArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
@@ -34,6 +35,51 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 		...overrides,
 	};
 }
+
+describe('extractAgentBuildArtifacts', () => {
+	test('returns one card per agent at its latest selection or config change', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'select-agent',
+					result: { ok: true, agentId: 'agent-1', agentName: 'Support', projectId: 'p1' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-write',
+					toolName: 'write_config',
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
+					completedAt: '2026-01-01T00:00:00.000Z',
+				}),
+				makeToolCall({ toolCallId: 'tc-read', toolName: 'read_config', result: { ok: true } }),
+			],
+		});
+
+		expect(extractAgentBuildArtifacts(node)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				name: 'Support',
+				projectId: 'p1',
+				completedAt: '2026-01-01T00:00:00.000Z',
+				toolCallId: 'tc-write',
+			},
+		]);
+	});
+
+	test('ignores failed selections', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'select-agent',
+					result: { ok: false, agentId: 'agent-1', error: 'Unknown agentRef' },
+				}),
+			],
+		});
+
+		expect(extractAgentBuildArtifacts(node)).toEqual([]);
+	});
+});
 
 describe('extractArtifacts', () => {
 	test('returns empty array for non-completed node', () => {

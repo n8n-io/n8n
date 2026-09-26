@@ -37,8 +37,8 @@ import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
-import { AgentsBuilderService } from './builder/agents-builder.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import {
 	draftChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
@@ -52,7 +52,7 @@ export class AgentChatController {
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
-		private readonly agentsBuilderService: AgentsBuilderService,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
@@ -373,10 +373,7 @@ export class AgentChatController {
 			agentId,
 			userId: req.user.id,
 		});
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
-			agentId,
-			threadId,
-		);
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 		if (
 			checkpoint &&
 			(thread?.accessScope === 'project'
@@ -424,7 +421,7 @@ export class AgentChatController {
 			throw new NotFoundError('Session not found');
 		}
 		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
 			agentId,
 			chatThreadId(agentId, req.user.id),
 		);

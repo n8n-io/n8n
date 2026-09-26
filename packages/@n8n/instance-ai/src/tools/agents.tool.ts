@@ -1,8 +1,9 @@
 /**
  * agents — read-only listing of the n8n Agent artifacts in the conversation's
  * project. Lets the orchestrator answer "what agents do I have?" and find an
- * `agentId` to pass to `build-agent` when editing an agent not built in this
- * conversation. Creation and editing stay on `build-agent`.
+ * `agentId` to pass to `select-agent` when editing an agent not built in this
+ * conversation. Creation and editing go through `select-agent` and the Agent
+ * Builder tools.
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
@@ -35,9 +36,9 @@ export function createAgentsTool(context: OrchestrationContext) {
 		.description(
 			'List the n8n Agent artifacts in this project — id, name, published state, and last ' +
 				'update, most recently updated first. Use it to answer questions about existing ' +
-				'agents and to find the `agentId` to pass to `build-agent` when the user wants to ' +
+				'agents and to find the `agentId` to pass to `select-agent` when the user wants to ' +
 				'edit an agent that was not built in this conversation. Read-only; agents are ' +
-				'created and edited via `build-agent`.',
+				'created and edited via `select-agent` and the Agent Builder tools.',
 		)
 		.input(agentsInputSchema)
 		.output(agentsOutputSchema)

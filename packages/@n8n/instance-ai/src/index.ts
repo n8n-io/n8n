@@ -197,16 +197,6 @@ export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error
 export { FolderResolutionError } from './errors/folder-resolution.error';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
-export {
-	builderRequiredArtifactSchema,
-	builderRequiredArtifactsSchema,
-	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
-	reportRequiredArtifactInputSchema,
-} from './tools/orchestration/builder-required-artifact';
-export type {
-	BuilderRequiredArtifact,
-	ReportRequiredArtifactInput,
-} from './tools/orchestration/builder-required-artifact';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
@@ -313,6 +303,9 @@ export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsM
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
 export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
+export const withHostRuntimeSkills: typeof RuntimeSkillsMod.withHostRuntimeSkills = lazyFunction(
+	() => loadRuntimeSkills().withHostRuntimeSkills,
+);
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
 );
@@ -719,10 +712,7 @@ export type {
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
 	AgentCapabilitiesSummary,
-	BuilderDelegateSession,
-	BuilderTurnStream,
-	BuilderOpenSuspension,
-	SessionWorkflowRef,
+	AgentBuilderToolsOptions,
 	InstanceAiConversationHistoryReader,
 	ConversationHistoryMatchSource,
 	ConversationHistoryExcerpt,

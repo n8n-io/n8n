@@ -1175,7 +1175,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		// Same for a restored agent, without which a live turn that never calls
-		// `build-agent` would grade against no agent at all — so a seeded agent alone
+		// `select-agent` would grade against no agent at all — so a seeded agent alone
 		// marks the case agent-anchored.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),

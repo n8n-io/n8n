@@ -67,5 +67,5 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
 - **Run lifecycle**: `run-start` is first; `run-finish` ends orchestrator processing and carries its status. Detached background-agent events for the same `runId` can follow.
 - **Multi-workflow requests**: the orchestrator builds one workflow at a time with the `workflow-builder` skill. It builds dependencies first. The thread task checklist shows only the build and verify rows of direct workflow builds.
-- **Specialized background agents**: the eval-setup agent receives native domain tools only, no MCP, and no recursive delegation. It uses dedicated persistence for checkpoint and suspension state. The embedded Agent Builder inherits the orchestrator's safe MCP tools.
+- **Specialized background agents**: the eval-setup agent receives native domain tools only, no MCP, and no recursive delegation. It uses dedicated persistence for checkpoint and suspension state.
 - **Memory**: observational memory is thread-scoped and working memory is disabled

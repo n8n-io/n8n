@@ -7,7 +7,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
-	getLatestAgentBuilderTarget,
+	getLatestAgentSelection,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -369,30 +369,29 @@ export function useCanvasPreview({
 		{ flush: 'sync' },
 	);
 
-	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
-	// Mirrors the workflow-builder spawn-open above. The builder node id is
-	// stable per target agent (`agent-builder:<id>`), so this opens once per
-	// target per thread — later spawns for the same agent intentionally don't
-	// re-yank the view. Config refreshes are driven by the agents event bus.
+	// --- Auto-open canvas when select-agent targets an agent ---
+	// Mirrors the workflow-builder spawn-open above: the agent opens as soon as
+	// a build selects it, before the first config write. Config refreshes are
+	// driven by the agents event bus.
 
-	const latestAgentBuilderTarget = computed(() => {
+	const latestAgentSelection = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const target = getLatestAgentBuilderTarget(msg.agentTree);
-				if (target) return target;
+				const selection = getLatestAgentSelection(msg.agentTree);
+				if (selection) return selection;
 			}
 		}
 		return null;
 	});
 
 	watch(
-		() => latestAgentBuilderTarget.value?.agentId,
-		(agentId) => {
-			if (!agentId || !latestAgentBuilderTarget.value) return;
+		() => latestAgentSelection.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAgentSelection.value) return;
 			if (thread.isHydratingThread) return;
 
-			showAgentArtifact(latestAgentBuilderTarget.value.targetAgentId);
+			showAgentArtifact(latestAgentSelection.value.agentId);
 		},
 		{ flush: 'sync' },
 	);

@@ -56,6 +56,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	loadInstanceAiPromptSkills,
+	withHostRuntimeSkills,
 	resolvePromptProfile,
 	resolveStartingToolMode,
 	describePromptProfile,
@@ -2522,7 +2523,13 @@ export class InstanceAiService {
 			instanceContextEnabled,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
-		const selectedRuntimeSkills = selectedSkills.source;
+		// The agents module supplies the Agent Builder guidance when it is active.
+		const selectedRuntimeSkills = context.builderDelegate
+			? withHostRuntimeSkills(
+					selectedSkills.source,
+					await context.builderDelegate.getRuntimeSkills(),
+				)
+			: selectedSkills.source;
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
@@ -2619,35 +2626,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, redactTelemetryProperties(properties));
-			},
-			// Aggregate on the instance-AI thread (not the `ia-builder:` session
-			// thread) so the credit service's per-thread display total and FE push
-			// attribute builder tokens to the conversation the user sees. The tool
-			// awaits this before returning/cascading a terminal segment outcome, so
-			// a billing failure must never propagate — best-effort by contract.
-			claimSubAgentUsage: async (dedupeId, usage, status) => {
-				try {
-					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
-				} catch (error) {
-					// claimRunUsage() handles ordinary claim failures (network, retries)
-					// internally and only throws for exceptional contract violations
-					// (e.g. a negative quota) — those must still reach centralized
-					// Instance AI error reporting even though billing stays best-effort.
-					this.instanceAiErrorReporter.report(error, {
-						component: 'instance-ai-agent-builder-usage',
-						threadId,
-						runId,
-						userId: user.id,
-						...(boundProjectId ? { projectId: boundProjectId } : {}),
-						...(messageGroupId ? { messageGroupId } : {}),
-					});
-					this.logger.warn('Failed to claim agent-builder usage', {
-						threadId,
-						runId,
-						dedupeId,
-						error: getErrorMessage(error),
-					});
-				}
 			},
 			abortSignal,
 			taskStorage,
@@ -3326,9 +3304,6 @@ export class InstanceAiService {
 			setTracePromptVersion(tracing, promptVersion);
 			setTraceModelId(tracing, modelId);
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
-			// Make the current user message available since memory history only
-			// returns previously-saved messages.
-			orchestrationContext.currentUserMessage = message;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
 			context.workflowBuildContext = {

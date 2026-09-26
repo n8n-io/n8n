@@ -21,7 +21,7 @@ interface SystemPromptOptions {
 	preferenceSavingEnabled?: boolean;
 	/** Setup panel v2 flag: `workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
-	/** `build-agent` is registered, so a new automation can be a workflow or an n8n Agent. */
+	/** `select-agent` is registered, so a new automation can be a workflow or an n8n Agent. */
 	agentBuildingEnabled?: boolean;
 }
 
@@ -103,7 +103,7 @@ If the user asks to create in, move to, or use a credential from another project
  * Agents are deliberately absent. `agents` is registered only when the builder
  * delegate is present, so naming it here would point at a tool the model cannot call
  * on instances without the agents module — and it is list-only regardless
- * (`build-agent` owns create and edit). The existing-agent path is already claimed
+ * (`select-agent` and the Agent Builder tools own create and edit). The existing-agent path is already claimed
  * by the Workflow or Agent section and the agent-builder skill. Data tables are absent for the
  * same reason: `data-table-manager` claims that intent, and this section is only
  * for intents no skill owns.
@@ -126,7 +126,7 @@ Changing a workflow's nodes, parameters, or name is a build, but match the exist
 /**
  * Always-on rather than a skill: the model must choose the artifact before it
  * knows which builder skill to load, so a catalog entry is read too late or not
- * at all. Rendered only when `build-agent` is registered; without it every build
+ * at all. Rendered only when `select-agent` is registered; without it every build
  * is a workflow and there is nothing to choose. Instance-wide, so the two
  * variants never fragment the prompt cache within one instance.
  *
@@ -234,10 +234,10 @@ ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 - Be concise. No emojis unless the user asks for them.
 - Reply in the language of the user's latest request unless they ask for another. Judge it from the request text, not from application context such as <thread-context>. Names, locations, tool results, skill instructions, and system follow-ups do not change it.
 - Use that language from the first word of every user-visible message: narration between tool calls, questions, approval summaries, and the final reply.
-- The latest non-empty \`answers[].customText\` from \`ask-user\` or \`build-agent\` counts as the user's latest request and can switch the language. Option selections and approvals without free text keep the current language.
+- The latest non-empty \`answers[].customText\` from \`ask-user\` or \`ask_questions\` counts as the user's latest request and can switch the language. Option selections and approvals without free text keep the current language.
 - A language set for a target agent applies to that agent's configuration, not to your replies: for an English request to build an Italian-speaking agent, reply in English and configure the agent to reply in Italian.
 - For a greeting or an open-ended opener, greet briefly and offer concrete help, including building an agent and building a workflow.
-- Use \`ask-user\`, not plain text, when you are stuck, need clarification, or need information only a human has. Do not retry a failing approach more than twice; ask instead. Before the first \`build-agent\` or \`build-workflow\` call, load \`agent-builder\` or \`workflow-builder\`; they say which questions you may ask before the build.
+- Use \`ask-user\`, not plain text, when you are stuck, need clarification, or need information only a human has. Do not retry a failing approach more than twice; ask instead. Before the first \`select-agent\` or \`build-workflow\` call, load \`agent-builder\` or \`workflow-builder\`; they say which questions you may ask before the build.
 - On a normal user-visible turn, write one short sentence about what you are about to do before your first tool call. Frame it around the user's goal, not the tool. Background follow-up turns follow their own instructions.
 - Never open with an empty message or a \`[Calling tools: ...]\` placeholder.
 - End every tool call sequence with a brief text summary; the user cannot see raw tool output.

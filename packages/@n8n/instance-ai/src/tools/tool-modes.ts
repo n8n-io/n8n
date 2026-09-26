@@ -19,6 +19,9 @@ const WEB_TOOLS = [DOMAIN_TOOL_IDS.RESEARCH, 'web-search', 'fetch-url'] as const
  * that no mode names is core, and stays bound in all modes: `ask-user`,
  * `parse-file`, `activity`, and `save_user_preference`. Only always-loaded
  * tools belong here: deferred tools stay behind `search_tools` in every mode.
+ *
+ * The `agents` mode binds only Agent tools besides the core ones. Every other
+ * mode binds the sandbox workspace tools.
  */
 export const INSTANCE_AI_TOOL_MODES = {
 	general: {
@@ -65,16 +68,12 @@ export const INSTANCE_AI_TOOL_MODES = {
 	},
 	agents: {
 		description:
-			'Create, edit, or inspect n8n Agents, or check which chat channels and capabilities Agents support.',
+			'Create, edit, test, or publish n8n Agents, or check which chat channels and capabilities Agents support.',
+		// The Agent Builder tools that the host supplies join this mode at runtime.
 		tools: [
-			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+			ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
 			DOMAIN_TOOL_IDS.AGENTS,
 			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
-			DOMAIN_TOOL_IDS.WORKFLOWS,
-			DOMAIN_TOOL_IDS.CREDENTIALS,
-			DOMAIN_TOOL_IDS.MCP_SERVERS,
-			DOMAIN_TOOL_IDS.N8N_DOCS,
-			...WEB_TOOLS,
 		],
 	},
 } as const satisfies Record<InstanceAiToolMode, InstanceAiToolModeDefinition>;
@@ -109,17 +108,37 @@ export function resolveStartingToolMode(input: {
 	return DEFAULT_TOOL_MODE;
 }
 
+/**
+ * Reads large tool results that the workspace offloaded, so every mode keeps
+ * it: any tool result can be offloaded.
+ */
+const WORKSPACE_READ_TOOL_RESULT = 'workspace_read_tool_result';
+
+export interface RuntimeModeTools {
+	/** Host-supplied Agent Builder tools; only the `agents` mode binds them. */
+	agentBuilderToolNames?: ReadonlySet<string>;
+	/** Sandbox workspace tools; every mode except `agents` binds them. */
+	workspaceToolNames?: ReadonlySet<string>;
+}
+
 /** Builds the SDK config, and drops tools that this run does not register. */
 export function createToolModesConfig(
 	initialMode: InstanceAiToolMode,
 	registeredToolNames: ReadonlySet<string>,
+	{ agentBuilderToolNames = new Set(), workspaceToolNames = new Set() }: RuntimeModeTools = {},
 ): ToolModesConfig {
+	const scopedWorkspaceTools = [...workspaceToolNames].filter(
+		(tool) => tool !== WORKSPACE_READ_TOOL_RESULT,
+	);
 	const modes: ToolModesConfig['modes'] = {};
 	for (const [name, mode] of Object.entries(INSTANCE_AI_TOOL_MODES)) {
-		modes[name] = {
-			description: mode.description,
-			tools: mode.tools.filter((tool) => registeredToolNames.has(tool)),
-		};
+		const tools: string[] = mode.tools.filter((tool) => registeredToolNames.has(tool));
+		if (name === 'agents') {
+			tools.push(...[...agentBuilderToolNames].filter((tool) => registeredToolNames.has(tool)));
+		} else {
+			tools.push(...scopedWorkspaceTools);
+		}
+		modes[name] = { description: mode.description, tools };
 	}
 	return { modes, initialMode };
 }

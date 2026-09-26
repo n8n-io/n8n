@@ -1,143 +1,126 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent. Then call build-agent with the user's
-  request after any required orchestrator-owned prerequisites are ready. Agent
-  Builder owns Agent setup and implementation questions. Governs prerequisite
-  creation, faithful handoff, targeting, testing, and publishing. Use directly
-  for routine Agent follow-ups.
+  Load immediately after an Agent intent, and for every follow-up on an Agent
+  that the conversation targets. Governs how you build, edit, test, and publish
+  n8n Agents yourself with select-agent and the Agent Builder tools, including
+  targeting, prerequisite workflows and data tables, and setup questions.
 shared_references:
   - credential-setup-with-computer-use
 recommended_tools:
-  - build-agent
+  - select-agent
+  - read_config
+  - write_config
+  - patch_config
   - build-workflow
   - data-tables
 ---
 
 # Agent Builder
 
+You build n8n Agents yourself. `select-agent` chooses the Agent to work on, and
+the Agent Builder tools (`read_config`, `write_config`, `patch_config`,
+`create_skills`, `create_tasks`, `resolve_llm`, `ask_credential`,
+`configure_channel`, `finish_setup`, `call_agent`, `publish_agent`, and the
+others) act on that Agent.
+
+Before your first Agent Builder tool call in a conversation, load
+`agent-builder-guide`. It is the full build procedure: config rules, the
+initial build, interactive tools, testing, and publishing. Load the other
+references it names when a step needs them.
+
 ## Routing
 
 Use this skill when a request calls for an n8n Agent, or when the conversation
-already targets an Agent and the user is continuing that build. Use
-`build-agent` only for Agent artifacts.
-
-For a new Agent request, make the first `build-agent` call with a faithful copy
-of the request as soon as any required orchestrator-owned prerequisites are
-ready. Before that call, use `ask-user` only to choose a supported channel or to
-define a workflow or data-table prerequisite that the orchestrator must create.
-Only ask about the channel after `list-agent-capabilities` shows that the
-requested channel is unsupported. Do not collect model, service, tool, topic,
-schedule, credential, or other Agent implementation choices first. The embedded
-Agent Builder asks those questions through the `build-agent` call.
+already targets an Agent and the user is continuing that build. Use the Agent
+Builder tools only for Agent artifacts. On the `workflow-builder` path, never
+call them — not to inspect nodes, list workflows, or supply a tool the
+workspace lacks.
 
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
-request — target that Agent and call `build-agent`. Do not reroute to
-`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+request — target that Agent and edit it. Do not reroute to
+`workflow-builder`, and do not build a workflow to satisfy a capability change
 on the Agent.
+
+For a new Agent request, start the build as soon as any required prerequisites
+are ready. Before the build, use `ask-user` only to choose a supported channel
+or to define a prerequisite workflow or data table. Only ask about the channel
+after `list-agent-capabilities` shows that the requested channel is
+unsupported. Model, service, tool, topic, schedule, credential, and other Agent
+implementation choices follow `agent-builder-guide`: the initial build uses
+stated assumptions and collects the open choices in one trailing
+`finish_setup` call.
+
+During an Agent build, ask with the builder's interactive tools
+(`ask_questions`, `ask_credential`, `configure_channel`, `finish_setup`), not
+with `ask-user`.
 
 ## Supported channels & unsupported requests
 
 `list-agent-capabilities` returns every chat channel n8n Agents support, each
 with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
-authoritative source the orchestrator can read before building; a channel
-absent from its result is unsupported for agents.
+authoritative source; a channel absent from its result is unsupported for
+agents.
 
 When the user asks for a channel that is not supported (e.g. WhatsApp,
-Microsoft Teams), do not forward it to the builder as a channel to configure
-and do not fake it by adding the platform as an agent tool. Explain the channel
-is unsupported for agents, offer the supported alternatives, and ask which to
-use — or whether the user explicitly wants that unsupported platform as the
-conversation surface, in which case offer the `agent-entrypoint` workflow
-bridge described in Prerequisites (it connects the platform trigger to Message
-an Agent; it is not a channel config). Only forward a channel to `build-agent`
-once it is a supported type or the user has chosen an alternative.
+Microsoft Teams), do not configure it and do not fake it by adding the platform
+as an Agent tool. Explain the channel is unsupported for agents, offer the
+supported alternatives, and ask which to use — or whether the user explicitly
+wants that unsupported platform as the conversation surface. In that case,
+build an `agent-entrypoint` workflow as described in Prerequisites (it connects
+the platform trigger to Message an Agent; it is not a channel config).
 
-## Faithful handoff
+## Targeting across turns
 
-Treat `message` as a faithful handoff of the user's request, not an Agent build
-specification authored by you. Forward the user's wording as close to verbatim
-as possible. Include only:
+`select-agent` persists the target in the thread. The builder tools keep
+acting on it in later turns until you select another Agent. Address Agents in
+this conversation with `agentRef`, a short stable key similar to a workflow
+`filePath`.
 
-- Requirements, constraints, and implementation choices the user explicitly
-  stated.
-- Explicit answers or decisions from earlier turns that are necessary for the
-  current request.
-- Prerequisite workflows or data tables you created for this Agent.
+- For a new Agent, call `select-agent` with a fresh `agentRef` and `name`.
+  `mode: "create"` in the result means an initial build.
+- To switch back to an Agent from this conversation, call `select-agent` with
+  its `agentRef`.
+- To build an additional Agent, pass `createNew: true` with a different
+  `agentRef` and `name`.
+- To edit an Agent not built in this conversation, pass its `agentId` once
+  (find it with `agents`), optionally with an `agentRef`, then prefer the
+  returned `agentRef`.
+- Do not call `select-agent` again for follow-ups on the current Agent.
 
-The host appends an <aia-handoff> block with the current user text and pending
-ask-user answers that have not yet reached Agent Builder. Treat those as the
-user's decisions for this build call, not as implementation you invented.
-Still copy user-stated model, channel, and credential choices into message; do not omit
-them because the host also injected them.
+Naming or renaming the current Agent never silently creates another one.
+Rename an Agent through its config.
 
-Never infer, invent, expand, recommend, or prescribe implementation details the
-user did not request, and never present your assumptions as user requirements.
-In particular, do not choose or tell the builder which model, instructions,
-tools, tool types, integrations, channels, MCP servers, workflows, skills,
-tasks, memory, credentials, triggers, schedules, approvals, or test strategy to
-use.
-
-Do not translate an outcome or named service into a specific implementation.
-For example, forward "a Slack agent that says hello to me" without turning it
-into a request for a Slack node tool. Preserve unspecified and ambiguous
-implementation details so the builder can resolve them with its own guidance
-and interactive tools.
+Use the returned `previewPath` for markdown Preview links:
+`[Preview](<previewPath>)`. Do not invent absolute URLs.
 
 ## Prerequisites
 
-Before the first `build-agent` call, create prerequisites the builder cannot
-create when they must be attached to or used by the Agent:
+The Agent Builder tools cannot create workflows or data tables. You can, so
+never ask the user to create them manually. Switch to the `build` mode for a
+workflow or the `data` mode for a data table, then switch back to `agents`.
 
 - Create a workflow tool only when one Agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow to be
   reusable, manually callable, or usable outside the Agent. Follow
-  `workflow-builder`, then pass the built workflow in `workflowContext`.
+  `workflow-builder`. The workflow must start with the trigger that
+  `list_workflows` requires. Then attach it to the Agent config as a
+  `workflow` tool.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables via `data-tables`. The builder cannot create
-  tables.
+  and create the required tables via `data-tables` before you write the Agent
+  instructions or tools that use them.
+- For an unsupported chat channel that the user wants as the conversation
+  surface, build an `agent-entrypoint` workflow after the Agent exists. It
+  connects the platform trigger to Message an Agent, maps the incoming message,
+  uses a stable platform conversation or sender identifier as the custom
+  session key, and sends the Agent's `text` response back through the
+  platform. This workflow invokes the Agent: never attach it to the Agent as a
+  tool. Native Agent channels do not need this wrapper.
 
-List prerequisite names and schemas in `message`. Let the builder gather the
-remaining Agent-specific requirements, including model, credentials,
-integrations, and direct tools.
-
-`build-agent` can return structured `requiredArtifacts` when the embedded
-builder discovers something Instance AI must create:
-
-- For a workflow with `relationship: "agent-tool"`, build it, pass it in
-  `workflowContext`, and call `build-agent` again so the builder can attach it.
-- For a workflow with `relationship: "agent-entrypoint"`, build it after the
-  Agent exists, using the returned `agentId`. This workflow invokes the Agent;
-  never pass it in `workflowContext`, never attach it to the Agent as a tool,
-  and do not call `build-agent` again solely to attach it.
-- For a data table, create it and call `build-agent` again with its name and
-  schema in `message`.
-
-For an unsupported chat channel, an `agent-entrypoint` workflow should connect
-the platform trigger to Message an Agent, map the incoming message, use a
-stable platform conversation/sender identifier as the custom session key, and
-send the Agent's `text` response through the platform. Native Agent channels do
-not need this wrapper.
-
-If an older builder only lists missing workflows or tables in `builderReply`,
-handle them the same way based on whether the workflow calls the Agent or is
-called by the Agent. Never ask the user to create prerequisites manually.
-
-## Targeting across turns
-
-Address Agents in this conversation with `agentRef`, a short stable key similar
-to a workflow `filePath`.
-
-- For the first Agent, pass a fresh `agentRef` and `name`.
-- Reuse that `agentRef` on later calls. Calls with neither `agentRef` nor
-  `agentId` continue editing the current Agent.
-- To build an additional Agent, pass `createNew: true` with a different
-  `agentRef` and `name`.
-- To edit an Agent not built in this conversation, pass its `agentId` once,
-  optionally with an `agentRef`, then prefer the returned `agentRef`.
-
-Naming or renaming the current Agent never silently creates another one.
+When you discover a missing prerequisite in the middle of an Agent build, keep
+the Agent build going as far as it can, build the prerequisite, then come back
+and attach it.
 
 ## Saved sub-agent dependencies
 
@@ -146,23 +129,10 @@ sub-agents:
 
 1. Build each child Agent under its own `agentRef` before attaching it to the
    parent.
-2. Call `build-agent` for the parent and identify the child by its display name.
-   The parent builder must discover the saved child and map its name to the
-   valid stored ID. Do not pass a raw `agentId` as a user requirement.
-3. Publication is not required for saved sub-agent delegation. Forward
-   publication intent only when the user explicitly asks to publish or activate
-   an Agent.
-
-## Builder-owned interactions
-
-When the user asks to test, run, publish, activate, make usable, unpublish, or
-otherwise change the Agent, forward that intent in `message`. The builder owns
-its internal testing tools; do not conclude testing is unavailable because
-those tools do not appear in your toolset.
-
-When the builder needs a user choice, credential, chat channel, or approval, it
-surfaces an interactive card in this chat. Do not relay the question yourself;
-the `build-agent` call resumes with the user's answer.
+2. Select the parent and attach each child by the id that `list_sub_agents`
+   returns for it.
+3. Publication is not required for saved sub-agent delegation. Publish only
+   when the user explicitly asks to publish or activate an Agent.
 
 ## Agent UI labels
 

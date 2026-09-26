@@ -113,32 +113,32 @@ export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget
 	return undefined;
 }
 
-export interface AgentBuilderTarget {
-	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
+export interface AgentSelection {
 	agentId: string;
-	targetAgentId: string;
+	/** Unique per selection — a later selection of the same agent re-fires watchers. */
+	toolCallId: string;
 }
 
 /**
- * Walks an agent tree depth-first (most recent last) and returns the agentId
- * (node id) and targetAgentId of the latest agent-builder sub-agent that was
- * spawned with a concrete `targetResource.id`. Used to open the canvas
- * preview at spawn time, before the first build-agent tool call returns a
- * result — mirrors getLatestBuilderTarget for workflows.
+ * Walks an agent tree depth-first (most recent last) and returns the agent that
+ * the latest successful `select-agent` call targeted. Used to open the agent
+ * artifact as soon as a build starts, before the first config write.
  */
-export function getLatestAgentBuilderTarget(
-	node: InstanceAiAgentNode,
-): AgentBuilderTarget | undefined {
+export function getLatestAgentSelection(node: InstanceAiAgentNode): AgentSelection | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const child = node.children[i];
-		const nested = getLatestAgentBuilderTarget(child);
-		if (nested) return nested;
+		const childResult = getLatestAgentSelection(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
 		if (
-			child.kind === 'agent-builder' &&
-			child.targetResource?.type === 'agent' &&
-			typeof child.targetResource.id === 'string'
+			tc.toolName === 'select-agent' &&
+			!tc.isLoading &&
+			isRecord(tc.result) &&
+			tc.result.ok === true &&
+			typeof tc.result.agentId === 'string'
 		) {
-			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
+			return { agentId: tc.result.agentId, toolCallId: tc.toolCallId };
 		}
 	}
 	return undefined;
@@ -303,10 +303,10 @@ export function isAgentEditingWorkflow(
  * agent tree — used to lock the agent artifact editor while a build is in
  * flight so user edits can't race builder config writes (the post-build
  * refetch would clobber them). Either signal is enough:
- *   1. The active agent tree has already created/mutated this agent — covers
- *      short gaps between tool calls while the run is still ongoing.
- *   2. An active agent-builder sub-agent targeting the agent — covers the
- *      whole build window from spawn to completion.
+ *   1. The active agent tree has already selected, created, or mutated this
+ *      agent — covers the build from `select-agent` to the end of the run.
+ *   2. An active agent-builder sub-agent targeting the agent — threads from
+ *      before the builder moved into the orchestrator.
  */
 export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
 	if (node.status === 'active' && getLatestAgentArtifactResult(node)?.agentId === agentId) {
@@ -494,10 +494,30 @@ function matchAgentArtifactToolCall(
 	tc: InstanceAiToolCallState,
 	callTarget: AgentArtifactTarget | undefined,
 ): AgentArtifactResult | undefined {
-	if (tc.isLoading || !tc.result || typeof tc.result !== 'object' || !callTarget) return undefined;
-	if (tc.toolName !== 'build-agent') return undefined;
+	if (tc.isLoading || !isRecord(tc.result)) return undefined;
+	const result = tc.result;
 
-	const result = tc.result as Record<string, unknown>;
+	// select-agent and the Agent Builder tools carry the agent id in their result.
+	if (tc.toolName === 'select-agent' && result.ok === true && typeof result.agentId === 'string') {
+		return {
+			agentId: result.agentId,
+			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+			toolCallId: tc.toolCallId,
+			kind: result.mode === 'create' ? 'created' : 'mutated',
+		};
+	}
+	if (result.configMutated === true && typeof result.agentId === 'string') {
+		const projectId = callTarget?.agentId === result.agentId ? callTarget.projectId : undefined;
+		return {
+			agentId: result.agentId,
+			...(projectId ? { projectId } : {}),
+			toolCallId: tc.toolCallId,
+			kind: 'mutated',
+		};
+	}
+
+	// The retired build-agent sub-agent tool: identity comes from its spawned node.
+	if (tc.toolName !== 'build-agent' || !callTarget) return undefined;
 	const args = tc.args as Record<string, unknown> | undefined;
 
 	if (result.ok === true && typeof args?.name === 'string') {

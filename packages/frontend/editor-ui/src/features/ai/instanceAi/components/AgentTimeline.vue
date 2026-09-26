@@ -8,9 +8,12 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import {
 	buildTimelineBlocks,
+	extractAgentBuildArtifacts,
 	extractArtifacts,
 	isStreamingTimelineEntry,
+	type AgentBuildArtifact,
 	type ArtifactInfo,
+	type TimelineBlock,
 } from '../agentTimeline.utils';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
@@ -149,6 +152,30 @@ const renderBlocks = computed(() =>
 	),
 );
 
+/**
+ * Agents this node built or changed, keyed by the tool call each card follows.
+ * Shown once the run settles, like the card of a completed builder sub-agent.
+ */
+const agentCardsByToolCallId = computed(() => {
+	const cards = new Map<string, AgentBuildArtifact[]>();
+	if (props.visibleEntries || props.agentNode.status === 'active') return cards;
+	for (const artifact of extractAgentBuildArtifacts(props.agentNode)) {
+		cards.set(artifact.toolCallId, [...(cards.get(artifact.toolCallId) ?? []), artifact]);
+	}
+	return cards;
+});
+
+function agentCardsAfter(block: TimelineBlock): AgentBuildArtifact[] {
+	if (agentCardsByToolCallId.value.size === 0) return [];
+	const toolCallIds =
+		block.type === 'thinking'
+			? block.entries.flatMap((entry) => (entry.type === 'tool-call' ? [entry.toolCallId] : []))
+			: 'toolCall' in block
+				? [block.toolCall.toolCallId]
+				: [];
+	return toolCallIds.flatMap((id) => agentCardsByToolCallId.value.get(id) ?? []);
+}
+
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. */
 function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
@@ -225,6 +252,18 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 					/>
 				</template>
 			</template>
+
+			<ArtifactCard
+				v-for="artifact in agentCardsAfter(block)"
+				:key="`agent-card-${artifact.resourceId}`"
+				:type="artifact.type"
+				:name="resolveArtifactName(artifact)"
+				:resource-id="artifact.resourceId"
+				:project-id="
+					artifact.projectId ?? thread.producedArtifacts.get(artifact.resourceId)?.projectId
+				"
+				:metadata="formatArtifactMetadata(artifact)"
+			/>
 		</template>
 	</div>
 </template>

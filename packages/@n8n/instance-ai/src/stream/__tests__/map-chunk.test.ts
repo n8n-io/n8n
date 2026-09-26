@@ -457,16 +457,15 @@ describe('mapAgentChunkToEvent', () => {
 		expect(
 			map({
 				type: 'tool-call-suspended',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				input: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'call_agent',
+				input: { message: 'Delete record 1' },
 				suspendPayload: {
 					type: 'approval',
 					requestId: 'approval-1',
 					toolName: 'delete_record',
 					displayName: 'Delete record',
 					args: { id: 'record-1' },
-					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
 				},
 			}),
 		).toEqual({
@@ -475,9 +474,9 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: {
 				requestId: 'approval-1',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				args: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'call_agent',
+				args: { message: 'Delete record 1' },
 				severity: 'warning',
 				message: 'Confirmation required',
 				targetApproval: {

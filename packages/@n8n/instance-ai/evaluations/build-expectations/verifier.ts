@@ -162,7 +162,7 @@ function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse): string
 // ---------------------------------------------------------------------------
 
 /** Build-wide sum, the one number the turn headers don't carry. Orchestrator steps
- *  only, so a delegated `build-agent` leg is absent (workflow builds are not). */
+ *  only. */
 function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): string {
 	if (!runDebug || runDebug.length === 0) return '(no run debug captured)';
 

@@ -13,9 +13,6 @@
  */
 export const BUILDER_TOOLS = {
 	READ_CONFIG: 'read_config',
-	// WRITE_CONFIG / PATCH_CONFIG / PUBLISH_AGENT / UNPUBLISH_AGENT values must
-	// match `CONFIG_MUTATION_TOOL_NAMES` in `@n8n/api-types`
-	// (agents/agent-interaction.schema.ts).
 	WRITE_CONFIG: 'write_config',
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',

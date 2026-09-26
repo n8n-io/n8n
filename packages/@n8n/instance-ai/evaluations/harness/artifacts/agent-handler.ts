@@ -12,8 +12,7 @@ export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	type: 'agent',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		// Refs are captured from the build-agent sub-agent's `agent-spawned` targetResource
-		// (`{ type: 'agent', id }`) — the only agent signal; its tool result carries no id.
+		// Refs are captured from `select-agent` results, which carry the selected agentId.
 		return ctx.artifactRefs.filter((ref) => ref.type === 'agent');
 	},
 	async fetch(ref, client) {

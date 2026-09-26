@@ -3,6 +3,7 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
@@ -300,6 +301,45 @@ export interface ArtifactInfo {
 	projectId?: string;
 	/** ISO timestamp of the tool call that produced this artifact. */
 	completedAt?: string;
+}
+
+export interface AgentBuildArtifact extends ArtifactInfo {
+	/** The latest tool call that selected or changed this agent — the card sits after it. */
+	toolCallId: string;
+}
+
+/**
+ * Agents that this node's own tool calls selected (`select-agent`) or changed
+ * (Agent Builder results stamped `configMutated`), one entry per agent. The
+ * orchestrator builds Agents itself, so these calls carry no child node whose
+ * card would show the agent.
+ */
+export function extractAgentBuildArtifacts(node: InstanceAiAgentNode): AgentBuildArtifact[] {
+	const byAgentId = new Map<string, AgentBuildArtifact>();
+	for (const tc of node.toolCalls) {
+		if (tc.isLoading || !isRecord(tc.result)) continue;
+		const result = tc.result;
+		if (typeof result.agentId !== 'string') continue;
+		const isSelection = tc.toolName === 'select-agent' && result.ok === true;
+		if (!isSelection && result.configMutated !== true) continue;
+
+		const existing = byAgentId.get(result.agentId);
+		const projectId =
+			isSelection && typeof result.projectId === 'string' ? result.projectId : existing?.projectId;
+		const name =
+			isSelection && typeof result.agentName === 'string'
+				? result.agentName
+				: (existing?.name ?? 'Untitled');
+		byAgentId.set(result.agentId, {
+			type: 'agent',
+			resourceId: result.agentId,
+			name,
+			...(projectId ? { projectId } : {}),
+			completedAt: tc.completedAt,
+			toolCallId: tc.toolCallId,
+		});
+	}
+	return [...byAgentId.values()];
 }
 
 /** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */

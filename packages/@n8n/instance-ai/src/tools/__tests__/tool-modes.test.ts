@@ -57,11 +57,28 @@ describe('resolveStartingToolMode', () => {
 const alwaysLoaded: string[] = [
 	...ALWAYS_LOADED_TOOL_NAMES,
 	// Always loaded when the Agents feature is on.
-	ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+	ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
 	ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
 ];
 
 describe('createToolModesConfig', () => {
+	it('binds only Agent tools in agents mode, and sandbox tools in every other mode', () => {
+		const config = createToolModesConfig(
+			'agents',
+			new Set([ORCHESTRATION_TOOL_IDS.SELECT_AGENT, DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'read_config']),
+			{
+				agentBuilderToolNames: new Set(['read_config']),
+				workspaceToolNames: new Set(['workspace_write_file', 'workspace_read_tool_result']),
+			},
+		);
+
+		expect(config.modes.agents.tools).toEqual([ORCHESTRATION_TOOL_IDS.SELECT_AGENT, 'read_config']);
+		expect(config.modes.build.tools).toEqual([
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			'workspace_write_file',
+		]);
+	});
+
 	it('drops mode tools that the run does not register', () => {
 		const config = createToolModesConfig(
 			'agents',

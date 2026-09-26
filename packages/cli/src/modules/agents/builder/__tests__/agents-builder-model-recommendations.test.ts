@@ -1,7 +1,7 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { buildBuilderPrompt } from '../agents-builder-prompts';
+import { buildAgentBuilderGuide } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
@@ -84,10 +84,7 @@ const catalog: ProviderCatalog = {
 };
 
 function buildPrompt(modelRecommendationsSection: string | null) {
-	return buildBuilderPrompt({
-		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
-		modelRecommendationsSection,
-	});
+	return buildAgentBuilderGuide({ modelRecommendationsSection });
 }
 
 describe('builder model recommendations', () => {

@@ -7737,6 +7737,7 @@
 	"instanceAi.tools.unpublish_agent": "Unpublishing agent",
 	"instanceAi.tools.resolve_integration": "Adding integration",
 	"instanceAi.tools.build-agent": "Building agent",
+	"instanceAi.tools.select-agent": "Selecting agent",
 	"instanceAi.tools.resolve_llm": "Resolving LLM",
 	"instanceAi.tools.search_mcp_servers": "Searching MCP servers",
 	"instanceAi.tools.verify_mcp_server": "Verifying MCP server",
