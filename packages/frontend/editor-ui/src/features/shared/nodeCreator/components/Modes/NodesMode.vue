@@ -72,7 +72,8 @@ const i18n = useI18n();
 
 const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
 
-const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = nodeCreatorStore;
 const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
@@ -80,9 +81,12 @@ const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const shouldHideEmptyGroupCommand = computed(
+	() => !emptyCanvasGroupsEnabled.value || nodeCreatorStore.openingContext === 'replacement',
+);
 const visibleItems = computed(() => {
 	const items = activeViewStack.value.items ?? [];
-	if (emptyCanvasGroupsEnabled.value) return items;
+	if (!shouldHideEmptyGroupCommand.value) return items;
 
 	return items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
 });
@@ -137,7 +141,7 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
-	if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM && !emptyCanvasGroupsEnabled.value) return;
+	if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM && shouldHideEmptyGroupCommand.value) return;
 
 	// Insertion itself is refused in getAddedNodesAndConnections; this keeps a restricted
 	// node from opening its actions view.
