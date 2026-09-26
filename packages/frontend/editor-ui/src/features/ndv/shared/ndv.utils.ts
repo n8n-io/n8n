@@ -497,6 +497,7 @@ export function createCommonNodeSettings(
 				type: 'number',
 				typeOptions: {
 					minValue: 2,
+					maxValue: 1000,
 				},
 				default: 3,
 				displayOptions: {
@@ -514,6 +515,7 @@ export function createCommonNodeSettings(
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
+					maxValue: 36000000,
 				},
 				default: 1000,
 				displayOptions: {

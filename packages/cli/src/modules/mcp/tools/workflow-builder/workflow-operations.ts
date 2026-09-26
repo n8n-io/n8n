@@ -244,14 +244,16 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 					.number()
 					.int()
 					.min(2)
+					.max(1000)
 					.optional()
-					.describe('Number of attempts when retryOnFail is true (minimum 2).'),
+					.describe('Number of attempts when retryOnFail is true (2–1000).'),
 				waitBetweenTries: z
 					.number()
 					.int()
 					.min(0)
+					.max(36_000_000)
 					.optional()
-					.describe('Milliseconds to wait between retry attempts (minimum 0).'),
+					.describe('Milliseconds to wait between retry attempts (0–36000000).'),
 				alwaysOutputData: z.boolean().optional(),
 				executeOnce: z.boolean().optional(),
 			})

@@ -900,8 +900,10 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		it.each([
 			{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
 			{ maxTries: 3, expected: 3 },
-			{ maxTries: 10, expected: 10 }, // No upper limit
-		])('should respect maxTries minimum (2)', async ({ maxTries, expected }) => {
+			{ maxTries: 10, expected: 10 },
+			{ maxTries: 1500, expected: 1000 }, // Should be clamped to maximum 1000
+			{ maxTries: 4.5, expected: 4 }, // Should be rounded down
+		])('should respect maxTries limits (2-1000)', async ({ maxTries, expected }) => {
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
@@ -937,9 +939,10 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				name: 'Test Tool',
 				description: 'Test Description',
 				itemIndex: 0,
+				manualLogging: false,
 			});
 
-			await tool.func('test query');
+			await expect(tool.func('test query')).rejects.toThrow('Test error');
 
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(expected);
 		});
@@ -947,7 +950,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		it.each([
 			{ waitBetweenTries: 1500, expected: 1500 },
 			{ waitBetweenTries: 10000, expected: 10000 }, // No 5000 ms cap
-			{ waitBetweenTries: 3_000_000_000, expected: 2_147_483_647 }, // Clamped to setTimeout limit
+			{ waitBetweenTries: 50_000_000, expected: 36_000_000 }, // Clamped to maximum 10 hours
 		])('should respect waitBetweenTries with sleep', async ({ waitBetweenTries, expected }) => {
 			sleepMock.mockClear();
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));

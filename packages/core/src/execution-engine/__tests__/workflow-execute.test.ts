@@ -113,7 +113,7 @@ describe('WorkflowExecute', () => {
 			expect(runNodeSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('should not cap maxTries, and cap waitBetweenTries only at the setTimeout limit', () => {
+		it('should cap maxTries at 1000 and waitBetweenTries at 10 hours', () => {
 			const workflowExecute = new WorkflowExecute(mock(), 'manual') as unknown as {
 				getRetryParams: (executionData: IExecuteData) => [number, number];
 			};
@@ -130,8 +130,53 @@ describe('WorkflowExecute', () => {
 				});
 
 			expect(retryParams(10, 10000)).toEqual([10, 10000]);
-			expect(retryParams(10, 3_000_000_000)).toEqual([10, 2_147_483_647]);
+			expect(retryParams(1500, 10000)).toEqual([1000, 10000]);
+			expect(retryParams(4.5, 0)).toEqual([4, 0]);
+			expect(retryParams(10, 50_000_000)).toEqual([10, 36_000_000]);
 		});
+
+		it.each([
+			[
+				'throws',
+				async () => {
+					throw new Error('fail');
+				},
+			],
+			['returns an error item', async () => ({ data: [[{ json: { error: 'fail' } }]] })],
+		])(
+			'should end a retry wait when the execution is cancelled and the node %s',
+			async (_, runNode) => {
+				const retryNode: INode = {
+					...createNodeData({ name: 'retryNode' }),
+					retryOnFail: true,
+					maxTries: 3,
+					waitBetweenTries: 3_600_000,
+				};
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [retryNode],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+				const waitPromise = createDeferredPromise<IRun>();
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+				const nodeRan = createDeferredPromise<void>();
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					nodeRan.resolve();
+					return await runNode();
+				});
+
+				const execution = workflowExecute.run({ workflow, startNode: retryNode });
+				await nodeRan.promise;
+				execution.cancel();
+				const result = await execution;
+
+				expect(result.status).toBe('canceled');
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+			},
+		);
 	});
 
 	describe('v0 execution order', () => {

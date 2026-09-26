@@ -1495,7 +1495,11 @@ describe('update-workflow MCP tool', () => {
 
 		test.each([
 			{ settings: { maxTries: 10, waitBetweenTries: 10000 }, success: true },
+			{ settings: { maxTries: 1000 }, success: true },
 			{ settings: { maxTries: 1 }, success: false },
+			{ settings: { maxTries: 1001 }, success: false },
+			{ settings: { waitBetweenTries: 36_000_000 }, success: true },
+			{ settings: { waitBetweenTries: 36_000_001 }, success: false },
 			{ settings: { waitBetweenTries: -1 }, success: false },
 		])('published schema validates retry settings %o', ({ settings, success }) => {
 			const parsed = z.object(createTool().config.inputSchema as z.ZodRawShape).safeParse({

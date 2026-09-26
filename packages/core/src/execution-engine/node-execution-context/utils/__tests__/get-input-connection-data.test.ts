@@ -842,11 +842,13 @@ describe('makeHandleToolInvocation', () => {
 			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
 		});
 
-		it('should respect maxTries minimum (2)', async () => {
+		it('should respect maxTries limits (2-1000)', async () => {
 			const testCases = [
 				{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
 				{ maxTries: 3, expected: 3 },
-				{ maxTries: 10, expected: 10 }, // No upper limit
+				{ maxTries: 10, expected: 10 },
+				{ maxTries: 1500, expected: 1000 }, // Should be clamped to maximum 1000
+				{ maxTries: 4.5, expected: 4 }, // Should be rounded down
 			];
 
 			for (const { maxTries, expected } of testCases) {
@@ -879,7 +881,7 @@ describe('makeHandleToolInvocation', () => {
 		it.each([
 			{ waitBetweenTries: 1500, expected: 1500 },
 			{ waitBetweenTries: 10000, expected: 10000 }, // No 5000 ms cap
-			{ waitBetweenTries: 3_000_000_000, expected: 2_147_483_647 }, // Clamped to setTimeout limit
+			{ waitBetweenTries: 50_000_000, expected: 36_000_000 }, // Clamped to maximum 10 hours
 		])('should respect waitBetweenTries', async ({ waitBetweenTries, expected }) => {
 			const sleepSpy = (sleepMock as Mock).mockResolvedValue(undefined);
 

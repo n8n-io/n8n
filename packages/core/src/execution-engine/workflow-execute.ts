@@ -1810,9 +1810,8 @@ export class WorkflowExecute {
 
 		// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 		return [
-			Math.max(2, executionData.node.maxTries || 3),
-			// setTimeout overflows above 2^31-1 ms and fires immediately
-			Math.min(2_147_483_647, Math.max(0, executionData.node.waitBetweenTries || 1000)),
+			Math.min(1000, Math.max(2, Math.floor(executionData.node.maxTries || 3))),
+			Math.min(36_000_000, Math.max(0, executionData.node.waitBetweenTries ?? 1000)),
 		];
 	}
 
@@ -2311,11 +2310,11 @@ export class WorkflowExecute {
 									// TODO: Improve that in the future and check if other nodes can
 									//       be executed in the meantime
 
-									await new Promise((resolve) => {
-										setTimeout(() => {
-											resolve(undefined);
-										}, waitBetweenTries);
-									});
+									// A cancelled execution ends the wait
+									await sleep(waitBetweenTries, this.abortController.signal).catch(() => undefined);
+								}
+								if (this.shouldStopExecuting()) {
+									return;
 								}
 							}
 
@@ -2345,7 +2344,10 @@ export class WorkflowExecute {
 								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
-									await sleep(waitBetweenTries);
+									await sleep(waitBetweenTries, this.abortController.signal).catch(() => undefined);
+									if (this.shouldStopExecuting()) {
+										return;
+									}
 
 									runNodeData = await this.runNode(
 										workflow,

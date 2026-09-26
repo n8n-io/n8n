@@ -140,8 +140,8 @@ const nodeSettingsInputSchema = z.object({
 			'Error behavior. "continueErrorOutput" appends an error output after the node\'s regular outputs — index 1 on a single-output node such as HTTP Request. Wire that branch with an addConnection operation whose sourceIndex is that index.',
 		),
 	retryOnFail: z.boolean().optional(),
-	maxTries: z.number().int().min(2).optional(),
-	waitBetweenTries: z.number().int().min(0).optional(),
+	maxTries: z.number().int().min(2).max(1000).optional(),
+	waitBetweenTries: z.number().int().min(0).max(36_000_000).optional(),
 	alwaysOutputData: z.boolean().optional(),
 	executeOnce: z.boolean().optional(),
 });
