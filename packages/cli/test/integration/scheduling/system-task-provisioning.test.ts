@@ -90,6 +90,22 @@ describe('system task provisioning', () => {
 		expect(seeded.every((occurrence) => occurrence.status === 'pending')).toBe(true);
 	});
 
+	it('seeds a claimable occurrence at once for a task that runs on provision', async () => {
+		const before = new Date();
+
+		await provision({ placement: { scope: 'cluster', durable: true, runOnProvision: true } });
+
+		const after = new Date();
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		const [first] = (await taskRepo.findBy({ jobId: row.id })).sort(
+			(a, b) => a.runAt.getTime() - b.runAt.getTime(),
+		);
+		expect(first.status).toBe('pending');
+		expect(first.runAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+		expect(first.runAt.getTime()).toBeLessThanOrEqual(after.getTime());
+		expect(first.missedAfter!.getTime()).toBeGreaterThan(after.getTime());
+	});
+
 	it('leaves an identical second provision alone, keeping the row and its occurrences', async () => {
 		await provision();
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
