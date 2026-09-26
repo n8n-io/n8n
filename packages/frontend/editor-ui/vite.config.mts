@@ -2,7 +2,7 @@
 // Put an import that needs a `dist` in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { defineConfig, type UserConfig } from 'vite';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -11,7 +11,6 @@ import { codecovVitePlugin } from '@codecov/vite-plugin';
 import icons from 'unplugin-icons/vite';
 import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
-import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
@@ -75,7 +74,33 @@ const nodeFsShimPlugin = (): UserConfig['plugins'][number] => ({
 	},
 });
 
+/**
+ * Modules that the entry imports statically, directly or through other modules.
+ *
+ * Rolldown splits this graph into hundreds of small shared chunks, and `index.html` preloads
+ * each of them. `codeSplitting` below puts the graph into one vendor chunk and one app chunk.
+ * Lazy routes keep the automatic splitting.
+ */
+const entryGraph = new Set<string>();
+
+const entryGraphPlugin = (): Plugin => ({
+	name: 'entry-graph',
+	apply: 'build',
+	buildEnd() {
+		entryGraph.clear();
+		const pending = [resolve(__dirname, 'src/main.ts')];
+		for (let id = pending.pop(); id; id = pending.pop()) {
+			if (entryGraph.has(id)) continue;
+			entryGraph.add(id);
+			pending.push(...(this.getModuleInfo(id)?.importedIds ?? []));
+		}
+	},
+});
+
+const isVendorModule = (id: string) => /[\\/]node_modules[\\/]/.test(id);
+
 const plugins: UserConfig['plugins'] = [
+	entryGraphPlugin(),
 	devServerPlugin(process.env),
 	nodeFsShimPlugin(),
 	nodePopularityPlugin(),
@@ -125,17 +150,6 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	...(release
-		? [
-				legacy({
-					modernTargets: browsers,
-					// Every browser in `.browserslistrc` supports ESM and dynamic import, so the
-					// SystemJS/ES5 support is not needed. Enabling this would cause a >400% increase in build times
-					// for this package.
-					renderLegacyChunks: false,
-				}),
-			]
-		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -183,6 +197,9 @@ const plugins: UserConfig['plugins'] = [
 					telemetry: false,
 					release: {
 						name: `n8n@${release}`,
+						// `Sentry.init` gets the release from the backend config (see `plugins/sentry.ts`),
+						// so the plugin does not have to add a release snippet to each chunk.
+						inject: false,
 					},
 					sourcemaps: {
 						// Sentry keeps these maps, so the image does not need them (156MB).
@@ -192,7 +209,7 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
-	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	// Only run on non-release builds.
 	...(process.env.CODECOV_TOKEN && !release
 		? [
 				codecovVitePlugin({
@@ -216,9 +233,8 @@ export default defineConfig({
 	},
 	plugins,
 	// Marks every script, style and stylesheet link Vite emits, so the backend can swap in
-	// the request's nonce when it serves the page. Vite stamps these last, after plugins
-	// like `@vitejs/plugin-legacy` have appended their own tags, which a plugin of ours
-	// could not reach.
+	// the request's nonce when it serves the page. Vite stamps these last, after other
+	// plugins have appended their own tags, which a plugin of ours could not reach.
 	html: { cspNonce: HTML_NONCE_PLACEHOLDER },
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
@@ -232,6 +248,26 @@ export default defineConfig({
 		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
 		target,
 		cssTarget: target,
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					// Do not set `maxSize`. Split groups can import each other in a cycle,
+					// which changes the module execution order and breaks the app at startup.
+					groups: [
+						{
+							name: 'vendor',
+							test: (id) => entryGraph.has(id) && isVendorModule(id),
+							priority: 2,
+						},
+						{ name: 'app', test: (id) => entryGraph.has(id), priority: 1 },
+					],
+				},
+			},
+		},
+	},
+	server: {
+		// Transform the entry graph when the server starts, not on the first page load.
+		warmup: { clientFiles: ['./src/main.ts'] },
 	},
 	optimizeDeps: {
 		exclude: ['wa-sqlite'],
