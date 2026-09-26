@@ -3,7 +3,7 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
-import type { SerializedMessageList } from '../../types/runtime/message-list';
+import type { ModeSwitchPin, SerializedMessageList } from '../../types/runtime/message-list';
 import type {
 	AgentDbMessage,
 	AgentMessage,
@@ -25,6 +25,13 @@ export type { SerializedMessageList };
 export const OBSERVATION_CONTINUATION_REMINDER =
 	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log in your system prompt if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
 
+/**
+ * Appended to the observation log when a tool-mode switch places the log
+ * after the turn's input instead of in the system prompt.
+ */
+export const MODE_SWITCH_OBSERVATION_REMINDER =
+	'<system-reminder>The observations above record the conversation and the work done so far in this turn. Continue the task from the latest message. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
+
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
 	messages: ModelMessage[];
@@ -37,8 +44,11 @@ export type LlmContext = {
  * are both kept out of it and folded into a second, uncached system message
  * instead — either would otherwise change the bytes under the instruction
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
- * call, for no future read. Providers that do not support multiple system
- * messages receive one merged message instead.
+ * call, for no future read. Active-skill instructions change only when a
+ * skill enters or leaves the system prompt, so they get their own cached
+ * message between the two: a skill change does not invalidate the base
+ * instructions. Providers that do not support multiple system messages
+ * receive one merged message instead.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -47,35 +57,40 @@ export function buildSystemMessages(
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
 	splitSystemMessages = true,
+	skillInstructions?: string,
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
+	const skills = skillInstructions?.trim();
 	const volatileSections = [
 		volatileInstructions?.trim(),
 		mcpConnectionNote?.trim(),
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0 || !splitSystemMessages) {
+	if (!splitSystemMessages || (!skills && volatileSections.length === 0)) {
 		return {
 			role: 'system',
-			content: [baseInstructions, ...volatileSections].join('\n\n'),
+			content: [baseInstructions, ...(skills ? [skills] : []), ...volatileSections].join('\n\n'),
 			...cacheOptions,
 		};
 	}
 
-	return [
+	const messages: SystemModelMessage[] = [
 		{
 			role: 'system',
 			content: baseInstructions,
 			...cacheOptions,
 		},
-		{
-			role: 'system',
-			content: `\n\n${volatileSections.join('\n\n')}`,
-		},
 	];
+	if (skills) {
+		messages.push({ role: 'system', content: `\n\n${skills}`, ...cacheOptions });
+	}
+	if (volatileSections.length > 0) {
+		messages.push({ role: 'system', content: `\n\n${volatileSections.join('\n\n')}` });
+	}
+	return messages;
 }
 
 type MessageSource = 'history' | 'input' | 'response';
@@ -115,6 +130,13 @@ export class AgentMessageList {
 	 * re-derive it from the persisted cursor.
 	 */
 	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
+
+	/**
+	 * Set when a tool-mode switch compacts the window. The pinned messages stay
+	 * visible under the mask, and `forLlm` places the observation log between
+	 * the turn's input and the switch message instead of in the system prompt.
+	 */
+	private modeSwitchPin: ModeSwitchPin | undefined;
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -347,10 +369,31 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
+		skillInstructions?: string,
 	): LlmContext {
-		const messages = toAiMessages(
-			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
-		);
+		const visible = filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages()));
+		const inlineObservationLog =
+			this.modeSwitchPin && this.observationMaskBoundary
+				? this.observationLogMemory?.trim()
+				: undefined;
+		let messages: ModelMessage[];
+		if (inlineObservationLog) {
+			const pinnedInputIds = new Set(this.modeSwitchPin?.inputIds);
+			let end = 0;
+			visible.forEach((m, index) => {
+				if (m.id !== undefined && pinnedInputIds.has(m.id)) end = index + 1;
+			});
+			messages = [
+				...toAiMessages(visible.slice(0, end)),
+				{
+					role: 'user',
+					content: `${inlineObservationLog}\n\n${MODE_SWITCH_OBSERVATION_REMINDER}`,
+				},
+				...toAiMessages(visible.slice(end)),
+			];
+		} else {
+			messages = toAiMessages(visible);
+		}
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
 		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
@@ -359,11 +402,12 @@ export class AgentMessageList {
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
-				this.observationLogMemory,
+				inlineObservationLog ? undefined : this.observationLogMemory,
 				instructionProviderOptions,
 				volatileInstructions,
 				this.mcpConnectionNote,
 				splitSystemMessages,
+				skillInstructions,
 			),
 			messages,
 		};
@@ -388,11 +432,29 @@ export class AgentMessageList {
 		};
 	}
 
-	/** Messages visible to the LLM: everything after the observation mask boundary. */
+	/**
+	 * Keep this turn's input and the given switch message visible after the
+	 * window is masked, and move the observation log out of the system prompt.
+	 */
+	pinModeSwitch(switchMessageId: string): void {
+		this.modeSwitchPin = {
+			inputIds: this.inputDelta().map((m) => m.id),
+			switchMessageId,
+		};
+	}
+
+	private isPinned(message: AgentDbMessage): boolean {
+		const pin = this.modeSwitchPin;
+		if (!pin) return false;
+		return message.id === pin.switchMessageId || pin.inputIds.includes(message.id);
+	}
+
+	/** Messages visible to the LLM: pinned messages and everything after the observation mask boundary. */
 	llmVisibleMessages(): AgentDbMessage[] {
 		const boundary = this.observationMaskBoundary;
 		if (!boundary) return this.all;
 		return this.all.filter((m) => {
+			if (this.isPinned(m)) return true;
 			// createdAt can be an ISO string after a checkpoint JSON round-trip. An
 			// unparseable date cannot be compared — keep the message visible rather
 			// than silently dropping it from the window.
@@ -444,12 +506,26 @@ export class AgentMessageList {
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
 			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
+			...(this.modeSwitchPin
+				? {
+						modeSwitchPin: {
+							inputIds: [...this.modeSwitchPin.inputIds],
+							switchMessageId: this.modeSwitchPin.switchMessageId,
+						},
+					}
+				: {}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
 		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
+		list.modeSwitchPin = data.modeSwitchPin
+			? {
+					inputIds: [...data.modeSwitchPin.inputIds],
+					switchMessageId: data.modeSwitchPin.switchMessageId,
+				}
+			: undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);

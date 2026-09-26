@@ -219,6 +219,7 @@ export class AgentRuntime {
 
 	private toolExecutor: ToolCallExecutor;
 	private activeSkills?: ActiveSkills;
+	private toolModeManager?: ToolModeManager;
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
@@ -234,6 +235,7 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		const toolModeManager = config.toolModes ? new ToolModeManager(config.toolModes) : undefined;
+		this.toolModeManager = toolModeManager;
 		if (config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
@@ -799,6 +801,19 @@ export class AgentRuntime {
 	 * propagate. Callers (generate's try/catch, the stream session) translate
 	 * those throws into their terminal contract.
 	 */
+	/** A tool-mode switch in the settled batch forces observation; otherwise apply the mid-run thresholds. */
+	private async observeAtBoundary(
+		list: AgentMessageList,
+		options: RuntimeExecutionOptions | undefined,
+	): Promise<void> {
+		const switchMessageId = this.toolModeManager?.takeSwitchMessageId(list.responseDelta());
+		if (switchMessageId) {
+			await this.memory.observeForModeSwitch(list, options, switchMessageId);
+			return;
+		}
+		await this.memory.maybeObserveMidRun(list, options);
+	}
+
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence);
@@ -915,7 +930,7 @@ export class AgentRuntime {
 			if (finalized.suspended) return finalized.result;
 			// The resumed batch is a clean boundary too: its tool results are new
 			// content no earlier boundary saw, so check before the next model call.
-			await this.memory.maybeObserveMidRun(list, options);
+			await this.observeAtBoundary(list, options);
 		}
 
 		for (; iterationCount < maxIterations; iterationCount++) {
@@ -946,13 +961,11 @@ export class AgentRuntime {
 				.filter((value): value is string => Boolean(value))
 				.join('\n\n');
 			const { system, messages } = list.forLlm(
-				// Skill content changes only on activation. Keep it cached when memory compacts.
-				[effectiveInstructions, this.activeSkills?.instructions()]
-					.filter(Boolean)
-					.join('\n\n'),
+				effectiveInstructions,
 				instructionProviderOptions,
 				combinedVolatileInstructions || undefined,
 				supportsSplitSystemMessages(this.config.model),
+				this.activeSkills?.instructions(),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
@@ -1043,7 +1056,7 @@ export class AgentRuntime {
 
 			// Clean loop boundary: all tool calls settled. Mid-run observation
 			// may compact the LLM window here before the next call.
-			await this.memory.maybeObserveMidRun(list, options);
+			await this.observeAtBoundary(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a
 			// crash before the next model call loses only the in-flight step.

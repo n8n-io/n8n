@@ -474,6 +474,57 @@ export class MemoryOrchestrator {
 		}
 	}
 
+	/**
+	 * Called at the loop boundary after a tool-mode switch. The tool change
+	 * already breaks the prompt cache, so compact the window at no extra cache
+	 * cost: persist the turn so far, wait for the Observer to record it, then
+	 * mask the observed messages. The window then holds the system prompt, the
+	 * turn's input, the observation log, and the switch message. Ignores the
+	 * token thresholds and `midRunObservation`. Best-effort: when the Observer
+	 * fails, is skipped, or does not advance the cursor, the run continues with
+	 * the window unchanged.
+	 */
+	async observeForModeSwitch(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+		switchMessageId: string,
+	): Promise<void> {
+		const run = this.observerRun;
+		try {
+			const { memory, observationalMemory } = this.config;
+			const persistence = options?.persistence;
+			if (!memory || !persistence || !observationalMemory?.observe) return;
+			if (!hasObservationLogObserverMemory(memory)) return;
+
+			// The in-flight task covers only messages up to its own boundary;
+			// wait for it so the next run observes just the remainder.
+			const inFlight = this.midRunObserverTask;
+			if (inFlight) {
+				this.midRunObserverTask = undefined;
+				this.noteMidRunObserverResult(inFlight.result ?? (await inFlight.handle.done));
+			}
+			if (run.disabled) return;
+
+			await this.persistTurnDelta(list, options);
+			const handle = this.scheduleObserverTask(
+				persistence,
+				options.executionCounter,
+				this.runtimeTelemetry.resolve(options),
+			);
+			if (!handle) return;
+			if (!this.noteMidRunObserverResult(await handle.done)) return;
+
+			list.pinModeSwitch(switchMessageId);
+			await this.activateObservations(list, persistence);
+		} catch (error) {
+			run.disabled = true;
+			logger.warn('Mode-switch observation failed', {
+				error,
+				threadId: options?.persistence?.threadId,
+			});
+		}
+	}
+
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
 		this.midRunObserverTask = undefined;

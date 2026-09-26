@@ -27,6 +27,9 @@ export class ToolModeManager {
 
 	private readonly switchTool: BuiltTool;
 
+	/** Set by a switch and cleared when the runtime takes it at a loop boundary. */
+	private switchPending = false;
+
 	constructor(private readonly config: ToolModesConfig) {
 		const modeNames = Object.keys(config.modes);
 		if (modeNames.length === 0) throw new Error('Tool modes need at least one mode');
@@ -79,6 +82,7 @@ export class ToolModeManager {
 			};
 		}
 		this.currentMode = mode;
+		this.switchPending = true;
 		return {
 			status: 'switched',
 			mode,
@@ -88,10 +92,32 @@ export class ToolModeManager {
 	}
 
 	/**
+	 * Once per switch, return the ID of the latest message that holds a
+	 * resolved switch. Returns undefined when no switch happened since the last call.
+	 */
+	takeSwitchMessageId(messages: readonly AgentDbMessage[]): string | undefined {
+		if (!this.switchPending) return undefined;
+		this.switchPending = false;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i];
+			if (!('content' in message) || !Array.isArray(message.content)) continue;
+			const hasSwitch = message.content.some(
+				(block) =>
+					this.isResolvedSwitchCall(block) &&
+					isRecord(block.output) &&
+					block.output.status === 'switched',
+			);
+			if (hasSwitch) return message.id;
+		}
+		return undefined;
+	}
+
+	/**
 	 * Restore the mode from this run's messages, so a resumed run continues in
 	 * the mode it had when it suspended. Earlier runs start from the initial mode.
 	 */
 	hydrateFromMessages(messages: readonly AgentDbMessage[]): void {
+		this.switchPending = false;
 		this.currentMode = this.config.initialMode;
 		for (const message of messages) {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
