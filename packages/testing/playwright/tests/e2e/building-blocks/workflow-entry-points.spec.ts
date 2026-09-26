@@ -28,7 +28,7 @@ test.describe(
 		});
 
 		test.describe('Entry Point: Imported Workflow', () => {
-			test('should import a webhook workflow', async ({ n8n, api }) => {
+			test('should import a webhook workflow @engine:v2', async ({ n8n, api }) => {
 				const workflowImportResult = await n8n.start.fromImportedWorkflow(
 					'simple-webhook-test.json',
 				);

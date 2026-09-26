@@ -6,7 +6,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
+		test('should create workflow via API, activate it, trigger webhook externally, and verify execution @engine:v2', async ({
 			api,
 		}) => {
 			const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
@@ -29,7 +29,9 @@ test.describe(
 			expect(executionDetails.data).toContain('Hello from Playwright test');
 		});
 
-		test('should surface workflow configuration errors to the caller', async ({ api }) => {
+		test('should surface workflow configuration errors to the caller @engine:v2', async ({
+			api,
+		}) => {
 			const { webhookPath } = await api.workflows.importWorkflowFromFile(
 				'webhook-misconfiguration-test.json',
 			);

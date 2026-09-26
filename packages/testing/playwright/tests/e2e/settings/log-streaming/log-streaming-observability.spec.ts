@@ -59,7 +59,7 @@ test.describe(
 			await api.deleteLogStreamingDestination(destination.id);
 		});
 
-		test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
+		test('should query metrics from VictoriaMetrics @engine:v2', async ({ api, services }) => {
 			const obs = services.observability;
 
 			// Import and activate a webhook workflow to generate metrics
