@@ -360,6 +360,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	instanceAiQuestionSchema,
 	buildRunWorkflowSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,

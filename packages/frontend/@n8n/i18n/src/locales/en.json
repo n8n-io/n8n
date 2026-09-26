@@ -7578,6 +7578,7 @@
 	"instanceAi.message.actions.showDebugInfo": "Show debug information",
 	"instanceAi.message.actions.hideDebugInfo": "Hide debug information",
 	"instanceAi.emptyState.title": "n8n Assistant",
+	"instanceAi.onboarding.startTest": "Try the onboarding thread (test)",
 	"instanceAi.workflowBuilderUnavailable.title": "Workflow builder unavailable",
 	"instanceAi.workflowBuilderUnavailable.enableSandboxDescription": "Ask an admin to enable Instance AI sandboxing.",
 	"instanceAi.workflowBuilderUnavailable.serviceUrlDescription": "Ask an admin to set N8N_SANDBOX_SERVICE_URL for the n8n Sandbox Service.",

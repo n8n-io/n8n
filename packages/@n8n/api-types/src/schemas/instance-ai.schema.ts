@@ -835,6 +835,23 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** One question of the ask-user card (`inputType=questions`). */
+export const instanceAiQuestionSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: z.enum(['single', 'multi', 'text']),
+	options: z.array(z.string()).optional(),
+	/** Hides Skip and blocks Next until the question has an answer. */
+	required: z.boolean().optional(),
+	/**
+	 * Options that follow an earlier `single` question of the same card: the option selected for
+	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.
+	 */
+	optionsByAnswer: z
+		.object({ questionId: z.string(), options: z.record(z.string(), z.array(z.string())) })
+		.optional(),
+});
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -878,14 +895,7 @@ export const confirmationRequestPayloadSchema = z.object({
 				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
-		.array(
-			z.object({
-				id: z.string(),
-				question: z.string(),
-				type: z.enum(['single', 'multi', 'text']),
-				options: z.array(z.string()).optional(),
-			}),
-		)
+		.array(instanceAiQuestionSchema)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
 	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
@@ -1713,6 +1723,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1730,6 +1741,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'onboarding',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',

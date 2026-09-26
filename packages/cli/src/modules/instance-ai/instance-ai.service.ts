@@ -212,6 +212,7 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -222,6 +223,7 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
+import { loadOnboardingSkill } from './onboarding';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -4070,10 +4072,17 @@ export class InstanceAiService {
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
 			const isOpeningTurn = Boolean(thread && !thread.title);
+			// An onboarding thread opens with a seeded greeting; its first user turn answers it.
+			const onboarding =
+				isOpeningTurn && thread?.metadata?.source === 'onboarding'
+					? await loadOnboardingSkill()
+					: undefined;
 
 			if (isOpeningTurn) {
 				const handoffTitle =
-					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+					onboarding?.opening.title ??
+					contextAttachments.find(isNamedResourceAttachment)?.name ??
+					agentPreviewTitleFallback;
 
 				await patchThread(memory, {
 					threadId,
@@ -4183,6 +4192,8 @@ export class InstanceAiService {
 				aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
 					? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId)
 					: undefined;
+			// The onboarding skill rides the opening turn inside the thread context, so it fires
+			// without a `load_skill` call and stays in the history for the later turns.
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext.state === 'injected' ? instanceContext.block : '',
 				threadArtifactsBlock,
@@ -4192,6 +4203,7 @@ export class InstanceAiService {
 					: undefined,
 				aiPreferencesTurn?.block,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
+				onboarding ? buildOnboardingSkillBlock(onboarding.instructions) : undefined,
 			]);
 			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
 				.filter(Boolean)
