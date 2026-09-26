@@ -1,7 +1,9 @@
 import {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	ListPromotionConnectionsQueryDto,
@@ -647,6 +649,59 @@ export class PromotionsPublicController {
 			// Variable values only travel when the key may list them.
 			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
 		});
+	}
+
+	// -- Selective apply -----------------------------------------------------
+
+	@Post('/projects/:projectId/apply')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary("Apply a selection of a project's workflows")
+	@ApiDescription(
+		"Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Status `blocked` returns binding details before import writes when the selection needs binding setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a cloned Apply direction for the project's resolved promotion connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async applyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).applyProjectSelection(projectId, req.user, input);
+	}
+
+	@Post('/projects/:projectId/apply/continue')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Continue applying a selection after binding setup')
+	@ApiDescription(
+		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply direction and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async continueApplyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ContinueApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).continueApplyProjectSelection(
+			projectId,
+			req.user,
+			input,
+		);
 	}
 
 	// -- Module access -------------------------------------------------------

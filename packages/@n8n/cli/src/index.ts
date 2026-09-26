@@ -38,6 +38,8 @@ import ProjectUpdate from './commands/project/update';
 import PromotionConnectionAddProject from './commands/promotion-connection/add-project';
 import PromotionConnectionApply from './commands/promotion-connection/apply';
 import PromotionConnectionApplyContinue from './commands/promotion-connection/apply-continue';
+import PromotionConnectionApplySelection from './commands/promotion-connection/apply-selection';
+import PromotionConnectionApplySelectionContinue from './commands/promotion-connection/apply-selection-continue';
 import PromotionConnectionClone from './commands/promotion-connection/clone';
 import PromotionConnectionCreate from './commands/promotion-connection/create';
 import PromotionConnectionDelete from './commands/promotion-connection/delete';
@@ -126,6 +128,8 @@ export const commands = {
 	'promotion-connection:promote-selection': PromotionConnectionPromoteSelection,
 	'promotion-connection:apply': PromotionConnectionApply,
 	'promotion-connection:apply-continue': PromotionConnectionApplyContinue,
+	'promotion-connection:apply-selection': PromotionConnectionApplySelection,
+	'promotion-connection:apply-selection-continue': PromotionConnectionApplySelectionContinue,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

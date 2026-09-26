@@ -10,6 +10,12 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
+import type {
+	InventoryWorkflow,
+	PackageDirectoryInventoryReader,
+} from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -64,6 +70,8 @@ describe('PromotionsService', () => {
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
+	const inventoryReader = mock<PackageDirectoryInventoryReader>();
+	const packageImportConfig = mock<PackageImportConfig>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -130,6 +138,8 @@ describe('PromotionsService', () => {
 			projectService,
 			n8nPackagesService,
 			bindingPreflight,
+			inventoryReader,
+			packageImportConfig,
 			logger,
 		);
 		providersService.decryptCredentials.mockResolvedValue({
@@ -1439,6 +1449,209 @@ describe('PromotionsService', () => {
 			await expect(service.apply('conn1', actor)).rejects.toThrow('not cloned');
 			expect(gitService.refreshCheckout).not.toHaveBeenCalled();
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+		});
+
+		describe('apply project selection', () => {
+			const branchWorkflow = mock<InventoryWorkflow>({ id: 'w1', projectId: 'p1' });
+			const foreignWorkflow = mock<InventoryWorkflow>({ id: 'foreign', projectId: 'p2' });
+			// Owned by p1 on the instance, but the package now holds it under p2: a move.
+			const movedWorkflow = mock<InventoryWorkflow>({ id: 'moved', projectId: 'p2' });
+			const project = mock<Project>({ id: 'p1' });
+			const foreignProject = mock<Project>({ id: 'p2' });
+
+			beforeEach(async () => {
+				const input = applyInput({ connectionScope: 'projects' });
+				resolver.resolveForProject.mockResolvedValue(input);
+				await markCloned(input, 'dev');
+				await mkdir(packageFolder, { recursive: true });
+				inventoryReader.read.mockResolvedValue({
+					projects: [],
+					workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
+					credentials: [],
+					variables: [],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([
+						['deleted', project],
+						['foreign', foreignProject],
+						['moved', project],
+					]),
+				);
+				n8nPackagesService.importPackageSelectionFromDirectory.mockResolvedValue(importResult());
+			});
+
+			it.each([
+				{ workflowIds: ['w1'], selectedWorkflowIds: ['w1'], deletedWorkflowIds: [] },
+				{ workflowIds: ['deleted'], selectedWorkflowIds: [], deletedWorkflowIds: ['deleted'] },
+			])('classifies $workflowIds for import or deletion', async (selection) => {
+				await service.applyProjectSelection('p1', actor, { workflowIds: selection.workflowIds });
+
+				expect(inventoryReader.read).toHaveBeenCalledWith(
+					new DirectoryPackageReader(packageFolder, packageImportConfig),
+				);
+				expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith(
+					selection.workflowIds,
+				);
+				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
+					sourceDir: packageFolder,
+					selection: {
+						selectedProjectId: 'p1',
+						selectedWorkflowIds: selection.selectedWorkflowIds,
+					},
+				});
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).toHaveBeenCalledWith(
+					{ user: actor },
+					{ sourceDir: packageFolder },
+					{
+						selectedProjectId: 'p1',
+						selectedWorkflowIds: selection.selectedWorkflowIds,
+						deletedWorkflowIds: selection.deletedWorkflowIds,
+					},
+				);
+			});
+
+			it.each([
+				{ invalidIds: ['unknown'], label: 'unknown IDs' },
+				{ invalidIds: ['foreign'], label: 'foreign project IDs' },
+				{ invalidIds: ['unknown', 'foreign'], label: 'all invalid IDs together' },
+			])('rejects $label before preflight or import', async ({ invalidIds }) => {
+				await expect(
+					service.applyProjectSelection('p1', actor, {
+						workflowIds: ['w1', 'deleted', ...invalidIds],
+					}),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: `The following workflows are not in this project's branch or instance: ${invalidIds.join(', ')}`,
+				});
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('rejects a cross-project move before preflight or import', async () => {
+				await expect(
+					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'moved'] }),
+				).rejects.toMatchObject({
+					httpStatusCode: 422,
+					message:
+						'These workflows moved to another project: moved. A selective apply cannot move them. Apply all projects instead.',
+				});
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('rejects duplicate IDs before reading the inventory', async () => {
+				await expect(
+					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'w1'] }),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: 'workflowIds contains duplicates',
+				});
+				expect(inventoryReader.read).not.toHaveBeenCalled();
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			describe.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(
+				'%s',
+				(method) => {
+					it.each([{ commitSha: 'older' }, { branchName: 'older' }, { configId: 'older' }])(
+						'stops before classification when source differs: %j',
+						async (change) => {
+							expect(
+								await service[method]('p1', actor, {
+									workflowIds: ['w1'],
+									expectedSource: { ...request.expectedSource, ...change },
+								}),
+							).toEqual({
+								status: 'source-changed',
+								connectionId: 'conn1',
+								configId: CONFIG_ID,
+								git: { branchName: 'dev', commitSha: 'remotesha' },
+							});
+							expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
+							expect(inventoryReader.read).not.toHaveBeenCalled();
+							expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+							expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+						},
+					);
+
+					it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
+						'blocks on scoped %s before import',
+						async (group) => {
+							const preflight = {
+								missingProjects: [],
+								missingBindings: [],
+								accessRequirements: [],
+								conflicts: [],
+								warnings: [],
+								[group]: unresolved[group],
+							};
+							bindingPreflight.checkDirectory.mockResolvedValueOnce(preflight);
+							expect(
+								await service[method]('p1', actor, {
+									workflowIds: ['w1', 'deleted'],
+									...request,
+								}),
+							).toEqual({
+								status: 'blocked',
+								connectionId: 'conn1',
+								configId: CONFIG_ID,
+								git: { branchName: 'dev', commitSha: 'remotesha' },
+								preflight,
+							});
+							expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
+								sourceDir: packageFolder,
+								selection: { selectedProjectId: 'p1', selectedWorkflowIds: ['w1'] },
+							});
+							expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+							expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+							expect(projectService.deleteProject).not.toHaveBeenCalled();
+						},
+					);
+
+					it('imports the selection and returns counts without project reconciliation', async () => {
+						bindingPreflight.checkDirectory.mockResolvedValueOnce({
+							missingProjects: [],
+							missingBindings: [],
+							accessRequirements: [],
+							conflicts: [],
+							warnings: unresolved.warnings,
+						});
+						const result = await service[method]('p1', actor, {
+							workflowIds: ['w1', 'deleted'],
+							...request,
+						});
+
+						expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
+						expect(resolver.resolveForConnection).not.toHaveBeenCalled();
+						expect(
+							n8nPackagesService.importPackageSelectionFromDirectory,
+						).toHaveBeenCalledExactlyOnceWith(
+							{ user: actor },
+							{ sourceDir: packageFolder },
+							{
+								selectedProjectId: 'p1',
+								selectedWorkflowIds: ['w1'],
+								deletedWorkflowIds: ['deleted'],
+							},
+						);
+						expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+						expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+						expect(projectService.deleteProject).not.toHaveBeenCalled();
+						expect(result).toMatchObject({
+							status: 'applied',
+							connectionId: 'conn1',
+							configId: CONFIG_ID,
+							git: { branchName: 'dev', commitSha: 'remotesha' },
+							counts: {
+								projects: { created: 1, updated: 1, skipped: 0, deleted: 0 },
+								workflows: { created: 2, updated: 1, skipped: 0, archived: 1, deleted: 2 },
+							},
+							warnings: unresolved.warnings,
+						});
+					});
+				},
+			);
 		});
 	});
 });
