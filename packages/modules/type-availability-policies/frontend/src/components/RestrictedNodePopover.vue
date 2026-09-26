@@ -2,7 +2,7 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
+import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
@@ -12,7 +12,7 @@ const props = defineProps<{
 	scope?: NodeTypeAvailabilityScope;
 	/** The list row the popover explains. It opens beside this element, not beside the lock. */
 	anchor?: MaybeElement;
-	/** The row is the keyboard-active item, which opens the popover like a hover does. */
+	/** Keyboard-active without DOM focus, such as a virtual list selection. */
 	active?: boolean;
 }>();
 
@@ -30,9 +30,20 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-const open = computed(() => anchorHovered.value || contentHovered.value || props.active);
-
 const isContactAdminOpen = ref(false);
+// Content is teleported, so focus in it is outside the anchor.
+// Close for the contact-admin dialog, which this would otherwise cover.
+const { focused: anchorFocused } = useFocusWithin(anchorElement);
+const { focused: contentFocused } = useFocusWithin(contentRef);
+const open = computed(
+	() =>
+		!isContactAdminOpen.value &&
+		(anchorHovered.value ||
+			contentHovered.value ||
+			anchorFocused.value ||
+			contentFocused.value ||
+			props.active),
+);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
@@ -43,6 +54,7 @@ const scopeKey = computed<BaseTextKey>(
 
 <template>
 	<span :class="$style.root">
+		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
 			side="left"
@@ -52,6 +64,7 @@ const scopeKey = computed<BaseTextKey>(
 			:suppress-auto-focus="true"
 			:content-class="$style.card"
 			width="254px"
+			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
 				<N8nIcon

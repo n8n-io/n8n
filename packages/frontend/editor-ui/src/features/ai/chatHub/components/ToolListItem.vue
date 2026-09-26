@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import type { NodeTypeAvailability } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -16,6 +18,7 @@ const props = defineProps<{
 	installing?: boolean;
 	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
 	installDisabled?: boolean;
+	restriction?: NodeTypeAvailability;
 }>();
 
 const emit = defineEmits<{
@@ -50,10 +53,18 @@ const actionLabel = computed(() =>
 const actionDisabled = computed(
 	() => props.communityPreview && (props.installing || props.installDisabled),
 );
+
+const rowRef = ref<HTMLElement | null>(null);
 </script>
 
 <template>
-	<div :class="[$style.item, { [$style.configured]: mode === 'configured' }]">
+	<div
+		ref="rowRef"
+		:class="[
+			$style.item,
+			{ [$style.configured]: mode === 'configured', [$style.restricted]: !!restriction },
+		]"
+	>
 		<div :class="$style.iconWrapper">
 			<NodeIcon :node-type="nodeType" :size="32" />
 		</div>
@@ -120,8 +131,22 @@ const actionDisabled = computed(
 			</template>
 
 			<template v-else>
+				<span
+					v-if="restriction"
+					:class="$style.restrictedMarker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+					data-test-id="chat-tool-restricted"
+				>
+					<RestrictedNodePopover
+						:node-type-name="nodeType.displayName"
+						:scope="restriction.scope"
+						:anchor="rowRef"
+					/>
+				</span>
 				<N8nTooltip
-					v-if="communityPreview && installDisabled && !installing"
+					v-else-if="communityPreview && installDisabled && !installing"
 					:content="i18n.baseText('communityNodeInfo.contact.admin')"
 					placement="top"
 				>
@@ -173,6 +198,28 @@ const actionDisabled = computed(
 				opacity: 1;
 			}
 		}
+	}
+}
+
+.restricted {
+	cursor: not-allowed;
+
+	.iconWrapper,
+	.content {
+		opacity: 0.45;
+	}
+}
+
+.restrictedMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
 	}
 }
 

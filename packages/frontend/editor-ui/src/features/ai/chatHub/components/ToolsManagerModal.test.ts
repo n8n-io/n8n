@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsManagerModal from './ToolsManagerModal.vue';
 import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -474,6 +478,63 @@ describe('ToolsManagerModal', () => {
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'chatHub.error.updateToolsFailed');
 			});
+		});
+	});
+
+	describe('restricted node types', () => {
+		const PERSONAL_PROJECT_ID = 'personal-project-1';
+
+		beforeEach(() => {
+			mockedStore(useProjectsStore).personalProject = { id: PERSONAL_PROJECT_ID } as never;
+		});
+
+		it('loads the policy for the personal project', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderComponent({ props: defaultProps() });
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PERSONAL_PROJECT_ID);
+		});
+
+		it('lists a restricted tool last with a lock and no add action', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const availableItems = getAvailableItems(container);
+			// Tool A outranks Tool B by popularity, so only the restriction moves it last.
+			expect(availableItems[0].textContent).toContain('Tool B');
+			expect(availableItems[1].textContent).toContain('Tool A');
+			expect(availableItems[1].querySelector('[data-test-id="chat-tool-restricted"]')).toBeTruthy();
+			expect(availableItems[1].querySelector('[data-test-id="chat-tool-add-button"]')).toBeNull();
+			expect(availableItems[0].querySelector('[data-test-id="chat-tool-restricted"]')).toBeNull();
+		});
+
+		it('does not open the settings view for a restricted tool', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+
+			const { container, queryByTestId } = renderComponent({ props: defaultProps() });
+
+			const restrictedItem = getAvailableItems(container)[1];
+			await userEvent.click(restrictedItem);
+			await userEvent.click(restrictedItem.querySelector('[data-test-id="chat-tool-restricted"]')!);
+
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('keeps the list as it is when nothing is restricted', () => {
+			mockRestrictedNodeTypes();
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const availableItems = getAvailableItems(container);
+			expect(availableItems[0].textContent).toContain('Tool A');
+			expect(availableItems[1].textContent).toContain('Tool B');
+			expect(container.querySelector('[data-test-id="chat-tool-restricted"]')).toBeNull();
 		});
 	});
 });

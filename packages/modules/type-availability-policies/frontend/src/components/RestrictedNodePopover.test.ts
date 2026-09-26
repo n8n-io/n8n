@@ -75,6 +75,31 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.getByTestId('node-restricted-popover')).toBeInTheDocument();
 	});
 
+	it('opens while focus is inside the anchor row and closes when focus leaves', async () => {
+		const button = document.createElement('button');
+		anchor.appendChild(button);
+		renderPopover({ anchor });
+
+		button.focus();
+		expect(await screen.findByTestId('node-restricted-popover')).toBeInTheDocument();
+
+		button.blur();
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
+	});
+
+	it('closes while the contact-admin dialog is open', async () => {
+		renderPopover({ active: true });
+
+		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
+
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
+		expect(screen.getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+	});
+
 	it('opens the contact-admin dialog for this node type', async () => {
 		renderPopover({ active: true });
 		expect(screen.queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();

@@ -33,10 +33,15 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	getNodeItemRestriction,
+	isNodeItemRestricted,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
 	modalName: string;
@@ -75,8 +80,23 @@ const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { installNode: installCommunityNode } = useInstallNode();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
+
+// Chat tools run as workflows in the personal project, so that project's policy applies.
+watch(
+	() => projectsStore.personalProject?.id,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
+function restrictionFor(nodeType: INodeTypeDescription) {
+	return getNodeItemRestriction(nodeType.name) ?? undefined;
+}
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -171,7 +191,7 @@ const filteredConfiguredTools = computed(() => {
 	});
 });
 
-const filteredAvailableTools = computed(() => {
+const matchingAvailableTools = computed(() => {
 	const base = !debouncedSearchQuery.value
 		? availableToolTypes.value
 		: availableToolTypes.value.filter((nodeType) => {
@@ -206,6 +226,10 @@ const filteredAvailableTools = computed(() => {
 	}
 	return [...base, ...previews];
 });
+
+const filteredAvailableTools = computed(() =>
+	partitionLast(matchingAvailableTools.value, (nodeType) => isNodeItemRestricted(nodeType.name)),
+);
 
 function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
 	return nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion);
@@ -292,6 +316,9 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 		},
 		existingNames,
 		async (configuredNode: INode) => {
+			// The policy can finish loading while the settings view is open.
+			if (isNodeItemRestricted(configuredNode.type)) return;
+
 			try {
 				await chatStore.addConfiguredTool(configuredNode);
 			} catch (error) {
@@ -302,6 +329,8 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isNodeItemRestricted(nodeType.name)) return;
+
 	if (isCommunityPreviewTool(nodeType)) {
 		const packageName = communityPackageNameFor(nodeType);
 		const baseName = stripToolSuffix(nodeType.name);
@@ -440,6 +469,7 @@ function handleSettingsChangeName(name: string) {
 							:community-preview="isCommunityPreviewTool(nodeType)"
 							:installing="installingToolName === nodeType.name"
 							:install-disabled="!isAdminOrOwner"
+							:restriction="restrictionFor(nodeType)"
 							mode="available"
 							@add="handleAddTool(nodeType)"
 						/>
