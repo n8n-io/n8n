@@ -40,6 +40,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	togglePreview: [];
 	toggleExpanded: [];
+	closeTab: [tabId: string];
 }>();
 
 const i18n = useI18n();
@@ -67,8 +68,9 @@ function scrollTabIntoView(tabId: string) {
 	const tabList = getTabListElement();
 	if (!tabList) return;
 
-	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-id]')).find(
-		(tab) => tab.dataset.tabId === tabId,
+	// Measure the tab item, not the trigger, which is positioned inside it.
+	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-item-id]')).find(
+		(tab) => tab.dataset.tabItemId === tabId,
 	);
 	if (!activeTab) return;
 
@@ -246,25 +248,49 @@ async function handleCopyLink(tab: ArtifactTab) {
 		>
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
-					<TabsTrigger
-						:value="tab.id"
-						:data-tab-id="tab.id"
-						:class="$style.tab"
+					<!-- The close button cannot sit inside the trigger button, so both share a wrapper. -->
+					<div
+						:class="[$style.tab, { [$style.tabActive]: tab.id === activeTabId }]"
+						:data-tab-item-id="tab.id"
 						@mouseenter="showTabHoverCard(tab, $event)"
 						@mouseleave="scheduleHideTabHoverCard"
 						@contextmenu="hideTabHoverCard"
+						@mousedown.middle.prevent
+						@auxclick.middle.prevent="emit('closeTab', tab.id)"
 					>
-						<N8nIcon
-							v-if="tab.building"
-							icon="spinner"
-							size="large"
-							spin
-							:class="$style.icon"
-							data-test-id="instance-ai-tab-building-spinner"
-						/>
-						<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
-						<span :class="$style.label">{{ tab.name }}</span>
-					</TabsTrigger>
+						<TabsTrigger
+							:value="tab.id"
+							:data-tab-id="tab.id"
+							:class="$style.tabTrigger"
+							@keydown.delete.prevent="emit('closeTab', tab.id)"
+						>
+							<N8nIcon
+								v-if="tab.building"
+								icon="spinner"
+								size="large"
+								spin
+								:class="$style.icon"
+								data-test-id="instance-ai-tab-building-spinner"
+							/>
+							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
+							<span :class="$style.label">{{ tab.name }}</span>
+						</TabsTrigger>
+						<span :class="$style.closeSlot">
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.closeButton"
+								:aria-label="
+									i18n.baseText('instanceAi.previewTabBar.closeTab', {
+										interpolate: { name: tab.name },
+									})
+								"
+								data-test-id="instance-ai-tab-close"
+								@click.stop="emit('closeTab', tab.id)"
+							/>
+						</span>
+					</div>
 				</ContextMenuTrigger>
 				<ContextMenuPortal>
 					<ContextMenuContent :class="$style.contextMenu">
@@ -406,20 +432,48 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .tab {
-	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
-	--tab--background--hover: var(--background--hover);
-	--tab--background--active: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	--tab--background: transparent;
 
+	position: relative;
 	flex: 0 1 auto;
 	min-width: 64px;
 	max-width: 270px;
 	height: var(--height--md);
 	display: flex;
+	border-radius: var(--radius--2xs);
+	background-color: var(--tab--background);
+
+	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
+	&:hover {
+		--tab--background: var(--background--hover);
+	}
+
+	&.tabActive {
+		--tab--background: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	}
+
+	// Show the close button on hover and while it has keyboard focus.
+	&:hover .closeSlot,
+	.closeSlot:focus-within {
+		opacity: 1;
+	}
+
+	// Only the button takes the pointer. A click on the rest of the cover reaches the trigger below.
+	&:hover .closeButton,
+	.closeSlot:focus-within .closeButton {
+		pointer-events: auto;
+	}
+}
+
+.tabTrigger {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: 0 var(--spacing--xs);
 	border: none;
-	border-radius: var(--radius--2xs);
+	border-radius: inherit;
 	background-color: transparent;
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
@@ -427,13 +481,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 	line-height: var(--line-height--lg);
 	cursor: pointer;
 
-	&:hover {
-		background-color: var(--tab--background--hover);
-	}
-
 	&[data-state='active'] {
 		color: var(--text-color);
-		background-color: var(--tab--background--active);
 	}
 
 	.label {
@@ -452,6 +501,36 @@ async function handleCopyLink(tab: ArtifactTab) {
 		@supports not (animation-timeline: scroll()) {
 			text-overflow: ellipsis;
 		}
+	}
+}
+
+// Covers the end of the label with the tab background, so the tab keeps its width.
+// The hover background is translucent, so it is layered on the surface to hide the label.
+.closeSlot {
+	--close-slot--background:
+		linear-gradient(var(--tab--background), var(--tab--background)), var(--background--surface);
+
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	padding-right: var(--spacing--4xs);
+	border-radius: 0 var(--radius--2xs) var(--radius--2xs) 0;
+	background: var(--close-slot--background);
+	opacity: 0;
+	pointer-events: none;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 100%;
+		bottom: 0;
+		width: var(--spacing--sm);
+		background: var(--close-slot--background);
+		mask-image: linear-gradient(to left, #000, #0000);
 	}
 }
 

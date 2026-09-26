@@ -38,6 +38,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
@@ -213,6 +214,12 @@ const preview = useCanvasPreview({
 	onPreviewOpenChange: (open) => {
 		persistedArtifactPreviewOpen.value = open;
 	},
+	tabsStorage: {
+		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
+		save: async (state) => {
+			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
+		},
+	},
 });
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
@@ -304,7 +311,7 @@ provide(
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
-const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
+const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
@@ -341,10 +348,8 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const selectedTab = preview.allArtifactTabs.value.find(
-		(tab) => tab.id === preview.activeTabId.value,
-	);
-	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	const selectedTab = preview.openTabs.value.find((tab) => tab.id === preview.activeTabId.value);
+	const tabToOpen = selectedTab ?? preview.openTabs.value[0];
 	if (tabToOpen) {
 		selectArtifactTab(tabToOpen.id);
 	}
@@ -398,7 +403,7 @@ const isArtifactsPanelInLayout = computed(
 const canShowArtifactsPanel = computed(
 	() =>
 		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
+		preview.openTabs.value.length > 0 ||
 		(Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanel = computed(
@@ -956,12 +961,13 @@ function handleNewThreadClick() {
 						@update:model-value="selectArtifactTab"
 					>
 						<InstanceAiPreviewTabBar
-							:tabs="preview.allArtifactTabs.value"
+							:tabs="preview.openTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
+							@close-tab="preview.closeTab"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview

@@ -71,7 +71,7 @@ const Wrapper = defineComponent({
 		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded'],
+	emits: ['togglePreview', 'toggleExpanded', 'closeTab'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
@@ -82,6 +82,7 @@ const Wrapper = defineComponent({
 					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
 					onTogglePreview: () => emit('togglePreview'),
+					onCloseTab: (tabId: string) => emit('closeTab', tabId),
 					onToggleExpanded: () => emit('toggleExpanded'),
 				}),
 			);
@@ -186,6 +187,45 @@ describe('InstanceAiPreviewTabBar', () => {
 		await fireEvent.click(expandButton!);
 
 		expect(emitted().toggleExpanded).toBeTruthy();
+	});
+
+	describe('closing tabs', () => {
+		it('emits closeTab when the close button of a tab is clicked', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const item = container.querySelector('[data-tab-item-id="dt-1"]');
+			const closeButton = item?.querySelector<HTMLElement>(
+				'[data-test-id="instance-ai-tab-close"]',
+			);
+			expect(closeButton).toHaveAttribute('aria-label', 'Close My Table');
+			await fireEvent.click(closeButton!);
+
+			expect(emitted().closeTab).toEqual([['dt-1']]);
+		});
+
+		it('emits closeTab when a tab is clicked with the middle mouse button', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const item = container.querySelector<HTMLElement>('[data-tab-item-id="wf-1"]');
+			await fireEvent(item!, new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+
+			expect(emitted().closeTab).toEqual([['wf-1']]);
+		});
+
+		it('emits closeTab when Delete is pressed on a focused tab', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const trigger = container.querySelector<HTMLElement>('[data-tab-id="wf-1"]');
+			await fireEvent.keyDown(trigger!, { key: 'Delete' });
+
+			expect(emitted().closeTab).toEqual([['wf-1']]);
+		});
 	});
 
 	it('emits togglePreview when the preview toggle is clicked', async () => {
@@ -295,14 +335,15 @@ describe('InstanceAiPreviewTabBar', () => {
 			);
 		}
 
-		function getTabTrigger(container: Element, tabId: string) {
-			const trigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
-			expect(trigger).not.toBeNull();
-			return trigger!;
+		// The hover handlers sit on the tab item that wraps the trigger and the close button.
+		function getTabItem(container: Element, tabId: string) {
+			const item = container.querySelector<HTMLElement>(`[data-tab-item-id="${tabId}"]`);
+			expect(item).not.toBeNull();
+			return item!;
 		}
 
 		async function hoverTab(container: Element, tabId: string) {
-			await fireEvent.mouseEnter(getTabTrigger(container, tabId));
+			await fireEvent.mouseEnter(getTabItem(container, tabId));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
 		}
 
@@ -319,7 +360,7 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-1'));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW - 1);
 			expect(getHoverCard()).toBeNull();
 
@@ -332,7 +373,7 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			const trigger = getTabTrigger(container, 'wf-1');
+			const trigger = getTabItem(container, 'wf-1');
 			await fireEvent.mouseEnter(trigger);
 			await fireEvent.mouseLeave(trigger);
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
@@ -444,8 +485,8 @@ describe('InstanceAiPreviewTabBar', () => {
 			});
 
 			await hoverTab(container, 'wf-1');
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-2'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-2'));
 
 			expect(getHoverCard()).toHaveTextContent('Second Workflow');
 		});
@@ -477,7 +518,7 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab, workflowTab2], activeTabId: 'wf-2' },
 			});
 
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-1'));
 			await rerender({ tabs: [workflowTab2], activeTabId: 'wf-2' });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
 
@@ -490,7 +531,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			});
 
 			await hoverTab(container, 'wf-1');
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE);
 
 			expect(getHoverCard()).toBeNull();
