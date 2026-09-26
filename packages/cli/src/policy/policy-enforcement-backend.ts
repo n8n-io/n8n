@@ -30,7 +30,7 @@ export type PolicySystemReason =
 	/** Inside a run. Runs are not attributed to the user who started them. */
 	| 'execution'
 	| 'cli-import'
-	/** Trigger registration at startup or on a leadership change. */
+	/** Trigger registration that no request asked for directly, such as startup or a retry. */
 	| 'activation'
 	/** The publication outbox. The publish request itself was checked with its user. */
 	| 'publication'
