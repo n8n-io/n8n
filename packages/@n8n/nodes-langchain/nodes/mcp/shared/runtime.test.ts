@@ -280,6 +280,39 @@ describe('runtime', () => {
 
 			expect(tools[0]).not.toHaveProperty('metadata.attribution');
 		});
+
+		it('throws downstream tool errors from registry-backed tools', async () => {
+			const client = mock<Client>({
+				callTool: vi.fn().mockResolvedValue({
+					isError: true,
+					content: [{ type: 'text', text: 'Registry tool failed' }],
+				}),
+			});
+			vi.spyOn(utils, 'connectMcpClientForCredential').mockResolvedValue({
+				ok: true,
+				result: client,
+			});
+			vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+			const ctx = createSupplyDataCtx({
+				getNode: vi.fn(() =>
+					mock<INode>({
+						type: '@n8n/mcp-registry.example',
+						typeVersion: 1.1,
+						name: 'MCP Registry Client',
+					}),
+				),
+			});
+			const result = await buildMcpToolkit(ctx, 0, createRegistryConfig());
+			const [tool] = (result.response as StructuredToolkit).getTools();
+
+			await expect(tool.invoke({ query: 'sales' })).rejects.toThrow('Registry tool failed');
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.objectContaining({ message: 'Registry tool failed' }),
+			);
+		});
 	});
 
 	describe('executeMcpTool', () => {

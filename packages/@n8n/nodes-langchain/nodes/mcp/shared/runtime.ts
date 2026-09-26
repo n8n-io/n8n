@@ -126,6 +126,8 @@ export async function buildMcpToolkit(
 	config: ResolvedMcpConfig,
 ): Promise<SupplyData> {
 	const node = ctx.getNode();
+	const shouldThrowToolError =
+		node.typeVersion >= 1.3 || node.type?.startsWith('@n8n/mcp-registry.') === true;
 
 	const setError = (error: NodeOperationError): SupplyData => {
 		ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
@@ -175,7 +177,7 @@ export async function buildMcpToolkit(
 							ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
 								error: callError,
 							});
-							if (node.typeVersion >= 1.3) throw callError;
+							if (shouldThrowToolError) throw callError;
 						},
 						() => ctx.getExecutionCancelSignal(),
 					),
