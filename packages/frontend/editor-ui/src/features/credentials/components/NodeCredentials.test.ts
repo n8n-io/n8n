@@ -663,6 +663,55 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('onCredentialSelected', () => {
+		it.each([
+			{
+				format: 'a credential without an ID',
+				importedCredential: { id: null, name: 'Imported OpenAI account' },
+			},
+			{
+				format: 'a legacy credential name',
+				importedCredential: 'Imported OpenAI account',
+			},
+		])(
+			'updates all imported HTTP Request nodes sharing $format',
+			async ({ importedCredential }) => {
+				// LIGO-80: Imported workflows can keep credentials in the legacy name format.
+				const importedCredentials = {
+					openAiApi: importedCredential,
+				} as unknown as INodeUi['credentials'];
+				const firstNode: INodeUi = {
+					...httpNode,
+					credentials: importedCredentials,
+				};
+				const secondNode: INodeUi = {
+					...httpNode,
+					id: 'second-http-request',
+					name: 'HTTP Request 2',
+					credentials: { ...importedCredentials },
+				};
+				workflowDocumentStore.setNodes([firstNode, secondNode]);
+				ndvStore.activeNode = workflowDocumentStore.getNodeByName(firstNode.name) ?? null;
+				credentialsStore.state.credentials = {
+					c8vqdPpPClh4TgIO: createCredential(),
+				};
+
+				renderComponent(
+					{ props: { node: workflowDocumentStore.getNodeByName(firstNode.name) ?? firstNode } },
+					{ merge: true },
+				);
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByText('OpenAi account'));
+
+				expect(
+					workflowDocumentStore.getNodeByName(secondNode.name)?.credentials?.openAiApi,
+				).toEqual({
+					id: 'c8vqdPpPClh4TgIO',
+					name: 'OpenAi account',
+				});
+			},
+		);
+
 		it('should not call assignCredentialToMatchingNodes on mount when auto-selecting credentials', () => {
 			ndvStore.activeNode = openAiNodeNoCreds;
 			credentialsStore.state.credentials = {
