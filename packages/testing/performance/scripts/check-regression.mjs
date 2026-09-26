@@ -14,8 +14,11 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+import { collectBenchmarks } from './bench-results.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROFILES_DIR = resolve(__dirname, '../profiles');
+const PACKAGE_DIR = resolve(__dirname, '..');
 const THRESHOLD = 0.1; // 10%
 
 const BASELINE_PATH = resolve(PROFILES_DIR, 'baseline.json');
@@ -31,31 +34,21 @@ if (!existsSync(CURRENT_PATH)) {
 	process.exit(1);
 }
 
-const baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8'));
-const current = JSON.parse(readFileSync(CURRENT_PATH, 'utf-8'));
+const baseline = collectBenchmarks(JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')), PACKAGE_DIR);
+const current = collectBenchmarks(JSON.parse(readFileSync(CURRENT_PATH, 'utf-8')), PACKAGE_DIR);
 
 // Build lookup map from baseline
 const baselineMap = new Map();
-for (const file of baseline.files) {
-	for (const group of file.groups) {
-		for (const bench of group.benchmarks) {
-			baselineMap.set(`${group.fullName}::${bench.name}`, bench);
-		}
-	}
+for (const bench of baseline) {
+	baselineMap.set(bench.key, bench);
 }
 
 // Check for failed benchmarks (no valid measurements)
 let hasFailed = false;
-for (const file of current.files) {
-	for (const group of file.groups) {
-		for (const bench of group.benchmarks) {
-			if (bench.hz === undefined || !isFinite(bench.hz)) {
-				console.error(
-					`❌ Benchmark failed (no valid measurements): ${group.fullName} > ${bench.name}`,
-				);
-				hasFailed = true;
-			}
-		}
+for (const bench of current) {
+	if (bench.failed) {
+		console.error(`❌ Benchmark failed (no valid measurements): ${bench.group} > ${bench.name}`);
+		hasFailed = true;
 	}
 }
 if (hasFailed) {
@@ -67,38 +60,33 @@ if (hasFailed) {
 const results = [];
 let hasRegression = false;
 
-for (const file of current.files) {
-	for (const group of file.groups) {
-		for (const bench of group.benchmarks) {
-			const key = `${group.fullName}::${bench.name}`;
-			const base = baselineMap.get(key);
+for (const bench of current) {
+	const base = baselineMap.get(bench.key);
 
-			if (!base) {
-				results.push({
-					name: bench.name,
-					status: 'new',
-					current: bench.hz,
-					baseline: null,
-					ratio: null,
-				});
-				continue;
-			}
-
-			const ratio = bench.hz / base.hz;
-			const isRegression = ratio < 1 - THRESHOLD;
-			const isImprovement = ratio > 1 + THRESHOLD;
-
-			if (isRegression) hasRegression = true;
-
-			results.push({
-				name: bench.name,
-				status: isRegression ? 'regression' : isImprovement ? 'improved' : 'ok',
-				current: bench.hz,
-				baseline: base.hz,
-				ratio,
-			});
-		}
+	if (!base || base.failed) {
+		results.push({
+			name: bench.name,
+			status: 'new',
+			current: bench.hz,
+			baseline: null,
+			ratio: null,
+		});
+		continue;
 	}
+
+	const ratio = bench.hz / base.hz;
+	const isRegression = ratio < 1 - THRESHOLD;
+	const isImprovement = ratio > 1 + THRESHOLD;
+
+	if (isRegression) hasRegression = true;
+
+	results.push({
+		name: bench.name,
+		status: isRegression ? 'regression' : isImprovement ? 'improved' : 'ok',
+		current: bench.hz,
+		baseline: base.hz,
+		ratio,
+	});
 }
 
 // Print results

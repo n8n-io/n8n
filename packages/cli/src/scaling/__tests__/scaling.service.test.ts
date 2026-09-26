@@ -152,19 +152,11 @@ describe('ScalingService', () => {
 
 		// @ts-expect-error Private method
 		ScalingService.prototype.scheduleQueueRecovery = vi.fn();
-		registerMainOrWebhookListenersSpy = vi.spyOn(
-			scalingService,
-			// @ts-expect-error Private method
-			'registerMainOrWebhookListeners',
-		);
-		// @ts-expect-error Private method
+		registerMainOrWebhookListenersSpy = vi.spyOn(scalingService, 'registerMainOrWebhookListeners');
 		registerWorkerListenersSpy = vi.spyOn(scalingService, 'registerWorkerListeners');
-		// @ts-expect-error Private method
 		scheduleQueueRecoverySpy = vi.spyOn(scalingService, 'scheduleQueueRecovery');
-		// @ts-expect-error Private method
 		stopQueueRecoverySpy = vi.spyOn(scalingService, 'stopQueueRecovery');
 
-		// @ts-expect-error Private method
 		stopQueueMetricsSpy = vi.spyOn(scalingService, 'stopQueueMetrics');
 	});
 
