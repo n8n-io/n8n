@@ -10,6 +10,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 	INodeTypeDescription,
+	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -873,6 +874,7 @@ describe('LoadNodesAndCredentials', () => {
 			createHitlTools.mockClear();
 
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
 		});
 
 		it('should keep types in memory after post-processing for post-processors to read', async () => {
@@ -926,6 +928,53 @@ describe('LoadNodesAndCredentials', () => {
 			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
 		});
 
+		it('should drop generated tool types that NODES_EXCLUDE lists', async () => {
+			createAiTools.mockImplementationOnce(
+				(types: { nodes: INodeTypeDescription[] }, known: KnownNodesAndCredentials) => {
+					for (const name of ['test-package.testNodeTool', 'test-package.otherNodeTool']) {
+						types.nodes.push({ name } as INodeTypeDescription);
+						known.nodes[name] = { className: 'TestNode', sourcePath: 'Test.node.js' };
+					}
+					known.credentials.testApi = {
+						className: 'TestApi',
+						sourcePath: 'TestApi.credentials.js',
+						supportedNodes: [
+							'test-package.testNode',
+							'test-package.testNodeTool',
+							'test-package.otherNodeTool',
+						],
+					};
+				},
+			);
+			instance.excludeNodes = ['test-package.testNodeTool'];
+			instance.loaders = {
+				'test-package': mock<NodeLoader>({
+					packageName: 'test-package',
+					known: {
+						nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+						credentials: {},
+					},
+					types: { nodes: [{ name: 'testNode' }], credentials: [] },
+					ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				}),
+			};
+
+			await instance.postProcessLoaders();
+
+			expect(instance.types.nodes.map(({ name }) => name)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(Object.keys(instance.knownNodes)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(instance.knownCredentials.testApi.supportedNodes).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+		});
+
 		describe('atomic registry swap (known, loaded, types)', () => {
 			const createLoader = () =>
 				mock<NodeLoader>({
@@ -975,6 +1024,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(() => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
 		});
 
 		it('should return a snapshot of types with package-namespaced node names', async () => {

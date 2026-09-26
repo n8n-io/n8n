@@ -20,10 +20,12 @@ import {
 	AI_SECTION_RECOMMENDED_TOOLS,
 	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
+	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	NEW_TOOL_CATEGORIES,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
+import camelCase from 'lodash/camelCase';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
@@ -35,6 +37,7 @@ import {
 	extractAiGatewaySection,
 	finalizeItems,
 	flattenCreateElements,
+	getHumanInTheLoopActions,
 	isNodeItemRestricted,
 	sinkRestrictedNodesLast,
 	withoutRestrictedNodes,
@@ -49,9 +52,9 @@ import {
 	transformNodeType,
 } from '../nodeCreator.utils';
 
-import type { NodeViewItem, NodeViewItemSection } from '../views/viewsData';
-import { AINodesView } from '../views/viewsData';
-import { useI18n } from '@n8n/i18n';
+import type { NodeView, NodeViewItem, NodeViewItemSection } from '../views/viewsData';
+import { AINodesView, NODE_CREATOR_VIEWS, isNodeCreatorView } from '../views/viewsData';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -547,58 +550,171 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		);
 	}
 
+	function getFilteredActions(
+		stack: ViewStack,
+		node: NodeCreateElement,
+		actions: Record<string, ActionTypeDescription[]>,
+	) {
+		const nodeActions = actions?.[node.key] || [];
+		if (stack.subcategory === HITL_SUBCATEGORY) {
+			return getHumanInTheLoopActions(nodeActions);
+		}
+		if (stack.actionsFilter) {
+			return stack.actionsFilter(nodeActions);
+		}
+		return nodeActions;
+	}
+
+	function isListedInSubcategory(stack: ViewStack, item: INodeCreateElement): boolean {
+		if (item.type === 'section') return true;
+		if (item.type !== 'node') return false;
+
+		const hasTriggerGroup = item.properties.group.includes('trigger');
+		const hasActions = getFilteredActions(stack, item, nodeCreatorStore.actions).length > 0;
+
+		if (stack.rootView === TRIGGER_NODE_CREATOR_VIEW) {
+			return hasActions || hasTriggerGroup;
+		}
+
+		return hasActions || !hasTriggerGroup;
+	}
+
+	function mapSubcategoryItem(stack: ViewStack, item: INodeCreateElement) {
+		if (item.type !== 'node') return item;
+
+		const hasTriggerGroup = item.properties.group.includes('trigger');
+		const hasActions = getFilteredActions(stack, item, nodeCreatorStore.actions).length > 0;
+
+		if (!hasTriggerGroup || !hasActions) return item;
+
+		// Items are cached and share `codex` with the node types, so copy before changing them
+		const { properties } = item;
+		return {
+			...item,
+			properties: {
+				...properties,
+				displayName: properties.displayName.replace(' Trigger', ''),
+				...(properties.codex && {
+					// Store the original name in the alias so we can search for it
+					codex: {
+						...properties.codex,
+						alias: [...(properties.codex.alias ?? []), properties.displayName],
+					},
+				}),
+			},
+		};
+	}
+
+	function subcategoryStack(item: SubcategoryCreateElement, rootView?: NodeFilterType): ViewStack {
+		const subcategoryKey = camelCase(item.properties.title);
+		// If the info message exists in locale, add it to the info field of the view
+		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
+		const info = i18n.baseText(infoKey);
+
+		const stack: ViewStack = {
+			subcategory: item.key,
+			mode: 'nodes',
+			title: i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey),
+			nodeIcon: item.properties.icon ? { type: 'icon', name: item.properties.icon } : undefined,
+			...(info !== infoKey ? { info } : {}),
+			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
+			...(item.properties.connectionType ? { connectionType: item.properties.connectionType } : {}),
+			rootView,
+			forceIncludeNodes: item.properties.forceIncludeNodes,
+			sections: item.properties.sections,
+			items: item.properties.items,
+			hideActions: item.properties.hideActions,
+			actionsFilter: item.properties.actionsFilter,
+		};
+
+		return {
+			...stack,
+			baseFilter: (element) => isListedInSubcategory(stack, element),
+			itemsMapper: (element) => mapSubcategoryItem(stack, element),
+		};
+	}
+
+	function viewStack(view: NodeView, rootView: NodeFilterType = view.value): ViewStack {
+		return {
+			title: view.title,
+			subtitle: view.subtitle ?? '',
+			info: view.info,
+			nodeIcon: view.nodeIcon,
+			items: view.items as INodeCreateElement[],
+			hasSearch: true,
+			mode: 'nodes',
+			rootView,
+			// Root search should include all nodes
+			searchItems: nodeCreatorStore.mergedNodes,
+		};
+	}
+
+	function viewStackByKey(key: string): ViewStack | undefined {
+		if (!isNodeCreatorView(key)) return undefined;
+		return viewStack(NODE_CREATOR_VIEWS[key](nodeCreatorStore.mergedNodes));
+	}
+
+	function subcategoryItems(stack: ViewStack): INodeCreateElement[] {
+		const items = (itemsBySubcategory.value[stack.subcategory ?? DEFAULT_SUBCATEGORY] ?? []).filter(
+			(item) => settingsStore.isAskAiEnabled || item.key !== AI_TRANSFORM_NODE_TYPE,
+		);
+		return stack.sections ? groupItemsInSections(items, stack.sections) : items;
+	}
+
+	function listedStackItems(stack: ViewStack): INodeCreateElement[] {
+		// Views list some nodes by hand. Every other list is built from the loaded node types.
+		const listed =
+			stack.items?.filter(
+				(item) => item.type !== 'node' || !nodeTypesStore.isNodeTypeUnavailable(item.key),
+			) ?? subcategoryItems(stack);
+
+		const forced = nodeCreatorStore.mergedNodes
+			.filter((node) => stack.forceIncludeNodes?.includes(node.name))
+			.map((node) => transformNodeType(node, stack.subcategory));
+
+		const items = [...listed, ...forced];
+		return stack.baseFilter ? items.filter(stack.baseFilter) : items;
+	}
+
+	/** A stack's items before mapping and sorting, without entries that open an empty list. */
+	function collectStackItems(stack: ViewStack): INodeCreateElement[] {
+		return listedStackItems(stack).filter((item) => opensNodes(item, stack.rootView));
+	}
+
+	function opensNodes(item: INodeCreateElement, rootView?: NodeFilterType): boolean {
+		if (item.type === 'subcategory') return hasBrowsableNodes(subcategoryStack(item, rootView));
+		if (item.type === 'view') {
+			const stack = viewStackByKey(item.key);
+			return stack !== undefined && hasBrowsableNodes(stack);
+		}
+		return true;
+	}
+
+	// Links and callouts are not content. Direct nodes are checked first so that
+	// nested lists are resolved only when the stack has no node of its own.
+	function hasBrowsableNodes(stack: ViewStack): boolean {
+		const items = flattenCreateElements(
+			withoutRestrictedNodes(listedStackItems(stack), isNodeItemRestricted),
+		);
+		return (
+			items.some((item) => item.type === 'node') ||
+			items.some(
+				(item) =>
+					(item.type === 'subcategory' || item.type === 'view') && opensNodes(item, stack.rootView),
+			)
+		);
+	}
+
 	function setStackBaselineItems() {
 		const stack = getLastActiveStack();
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		// Views list some nodes by hand. Every other list is built from the loaded node types.
-		let stackItems = (stack?.items ?? []).filter(
-			(item) => item.type !== 'node' || !nodeTypesStore.isNodeTypeUnavailable(item.key),
-		);
-
-		if (!stack?.items) {
-			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			let itemsInSubcategory: INodeCreateElement[] | undefined =
-				itemsBySubcategory.value[subcategory];
-
-			const isAskAiEnabled = settingsStore.isAskAiEnabled;
-			if (!isAskAiEnabled) {
-				itemsInSubcategory =
-					itemsInSubcategory?.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE) ?? [];
-			}
-			const sections = stack.sections;
-
-			if (sections) {
-				stackItems = groupItemsInSections(itemsInSubcategory, sections);
-			} else {
-				stackItems = itemsInSubcategory;
-			}
-		}
-
-		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
-		// regardless of whether the subcategory is matched
-		if ((stack.forceIncludeNodes ?? []).length > 0) {
-			const matchedNodes = nodeCreatorStore.mergedNodes
-				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
-				.map((item) => transformNodeType(item, stack.subcategory));
-
-			stackItems.push(...matchedNodes);
-		}
-
-		if (stack.baseFilter) {
-			stackItems = stackItems.filter(stack.baseFilter);
-		}
-
-		if (stack.itemsMapper) {
-			stackItems = stackItems.map(stack.itemsMapper);
-		}
-
+		const items = collectStackItems(stack);
+		const mapped = stack.itemsMapper ? items.map(stack.itemsMapper) : items;
 		// Sort only if non-root view
-		if (!stack.items) {
-			stackItems = sortNodeCreateElements(stackItems);
-		}
-
-		updateCurrentViewStack({ baselineItems: stackItems });
+		updateCurrentViewStack({
+			baselineItems: stack.items ? mapped : sortNodeCreateElements(mapped),
+		});
 	}
 
 	function pushViewStack(
@@ -656,6 +772,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		globalSearchItemsDiff,
 		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
+		getFilteredActions,
+		subcategoryStack,
+		viewStack,
+		viewStackByKey,
 		resetViewStacks,
 		updateCurrentViewStack,
 		pushViewStack,
