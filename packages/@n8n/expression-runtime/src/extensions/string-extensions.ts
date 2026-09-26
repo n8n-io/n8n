@@ -455,7 +455,12 @@ function extractUrlPath(value: string) {
 	const isSpecial = SPECIAL_SCHEMES.has(value.slice(0, protoEnd).toLowerCase());
 	const startsPath = (char: string) => char === '/' || (isSpecial && char === '\\');
 
-	const hostStart = protoEnd + 3;
+	let hostStart = protoEnd + 3;
+	// A special scheme ignores any further slashes, and backslashes, before its
+	// host, so `https://\\a/x` has the host `a` and the path `/x`.
+	while (isSpecial && hostStart < value.length && startsPath(value[hostStart])) {
+		hostStart++;
+	}
 	if (hostStart >= value.length) return undefined;
 
 	// Find where host ends (first path separator, ?, or #)

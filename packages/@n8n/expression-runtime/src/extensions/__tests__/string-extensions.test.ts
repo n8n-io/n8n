@@ -74,6 +74,10 @@ describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 		'https://example.com/a\\..\\b',
 		'ws://example.com/a\\b',
 		'ftp://example.com/a/../b',
+		'https://\\example.com/a',
+		'https:///example.com/a',
+		'https:////example.com/a/../b',
+		'ws://\\example.com/a',
 	])('should give the same path as new URL() for %s', (input) => {
 		expect(extractUrlPath(input)).toBe(new URL(input).pathname);
 	});
