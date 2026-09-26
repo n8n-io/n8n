@@ -57,7 +57,12 @@ function setup(
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
+	const {
+		producedArtifacts,
+		resourceNameIndex,
+		linkableResourceNameIndex,
+		producedArtifactOrigins,
+	} = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
 		undefined,
@@ -67,7 +72,13 @@ function setup(
 		transientWorkflowReferences,
 		agentBuilderTargets,
 	);
-	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+	return {
+		messages,
+		producedArtifacts,
+		resourceNameIndex,
+		linkableResourceNameIndex,
+		producedArtifactOrigins,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -1340,6 +1351,138 @@ describe('useResourceRegistry', () => {
 			expect(Object.keys(producedArtifacts.get('wf-1') ?? {})).not.toContain('archived');
 
 			stop();
+		});
+	});
+
+	describe('producedArtifactOrigins', () => {
+		const buildMessage = (workflowId: string) =>
+			makeMessage({
+				id: `build-${workflowId}`,
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolName: 'build-workflow',
+							result: { workflowId, workflowName: 'Orders' },
+						}),
+					],
+				}),
+			});
+		const attachMessage = (workflowId: string) =>
+			makeMessage({
+				id: `attach-${workflowId}`,
+				role: 'user',
+				attachments: [{ type: 'workflow', id: workflowId, name: 'Orders' }],
+			});
+
+		test('records how each artifact entered: built, attached, or mentioned', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{ referenceId: 'ref-1', workflowId: 'wf-mentioned', workflowName: 'Leads' },
+			]);
+			const { messages, producedArtifactOrigins } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => ({ type: 'workflow', id: 'wf-handoff', name: 'Canvas' }),
+				() => transient.value,
+			);
+			messages.value = [attachMessage('wf-attached'), buildMessage('wf-built')];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-attached': 'attached',
+				'wf-built': 'built',
+				'wf-handoff': 'attached',
+				'wf-mentioned': 'mentioned',
+			});
+		});
+
+		test('marks a tab the agent opened by reading a workflow as fetched, not built', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							// A small `get` returns the document itself.
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'workflows',
+								args: { action: 'get', workflowId: 'wf-read' },
+								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
+							}),
+							// A version read carries a workflowId like a build result does.
+							makeToolCall({
+								toolCallId: 'tc-version',
+								toolName: 'workflows',
+								args: { action: 'get', workflowId: 'wf-version', versionId: 'v1' },
+								result: { workflowId: 'wf-version', name: 'Leads', versionId: 'v1' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-edited' },
+								result: { success: true, workflowName: 'Invoices' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-read': 'fetched',
+				'wf-version': 'fetched',
+				'wf-edited': 'built',
+			});
+		});
+
+		test('keeps the first intake when the agent later edits an attached workflow', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [attachMessage('wf-1'), buildMessage('wf-1')];
+			await nextTick();
+
+			expect(producedArtifactOrigins.get('wf-1')).toBe('attached');
+		});
+
+		test('keeps a mention as mentioned once its send turns it into a message attachment', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
+			]);
+			const { messages, producedArtifactOrigins } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => transient.value,
+			);
+			await nextTick();
+			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
+
+			// The optimistic message lands first; the reference is released after.
+			messages.value = [attachMessage('wf-1')];
+			await nextTick();
+			transient.value = [];
+			await nextTick();
+
+			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
+		});
+
+		test('forgets the origin of an artifact that leaves the thread', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
+			]);
+			const { producedArtifactOrigins } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => transient.value,
+			);
+			await nextTick();
+
+			transient.value = [];
+			await nextTick();
+
+			expect(producedArtifactOrigins.has('wf-1')).toBe(false);
 		});
 	});
 });

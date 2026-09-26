@@ -1,6 +1,10 @@
 import { nextTick, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
-import type { AssistantMentionTriggerSource } from '../assistantAtMentions.types';
+import type {
+	AssistantMentionCloseInfo,
+	AssistantMentionCloseReason,
+	AssistantMentionTriggerSource,
+} from '../assistantAtMentions.types';
 
 interface MentionRange {
 	origin: 'typed' | 'button';
@@ -31,6 +35,8 @@ export function useAssistantAtMentions(options: {
 	enabled: MaybeRefOrGetter<boolean>;
 	getInputElement: () => HTMLTextAreaElement | undefined;
 	onOpened?: (source: AssistantMentionTriggerSource) => void;
+	/** Fires once per open, synchronously, before the menu state is cleared. */
+	onClosed?: (info: AssistantMentionCloseInfo) => void;
 }) {
 	const menuOpen = ref(false);
 	const query = ref('');
@@ -38,6 +44,9 @@ export function useAssistantAtMentions(options: {
 	const savedSelection = ref({ start: 0, end: 0 });
 	const dismissedTypedTriggerIndex = ref<number>();
 	let updatingTextInternally = false;
+	// How the current open started. A typed `@` can replace a button range while the
+	// picker stays open, so the outcome must report the source the open reported.
+	let openSource: AssistantMentionTriggerSource | undefined;
 
 	function updateText(value: string): void {
 		updatingTextInternally = true;
@@ -45,10 +54,25 @@ export function useAssistantAtMentions(options: {
 		updatingTextInternally = false;
 	}
 
-	function close(rememberTypedTrigger = false): void {
-		if (rememberTypedTrigger && activeRange.value?.origin === 'typed') {
-			dismissedTypedTriggerIndex.value = activeRange.value.start;
+	function markOpened(source: AssistantMentionTriggerSource): void {
+		if (menuOpen.value) return;
+		openSource = source;
+		menuOpen.value = true;
+		options.onOpened?.(source);
+	}
+
+	function close(
+		rememberTypedTrigger = false,
+		reason: AssistantMentionCloseReason = 'closed_menu',
+	): void {
+		const range = activeRange.value;
+		if (rememberTypedTrigger && range?.origin === 'typed') {
+			dismissedTypedTriggerIndex.value = range.start;
 		}
+		// The range, not `menuOpen`, marks an open picker: the host's v-model may have
+		// already flipped `menuOpen` before the menu's close reaches this function.
+		if (range) options.onClosed?.({ source: openSource ?? range.origin, reason });
+		openSource = undefined;
 		menuOpen.value = false;
 		query.value = '';
 		activeRange.value = undefined;
@@ -64,7 +88,6 @@ export function useAssistantAtMentions(options: {
 	}
 
 	function openTypedRange(triggerIndex: number, caret: number, initialQuery = ''): void {
-		const wasOpen = menuOpen.value;
 		activeRange.value = {
 			origin: 'typed',
 			start: triggerIndex,
@@ -73,13 +96,11 @@ export function useAssistantAtMentions(options: {
 		};
 		dismissedTypedTriggerIndex.value = undefined;
 		query.value = initialQuery;
-		menuOpen.value = true;
-		if (!wasOpen) options.onOpened?.('typed');
+		markOpened('typed');
 	}
 
 	function openFromButton(): void {
 		if (!toValue(options.enabled)) return;
-		const wasOpen = menuOpen.value;
 		saveSelection();
 		activeRange.value = {
 			origin: 'button',
@@ -88,8 +109,7 @@ export function useAssistantAtMentions(options: {
 			end: savedSelection.value.end,
 		};
 		query.value = '';
-		menuOpen.value = true;
-		if (!wasOpen) options.onOpened?.('button');
+		markOpened('button');
 	}
 
 	async function handleTextChange(value: string, caretOverride?: number): Promise<void> {
@@ -101,7 +121,7 @@ export function useAssistantAtMentions(options: {
 			dismissedTypedTriggerIndex.value = undefined;
 		}
 		if (!toValue(options.enabled)) {
-			close();
+			close(false, 'unavailable');
 			return;
 		}
 
@@ -125,8 +145,12 @@ export function useAssistantAtMentions(options: {
 		if (range) {
 			const triggerExists = range.origin === 'button' || isMentionTrigger(value[range.start]);
 			const beforeRange = range.origin === 'typed' ? caret <= range.start : caret < range.start;
-			if (!triggerExists || beforeRange) {
-				close();
+			if (!triggerExists) {
+				close(false, 'deleted_trigger');
+				return;
+			}
+			if (beforeRange) {
+				close(false, 'moved_caret');
 				return;
 			}
 
@@ -145,7 +169,9 @@ export function useAssistantAtMentions(options: {
 		const selection = savedSelection.value;
 		const beforeRange =
 			range.origin === 'typed' ? selection.start <= range.start : selection.start < range.start;
-		if (beforeRange || selection.start > range.end || selection.end > range.end) close();
+		if (beforeRange || selection.start > range.end || selection.end > range.end) {
+			close(false, 'moved_caret');
+		}
 	}
 
 	async function replaceActiveRange(label: string): Promise<void> {
@@ -154,7 +180,7 @@ export function useAssistantAtMentions(options: {
 		const end = range?.end ?? savedSelection.value.end;
 		const insertedText = `"${label}"`;
 		updateText(options.text.value.slice(0, start) + insertedText + options.text.value.slice(end));
-		close();
+		close(false, 'selected');
 
 		await nextTick();
 		const caret = start + insertedText.length;
@@ -164,9 +190,41 @@ export function useAssistantAtMentions(options: {
 		savedSelection.value = { start: caret, end: caret };
 	}
 
+	/**
+	 * Dismissing the menu right after typing `@` would leave a stray trigger in the
+	 * draft. Remove it, along with any whitespace typed after it, and put the caret
+	 * back where it was. Returns false when there is nothing to remove: a button
+	 * range, a query after the trigger, or a trigger the text no longer holds.
+	 */
+	function removeEmptyTypedTrigger(): boolean {
+		const range = activeRange.value;
+		const text = options.text.value;
+		if (
+			!range ||
+			range.origin !== 'typed' ||
+			!isMentionTrigger(text[range.start]) ||
+			text.slice(range.queryStart, range.end).trim() !== ''
+		) {
+			return false;
+		}
+
+		updateText(text.slice(0, range.start) + text.slice(range.end));
+		close();
+		void nextTick(() => {
+			const input = options.getInputElement();
+			// The re-rendered value moves the caret to the end. Restore it only while
+			// the input is focused: a dismissal by outside click has moved focus away.
+			if (input && document.activeElement === input) {
+				input.setSelectionRange(range.start, range.start);
+			}
+			savedSelection.value = { start: range.start, end: range.start };
+		});
+		return true;
+	}
+
 	function handleMenuOpenChange(open: boolean): void {
 		if (!open) {
-			close(true);
+			if (!removeEmptyTypedTrigger()) close(true);
 			return;
 		}
 		if (!activeRange.value) openFromButton();
@@ -175,7 +233,7 @@ export function useAssistantAtMentions(options: {
 	watch(
 		() => toValue(options.enabled),
 		(enabled) => {
-			if (!enabled) close();
+			if (!enabled) close(false, 'unavailable');
 		},
 	);
 	watch(

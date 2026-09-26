@@ -9,9 +9,10 @@ import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 
 const props = defineProps<{
 	label: string;
+	breadcrumbs?: readonly string[];
 	nodeType?: INodeTypeDescription | null;
 	testid: string;
-	icon?: 'layers';
+	icon?: 'layers' | 'group';
 	removable?: boolean;
 	expanded?: boolean | null;
 }>();
@@ -64,6 +65,7 @@ function handleKeydown(event: KeyboardEvent) {
 		ref="root"
 		:class="{ [$style.expandable]: expanded != null }"
 		:label="label"
+		:breadcrumbs="breadcrumbs"
 		:removable="removable"
 		:remove-label="i18n.baseText('generic.delete')"
 		:test-id="testid"
@@ -76,9 +78,9 @@ function handleKeydown(event: KeyboardEvent) {
 		@remove="emit('remove')"
 	>
 		<template #icon>
-			<N8nIcon v-if="icon" :icon="icon" size="medium" />
-			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="14" />
-			<N8nIcon v-else icon="crosshair" size="medium" />
+			<N8nIcon v-if="icon" :icon="icon" size="small" />
+			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+			<N8nIcon v-else icon="crosshair" size="small" />
 		</template>
 	</InstanceAiResourceChip>
 </template>

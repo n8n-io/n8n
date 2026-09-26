@@ -8,6 +8,7 @@ function setup(initialText = '') {
 	const enabled = ref(true);
 	const input = document.createElement('textarea');
 	const onOpened = vi.fn();
+	const onClosed = vi.fn();
 	input.value = initialText;
 	document.body.appendChild(input);
 	const mentions = useAssistantAtMentions({
@@ -15,8 +16,9 @@ function setup(initialText = '') {
 		enabled,
 		getInputElement: () => input,
 		onOpened,
+		onClosed,
 	});
-	return { text, enabled, input, mentions, onOpened };
+	return { text, enabled, input, mentions, onOpened, onClosed };
 }
 
 describe('useAssistantAtMentions', () => {
@@ -168,6 +170,135 @@ describe('useAssistantAtMentions', () => {
 		await mentions.replaceActiveRange('Orders');
 
 		expect(text.value).toBe('"Orders" this');
+	});
+
+	it('removes a typed @ when the menu is dismissed without a query', async () => {
+		const { text, input, mentions } = setup('hello @');
+		input.focus();
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange('hello @');
+		expect(mentions.menuOpen.value).toBe(true);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(mentions.menuOpen.value).toBe(false);
+		expect(text.value).toBe('hello ');
+		expect(input.selectionStart).toBe(6);
+	});
+
+	it('removes a typed @ and the whitespace after it when the menu is dismissed', async () => {
+		const { text, input, mentions } = setup('hello @  world');
+		input.focus();
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange('hello @  world');
+		input.setSelectionRange(9, 9);
+		await mentions.handleTextChange('hello @  world');
+		expect(mentions.menuOpen.value).toBe(true);
+		expect(mentions.query.value).toBe('  ');
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('hello world');
+		expect(input.selectionStart).toBe(6);
+	});
+
+	it('keeps a typed @ with a query when the menu is dismissed', async () => {
+		const { text, input, mentions } = setup('hello @or');
+		input.setSelectionRange(9, 9);
+		await mentions.handleTextChange('hello @or');
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('hello @or');
+		input.value = 'hello @ord';
+		input.setSelectionRange(10, 10);
+		await mentions.handleTextChange('hello @ord');
+		expect(mentions.menuOpen.value).toBe(false);
+	});
+
+	it('does not touch the draft when a button-opened menu is dismissed', async () => {
+		const { text, input, mentions } = setup('Replace this');
+		input.setSelectionRange(0, 7);
+		mentions.openFromButton();
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(mentions.menuOpen.value).toBe(false);
+		expect(text.value).toBe('Replace this');
+	});
+
+	it('reports why the picker closed', async () => {
+		const { enabled, input, mentions, onClosed } = setup();
+		async function openTyped(value: string): Promise<void> {
+			input.value = value;
+			input.setSelectionRange(value.length, value.length);
+			await mentions.handleTextChange(value);
+			expect(mentions.menuOpen.value).toBe(true);
+		}
+
+		await openTyped('@');
+		// The host's v-model flips the flag before the menu's close notification arrives.
+		mentions.menuOpen.value = false;
+		mentions.handleMenuOpenChange(false);
+		expect(onClosed).toHaveBeenLastCalledWith({ source: 'typed', reason: 'closed_menu' });
+
+		await openTyped('@ord');
+		input.value = 'ord';
+		input.setSelectionRange(3, 3);
+		await mentions.handleTextChange('ord');
+		expect(onClosed).toHaveBeenLastCalledWith(
+			expect.objectContaining({ source: 'typed', reason: 'deleted_trigger' }),
+		);
+
+		await openTyped('hello @');
+		input.setSelectionRange(2, 2);
+		await mentions.handleCaretMove();
+		expect(onClosed).toHaveBeenLastCalledWith(
+			expect.objectContaining({ source: 'typed', reason: 'moved_caret' }),
+		);
+
+		await openTyped('@');
+		enabled.value = false;
+		await nextTick();
+		expect(onClosed).toHaveBeenLastCalledWith(
+			expect.objectContaining({ source: 'typed', reason: 'unavailable' }),
+		);
+		enabled.value = true;
+		await nextTick();
+
+		mentions.openFromButton();
+		await mentions.replaceActiveRange('Orders');
+		expect(onClosed).toHaveBeenLastCalledWith(
+			expect.objectContaining({ source: 'button', reason: 'selected' }),
+		);
+
+		// A typed `@` while a button-opened picker is open replaces the range but
+		// not the open, so the outcome keeps reporting the source of that open.
+		mentions.openFromButton();
+		await openTyped('"Orders" @');
+		mentions.handleMenuOpenChange(false);
+		expect(onClosed).toHaveBeenLastCalledWith({ source: 'button', reason: 'closed_menu' });
+		expect(onClosed).toHaveBeenCalledTimes(6);
+	});
+
+	it('reports one close per open', async () => {
+		const { input, mentions, onClosed } = setup();
+		input.value = '@';
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange('@');
+
+		await mentions.replaceActiveRange('Orders');
+		// The menu reports its own close after the selection landed.
+		mentions.handleMenuOpenChange(false);
+		mentions.close();
+
+		expect(onClosed).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ reason: 'selected' }),
+		);
 	});
 
 	it('closes when the trigger is deleted or mentions are disabled', async () => {

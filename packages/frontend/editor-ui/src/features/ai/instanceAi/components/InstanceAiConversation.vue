@@ -163,7 +163,10 @@ const reservedComposerAttachmentCount = computed(
 const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
 	[...thread.producedArtifacts.values()]
 		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
-		.map(({ id, name }) => ({ id, name })),
+		.map(({ id, name }) => {
+			const origin = thread.producedArtifactOrigins.get(id);
+			return { id, name, ...(origin ? { origin } : {}) };
+		}),
 );
 const mentionActiveWorkflowId = computed(() => {
 	const activeArtifactId = thread.activeArtifactId;
@@ -634,7 +637,7 @@ async function handleSubmit(
 			pushRef: rootStore.pushRef,
 			handoffContext,
 			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-			...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
+			...(mentionCounts.total > 0 ? { mentionCounts } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {

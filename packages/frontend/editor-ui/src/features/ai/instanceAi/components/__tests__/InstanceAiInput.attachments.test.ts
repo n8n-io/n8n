@@ -9,8 +9,10 @@ import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
 
@@ -223,14 +225,27 @@ const nodeMentionSelection: AssistantMentionSelection = {
 	telemetry: { mode: 'search', resultPosition: 2, queryLength: 3 },
 };
 
+const stubOpenMetrics = {
+	mode: 'search',
+	queryLength: 3,
+	resultCount: 4,
+	ambiguousResultCount: 2,
+	submenuOpenCount: 1,
+} as const;
+
 const MentionPickerStub = defineComponent({
 	name: 'AssistantAtMentionPicker',
 	props: {
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
 	},
-	emits: ['select'],
-	setup(props, { emit }) {
+	emits: ['select', 'update:modelValue', 'empty-search'],
+	setup(props, { emit, expose }) {
+		expose({
+			getOpenMetrics: () => stubOpenMetrics,
+			handleExternalKeydown: () => false,
+			flushEmptySearch: () => {},
+		});
 		return () =>
 			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
 				h(
@@ -249,6 +264,22 @@ const MentionPickerStub = defineComponent({
 					},
 					'Select node',
 				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-dismiss',
+						onClick: () => emit('update:modelValue', false),
+					},
+					'Dismiss',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-empty-search',
+						onClick: () => emit('empty-search', 'Slack'),
+					},
+					'Report empty search',
+				),
 			]);
 	},
 });
@@ -258,7 +289,7 @@ const renderMentionsInput = createComponentRenderer(InstanceAiInput, {
 		...defaultProps(),
 		mentionsEnabled: true,
 		mentionProjectId: 'project-1',
-		mentionArtifacts: [{ id: 'w1', name: 'Orders' }],
+		mentionArtifacts: [{ id: 'w1', name: 'Orders', origin: 'built' }],
 	},
 	global: { stubs: { AssistantAtMentionPicker: MentionPickerStub } },
 });
@@ -276,7 +307,69 @@ describe('InstanceAiInput — mention attachments', () => {
 
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
+		);
+	});
+
+	it('tracks a dismissed picker with the list snapshot and thread id', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@ord');
+
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				reason: 'closed_menu',
+				mode: 'search',
+				query_length: 3,
+				result_count: 4,
+				ambiguous_result_count: 2,
+				submenu_open_count: 1,
+			},
+		);
+	});
+
+	it('tracks an empty search with the redacted query, its node type match and the tab count', async () => {
+		useNodeTypesStore().setNodeTypes([
+			// A plain object: a mock proxy answers `hidden` with a truthy function.
+			{ name: 'n8n-nodes-base.slack', displayName: 'Slack', version: 1 } as INodeTypeDescription,
+		]);
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@sla');
+
+		await userEvent.click(getByTestId('mention-picker-empty-search'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				query: 'Slack',
+				query_length: 5,
+				matched_node_type: 'n8n-nodes-base.slack',
+				artifact_count: 1,
+			},
+		);
+	});
+
+	it('does not track a dismissal when a mention is selected', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@');
+
+		await userEvent.click(getByTestId('mention-picker-select'));
+		// The menu reports its own close after the selection landed.
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+			expect.objectContaining({ kind: 'workflow' }),
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			expect.anything(),
 		);
 	});
 
@@ -303,7 +396,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
 		);
 	});
 
@@ -320,27 +413,30 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'workflow',
 				mode: 'browse',
 				source: 'workflows',
 				result_position: 1,
 				query_length: 0,
 				already_artifact: true,
+				artifact_origin: 'built',
 			},
 		);
 	});
 
-	it('does not track a duplicate selection as newly staged context', async () => {
-		const { getByTestId } = renderMentionsInput();
+	it('tracks a duplicate pick as a selection without staging it twice', async () => {
+		const { getByTestId, emitted } = renderMentionsInput();
 
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('mention-picker-select'));
 
+		expect(emitted()['mention-reference-added']).toHaveLength(1);
 		expect(
 			telemetryTrack.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			),
-		).toHaveLength(1);
+		).toHaveLength(2);
 	});
 
 	it('keeps mention context on failed send and releases it after an accepted send', async () => {
@@ -359,10 +455,10 @@ describe('InstanceAiInput — mention attachments', () => {
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
 		expect(firstSubmit[6]).toEqual({
-			mentionCount: 1,
-			workflowMentionCount: 1,
-			nodeMentionCount: 0,
-			groupMentionCount: 0,
+			total: 1,
+			workflow: 1,
+			node: 0,
+			group: 0,
 		});
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');
@@ -381,7 +477,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 
@@ -405,12 +501,14 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'node',
 				mode: 'search',
 				source: 'artifacts',
 				result_position: 2,
 				query_length: 3,
 				already_artifact: false,
+				artifact_origin: null,
 			},
 		);
 	});
@@ -423,7 +521,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 });

@@ -156,10 +156,10 @@ describe('InstanceAiConversation', () => {
 			Date.now(),
 			acceptDraft,
 			{
-				mentionCount: 1,
-				workflowMentionCount: 1,
-				nodeMentionCount: 0,
-				groupMentionCount: 0,
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
 			},
 		);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
@@ -167,10 +167,10 @@ describe('InstanceAiConversation', () => {
 			'Compare orders',
 			expect.objectContaining({
 				mentionCounts: {
-					mentionCount: 1,
-					workflowMentionCount: 1,
-					nodeMentionCount: 0,
-					groupMentionCount: 0,
+					total: 1,
+					workflow: 1,
+					node: 0,
+					group: 0,
 				},
 			}),
 		);
