@@ -1,4 +1,3 @@
-import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	INode,
@@ -73,7 +72,6 @@ export class EngineV2Webhooks {
 		private readonly dispatcher: EngineV2Dispatcher,
 		private readonly payloadGuard: EngineV2PayloadGuard,
 		private readonly proxy: EngineDataPlaneProxyService,
-		private readonly engineConfig: EngineConfig,
 	) {}
 
 	/** Whether this webhook run starts on the engine v2 data plane. */
@@ -131,11 +129,6 @@ export class EngineV2Webhooks {
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
-			);
-		}
-		if (this.engineConfig.mode === 'remote' && responseMode !== 'onReceived') {
-			throw new UserError(
-				`Engine v2 does not support the '${responseMode}' response mode with a remote data plane yet. Respond immediately instead.`,
 			);
 		}
 	}
