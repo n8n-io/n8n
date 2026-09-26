@@ -690,6 +690,22 @@ describe('FrontendService', () => {
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
 		});
 
+		it('reports granular credential sharing off unless the env flag is set', async () => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
+		});
+
+		it('reports granular credential sharing on when the env flag is set', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
+		});
+
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 

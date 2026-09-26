@@ -181,6 +181,11 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
+	/**
+	 * Granular credential sharing: a personal credential is usable in any
+	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
+	 */
+	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
