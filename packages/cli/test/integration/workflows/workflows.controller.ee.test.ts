@@ -1806,7 +1806,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
-			actor: expect.objectContaining({ kind: 'user' }),
+			actor: { kind: 'user', user: { id: member.id } },
 		});
 	});
 
@@ -1938,7 +1938,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
-			actor: expect.objectContaining({ kind: 'user' }),
+			actor: { kind: 'user', user: { id: member.id } },
 		});
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
