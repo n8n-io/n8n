@@ -581,6 +581,7 @@ const commonStubs = {
 			'projectId',
 			'agentId',
 			'projectName',
+			'projectIcon',
 			'headerActions',
 			'beforeRevertToPublished',
 			'artifactMode',
@@ -4508,6 +4509,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 		expect(header.props('projectName')).toBe('Personal');
+		expect(header.props('projectIcon')).toEqual({ type: 'icon', value: 'user' });
 	});
 
 	it('opens the tool config modal with the custom tool source', async () => {

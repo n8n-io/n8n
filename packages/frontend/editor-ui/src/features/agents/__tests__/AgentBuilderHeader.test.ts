@@ -72,7 +72,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -121,6 +122,11 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
+	ProjectIcon: {
+		name: 'ProjectIcon',
+		template: '<span data-testid="stub-project-icon" />',
+		props: ['icon', 'size', 'borderLess'],
+	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -141,6 +147,7 @@ function mountHeader(
 	overrides: Partial<{
 		agent: AgentResource | null;
 		projectName: string | null;
+		projectIcon: { type: 'icon' | 'emoji'; value: string };
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
@@ -157,6 +164,7 @@ function mountHeader(
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
+			projectIcon: overrides.projectIcon ?? { type: 'icon', value: 'user' },
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
@@ -229,6 +237,14 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const projectIcon = { type: 'emoji' as const, value: '🚀' };
+		const wrapper = mountHeader({ projectIcon });
+
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('icon')).toEqual(projectIcon);
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('size')).toBe('mini');
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {
