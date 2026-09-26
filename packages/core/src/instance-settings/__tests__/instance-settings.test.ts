@@ -63,6 +63,13 @@ describe('InstanceSettings', () => {
 			expect(() => createInstanceSettings({ encryptionKey: 'key_2' })).toThrowError();
 		});
 
+		it('should link to the custom encryption key guide when keys do not match', () => {
+			mockFs.readFileSync.mockReturnValue(JSON.stringify({ encryptionKey: 'key_1' }));
+			expect(() => createInstanceSettings({ encryptionKey: 'key_2' })).toThrowError(
+				'https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/set-a-custom-encryption-key',
+			);
+		});
+
 		it('should check if the settings file has the correct permissions', () => {
 			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
 			mockFs.statSync.mockReturnValueOnce({ mode: 0o600 } as fs.Stats);

@@ -5,6 +5,14 @@ import { extendedFunctions } from '../function-extensions';
 const zip = extendedFunctions.zip;
 const toPathSegment = extendedFunctions.toPathSegment;
 
+describe('$ifEmpty', () => {
+	it('links to its expression reference', () => {
+		expect(extendedFunctions.$ifEmpty.doc.docURL).toBe(
+			'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
+		);
+	});
+});
+
 describe('zip', () => {
 	it('should pair keys with values', () => {
 		expect(zip(['test1', 'test2', 'test3'], [1, 2, 3])).toEqual({

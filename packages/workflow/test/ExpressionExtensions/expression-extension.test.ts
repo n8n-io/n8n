@@ -9,6 +9,12 @@ import { extendedFunctions } from '../../src/extensions/extended-functions';
 import { extendSyntax } from '../../src/extensions/expression-extension';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
+test('$ifEmpty links to its expression reference', () => {
+	expect(extendedFunctions.$ifEmpty.doc.docURL).toBe(
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
+	);
+});
+
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
 		test('Basic transform with .isEmpty', () => {
