@@ -2312,7 +2312,7 @@ describe('OauthService', () => {
 					grant_types: ['authorization_code', 'refresh_token'],
 				}),
 			);
-			// JWE fields are only added behind both feature gates (flag + jweEnabled).
+			// JWE fields are only added when the oauth-jwe handler is set and jweEnabled is true.
 			const dcrPayload = httpClientMock.post.mock.calls[0][1];
 			expect(dcrPayload).not.toHaveProperty('jwks_uri');
 			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_alg');
