@@ -2156,6 +2156,31 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('reports a run that stopped on the iteration cap as an error', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'The agent has reached the maximum number of iterations and has stopped.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+				maxIterations: true,
+			});
+
+			const result = await getCallAgentTool(service).handler!({ message: 'Find my events' }, ctx);
+
+			expect(result).toMatchObject({
+				status: 'error',
+				code: 'max_iterations',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			});
+			// The guidance is the fix: without it the builder retries the same test.
+			const { message } = result as { message: string };
+			expect(message).toContain('A repeat of the same test gives the same result.');
+			expect(message).toContain('ask before you change the agent');
+		});
+
 		it('cancels approval-shaped custom suspensions and directs the user to Preview', async () => {
 			const { service, agentTestRunService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);

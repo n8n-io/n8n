@@ -46,6 +46,7 @@ export type PrepareDraftRunResult =
 interface DraftRunState {
 	response: string;
 	suspensions: AgentTestRunSuspension[];
+	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
 	observerFailed: boolean;
 	observerError?: unknown;
@@ -109,6 +110,8 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 export type PreparedDraftRunResult = {
 	response: string;
 	executionId: string;
+	/** The run stopped on the iteration cap. It did not finish its work. */
+	maxIterations?: true;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -359,6 +362,7 @@ export class AgentTestRunService {
 		const state: DraftRunState = {
 			response: initialResponse,
 			suspensions: [],
+			maxIterations: false,
 			observerFailed: false,
 		};
 		try {
@@ -375,7 +379,11 @@ export class AgentTestRunService {
 		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
-		const metadata = { response: state.response, executionId };
+		const metadata = {
+			response: state.response,
+			executionId,
+			...(state.maxIterations ? { maxIterations: true as const } : {}),
+		};
 		if (state.suspensions.length > 0) {
 			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
 		}
@@ -442,6 +450,8 @@ export class AgentTestRunService {
 		if (state.errorChunk) return;
 		if (chunk.type === 'text-delta') {
 			state.response += chunk.delta;
+		} else if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
+			state.maxIterations = true;
 		} else if (chunk.type === 'tool-call-suspended') {
 			state.suspensions.push({
 				runId: chunk.runId,
