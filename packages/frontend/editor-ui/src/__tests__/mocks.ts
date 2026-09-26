@@ -39,7 +39,11 @@ import {
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
-import type { FrontendSettings, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type {
+	CredentialTypeAvailabilityScope,
+	FrontendSettings,
+	NodeTypeAvailabilityScope,
+} from '@n8n/api-types';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -350,6 +354,18 @@ export function mockRestrictedNodeTypes(
 	restricted: Record<string, NodeTypeAvailabilityScope> = {},
 ): void {
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+		(name) => {
+			const scope = restricted[name];
+			return scope ? { name, available: false, scope } : { name, available: true };
+		},
+	);
+}
+
+/** The credential-type counterpart of `mockRestrictedNodeTypes`. */
+export function mockRestrictedCredentialTypes(
+	restricted: Record<string, CredentialTypeAvailabilityScope> = {},
+): void {
+	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getCredentialTypeAvailability').mockImplementation(
 		(name) => {
 			const scope = restricted[name];
 			return scope ? { name, available: false, scope } : { name, available: true };

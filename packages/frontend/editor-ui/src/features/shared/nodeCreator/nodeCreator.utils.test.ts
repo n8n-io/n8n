@@ -34,7 +34,7 @@ import {
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
 } from './__tests__/utils';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedCredentialTypes, mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -1423,6 +1423,24 @@ describe('node item restriction lookups', () => {
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
 
 		expect(isNodeItemRestricted('n8n-creds-base.sysdigApi')).toBe(true);
+	});
+
+	it('hides a credential-only node whose credential type is restricted and keeps HTTP Request and its siblings', () => {
+		mockRestrictedNodeTypes();
+		mockRestrictedCredentialTypes({ virusTotalApi: 'instance' });
+		const items = [
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.virusTotalApi',
+			'n8n-creds-base.sysdigApi',
+		].map((key) => mockNodeCreateElement({ key }));
+
+		expect(withoutRestrictedNodes(items, isNodeItemRestricted).map((item) => item.key)).toEqual([
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.sysdigApi',
+		]);
+		expect(getNodeItemRestriction('n8n-creds-base.virusTotalApi')).toMatchObject({
+			scope: 'instance',
+		});
 	});
 });
 
