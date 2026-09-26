@@ -570,8 +570,8 @@ catalogs:
       specifier: 9.29.0
       version: 9.29.0
     eslint-plugin-n8n-nodes-base:
-      specifier: ^1.16.7
-      version: 1.16.7
+      specifier: ^2.0.0
+      version: 2.0.0
     eslint-plugin-oxlint:
       specifier: 1.78.0
       version: 1.78.0
@@ -2631,7 +2631,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
     devDependencies:
       '@eslint/js':
         specifier: ^9.29.0
@@ -3347,7 +3347,7 @@ importers:
         version: 4.15.2(@typescript-eslint/utils@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -3841,7 +3841,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -17947,15 +17947,20 @@ packages:
       '@typescript-eslint/parser':
         optional: true
 
+  eslint-plugin-local@1.0.0:
+    resolution: {integrity: sha512-bcwcQnKL/Iw5Vi/F2lG1he5oKD2OGjhsLmrcctkWrWq5TujgiaYb0cj3pZgr3XI54inNVnneOFdAx1daLoYLJQ==}
+
   eslint-plugin-lodash@8.0.0:
     resolution: {integrity: sha512-7DA8485FolmWRzh+8t4S8Pzin2TTuWfb0ZW3j/2fYElgk82ZanFz8vDcvc4BBPceYdX1p/za+tkbO68maDBGGw==}
     engines: {node: '>=10'}
     peerDependencies:
       eslint: '>=9.0.0'
 
-  eslint-plugin-n8n-nodes-base@1.16.7:
-    resolution: {integrity: sha512-lKo+stn4t2jXX/ZdmJv2ClUQnRZLwSOyqfqsYgD6I/wYwy9bqA6mna4CEzdQNFVg5f3/RODpd/JQMiITARY92g==}
+  eslint-plugin-n8n-nodes-base@2.0.0:
+    resolution: {integrity: sha512-S9ot1KzqSEN6bYyHjVE+8MrzxvnAxZRL2zEcM+ubtht2wv5OO2rQURwJ1f6vetOgMjOTPVv+B9Z5deHfe8CADw==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
+    peerDependencies:
+      eslint: '>=8.40'
 
   eslint-plugin-oxlint@1.78.0:
     resolution: {integrity: sha512-kTyevY8wGGOvmOuEoWsP+MN1PEUaAbjka3MqPIcjqp3ZW3lXiu8OX/HyNFhTG8qCZi0qWYqnvgMYOUFAsu/Diw==}
@@ -37257,22 +37262,25 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
+  eslint-plugin-local@1.0.0: {}
+
   eslint-plugin-lodash@8.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
 
-  eslint-plugin-n8n-nodes-base@1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
+  eslint-plugin-n8n-nodes-base@2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
       '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       camel-case: 4.1.2
+      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      eslint-plugin-local: 1.0.0
       indefinite: 2.5.1
       pascal-case: 3.1.2
       pluralize: 8.0.0
       sentence-case: 3.0.4
       title-case: 3.0.3
     transitivePeerDependencies:
-      - eslint
       - supports-color
       - typescript
 
