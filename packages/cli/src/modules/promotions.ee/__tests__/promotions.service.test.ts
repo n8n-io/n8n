@@ -760,7 +760,9 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('These workflows moved to another project: w1');
+			).rejects.toMatchObject({
+				meta: { workflowIds: ['w1'] },
+			});
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(

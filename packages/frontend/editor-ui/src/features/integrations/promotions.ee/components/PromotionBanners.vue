@@ -83,6 +83,11 @@ async function onPromotionApplied({ projectId, project }: PromotionEventBusEvent
 	await Promise.all([refetchPromotable(), refetchIncoming()]);
 }
 
+async function onPromoted({ projectId }: PromotionEventBusEvents['promoted']) {
+	if (projectsStore.currentProjectId !== projectId) return;
+	await refetchPromotable();
+}
+
 async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectRemoved']) {
 	if (projectsStore.currentProjectId !== projectId) return;
 	await router.replace({ name: VIEWS.HOMEPAGE });
@@ -90,11 +95,13 @@ async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectR
 
 onMounted(() => {
 	promotionEventBus.on('applied', onPromotionApplied);
+	promotionEventBus.on('promoted', onPromoted);
 	promotionEventBus.on('projectRemoved', onProjectRemoved);
 });
 
 onBeforeUnmount(() => {
 	promotionEventBus.off('applied', onPromotionApplied);
+	promotionEventBus.off('promoted', onPromoted);
 	promotionEventBus.off('projectRemoved', onProjectRemoved);
 });
 

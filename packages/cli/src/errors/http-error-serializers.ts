@@ -1,4 +1,7 @@
-import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
+import {
+	isWorkflowPublishBlockedDetails,
+	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+} from '@n8n/api-types';
 
 import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
 
@@ -41,6 +44,16 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,
 				versionId: descriptor.meta?.versionId,
 			};
+			if (
+				descriptor.meta &&
+				descriptor.meta.code === PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE &&
+				Array.isArray(descriptor.meta.workflowIds)
+			) {
+				body.meta = {
+					code: PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+					workflowIds: descriptor.meta.workflowIds,
+				};
+			}
 			return {
 				status: descriptor.status,
 				body: {
