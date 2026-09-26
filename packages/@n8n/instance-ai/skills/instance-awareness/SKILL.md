@@ -1,5 +1,6 @@
 ---
 name: instance-awareness
+recommended_mode: general
 description: >-
   Load when the request depends on what is already on this instance rather than
   on what the user just typed: a short or ambiguous opener ("fix it", "carry on",

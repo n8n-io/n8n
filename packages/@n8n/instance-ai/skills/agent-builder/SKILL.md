@@ -1,5 +1,6 @@
 ---
 name: agent-builder
+recommended_mode: agents
 description: >-
   Load immediately after an Agent intent, and for every follow-up on an Agent
   that the conversation targets. Governs how you build, edit, test, and publish

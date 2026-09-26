@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
+import { INSTANCE_AI_TOOL_MODES } from '../../tools/tool-modes';
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
@@ -134,6 +135,15 @@ describe('Instance AI runtime skills', () => {
 			'progressive-building',
 			'workflow-builder',
 		]);
+	});
+
+	it('recommends a configured tool mode for every catalog skill', () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const modes = Object.keys(INSTANCE_AI_TOOL_MODES);
+
+		for (const skill of source.registry.skills.filter((entry) => !entry.parents)) {
+			expect(modes, skill.id).toContain(skill.recommendedMode);
+		}
 	});
 
 	it('loads every reference file as a reference skill with a description', () => {

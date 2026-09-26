@@ -1,5 +1,6 @@
 ---
 name: debugging-executions
+recommended_mode: debug
 description: >-
   Debug failed or wrong-output workflow executions using executions tools. Load
   when the user reports execution failures, unexpected node output, empty

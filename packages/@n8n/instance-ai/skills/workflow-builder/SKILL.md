@@ -1,5 +1,6 @@
 ---
 name: workflow-builder
+recommended_mode: build
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,

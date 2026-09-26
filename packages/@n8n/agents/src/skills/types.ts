@@ -38,6 +38,8 @@ export interface RuntimeSkillIndexEntry {
 	name: string;
 	description: string;
 	recommendedTools?: string[];
+	/** Tool mode to switch to before loading the skill, for agents that bind tools by mode. */
+	recommendedMode?: string;
 }
 
 export interface RuntimeSkillInterfaceContract {

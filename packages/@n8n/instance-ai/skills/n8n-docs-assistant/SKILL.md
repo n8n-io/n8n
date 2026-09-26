@@ -1,5 +1,6 @@
 ---
 name: n8n-docs-assistant
+recommended_mode: general
 description: >-
   Answers n8n product, setup, credential, node, hosting, API, and usage
   questions from current n8n docs. Use when the user asks how to configure,

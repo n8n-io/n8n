@@ -1,5 +1,6 @@
 ---
 name: data-table-manager
+recommended_mode: data
 description: >-
   Load before calling data-tables or parse-file. Use for natural standalone
   requests like "what data tables do I have?", "show/list my tables", or "what

@@ -17,6 +17,7 @@ const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'name',
 	'description',
 	'recommended_tools',
+	'recommended_mode',
 	'allowed_tools',
 	'interface',
 	'policy',
@@ -79,6 +80,7 @@ export function parseRuntimeSkillMarkdown(
 
 	const description = requiredFrontmatterString(frontmatter.data, 'description', errors);
 	const recommendedTools = optionalStringArray(frontmatter.data, 'recommended_tools', errors);
+	const recommendedMode = optionalFrontmatterString(frontmatter.data, 'recommended_mode', errors);
 	const allowedTools = optionalStringArray(frontmatter.data, 'allowed_tools', errors);
 	const skillInterface = optionalSkillInterface(frontmatter.data, errors);
 	const policy = optionalSkillPolicy(frontmatter.data, errors);
@@ -106,6 +108,7 @@ export function parseRuntimeSkillMarkdown(
 		...(options.sourceDirectory ? { sourceDirectory: options.sourceDirectory } : {}),
 		...(options.category ? { category: options.category } : {}),
 		...(recommendedTools ? { recommendedTools } : {}),
+		...(recommendedMode ? { recommendedMode } : {}),
 		...(allowedTools ? { allowedTools } : {}),
 		...(skillInterface ? { interface: skillInterface } : {}),
 		...(policy ? { policy } : {}),

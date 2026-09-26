@@ -268,6 +268,7 @@ function renderRuntimeSkillMarkdown(
 	addFrontmatterField(lines, 'name', skill.name);
 	addFrontmatterField(lines, 'description', skill.description);
 	addFrontmatterField(lines, 'recommended_tools', skill.recommendedTools);
+	addFrontmatterField(lines, 'recommended_mode', skill.recommendedMode);
 	addFrontmatterField(lines, 'allowed_tools', skill.allowedTools);
 	addFrontmatterField(lines, 'interface', toFrontmatterInterface(skill.interface));
 	addFrontmatterField(lines, 'policy', toFrontmatterPolicy(skill.policy));

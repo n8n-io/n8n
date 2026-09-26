@@ -1,5 +1,6 @@
 ---
 name: progressive-building
+recommended_mode: build
 dependencies:
   tools:
     - build-workflow
