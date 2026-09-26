@@ -5,43 +5,12 @@ import {
 	type INode,
 	type WorkflowTestData,
 } from 'n8n-workflow';
-import snowflake from 'snowflake-sdk';
 import { mock } from 'vitest-mock-extended';
 
 import { Snowflake } from '../Snowflake.node';
+import { setupSnowflakeMocks, snowflakeCredentials } from './snowflake-test-utils';
 
-const mockExecute = vi.fn();
-const mockConnect = vi.fn();
-const mockDestroy = vi.fn();
-const mockConnection = { connect: mockConnect, execute: mockExecute, destroy: mockDestroy };
-
-const snowflakeCredentials = {
-	authentication: 'password',
-	account: 'test-account',
-	database: 'TEST_DB',
-	schema: 'PUBLIC',
-	warehouse: 'WH',
-	role: 'SYSADMIN',
-	clientSessionKeepAlive: false,
-	username: 'user',
-	password: 'pass',
-};
-
-// The harness loads the node from dist via require(), so vi.mock cannot intercept its
-// `snowflake-sdk` import. The module is externalized, so the test and the node share the same
-// instance — spy on it instead. Re-applied per test since restoreMocks resets spies.
-beforeEach(() => {
-	vi.spyOn(snowflake, 'configure').mockImplementation(() => ({}) as never);
-	vi.spyOn(snowflake, 'createConnection').mockReturnValue(mockConnection as never);
-	mockConnect.mockImplementation((callback: (err: null) => void) => callback(null));
-	mockDestroy.mockImplementation((callback: (err: null) => void) => callback(null));
-	mockExecute.mockImplementation(
-		({ complete }: { complete: (err: null, stmt: undefined, rows: unknown[]) => void }) =>
-			complete(null, undefined, []),
-	);
-});
-
-afterEach(() => vi.clearAllMocks());
+const { mockExecute, mockDestroy } = setupSnowflakeMocks();
 
 // A manual trigger (one empty item) feeding a single executeQuery Snowflake node.
 function executeQueryWorkflow(
@@ -89,7 +58,7 @@ describe('Test Snowflake, executeQuery - query parameters are bound', () => {
 				}),
 			);
 			// The bound value must not appear in any executed statement.
-			for (const [{ sqlText }] of mockExecute.mock.calls as Array<[{ sqlText: string }]>) {
+			for (const [{ sqlText }] of mockExecute.mock.calls) {
 				expect(sqlText).not.toContain("O'Brien");
 			}
 		},
@@ -172,17 +141,10 @@ describe('Test Snowflake, executeQuery - connection cleanup', () => {
 		);
 
 		// The ALTER SESSION statement succeeds; the user query then fails.
-		mockExecute.mockImplementation(
-			({
-				sqlText,
-				complete,
-			}: {
-				sqlText: string;
-				complete: (error: Error | null, stmt: undefined, rows: unknown[] | undefined) => void;
-			}) =>
-				sqlText.startsWith('ALTER SESSION')
-					? complete(null, undefined, [])
-					: complete(lockError, undefined, undefined),
+		mockExecute.mockImplementation(({ sqlText, complete }) =>
+			sqlText.startsWith('ALTER SESSION')
+				? complete(null, undefined, [])
+				: complete(lockError, undefined, undefined),
 		);
 
 		const executeFns = mock<IExecuteFunctions>({
