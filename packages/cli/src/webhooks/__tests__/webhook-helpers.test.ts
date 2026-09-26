@@ -83,6 +83,7 @@ import {
 	_privateGetWebhookErrorMessage,
 	invokeWebhook,
 	handleImmediateWebhookResponse,
+	checkTriggerCredentialGate,
 } from '../webhook-helpers';
 import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
@@ -1391,6 +1392,57 @@ describe('handleImmediateWebhookResponse', () => {
 		});
 		expect(responder.hasResponded).toBe(true);
 		expect(shouldContinueWorkflowExecution).toBe(false);
+	});
+});
+
+describe('checkTriggerCredentialGate', () => {
+	const oauthWebhook = mock<INode>({
+		name: 'Webhook',
+		type: WEBHOOK_NODE_TYPE,
+		parameters: { authentication: 'n8nOAuth2' },
+	});
+
+	it.each([
+		{ name: 'a response was sent', didSendResponse: true, headersSent: false },
+		{ name: 'headers were sent', didSendResponse: false, headersSent: true },
+	])('skips the gate when $name', async ({ didSendResponse, headersSent }) => {
+		const checkTriggerCredentialStatus = vi.fn();
+		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+		if (didSendResponse) responder.markResponded();
+
+		const result = await checkTriggerCredentialGate({
+			workflowStartNode: oauthWebhook,
+			additionalData: mock<IWorkflowExecuteAdditionalData>({ checkTriggerCredentialStatus }),
+			res: mock<express.Response>({ headersSent }),
+			responder,
+		});
+
+		expect(checkTriggerCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it('sends 428 when trigger credentials are not ready', async () => {
+		const credentialGate = { readyToExecute: false };
+		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+
+		const result = await checkTriggerCredentialGate({
+			workflowStartNode: oauthWebhook,
+			additionalData: mock<IWorkflowExecuteAdditionalData>({
+				checkTriggerCredentialStatus: vi.fn().mockResolvedValue(credentialGate),
+			}),
+			res: mock<express.Response>({ headersSent: false }),
+			responder,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: credentialGate,
+			responseCode: 428,
+		});
+		expect(responder.hasResponded).toBe(true);
+		expect(result).toBe(false);
 	});
 });
 
