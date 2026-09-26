@@ -1246,6 +1246,7 @@ export class InstanceAiController {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
+				req.user,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 				folderIdMap,

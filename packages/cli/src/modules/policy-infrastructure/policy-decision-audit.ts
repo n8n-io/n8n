@@ -8,16 +8,25 @@ import type {
 	PolicyVersionRef,
 } from '@n8n/decorators';
 
-import type { PolicyContext } from '@/policy/policy-enforcement-backend';
+import type { UserLike } from '@/types/user-like.types';
+import type {
+	PolicyActor,
+	PolicyContext,
+	PolicySystemReason,
+} from '@/policy/policy-enforcement-backend';
 
 /** Every context, as one union — a generic `PolicyContext<Point>` narrows against none. */
 type AnyPolicyContext = PolicyContext<EnforcementPoint>;
 
-/** The violation as the audit line records it. No `message`: free text saying what the fields say. */
-type AuditedViolation = Pick<
-	PolicyViolation,
-	'checkId' | 'kind' | 'subject' | 'subjectType' | 'scope' | 'matchedRuleId'
->;
+type OptionalAuditedKey = 'subject' | 'subjectType' | 'scope' | 'matchedRuleId';
+
+/**
+ * The violation as the audit line records it. Every key is present, `null` when the check left
+ * it out, so a SIEM can map fixed fields. No `message`: free text saying what the fields say.
+ */
+type AuditedViolation = Pick<PolicyViolation, 'checkId' | 'kind'> & {
+	[Key in OptionalAuditedKey]-?: Exclude<PolicyViolation[Key], undefined> | null;
+};
 
 /**
  * One decision-audit line.
@@ -54,20 +63,13 @@ export type PolicyDecisionAudit = {
 	projectId: string | null;
 };
 
-const auditedViolation = ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
-}: PolicyViolation): AuditedViolation => ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
+const auditedViolation = (violation: PolicyViolation): AuditedViolation => ({
+	checkId: violation.checkId,
+	kind: violation.kind,
+	subject: violation.subject ?? null,
+	subjectType: violation.subjectType ?? null,
+	scope: violation.scope ?? null,
+	matchedRuleId: violation.matchedRuleId ?? null,
 });
 
 /**
@@ -138,5 +140,24 @@ export function decisionAudit({
 			correlationIds: failures.map((failure) => failure.correlationId),
 		}),
 		...targetOf(context),
+	};
+}
+
+/**
+ * The actor as the log streaming event records it. `user` is always the accountable human, or
+ * `null` when there is none, and stays a field of its own so the relay can redact it.
+ */
+export type AuditedActor =
+	| { actorType: 'user'; user: UserLike }
+	| { actorType: 'system'; user: null; systemReason: PolicySystemReason; executionId?: string };
+
+export function auditedActor(actor: PolicyActor): AuditedActor {
+	if (actor.kind === 'user') return { actorType: 'user', user: actor.user };
+
+	return {
+		actorType: 'system',
+		user: null,
+		systemReason: actor.reason,
+		...(actor.executionId !== undefined && { executionId: actor.executionId }),
 	};
 }

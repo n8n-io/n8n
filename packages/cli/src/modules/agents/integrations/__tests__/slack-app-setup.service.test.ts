@@ -673,6 +673,7 @@ describe('Slack setup services', () => {
 					type: 'slackManagerOAuth2Api',
 					data: 're-encrypted',
 				},
+				{ kind: 'user', user },
 				rawData,
 			);
 		} else {
@@ -846,6 +847,7 @@ describe('Slack setup services', () => {
 		expect(credentialsService.update).toHaveBeenCalledWith(
 			'manager',
 			{ data: 'encrypted' },
+			{ kind: 'system', reason: 'integration' },
 			expect.objectContaining({
 				oauthTokenData: expect.objectContaining({
 					authed_user: expect.objectContaining({

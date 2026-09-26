@@ -112,8 +112,8 @@ describe('SourceControlImportService', () => {
 		// The repository verifies the token, so it has to be a real one. With no backend
 		// registered the real service clears everything, which is what a default pull does.
 		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
-			async (context) =>
-				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			async (context, actor) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
 		service = new SourceControlImportService(
 			mock(),
@@ -2080,11 +2080,14 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
-				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-					projectId: importingUserProject.id,
-					transport: 'source-control',
-				});
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+						projectId: importingUserProject.id,
+						transport: 'source-control',
+					},
+					{ kind: 'user', user: { id: importingUser.id } },
+				);
 			});
 
 			it('skips a blocked workflow, attaches the reason, and persists nothing', async () => {

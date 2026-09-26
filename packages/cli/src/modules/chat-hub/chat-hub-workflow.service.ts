@@ -50,6 +50,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -161,7 +162,7 @@ export class ChatHubWorkflowService {
 			executionOrder: 'v1',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, { id: userId });
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },
@@ -189,12 +190,19 @@ export class ChatHubWorkflowService {
 	 * Chat workflows are system-generated but policed like any other: the nodes are real, so a
 	 * blocked node type has to block the run rather than reach the engine.
 	 */
-	private async enforceChatWorkflowSave(workflow: WorkflowEntity, projectId: string) {
-		return await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-			storedWorkflow: null,
-			projectId,
-		});
+	private async enforceChatWorkflowSave(
+		workflow: WorkflowEntity,
+		projectId: string,
+		user: UserLike,
+	) {
+		return await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+				storedWorkflow: null,
+				projectId,
+			},
+			{ kind: 'user', user },
+		);
 	}
 
 	async createTitleGenerationWorkflow(
@@ -241,7 +249,7 @@ export class ChatHubWorkflowService {
 			saveDataSuccessExecution: 'all',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, { id: userId });
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },
@@ -1889,7 +1897,7 @@ You can update the most recent document using the commands described above, or c
 			executionOrder: 'v1',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, user);
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },

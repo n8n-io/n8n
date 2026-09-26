@@ -1,4 +1,4 @@
-import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +13,8 @@ describe('LogStreamingEventRelay', () => {
 	const eventService = new EventService();
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
+	const userRepository = mock<UserRepository>();
+	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, userRepository).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -3024,6 +3025,152 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:admin',
 				},
 			});
+		});
+	});
+
+	describe('policy enforcement events', () => {
+		const blocked: RelayEventMap['policy-decision-blocked'] = {
+			point: 'workflowSave',
+			outcome: 'violation',
+			durationMs: 12,
+			checkIds: ['node-types'],
+			violations: [
+				{
+					checkId: 'node-types',
+					kind: 'node-type-unavailable',
+					subject: 'n8n-nodes-base.slack',
+					subjectType: null,
+					scope: null,
+					matchedRuleId: null,
+				},
+			],
+			policyVersions: [{ scope: 'instance', version: 4 }],
+			workflowId: 'wf-1',
+			workflowName: 'My workflow',
+			projectId: 'proj-1',
+			actorType: 'user',
+			user: {
+				id: 'user-1',
+				email: 'alice@example.com',
+				firstName: 'Alice',
+				lastName: 'Admin',
+				role: { slug: 'global:admin' },
+			},
+		};
+
+		it('should log on `policy-decision-blocked` event, with the user redactable', () => {
+			eventService.emit('policy-decision-blocked', { ...blocked });
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.policy.decision.blocked',
+				payload: {
+					userId: 'user-1',
+					_email: 'alice@example.com',
+					_firstName: 'Alice',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					point: 'workflowSave',
+					outcome: 'violation',
+					durationMs: 12,
+					checkIds: ['node-types'],
+					violations: [
+						{
+							checkId: 'node-types',
+							kind: 'node-type-unavailable',
+							subject: 'n8n-nodes-base.slack',
+							subjectType: null,
+							scope: null,
+							matchedRuleId: null,
+						},
+					],
+					policyVersions: [{ scope: 'instance', version: 4 }],
+					workflowId: 'wf-1',
+					workflowName: 'My workflow',
+					projectId: 'proj-1',
+					actorType: 'user',
+				},
+			});
+		});
+
+		it('should send a null user id and the reason when no user asked for the action', () => {
+			eventService.emit('policy-decision-blocked', {
+				...blocked,
+				point: 'workflowStart',
+				outcome: 'checkFailure',
+				correlationIds: ['corr-1'],
+				policyVersions: undefined,
+				actorType: 'system',
+				user: null,
+				systemReason: 'execution',
+				executionId: 'exec-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.policy.decision.blocked',
+				payload: expect.objectContaining({
+					userId: null,
+					actorType: 'system',
+					systemReason: 'execution',
+					executionId: 'exec-1',
+					point: 'workflowStart',
+					outcome: 'checkFailure',
+					correlationIds: ['corr-1'],
+					policyVersions: [],
+				}),
+			});
+		});
+
+		it('should read the user fields when the host passed only the user id', async () => {
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({
+					id: 'user-1',
+					email: 'alice@example.com',
+					firstName: 'Alice',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				}),
+			);
+
+			eventService.emit('policy-decision-blocked', { ...blocked, user: { id: 'user-1' } });
+
+			await vi.waitFor(() =>
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.policy.decision.blocked',
+					payload: expect.objectContaining({
+						userId: 'user-1',
+						_email: 'alice@example.com',
+						_firstName: 'Alice',
+						_lastName: 'Admin',
+						globalRole: 'global:admin',
+					}),
+				}),
+			);
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
+		});
+
+		it.each([
+			['no longer exists', () => userRepository.findByIdWithRole.mockResolvedValue(null)],
+			[
+				'cannot be read',
+				() => userRepository.findByIdWithRole.mockRejectedValue(new Error('db down')),
+			],
+		])('should still send the event with the user id when the user %s', async (_, arrange) => {
+			arrange();
+
+			eventService.emit('policy-decision-blocked', { ...blocked, user: { id: 'user-1' } });
+
+			await vi.waitFor(() =>
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.policy.decision.blocked',
+					payload: expect.objectContaining({ userId: 'user-1', actorType: 'user' }),
+				}),
+			);
+		});
+
+		it('should not read the user when the host passed a full user', () => {
+			eventService.emit('policy-decision-blocked', { ...blocked });
+
+			expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 	});
 

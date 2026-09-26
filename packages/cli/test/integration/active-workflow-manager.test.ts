@@ -150,6 +150,10 @@ describe('init()', () => {
 		await activeWorkflowManager.init();
 
 		expect(enforceSpy).toHaveBeenCalledTimes(2);
+		expect(enforceSpy).toHaveBeenCalledWith(expect.anything(), {
+			kind: 'system',
+			reason: 'activation',
+		});
 		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(2);
 	});
 });
