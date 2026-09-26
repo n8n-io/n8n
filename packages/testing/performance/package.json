@@ -8,7 +8,7 @@
     "format:check": "biome ci .",
     "typecheck": "tsc --noEmit",
     "bench": "vitest bench --run",
-    "bench:baseline": "node scripts/save-baseline.mjs",
+    "bench:baseline": "vitest bench --run --reporter=default --reporter=json --outputFile.json=./profiles/baseline.json",
     "bench:compare": "vitest bench --run --reporter=default --reporter=json --outputFile.json=./profiles/benchmark-results.json && node scripts/check-regression.mjs"
   },
   "devDependencies": {

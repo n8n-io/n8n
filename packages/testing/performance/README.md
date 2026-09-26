@@ -27,33 +27,29 @@ pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% 
 
 ## CI Regression Detection
 
-CI benchmarks are disabled. CI used [CodSpeed](https://codspeed.io), and `@codspeed/vitest-plugin` does not support Vitest 5 yet. The `performance` job in `.github/workflows/ci-master.yml` has `if: false`. Enable the job again when the plugin supports Vitest 5.
+CI benchmarks are paused. CI used [CodSpeed](https://codspeed.io), and `@codspeed/vitest-plugin` does not support Vitest 5 yet. Add the `performance` job back to `.github/workflows/ci-master.yml` when the plugin supports Vitest 5.
 
 Until then, use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session. Local results measure wall-clock time and have 15-30% variance.
 
 ## Adding a Benchmark
 
-In Vitest 5, `bench` is a test-context fixture. Define benchmarks inside `test()` and call `.run()`. Pass the shared tuning in `BENCH_OPTIONS` to `.run()`.
+Use `defineBench` from `bench-options.ts`. It runs one benchmark with the shared tuning. Keep every benchmark name unique.
 
 ```typescript
 // benchmarks/my-feature/thing.bench.ts
-import { describe, test } from 'vitest';
+import { describe } from 'vitest';
 
-import { BENCH_OPTIONS } from '../bench-options';
+import { defineBench } from '../bench-options';
 
 // Setup runs once, not measured
 const data = createTestData();
 
 describe('My Feature', () => {
-  test('operation name', async ({ bench }) => {
-    await bench('operation name', () => {
-      doTheThing(data);
-    }).run(BENCH_OPTIONS);
+  defineBench('operation name', () => {
+    doTheThing(data);
   });
 });
 ```
-
-For one benchmark in one test, use the `defineBench(name, fn)` helper from `bench-options.ts`. Keep every benchmark name unique.
 
 ## Reading Results
 

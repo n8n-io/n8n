@@ -14,11 +14,8 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-import { collectBenchmarks } from './bench-results.mjs';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROFILES_DIR = resolve(__dirname, '../profiles');
-const PACKAGE_DIR = resolve(__dirname, '..');
 const THRESHOLD = 0.1; // 10%
 
 const BASELINE_PATH = resolve(PROFILES_DIR, 'baseline.json');
@@ -34,20 +31,35 @@ if (!existsSync(CURRENT_PATH)) {
 	process.exit(1);
 }
 
-const baseline = collectBenchmarks(JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')), PACKAGE_DIR);
-const current = collectBenchmarks(JSON.parse(readFileSync(CURRENT_PATH, 'utf-8')), PACKAGE_DIR);
-
-// Build lookup map from baseline
-const baselineMap = new Map();
-for (const bench of baseline) {
-	baselineMap.set(bench.key, bench);
+/**
+ * Reads a Vitest 5 JSON report and returns `hz` (mean ops/sec) by benchmark name.
+ * A benchmark that did not produce a result maps to `undefined`.
+ */
+function readBenchmarks(path) {
+	const report = JSON.parse(readFileSync(path, 'utf-8'));
+	const benchmarks = new Map();
+	for (const file of report.testResults) {
+		for (const testCase of file.assertionResults) {
+			if (testCase.status !== 'passed') {
+				if (testCase.status === 'failed') benchmarks.set(testCase.title, undefined);
+				continue;
+			}
+			for (const task of testCase.benchmarks.flatMap((b) => b.tasks)) {
+				benchmarks.set(task.name, task.throughput?.mean);
+			}
+		}
+	}
+	return benchmarks;
 }
+
+const baseline = readBenchmarks(BASELINE_PATH);
+const current = readBenchmarks(CURRENT_PATH);
 
 // Check for failed benchmarks (no valid measurements)
 let hasFailed = false;
-for (const bench of current) {
-	if (bench.failed) {
-		console.error(`❌ Benchmark failed (no valid measurements): ${bench.group} > ${bench.name}`);
+for (const [name, hz] of current) {
+	if (!Number.isFinite(hz)) {
+		console.error(`❌ Benchmark failed (no valid measurements): ${name}`);
 		hasFailed = true;
 	}
 }
@@ -60,31 +72,25 @@ if (hasFailed) {
 const results = [];
 let hasRegression = false;
 
-for (const bench of current) {
-	const base = baselineMap.get(bench.key);
+for (const [name, hz] of current) {
+	const base = baseline.get(name);
 
-	if (!base || base.failed) {
-		results.push({
-			name: bench.name,
-			status: 'new',
-			current: bench.hz,
-			baseline: null,
-			ratio: null,
-		});
+	if (!Number.isFinite(base)) {
+		results.push({ name, status: 'new', current: hz, baseline: null, ratio: null });
 		continue;
 	}
 
-	const ratio = bench.hz / base.hz;
+	const ratio = hz / base;
 	const isRegression = ratio < 1 - THRESHOLD;
 	const isImprovement = ratio > 1 + THRESHOLD;
 
 	if (isRegression) hasRegression = true;
 
 	results.push({
-		name: bench.name,
+		name,
 		status: isRegression ? 'regression' : isImprovement ? 'improved' : 'ok',
-		current: bench.hz,
-		baseline: base.hz,
+		current: hz,
+		baseline: base,
 		ratio,
 	});
 }
