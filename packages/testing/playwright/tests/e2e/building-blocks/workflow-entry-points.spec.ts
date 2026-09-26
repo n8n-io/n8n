@@ -1,4 +1,5 @@
 import { test, expect } from '../../../fixtures/base';
+import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
 
 test.describe(
 	'UI Test Entry Points',
@@ -17,6 +18,7 @@ test.describe(
 			test('should navigate from blank canvas', async ({ n8n }) => {
 				await n8n.start.fromBlankCanvas();
 				await expect(n8n.canvas.canvasPane()).toBeVisible();
+				await assertMainLandmarkStructure(n8n.page);
 			});
 		});
 

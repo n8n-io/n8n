@@ -131,7 +131,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 
 <template>
 	<LoadingView v-if="loading" />
-	<BaseLayout v-else id="n8n-app" :class="$style.app">
+	<BaseLayout v-else id="n8n-app" :class="$style.app" :as-main="false">
 		<template #banners>
 			<AppBanners />
 		</template>
