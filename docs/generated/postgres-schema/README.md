@@ -86,6 +86,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
@@ -301,6 +302,8 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--o| "public.instance_ai_checkpoints" : "FOREIGN KEY (#quot;checkpointKey#quot;) REFERENCES instance_ai_checkpoints(key) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -1199,6 +1202,13 @@ erDiagram
 "public.instance_ai_thread_grants" {
   timestamp_3__with_time_zone createdAt
   varchar_512_ grantKey
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+}
+"public.instance_ai_thread_tabs" {
+  timestamp_3__with_time_zone createdAt
+  json state
   uuid threadId FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
