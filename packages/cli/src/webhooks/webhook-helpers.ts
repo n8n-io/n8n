@@ -773,91 +773,36 @@ function toWebhookUser(user: IUser): IUser {
 	};
 }
 
-/**
- * Executes a webhook
- */
-// eslint-disable-next-line complexity
-export async function executeWebhook(
-	workflow: Workflow,
-	webhookData: IWebhookData,
-	workflowData: IWorkflowBase,
-	workflowStartNode: INode,
-	executionMode: WorkflowExecuteMode,
-	pushRef: string | undefined,
-	runExecutionData: IRunExecutionData | undefined,
-	executionId: string | undefined,
-	req: WebhookRequest,
-	res: express.Response,
-	responseCallback: WebhookResponseCallback,
-	destinationNode?: IDestinationNode,
-	options?: {
-		/**
-		 * Identity of the builder who registered this test webhook, for a manual run that
-		 * had to wait for a webhook and so never reached the point where a manual
-		 * execution normally picks its identity up from the auth cookie. Only a fallback:
-		 * a node that establishes its own carrier below still wins.
-		 */
-		encryptedRunnerIdentity?: string;
-	},
-): Promise<string | undefined> {
-	const responder = new WebhookResponder(responseCallback);
-
-	// Get the nodeType to know which responseMode is set
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(
-		workflowStartNode.type,
-		workflowStartNode.typeVersion,
-	);
-
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$executionId: executionId,
-	};
-
-	const context = new WebhookExecutionContext(
-		workflow,
-		workflowStartNode,
-		webhookData,
-		executionMode,
-		additionalKeys,
-	);
-
-	let project: Project;
-	try {
-		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-	} catch {
-		throw new NotFoundError('Cannot find workflow');
-	}
-
-	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase({
-		projectId: project?.id,
-	});
+async function prepareWebhookAdditionalData({
+	workflow,
+	workflowStartNode,
+	executionMode,
+	executionId,
+	projectId,
+	req,
+	res,
+	encryptedRunnerIdentity,
+	getRunExecutionData,
+}: {
+	workflow: Workflow;
+	workflowStartNode: INode;
+	executionMode: WorkflowExecuteMode;
+	executionId: string | undefined;
+	projectId: string;
+	req: WebhookRequest;
+	res: express.Response;
+	encryptedRunnerIdentity?: string;
+	getRunExecutionData: () => IRunExecutionData | undefined;
+}): Promise<IWorkflowExecuteAdditionalData> {
+	const additionalData = await WorkflowExecuteAdditionalData.getBase({ projectId });
 
 	// Guarded: an absent carrier must not clobber one set elsewhere.
-	if (options?.encryptedRunnerIdentity) {
-		additionalData.encryptedRunnerIdentity = options.encryptedRunnerIdentity;
+	if (encryptedRunnerIdentity) {
+		additionalData.encryptedRunnerIdentity = encryptedRunnerIdentity;
 	}
 
 	if (executionId) {
 		additionalData.executionId = executionId;
-	}
-
-	const {
-		responseMode,
-		responseCode,
-		responseData,
-		checkAllMainOutputs,
-		responsePropertyName,
-		responseContentType,
-		responseBinaryPropertyName,
-	} = evaluateResponseOptions(context, req);
-
-	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
-		// If the mode is not known we error. Is probably best like that instead of using
-		// the default that people know as early as possible (probably already testing phase)
-		// that something does not resolve properly.
-		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responder.respondWithError(new UnexpectedError(errorMessage));
-		throw new InternalServerError(errorMessage);
 	}
 
 	// Add the Response and Request so that this data can be accessed in the node
@@ -927,6 +872,7 @@ export async function executeWebhook(
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
 		).buildTriggerIdentityCredentials(token, resource, grant, subject);
+		const runExecutionData = getRunExecutionData();
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
@@ -943,6 +889,7 @@ export async function executeWebhook(
 		if (!credentialCheckProxy || !workflow.id) {
 			return undefined;
 		}
+		const runExecutionData = getRunExecutionData();
 		const executionContext =
 			runExecutionData?.executionData?.runtimeData ??
 			(additionalData.encryptedRunnerIdentity
@@ -977,6 +924,95 @@ export async function executeWebhook(
 			rootNodes,
 		});
 	};
+
+	return additionalData;
+}
+
+/**
+ * Executes a webhook
+ */
+// eslint-disable-next-line complexity
+export async function executeWebhook(
+	workflow: Workflow,
+	webhookData: IWebhookData,
+	workflowData: IWorkflowBase,
+	workflowStartNode: INode,
+	executionMode: WorkflowExecuteMode,
+	pushRef: string | undefined,
+	runExecutionData: IRunExecutionData | undefined,
+	executionId: string | undefined,
+	req: WebhookRequest,
+	res: express.Response,
+	responseCallback: WebhookResponseCallback,
+	destinationNode?: IDestinationNode,
+	options?: {
+		/**
+		 * Identity of the builder who registered this test webhook, for a manual run that
+		 * had to wait for a webhook and so never reached the point where a manual
+		 * execution normally picks its identity up from the auth cookie. Only a fallback:
+		 * a node that establishes its own carrier below still wins.
+		 */
+		encryptedRunnerIdentity?: string;
+	},
+): Promise<string | undefined> {
+	const responder = new WebhookResponder(responseCallback);
+
+	// Get the nodeType to know which responseMode is set
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(
+		workflowStartNode.type,
+		workflowStartNode.typeVersion,
+	);
+
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$executionId: executionId,
+	};
+
+	const context = new WebhookExecutionContext(
+		workflow,
+		workflowStartNode,
+		webhookData,
+		executionMode,
+		additionalKeys,
+	);
+
+	let project: Project;
+	try {
+		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+	} catch {
+		throw new NotFoundError('Cannot find workflow');
+	}
+
+	// Prepare everything that is needed to run the workflow
+	const additionalData = await prepareWebhookAdditionalData({
+		workflow,
+		workflowStartNode,
+		executionMode,
+		executionId,
+		projectId: project?.id,
+		req,
+		res,
+		encryptedRunnerIdentity: options?.encryptedRunnerIdentity,
+		getRunExecutionData: () => runExecutionData,
+	});
+
+	const {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	} = evaluateResponseOptions(context, req);
+
+	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
+		// If the mode is not known we error. Is probably best like that instead of using
+		// the default that people know as early as possible (probably already testing phase)
+		// that something does not resolve properly.
+		const errorMessage = `The response mode '${responseMode}' is not valid!`;
+		responder.respondWithError(new UnexpectedError(errorMessage));
+		throw new InternalServerError(errorMessage);
+	}
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
