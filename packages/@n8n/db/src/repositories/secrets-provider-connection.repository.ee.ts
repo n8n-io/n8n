@@ -1,16 +1,138 @@
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In } from '@n8n/typeorm';
 
-import { SecretsProviderConnection, SharedCredentials } from '../entities';
+import { BaseRepository } from './base-repository';
+import {
+	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
+	SharedCredentials,
+} from '../entities';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
+
+export interface ConfigFileConnectionData {
+	type: string;
+	isEnabled: boolean;
+	encryptedSettings: string;
+	projectIds: string[];
+}
 
 @Service()
-export class SecretsProviderConnectionRepository extends Repository<SecretsProviderConnection> {
-	constructor(dataSource: DataSource) {
-		super(SecretsProviderConnection, dataSource.manager);
+export class SecretsProviderConnectionRepository extends BaseRepository<SecretsProviderConnection> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SecretsProviderConnection, dataSource.manager, transactionRunner);
 	}
 
 	async findAll(): Promise<SecretsProviderConnection[]> {
 		return await this.find();
+	}
+
+	async findByManagedBy(
+		managedBy: SecretsProviderConnection['managedBy'],
+		ctx: OperationContext = {},
+	): Promise<SecretsProviderConnection[]> {
+		return await this.managerFor(ctx).find(SecretsProviderConnection, { where: { managedBy } });
+	}
+
+	async findOneByProviderKey(
+		providerKey: string,
+		ctx: OperationContext,
+	): Promise<SecretsProviderConnection | null> {
+		return await this.managerFor(ctx).findOne(SecretsProviderConnection, {
+			where: { providerKey },
+		});
+	}
+
+	/** Inserts a config-file-managed connection with `user`-role access for each project. */
+	async insertConfigFileConnection(
+		providerKey: string,
+		data: ConfigFileConnectionData,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			const saved = await manager.save(
+				manager.create(SecretsProviderConnection, {
+					providerKey,
+					type: data.type,
+					isEnabled: data.isEnabled,
+					encryptedSettings: data.encryptedSettings,
+					managedBy: 'config-file',
+				}),
+			);
+
+			if (data.projectIds.length > 0) {
+				await manager.save(
+					data.projectIds.map((projectId) =>
+						manager.create(ProjectSecretsProviderAccess, {
+							secretsProviderConnectionId: saved.id,
+							projectId,
+							role: 'secretsProviderConnection:user',
+						}),
+					),
+				);
+			}
+		});
+	}
+
+	/**
+	 * Overwrites a config-file-managed connection and sets its project access to exactly
+	 * `data.projectIds`. Projects that keep access keep their current role; new ones get `user`.
+	 */
+	async updateConfigFileConnection(
+		connectionId: number,
+		data: ConfigFileConnectionData,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			await manager.update(
+				SecretsProviderConnection,
+				{ id: connectionId },
+				{ type: data.type, isEnabled: data.isEnabled, encryptedSettings: data.encryptedSettings },
+			);
+
+			const existingAccess = await manager.find(ProjectSecretsProviderAccess, {
+				where: { secretsProviderConnectionId: connectionId },
+			});
+			const existingProjectIds = new Set(existingAccess.map((access) => access.projectId));
+			const desiredProjectIds = new Set(data.projectIds);
+
+			const projectIdsToRemove = [...existingProjectIds].filter((id) => !desiredProjectIds.has(id));
+			if (projectIdsToRemove.length > 0) {
+				await manager.delete(ProjectSecretsProviderAccess, {
+					secretsProviderConnectionId: connectionId,
+					projectId: In(projectIdsToRemove),
+				});
+			}
+
+			const projectIdsToAdd = [...desiredProjectIds].filter((id) => !existingProjectIds.has(id));
+			if (projectIdsToAdd.length > 0) {
+				await manager.save(
+					projectIdsToAdd.map((projectId) =>
+						manager.create(ProjectSecretsProviderAccess, {
+							secretsProviderConnectionId: connectionId,
+							projectId,
+							role: 'secretsProviderConnection:user',
+						}),
+					),
+				);
+			}
+		});
+	}
+
+	/** Deletes a connection together with its project access rows and credential dependencies. */
+	async deleteWithDependents(connectionId: number, ctx: OperationContext): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			await manager.delete(ProjectSecretsProviderAccess, {
+				secretsProviderConnectionId: connectionId,
+			});
+			await manager.delete(CredentialDependency, {
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: connectionId.toString(),
+			});
+			await manager.delete(SecretsProviderConnection, { id: connectionId });
+		});
 	}
 
 	async findIdByProviderKey(providerKey: string): Promise<string | null> {

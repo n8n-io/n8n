@@ -70,6 +70,7 @@ Container.set(LicenseState, licenseMock);
 
 mockInstance(ExternalSecretsConfig, {
 	externalSecretsForProjects: true,
+	configFilePath: '',
 });
 
 describe('Secret Providers Connections API', () => {
@@ -133,6 +134,7 @@ describe('Secret Providers Connections API', () => {
 				name: 'awsProd',
 				type: 'awsSecretsManager',
 				isEnabled: true,
+				managedBy: 'api',
 				secretsCount: 2,
 				state: 'connected',
 				secrets: [{ name: 'test1' }, { name: 'test2' }],

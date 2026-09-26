@@ -69,6 +69,7 @@ erDiagram
   TEXT encryptedSettings
   INTEGER id
   boolean isEnabled
+  VARCHAR_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   datetime_3_ updatedAt

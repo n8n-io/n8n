@@ -10,6 +10,7 @@ import './data-tables.public.controller';
 import './discover.public.controller';
 import './evaluations.public.controller';
 import './executions.public.controller';
+import './external-secrets-connections.public.controller';
 import './folders.public.controller';
 import './insights.public.controller';
 import './node-type-policies.public.controller';

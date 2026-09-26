@@ -52,4 +52,13 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 */
 	@Column({ default: false })
 	isEnabled: boolean;
+
+	/**
+	 * Whether this connection is managed through the internal REST API/UI ('api')
+	 * or provisioned declaratively from the external secrets config file ('config-file').
+	 * Config-file-managed connections reject update/delete through the API/UI —
+	 * the file is the only way to change them.
+	 */
+	@Column({ default: 'api' })
+	managedBy: string;
 }

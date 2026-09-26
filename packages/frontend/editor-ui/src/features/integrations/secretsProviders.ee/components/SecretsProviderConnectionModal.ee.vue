@@ -330,9 +330,11 @@ onMounted(async () => {
 									data-test-id="secrets-provider-read-only-notice"
 									:content="
 										i18n.baseText(
-											modal.isSharedGlobally.value && modal.canShareGlobally.value
-												? 'settings.secretsProviderConnections.modal.readOnly.notice.admin'
-												: 'settings.secretsProviderConnections.modal.readOnly.notice.noPermission',
+											modal.isConfigFileManaged.value
+												? 'settings.secretsProviderConnections.modal.readOnly.notice.configFile'
+												: modal.isSharedGlobally.value && modal.canShareGlobally.value
+													? 'settings.secretsProviderConnections.modal.readOnly.notice.admin'
+													: 'settings.secretsProviderConnections.modal.readOnly.notice.noPermission',
 										)
 									"
 								/>
@@ -485,7 +487,9 @@ onMounted(async () => {
 										:model-value="scopeSelectValue"
 										size="large"
 										filterable
-										:disabled="!modal.canUpdate.value || modal.isScopedMode.value"
+										:disabled="
+											!modal.canUpdate.value || modal.isScopedMode.value || modal.isReadOnly.value
+										"
 										data-test-id="secrets-provider-scope-select"
 										@update:model-value="handleScopeSelect"
 									>

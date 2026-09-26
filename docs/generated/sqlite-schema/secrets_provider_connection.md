@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "providerKey" varchar(128) NOT NULL, "type" varchar(36) NOT NULL, "encryptedSettings" text NOT NULL, "isEnabled" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "providerKey" varchar(128) NOT NULL, "type" varchar(36) NOT NULL, "encryptedSettings" text NOT NULL, "isEnabled" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" VARCHAR(20) NOT NULL DEFAULT 'api')
 ```
 
 </details>
@@ -19,6 +19,7 @@ CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "
 | encryptedSettings | TEXT |  | false |  |  |  |
 | id | INTEGER |  | false | [project_secrets_provider_access](project_secrets_provider_access.md) |  |  |
 | isEnabled | boolean | false | false |  |  |  |
+| managedBy | VARCHAR(20) | 'api' | false |  |  |  |
 | providerKey | varchar(128) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -47,6 +48,7 @@ erDiagram
   TEXT encryptedSettings
   INTEGER id
   boolean isEnabled
+  VARCHAR_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   datetime_3_ updatedAt

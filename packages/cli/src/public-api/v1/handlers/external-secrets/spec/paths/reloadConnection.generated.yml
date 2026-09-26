@@ -1,0 +1,41 @@
+operationId: reloadConnection
+tags:
+  - External Secrets
+summary: Reload an external secrets connection
+description: Trigger a secrets refresh from the external secrets provider.
+x-required-scope: externalSecretsProvider:sync
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The unique key of the external secrets provider connection.
+    name: providerKey
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            providers:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
+          required:
+            - success
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

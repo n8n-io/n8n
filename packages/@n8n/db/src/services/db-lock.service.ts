@@ -22,6 +22,7 @@ export const enum DbLock {
 	INSTANCE_AI_SETTINGS = 1007,
 	DATA_ENCRYPTION_KEY_SEED = 1008,
 	INSIGHTS_COMPACTION = 1009,
+	EXTERNAL_SECRETS_CONFIG_RECONCILE = 1010,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }

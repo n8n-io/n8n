@@ -21,6 +21,28 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await externalSecretsManager.init();
 		externalSecretsProxy.setManager(externalSecretsManager);
+
+		const { ExternalSecretsConfig } = await import('./external-secrets.config.js');
+		const config = Container.get(ExternalSecretsConfig);
+
+		const { InstanceSettings } = await import('n8n-core');
+
+		// Every main instance validates and applies the file. The reconciler serializes the
+		// instances with an advisory lock. Workers and webhook processes only read connections.
+		if (config.configFilePath && Container.get(InstanceSettings).instanceType === 'main') {
+			const { ExternalSecretsConfigFileLoader } = await import(
+				'./config-file/external-secrets-config-file-loader.js'
+			);
+			const { ExternalSecretsConfigFileReconciler } = await import(
+				'./config-file/external-secrets-config-file-reconciler.js'
+			);
+
+			const loader = Container.get(ExternalSecretsConfigFileLoader);
+			const reconciler = Container.get(ExternalSecretsConfigFileReconciler);
+
+			const connections = await loader.load(config.configFilePath);
+			await reconciler.reconcile(connections);
+		}
 	}
 
 	async settings() {

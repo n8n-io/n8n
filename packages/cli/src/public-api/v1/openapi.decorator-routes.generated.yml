@@ -103,6 +103,18 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /external-secrets/connections:
+    get:
+      $ref: ./handlers/external-secrets/spec/paths/listConnections.generated.yml
+  /external-secrets/connections/{providerKey}:
+    get:
+      $ref: ./handlers/external-secrets/spec/paths/getConnection.generated.yml
+  /external-secrets/connections/{providerKey}/test:
+    post:
+      $ref: ./handlers/external-secrets/spec/paths/testConnection.generated.yml
+  /external-secrets/connections/{providerKey}/reload:
+    post:
+      $ref: ./handlers/external-secrets/spec/paths/reloadConnection.generated.yml
   /projects/{projectId}/folders:
     get:
       $ref: ./handlers/projects/spec/paths/listFolders.generated.yml

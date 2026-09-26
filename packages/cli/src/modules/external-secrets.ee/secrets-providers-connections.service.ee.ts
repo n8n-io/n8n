@@ -5,18 +5,26 @@ import {
 	type SecretCompletionsResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
+	type SecretsProviderConnectionManagedBy,
 	type SecretsProviderType,
 	type TestSecretProviderConnectionResponse,
 	testSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderAccessRole, SecretsProviderConnection } from '@n8n/db';
+import type {
+	ConfigFileConnectionData,
+	OperationContext,
+	ProjectSecretsProviderAccess,
+	SecretsProviderAccessRole,
+	SecretsProviderConnection,
+} from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import isEqual from 'lodash/isEqual';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -26,6 +34,7 @@ import {
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from '@/credentials/credential-dependency.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
@@ -115,6 +124,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		await this.applyConnectionUpdates(connection, updates);
 		await this.repository.save(connection);
 
@@ -133,6 +143,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		await this.applyConnectionUpdates(connection, updates);
 		await this.repository.save(connection);
 
@@ -215,6 +226,7 @@ export class SecretsProvidersConnectionsService {
 		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
+		this.assertNotConfigFileManaged(connection);
 		const projectInfo = this.extractProjectInfo(connection);
 		const dependencyId = connection.id.toString();
 
@@ -247,6 +259,14 @@ export class SecretsProvidersConnectionsService {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 		return connection;
+	}
+
+	private assertNotConfigFileManaged(connection: SecretsProviderConnection): void {
+		if (connection.managedBy === 'config-file') {
+			throw new ForbiddenError(
+				`Cannot modify connection "${connection.providerKey}": it is managed by the external secrets config file. Edit the file and restart n8n to make changes.`,
+			);
+		}
 	}
 
 	async getConnection(providerKey: string): Promise<SecretsProviderConnection> {
@@ -303,6 +323,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
+			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -331,6 +352,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
+			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -419,6 +441,7 @@ export class SecretsProvidersConnectionsService {
 	 */
 	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		this.assertNoConfigFileManagedAccess(projectId, accessEntries);
 		const providerKeysToSync = new Set<string>();
 		const ownerConnectionIds = new Set<number>();
 		const nonOwnerConnectionIds = new Set<number>();
@@ -465,6 +488,33 @@ export class SecretsProvidersConnectionsService {
 		}
 	}
 
+	/**
+	 * Rejects deleting a project that a config-file-managed connection references. Otherwise
+	 * the connection loses the project, and the next boot fails on the missing project ID.
+	 */
+	async assertProjectDeletable(projectId: string): Promise<void> {
+		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		this.assertNoConfigFileManagedAccess(projectId, accessEntries);
+	}
+
+	private assertNoConfigFileManagedAccess(
+		projectId: string,
+		accessEntries: ProjectSecretsProviderAccess[],
+	): void {
+		const configFileManaged = accessEntries.filter(
+			(access) => access.secretsProviderConnection.managedBy === 'config-file',
+		);
+		if (configFileManaged.length === 0) return;
+
+		const projectName = configFileManaged[0].project?.name ?? projectId;
+		const providerKeys = configFileManaged
+			.map((access) => `"${access.secretsProviderConnection.providerKey}"`)
+			.join(', ');
+		throw new BadRequestError(
+			`Cannot delete project "${projectName}": it is referenced by external secrets connection(s) managed by the config file: ${providerKeys}. Remove the project from these connections in the config file and restart n8n, then delete the project.`,
+		);
+	}
+
 	private async encryptConnectionSettings(settings: IDataObject): Promise<string> {
 		return await this.cipher.encryptV2(settings);
 	}
@@ -507,6 +557,7 @@ export class SecretsProvidersConnectionsService {
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
+		this.assertNotConfigFileManaged(connection);
 
 		const connectionId = connection.id;
 		await this.credentialDependencyService.deleteDependencyById({
@@ -524,5 +575,60 @@ export class SecretsProvidersConnectionsService {
 		const decrypted = await this.cipher.decryptV2(encryptedSettings);
 		const parsed = jsonParse<IDataObject>(decrypted);
 		return parsed;
+	}
+
+	/**
+	 * Config-file-only counterparts of the guarded public methods above.
+	 * These deliberately skip `assertNotConfigFileManaged`: they are the
+	 * reconciler's own privileged path for writing config-file-managed rows.
+	 * The write methods take the reconciler's lock context and do not sync the
+	 * provider: the sync makes a network call, which must not happen while the
+	 * lock transaction is open. Call `syncConfigFileConnections` after the lock.
+	 */
+
+	async encryptConfigFileSettings(settings: IDataObject): Promise<string> {
+		return await this.encryptConnectionSettings(settings);
+	}
+
+	/** Whether the stored encrypted settings decrypt to exactly `desiredSettings`. */
+	async encryptedSettingsMatch(
+		encryptedSettings: string,
+		desiredSettings: IDataObject,
+	): Promise<boolean> {
+		const stored = await this.decryptConnectionSettings(encryptedSettings);
+		return isEqual(stored, desiredSettings);
+	}
+
+	async createConfigFileConnection(
+		providerKey: string,
+		data: ConfigFileConnectionData,
+		ctx: OperationContext,
+	): Promise<void> {
+		const existing = await this.repository.findOneByProviderKey(providerKey, ctx);
+		if (existing) {
+			throw new BadRequestError(
+				`Cannot create config-file-managed connection "${providerKey}": a connection with this key already exists and is managed by ${existing.managedBy}.`,
+			);
+		}
+
+		await this.repository.insertConfigFileConnection(providerKey, data, ctx);
+	}
+
+	async updateConfigFileConnection(
+		connectionId: number,
+		data: ConfigFileConnectionData,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.repository.updateConfigFileConnection(connectionId, data, ctx);
+	}
+
+	async deleteConfigFileConnection(connectionId: number, ctx: OperationContext): Promise<void> {
+		await this.repository.deleteWithDependents(connectionId, ctx);
+	}
+
+	async syncConfigFileConnections(providerKeys: string[]): Promise<void> {
+		for (const providerKey of providerKeys) {
+			await this.externalSecretsManager.syncProviderConnection(providerKey);
+		}
 	}
 }

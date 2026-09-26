@@ -112,13 +112,25 @@ const badgeTooltip = computed(() => {
 	});
 });
 
+const isConfigFileManaged = computed(() => provider.value.managedBy === 'config-file');
+const configFileManagedTooltip = i18n.baseText(
+	'settings.secretsProviderConnections.managedByConfigFile.tooltip',
+);
+
 const actionDropdownOptions = computed(() => {
 	if (!props.canUpdate) return [];
 
-	const options = [
+	const options: Array<{
+		label: string;
+		value: string;
+		disabled?: boolean;
+		tooltip?: string;
+	}> = [
 		{
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		},
 	];
 
@@ -126,6 +138,8 @@ const actionDropdownOptions = computed(() => {
 		options.push({
 			label: i18n.baseText('generic.activate'),
 			value: 'activate',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		});
 	}
 
@@ -133,6 +147,8 @@ const actionDropdownOptions = computed(() => {
 		options.push({
 			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
 			value: 'share',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		});
 	}
 
@@ -147,6 +163,8 @@ const actionDropdownOptions = computed(() => {
 		options.push({
 			label: i18n.baseText('generic.delete'),
 			value: 'delete',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		});
 	}
 
@@ -193,6 +211,19 @@ function onAction(action: string) {
 				>
 					{{ i18n.baseText('settings.secretsProviderConnections.state.disconnected') }}
 				</N8nBadge>
+				<N8nTooltip v-if="isConfigFileManaged" placement="top">
+					<N8nBadge
+						theme="tertiary"
+						:bold="false"
+						size="xsmall"
+						data-test-id="managed-by-config-file-badge"
+					>
+						{{ i18n.baseText('settings.secretsProviderConnections.managedByConfigFile.badge') }}
+					</N8nBadge>
+					<template #content>
+						{{ configFileManagedTooltip }}
+					</template>
+				</N8nTooltip>
 			</div>
 		</template>
 		<template #default>
