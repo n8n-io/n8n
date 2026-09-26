@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /community-packages:
+    get:
+      $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
   /credential-type-policies/instance:
     get:
       $ref: ./handlers/credential-type-policies/spec/paths/getCredentialTypeInstancePolicy.generated.yml
@@ -49,6 +52,18 @@ paths:
   /credentials/schema/{credentialTypeName}:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
+  /data-tables:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTables.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/createDataTable.generated.yml
+  /data-tables/{dataTableId}:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/getDataTable.generated.yml
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
@@ -63,6 +78,9 @@ paths:
   /workflows/{workflowId}/test-runs/{runId}/test-cases:
     get:
       $ref: ./handlers/workflows/spec/paths/getTestCases.generated.yml
+  /workflows/{workflowId}/test-runs/{runId}/cancel:
+    post:
+      $ref: ./handlers/workflows/spec/paths/cancelTestRun.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
@@ -204,6 +222,9 @@ paths:
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  /promotions/projects/{projectId}/promote:
+    post:
+      $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

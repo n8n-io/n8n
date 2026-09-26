@@ -156,6 +156,7 @@ export {
 	credentialTypeNameParamSchema,
 	credentialTypePolicyIdParamSchema,
 	credentialTypePolicyScopeIdParamSchema,
+	dataTableIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -354,11 +355,6 @@ export {
 } from './schemas/secrets-provider.schema';
 
 export {
-	communityPackageResponseSchema,
-	type CommunityPackageResponse,
-} from './schemas/community-package.schema';
-
-export {
 	publicApiCredentialResponseSchema,
 	type PublicApiCredentialResponse,
 } from './schemas/credential-response.schema';
@@ -390,6 +386,8 @@ export {
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
+	agentActivitySchema,
+	agentChangeSchema,
 	agentCompletedPayloadSchema,
 	textDeltaPayloadSchema,
 	reasoningDeltaPayloadSchema,
@@ -427,6 +425,7 @@ export {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -491,6 +490,8 @@ export {
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
+	MAX_INSTANCE_AI_NODES_PER_SET,
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
@@ -568,6 +569,8 @@ export type {
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
+	InstanceAiAgentActivity,
+	InstanceAiAgentChange,
 	TaskItem,
 	TaskList,
 	InstanceAiRunStartEvent,
@@ -851,6 +854,10 @@ export {
 	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+} from './constants/canvas-feature-flags';
 export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,

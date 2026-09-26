@@ -60,7 +60,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `research` | 2 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
-| `agents` | 1 |
+| `agent-context` | 13 lookup types |
 | `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
@@ -641,6 +641,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `nodeName` | string | yes | — | Node to run |
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
@@ -668,6 +669,96 @@ at the first node with no run data. `mockedNodeNames` lists them. A
 placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
+
+The action refuses a run whose input would not keep the nodes above the target
+out of it. It applies the rules of `findStartNodes`, so the engine re-runs:
+
+- A node with neither run data nor pin data.
+- A node whose saved run failed, even a pinned one. The engine retries it.
+- A Loop Over Items node whose last run left the `done` output empty. The
+  engine restarts the loop. A loop edge that runs through the target does not
+  count, because `findSubgraph` drops it, and then the second output decides.
+
+`mockInput` can hit only the last rule: the placeholder on a loop leaves
+`done` empty when the target hangs off the loop body. Use `reuseExecutionId`
+with an execution where the loop finished.
+
+**Sub-node targets**: a tool has no main input, and the engine never runs one on
+its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
+Executor that inherits that node's main parents, then runs the tool from there.
+So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
+input, and `reuseExecutionId` replays the Agent's ancestors. A chain run on a
+tool runs every node above the Agent, so supply `reuseExecutionId` or
+`mockInput` when one of those nodes writes.
+
+The engine runs the tool through a virtual node the workflow does not contain,
+`PartialExecutionToolExecutor`. The result never carries that name: the run is
+reported under the node the caller named, in the output data, the executed
+names, the last node, and a node error. The tool's own record is the one kept,
+because the executor re-serializes the result as a single string.
+
+`ranThroughNodeNames` names the nodes that can run the tool, not the one that
+ran it. A tool that hangs off several agents lists them all: the engine picks
+one and reports no choice, so any single name here would be a guess. The plan
+covers every candidate's ancestry, so the run is right whichever one the engine
+takes.
+
+The action refuses a tool when one of its agents runs above another. If the
+engine picks the lower agent, it drops the data the plan gave the upper agent
+and the nodes between them, and runs those nodes for real. The error tells the
+caller to run the upper agent instead and read the tool with
+`get-node-output`. Agents on parallel branches are not affected.
+
+`toolArguments` supplies what the agent would normally decide — the values
+behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
+a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
+as a tool). It is **required** when the node declares `$fromAI` arguments: the
+action refuses the run rather than execute the tool on empty arguments and
+report a failure that says nothing about the user's problem.
+
+The agent request names no tool. The Tool Executor looks the arguments up by the
+tool's *runtime* name, which is `nodeNameToToolName(node)` on current versions
+but comes from a parameter on older ones (`name` on Code Tool <= 1.1, Vector
+Store Tool <= 1, Workflow Tool <= 2.1; `toolName` on a retrieve-as-tool vector
+store < 1.3) and is hardcoded on Think 1. An empty name makes the Tool Executor
+run the only tool connected to it, so a name this cannot know never stops the
+run; the arguments are keyed under every name the tool can have so the lookup
+finds them. Think 1's hardcoded `thinking_tool` is the one name this cannot key,
+and there it costs the arguments, not the run.
+
+A node that holds several tools is refused: the Tool Executor runs the member
+whose name matches the request, that name is `buildMcpToolName` of the node
+name and the server's tool name, and a miss reports success with no result at
+all. Run the owning Agent instead and read the node's output from that
+execution. The check is on the node type, because a node name is the user's to
+change:
+
+- `@n8n/n8n-nodes-langchain.mcpClientTool` — "MCP Client Tool" on the canvas.
+- `@n8n/mcp-registry.<slug>` — a server the MCP registry added, one node type
+  for each server. All of them run on one hidden class
+  (`mcpRegistryClientTool`), and that class name never appears as a node type,
+  so the match is on the `@n8n/mcp-registry` package — the same test
+  `agents-tools.service.ts` makes.
+
+Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
+runs those only as part of the node that owns them, so the action points the
+caller at that node instead of starting a run that cannot work. Their output is
+still readable afterwards: a sub-node records each call under its own connection
+type, and `action="get-node-output"` reads that when a node has no `main`
+output.
+
+**Refusals**: the action fails, and starts nothing, rather than run something
+whose result would mislead:
+
+- a `reuseExecutionId` whose execution holds no data for any node above the
+  target — falling back to a chain run would execute those nodes for real, which
+  is what asking for replayed input rules out;
+- a tool that declares `$fromAI` arguments with no `toolArguments`;
+- a node that holds several tools;
+- a sub-node that is not a tool;
+- a tool no node is connected to run — the engine has no node to stand in for,
+  so the run would start and then die;
+- `toolArguments` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
 mocked mode replaced, come off this run's copy — a pinned node never
@@ -719,11 +810,26 @@ Get the output data of a specific node from an execution.
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
 
-**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns? }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
 `Discarded` separately. `name` follows the node's output pane labels, including
 renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
 extra output. `totalItems` and `returned` count across all outputs.
+
+A node records one run for each time it ran, and `totalRuns` reports how many
+when there was more than one. Which runs are read depends on the node:
+
+- A node in the **main graph** reports its **last** run. A node inside a loop
+  has one run for each iteration, so this is the run the caller usually means.
+- A **sub-node** — a model, a memory, a tool — reports **every** run, in call
+  order, because one run is one call its owner made. That is what makes this
+  action the answer to a step run the tool refuses. An item's label names the
+  call it came from, `node:Search Tickets[call 2][0][0]`, and `startIndex` and
+  `maxItems` page across the calls as one sequence.
+
+A run that failed records no items, so `totalRuns` can count more runs than the
+items account for. Read the error of that run from `action="get"`, which
+reports it under `nodeErrors`.
 
 ### `executions(action="get-resolved-node-parameters")`
 
@@ -1363,15 +1469,22 @@ cannot clobber the existing binding), and `agentId` wins when both are
 given. Prefer switching by the `agentId` returned from earlier calls; the
 name lookup is the fallback when the id is unknown.
 
-### `agents` *(domain tool — requires the `agents` backend module)*
+### `agent-context` *(domain tool — requires the `agents` backend module)*
 
-Read-only listing of the project's n8n Agent artifacts. One action, `list`:
-returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
-recently updated first. Registered alongside `build-agent` (agents module
-active + project-bound conversation, `agent:read` scope enforced in the
-adapter). Use it to answer questions about existing agents and to find the
-`agentId` for `build-agent` when editing an agent not built in this
-conversation. Creation and editing stay on `build-agent`.
+Read-only access to Agent context in the conversation's bound project. The host
+registers the tool only when the user has `agent:read` scope. Both the Assistant
+and Agent Builder use this tool.
+
+The `type` field selects one lookup. Supported values are `agents`, `config-schema`, `config`,
+`skills`, `skill`, `tasks`, `custom-tools`, `custom-tool`, `sessions`, `session`,
+`capabilities`, `integrations`, and `attachable-workflows`. Detailed lookups
+return one body at a time. Session lookup supports status, origin, date, and
+cursor filters.
+
+The Agent id is optional when the conversation has a bound Agent target. Use
+`type: "agents"` to resolve the id in other conversations. The tool labels the
+returned config as the current draft. It wraps all returned context as untrusted
+data before it returns it to the model.
 
 ## MCP Registry Tool
 

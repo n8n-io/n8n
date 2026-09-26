@@ -35,6 +35,13 @@ const GLOBAL_READER = mock<User>({
 	id: 'user-owner',
 	role: { slug: 'global:owner', scopes: [{ slug: 'workflow:read' }] },
 });
+const GLOBAL_CREDENTIAL_READER = mock<User>({
+	id: 'user-credential-owner',
+	role: {
+		slug: 'global:owner',
+		scopes: [{ slug: 'workflow:read' }, { slug: 'credential:read' }],
+	},
+});
 const PROJECT_ID = 'project-1';
 const PERSONAL_PROJECT_ID = 'project-personal';
 
@@ -969,6 +976,39 @@ describe('InstanceContextService', () => {
 			]);
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
 				expect.objectContaining({ projectIds: 'all-projects' }),
+			);
+		});
+
+		it.each([
+			{ user: GLOBAL_READER, credentialIds: [], categories: ['workflow'], filter: 'workflow' },
+			{
+				user: GLOBAL_READER,
+				credentialIds: ['team-a'],
+				categories: ['workflow', 'credential'],
+				filter: undefined,
+			},
+			{
+				user: GLOBAL_CREDENTIAL_READER,
+				credentialIds: 'all-projects',
+				categories: ['workflow', 'credential'],
+				filter: undefined,
+			},
+		])('aligns categories and activity filter for $credentialIds', async (scenario) => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockResolvedValue(
+				Array.isArray(scenario.credentialIds) ? scenario.credentialIds : [],
+			);
+
+			await service.list({ user: scenario.user, scope: unbound(), limit: 5 });
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					projectIds: 'all-projects',
+					allowedCategories: scenario.categories,
+				}),
+			);
+			expect(activityEventRepository.findFeed.mock.lastCall?.[0].filterCategory).toBe(
+				scenario.filter,
 			);
 		});
 

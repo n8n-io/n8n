@@ -360,7 +360,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return {
 			platformAgentContext: this.getPlatformAgentContext(params.chat),
 			statusHandle:
-				params.replyExpectation === 'optional'
+				params.replyExpectation === 'optional' || params.startStatus === false
 					? undefined
 					: this.startTyping(params.thread, params.logger, params.agentId),
 		};

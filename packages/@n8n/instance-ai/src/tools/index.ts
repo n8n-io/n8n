@@ -4,6 +4,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
@@ -45,14 +46,12 @@ const loadSaveUserPreferenceTool = lazyMod(
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
-const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadAgentContextTool = lazyMod(
+	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
+);
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
-);
-const loadListAgentCapabilitiesTool = lazyMod(
-	() =>
-		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -155,6 +154,18 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
 	}
 
+	if (context.agentContextService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
+			() =>
+				loadAgentContextTool().createAgentContextTool({
+					reader: context.agentContextService!,
+					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
+					logger: context.logger,
+				}),
+		]);
+	}
+
 	// Presence is the gate, as with activity: the adapter wires `aiPreferenceService`
 	// only when saved preferences are enabled for this user.
 	if (context.aiPreferenceService) {
@@ -226,11 +237,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
-		tools.push([
-			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
-			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
-		]);
-		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

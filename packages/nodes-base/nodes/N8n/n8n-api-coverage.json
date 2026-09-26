@@ -199,7 +199,7 @@
 		"GET /workflows/{workflowId}/test-runs/{runId}": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+		"POST /workflows/{workflowId}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
 		"GET /workflows/{workflowId}/test-runs/{runId}/test-cases": {
@@ -284,6 +284,9 @@
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/projects/{projectId}/promote": {
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {

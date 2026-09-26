@@ -78,6 +78,11 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
+import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionCounts,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
@@ -137,6 +142,7 @@ const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 // Opening a new conversation drops the tab title of the thread we came from —
 // this view mounts on every entry to the empty route, the parent layout doesn't.
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
@@ -553,6 +559,8 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
+	acceptDraft: () => void = () => {},
+	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -592,7 +600,8 @@ async function handleSubmit(
 		authorship,
 		attachments,
 		pushRef: rootStore.pushRef,
-		responseStartedAtEpochMs,
+		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+		...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
 	});
 	if (!sent) {
 		isStartingThread.value = false;
@@ -624,6 +633,7 @@ async function handleSubmit(
 			node_count: nodeCount,
 		});
 	}
+	acceptDraft();
 
 	try {
 		await router.replace({
@@ -670,6 +680,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:mentions-enabled="mentionsEnabled"
+						:mention-project-id="selectedProject"
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
@@ -708,6 +720,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+							:mentions-enabled="mentionsEnabled"
+							:mention-project-id="selectedProject"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
 							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
@@ -749,6 +763,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:mentions-enabled="mentionsEnabled"
+						:mention-project-id="selectedProject"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"

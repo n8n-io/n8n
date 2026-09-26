@@ -1,7 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
-import type { AiPreferenceDto } from './ai-preference.schema';
+import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -452,6 +452,18 @@ export const agentSpawnedTargetResourceSchema = z.object({
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 
+export const agentActivitySchema = z.enum([
+	'creating',
+	'editing',
+	'exploring',
+	'testing',
+	'publishing',
+	'working',
+]);
+export type InstanceAiAgentActivity = z.infer<typeof agentActivitySchema>;
+export const agentChangeSchema = z.enum(['created', 'updated', 'none']);
+export type InstanceAiAgentChange = z.infer<typeof agentChangeSchema>;
+
 export const agentSpawnedPayloadSchema = z.object({
 	parentId: z.string().describe("Orchestrator's agentId"),
 	role: z.string().describe('Free-form role description'),
@@ -459,6 +471,7 @@ export const agentSpawnedPayloadSchema = z.object({
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
 	// Display metadata — enriched identity for the UI
 	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
+	activity: agentActivitySchema.optional().describe('Current activity for the Agent card'),
 	title: z.string().optional().describe('Short display title, e.g. "Building workflow"'),
 	subtitle: z
 		.string()
@@ -473,6 +486,7 @@ export const agentSpawnedPayloadSchema = z.object({
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
+	agentChange: agentChangeSchema.optional().describe('Whether this sub-agent changed its Agent'),
 	error: z.string().optional(),
 	/**
 	 * Terminal state of the sub-agent. Optional: events written before this
@@ -1176,12 +1190,15 @@ export const setupItemsPayloadSchema = z.object({
 
 /** A later fact about a preference the `save_user_preference` tool saved in this run:
  *  the user edited it or undid it from the card. Appended by the card endpoints, not
- *  by the tool, and only while the card is on the latest turn. */
+ *  by the tool, and only while the card is on the latest turn. An edit names the scope
+ *  and project the row now has, so the card shows a move after a reload. */
 export const preferenceCardPayloadSchema = z.object({
 	toolCallId: z.string(),
 	preferenceId: z.string(),
 	state: z.enum(['edited', 'undone']),
 	content: z.string().optional(),
+	scope: aiPreferenceScopeSchema.optional(),
+	projectId: z.string().nullable().optional(),
 });
 export type PreferenceCardPayload = z.infer<typeof preferenceCardPayloadSchema>;
 
@@ -1495,9 +1512,11 @@ const instanceAiNodeRefSchema = z.object({
 	name: z.string().max(255).optional(),
 });
 
+export const MAX_INSTANCE_AI_NODES_PER_SET = 50;
+
 const instanceAiNodeSetSchema = z.object({
 	/** Ordered from the set's input side to its output side. Length 1 = a single loose node; length > 1 = a chain of connected nodes. */
-	nodes: z.array(instanceAiNodeRefSchema).min(1).max(50),
+	nodes: z.array(instanceAiNodeRefSchema).min(1).max(MAX_INSTANCE_AI_NODES_PER_SET),
 	/** The node feeding into this set from outside it, if any (absent when the set starts at a trigger/root). */
 	inputNode: instanceAiNodeRefSchema.optional(),
 	/** The node this set feeds into from outside it, if any (absent when the set ends at a terminal node). */
@@ -1520,6 +1539,8 @@ const instanceAiNodeSetSchema = z.object({
 export const instanceAiNodesAttachmentSchema = z.object({
 	type: z.literal('nodes'),
 	workflowId: z.string().min(1).max(64),
+	/** Parent workflow display name, used to rebuild its artifact after hydration. */
+	workflowName: z.string().max(255).optional(),
 	sets: z.array(instanceAiNodeSetSchema).min(1).max(50),
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
@@ -1648,9 +1669,14 @@ export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfi
 export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
 export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
 
+export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
+	attachments: z
+		.array(instanceAiAttachmentSchema)
+		.max(MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE)
+		.optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	/** Preview tabs in this thread. The server injects them as a per-turn index. */
 	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
@@ -1896,6 +1922,8 @@ export interface InstanceAiToolCallState {
 	args: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
+	/** True when the run ended with the call in flight, so its effect is unverified. */
+	interrupted?: true;
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
@@ -1909,7 +1937,12 @@ export interface InstanceAiToolCallState {
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	/** Set by a `preference-card` fact; absent means the tool result is the state. */
-	preferenceCard?: { state: 'edited' | 'undone'; content?: string };
+	preferenceCard?: {
+		state: 'edited' | 'undone';
+		content?: string;
+		scope?: AiPreferenceScope;
+		projectId?: string | null;
+	};
 	startedAt?: string;
 	completedAt?: string;
 }
@@ -1938,6 +1971,10 @@ export interface InstanceAiAgentNode {
 	taskId?: string;
 	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
+	/** Current activity for the Agent card. */
+	activity?: InstanceAiAgentActivity;
+	/** Whether this sub-agent changed its Agent. */
+	agentChange?: InstanceAiAgentChange;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */
@@ -2696,6 +2733,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables workflow, node, and canvas group mentions in the n8n Assistant */
+export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 
 /** Enables the conversation-history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';

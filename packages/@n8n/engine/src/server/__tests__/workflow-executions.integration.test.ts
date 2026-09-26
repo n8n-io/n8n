@@ -72,6 +72,11 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		await search(body).expect(400);
 	});
 
+	// An execution reports `waiting`, so the control plane filters the list by it.
+	it('accepts a search for waiting executions', async () => {
+		await search({ workflowIds: 'all', status: ['waiting'] }).expect(200);
+	});
+
 	it('rejects a cursor paired with a status-first sort at the store', async () => {
 		const { executionViewStore } = createStores(dataSource);
 		await expect(

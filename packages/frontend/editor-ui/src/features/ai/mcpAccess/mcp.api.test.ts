@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { fetchMcpAgents, updateMcpSettings } from './mcp.api';
+import { fetchMcpAgents, fetchMcpExposedWorkflows, updateMcpSettings } from './mcp.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
@@ -37,6 +37,27 @@ describe('fetchMcpAgents', () => {
 
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/mcp/agents', {
 			filter: JSON.stringify({ availableInMCP: true }),
+		});
+	});
+});
+
+describe('fetchMcpExposedWorkflows', () => {
+	const context = {} as IRestApiContext;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
+	});
+
+	it('queries the generic workflow list for the exposed page', async () => {
+		await fetchMcpExposedWorkflows(context, { skip: 25, take: 25 });
+
+		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/workflows', {
+			includeScopes: true,
+			filter: { isArchived: false, availableInMCP: true },
+			skip: 25,
+			take: 25,
+			sortBy: 'updatedAt:desc',
 		});
 	});
 });

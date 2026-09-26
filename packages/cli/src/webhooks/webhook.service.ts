@@ -472,6 +472,10 @@ export class WebhookService {
 						workflowId,
 						workflowExecuteAdditionalData: additionalData,
 						webhookId,
+						// Who the run is attributed to: the test-webhook owner on a
+						// manual run, the workflow's publisher on a production one.
+						// `executeWebhook` copies this onto the execution.
+						userId: additionalData.userId,
 					});
 				});
 		}

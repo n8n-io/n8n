@@ -73,97 +73,96 @@ function handleUpdateDropdownModelValue(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
-		<N8nDropdownMenu
-			:items="menuItems"
-			placement="top-start"
-			:disabled="props.disabled"
-			data-test-id="instance-ai-input-menu"
-			@select="handleSelect"
-			@update:model-value="handleUpdateDropdownModelValue"
-		>
-			<template #trigger>
-				<span :class="$style.trigger">
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="medium"
-						icon-size="large"
-						:disabled="props.disabled"
-						:aria-label="tooltip"
+	<N8nDropdownMenu
+		:items="menuItems"
+		placement="top-start"
+		:disabled="props.disabled"
+		data-test-id="instance-ai-input-menu"
+		@select="handleSelect"
+		@update:model-value="handleUpdateDropdownModelValue"
+	>
+		<template #trigger>
+			<N8nTooltip
+				as-child
+				:content="tooltip"
+				:content-class="$style.triggerTooltip"
+				placement="top"
+			>
+				<N8nIconButton
+					icon="plus"
+					variant="ghost"
+					size="medium"
+					icon-size="large"
+					:disabled="props.disabled"
+					:aria-label="tooltip"
+					:class="[$style.trigger, { [$style.triggerWithStatus]: disconnectedConnectionCount > 0 }]"
+				/>
+			</N8nTooltip>
+		</template>
+
+		<template #item-leading="{ item, ui }">
+			<N8nNodeIcon
+				v-if="item.data?.toolIcon"
+				:type="item.data.toolIcon.type"
+				:src="item.data.toolIcon.type === 'file' ? item.data.toolIcon.src : undefined"
+				:name="item.data.toolIcon.type === 'icon' ? item.data.toolIcon.name : undefined"
+				:size="16"
+				:class="ui.class"
+			/>
+			<N8nIcon
+				v-else-if="item.icon?.type === 'icon'"
+				:icon="item.icon.value"
+				size="large"
+				:class="ui.class"
+			/>
+		</template>
+
+		<template #item-label="{ item, ui }">
+			<N8nText
+				size="medium"
+				:color="
+					item.disabled || (item.data?.preference && item.data.preference !== 'applied')
+						? 'text-xlight'
+						: 'text-dark'
+				"
+				:class="[
+					ui.class,
+					$style.itemLabel,
+					!item.children?.length && $style.itemLabelLeaf,
+					item.data?.preference && $style.preferenceItem,
+				]"
+			>
+				<span :class="item.data?.preference && $style.preferenceText">{{ item.label }}</span>
+				<span
+					v-if="
+						item.data?.status &&
+						item.data.status !== 'none' &&
+						!(item.id === 'tools' && item.data.status === 'connected')
+					"
+					:class="$style.statusIndicator"
+					:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
+				>
+					<N8nSpinner v-if="item.data.status === 'connecting'" size="small" />
+					<N8nIcon
+						v-else-if="item.data.status === 'connected'"
+						icon="check"
+						size="small"
+						:class="[$style.statusIcon, $style.connected]"
 					/>
 					<span
-						v-if="disconnectedConnectionCount > 0"
-						:class="$style.triggerStatusDot"
-						aria-hidden="true"
+						v-else-if="item.id === 'tools'"
+						:class="[$style.statusDot, $style.disconnectedDot]"
+					/>
+					<N8nIcon
+						v-else
+						icon="circle-x"
+						size="small"
+						:class="[$style.statusIcon, $style.disconnected]"
 					/>
 				</span>
-			</template>
-
-			<template #item-leading="{ item, ui }">
-				<N8nNodeIcon
-					v-if="item.data?.toolIcon"
-					:type="item.data.toolIcon.type"
-					:src="item.data.toolIcon.type === 'file' ? item.data.toolIcon.src : undefined"
-					:name="item.data.toolIcon.type === 'icon' ? item.data.toolIcon.name : undefined"
-					:size="16"
-					:class="ui.class"
-				/>
-				<N8nIcon
-					v-else-if="item.icon?.type === 'icon'"
-					:icon="item.icon.value"
-					size="large"
-					:class="ui.class"
-				/>
-			</template>
-
-			<template #item-label="{ item, ui }">
-				<N8nText
-					size="medium"
-					:color="
-						item.disabled || (item.data?.preference && item.data.preference !== 'applied')
-							? 'text-xlight'
-							: 'text-dark'
-					"
-					:class="[
-						ui.class,
-						$style.itemLabel,
-						!item.children?.length && $style.itemLabelLeaf,
-						item.data?.preference && $style.preferenceItem,
-					]"
-				>
-					<span :class="item.data?.preference && $style.preferenceText">{{ item.label }}</span>
-					<span
-						v-if="
-							item.data?.status &&
-							item.data.status !== 'none' &&
-							!(item.id === 'tools' && item.data.status === 'connected')
-						"
-						:class="$style.statusIndicator"
-						:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
-					>
-						<N8nSpinner v-if="item.data.status === 'connecting'" size="small" />
-						<N8nIcon
-							v-else-if="item.data.status === 'connected'"
-							icon="check"
-							size="small"
-							:class="[$style.statusIcon, $style.connected]"
-						/>
-						<span
-							v-else-if="item.id === 'tools'"
-							:class="[$style.statusDot, $style.disconnectedDot]"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-x"
-							size="small"
-							:class="[$style.statusIcon, $style.disconnected]"
-						/>
-					</span>
-				</N8nText>
-			</template>
-		</N8nDropdownMenu>
-	</N8nTooltip>
+			</N8nText>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
@@ -177,10 +176,11 @@ function handleUpdateDropdownModelValue(open: boolean) {
 	display: inline-flex;
 }
 
-.triggerStatusDot {
+.triggerWithStatus::after {
+	content: '';
 	position: absolute;
-	top: 2px;
-	right: 2px;
+	top: var(--spacing--5xs);
+	right: var(--spacing--5xs);
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;

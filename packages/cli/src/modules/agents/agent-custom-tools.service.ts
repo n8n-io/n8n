@@ -46,7 +46,7 @@ export class AgentCustomToolsService {
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
 		options: { recordTelemetry?: boolean } = {},
-	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor }> {
+	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor; changed: boolean }> {
 		const entity = await getAgentOrThrow(
 			this.agentRepository,
 			agentId,
@@ -63,7 +63,7 @@ export class AgentCustomToolsService {
 		const toolId = descriptor.name;
 		const nextEntry = { code, descriptor };
 		if (isEqual(entity.tools?.[toolId], nextEntry)) {
-			return { ok: true, id: toolId, descriptor };
+			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
 		const previous = captureAgentMutation(entity);
@@ -82,7 +82,7 @@ export class AgentCustomToolsService {
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
-		return { ok: true, id: toolId, descriptor };
+		return { ok: true, id: toolId, descriptor, changed: true };
 	}
 
 	/**

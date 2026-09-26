@@ -1,8 +1,6 @@
 import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	PublicApiCreateDataTableDto,
-	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -30,12 +28,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace TestRunRequest {
-	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
-	// resolves it from `req.params.id`); `runId` is the test run id.
-	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
-}
-
 export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -51,6 +43,20 @@ export declare namespace PackageRequest {
 		{},
 		{},
 		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+
+	type ImportSelection = AuthenticatedRequest<
+		{},
+		{},
+		{
+			selectedProjectId?: string;
+			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
+			selectedWorkflowIds?: string;
+			deletedWorkflowIds?: string;
+			workflowConflictPolicy?: string;
+			workflowIdPolicy?: string;
+		},
 		Record<string, never>
 	>;
 }
@@ -121,27 +127,6 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
-
-	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
-
-	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},

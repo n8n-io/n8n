@@ -62,6 +62,8 @@ const unreachable = (): Route => ({
 
 const accepted = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH, status: 201 });
 
+const tooLarge = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH, status: 413 });
+
 /** The private arming hook, spied on so a test can tell when a pass has finished. */
 type SchedulerInternals = { scheduleNext(delayMs: number): void };
 
@@ -351,6 +353,38 @@ describe('instance reporting retries', () => {
 			status: 'delivered',
 			attempts: 1,
 		});
+		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-26');
+	});
+
+	test('gives up on a rejected report after one attempt and covers the day again in the next report', async () => {
+		await seedDeliveredReport('2026-03-24');
+		await seedDailyExecutions({ '2026-03-25': 5, '2026-03-26': 7 });
+
+		const harness = makeHarness([tooLarge(), accepted()]);
+
+		harness.scheduler.start();
+		await armed(harness, 1);
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		const [rejected] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
+		expect(rejected).toMatchObject({ attempts: 1 });
+		expectArmedFor(harness, NEXT_SLOT);
+		// Keep the rejected row on the day it was made, or tomorrow reads as settled too.
+		await stampCreatedAt(rejected.id, new Date(AFTER_SLOT));
+
+		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(new Date(NEXT_SLOT).getTime() - Date.now());
+		await armed(harness, 2);
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
+		const backfill = sentPayload(harness, 1);
+		expect(backfill.batchId).not.toBe(rejected.id);
+		expect(dailyPoints(backfill)).toEqual([
+			{ date: '2026-03-25', value: 5 },
+			{ date: '2026-03-26', value: 7 },
+		]);
 		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-26');
 	});
 

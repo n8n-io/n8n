@@ -13,7 +13,7 @@ import {
 	MCP_CONNECT_AGENTS_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import type { Agent } from '@/features/agents/agent.types';
+import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
@@ -54,26 +54,16 @@ const createComponent = createComponentRenderer(SettingsMCPAgentsView, {
 	},
 });
 
-const createAgent = (overrides: Partial<Agent> = {}): Agent =>
-	({
-		id: 'agent-1',
-		name: 'My Agent',
-		projectId: 'project-1',
-		availableInMCP: true,
-		isCompiled: false,
-		createdAt: '2026-01-01T00:00:00Z',
-		updatedAt: '2026-01-01T00:00:00Z',
-		versionId: 'v1',
-		activeVersionId: null,
-		tools: {},
-		skills: {},
-		activeVersion: null,
-		...overrides,
-	}) as Agent;
+const createAgent = (overrides: Partial<McpAgent> = {}): McpAgent => ({
+	id: 'agent-1',
+	name: 'My Agent',
+	projectId: 'project-1',
+	...overrides,
+});
 
-const agentPage = (data: Agent[] = []) => ({ data, count: data.length });
+const agentPage = (data: McpAgent[] = []) => ({ data, count: data.length });
 
-const mockAgentPages = (data: Agent[] = []) => {
+const mockAgentPages = (data: McpAgent[] = []) => {
 	mcpStore.fetchAgentsAvailableForMCPPage.mockImplementation(async (page: number) => ({
 		...agentPage(data),
 		page,

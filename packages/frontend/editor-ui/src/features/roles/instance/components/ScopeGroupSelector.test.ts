@@ -36,6 +36,18 @@ describe('ScopeGroupSelector', () => {
 		expect(getByTestId('personal-space-group-manage').getAttribute('aria-checked')).toBe('true');
 	});
 
+	it('keeps the personal space in its own card, apart from the instance permissions', () => {
+		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+		const personalSpace = getByTestId('personal-space-card');
+		const instancePermissions = getByTestId('instance-permissions-card');
+
+		expect(instancePermissions.contains(personalSpace)).toBe(false);
+		expect(personalSpace.querySelector('[data-test-id^="scope-option-"]')).toBeNull();
+		expect(instancePermissions.querySelectorAll('[data-test-id^="scope-option-"]')).toHaveLength(
+			totalOptions,
+		);
+	});
+
 	it('renders an unchecked option for an empty scope list', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 		expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false');
