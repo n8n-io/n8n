@@ -795,6 +795,34 @@ test.each([
 	]);
 });
 
+test('import:credentials should drop a pending authorization deadline carried in the file', async () => {
+	await createOwner();
+	const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+	const inputPath = path.join(temporaryDirectory, 'credentials.json');
+	fs.writeFileSync(
+		inputPath,
+		JSON.stringify([
+			{
+				id: '123',
+				name: 'pending-cred',
+				type: 'aws',
+				data: { region: 'us-east-1' },
+				pendingAuthorizationExpiresAt: new Date().toISOString(),
+			},
+		]),
+	);
+
+	try {
+		await command.run([`--input=${inputPath}`]);
+	} finally {
+		fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+	}
+
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({ id: '123', pendingAuthorizationExpiresAt: null }),
+	]);
+});
+
 test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
 	await expect(
 		command.run([

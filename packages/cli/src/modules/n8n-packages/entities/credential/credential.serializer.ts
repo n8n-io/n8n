@@ -23,6 +23,7 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	pendingAuthorizationExpiresAt: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<

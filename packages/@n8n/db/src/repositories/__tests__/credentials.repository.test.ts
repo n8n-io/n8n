@@ -2,7 +2,7 @@ import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsEntity, SharedCredentials } from '../../entities';
@@ -340,8 +340,18 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.find.mock.calls[0]?.[1];
 			expect(callArg?.where).toEqual([
-				{ type: Like('%githubApi%'), shared: { projectId: 'p1' }, usageScope: 'project' },
-				{ type: Like('%githubApi%'), usageScope: 'project', isGlobal: true },
+				{
+					type: Like('%githubApi%'),
+					shared: { projectId: 'p1' },
+					usageScope: 'project',
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
+				{
+					type: Like('%githubApi%'),
+					usageScope: 'project',
+					isGlobal: true,
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
 			]);
 			expect(entityManager.count).toHaveBeenCalledWith(CredentialsEntity, {
 				where: callArg?.where,

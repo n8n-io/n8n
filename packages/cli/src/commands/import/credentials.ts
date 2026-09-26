@@ -65,7 +65,7 @@ const flagsSchema = z.object({
 
 type ImportableCredentialProperty = Exclude<
 	Extract<keyof CredentialsEntity, string>,
-	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
+	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate' | 'pendingAuthorizationExpiresAt'
 >;
 
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
@@ -203,6 +203,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			}
 		}
 		credential.usageScope ??= 'project';
+		// Only the OAuth flow that created the row may hold it pending; an imported copy has no such flow.
+		credential.pendingAuthorizationExpiresAt = null;
 
 		if (credential.usageScope === 'instance') {
 			if (

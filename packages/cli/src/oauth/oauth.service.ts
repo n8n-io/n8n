@@ -417,8 +417,12 @@ export class OauthService {
 		await credentials.updateData(toUpdate, toDelete);
 		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
 		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
-		const update: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+		// Only a token ends the pending state: dynamic client registration writes
+		// client data through here before the user has seen the consent screen.
+		const update: Pick<ICredentialsDb, 'data' | 'updatedAt'> &
+			Partial<Pick<CredentialsEntity, 'pendingAuthorizationExpiresAt'>> = {
 			data: credentials.getDataToSave().data,
+			...(toUpdate.oauthTokenData !== undefined && { pendingAuthorizationExpiresAt: null }),
 			updatedAt: new Date(),
 		};
 		await this.credentialsRepository.update(credential.id, update);
