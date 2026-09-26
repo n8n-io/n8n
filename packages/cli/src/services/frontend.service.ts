@@ -500,9 +500,11 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
 		try {
-			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+			this.settings.ai.allowSendingParameterValues =
+				await this.aiUsageService.isParameterValueSharingAllowed();
 		} catch {
-			this.settings.ai.allowSendingParameterValues = true;
+			this.settings.ai.allowSendingParameterValues =
+				this.globalConfig.ai.allowSendingParameterValues;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';

@@ -166,6 +166,7 @@ import {
 	buildAppliedPreferencesPayload,
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -811,6 +812,7 @@ export class InstanceAiService {
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2525,6 +2527,8 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// Read per run so a settings change applies to the next message.
+		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2543,6 +2547,7 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues,
 		});
 
 		// Merge both local gateway and direct browser-use into a single

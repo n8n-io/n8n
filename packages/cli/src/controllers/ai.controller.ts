@@ -15,6 +15,7 @@ import {
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
@@ -45,6 +46,7 @@ export class AiController {
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private toAiAssistantResponseError(error: APIResponseError) {
@@ -349,6 +351,15 @@ export class AiController {
 		_res: Response,
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
+		// The setting is deprecated. It can only be turned on.
+		if (!payload.allowSendingParameterValues) {
+			throw new BadRequestError('Turning off sending parameter values is no longer supported.');
+		}
+		if (!this.globalConfig.ai.allowSendingParameterValues) {
+			throw new BadRequestError(
+				'Sending parameter values is turned off by the N8N_AI_ALLOW_SENDING_PARAMETER_VALUES environment variable. Remove it and restart n8n to turn this on.',
+			);
+		}
 		try {
 			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {

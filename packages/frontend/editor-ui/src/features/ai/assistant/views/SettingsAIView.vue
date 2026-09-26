@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const message = useMessage();
 const telemetry = useTelemetry();
 
 const assistantStore = useAssistantStore();
@@ -37,19 +34,10 @@ const aiSettingsDescription = computed(() => {
 	return i18n.baseText('settings.ai.description.both');
 });
 
+// The setting is deprecated: it can only be turned on.
 const onallowSendingParameterValuesChange = async (newValue: boolean | string | number) => {
-	if (typeof newValue !== 'boolean') return;
+	if (newValue !== true) return;
 
-	if (!newValue) {
-		const promptResponse = await message.confirm(i18n.baseText('settings.ai.confirm.message'), {
-			title: i18n.baseText('settings.ai.confirm.title'),
-			confirmButtonText: i18n.baseText('settings.ai.confirm.confirmButtonText'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		});
-		if (promptResponse !== MODAL_CONFIRM) {
-			return;
-		}
-	}
 	try {
 		await settingsStore.updateAiDataSharingSettings(newValue);
 		toast.showMessage({
@@ -89,12 +77,24 @@ onMounted(async () => {
 			<div :class="$style.checkboxContainer">
 				<N8nCheckbox
 					:model-value="allowSendingParameterValues"
+					:disabled="allowSendingParameterValues"
 					:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
 					@update:model-value="onallowSendingParameterValuesChange"
 				/>
 				<N8nText :class="$style.checkboxDescription" color="text-base">
 					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
 				</N8nText>
+				<N8nCallout
+					v-if="!allowSendingParameterValues"
+					:class="$style.notice"
+					theme="warning"
+					data-test-id="ai-data-sharing-deprecation-notice"
+				>
+					{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
+					<template v-if="!settingsStore.isCloudDeployment">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
+					</template>
+				</N8nCallout>
 			</div>
 		</div>
 		<div :class="$style.privacyNote">

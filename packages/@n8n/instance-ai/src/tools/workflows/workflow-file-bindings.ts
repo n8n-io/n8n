@@ -14,6 +14,8 @@ const workflowSourceFileBindingSchema = z.object({
 	workflowVersionId: z.string().optional(),
 	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
+	/** False when the source was read while parameter values were hidden. */
+	parameterValuesIncluded: z.boolean().optional(),
 });
 
 const workflowSourceFileBindingsSchema = z.record(z.string(), workflowSourceFileBindingSchema);

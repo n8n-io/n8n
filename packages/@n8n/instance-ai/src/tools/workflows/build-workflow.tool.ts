@@ -616,6 +616,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			// Limited mode: reads omit parameter values, so a save would erase them.
+			if (context.allowSendingParameterValues === false) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'n8n Assistant cannot create or edit workflows while data sharing is turned off. Nothing was saved.',
+					],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'parameter_values_hidden',
+						guidance:
+							'Do not retry or rewrite the workflow code. Tell the user that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+					}),
+				};
+			}
+
 			const { groupingDecision, groupingReason } = input;
 			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
 				const guidance =
@@ -680,6 +698,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					errors: [
 						`Source file ${filePath} is already bound to workflow ${binding.workflowId}; cannot bind it to ${input.workflowId}.`,
 					],
+					remediation,
+				};
+			}
+
+			// The source was read while parameter values were hidden. Saving it would erase them.
+			if (binding.workflowId && binding.parameterValuesIncluded === false) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
 					remediation,
 				};
 			}

@@ -5,6 +5,7 @@ import type {
 	AiBuilderChatRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { APIResponseError, NetworkError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -27,12 +28,14 @@ describe('AiController', () => {
 	const freeAiCreditsService = mock<FreeAiCreditsService>();
 	const aiUsageService = mock<AiUsageService>();
 	const aiGatewayService = mock<AiGatewayService>();
+	const globalConfig = mock<GlobalConfig>({ ai: { allowSendingParameterValues: true } });
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
 		freeAiCreditsService,
 		aiUsageService,
 		aiGatewayService,
+		globalConfig,
 	);
 
 	const request = mock<AuthenticatedRequest>({
@@ -43,6 +46,7 @@ describe('AiController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		aiGatewayService.assertEnabled.mockImplementation(() => {});
+		globalConfig.ai.allowSendingParameterValues = true;
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -705,6 +709,39 @@ describe('AiController', () => {
 			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
 
 			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
+		});
+	});
+
+	describe('updateUsageSettings', () => {
+		it('should reject turning sharing off and store nothing', async () => {
+			await expect(
+				controller.updateUsageSettings(request, response, {
+					allowSendingParameterValues: false,
+				}),
+			).rejects.toThrow(BadRequestError);
+
+			expect(aiUsageService.updateAiUsageSettings).not.toHaveBeenCalled();
+		});
+
+		it('should reject turning sharing on while the env var turns it off', async () => {
+			globalConfig.ai.allowSendingParameterValues = false;
+
+			const promise = controller.updateUsageSettings(request, response, {
+				allowSendingParameterValues: true,
+			});
+
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(/N8N_AI_ALLOW_SENDING_PARAMETER_VALUES/);
+
+			expect(aiUsageService.updateAiUsageSettings).not.toHaveBeenCalled();
+		});
+
+		it('should store the setting when turning sharing on', async () => {
+			await controller.updateUsageSettings(request, response, {
+				allowSendingParameterValues: true,
+			});
+
+			expect(aiUsageService.updateAiUsageSettings).toHaveBeenCalledWith(true);
 		});
 	});
 });

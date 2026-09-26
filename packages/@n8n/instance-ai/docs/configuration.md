@@ -21,7 +21,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
-| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Allow Instance AI to receive workflow and node parameter values. When `false`, the adapter replaces values with structure or placeholders before it sends context to the agent. This is a global n8n AI setting. |
+| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. After it is turned on, the Assistant must read a workflow again before it can rebuild or save it. This is a global n8n AI setting. |
 
 For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `COHERE_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`,
