@@ -14,13 +14,32 @@ rather than taking fresh numbers — the cumulative total's day-to-day diff is
 only meaningful while every sample sits a fixed 24 hours apart.
 
 A report that follows downtime carries one `daily` point for each day the
-instance missed, up to 30 days, and one `cumulative` point as always. Across a
-gap the `daily` series is the authoritative one: the two cumulative samples
-around the gap sit more than 24 hours apart, so their difference covers the
-whole outage. A missed day with no executions is reported as `0`, so a gap in
-the series always means "not reported", never "nothing ran". A gap longer than
-30 days is unrecoverable, since `insights` buckets a longer range by week; the
-oldest days are dropped and logged.
+instance missed, and one `cumulative` point as always. Across a gap the `daily`
+series is the authoritative one: the two cumulative samples around the gap sit
+more than 24 hours apart, so their difference covers the whole outage. A missed
+day with no executions is reported as `0`, so a gap in the series always means
+"not reported", never "nothing ran". The one exception: missed days before the
+first `insights` data are not reported at all.
+
+The first report works the same way: it carries a `daily` point for every day
+from the first `insights` data to yesterday. It carries no past `cumulative`
+values, since those are unknown. Days before the first `insights` data are not
+sent. `insights` folds days older than 180 days (by default) into weekly
+totals, so a report never carries a day older than 179 days. Inside the sent
+range, a day without data is `0`.
+[RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
+
+Known limits:
+
+- If `insights` was disabled for a time between its first data and the first
+  report, those days are sent as `0`.
+- After this instance's database is restored from a backup, the days since the
+  backup are sent again, as `0` or as a lower value. Consumers of the receiver's
+  export must use the highest value for each instance, metric and day.
+  `insights` stores no row for a day without executions, so a day lost in the
+  restore looks the same as a day when nothing ran. If `insights` stored an
+  explicit `0` for each day it ran, the lost days could be left out, and only
+  the backup day would be sent again.
 
 **A day is reported once, and 201 is what decides it.** The receiver answers 201
 only once it has saved the report, so anything else means nothing was saved and
@@ -171,6 +190,3 @@ last accepted a report, or `null` when it never did:
 ```
 
 The route exists whenever the module is loaded, including without a receiver — the client decides whether to ask by reading `enabled` from the client settings.
-
-See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
-for the full design.

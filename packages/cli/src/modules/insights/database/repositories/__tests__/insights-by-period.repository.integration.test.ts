@@ -525,6 +525,42 @@ describe('InsightsByPeriodRepository', () => {
 		);
 	});
 
+	describe('getEarliestDataDate', () => {
+		async function truncateInsights(): Promise<void> {
+			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
+		}
+
+		beforeEach(async () => {
+			await truncateInsights();
+		});
+
+		// Later blocks query a recent window, so leave none of these rows.
+		afterAll(async () => {
+			await truncateInsights();
+		});
+
+		test('returns the oldest period start of any bucket size as a UTC instant', async () => {
+			const repository = Container.get(InsightsByPeriodRepository);
+			const workflow = await createWorkflow({}, await createTeamProject());
+			for (const [periodUnit, periodStart] of [
+				['hour', '2026-06-01T10:00:00'],
+				['day', '2026-04-08'],
+				['week', '2026-03-16'],
+			] as const) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit,
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+				});
+			}
+
+			await expect(repository.getEarliestDataDate()).resolves.toEqual(
+				new Date('2026-03-16T00:00:00.000Z'),
+			);
+		});
+	});
+
 	describe('access filter', () => {
 		let member: User;
 		let accessibleProject: Project;
