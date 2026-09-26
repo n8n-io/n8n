@@ -124,6 +124,8 @@ requestBody:
                           - value
                         additionalProperties: false
                   additionalProperties: false
+                extendsCredential:
+                  type: string
                 createdAt:
                   type: string
                   format: date-time

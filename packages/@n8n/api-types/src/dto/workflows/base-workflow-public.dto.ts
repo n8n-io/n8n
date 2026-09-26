@@ -51,6 +51,7 @@ const workflowNodeWritePublicSchema = z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })
 			.strict()
 			.optional(),
+		extendsCredential: z.string().optional(),
 		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 	})
