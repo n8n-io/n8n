@@ -703,12 +703,12 @@ describe('SourceControlGitService', () => {
 				// it cannot break out of the argument and inject a command.
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining("-i 'C:/Users/John'\"'\"'s/.n8n/ssh_private_key_temp'"),
+					expect.stringContaining("-i 'C:/Users/John'\\''s/.n8n/ssh_private_key_temp'"),
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
 					expect.stringContaining(
-						"-o UserKnownHostsFile='C:/Users/John'\"'\"'s/.n8n/.ssh/known_hosts'",
+						"-o UserKnownHostsFile='C:/Users/John'\\''s/.n8n/.ssh/known_hosts'",
 					),
 				);
 			});
