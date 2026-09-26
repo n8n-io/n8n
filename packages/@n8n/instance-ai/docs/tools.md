@@ -1010,11 +1010,13 @@ placeholder/new-credential forms have no stored row and cannot execute.
 ## `searchModels`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
-credential or a suitable named builder-hint recommendation. The `model-selection`
-skill activates this deferred tool when model-bearing node definitions are
-inspected. It can also be discovered with `search_tools` and loaded with
-`load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
-available, use `nodes(action="explore-resources")` with that credential instead.
+credential or a suitable named builder-hint recommendation. The tool stays
+loaded on every turn. The `model-selection` skill depends on it, and
+`nodes(action="type-definition")` loads that skill for a model-bearing node.
+Adding the tool at that moment would rewrite the Anthropic prompt cache, because
+tool definitions are the prefix. Loading the skill does not call the catalog.
+If a provider credential or Gateway credits is available, use
+`nodes(action="explore-resources")` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
 

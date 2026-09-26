@@ -108,6 +108,7 @@ describe('createToolModesConfig', () => {
 				DOMAIN_TOOL_IDS.ASK_USER,
 				DOMAIN_TOOL_IDS.PARSE_FILE,
 				DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+				DOMAIN_TOOL_IDS.SEARCH_MODELS,
 			].sort(),
 		);
 	});

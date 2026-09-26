@@ -144,9 +144,9 @@ describe('domain tool construction', () => {
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 
-	it('makes model catalog search discoverable without loading it for every turn', () => {
+	it('loads model catalog search on every turn so a mid-build activation does not rewrite the prompt cache', () => {
 		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(true);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

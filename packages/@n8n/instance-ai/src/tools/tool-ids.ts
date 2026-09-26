@@ -85,6 +85,12 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
+	// `nodes(action="type-definition")` loads the model-selection skill for a
+	// model-bearing node. That skill depends on searchModels, and the runtime
+	// binds skill dependencies on the next model turn. Anthropic caches tools
+	// first, so adding the tool there rewrites the whole prefix. Keep it loaded
+	// from the first turn.
+	DOMAIN_TOOL_IDS.SEARCH_MODELS,
 	// select-agent opens every agent build; deferring it costs 2 LLM rounds
 	// (search_tools + load_tool) and a prompt-cache rewrite on every agent build.
 	// The Agent Builder tools the host supplies are always loaded too: see
