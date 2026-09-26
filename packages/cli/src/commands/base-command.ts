@@ -268,6 +268,7 @@ export abstract class BaseCommand<F = never> {
 				idleTimeout,
 				lazyAcquire,
 				compileCache,
+				nativeEvaluation,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
@@ -280,6 +281,7 @@ export abstract class BaseCommand<F = never> {
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 					lazyAcquire,
 					compileCache,
+					nativeEvaluation,
 					observability,
 				});
 			} catch (error) {

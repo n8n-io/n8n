@@ -203,6 +203,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				idleTimeout: 30,
 				lazyAcquire: false,
 				compileCache: false,
+				nativeEvaluation: false,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
@@ -229,6 +230,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		idleTimeoutMs: 30_000, // the config value is in seconds
 		lazyAcquire: false,
 		compileCache: false,
+		nativeEvaluation: false,
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));

@@ -8,6 +8,7 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import { evaluateNatively } from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -226,6 +227,8 @@ export class Expression {
 
 	private static useSharedCaller = false;
 
+	private static nativeEvaluation = false;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -271,7 +274,10 @@ export class Expression {
 		sharedCaller?: boolean;
 		lazyAcquire?: boolean;
 		compileCache?: boolean;
+		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
+		nativeEvaluation?: boolean;
 	}): Promise<void> {
+		this.nativeEvaluation = options.nativeEvaluation ?? false;
 		if (options.engine === 'legacy') return;
 		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -398,6 +404,11 @@ export class Expression {
 	 */
 	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
 		this.expressionEngine = engine;
+	}
+
+	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
+	static setNativeEvaluation(enabled: boolean): void {
+		this.nativeEvaluation = enabled;
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -623,6 +634,14 @@ export class Expression {
 		// Remove the equal sign
 		parameterValue = parameterValue.substr(1);
 
+		// An expression that fits the native subset grammar is interpreted
+		// in-process, skipping the global-context setup, extendSyntax, and the
+		// engine (isolate). Everything else takes the regular pipeline below.
+		if (Expression.nativeEvaluation) {
+			const native = evaluateNatively(parameterValue, data);
+			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
+		}
+
 		// Support only a subset of process properties
 		data.process =
 			typeof process !== 'undefined'
@@ -688,20 +707,25 @@ export class Expression {
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
+		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+	}
+
+	private finalizeResolvedValue(
+		returnValue: unknown,
+		returnObjectAsString: boolean,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new UserError('this is a DateTime, please access its methods');
 
 			throw new UserError('this is a function, please add ()');
-		} else if (typeof returnValue === 'string') {
-			return returnValue;
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue);
-			}
+		} else if (returnValue !== null && typeof returnValue === 'object' && returnObjectAsString) {
+			return this.convertObjectValueToString(returnValue);
 		}
 
-		return returnValue;
+		// The engines return arbitrary JSON-ish values; mirror the loose typing
+		// the previous inline code relied on.
+		return returnValue as NodeParameterValue;
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
