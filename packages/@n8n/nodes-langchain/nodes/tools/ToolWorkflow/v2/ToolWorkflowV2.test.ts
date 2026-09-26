@@ -900,8 +900,8 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		it.each([
 			{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
 			{ maxTries: 3, expected: 3 },
-			{ maxTries: 6, expected: 5 }, // Should be clamped to maximum 5
-		])('should respect maxTries limits (2-5)', async ({ maxTries, expected }) => {
+			{ maxTries: 10, expected: 10 }, // No upper limit
+		])('should respect maxTries minimum (2)', async ({ maxTries, expected }) => {
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
@@ -944,7 +944,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(expected);
 		});
 
-		it('should respect waitBetweenTries with sleep', async () => {
+		it.each([
+			{ waitBetweenTries: 1500, expected: 1500 },
+			{ waitBetweenTries: 10000, expected: 10000 }, // No 5000 ms cap
+			{ waitBetweenTries: 3_000_000_000, expected: 2_147_483_647 }, // Clamped to setTimeout limit
+		])('should respect waitBetweenTries with sleep', async ({ waitBetweenTries, expected }) => {
 			sleepMock.mockClear();
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
@@ -954,7 +958,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 					parameters: { workflowInputs: { schema: [] } },
 					retryOnFail: true,
 					maxTries: 2,
-					waitBetweenTries: 1500,
+					waitBetweenTries,
 				}),
 				getNodeParameter: vi.fn().mockImplementation((name) => {
 					if (name === 'source') return 'database';
@@ -985,7 +989,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			await tool.func('test query');
 
-			expect(sleepMock).toHaveBeenCalledWith(1500, undefined);
+			expect(sleepMock).toHaveBeenCalledWith(expected, undefined);
 		});
 	});
 

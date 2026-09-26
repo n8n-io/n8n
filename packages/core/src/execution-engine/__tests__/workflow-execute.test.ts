@@ -112,6 +112,26 @@ describe('WorkflowExecute', () => {
 			expect(result.finished).toBe(true);
 			expect(runNodeSpy).toHaveBeenCalledTimes(1);
 		});
+
+		it('should not cap maxTries, and cap waitBetweenTries only at the setTimeout limit', () => {
+			const workflowExecute = new WorkflowExecute(mock(), 'manual') as unknown as {
+				getRetryParams: (executionData: IExecuteData) => [number, number];
+			};
+			const retryParams = (maxTries: number, waitBetweenTries: number) =>
+				workflowExecute.getRetryParams({
+					node: {
+						...createNodeData({ name: 'retryNode' }),
+						retryOnFail: true,
+						maxTries,
+						waitBetweenTries,
+					},
+					data: {},
+					source: null,
+				});
+
+			expect(retryParams(10, 10000)).toEqual([10, 10000]);
+			expect(retryParams(10, 3_000_000_000)).toEqual([10, 2_147_483_647]);
+		});
 	});
 
 	describe('v0 execution order', () => {

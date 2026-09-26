@@ -1493,6 +1493,18 @@ describe('update-workflow MCP tool', () => {
 			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
 		});
 
+		test.each([
+			{ settings: { maxTries: 10, waitBetweenTries: 10000 }, success: true },
+			{ settings: { maxTries: 1 }, success: false },
+			{ settings: { waitBetweenTries: -1 }, success: false },
+		])('published schema validates retry settings %o', ({ settings, success }) => {
+			const parsed = z.object(createTool().config.inputSchema as z.ZodRawShape).safeParse({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setNodeSettings', nodeName: 'B', settings }],
+			});
+			expect(parsed.success).toBe(success);
+		});
+
 		test('returns success when post-save side effect fails but DB write committed', async () => {
 			// workflowService.update succeeds, but telemetry throws afterwards —
 			// mimics an `workflow.afterUpdate` hook or reactivate step that explodes

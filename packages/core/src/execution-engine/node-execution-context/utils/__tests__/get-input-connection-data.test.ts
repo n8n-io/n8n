@@ -842,11 +842,11 @@ describe('makeHandleToolInvocation', () => {
 			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
 		});
 
-		it('should respect maxTries limits (2-5)', async () => {
+		it('should respect maxTries minimum (2)', async () => {
 			const testCases = [
 				{ maxTries: 1, expected: 2 }, // Should be clamped to minimum 2
 				{ maxTries: 3, expected: 3 },
-				{ maxTries: 6, expected: 5 }, // Should be clamped to maximum 5
+				{ maxTries: 10, expected: 10 }, // No upper limit
 			];
 
 			for (const { maxTries, expected } of testCases) {
@@ -876,14 +876,18 @@ describe('makeHandleToolInvocation', () => {
 			}
 		});
 
-		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
+		it.each([
+			{ waitBetweenTries: 1500, expected: 1500 },
+			{ waitBetweenTries: 10000, expected: 10000 }, // No 5000 ms cap
+			{ waitBetweenTries: 3_000_000_000, expected: 2_147_483_647 }, // Clamped to setTimeout limit
+		])('should respect waitBetweenTries', async ({ waitBetweenTries, expected }) => {
 			const sleepSpy = (sleepMock as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
 				retryOnFail: true,
 				maxTries: 2,
-				waitBetweenTries: 1500,
+				waitBetweenTries,
 			});
 			const connectedNodeType = mock<INodeType>({
 				execute: vi.fn().mockRejectedValue(new Error('Test error')),
@@ -900,7 +904,7 @@ describe('makeHandleToolInvocation', () => {
 
 			await expect(result).rejects.toThrow('Test error');
 
-			expect(sleepSpy).toHaveBeenCalledWith(1500, undefined);
+			expect(sleepSpy).toHaveBeenCalledWith(expected, undefined);
 			sleepSpy.mockRestore();
 		});
 	});

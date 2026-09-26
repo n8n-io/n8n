@@ -88,12 +88,13 @@ export class WorkflowToolService {
 		): Promise<IDataObject | IDataObject[] | string> => {
 			let maxTries = 1;
 			if (node.retryOnFail === true) {
-				maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
+				maxTries = Math.max(2, node.maxTries ?? 3);
 			}
 
 			let waitBetweenTries = 0;
 			if (node.retryOnFail === true) {
-				waitBetweenTries = Math.min(5000, Math.max(0, node.waitBetweenTries ?? 1000));
+				// setTimeout overflows above 2^31-1 ms and fires immediately
+				waitBetweenTries = Math.min(2_147_483_647, Math.max(0, node.waitBetweenTries ?? 1000));
 			}
 
 			let lastError: ExecutionError | undefined;

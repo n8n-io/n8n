@@ -763,13 +763,25 @@ describe('applyOperations', () => {
 			expect(parsed.success).toBe(false);
 		});
 
-		test('schema rejects out-of-range maxTries', () => {
+		test.each([{ maxTries: 1 }, { waitBetweenTries: -1 }])(
+			'schema rejects out-of-range retry setting %o',
+			(settings) => {
+				const parsed = partialUpdateOperationSchema.safeParse({
+					type: 'setNodeSettings',
+					nodeName: 'A',
+					settings,
+				});
+				expect(parsed.success).toBe(false);
+			},
+		);
+
+		test('schema accepts maxTries and waitBetweenTries above the old limits', () => {
 			const parsed = partialUpdateOperationSchema.safeParse({
 				type: 'setNodeSettings',
 				nodeName: 'A',
-				settings: { maxTries: 1 },
+				settings: { maxTries: 10, waitBetweenTries: 10000 },
 			});
-			expect(parsed.success).toBe(false);
+			expect(parsed.success).toBe(true);
 		});
 	});
 

@@ -1810,8 +1810,9 @@ export class WorkflowExecute {
 
 		// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 		return [
-			Math.min(5, Math.max(2, executionData.node.maxTries || 3)),
-			Math.min(5000, Math.max(0, executionData.node.waitBetweenTries || 1000)),
+			Math.max(2, executionData.node.maxTries || 3),
+			// setTimeout overflows above 2^31-1 ms and fires immediately
+			Math.min(2_147_483_647, Math.max(0, executionData.node.waitBetweenTries || 1000)),
 		];
 	}
 
