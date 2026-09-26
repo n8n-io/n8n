@@ -25,6 +25,9 @@ export function renderSkillCatalogPrompt(
 							`  id: ${promptString(skill.id)}`,
 						]),
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
+				...(skill.recommendedTools?.length
+					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
+					: []),
 				...(skill.recommendedMode
 					? [`  recommendedMode: ${promptString(skill.recommendedMode)}`]
 					: []),
@@ -65,5 +68,9 @@ export function appendSkillCatalogToInstructions(
 }
 
 function promptString(value: string): string {
+	return JSON.stringify(value);
+}
+
+function promptStringArray(value: string[]): string {
 	return JSON.stringify(value);
 }

@@ -97,7 +97,15 @@ Before writing code, also read these when they apply:
   branching, or Code nodes.
 - `${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md` or
   `anthropic-output-shape.md` — before mapping fields from those nodes.
-  Neither returns its text as `$json.text`.
+  No AI provider node returns its text as `$json.text`:
+  - **OpenAI** v2+ text/response: `$json.output[0].content[0].text`. v1
+    text/message: `$json.message.content`. `$json.output` is an array, never
+    a string. With `json_object` or `json_schema`, the parsed object is at
+    `$json.output[0].content[0].text`; do not `JSON.parse` it.
+  - **Anthropic:** `$json.content` is an array of blocks. Read
+    `$json.content[0].text`; never use `$json.content` as a string.
+  - **Google Gemini** (simplified): `$json.content.parts[0].text`. JSON the
+    model writes is a string in that field; parse it before you read a key.
 
 ## Workflow-Level Error Workflows
 
@@ -152,7 +160,12 @@ Do not produce visible output until the final step, unless blocked.
 7. **Trace the wiring.** Follow every IF, Switch, Merge, agent, loop, and
    sub-workflow branch from source to target. Both IF outputs must connect,
    every requested side effect must sit on a wired branch, Merge modes must
-   fit the data, and sub-nodes must attach to the right parent.
+   fit the data, and sub-nodes must attach to the right parent. `.onTrue()` is
+   the output for items that match the condition: put the requested action
+   there, not on `.onFalse()`. Then compare the graph with the request: every
+   field, path, filter, and approval step the user named must exist. Keep
+   fields the user listed separately (date, category, amount) as separate
+   fields.
 8. **Fix and rebuild** in the same file: validate again, then build the same
    `filePath`.
 9. **Hand off.** When the build result has `postBuildFlow.required: true`,
@@ -302,6 +315,9 @@ IF. The rules below are the ones it cannot check.
   node only for multi-pass algorithms, `$getWorkflowStaticData` state,
   fence-stripping model output, try/catch around upstream access, or a step
   that would need three or more nodes.
+- `placeholder()` and `$parameter` do not exist inside `jsCode`. Put a
+  user-supplied value on an Edit Fields (Set) node before the Code node and
+  read it from `$json`.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `pythonNative` has only `_items`, `_item`, and `print()`, and no imports
   unless the **Python Code Nodes** section of your system prompt allows them.
@@ -365,7 +381,8 @@ rules and how to edit existing groups.
 2. **Run once:** set `executeOnce: true` on a node that receives many items but
    should run once: a summary notification, a report, a shared-context fetch,
    or a call that does not vary per item. Duplicate notifications usually mean
-   it is missing.
+   it is missing. An `executeOnce` node sees only the first item, so compute
+   counts and totals with Aggregate or `$('Node Name').all()` first.
 3. **Control flow:**
    - Per-item side effects: `splitInBatches` (`batchSize: 1`) looping back via
      `nextBatch`.
@@ -390,7 +407,10 @@ rules and how to edit existing groups.
    nodes output their API response (ids, `ok` flags), not their input, so an
    in-line insert silently replaces the payload. Branch X in parallel from the
    data producer, move it upstream of the producer, or have B read
-   `$('Data Node')` explicitly.
+   `$('Data Node')` explicitly. Binary data follows the same rule: an API or
+   AI node outputs its response without the input binary. Put the node that
+   needs the file directly after the node that produced it, or bring the
+   file back with Merge.
 7. **Polling triggers that create records:** poll cursors reset when the
    trigger is recreated or renamed, so every still-matching item comes back.
    Process each item once in one of two ways:
@@ -417,6 +437,35 @@ asked for that exact name.
 - Gmail archive: the message resource has no `archive` operation. Remove the
   `INBOX` label with `operation: 'removeLabels'` and `labelIds: ['INBOX']`;
   never invent an `ARCHIVE` label.
+- Text Classifier: each category is one output, in the order of `categories`
+  (zero-based), plus a last output when `fallback: 'other'`. The node sends the
+  input item unchanged and adds no category field. Wire every output that has
+  a requested effect. When a later node needs the label, add an Edit Fields
+  (Set) node on each output that writes it.
+- HTTP Request JSON body: with `specifyBody: 'json'`, build the whole body in
+  one expression: `jsonBody: expr('{{ JSON.stringify({ id: $json.id, total: $json.total }) }}')`.
+  Do not put `{{ }}` inside a hand-written JSON string: unquoted strings and
+  missing values make the body invalid.
+- URLs: every URL value needs its scheme (`https://`). A bare host fails at
+  run time.
+- HTTP Request pagination: `responseIsEmpty` stops only on an empty body, not
+  on `{ "items": [] }`. For a list in a wrapper object, use
+  `paginationCompleteWhen: 'other'` and
+  `completeExpression: expr('{{ $response.body.items.length === 0 }}')`.
+  The page parameter must change
+  on each request, or n8n stops after five identical responses.
+- Binary fields: parameters such as `binaryPropertyName` or a form field's
+  input data field name take the property name as a string (`'data'`,
+  `'image'`). Never pass `{{ $binary.image }}`: that is the binary object.
+- Google Sheets update or append-or-update (v4+): set `columns.matchingColumns`
+  to the key column and map a value for that column in `columns.value`. An
+  empty key value fails the run. With no key column, use `append`.
+- Wrapped lists: when an API returns `{ "tasks": [...] }`, the node emits one
+  item. Add Split Out on that field before per-item nodes or code.
+- Field names are case-sensitive. A node that writes to a service often
+  returns the service's names (Google Sheets returns the sheet's header
+  names). Read the names that node outputs, or read the earlier node with
+  `$('Node Name').item.json`.
 
 ## Expression Reference
 
