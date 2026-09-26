@@ -652,6 +652,24 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					testListener: {
+						workflowId: 'wf-1',
+						triggers: [
+							{
+								nodeName: 'Webhook',
+								url: 'http://localhost:5678/webhook-test/abc',
+								method: 'POST',
+							},
+						],
+						deadlineAt: '2026-01-01T00:10:00.000Z',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {

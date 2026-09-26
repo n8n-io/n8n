@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -7,6 +8,7 @@ import type {
 	InstanceAiConfirmation,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
+	PushMessage,
 } from '@n8n/api-types';
 import InstanceAiConfirmationPanel from '../components/InstanceAiConfirmationPanel.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -70,6 +72,17 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('../toolLabels', () => ({
 	useToolLabel: () => ({ getToolLabel: (name: string) => name }),
+}));
+
+let capturedPushListener: ((event: PushMessage) => void) | undefined;
+const mockRemovePushListener = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: (handler: (event: PushMessage) => void) => {
+			capturedPushListener = handler;
+			return mockRemovePushListener;
+		},
+	}),
 }));
 
 // Stub heavy child components
@@ -973,6 +986,134 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					skipped_inputs: [],
 				}),
 			);
+		});
+	});
+
+	describe('test listener confirmation', () => {
+		const listenerConfirmation: InstanceAiConfirmation = {
+			requestId: 'req-listen',
+			severity: 'info',
+			message: 'Waiting for a test request to Intake',
+			testListener: {
+				workflowId: 'wf-1',
+				triggers: [
+					{
+						nodeName: 'Webhook',
+						url: 'http://localhost:5678/webhook-test/abc/intake',
+						method: 'POST',
+					},
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		};
+
+		it('shows the exact test URL and method with no generic approve/deny buttons', () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+
+			const { getByTestId, getByText, queryByTestId } = renderComponent({
+				props: { kind: 'inline' },
+			});
+
+			expect(getByTestId('instance-ai-test-listener-url').textContent).toContain(
+				'http://localhost:5678/webhook-test/abc/intake',
+			);
+			expect(getByText('POST')).toBeTruthy();
+			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
+			expect(queryByTestId('instance-ai-panel-confirm-deny')).toBeNull();
+		});
+
+		it('resumes the tool as approved when the user says the request was sent', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-sent'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: true });
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'test-listener',
+					provided_inputs: [
+						{
+							label: 'Waiting for a test request to Intake',
+							options: ['sent', 'cancel'],
+							option_chosen: 'sent',
+						},
+					],
+				}),
+			);
+		});
+
+		it('resumes the tool as denied when the user cancels the listener', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-cancel'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: false });
+		});
+
+		it('settles the card with the execution id when the test webhook push event arrives', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			renderComponent({ props: { kind: 'inline' } });
+
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-other', executionId: 'exec-other' },
+			});
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-1', executionId: 'exec-9' },
+			});
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-1', executionId: 'exec-10' },
+			});
+
+			expect(confirmSpy).toHaveBeenCalledTimes(1);
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', {
+				kind: 'approval',
+				approved: true,
+				userInput: 'exec-9',
+			});
+			// Telemetry and resolution run after the awaited POST, so flush it first.
+			await flushPromises();
+			expect(resolveSpy).toHaveBeenCalledWith('req-listen', 'approved');
+			// The user made no choice, so no input telemetry is recorded.
+			expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.anything(),
+			);
+		});
+
+		it('settles the card as not cancelled when the test webhook is deleted', () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			renderComponent({ props: { kind: 'inline' } });
+
+			capturedPushListener?.({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
+
+			// No execution id: the tool reads received vs timed out from durable state.
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: true });
+		});
+
+		it('keeps the card and records no input when confirmAction fails', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-sent'));
+
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-test-listener')).toBeVisible();
 		});
 	});
 
