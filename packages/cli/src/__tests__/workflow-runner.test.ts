@@ -740,30 +740,33 @@ describe('processError', () => {
 describe('run', () => {
 	it('reloads static data for a new queued execution', async () => {
 		globalConfig.executions.mode = 'queue';
-		// @ts-expect-error Private method
-		vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue();
-		vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
-		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
-		vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
-		// @ts-expect-error Private method
-		const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+		try {
+			// @ts-expect-error Private method
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue();
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			// @ts-expect-error Private method
+			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
 
-		const data = mock<IWorkflowExecutionDataProcess>({
-			executionMode: 'trigger',
-			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
-		});
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'trigger',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			});
 
-		await runner.run(data, true);
+			await runner.run(data, true);
 
-		expect(enqueueExecution).toHaveBeenCalledWith(
-			'1',
-			'workflow-id',
-			data,
-			true,
-			undefined,
-			undefined,
-		);
-		globalConfig.executions.mode = 'regular';
+			expect(enqueueExecution).toHaveBeenCalledWith(
+				'1',
+				'workflow-id',
+				data,
+				true,
+				undefined,
+				undefined,
+			);
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
 	});
 
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
