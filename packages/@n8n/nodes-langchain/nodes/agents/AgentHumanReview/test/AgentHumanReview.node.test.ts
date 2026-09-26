@@ -210,7 +210,18 @@ describe('AgentHumanReview', () => {
 		});
 
 		it('should not attach a file when Attach Full Trace as File is off', async () => {
-			const ctx = executeContext({ reviewMode: 'async', options: { attachTraceFile: false } });
+			const ctx = executeContext({
+				reviewMode: 'async',
+				agentId: 'ag_1',
+				options: { attachTraceFile: false },
+			});
+			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.endsWith('/config/v1/auth/api-keys/token'))
+					return { access_token: 'jwt-abc', expires_in: 300 };
+				if (opts.url.endsWith('/config/v1/agents'))
+					return { items: [{ agent_id: 'ag_1', agent_name: 'Support Assistant' }] };
+				return { accepted_spans: 4, rejected_spans: 0 };
+			});
 
 			const result = await agentNode.execute.call(ctx);
 
@@ -392,52 +403,62 @@ describe('AgentHumanReview', () => {
 			expect(result[1]).toEqual([]);
 		});
 
-		it('should register as a background review and continue without parking in "async" mode', async () => {
-			const ctx = executeContext({ reviewMode: 'async' });
+		it('should export the trace to Cerebro and continue without parking in "async" mode', async () => {
+			const ctx = executeContext({ reviewMode: 'async', agentId: 'ag_1' });
+			ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+				if (opts.url.endsWith('/config/v1/auth/api-keys/token'))
+					return { access_token: 'jwt-abc', expires_in: 300 };
+				if (opts.url.endsWith('/config/v1/agents'))
+					return { items: [{ agent_id: 'ag_1', agent_name: 'Support Assistant' }] };
+				return { accepted_spans: 4, rejected_spans: 0 };
+			});
 
 			const result = await agentNode.execute.call(ctx);
 
-			// registration + OTLP export, but no wait
-			expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(2);
-			expect(ctx.helpers.httpRequest.mock.calls[0][0].body).toMatchObject({
-				mode: 'async',
-				data: DRAFT,
-			});
+			// async returns immediately — no parking, no my_service registration
 			expect(ctx.putExecutionToWait).not.toHaveBeenCalled();
-			expect(result[0][0].json).toMatchObject({
+			expect(ctx.helpers.httpRequest.mock.calls.some((c) => c[0].url.endsWith('/hitl'))).toBe(
+				false,
+			);
+
+			// the trace is ingested to the agent's Cerebro endpoint
+			const ingest = ctx.helpers.httpRequest.mock.calls
+				.map((c) => c[0])
+				.find((r) => r.url.includes('/ingest/v1/agents/'))!;
+			expect(ingest.url).toBe('https://cerebro.example/ingest/v1/agents/ag_1/traces');
+			expect(ingest.headers).toMatchObject({ Authorization: 'Bearer jwt-abc' });
+
+			// the draft flows to Approved with a Cerebro-oriented review block
+			const json = result[0][0].json;
+			expect(json).toMatchObject({
 				...DRAFT,
-				review: {
-					mode: 'async',
-					status: 'pending',
-					requestId: 'req-1',
-					threadId: 'thread-1',
-					round: 0,
-				},
+				review: { mode: 'async', status: 'pending', agentId: 'ag_1' },
 			});
-			// the JSON output carries only the review ids; the payloads are in the attached file
-			expect((result[0][0].json.review as IDataObject).sent).toBeUndefined();
+			expect(typeof (json.review as IDataObject).traceId).toBe('string');
+
+			// the attachment records only the Cerebro trace (no registration section)
 			const file = attachedTrace(result[0][0]);
 			expect(file?.fileName).toBe('review-trace.json');
-			const sent = file!.content as {
-				registration: { url: string; body: IDataObject };
-				trace: { url: string; delivered: boolean; body: { resourceSpans: unknown[] } };
+			const content = file!.content as {
+				reviewMode: string;
+				agentId: string;
+				registration?: unknown;
+				trace: {
+					system: string;
+					url: string;
+					delivered: boolean;
+					body: { resourceSpans: unknown[] };
+				};
 			};
-			expect(sent.registration.url).toBe('http://localhost:3100/hitl');
-			expect(sent.registration.body).toMatchObject({
-				executionId: '31',
-				mode: 'async',
-				data: DRAFT,
-				resumeUrl: 'http://localhost:5678/webhook-waiting/31/a1?signature=<hmac-signature-masked>',
-			});
-			expect(sent.trace.url).toBe('http://localhost:3100/v1/traces');
-			expect(sent.trace.delivered).toBe(true);
-			// identical to what was actually posted (minus the masked signature)
-			const posted = ctx.helpers.httpRequest.mock.calls[0][0].body as IDataObject;
-			expect({ ...posted, resumeUrl: undefined }).toEqual({
-				...sent.registration.body,
-				resumeUrl: undefined,
-			});
-			expect(ctx.helpers.httpRequest.mock.calls[1][0].body).toEqual(sent.trace.body);
+			expect(content.reviewMode).toBe('async');
+			expect(content.agentId).toBe('ag_1');
+			expect(content.registration).toBeUndefined();
+			expect(content.trace.system).toBe('cerebro');
+			expect(content.trace.url).toBe('https://cerebro.example/ingest/v1/agents/ag_1/traces');
+			expect(content.trace.delivered).toBe(true);
+			expect(content.trace.body.resourceSpans).toHaveLength(1);
+			// the attached payload is identical to what was posted to ingest
+			expect(ingest.body).toEqual(content.trace.body);
 			expect(result[1]).toEqual([]);
 		});
 

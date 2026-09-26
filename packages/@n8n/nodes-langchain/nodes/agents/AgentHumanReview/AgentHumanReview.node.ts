@@ -38,7 +38,6 @@ import {
 	fetchRoundsSent,
 	fetchSuggestionsHistory,
 	getServiceConfig,
-	HITL_CREDENTIAL,
 	maskResumeUrl,
 	registerDraft,
 	type DecisionCallbackBody,
@@ -94,13 +93,11 @@ export class AgentHumanReview implements INodeType {
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['Approved', 'Rejected'],
 		credentials: [
+			// Cerebro is the only backend the node integrates with. Sync/blocking is
+			// kept as a UI option, but its review-loop integration (onto Cerebro's
+			// review-service) is deferred (Plan B); it needs no separate credential.
 			{
 				name: CEREBRO_CREDENTIAL,
-				required: true,
-				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
-			},
-			{
-				name: HITL_CREDENTIAL,
 				required: true,
 				displayOptions: { show: { reviewMode: ['sync', 'async'] } },
 			},
@@ -131,7 +128,8 @@ export class AgentHumanReview implements INodeType {
 				displayName: 'Review Mode',
 				name: 'reviewMode',
 				type: 'options',
-				default: 'sync',
+				// Async is the fully Cerebro-backed mode; sync integration is deferred (Plan B).
+				default: 'async',
 				noDataExpression: true,
 				options: [
 					{
@@ -433,7 +431,7 @@ export class AgentHumanReview implements INodeType {
 			);
 		}
 
-		const reviewMode = this.getNodeParameter('reviewMode', 0, 'sync') as ReviewMode;
+		const reviewMode = this.getNodeParameter('reviewMode', 0, 'async') as ReviewMode;
 		const agentId = getParam(this, 'agentId', '') || undefined;
 		const agentInfo = reviewMode === 'none' ? { agentId } : await cerebroAgentInfo(this, agentId);
 
@@ -459,12 +457,47 @@ export class AgentHumanReview implements INodeType {
 			);
 		}
 
-		const service = await getServiceConfig(this);
 		const includeTrace = this.getNodeParameter('includeAgentTrace', 0, true) as boolean;
+		const otel = includeTrace ? { traceId: newTraceId(), rootSpanId: newSpanId() } : undefined;
+
+		// Background review (Cerebro-only): the draft goes downstream immediately and
+		// the exported trace drives review-case creation in Cerebro's pipeline
+		// (ingest → router → review-service). Nothing is registered with the PoC
+		// review service, so no HITL credential is required for this mode.
+		if (reviewMode === 'async') {
+			if (!agentId) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Select an Agent for background review: the trace is sent to Cerebro, which needs an agent id.',
+					{ description: 'Choose an agent in the "Agent Name or ID" field.' },
+				);
+			}
+			const sessionId =
+				typeof items[0].json.sessionId === 'string' ? items[0].json.sessionId : undefined;
+			const traceResult = otel
+				? await exportTraceToCerebro(this, trace, otel, agentId, sessionId)
+				: undefined;
+			return outputs(
+				APPROVED,
+				{
+					...output,
+					review: { mode: 'async', status: 'pending', traceId: otel?.traceId, agentId },
+				},
+				await traceAttachment(this, 'review-trace.json', {
+					reviewMode: 'async',
+					traceId: otel?.traceId,
+					agentId,
+					...cerebroSentRecord(traceResult),
+				}),
+			);
+		}
+
+		// Sync / blocking mode still runs against the PoC review service (my_service);
+		// moving its resume loop onto Cerebro's review-service is deferred (Plan B).
+		const service = await getServiceConfig(this);
 		const trail = (this.getNodeParameter('includeContext', 0, true) as boolean)
 			? buildTrail(this, this.getNodeParameter('contextDepth', 0, 2) as number)
 			: undefined;
-		const otel = includeTrace ? { traceId: newTraceId(), rootSpanId: newSpanId() } : undefined;
 
 		// Register first. Parking after a failed registration would strand the
 		// execution forever, since nothing would exist to call the resume URL.
@@ -475,30 +508,6 @@ export class AgentHumanReview implements INodeType {
 			? await exportTrace(this, service, trace, otel, ack, agentId)
 			: undefined;
 		const sent = sentRecord(service, ack.sentBody, traceResult);
-
-		// Background review: the draft goes downstream now; the decision is an audit record.
-		if (reviewMode === 'async') {
-			return outputs(
-				APPROVED,
-				{
-					...output,
-					review: {
-						mode: 'async',
-						status: 'pending',
-						requestId: ack.requestId,
-						threadId: ack.threadId,
-						round: ack.round,
-					},
-				},
-				await traceAttachment(this, 'review-trace.json', {
-					reviewMode: 'async',
-					round: ack.round,
-					requestId: ack.requestId,
-					threadId: ack.threadId,
-					...sent,
-				}),
-			);
-		}
 
 		let waitTill = WAIT_INDEFINITELY;
 		if (this.getNodeParameter('limitWaitTime', 0, false) as boolean) {
@@ -660,6 +669,62 @@ async function traceAttachment(
 		'application/json',
 	);
 	return { [TRACE_BINARY_KEY]: data };
+}
+
+/**
+ * Async (Cerebro-only) trace export. There is no review-service registration, so
+ * the HITL grouping ids are derived from the trace itself: the request is the
+ * trace id and the thread is the chat session (falling back to the trace id).
+ */
+async function exportTraceToCerebro(
+	ctx: AgentContext,
+	trace: AgentTrace,
+	otel: OtlpIds,
+	agentId: string,
+	sessionId: string | undefined,
+): Promise<{
+	exported: boolean;
+	payload: ExportTraceServiceRequest;
+	destination: IDataObject;
+}> {
+	const options = getParam<{ otlpRecordContent?: boolean }>(ctx, 'options', {});
+	const payload = toOtlp(
+		trace,
+		otel,
+		{ requestId: otel.traceId, threadId: sessionId ?? otel.traceId, round: 0 },
+		{ recordContent: options.otlpRecordContent ?? true, serviceName: 'n8n' },
+	);
+	const r = await cerebroIngestTraces(ctx, agentId, payload);
+	return {
+		exported: r.delivered,
+		payload,
+		destination: {
+			system: 'cerebro',
+			url: r.url,
+			acceptedSpans: r.acceptedSpans,
+			rejectedSpans: r.rejectedSpans,
+			error: r.error,
+		},
+	};
+}
+
+/** Transparency record for Cerebro-only async: just the trace, no registration. */
+function cerebroSentRecord(traceResult?: {
+	exported: boolean;
+	payload: ExportTraceServiceRequest;
+	destination: IDataObject;
+}): IDataObject {
+	return {
+		trace: traceResult
+			? {
+					method: 'POST',
+					...traceResult.destination,
+					delivered: traceResult.exported,
+					body: traceResult.payload as unknown as IDataObject,
+				}
+			: null,
+		neverSent: ['credentials', 'API keys', 'chat model configuration'],
+	};
 }
 
 /** Serialises the round as OTLP spans and ships them; registration already succeeded. */
