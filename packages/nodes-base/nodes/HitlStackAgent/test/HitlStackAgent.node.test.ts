@@ -37,6 +37,7 @@ const setupExecuteFunctions = (
 };
 
 const baseParams = {
+	reviewMode: 'blocking',
 	url: 'http://localhost:3100/hitl',
 	sendHeaders: false,
 	limitWaitTime: false,
@@ -180,6 +181,55 @@ describe('HITLStackAgent Node — registration', () => {
 		const { headers } = ctx.helpers.httpRequest.mock.calls[0][0];
 		expect(headers).toEqual({ 'X-Token': 'abc' });
 		expect({}.constructor.prototype.polluted).toBeUndefined();
+	});
+});
+
+describe('HITLStackAgent Node — non-blocking (Cerebro)', () => {
+	it('exports the trace to Cerebro and continues without parking', async () => {
+		const ctx = setupExecuteFunctions(
+			{ reviewMode: 'cerebro', agentId: 'ag_1', includeContext: false, options: {} },
+			[{ json: { output: '108' } }],
+		);
+		ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://cerebro.example', apiKey: 'k' });
+		ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+			if (opts.url.endsWith('/config/v1/auth/api-keys/token'))
+				return { access_token: 'jwt-1', expires_in: 300 };
+			if (opts.url.endsWith('/config/v1/agents'))
+				return { items: [{ agent_id: 'ag_1', agent_name: 'Support' }] };
+			return { accepted_spans: 1, rejected_spans: 0 };
+		});
+
+		const result = await new HitlStackAgent().execute.call(ctx);
+
+		// non-blocking: never parks
+		expect(ctx.putExecutionToWait).not.toHaveBeenCalled();
+
+		// the trace is ingested to the agent's Cerebro endpoint
+		const ingest = ctx.helpers.httpRequest.mock.calls
+			.map((c) => c[0])
+			.find((r) => r.url.includes('/ingest/v1/agents/'))!;
+		expect(ingest.url).toBe('https://cerebro.example/ingest/v1/agents/ag_1/traces');
+		expect(ingest.headers).toMatchObject({ Authorization: 'Bearer jwt-1' });
+
+		// the item flows downstream with a Cerebro review marker
+		const json = result[0][0].json as IDataObject;
+		expect(json.output).toBe('108');
+		expect(json.review).toMatchObject({
+			mode: 'cerebro',
+			status: 'pending',
+			agentId: 'ag_1',
+			delivered: true,
+			acceptedSpans: 1,
+		});
+	});
+
+	it('fails when no agent is selected', async () => {
+		const ctx = setupExecuteFunctions({ reviewMode: 'cerebro', agentId: '', options: {} }, [
+			{ json: { output: 'x' } },
+		]);
+
+		await expect(new HitlStackAgent().execute.call(ctx)).rejects.toThrow(NodeOperationError);
+		expect(ctx.putExecutionToWait).not.toHaveBeenCalled();
 	});
 });
 

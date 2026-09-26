@@ -9,13 +9,23 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
 	type INodeExecutionData,
+	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	type JsonObject,
 } from 'n8n-workflow';
+
+import {
+	CEREBRO_CREDENTIAL,
+	cerebroAgentInfo,
+	cerebroIngestTraces,
+	cerebroListAgents,
+} from './helpers/cerebro';
+import { buildHitlOtlp, newSpanId, newTraceId } from './helpers/otlp';
 
 type HeaderParameter = { name: string; value: string };
 
@@ -39,6 +49,15 @@ export class HitlStackAgent implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		credentials: [
+			{
+				// Only the non-blocking (Cerebro) mode authenticates; blocking mode
+				// posts to a plain URL with optional headers instead.
+				name: CEREBRO_CREDENTIAL,
+				required: true,
+				displayOptions: { show: { reviewMode: ['cerebro'] } },
+			},
+		],
 		// `restartWebhook` marks these as execution-resumers rather than triggers.
 		webhooks: [
 			{
@@ -62,11 +81,25 @@ export class HitlStackAgent implements INodeType {
 		],
 		properties: [
 			{
-				displayName:
-					'This node registers the item with your service, then waits for that service to call the resume URL back. The execution is paused and persisted meanwhile.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Review Mode',
+				name: 'reviewMode',
+				type: 'options',
+				noDataExpression: true,
+				default: 'cerebro',
+				options: [
+					{
+						name: 'Review in Background (Non-Blocking)',
+						value: 'cerebro',
+						description:
+							'The item is sent to Cerebro for review as a trace and the workflow continues immediately. A review case is opened in Cerebro; the execution is not paused.',
+					},
+					{
+						name: 'Wait for Review (Blocking)',
+						value: 'blocking',
+						description:
+							'The item is registered with an external service and the execution pauses until that service calls the resume URL back. Survives restarts.',
+					},
+				],
 			},
 			// n8n's waiting-webhook handler only HMAC-validates a resume URL when the
 			// node declares this operation; otherwise it expects a plain resumeToken
@@ -78,6 +111,32 @@ export class HitlStackAgent implements INodeType {
 				default: SEND_AND_WAIT_OPERATION,
 			},
 			{
+				displayName: 'Agent Name or ID',
+				name: 'agentId',
+				type: 'options',
+				default: '',
+				displayOptions: { show: { reviewMode: ['cerebro'] } },
+				typeOptions: { loadOptionsMethod: 'getAgents' },
+				description:
+					'Which Cerebro agent this review belongs to. The trace is sent to this agent so a review case can be grouped per agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName:
+					'The item is sent to Cerebro as a trace and the workflow continues immediately. A review case is opened in Cerebro; this execution is not paused.',
+				name: 'noticeCerebro',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { reviewMode: ['cerebro'] } },
+			},
+			{
+				displayName:
+					'This node registers the item with your service, then waits for that service to call the resume URL back. The execution is paused and persisted meanwhile.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { reviewMode: ['blocking'] } },
+			},
+			{
 				displayName: 'URL',
 				name: 'url',
 				type: 'string',
@@ -85,12 +144,14 @@ export class HitlStackAgent implements INodeType {
 				required: true,
 				placeholder: 'http://localhost:3100/hitl',
 				description: 'Registration endpoint. Must acknowledge quickly, then call back when done.',
+				displayOptions: { show: { reviewMode: ['blocking'] } },
 			},
 			{
 				displayName: 'Send Headers',
 				name: 'sendHeaders',
 				type: 'boolean',
 				default: false,
+				displayOptions: { show: { reviewMode: ['blocking'] } },
 			},
 			{
 				displayName: 'Headers',
@@ -100,7 +161,7 @@ export class HitlStackAgent implements INodeType {
 				default: {},
 				placeholder: 'Add Header',
 				displayOptions: {
-					show: { sendHeaders: [true] },
+					show: { reviewMode: ['blocking'], sendHeaders: [true] },
 				},
 				options: [
 					{
@@ -150,6 +211,7 @@ export class HitlStackAgent implements INodeType {
 				default: false,
 				description:
 					'Whether to give up after a set time. By default the execution waits indefinitely.',
+				displayOptions: { show: { reviewMode: ['blocking'] } },
 			},
 			{
 				displayName: 'Max Wait (Minutes)',
@@ -158,7 +220,7 @@ export class HitlStackAgent implements INodeType {
 				typeOptions: { minValue: 1 },
 				default: 60,
 				displayOptions: {
-					show: { limitWaitTime: [true] },
+					show: { reviewMode: ['blocking'], limitWaitTime: [true] },
 				},
 				description: 'Resume anyway once this many minutes have passed without a callback',
 			},
@@ -190,6 +252,28 @@ export class HitlStackAgent implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const agents = await cerebroListAgents(this);
+				if (agents.length === 0) {
+					return [
+						{
+							name: 'No Agents Found for This API Key',
+							value: '',
+							description: 'Create an agent in Cerebro, then reload this list',
+						},
+					];
+				}
+				return agents.map((a) => ({
+					name: a.agent_name,
+					value: a.agent_id,
+					description: a.status ? `ID ${a.agent_id} — ${a.status}` : `ID ${a.agent_id}`,
+				}));
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -201,6 +285,59 @@ export class HitlStackAgent implements INodeType {
 				`This node handles exactly one item at a time, but received ${items.length}`,
 				{ description: 'Add a "Loop Over Items" node upstream to split the batch.' },
 			);
+		}
+
+		const reviewMode = this.getNodeParameter('reviewMode', 0, 'cerebro') as string;
+
+		// Non-blocking (Cerebro) mode: export the item as a trace so Cerebro opens a
+		// review case, then continue immediately. The execution is not paused.
+		if (reviewMode === 'cerebro') {
+			const agentId = (this.getNodeParameter('agentId', 0, '') as string) || undefined;
+			if (!agentId) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Select an Agent: the review trace is sent to Cerebro, which needs an agent id.',
+					{ description: 'Choose an agent in the "Agent Name or ID" field.' },
+				);
+			}
+
+			const trail = (this.getNodeParameter('includeContext', 0, true) as boolean)
+				? buildTrail(this, this.getNodeParameter('contextDepth', 0, 2) as number)
+				: [];
+			const { agentName } = await cerebroAgentInfo(this, agentId);
+			const completion = extractCompletion(items[0].json);
+			const prompt = extractPrompt(trail);
+
+			const traceId = newTraceId();
+			const payload = buildHitlOtlp({
+				traceId,
+				spanId: newSpanId(),
+				agentId,
+				agentName,
+				prompt,
+				completion,
+			});
+			const result = await cerebroIngestTraces(this, agentId, payload);
+
+			return [
+				[
+					{
+						json: {
+							...items[0].json,
+							review: {
+								mode: 'cerebro',
+								status: 'pending',
+								agentId,
+								traceId,
+								delivered: result.delivered,
+								acceptedSpans: result.acceptedSpans,
+								...(result.error ? { error: result.error } : {}),
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			];
 		}
 
 		const url = this.getNodeParameter('url', 0) as string;
@@ -292,6 +429,25 @@ export class HitlStackAgent implements INodeType {
  * first. The reviewer needs the question alongside the answer, and a revise round
  * needs the agent's original input to compose the next prompt from.
  */
+/** The agent answer being sent for review — the upstream `output`, else the whole item. */
+function extractCompletion(json: IDataObject): string {
+	const out = json.output;
+	if (typeof out === 'string') return out;
+	if (out !== undefined && out !== null) return JSON.stringify(out);
+	return JSON.stringify(json);
+}
+
+/** The question the reviewer should see — the chat input from the upstream trail. */
+function extractPrompt(trail: IDataObject[]): string | undefined {
+	for (const entry of trail) {
+		const output = entry.output as IDataObject | null | undefined;
+		if (!output) continue;
+		const candidate = output.chatInput ?? output.input ?? output.query ?? output.question;
+		if (typeof candidate === 'string' && candidate.trim()) return candidate;
+	}
+	return undefined;
+}
+
 function buildTrail(ctx: IExecuteFunctions, depth: number): IDataObject[] {
 	const proxy = ctx.getWorkflowDataProxy(0);
 	const parents = ctx.getParentNodes(ctx.getNode().name, {
