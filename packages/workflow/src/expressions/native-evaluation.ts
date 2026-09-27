@@ -357,8 +357,11 @@ const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== ar
 function snapshotArray(array: unknown[]): unknown[] {
 	if (hasHoles(array)) throw new EngineFallbackError();
 
+	// Read once: a getter that appends to the array must not move the goal.
+	const { length } = array;
+
 	const copy: unknown[] = [];
-	for (let index = 0; index < array.length; index++) {
+	for (let index = 0; index < length; index++) {
 		copy.push(array[index]);
 	}
 

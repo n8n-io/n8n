@@ -378,6 +378,23 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(hookCalls).toBe(0);
 		});
 
+		test('an index getter that appends to the array does not extend the copy', () => {
+			const rows: unknown[] = ['a', 'b'];
+			Object.defineProperty(rows, 0, {
+				enumerable: true,
+				get: () => {
+					rows.push('more');
+					return 'x';
+				},
+			});
+			const growing = { $json: { rows } } as never;
+
+			expect(evaluateNatively("{{ $json.rows.join(',') }}", growing)).toEqual({
+				handled: true,
+				value: 'x,b',
+			});
+		});
+
 		test('an own `constructor` with Symbol.species never runs', () => {
 			let speciesCalls = 0;
 			const rows = [1, 2, 3];
