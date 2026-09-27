@@ -252,7 +252,7 @@ export const test = base.extend<
 	},
 
 	n8n: async ({ context, backendUrl, frontendUrl, n8nStackConfig }, use, testInfo) => {
-		// Temporary: forces a full E2E selection for a timing comparison. Revert before merge.
+		// Temporary: forces a full E2E selection for a second timing sample. Revert before merge.
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
