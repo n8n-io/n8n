@@ -258,16 +258,12 @@ so the rest of the code runs at full speed. V8 coverage slows down all code
 that runs. When the package has no changed source files, coverage is off. With
 no change signal (master, nightly), the vitest config decides coverage.
 
-A suite that always runs in full, such as the Postgres integration tests, can
-use the same flags: `janitor coverage-args` prints them one flag per line.
-It prints nothing when coverage is off or there is no change signal.
-
 The rule that decides which files count lives in
 `@n8n/vitest-config/changed-file-coverage`. The shared vitest configs apply
-the same rule when `COVERAGE_SCOPE=changed-files`, so turbo-cached suites that
-do not go through janitor (the Backend Unit and Backend Integration jobs) also
-measure only the changed files. Turbo hashes `COVERAGE_SCOPE`, so a scoped
-result never replays in a run that expects full coverage.
+the same rule when `COVERAGE_SCOPE=changed-files`, so suites that do not go
+through janitor (the turbo-cached Backend jobs and the Postgres integration
+job) also measure only the changed files. Turbo hashes `COVERAGE_SCOPE`, so a
+scoped result never replays in a run that expects full coverage.
 
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml

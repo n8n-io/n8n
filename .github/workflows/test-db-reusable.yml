@@ -37,6 +37,9 @@ jobs:
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
+      # With a change signal, the shared vitest config measures only the changed files.
+      COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
+      CHANGED_FILES: ${{ inputs.changed-files }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -48,21 +51,9 @@ jobs:
       - name: Pre-pull Test Container Images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
 
-      # The suite always runs in full. With a change signal, `janitor coverage-args`
-      # limits coverage to the changed cli source files, so the other code runs
-      # without instrumentation. It prints nothing when coverage is off.
       - name: Run Integration Tests
         working-directory: packages/cli
-        env:
-          CHANGED_FILES: ${{ inputs.changed-files }}
-        run: |
-          COVERAGE_ARGS=$(pnpm exec janitor coverage-args)
-          COVERAGE_FLAGS=()
-          while IFS= read -r flag; do
-            if [ -n "$flag" ]; then COVERAGE_FLAGS+=("$flag"); fi
-          done <<< "$COVERAGE_ARGS"
-          if [ -n "$COVERAGE_ARGS" ]; then echo "Coverage flags: ${COVERAGE_FLAGS[*]}"; fi
-          ${{ matrix.test-cmd }} "${COVERAGE_FLAGS[@]}"
+        run: ${{ matrix.test-cmd }}
 
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
