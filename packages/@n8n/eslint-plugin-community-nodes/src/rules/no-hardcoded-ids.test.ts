@@ -10,15 +10,20 @@ const hardcodedRules = Object.fromEntries(
 	),
 );
 
-function lintPartnerId(value: string) {
-	return new Linter().verify(
+function lintCode(code: string, filename = 'SmsApi.node.js') {
+	return new Linter().verify(code, [{ plugins: recommended.plugins, rules: hardcodedRules }], {
+		filename,
+	});
+}
+
+function lintPartnerId(value: string, field = 'partner_id', filename = 'SmsApi.node.js') {
+	return lintCode(
 		`class SmsApi {
 			async execute() {
-				return this.helpers.httpRequest({ qs: { partner_id: ${value} } });
+				return this.helpers.httpRequest({ qs: { ${field}: ${value} } });
 			}
 		}`,
-		[{ plugins: recommended.plugins, rules: hardcodedRules }],
-		{ filename: 'SmsApi.node.js' },
+		filename,
 	);
 }
 
@@ -37,5 +42,26 @@ describe('community node hardcoded IDs (CE-2056)', () => {
 				message: expect.stringContaining('partner_id'),
 			}),
 		]);
+	});
+
+	it('detects camelCase IDs and static string keys in node source', () => {
+		expect(lintPartnerId("'fixed-partner'", 'partnerId', 'SmsApi.node.ts')).toHaveLength(1);
+		expect(lintPartnerId("'fixed-partner'", "'partner_id'")).toHaveLength(1);
+		expect(lintPartnerId("'fixed-client'", 'client_id')).toHaveLength(1);
+	});
+
+	it('detects fixed IDs in declarations and assignments', () => {
+		expect(
+			lintCode(`const partnerId = 'fixed-partner';
+			class SmsApi {
+				partner_id = 'fixed-partner';
+				execute() { this.partnerId = 'fixed-partner'; }
+			}`),
+		).toHaveLength(3);
+	});
+
+	it('ignores unrelated fields and files outside node source', () => {
+		expect(lintPartnerId("'fixed-partner'", 'operationId')).toEqual([]);
+		expect(lintPartnerId("'fixed-partner'", 'partner_id', 'SmsApi.test.js')).toEqual([]);
 	});
 });
