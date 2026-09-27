@@ -223,7 +223,11 @@ export async function executeSelectMany(
 		}
 
 		// Ensure the total doesn't change mid-pagination unless the page is already fully consumed
-		if (expectedTotal !== undefined && count !== expectedTotal && result.length + wrapped.length < expectedTotal) {
+		if (
+			expectedTotal !== undefined &&
+			count !== expectedTotal &&
+			result.length + wrapped.length < expectedTotal
+		) {
 			throw new NodeOperationError(
 				ctx.getNode(),
 				'synchronization error: result count changed during pagination',
