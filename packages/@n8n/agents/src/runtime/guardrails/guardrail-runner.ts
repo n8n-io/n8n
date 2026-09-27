@@ -1,5 +1,4 @@
 import type {
-	GuardrailDecision,
 	GuardrailModelCallContext,
 	GuardrailModelCallSource,
 	GuardrailStop,
@@ -45,7 +44,11 @@ export class GuardrailRunner {
 	}
 
 	async before(ctx: GuardrailModelCallContext): Promise<GuardrailStop | undefined> {
-		return await this.firstStop((hook) => hook.before, ctx);
+		for (const hook of this.hooks) {
+			const decision = await hook.before?.(ctx);
+			if (decision?.action === 'stop') return { code: decision.code };
+		}
+		return undefined;
 	}
 
 	async after(ctx: GuardrailModelCallContext, usage: TokenUsage | undefined): Promise<void> {
@@ -55,27 +58,16 @@ export class GuardrailRunner {
 	}
 
 	async beforeTool(ctx: GuardrailToolCallContext): Promise<GuardrailStop | undefined> {
-		return await this.firstStop((hook) => hook.beforeTool, ctx);
+		for (const hook of this.hooks) {
+			const decision = await hook.beforeTool?.(ctx);
+			if (decision?.action === 'stop') return { code: decision.code };
+		}
+		return undefined;
 	}
 
 	async afterTool(ctx: GuardrailToolCallContext, result: unknown): Promise<void> {
 		for (const hook of this.hooks) {
 			await hook.afterTool?.(ctx, result);
 		}
-	}
-
-	private async firstStop<C>(
-		pick: (
-			hook: ModelGuardrail,
-		) => ((ctx: C) => Promise<GuardrailDecision | undefined>) | undefined,
-		ctx: C,
-	): Promise<GuardrailStop | undefined> {
-		for (const hook of this.hooks) {
-			const fn = pick(hook);
-			if (!fn) continue;
-			const decision = await fn.call(hook, ctx);
-			if (decision?.action === 'stop') return { code: decision.code };
-		}
-		return undefined;
 	}
 }
