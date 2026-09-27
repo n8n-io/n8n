@@ -1,9 +1,9 @@
 /** Compute per-package scope and dispatch to vitest with the right flags. */
 
+import { changedCoverageIncludes } from '@n8n/vitest-config/changed-file-coverage';
 import { spawnSync } from 'node:child_process';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 
-import { toPosix } from './path-utils.js';
 import { computeScope, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
@@ -17,45 +17,22 @@ export interface TestScopedOptions {
 	collectCoverage?: boolean;
 }
 
-const COVERABLE_SOURCE = /\.(?:[cm]?[jt]sx?|vue)$/;
-// Mirrors `coverageExcludes` in @n8n/vitest-config: these never count towards coverage.
-const NON_COVERABLE = [
-	/\.(?:test|spec)\.[cm]?[jt]sx?$/,
-	/(?:^|\/)__(?:tests|mocks)__\//,
-	/\.d\.ts$/,
-	// Runner config and setup files (vite.config.ts, vitest.workspace.ts, ...) are outside
-	// the default `src/**` include. An explicit include would instrument them.
-	/(?:^|\/)(?:vite\.|vitest[.-])[^/]*$/,
-];
-const GLOB_SPECIAL = /[*?[\]{}()!+@]/g;
-
 /**
  * Build the vitest coverage flags for a run with a CHANGED_FILES signal.
  *
- * Patch coverage needs only the changed lines, so measure only the changed
- * source files of this package. Istanbul instruments only the included files,
- * so the rest of the code runs at full speed. V8 coverage slows down all the
- * code that runs, and the default include (`src/**`) makes vitest also report
- * every untested file. When the package has no changed source files, coverage
- * is turned off.
+ * `@n8n/vitest-config/changed-file-coverage` decides which files count. The
+ * shared vitest configs apply the same rule. The flags also cover packages
+ * whose config does not use the shared helper, because CLI flags win.
+ * When the package has no changed source files, coverage is turned off.
  */
 export function buildCoverageArgs(
 	changedFiles: string[],
 	packageDir: string,
 	rootDir: string,
 ): string[] {
-	const absolutePackageDir = isAbsolute(packageDir) ? packageDir : resolve(rootDir, packageDir);
-	const sources = changedFiles
-		.map((f) => toPosix(relative(absolutePackageDir, resolve(rootDir, f))))
-		.filter((f) => !f.startsWith('../') && !isAbsolute(f))
-		.filter((f) => COVERABLE_SOURCE.test(f) && !NON_COVERABLE.some((p) => p.test(f)));
-
-	if (sources.length === 0) return ['--coverage.enabled=false'];
-	return [
-		'--coverage.provider=istanbul',
-		// vitest reads `include` as globs, so escape characters that would change the match.
-		...sources.map((f) => `--coverage.include=${f.replace(GLOB_SPECIAL, '\\$&')}`),
-	];
+	const includes = changedCoverageIncludes(changedFiles, packageDir, rootDir);
+	if (includes.length === 0) return ['--coverage.enabled=false'];
+	return ['--coverage.provider=istanbul', ...includes.map((f) => `--coverage.include=${f}`)];
 }
 
 /**
