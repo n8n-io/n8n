@@ -59,6 +59,17 @@ export function buildCoverageArgs(
 }
 
 /**
+ * Coverage flags for a run. Returns none when the run collects no coverage or
+ * has no change signal: then the vitest config decides coverage.
+ */
+export function resolveCoverageArgs(
+	options: Pick<TestScopedOptions, 'changedFiles' | 'packageDir' | 'rootDir' | 'collectCoverage'>,
+): string[] {
+	if (!options.collectCoverage || options.changedFiles === null) return [];
+	return buildCoverageArgs(options.changedFiles, options.packageDir, options.rootDir);
+}
+
+/**
  * Build the runner argv from a scope result. Paths are resolved to absolute
  * because pnpm/turbo runs `test:changed` with cwd=packageDir, while CHANGED_FILES
  * is repo-root-relative — handing a relative path to `vitest related` from inside
@@ -98,10 +109,7 @@ export function runTestScoped(options: TestScopedOptions): number {
 		console.log(`[janitor:test-scoped] scoping to ${scope.files.length} file(s)`);
 	}
 
-	const coverageArgs =
-		options.collectCoverage && options.changedFiles !== null
-			? buildCoverageArgs(options.changedFiles, options.packageDir, options.rootDir)
-			: [];
+	const coverageArgs = resolveCoverageArgs(options);
 	if (coverageArgs.length > 0) {
 		console.log(`[janitor:test-scoped] coverage: ${coverageArgs.join(' ')}`);
 	}

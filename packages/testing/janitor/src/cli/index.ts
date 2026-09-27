@@ -12,4 +12,5 @@ export {
 	showAffectedPackagesHelp,
 	showScopeHelp,
 	showTestScopedHelp,
+	showCoverageArgsHelp,
 } from './help.js';

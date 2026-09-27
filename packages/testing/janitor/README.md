@@ -256,6 +256,10 @@ so the rest of the code runs at full speed. V8 coverage slows down all code
 that runs. When the package has no changed source files, coverage is off. With
 no change signal (master, nightly), the vitest config decides coverage.
 
+A suite that always runs in full, such as the Postgres integration tests, can
+use the same flags: `janitor coverage-args` prints them one flag per line.
+It prints nothing when coverage is off or there is no change signal.
+
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.

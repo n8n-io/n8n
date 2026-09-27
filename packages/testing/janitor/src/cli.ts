@@ -44,6 +44,7 @@ import {
 	showAffectedPackagesHelp,
 	showScopeHelp,
 	showTestScopedHelp,
+	showCoverageArgsHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
@@ -88,7 +89,7 @@ import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
-import { runTestScoped } from './core/test-scoped-runner.js';
+import { resolveCoverageArgs, runTestScoped } from './core/test-scoped-runner.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
 import { resolveInputPaths } from './utils/paths.js';
@@ -701,6 +702,18 @@ function runTestScopedCmd(options: CliOptions): void {
 	process.exit(exitCode);
 }
 
+// One flag per line, so a shell can read the flags into an array without word splitting.
+function runCoverageArgs(options: CliOptions): void {
+	const packageDir = options.packageDir ?? process.cwd();
+	const args = resolveCoverageArgs({
+		packageDir,
+		rootDir: findWorkspaceRoot(process.cwd()),
+		changedFiles: readChangedFiles(options),
+		collectCoverage: process.env.COVERAGE_ENABLED === 'true',
+	});
+	if (args.length > 0) console.log(args.join('\n'));
+}
+
 function runScope(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
 	const rootDir = findWorkspaceRoot(process.cwd());
@@ -822,6 +835,9 @@ async function main(): Promise<void> {
 			case 'test-scoped':
 				showTestScopedHelp();
 				break;
+			case 'coverage-args':
+				showCoverageArgsHelp();
+				break;
 			default:
 				showHelp();
 		}
@@ -839,6 +855,10 @@ async function main(): Promise<void> {
 	}
 	if (options.command === 'test-scoped') {
 		runTestScopedCmd(options);
+		return;
+	}
+	if (options.command === 'coverage-args') {
+		runCoverageArgs(options);
 		return;
 	}
 	if (options.command === 'merge-coverage') {

@@ -273,6 +273,23 @@ Unrecognised flags are forwarded to the runner.
 `);
 }
 
+export function showCoverageArgsHelp(): void {
+	console.log(`
+Coverage-Args - Print the change-scoped vitest coverage flags for a package
+
+Usage:
+  janitor coverage-args [--package-dir=<dir>] [--changed-files=<list>]
+
+  --package-dir:      defaults to cwd.
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
+
+Prints the same coverage flags that test-scoped adds, one flag per line. Use it
+for a suite that always runs in full, but measures only the changed files.
+Prints nothing when COVERAGE_ENABLED is not "true" or there is no change signal.
+`);
+}
+
 export function showRulesHelp(): void {
 	console.log(`
 Rules - Show detailed information about available rules
