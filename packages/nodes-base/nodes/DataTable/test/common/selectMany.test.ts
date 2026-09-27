@@ -133,7 +133,7 @@ describe('selectMany utils', () => {
 			// Terminal Page 2 yields empty array
 			getManyRowsAndCount.mockReturnValueOnce({
 				data: Array.from({ length: 1000 }, (_, k) => ({ id: k })),
-				count: 1000,
+				count: 1001,
 			});
 			getManyRowsAndCount.mockReturnValueOnce({
 				data: [],
