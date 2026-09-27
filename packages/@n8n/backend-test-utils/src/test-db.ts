@@ -6,7 +6,6 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import assert from 'assert';
 import { randomString } from 'n8n-workflow';
-import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { vi } from 'vitest';
 
@@ -144,31 +143,22 @@ export async function initTemplateDb(templateName: string): Promise<void> {
  * `n8nFolder`. The function refuses to migrate a database outside that folder.
  */
 export async function initSqliteTemplateDb(n8nFolder: string): Promise<string> {
-	if (Container.get(GlobalConfig).database.type !== 'sqlite') {
-		throw new Error('initSqliteTemplateDb only supports sqlite');
-	}
-	const configuredFolder = Container.get(InstanceSettingsConfig).n8nFolder;
 	const databasePath = getSqliteDatabasePath();
-	if (configuredFolder !== n8nFolder || path.dirname(databasePath) !== n8nFolder) {
-		throw new Error(
-			`initSqliteTemplateDb expected a database in ${n8nFolder}, but the config uses ${databasePath}`,
-		);
+	if (
+		Container.get(GlobalConfig).database.type !== 'sqlite' ||
+		Container.get(InstanceSettingsConfig).n8nFolder !== n8nFolder ||
+		path.dirname(databasePath) !== n8nFolder
+	) {
+		throw new Error(`initSqliteTemplateDb expected a SQLite database in ${n8nFolder}`);
 	}
 
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	try {
-		const connection = Container.get(Connection);
-		const [main] = await connection.query<Array<{ file: string }>>('PRAGMA database_list');
-		if (!main || realpathSync(main.file) !== realpathSync(databasePath)) {
-			throw new Error(
-				`initSqliteTemplateDb expected the database ${databasePath}, but the connection uses ${main?.file}`,
-			);
-		}
 		await dbConnection.migrate();
 		await Container.get(AuthRolesService).init();
 		// Move all WAL content into the main file, so a copy of that file is complete.
-		await connection.query('PRAGMA wal_checkpoint(TRUNCATE)');
+		await Container.get(Connection).query('PRAGMA wal_checkpoint(TRUNCATE)');
 	} finally {
 		await dbConnection.close();
 	}
