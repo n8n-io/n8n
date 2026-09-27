@@ -1721,6 +1721,50 @@ describe('Canvas', () => {
 	});
 
 	describe('group selection reconciliation', () => {
+		it('replaces the node clicked inside a fully selected regular group', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const memberA = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const memberB = createCanvasNodeElement({
+				id: 'b',
+				label: 'Node B',
+				position: { x: 300, y: 100 },
+			});
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a', 'b'] }),
+						memberA,
+						memberB,
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(3),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode(`group:${group.id}`)!,
+				vueFlow.findNode('a')!,
+				vueFlow.findNode('b')!,
+			]);
+			await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(3));
+
+			await fireEvent.click(rendered.container.querySelector('[data-id="b"]')!);
+			await fireEvent.keyDown(document, { key: 'r' });
+			await fireEvent.keyUp(document, { key: 'r' });
+
+			expect(rendered.emitted()['replace:node']).toEqual([['b']]);
+		});
+
 		it('folds the selection into the group when one is created around fully selected nodes', async () => {
 			workflowDocumentStore.setScopes(['workflow:update']);
 			workflowDocumentStore.setNodes([

@@ -613,7 +613,10 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		},
 		c: () => emit('start-chat'),
-		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		r: () => {
+			const id = getReplaceTargetId();
+			if (id) emit('replace:node', id);
+		},
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
@@ -692,6 +695,7 @@ async function onAddNodesToChat(
 }
 
 const lastSelectedNode = ref<GraphNode>();
+const lastInteractedNodeId = ref<string>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
 		if (isCanvasGroupNode(node)) return false;
@@ -1199,6 +1203,8 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		return;
 	}
 
+	lastInteractedNodeId.value = node.id;
+
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
@@ -1504,6 +1510,21 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 	};
 }
 
+function getReplaceTargetId(): string | undefined {
+	if (
+		lastInteractedNodeId.value &&
+		selectedNodes.value.some((node) => node.id === lastInteractedNodeId.value)
+	) {
+		return lastInteractedNodeId.value;
+	}
+
+	if (selectedNodes.value.length === 1) {
+		return selectedNodes.value[0].id;
+	}
+
+	return lastSelectedNode.value?.id;
+}
+
 /**
  * View
  */
@@ -1700,8 +1721,13 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
-		case 'replace':
-			return emit('replace:node', nodeIds[0]);
+		case 'replace': {
+			const contextTarget = contextMenu.target.value;
+			const targetNodeId =
+				contextTarget && contextTarget.source !== 'group' ? contextTarget.nodeId : nodeIds[0];
+			if (targetNodeId) return emit('replace:node', targetNodeId);
+			return;
+		}
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':

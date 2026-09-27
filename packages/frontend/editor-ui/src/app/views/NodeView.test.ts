@@ -683,6 +683,88 @@ describe('NodeView', () => {
 			expect(workflowDocumentStore.allNodes[0].id).toBe(anchorId);
 			expect(workflowDocumentStore.allGroups[0].nodeIds).toEqual([anchorId]);
 		});
+
+		it('keeps internal replacement-batch connections when replacing a node in a regular group', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			addReplacementNodeTypes();
+			const source = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: SPLIT_IN_BATCHES_NODE_TYPE,
+				position: [0, 0],
+			});
+			const target = createTestNode({
+				id: 'target',
+				name: 'Target',
+				type: SPLIT_IN_BATCHES_NODE_TYPE,
+				position: [300, 0],
+			});
+			const next = createTestNode({
+				id: 'next',
+				name: 'Next',
+				type: SPLIT_IN_BATCHES_NODE_TYPE,
+				position: [600, 0],
+			});
+			workflowDocumentStore.setNodes([source, target, next]);
+			workflowDocumentStore.setConnections({
+				Source: {
+					main: [[{ node: 'Target', type: 'main', index: 0 }]],
+				},
+				Target: {
+					main: [[{ node: 'Next', type: 'main', index: 0 }]],
+				},
+			});
+			const group = workflowDocumentStore.createGroup([source.id, target.id, next.id], 'Group 1');
+			const operationOrder: string[] = [];
+			const addConnectionToDocument =
+				workflowDocumentStore.addConnection.bind(workflowDocumentStore);
+			const addConnection = vi.spyOn(workflowDocumentStore, 'addConnection');
+			addConnection.mockImplementation((args) => {
+				const [from, to] = args.connection;
+				operationOrder.push(`${from?.node}->${to?.node}`);
+				return addConnectionToDocument(args);
+			});
+			const replaceNodeInGroupInDocument =
+				workflowDocumentStore.replaceNodeInGroup.bind(workflowDocumentStore);
+			const replaceNodeInGroup = vi.spyOn(workflowDocumentStore, 'replaceNodeInGroup');
+			replaceNodeInGroup.mockImplementation((groupId, previousNodeId, newNodeId) => {
+				operationOrder.push('replace-node-in-group');
+				return replaceNodeInGroupInDocument(groupId, previousNodeId, newNodeId);
+			});
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-replace-first'));
+			await userEvent.click(await findByTestId('node-creation-stub-add-loop-replacement'));
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(4));
+			const loop = workflowDocumentStore.allNodes.find((node) => node.name === 'Loop Over Items');
+			const helper = workflowDocumentStore.allNodes.find((node) => node.name === 'Replace Me');
+			expect(loop).toBeDefined();
+			expect(helper).toBeDefined();
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual(
+				expect.arrayContaining([loop?.id, helper?.id, target.id, next.id]),
+			);
+			const internalConnectionIndex = operationOrder.findIndex(
+				(entry) => entry.includes('Loop Over Items') && entry.includes('Replace Me'),
+			);
+			expect(internalConnectionIndex, JSON.stringify(operationOrder)).toBeLessThan(
+				operationOrder.indexOf('replace-node-in-group'),
+			);
+			expect(workflowDocumentStore.connectionsBySourceNode).toMatchObject({
+				'Loop Over Items': {
+					main: expect.arrayContaining([
+						[{ node: 'Target', type: 'main', index: 0 }],
+						[{ node: 'Replace Me', type: 'main', index: 0 }],
+					]),
+				},
+				'Replace Me': {
+					main: expect.arrayContaining([[{ node: 'Loop Over Items', type: 'main', index: 0 }]]),
+				},
+			});
+		});
 	});
 
 	describe('Trigger node selection', () => {
