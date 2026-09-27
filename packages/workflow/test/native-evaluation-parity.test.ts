@@ -4,6 +4,7 @@ import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
 import { ExpressionExtensions } from '../src/extensions';
 import {
+	evaluateNatively,
 	isNativelyEvaluable,
 	CALLABLE_METHODS,
 	MAX_RESULT_LENGTH,
@@ -324,6 +325,36 @@ describe('Expression - fast native evaluation parity', () => {
 
 		(result as { addresses: { primary: string } }).addresses.primary = 'changed';
 		expect(fresh.json.item.my_object.addresses.primary).toBe('123 Main St');
+	});
+
+	// The interpreter must never run a coercion hook carried in data: the
+	// engines only ever see structured-clone copies, and a hook on the host has
+	// no isolate timeout. Called directly so the engine re-run cannot mask a
+	// call made by the native attempt.
+	describe('coercion hooks on array elements never run natively', () => {
+		let hookCalls = 0;
+		const hooked = { toString: () => ((hookCalls += 1), 'x') };
+		const data = { $json: { rows: [hooked, 'y'] } } as never;
+
+		beforeEach(() => {
+			hookCalls = 0;
+		});
+
+		test.each(["{{ $json.rows.join(',') }}", '{{ $json.rows.toSorted() }}'])(
+			'%s bails to the engine',
+			(expr) => {
+				expect(evaluateNatively(expr, data)).toEqual({ handled: false });
+				expect(hookCalls).toBe(0);
+			},
+		);
+
+		test.each(["{{ $json.rows.includes('y') }}", '{{ $json.rows.indexOf(1) }}'])(
+			'%s does not coerce elements and stays native',
+			(expr) => {
+				expect(evaluateNatively(expr, data)).toEqual({ handled: true, value: expect.anything() });
+				expect(hookCalls).toBe(0);
+			},
+		);
 	});
 
 	// Divergences accepted on purpose, all against the legacy engine only:

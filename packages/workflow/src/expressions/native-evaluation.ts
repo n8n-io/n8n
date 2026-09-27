@@ -343,6 +343,16 @@ const isPrimitive = (value: unknown): boolean =>
 // Holes survive on the host and not across the bridge.
 const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== array.length;
 
+// join() runs ToString on every element and comparator-less toSorted()
+// compares elements as strings. On the live receiver that would run an
+// element's toString/valueOf hook on the host, where the engines only ever
+// see structured-clone copies. The other array methods move references
+// without touching them.
+const COERCES_ELEMENTS = new Set(['join', 'toSorted']);
+
+const isTransferSafeReceiver = (method: string, receiver: unknown[]): boolean =>
+	!COERCES_ELEMENTS.has(method) || receiver.every(isPrimitive);
+
 function bounded<T>(value: T): T {
 	const isSizeable = typeof value === 'string' || Array.isArray(value);
 
@@ -468,8 +478,10 @@ function evalCall(
 		throw new TypeError(`Cannot read properties of ${String(receiver)} (reading '${node.method}')`);
 	}
 
-	if (Array.isArray(receiver) && hasHoles(receiver)) {
-		throw new EngineFallbackError();
+	if (Array.isArray(receiver)) {
+		if (hasHoles(receiver) || !isTransferSafeReceiver(node.method, receiver)) {
+			throw new EngineFallbackError();
+		}
 	}
 
 	const proto = prototypeFor(receiver, node.method);
