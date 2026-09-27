@@ -216,8 +216,41 @@ export class ApiHelpers {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
+
+		await this.waitForSeededOwnerLogin(new URL('/rest/login', response.url()));
+	}
+
+	/**
+	 * Confirms that the reset instance accepts the seeded owner credentials.
+	 * The probe uses `fetch`, so its session cookie does not enter this context.
+	 * `@auth:none` tests therefore stay unauthenticated.
+	 */
+	private async waitForSeededOwnerLogin(loginUrl: URL, timeoutMs = 10_000): Promise<void> {
+		const deadline = Date.now() + timeoutMs;
+		let lastResult = 'no response';
+
+		while (Date.now() < deadline) {
+			try {
+				const response = await fetch(loginUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						emailOrLdapLoginId: INSTANCE_OWNER_CREDENTIALS.email,
+						password: INSTANCE_OWNER_CREDENTIALS.password,
+					}),
+					signal: AbortSignal.timeout(5_000),
+				});
+				if (response.ok) return;
+				lastResult = `${response.status} ${await response.text()}`;
+			} catch (error) {
+				lastResult = error instanceof Error ? error.message : String(error);
+			}
+			await wait(100);
+		}
+
+		throw new TestError(
+			`Owner login did not succeed within ${timeoutMs}ms after the database reset: ${lastResult}`,
+		);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {
