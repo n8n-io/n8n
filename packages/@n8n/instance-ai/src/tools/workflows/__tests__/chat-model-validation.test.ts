@@ -12,6 +12,7 @@ import {
 	extractChatModelParameter,
 	extractResourceLocatorValue,
 	normalizeChatModelId,
+	removeUnsupportedTemperature,
 	suggestReplacementModels,
 } from '../chat-model-validation';
 
@@ -112,6 +113,66 @@ describe('chat-model-validation', () => {
 			},
 		});
 		expect(suggestions[0]).toBe('newer-model');
+	});
+
+	describe('removeUnsupportedTemperature', () => {
+		const openAiNode = (model: string, options: Record<string, unknown>) =>
+			({
+				name: 'OpenAI Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: { __rl: true, mode: 'id', value: model }, options },
+			}) as unknown as NodeJSON;
+
+		beforeEach(() => {
+			getCachedCatalogMock.mockResolvedValue({
+				openai: {
+					id: 'openai',
+					name: 'OpenAI',
+					models: {
+						'gpt-5-mini': {
+							id: 'gpt-5-mini',
+							name: 'GPT-5 mini',
+							temperature: false,
+							toolCall: true,
+						},
+						'gpt-4.1': { id: 'gpt-4.1', name: 'GPT-4.1', temperature: true, toolCall: true },
+					},
+				},
+			});
+		});
+
+		it('removes temperature from a model the catalog marks as not accepting it', async () => {
+			const node = openAiNode('gpt-5-mini', { temperature: 0.2, maxTokens: 500 });
+
+			expect(await removeUnsupportedTemperature(node)).toBe('gpt-5-mini');
+			expect(node.parameters?.options).toEqual({ maxTokens: 500 });
+			expect(await computeChatModelValidationIssues(createMockContext(), node)).toEqual({});
+		});
+
+		it('keeps temperature on a model that accepts it', async () => {
+			const node = openAiNode('gpt-4.1', { temperature: 0.2 });
+
+			expect(await removeUnsupportedTemperature(node)).toBeUndefined();
+			expect(node.parameters?.options).toEqual({ temperature: 0.2 });
+		});
+
+		it('keeps temperature when the model is not in the catalog', async () => {
+			const node = openAiNode('gpt-unknown', { temperature: 0.2 });
+
+			expect(await removeUnsupportedTemperature(node)).toBeUndefined();
+			expect(node.parameters?.options).toEqual({ temperature: 0.2 });
+		});
+
+		it('ignores nodes that are not chat models', async () => {
+			const node = {
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				parameters: { options: { temperature: 0.2 } },
+			} as unknown as NodeJSON;
+
+			expect(await removeUnsupportedTemperature(node)).toBeUndefined();
+			expect(node.parameters?.options).toEqual({ temperature: 0.2 });
+		});
 	});
 
 	it('flags deprecated catalog models and temperature when the catalog forbids it', async () => {

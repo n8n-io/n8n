@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import { buildDateAnchors } from './date-anchors';
+import { describeDedupeHistoryNodes, findDedupeHistoryNodes } from './dedupe-history';
 import { extractNodeConfig } from './node-config';
 
 export { isAiRootNodeType };
@@ -576,10 +577,14 @@ export interface MockHints {
 	nodeHints: Record<string, string>;
 	/** Generated trigger output matching what the start node would produce */
 	triggerContent: Record<string, unknown>;
+	/** Every item when the trigger emits several in one run; `triggerContent` is the first. */
+	triggerItems?: Array<Record<string, unknown>>;
 	/** For multi-trigger workflows: the trigger node the scenario targets (Phase-1 LLM's pick). */
 	startNodeName?: string;
 	/** The scenario says the trigger has nothing to emit; the harness pins it to zero items. */
 	triggerEmitsNoItems?: boolean;
+	/** Dedupe keys the scenario says earlier executions recorded, by Remove Duplicates node name. */
+	previouslySeenKeys?: Record<string, string[]>;
 	/** Errors encountered during hint generation or mock execution */
 	warnings: string[];
 	/** Pin data for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
@@ -603,6 +608,7 @@ RULES:
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
    - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
+   - When the trigger emits several items in one run (a polling trigger that finds several new rows, emails, or records), return triggerContent as an ARRAY with one object per item, each in the trigger's own output shape (for a Google Sheets trigger, one row object keyed by the sheet's column names).
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
@@ -653,12 +659,22 @@ function buildUserPrompt(
 		}
 	}
 
+	const dedupeSection = describeDedupeHistoryNodes(findDedupeHistoryNodes(workflow));
+	if (dedupeSection) sections.push('', dedupeSection);
+
 	sections.push('', '## Expected Output', '', '```json', '{');
 	sections.push('  "globalContext": "Shared entities: ...",');
+	if (dedupeSection) {
+		sections.push(
+			'  "previouslySeenKeys": { "<Remove Duplicates node name>": ["<key value seen before>"] },',
+		);
+	}
 	sections.push(
 		'  "startNodeName": "exact trigger node name the scenario targets (only when the workflow has multiple triggers)",',
 	);
-	sections.push('  "triggerContent": { "...exact output the trigger node would produce..." },');
+	sections.push(
+		'  "triggerContent": { "...exact output the trigger node would produce, or an array of such objects when it emits several items..." },',
+	);
 	sections.push(
 		'  "triggerEmitsNoItems": "true only when the scenario says the trigger emits nothing; then omit triggerContent",',
 	);
@@ -674,6 +690,35 @@ function buildUserPrompt(
 	sections.push('', '## Date anchors', buildDateAnchors(new Date()));
 
 	return sections.join('\n');
+}
+
+/** Keeps only string keys; numbers are stringified because the node hashes `value.toString()`. */
+export function parsePreviouslySeenKeys(value: unknown): Record<string, string[]> | undefined {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+	const keysByNode: Record<string, string[]> = Object.create(null);
+	for (const [nodeName, keys] of Object.entries(value)) {
+		if (!Array.isArray(keys)) continue;
+		const normalized = keys
+			.filter((key) => typeof key === 'string' || typeof key === 'number')
+			.map(String);
+		if (normalized.length > 0) keysByNode[nodeName] = normalized;
+	}
+	return Object.keys(keysByNode).length > 0 ? keysByNode : undefined;
+}
+
+function isNonEmptyRecord(value: unknown): value is Record<string, unknown> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.keys(value).length > 0
+	);
+}
+
+/** Trigger output as items: one object, or an array of objects for a trigger that emits several. */
+export function parseTriggerItems(value: unknown): Array<Record<string, unknown>> {
+	if (Array.isArray(value)) return value.filter(isNonEmptyRecord);
+	return isNonEmptyRecord(value) ? [value] : [];
 }
 
 const MAX_HINT_ATTEMPTS = 2;
@@ -703,11 +748,20 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 	const warnings: string[] = [];
+	let previousReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
+		// Resending the same prompt reproduces the same mistake, so the retry names it.
+		const userPrompt = previousReason
+			? `${basePrompt}\n\n## Previous attempt\n\nYour previous answer was rejected: ${previousReason}. Fix that and answer again.${
+					previousReason === 'empty triggerContent'
+						? ' triggerContent must hold the trigger node output for this scenario: one object, or an array of objects when the trigger emits several items.'
+						: ''
+				}`
+			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
@@ -741,12 +795,8 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			) {
 				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
 			} else {
-				const triggerContent =
-					typeof parsed.triggerContent === 'object' &&
-					parsed.triggerContent !== null &&
-					!Array.isArray(parsed.triggerContent)
-						? parsed.triggerContent
-						: {};
+				const triggerItems = parseTriggerItems(parsed.triggerContent);
+				const triggerContent = triggerItems[0] ?? {};
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
@@ -758,14 +808,17 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
 						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
 					}
+					const previouslySeenKeys = parsePreviouslySeenKeys(parsed.previouslySeenKeys);
 					return {
 						globalContext,
 						nodeHints,
-						triggerContent: triggerContent as Record<string, unknown>,
+						triggerContent,
+						...(triggerItems.length > 1 ? { triggerItems } : {}),
 						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
 							? { startNodeName: parsed.startNodeName }
 							: {}),
 						...(triggerEmitsNoItems ? { triggerEmitsNoItems: true } : {}),
+						...(previouslySeenKeys ? { previouslySeenKeys } : {}),
 						warnings,
 						bypassPinData: {},
 					};
@@ -776,6 +829,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		}
 
 		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		previousReason = reason;
 		if (attempt < MAX_HINT_ATTEMPTS) {
 			Container.get(Logger).warn(
 				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,

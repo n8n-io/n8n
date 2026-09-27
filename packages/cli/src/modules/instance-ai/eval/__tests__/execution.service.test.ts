@@ -17,6 +17,8 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -217,6 +219,7 @@ describe('EvalExecutionService', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const ownershipService = mock<OwnershipService>();
 	const dataTableService = mock<DataTableService>();
+	const executionPersistence = mock<ExecutionPersistence>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -253,6 +256,7 @@ describe('EvalExecutionService', () => {
 			loadNodesAndCredentials,
 			ownershipService,
 			dataTableService,
+			executionPersistence,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -537,6 +541,28 @@ describe('EvalExecutionService', () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
+		});
+
+		it('reads the stored run when it finished before the service started waiting', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockRejectedValue(
+				new ExecutionNotFoundError(DB_EXECUTION_ID),
+			);
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				...makeIRun(),
+				id: DB_EXECUTION_ID,
+				createdAt: new Date(),
+				finished: true,
+				storedAt: 'db',
+			} as never);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith(DB_EXECUTION_ID, {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(result.errors).not.toContain(expect.stringContaining('No active execution found'));
 		});
 
 		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
@@ -1504,6 +1530,21 @@ describe('EvalExecutionService', () => {
 	describe('buildTriggerPinData (via execution)', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+		});
+
+		it('pins every item when the trigger emits several', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { company: 'Acme' };
+			hints.triggerItems = [{ company: 'Acme' }, { company: 'Globex' }];
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.pinData?.['Webhook']?.map((item) => item.json)).toEqual([
+				{ company: 'Acme' },
+				{ company: 'Globex' },
+			]);
 		});
 
 		it('marks the trigger node as pinned when triggerContent is present', async () => {

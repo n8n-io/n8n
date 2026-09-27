@@ -502,6 +502,8 @@ configuration row.
 
 ## SDK Patterns Reference
 
+{{SDK_FUNCTIONS_PLACEHOLDER}}
+
 Define nodes first, then compose the workflow:
 
 ```ts
@@ -523,6 +525,10 @@ export default workflow('id', 'name').add(startTrigger).to(fetchData);
 For IF, each branch is a complete processing path. Wire branches on the workflow
 builder, not as standalone calls on the IF node variable. Chain steps inside a
 branch with `.to()`, or pass an array for parallel fan-out.
+
+An array passed to the workflow builder's `.to()` assigns one target per output
+index. For parallel steps after a single-output node, pass the array to the
+node: `.to(source.to([a, b]))`.
 
 ```ts
 const isImportant = ifElse({

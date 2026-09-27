@@ -21,6 +21,7 @@ import {
 import {
 	type IBinaryData,
 	type IBinaryKeyData,
+	type IDataDeduplicator,
 	type IDataObject,
 	type IHttpRequestOptions,
 	type INode,
@@ -42,6 +43,9 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { DeduplicationHelper } from '@/deduplication/deduplication-helper';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
@@ -51,6 +55,12 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import {
+	type DedupeHistoryNode,
+	findDedupeHistoryNodes,
+	resetDedupeHistory,
+	withDedupeHistoryLock,
+} from './dedupe-history';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { EvalTimings } from './eval-timings';
@@ -99,6 +109,8 @@ interface RunBudget {
 // mock handler — additionalData is fresh, no global state mutated.
 @Service()
 export class EvalExecutionService {
+	private readonly deduplicator: IDataDeduplicator = new DeduplicationHelper();
+
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly nodeTypes: NodeTypes,
@@ -112,6 +124,7 @@ export class EvalExecutionService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly ownershipService: OwnershipService,
 		private readonly dataTableService: DataTableService,
+		private readonly executionPersistence: ExecutionPersistence,
 	) {}
 
 	async executeWithLlmMock(
@@ -204,16 +217,45 @@ export class EvalExecutionService {
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
 
-		return await this.execute(
-			workflowEntity,
-			user,
-			hints,
-			timings,
-			options.scenarioHints,
-			interceptionEnabled,
-			vendorLlmRouting,
-			budget,
-		);
+		const runScenario = async () =>
+			await this.execute(
+				workflowEntity,
+				user,
+				hints,
+				timings,
+				options.scenarioHints,
+				interceptionEnabled,
+				vendorLlmRouting,
+				budget,
+			);
+
+		const dedupeNodes = findDedupeHistoryNodes(workflowEntity);
+		if (dedupeNodes.length === 0) return await runScenario();
+
+		const historyWorkflowId = workflowEntity.id;
+		return await withDedupeHistoryLock(historyWorkflowId, async () => {
+			await this.resetDedupeHistorySafely(historyWorkflowId, dedupeNodes, hints.previouslySeenKeys);
+			try {
+				return await runScenario();
+			} finally {
+				await this.resetDedupeHistorySafely(historyWorkflowId, dedupeNodes);
+			}
+		});
+	}
+
+	private async resetDedupeHistorySafely(
+		workflowId: string,
+		nodes: DedupeHistoryNode[],
+		seenKeysByNode?: Record<string, string[]>,
+	): Promise<void> {
+		try {
+			await resetDedupeHistory(this.deduplicator, workflowId, nodes, seenKeysByNode);
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to stage Remove Duplicates history', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	// Default-on kill-switch: unset → enabled, explicit `false` → disabled, resolution error → disabled.
@@ -488,7 +530,7 @@ export class EvalExecutionService {
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
 		const triggerPinData = this.buildTriggerPinData(
 			startNode,
-			hints.triggerContent,
+			hints.triggerItems ?? [hints.triggerContent],
 			binaryRequirement,
 			hints.triggerEmitsNoItems,
 		);
@@ -760,7 +802,7 @@ export class EvalExecutionService {
 	 */
 	private buildTriggerPinData(
 		startNode: INode,
-		triggerContent: Record<string, unknown>,
+		triggerItems: Array<Record<string, unknown>>,
 		binaryRequirement?: TriggerBinaryRequirement,
 		triggerEmitsNoItems = false,
 	): IPinData {
@@ -768,8 +810,19 @@ export class EvalExecutionService {
 		// which is the point of a "no new items" scenario. No pin at all would instead
 		// start the trigger with one injected empty item.
 		if (triggerEmitsNoItems) return { [startNode.name]: [] };
-		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
+		const contents = triggerItems.filter((content) => Object.keys(content).length > 0);
+		if (contents.length === 0 && !binaryRequirement) return {};
 
+		const items = (contents.length > 0 ? contents : [{}]).map((content) =>
+			this.buildTriggerItem(content, binaryRequirement),
+		);
+		return { [startNode.name]: items };
+	}
+
+	private buildTriggerItem(
+		triggerContent: Record<string, unknown>,
+		binaryRequirement?: TriggerBinaryRequirement,
+	): INodeExecutionData {
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
 		// untouched so $json.binary.* references keep resolving.
 		const embedded = readEmbeddedBinaryMeta(triggerContent);
@@ -798,7 +851,7 @@ export class EvalExecutionService {
 
 		if (Object.keys(binary).length > 0) item.binary = binary;
 
-		return { [startNode.name]: [item] };
+		return item;
 	}
 
 	/**
@@ -955,11 +1008,39 @@ export class EvalExecutionService {
 	 * concurrency reservation (see `ActiveExecutions.add`), so nothing else would,
 	 * and an abandoned run keeps burning CPU on a shared instance. Omit to wait.
 	 */
+	/**
+	 * A run that ends before this is called has already left the active list,
+	 * and the active-executions lookup then throws. Its result is still in the
+	 * executions table, so read it from there instead of losing every node result.
+	 */
+	private async awaitPostExecute(executionId: string): Promise<IRun | undefined> {
+		try {
+			return await this.activeExecutions.getPostExecutePromise(executionId);
+		} catch (error) {
+			if (!(error instanceof ExecutionNotFoundError)) throw error;
+			const stored = await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+			if (!stored) throw error;
+			return {
+				data: stored.data,
+				finished: stored.finished,
+				mode: stored.mode,
+				waitTill: stored.waitTill,
+				startedAt: stored.startedAt ?? stored.createdAt,
+				stoppedAt: stored.stoppedAt,
+				storedAt: stored.storedAt,
+				status: stored.status,
+			};
+		}
+	}
+
 	private async awaitRunWithinBudget(
 		executionId: string,
 		budget: RunBudget | undefined,
 	): Promise<IRun | undefined> {
-		const postExecute = this.activeExecutions.getPostExecutePromise(executionId);
+		const postExecute = this.awaitPostExecute(executionId);
 		if (!budget) return await postExecute;
 
 		// Race loser: our timer's cancellation must not surface as unhandled.

@@ -2,6 +2,7 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
+	explainUnknownSdkFunction,
 	validateWorkflow,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
@@ -14,6 +15,7 @@ import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
+import { repairSingleOutputFanOut } from './repair-single-output-fan-out';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
@@ -87,13 +89,14 @@ function validateCompiledWorkflow(
 	compilerWarnings: ValidationWarning[] = [],
 ): ValidationWarning[] {
 	normalizeWorkflowNodes(json);
+	const repairWarnings = repairSingleOutputFanOut(json, context.nodeTypesProvider);
 
 	const schemaValidation = validateWorkflow(json, {
 		nodeTypesProvider: context.nodeTypesProvider,
 		strictMode: true,
 	});
 
-	const warnings = [...compilerWarnings];
+	const warnings = [...compilerWarnings, ...repairWarnings];
 	collectValidationIssues(schemaValidation.errors, warnings);
 	collectValidationIssues(schemaValidation.warnings, warnings);
 	warnings.push(...detectArrayInputCollapse(json));
@@ -270,6 +273,9 @@ function parseSandboxBuildOutput(stdout: string): SandboxWorkflowBuildOutput | u
 }
 
 function enhanceBuildErrors(errors: string[]): string[] {
+	const unknownSdkFunctionHint = explainUnknownSdkFunction(errors.join('\n'));
+	if (unknownSdkFunctionHint) return [...errors, unknownSdkFunctionHint];
+
 	const needsTemplateGuidance = errors.some((error) => {
 		const normalized = error.toLowerCase();
 		return (

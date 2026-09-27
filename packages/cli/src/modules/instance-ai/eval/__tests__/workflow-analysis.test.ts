@@ -1116,6 +1116,87 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('asks for and returns keys seen in earlier executions when the workflow dedupes on history', async () => {
+		const dedupeWorkflow = makeWorkflow([
+			makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeNode({ name: 'Fetch Reviews', type: 'n8n-nodes-base.httpRequest' }),
+			makeNode({
+				name: 'Keep New Reviews',
+				type: 'n8n-nodes-base.removeDuplicates',
+				typeVersion: 2,
+				parameters: {
+					operation: 'removeItemsSeenInPreviousExecutions',
+					dedupeValue: '={{ $json.id }}',
+				},
+			}),
+		]);
+		const generate = mockAgentResponses(
+			JSON.stringify({
+				globalContext: 'reviews',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { 'Fetch Reviews': 'three reviews' },
+				previouslySeenKeys: { 'Keep New Reviews': ['review-old'] },
+			}),
+		);
+
+		const result = await generateMockHints({
+			workflow: dedupeWorkflow,
+			nodeNames: ['Fetch Reviews'],
+		});
+
+		const prompt = String(generate.mock.calls[0][0]);
+		expect(prompt).toContain('"Keep New Reviews" dedupes on: ={{ $json.id }}');
+		expect(result.previouslySeenKeys).toEqual({ 'Keep New Reviews': ['review-old'] });
+	});
+
+	it('keeps every trigger item when triggerContent is an array', async () => {
+		mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: [{ company: 'Acme' }, {}, { company: 'Globex' }],
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual({ company: 'Acme' });
+		expect(result.triggerItems).toEqual([{ company: 'Acme' }, { company: 'Globex' }]);
+	});
+
+	it('names the rejected answer in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(String(generate.mock.calls[0][0])).not.toContain('## Previous attempt');
+		expect(String(generate.mock.calls[1][0])).toContain(
+			'Your previous answer was rejected: empty triggerContent',
+		);
+	});
+
+	it('leaves the history section out when no node dedupes on history', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(String(generate.mock.calls[0][0])).not.toContain('previouslySeenKeys');
+		expect(result.previouslySeenKeys).toBeUndefined();
+	});
+
 	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),

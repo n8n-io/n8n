@@ -27,6 +27,23 @@ export default workflow('id', 'name')
 
 Pick the Merge mode that matches the data shape.
 
+## Parallel steps from one node
+
+On the workflow builder, an array assigns one target per output index:
+`.to(textClassifier).to([billing, support])` sends output 0 to `billing` and
+output 1 to `support`. Use it only on a node with several outputs.
+
+To send the items of a single-output node to parallel steps, pass the array to
+the node itself. Each array entry then connects to output 0:
+
+```ts
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(generateImage.to([writeCopy.to(combine.input(0)), uploadImage.to(combine.input(1))]))
+  .add(combine)
+  .to(createCreative);
+```
+
 ## Switch
 
 Wire cases on the workflow builder, like IF branches:

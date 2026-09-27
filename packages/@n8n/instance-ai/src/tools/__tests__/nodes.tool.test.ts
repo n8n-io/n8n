@@ -682,7 +682,7 @@ describe('nodes tool', () => {
 					{
 						nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
 						version: '1.1',
-						content: '/**\n * @deprecated This node type is retired.\n */',
+						content: '// @deprecated This node type is retired.',
 						builderHint: 'Use `n8n-nodes-base.httpRequestTool` instead.',
 						deprecated: true,
 					},

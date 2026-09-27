@@ -176,6 +176,8 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	resolveMainOutputCount,
+	explainUnknownSdkFunction,
 } from './validation';
 
 // Code-node source lint — the host re-runs the Python rules with the executing
