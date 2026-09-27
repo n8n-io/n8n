@@ -23,6 +23,9 @@ const NON_COVERABLE = [
 	/\.(?:test|spec)\.[cm]?[jt]sx?$/,
 	/(?:^|\/)__(?:tests|mocks)__\//,
 	/\.d\.ts$/,
+	// Runner config and setup files (vite.config.ts, vitest.workspace.ts, ...) are outside
+	// the default `src/**` include. An explicit include would instrument them.
+	/(?:^|\/)(?:vite\.|vitest[.-])[^/]*$/,
 ];
 const GLOB_SPECIAL = /[*?[\]{}()!+@]/g;
 
