@@ -8,7 +8,7 @@
     "format:check": "biome ci .",
     "typecheck": "tsc --noEmit",
     "bench": "vitest bench --run",
-    "bench:baseline": "vitest bench --run --reporter=default --reporter=json --outputFile.json=./profiles/baseline.json",
+    "bench:baseline": "vitest bench --run --reporter=default --reporter=json --outputFile.json=./profiles/benchmark-results.json && node -e \"require('fs').copyFileSync('profiles/benchmark-results.json', 'profiles/baseline.json')\"",
     "bench:compare": "vitest bench --run --reporter=default --reporter=json --outputFile.json=./profiles/benchmark-results.json && node scripts/check-regression.mjs"
   },
   "devDependencies": {
