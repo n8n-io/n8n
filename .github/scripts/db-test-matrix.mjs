@@ -101,7 +101,7 @@ export function buildMatrix(versions, scope = 'full') {
 			name: `Postgres ${major}`,
 			runner: RUNNER,
 			'test-cmd': `pnpm test:postgres:integration:tc ${MAX_WORKERS}`,
-			'migration-cmd': 'pnpm test:postgres:migrations:tc',
+			'migration-cmd': `pnpm test:postgres:migrations:tc ${MAX_WORKERS}`,
 			'schema-check-cmd': image === primary ? 'pnpm --filter=@n8n/db schema:check:postgres' : '',
 			TEST_IMAGE_POSTGRES: image,
 			collectCoverage: scope === 'pr' && image === primary ? 'true' : 'false',
