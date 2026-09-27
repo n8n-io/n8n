@@ -744,9 +744,9 @@ describe('NodeView', () => {
 			const helper = workflowDocumentStore.allNodes.find((node) => node.name === 'Replace Me');
 			expect(loop).toBeDefined();
 			expect(helper).toBeDefined();
-			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual(
-				expect.arrayContaining([loop?.id, helper?.id, target.id, next.id]),
-			);
+			const groupNodeIds = workflowDocumentStore.getGroupById(group.id)?.nodeIds ?? [];
+			expect(groupNodeIds).toHaveLength(4);
+			expect(new Set(groupNodeIds)).toEqual(new Set([loop?.id, helper?.id, target.id, next.id]));
 			const internalConnectionIndex = operationOrder.findIndex(
 				(entry) => entry.includes('Loop Over Items') && entry.includes('Replace Me'),
 			);

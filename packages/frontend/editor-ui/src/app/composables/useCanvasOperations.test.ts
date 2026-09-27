@@ -5353,7 +5353,7 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
-			expect(nodesById).toHaveLength(0);
+			expect(nodesById.size).toBe(0);
 		});
 	});
 

@@ -695,7 +695,7 @@ async function onAddNodesToChat(
 }
 
 const lastSelectedNode = ref<GraphNode>();
-const lastInteractedNodeId = ref<string>();
+const lastInteractedNode = ref<{ id: string; documentId: string }>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
 		if (isCanvasGroupNode(node)) return false;
@@ -1203,7 +1203,10 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		return;
 	}
 
-	lastInteractedNodeId.value = node.id;
+	lastInteractedNode.value = {
+		id: node.id,
+		documentId: workflowDocumentStore.value.documentId,
+	};
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -1511,11 +1514,16 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 }
 
 function getReplaceTargetId(): string | undefined {
+	const lastInteractedNodeId =
+		lastInteractedNode.value?.documentId === workflowDocumentStore.value.documentId
+			? lastInteractedNode.value.id
+			: undefined;
+
 	if (
-		lastInteractedNodeId.value &&
-		selectedNodes.value.some((node) => node.id === lastInteractedNodeId.value)
+		lastInteractedNodeId &&
+		selectedNodes.value.some((node) => node.id === lastInteractedNodeId)
 	) {
-		return lastInteractedNodeId.value;
+		return lastInteractedNodeId;
 	}
 
 	if (selectedNodes.value.length === 1) {

@@ -1759,6 +1759,9 @@ describe('Canvas', () => {
 			await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(3));
 
 			await fireEvent.click(rendered.container.querySelector('[data-id="b"]')!);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['b']),
+			);
 			await fireEvent.keyDown(document, { key: 'r' });
 			await fireEvent.keyUp(document, { key: 'r' });
 

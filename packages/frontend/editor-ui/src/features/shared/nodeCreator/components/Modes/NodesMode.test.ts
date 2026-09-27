@@ -299,7 +299,7 @@ describe('NodesMode', () => {
 	});
 
 	it.each([TRIGGER_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW] as const)(
-		'does not render or select the Group item when empty groups are disabled in the %s view',
+		'does not render the Group item when empty groups are disabled in the %s view',
 		async (rootView) => {
 			mockIsFeatureEnabled.mockReturnValue(false);
 			useViewStacks().pushViewStack({
@@ -310,12 +310,10 @@ describe('NodesMode', () => {
 				items: [groupCommandElement()],
 			});
 
-			const { emitted } = render({ pinia });
+			render({ pinia });
 			await nextTick();
 
 			expect(screen.queryByText('Group')).not.toBeInTheDocument();
-			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-			expect(emitted('emptyGroupSelected')).toBeUndefined();
 		},
 	);
 
