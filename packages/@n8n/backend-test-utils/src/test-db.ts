@@ -54,7 +54,7 @@ export async function init() {
 	testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	const templateDb = dbType === 'postgresdb' ? process.env.N8N_TEST_TEMPLATE_DB : undefined;
-	let fromTemplate = templateDb !== undefined;
+	let fromTemplate = Boolean(templateDb);
 
 	const sqliteTemplate = dbType === 'sqlite' ? process.env.N8N_TEST_SQLITE_TEMPLATE : undefined;
 	if (sqliteTemplate) {
