@@ -109,6 +109,10 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// it shows in the result or in the pre-flight bound.
 	"={{ $json.item.name.replaceAll('', $json.item.filler).replaceAll('', $json.item.filler).replaceAll('', $json.item.filler) }}",
 	"={{ $json.item.big.replaceAll('', $json.item.filler) }}",
+	// `$\`` splices the text before each match into the result.
+	"={{ $json.item.name.replaceAll('o', '$`') }}",
+	// join('') is bounded by the elements, not the separator.
+	"={{ $json.item.manyBig.join('') }}",
 	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
 	// Object arguments to string methods: a RegExp value in data would run as
 	// a live pattern here, while the engines never see it as a regex.
@@ -217,6 +221,7 @@ describe('Expression - fast native evaluation parity', () => {
 				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
 				big: 'y'.repeat(20_000),
 				manyEmpty: new Array<string>(20_000).fill(''),
+				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
 				re: /o/g,
 				// eslint-disable-next-line no-sparse-arrays
 				sparse: [1, , 3] as unknown[],
@@ -355,6 +360,61 @@ describe('Expression - fast native evaluation parity', () => {
 
 			expect(evaluateNatively("{{ $json.rows.join(',') }}", shadowed)).toEqual({ handled: false });
 			expect(hookCalls).toBe(0);
+		});
+
+		test('an index getter is read once, so it cannot change between check and use', () => {
+			let reads = 0;
+			const rows: unknown[] = ['a', 'b'];
+			Object.defineProperty(rows, 0, {
+				enumerable: true,
+				get: () => (reads++ === 0 ? 'x' : hooked),
+			});
+			const flipping = { $json: { rows } } as never;
+
+			expect(evaluateNatively("{{ $json.rows.join(',') }}", flipping)).toEqual({
+				handled: true,
+				value: 'x,b',
+			});
+			expect(hookCalls).toBe(0);
+		});
+
+		test('an own `constructor` with Symbol.species never runs', () => {
+			let speciesCalls = 0;
+			const rows = [1, 2, 3];
+			Object.defineProperty(rows, 'constructor', {
+				enumerable: false,
+				value: {
+					[Symbol.species]: function Hijack() {
+						speciesCalls += 1;
+						return [];
+					},
+				},
+			});
+			const hijacked = { $json: { rows } } as never;
+
+			expect(evaluateNatively('{{ $json.rows.slice(1) }}', hijacked)).toEqual({
+				handled: true,
+				value: [2, 3],
+			});
+			expect(speciesCalls).toBe(0);
+		});
+
+		test('Symbol.isConcatSpreadable on a concat argument is never read', () => {
+			let reads = 0;
+			const extra = ['c'];
+			Object.defineProperty(extra, Symbol.isConcatSpreadable, {
+				get: () => {
+					reads += 1;
+					return true;
+				},
+			});
+			const spreadable = { $json: { rows: ['a'], extra } } as never;
+
+			expect(evaluateNatively('{{ $json.rows.concat($json.extra) }}', spreadable)).toEqual({
+				handled: true,
+				value: ['a', 'c'],
+			});
+			expect(reads).toBe(0);
 		});
 
 		test.each(["{{ $json.rows.includes('y') }}", '{{ $json.rows.indexOf(1) }}'])(

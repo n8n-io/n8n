@@ -22,7 +22,13 @@ import { isSafeObjectProperty } from '../utils';
 // Construction either yields a node of that grammar or null; the interpreter
 // only ever sees objects this module built, so it cannot read a field the
 // parser did not put there, and unsupported constructs are unrepresentable
-// rather than rejected. No user code is ever executed.
+// rather than rejected. Expression text is never executed as code.
+//
+// Data is the other input, and workflow data from a Code node can carry
+// hooks: getters, toString/valueOf, a `constructor` with Symbol.species, an
+// own method shadowing a native one. The runtime guards below keep those off
+// the host by only ever calling native methods on primitives or on fresh
+// copies this module made, and by handing anything else to the engine.
 
 const BINARY_OPS = [
 	'===',
@@ -343,16 +349,31 @@ const isPrimitive = (value: unknown): boolean =>
 // Holes survive on the host and not across the bridge.
 const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== array.length;
 
+// Array methods never run on live data. The receiver and any array argument
+// are copied first with one [[Get]] per index, so what the method sees has no
+// own methods, no own `constructor` (ArraySpeciesCreate in slice/concat/
+// flat), no Symbol.isConcatSpreadable, no accessors, and elements that cannot
+// change between the checks and the call.
+function snapshotArray(array: unknown[]): unknown[] {
+	if (hasHoles(array)) throw new EngineFallbackError();
+
+	const copy: unknown[] = [];
+	for (let index = 0; index < array.length; index++) {
+		copy.push(array[index]);
+	}
+
+	return copy;
+}
+
 // join() runs ToString on every element and comparator-less toSorted()
-// compares elements as strings. On the live receiver that would run an
-// element's toString/valueOf hook on the host, where the engines only ever
-// see structured-clone copies. The other array methods move references
-// without touching them.
+// compares elements as strings; an object element would run its own
+// toString/valueOf on the host, where the engines only ever see structured-
+// clone copies. The other array methods move references without touching
+// them.
 const COERCES_ELEMENTS = new Set(['join', 'toSorted']);
 
-// Dispatched off the prototype: an own `every` on the receiver is data too.
-const isTransferSafeReceiver = (method: string, receiver: unknown[]): boolean =>
-	!COERCES_ELEMENTS.has(method) || Array.prototype.every.call(receiver, isPrimitive);
+const coercesObjectElements = (method: string, elements: unknown[]): boolean =>
+	COERCES_ELEMENTS.has(method) && !elements.every(isPrimitive);
 
 function bounded<T>(value: T): T {
 	const isSizeable = typeof value === 'string' || Array.isArray(value);
@@ -436,27 +457,41 @@ function prototypeFor(receiver: unknown, method: string): object {
 	throw new EngineFallbackError();
 }
 
-// Arguments are primitives, plus dense arrays for concat. An object argument
-// could be a RegExp (a live pattern with no isolate timeout, and one the
-// engines never see as a regex), trigger a coercion hook, or compare by live
-// reference where the isolate compares copies (includes/indexOf).
-function isAllowedArgument(method: string, arg: unknown): boolean {
-	if (isPrimitive(arg)) return true;
+// Arguments are primitives, plus arrays for concat (copied, like the
+// receiver). An object argument could be a RegExp (a live pattern with no
+// isolate timeout, and one the engines never see as a regex), trigger a
+// coercion hook, or compare by live reference where the isolate compares
+// copies (includes/indexOf).
+function safeArgument(method: string, arg: unknown): unknown {
+	if (isPrimitive(arg)) return arg;
 
-	return method === 'concat' && Array.isArray(arg) && !hasHoles(arg);
+	if (method === 'concat' && Array.isArray(arg)) return snapshotArray(arg);
+
+	throw new EngineFallbackError();
 }
 
 // The two amplifying methods can allocate far beyond MAX_RESULT_LENGTH before
-// bounded() gets to see the result. Bail on a cheap upper bound first.
+// bounded() gets to see the result. Bail on an upper bound first. The
+// receiver is a primitive or a snapshot whose elements are primitives, so the
+// arithmetic below reads nothing that can run.
 function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
 	let upperBound = 0;
 
 	if (method === 'replaceAll' && typeof receiver === 'string') {
 		const replacement = String(args[1] ?? '');
+
+		// `$&`, `$\``, `$'` splice match context into every replacement, so
+		// the result is not bounded by the replacement's length.
+		if (replacement.includes('$')) throw new EngineFallbackError();
+
 		upperBound = (receiver.length + 1) * (replacement.length + 1);
 	} else if (method === 'join' && Array.isArray(receiver)) {
 		const separator = String(args[0] ?? ',');
-		upperBound = receiver.length * separator.length;
+		upperBound = separator.length * Math.max(receiver.length - 1, 0);
+
+		for (const element of receiver) {
+			upperBound += String(element ?? '').length;
+		}
 	}
 
 	if (upperBound > MAX_RESULT_LENGTH) {
@@ -479,26 +514,22 @@ function evalCall(
 		throw new TypeError(`Cannot read properties of ${String(receiver)} (reading '${node.method}')`);
 	}
 
-	if (Array.isArray(receiver)) {
-		if (hasHoles(receiver) || !isTransferSafeReceiver(node.method, receiver)) {
-			throw new EngineFallbackError();
-		}
+	const target = Array.isArray(receiver) ? snapshotArray(receiver) : receiver;
+	if (Array.isArray(target) && coercesObjectElements(node.method, target)) {
+		throw new EngineFallbackError();
 	}
 
-	const proto = prototypeFor(receiver, node.method);
+	const proto = prototypeFor(target, node.method);
 	const method: unknown = Reflect.get(proto, node.method);
 	if (typeof method !== 'function') {
 		throw new EngineFallbackError();
 	}
 
-	const args = node.args.map((argument) => evalNode(argument, data));
-	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
-		throw new EngineFallbackError();
-	}
+	const args = node.args.map((argument) => safeArgument(node.method, evalNode(argument, data)));
 
-	preflightSize(receiver, node.method, args);
+	preflightSize(target, node.method, args);
 
-	return bounded(method.apply(receiver, args) as unknown);
+	return bounded(method.apply(target, args) as unknown);
 }
 
 function evalUnary(
