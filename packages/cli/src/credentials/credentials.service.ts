@@ -1,3 +1,4 @@
+// Temporary: measures CI coverage cost for changed files. Revert before merge.
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
