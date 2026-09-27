@@ -348,6 +348,15 @@ describe('Expression - fast native evaluation parity', () => {
 			},
 		);
 
+		test('an own `every` on the receiver does not bypass the guard', () => {
+			const rows = [hooked, 'y'];
+			Object.defineProperty(rows, 'every', { value: () => true, enumerable: false });
+			const shadowed = { $json: { rows } } as never;
+
+			expect(evaluateNatively("{{ $json.rows.join(',') }}", shadowed)).toEqual({ handled: false });
+			expect(hookCalls).toBe(0);
+		});
+
 		test.each(["{{ $json.rows.includes('y') }}", '{{ $json.rows.indexOf(1) }}'])(
 			'%s does not coerce elements and stays native',
 			(expr) => {

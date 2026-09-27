@@ -350,8 +350,9 @@ const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== ar
 // without touching them.
 const COERCES_ELEMENTS = new Set(['join', 'toSorted']);
 
+// Dispatched off the prototype: an own `every` on the receiver is data too.
 const isTransferSafeReceiver = (method: string, receiver: unknown[]): boolean =>
-	!COERCES_ELEMENTS.has(method) || receiver.every(isPrimitive);
+	!COERCES_ELEMENTS.has(method) || Array.prototype.every.call(receiver, isPrimitive);
 
 function bounded<T>(value: T): T {
 	const isSizeable = typeof value === 'string' || Array.isArray(value);
