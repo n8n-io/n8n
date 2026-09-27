@@ -88,8 +88,13 @@ export async function getNewEmails(
 	let criteria = searchCriteria;
 	let results: FetchMessageObject[] = [];
 	let maxUid = 0;
+	// Declared out here because the `while` condition must compare against the
+	// value captured when the current pass started.
+	let previousMaxUid = 0;
 
 	do {
+		previousMaxUid = maxUid;
+
 		if (maxUid) {
 			criteria = criteria.filter(
 				(criterion) => !Array.isArray(criterion) || !['UID', 'SINCE'].includes(criterion[0]),
@@ -131,7 +136,9 @@ export async function getNewEmails(
 		}
 
 		await onEmailBatch(newEmails);
-	} while (results.length >= EMAIL_BATCH_SIZE);
+		// The search criteria only change once maxUid advances, so a full batch
+		// holding no new emails would refetch itself forever — stop without progress.
+	} while (results.length >= EMAIL_BATCH_SIZE && maxUid > previousMaxUid);
 }
 
 function itemBuilderFor(

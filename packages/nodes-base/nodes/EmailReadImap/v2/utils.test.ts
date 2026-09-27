@@ -334,4 +334,18 @@ describe('getNewEmails UID tracking', () => {
 		expect(batches[1]).toEqual([21]);
 		expect(staticData.lastMessageUid).toBe(21);
 	});
+
+	it('stops paginating when a full batch holds no new emails', async () => {
+		const staleBatch = Array.from({ length: 20 }, (_, i) => ({
+			uid: i + 1,
+			headers: headers(`user${i}@test.com`),
+		}));
+
+		const { connection, batches } = await fetchSimple([staleBatch], { lastMessageUid: 20 });
+
+		// The criteria only change once maxUid advances, so a second identical
+		// search here would refetch the same stale batch forever on a real server.
+		expect(connection.search).toHaveBeenCalledTimes(1);
+		expect(batches).toEqual([[]]);
+	});
 });
