@@ -100,6 +100,33 @@ describe('buildCoverageArgs', () => {
 		).toEqual(['--coverage.provider=istanbul', '--coverage.include=src/kept.ts']);
 	});
 
+	it('ignores vite and vitest config and setup files', () => {
+		expect(
+			buildCoverageArgs(
+				[
+					'packages/cli/vite.config.ts',
+					'packages/cli/vite.config.mts',
+					'packages/cli/vite.ui.config.mts',
+					'packages/cli/vitest.config.ts',
+					'packages/cli/vitest.config.integration.ts',
+					'packages/cli/vitest.integration.config.mjs',
+					'packages/cli/vitest.workspace.ts',
+					'packages/cli/vitest.integration.setup.ts',
+					'packages/cli/scripts/vitest-global-setup.ts',
+					'packages/cli/src/vite-plugin-kept.mts',
+				],
+				packageDir,
+				rootDir,
+			),
+		).toEqual(['--coverage.provider=istanbul', '--coverage.include=src/vite-plugin-kept.mts']);
+	});
+
+	it('turns coverage off when only a config file changed', () => {
+		expect(buildCoverageArgs(['packages/cli/vite.config.ts'], packageDir, rootDir)).toEqual([
+			'--coverage.enabled=false',
+		]);
+	});
+
 	it('turns coverage off when the package has no changed source files', () => {
 		expect(
 			buildCoverageArgs(
