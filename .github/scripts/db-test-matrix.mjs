@@ -9,7 +9,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 export const POSTGRES_VERSIONS_PATH = 'packages/testing/containers/postgres-versions.json';
 
-/** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing. */
+/** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing.  */
 const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 
 /**
