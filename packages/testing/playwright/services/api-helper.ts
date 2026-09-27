@@ -238,10 +238,13 @@ export class ApiHelpers {
 						emailOrLdapLoginId: INSTANCE_OWNER_CREDENTIALS.email,
 						password: INSTANCE_OWNER_CREDENTIALS.password,
 					}),
-					signal: AbortSignal.timeout(5_000),
+					// Keep the total wait within `timeoutMs`.
+					signal: AbortSignal.timeout(Math.max(1, Math.min(5_000, deadline - Date.now()))),
 				});
 				if (response.ok) return;
 				lastResult = `${response.status} ${await response.text()}`;
+				// A retry inside the rate-limit window cannot succeed, so stop now.
+				if (response.status === 429) break;
 			} catch (error) {
 				lastResult = error instanceof Error ? error.message : String(error);
 			}
@@ -249,7 +252,7 @@ export class ApiHelpers {
 		}
 
 		throw new TestError(
-			`Owner login did not succeed within ${timeoutMs}ms after the database reset: ${lastResult}`,
+			`Owner login failed after the database reset (limit ${timeoutMs}ms): ${lastResult}`,
 		);
 	}
 
