@@ -6,6 +6,7 @@ import { computeScope } from './scope-analyzer.js';
 import {
 	buildCoverageArgs,
 	buildRunnerArgs,
+	resolveCoverageArgs,
 	resolveExitCode,
 	runTestScoped,
 } from './test-scoped-runner.js';
@@ -56,6 +57,34 @@ describe('runTestScoped coverage wiring', () => {
 		vi.mocked(computeScope).mockReturnValue({ kind: 'full', reason: 'upstream' });
 		runTestScoped({ ...base, changedFiles: ['packages/core/src/x.ts'], collectCoverage: true });
 		expect(spawnedArgs()).toEqual(['run', '--coverage.enabled=false', '--shard=1/2']);
+	});
+});
+
+describe('resolveCoverageArgs', () => {
+	const base = { packageDir: '/repo/root/packages/cli', rootDir };
+
+	it('returns the changed-file coverage flags when coverage is on and there is a change signal', () => {
+		expect(
+			resolveCoverageArgs({
+				...base,
+				changedFiles: ['packages/cli/src/a.ts'],
+				collectCoverage: true,
+			}),
+		).toEqual(['--coverage.provider=istanbul', '--coverage.include=src/a.ts']);
+	});
+
+	it('returns no flags when coverage is off', () => {
+		expect(
+			resolveCoverageArgs({
+				...base,
+				changedFiles: ['packages/cli/src/a.ts'],
+				collectCoverage: false,
+			}),
+		).toEqual([]);
+	});
+
+	it('returns no flags when there is no change signal', () => {
+		expect(resolveCoverageArgs({ ...base, changedFiles: null, collectCoverage: true })).toEqual([]);
 	});
 });
 

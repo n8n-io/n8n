@@ -18,6 +18,7 @@ export type Command =
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
+	| 'coverage-args'
 	| 'filter-shard'
 	| 'merge-coverage'
 	| 'select';
@@ -85,6 +86,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
+	'coverage-args': 'coverage-args',
 	'filter-shard': 'filter-shard',
 	'merge-coverage': 'merge-coverage',
 	select: 'select',
