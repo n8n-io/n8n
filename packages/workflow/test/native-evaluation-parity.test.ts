@@ -395,6 +395,20 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
+		test.each([
+			['a function element', () => 1],
+			['a symbol element', Symbol('s')],
+		])('%s hands the array to the engine', (_label, element) => {
+			const nonTransferable = { $json: { rows: [element, 'y'] } } as never;
+
+			expect(evaluateNatively('{{ $json.rows.at(0) }}', nonTransferable)).toEqual({
+				handled: false,
+			});
+			expect(evaluateNatively("x: {{ $json.rows.join('') }}", nonTransferable)).toEqual({
+				handled: false,
+			});
+		});
+
 		test('an own `constructor` with Symbol.species never runs', () => {
 			let speciesCalls = 0;
 			const rows = [1, 2, 3];

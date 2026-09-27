@@ -362,7 +362,15 @@ function snapshotArray(array: unknown[]): unknown[] {
 
 	const copy: unknown[] = [];
 	for (let index = 0; index < length; index++) {
-		copy.push(array[index]);
+		const element = array[index];
+
+		// Neither crosses the bridge; here one would reach the caller (at)
+		// or throw past the chunk boundary (join in an interpolation).
+		if (typeof element === 'function' || typeof element === 'symbol') {
+			throw new EngineFallbackError();
+		}
+
+		copy.push(element);
 	}
 
 	return copy;
