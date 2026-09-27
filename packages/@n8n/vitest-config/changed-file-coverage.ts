@@ -28,7 +28,7 @@ const toPosix = (p: string) => (sep === '/' ? p : p.split(sep).join('/'));
  * Returns null when it is unset or empty: that is "no signal", not "nothing
  * changed". ci-filter emits an empty value for very large change sets.
  */
-export function readChangedFiles(value = process.env.CHANGED_FILES): string[] | null {
+export function readChangedFiles(value: string | undefined): string[] | null {
 	if (value === undefined) return null;
 	const files = value
 		.split(/[\n,]+/)
