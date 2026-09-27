@@ -156,7 +156,7 @@ const emit = defineEmits<{
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
-	'cut:nodes': [ids: string[]];
+	'cut:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'delete:connection': [connection: Connection];
 	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
@@ -581,7 +581,7 @@ const keyMap = computed(() => {
 
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
-		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids, getDeleteWholeGroupIds())),
 		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
@@ -1159,17 +1159,20 @@ function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
 	// Expand selected groups to their member nodes before deletion.
 	if (ids.length > 0) {
-		const deleteWholeGroupIds = selectedNodesAndGroups.value
-			.filter(isCanvasGroupNode)
-			.map((node) => parseCanvasGroupNodeId(node.id))
-			.filter(
-				(groupId) =>
-					groupId &&
-					(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
-			)
-			.filter(isPresent);
-		emit('delete:nodes', ids, deleteWholeGroupIds);
+		emit('delete:nodes', ids, getDeleteWholeGroupIds());
 	}
+}
+
+function getDeleteWholeGroupIds() {
+	return selectedNodesAndGroups.value
+		.filter(isCanvasGroupNode)
+		.map((node) => parseCanvasGroupNodeId(node.id))
+		.filter(
+			(groupId) =>
+				groupId &&
+				(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
+		)
+		.filter(isPresent);
 }
 
 // Last header-click toggle, for double-click suppression in onNodeClick.
@@ -1672,13 +1675,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete': {
-			const deleteWholeGroupIds = new Set(
-				selectedNodesAndGroups.value
-					.filter(isCanvasGroupNode)
-					.map((node) => parseCanvasGroupNodeId(node.id))
-					.filter((groupId) => groupId && explicitlySelectedGroupIds.value.has(groupId))
-					.filter(isPresent),
-			);
+			const deleteWholeGroupIds = new Set(getDeleteWholeGroupIds());
 			if (groupId) deleteWholeGroupIds.add(groupId);
 
 			return emit('delete:nodes', nodeIds, [...deleteWholeGroupIds]);

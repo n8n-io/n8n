@@ -3692,10 +3692,10 @@ export function useCanvasOperations() {
 		return true;
 	}
 
-	async function cutNodes(ids: string[]) {
+	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
 		if (!(await copyNodes(ids))) return;
 
-		deleteNodes(ids);
+		deleteNodes(ids, { deleteWholeGroupIds });
 	}
 
 	async function openExecution(executionId: string, nodeId?: string) {

@@ -1959,6 +1959,21 @@ describe('Canvas', () => {
 			expect(emitted()['copy:nodes']).toEqual([[['a', 'b']]]);
 		});
 
+		it('passes explicitly selected groups through the cut action', async () => {
+			const { group, groupNode, emitted } = await renderWithGroup();
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'x', ctrlKey: true, metaKey: true });
+			await fireEvent.keyUp(document, { key: 'x', ctrlKey: true, metaKey: true });
+
+			const cutEvent = emitted()['cut:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = cutEvent ?? [];
+			expect(ids).toEqual(['a', 'b']);
+			expect(deleteWholeGroupIds).toEqual([group.id]);
+		});
+
 		it('opens the group context menu on a read-only canvas, like node menus, with mutating items disabled', async () => {
 			// The workflow itself stays editable (see renderWithGroup) — the
 			// canvas prop alone must disable the mutating items, so embedded

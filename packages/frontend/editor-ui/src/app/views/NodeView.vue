@@ -692,11 +692,11 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	await mcpJsonNudgeTrigger.gate('paste', paste);
 }
 
-async function onCutNodes(ids: string[]) {
+async function onCutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
 	if (isCanvasReadOnly.value) {
 		await copyNodes(ids);
 	} else {
-		await cutNodes(ids);
+		await cutNodes(ids, deleteWholeGroupIds);
 	}
 }
 

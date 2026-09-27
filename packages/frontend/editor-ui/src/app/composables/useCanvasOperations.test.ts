@@ -5314,6 +5314,47 @@ describe('useCanvasOperations', () => {
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
 		});
+
+		it('does not restore an anchor when cutting an explicitly selected group', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const node = createTestNode({ id: 'group-member', type: SET_NODE_TYPE });
+			const group: IWorkflowGroup = { id: 'group-1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			workflowDocumentStoreInstance.allNodes = [node];
+			workflowDocumentStoreInstance.connectionsBySourceNode = {};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => [...nodesById.values()].find((candidate) => candidate.name === name) ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'getParentNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getChildNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getConnectionsBetweenNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+				workflowDocumentStoreInstance.allNodes = [...nodesById.values()];
+			});
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { cutNodes } = useCanvasOperations();
+			await cutNodes([node.id], [group.id]);
+
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
+			expect(nodesById).toHaveLength(0);
+		});
 	});
 
 	describe('resolveNodeWebhook', () => {
