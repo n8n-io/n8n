@@ -244,8 +244,10 @@ package anyway, so the full-suite fallback is both safe and correct.
 
 **Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/vitest.setup.*` and
-`<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
+plus setup files at `<pkg>/vitest.setup.*`, `<pkg>/src/__tests__/setup.*`,
+`<pkg>/test/setup*.*`, `<pkg>/test/global-setup.*` and `vitest-*setup*.*`.
+No test imports a globalSetup file, so `vitest related` would select zero
+tests for it. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 
 **Coverage on PR runs:** when `COVERAGE_ENABLED=true` and `CHANGED_FILES` is
