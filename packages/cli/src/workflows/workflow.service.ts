@@ -1,4 +1,3 @@
-// Temporary: measures CI coverage cost for changed files. Revert before merge.
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';

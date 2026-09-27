@@ -1,4 +1,3 @@
-// Temporary: measures CI coverage cost for changed files. Revert before merge.
 import {
 	RoleChangeRequestDto,
 	SettingsUpdateRequestDto,
