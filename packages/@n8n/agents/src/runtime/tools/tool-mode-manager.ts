@@ -23,10 +23,20 @@ const switchModeOutputSchema = z.object({
 	status: z.enum(['switched', 'unchanged']),
 	mode: z.string(),
 	tools: z.array(z.string()),
+	activeSkills: z.array(z.string()).optional(),
 	message: z.string(),
 });
 
 type SwitchModeOutput = z.infer<typeof switchModeOutputSchema>;
+
+/**
+ * Runs when `switch_mode` changes the mode. `anchor` is the `switch_mode` call.
+ * Returns the skill IDs that are active in the new mode.
+ */
+export type ToolModeSwitchListener = (
+	mode: string,
+	anchor?: { toolCallId: string },
+) => Promise<string[] | undefined>;
 
 /**
  * Tracks the active tool mode of one run. Tools that a mode names are visible
@@ -43,6 +53,8 @@ export class ToolModeManager {
 
 	/** Set by a switch and cleared when the runtime takes it at a loop boundary. */
 	private switchPending = false;
+
+	private switchListener?: ToolModeSwitchListener;
 
 	constructor(private readonly config: ToolModesConfig) {
 		const modeNames = Object.keys(config.modes);
@@ -64,6 +76,11 @@ export class ToolModeManager {
 
 	getControllerTool(): BuiltTool {
 		return this.switchTool;
+	}
+
+	/** Registers the listener that `switch_mode` awaits after a mode change. */
+	onSwitch(listener: ToolModeSwitchListener): void {
+		this.switchListener = listener;
 	}
 
 	/** Adds a pick-the-mode-first hint to the skill and tool discovery tools; returns other tools as-is. */
@@ -139,6 +156,26 @@ export class ToolModeManager {
 	}
 
 	/**
+	 * The tool-call ID of the latest `switch_mode` call in `messages` that
+	 * changed the mode. Returns undefined when that call did not enter the
+	 * current mode, or when `messages` hold no such call.
+	 */
+	findCurrentModeSwitch(messages: readonly AgentDbMessage[]): string | undefined {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i];
+			if (!('content' in message) || !Array.isArray(message.content)) continue;
+			for (let j = message.content.length - 1; j >= 0; j--) {
+				const block: unknown = message.content[j];
+				if (!this.isResolvedSwitchCall(block) || block.canceled) continue;
+				const output = block.output;
+				if (!isRecord(output) || output.status !== 'switched') continue;
+				return output.mode === this.currentMode ? block.toolCallId : undefined;
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * Restore the mode from this run's messages, so a resumed run continues in
 	 * the mode it had when it suspended. Earlier runs start from the initial mode.
 	 */
@@ -174,9 +211,17 @@ export class ToolModeManager {
 			description: `Switch the tool mode. Each mode adds its own tools to the tools that every mode has. Switch only when the current mode does not have a tool that you need.\n${modeList}`,
 			inputSchema,
 			outputSchema: switchModeOutputSchema,
-			handler: async (input) => {
+			handler: async (input, ctx) => {
 				const { mode } = inputSchema.parse(input);
-				return await Promise.resolve(this.switchTo(mode));
+				const result = this.switchTo(mode);
+				if (result.status !== 'switched' || !this.switchListener) return result;
+				const activeSkills = await this.switchListener(
+					mode,
+					ctx.toolCallId ? { toolCallId: ctx.toolCallId } : undefined,
+				);
+				if (!activeSkills) return result;
+				const skills = activeSkills.length > 0 ? activeSkills.join(', ') : 'none';
+				return { ...result, activeSkills, message: `${result.message} Active skills: ${skills}.` };
 			},
 		};
 	}

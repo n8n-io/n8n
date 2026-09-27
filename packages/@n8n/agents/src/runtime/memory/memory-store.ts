@@ -8,7 +8,7 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
-import type { RuntimeSkillStateStore } from '../../skills/types';
+import type { RuntimeSkillModeState, RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
@@ -90,7 +90,10 @@ export class InMemoryMemory
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
-	private skillsByThread = new Map<string, Map<string, string[]>>();
+	private skillsByThread = new Map<
+		string,
+		Map<string, { skillIds: string[]; modeState?: RuntimeSkillModeState }>
+	>();
 
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) =>
@@ -98,13 +101,26 @@ export class InMemoryMemory
 				this.skillsByThread
 					.get(threadId)
 					?.get(JSON.stringify([resourceId, agentName]))
-					?.slice(),
+					?.skillIds.slice(),
 			),
-		save: async ({ threadId, resourceId, agentName }, ids) => {
-			const states = this.skillsByThread.get(threadId) ?? new Map<string, string[]>();
-			states.set(JSON.stringify([resourceId, agentName]), [...ids]);
+		save: async ({ threadId, resourceId, agentName }, ids, modeState) => {
+			const states =
+				this.skillsByThread.get(threadId) ??
+				new Map<string, { skillIds: string[]; modeState?: RuntimeSkillModeState }>();
+			const key = JSON.stringify([resourceId, agentName]);
+			const next = modeState ?? states.get(key)?.modeState;
+			states.set(key, {
+				skillIds: [...ids],
+				...(next ? { modeState: structuredClone(next) } : {}),
+			});
 			this.skillsByThread.set(threadId, states);
 			await Promise.resolve();
+		},
+		loadModeState: async ({ threadId, resourceId, agentName }) => {
+			const state = this.skillsByThread
+				.get(threadId)
+				?.get(JSON.stringify([resourceId, agentName]))?.modeState;
+			return await Promise.resolve(state ? structuredClone(state) : undefined);
 		},
 	};
 

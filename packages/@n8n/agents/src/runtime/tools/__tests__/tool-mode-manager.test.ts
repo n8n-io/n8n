@@ -6,6 +6,7 @@ import type { AgentDbMessage } from '../../../types/sdk/message';
 import type { ToolModesConfig } from '../../../types/sdk/tool-modes';
 import type { AgentRuntimeConfig } from '../../loop/agent-runtime';
 import { RuntimeContextBuilder } from '../../loop/runtime-context';
+import { AgentMessageList } from '../../model/message-list';
 import { SWITCH_MODE_TOOL_NAME, ToolModeManager } from '../tool-mode-manager';
 
 const fakeModel = { doGenerate: vi.fn() } as unknown as LanguageModel;
@@ -69,6 +70,19 @@ describe('ToolModeManager', () => {
 		expect(manager.isVisible('executions')).toBe(true);
 		expect(manager.isVisible('nodes')).toBe(true);
 		expect(manager.isVisible('build-workflow')).toBe(false);
+	});
+
+	it('passes the switch tool call to the switch listener', async () => {
+		const manager = new ToolModeManager(config);
+		const listener = vi.fn().mockResolvedValue(['builder']);
+		manager.onSwitch(listener);
+
+		const output = await manager
+			.getControllerTool()
+			.handler?.({ mode: 'debug' }, { toolCallId: 'switch-1' } as never);
+
+		expect(listener).toHaveBeenCalledWith('debug', { toolCallId: 'switch-1' });
+		expect(output).toMatchObject({ activeSkills: ['builder'] });
 	});
 
 	it('reports unchanged when the model switches to the current mode', () => {
@@ -204,6 +218,82 @@ describe('RuntimeContextBuilder with tool modes', () => {
 
 		expect(volatileInstructions).toContain('Your current tool mode is "debug"');
 		expect(effectiveInstructions).not.toContain('tool mode');
+	});
+
+	describe('mode tool rules', () => {
+		function makeRulesBuilder() {
+			const manager = new ToolModeManager({ ...config, announceMode: false });
+			const withRule = (name: string, rule: string): BuiltTool => ({
+				...makeTool(name),
+				systemInstruction: rule,
+			});
+			const builder = new RuntimeContextBuilder(
+				{
+					name: 'agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Test agent.',
+					tools: [
+						withRule('ask-user', 'Ask rule.'),
+						withRule('executions', 'Executions rule.'),
+						makeTool('build-workflow'),
+					],
+				},
+				undefined,
+				manager,
+			);
+			return { manager, builder };
+		}
+
+		function listWithSwitch(mode: string): AgentMessageList {
+			const list = new AgentMessageList();
+			list.addResponse([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: `to-${mode}`,
+							toolName: SWITCH_MODE_TOOL_NAME,
+							input: { mode },
+							state: 'resolved',
+							output: { status: 'switched', mode },
+						},
+					],
+				},
+			]);
+			return list;
+		}
+
+		it('anchors the current mode rules to the switch that entered the mode', () => {
+			const { manager, builder } = makeRulesBuilder();
+			manager.switchTo('debug');
+
+			const context = builder.buildToolLoopContext(
+				{},
+				undefined,
+				undefined,
+				listWithSwitch('debug'),
+			);
+
+			expect(context.effectiveInstructions).toContain('Ask rule.');
+			expect(context.volatileInstructions).toBeUndefined();
+			expect(context.modeRules).toEqual({
+				toolCallId: 'to-debug',
+				text: '<built_in_rules>\n- Executions rule.\n</built_in_rules>',
+			});
+		});
+
+		it('keeps the mode rules in the system prompt without a switch into the current mode', () => {
+			const { manager, builder } = makeRulesBuilder();
+			manager.switchTo('debug');
+
+			for (const list of [new AgentMessageList(), listWithSwitch('build')]) {
+				const context = builder.buildToolLoopContext({}, undefined, undefined, list);
+
+				expect(context.modeRules).toBeUndefined();
+				expect(context.volatileInstructions).toContain('Executions rule.');
+			}
+		});
 	});
 });
 

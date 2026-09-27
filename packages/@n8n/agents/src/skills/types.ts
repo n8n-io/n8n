@@ -196,10 +196,29 @@ export interface RuntimeSkillStateScope {
 	agentName: string;
 }
 
+/**
+ * Active skill IDs for each tool mode of a thread. A mode switch sets aside the
+ * skills that the new mode does not need and restores them when the thread
+ * returns to their mode.
+ */
+export interface RuntimeSkillModeState {
+	/** The mode that the saved active skill IDs belong to. */
+	mode: string;
+	/** Active skill IDs for each mode the thread has used, including `mode`. */
+	modeSkillIds: Record<string, string[]>;
+}
+
 /** Stores active IDs separately from conversation text that memory can compact. */
 export interface RuntimeSkillStateStore {
 	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	/** Omitting `modeState` keeps the stored mode state unchanged. */
+	save(
+		scope: RuntimeSkillStateScope,
+		skillIds: string[],
+		modeState?: RuntimeSkillModeState,
+	): Promise<void>;
+	/** Stores that do not implement this cannot restore skills set aside by a mode switch. */
+	loadModeState?(scope: RuntimeSkillStateScope): Promise<RuntimeSkillModeState | undefined>;
 }
 
 export interface RuntimeSkillValidationError {

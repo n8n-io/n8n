@@ -65,6 +65,7 @@ import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
+import { appendToToolResult } from '../model/tool-result-text';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -229,6 +230,7 @@ export class AgentRuntime {
 				config.skillSource,
 				config.name,
 				config.memory?.skillState,
+				new Set(Object.keys(config.toolModes?.modes ?? {})),
 			);
 		}
 		const tokenCounter = createModelTokenCounter(config.model);
@@ -236,6 +238,10 @@ export class AgentRuntime {
 		this.runId = config.runId ?? generateRunId();
 		const toolModeManager = config.toolModes ? new ToolModeManager(config.toolModes) : undefined;
 		this.toolModeManager = toolModeManager;
+		const activeSkills = this.activeSkills;
+		if (toolModeManager && activeSkills) {
+			toolModeManager.onSwitch(async (mode, anchor) => await activeSkills.enterMode(mode, anchor));
+		}
 		if (config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
@@ -818,6 +824,8 @@ export class AgentRuntime {
 		const { list, options, abortScope, pendingResume } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateToolStateFromList(list);
+		// A run can start in another mode than the one the saved skills belong to.
+		if (this.toolModeManager) await this.activeSkills?.enterMode(this.toolModeManager.mode);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when
 		// relevant; the note is system-message only and never persisted.
@@ -948,6 +956,7 @@ export class AgentRuntime {
 				hasTools,
 				effectiveInstructions,
 				volatileInstructions,
+				modeRules,
 				staticToolCacheName,
 			} = this.context.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
@@ -967,11 +976,14 @@ export class AgentRuntime {
 				supportsSplitSystemMessages(this.config.model),
 				this.activeSkills?.instructions(),
 			);
+			const skillMessages = this.activeSkills?.modelMessages(messages, list) ?? messages;
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
+				messages: modeRules
+					? appendToToolResult(skillMessages, modeRules.toolCallId, modeRules.text)
+					: skillMessages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,

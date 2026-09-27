@@ -57,6 +57,12 @@ const activeSkillStatesSchema = z.array(
 		agentName: z.string(),
 		resourceId: z.string(),
 		skillIds: z.array(z.string()),
+		modeState: z
+			.object({
+				mode: z.string(),
+				modeSkillIds: z.record(z.string(), z.array(z.string())),
+			})
+			.optional(),
 	}),
 );
 
@@ -201,22 +207,37 @@ export class TypeORMAgentMemory
 				(state) => state.resourceId === resourceId && state.agentName === agentName,
 			)?.skillIds;
 		},
-		save: async ({ threadId, resourceId, agentName }, skillIds) => {
+		save: async ({ threadId, resourceId, agentName }, skillIds, modeState) => {
 			const updated = await this.patchThread({
 				threadId,
-				update: (thread) => ({
-					metadata: {
-						...thread.metadata,
-						activeSkillStates: [
-							...activeSkillStates(thread.metadata).filter(
-								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
-							),
-							{ resourceId, agentName, skillIds },
-						],
-					},
-				}),
+				update: (thread) => {
+					const states = activeSkillStates(thread.metadata);
+					const isScope = (state: (typeof states)[number]) =>
+						state.resourceId === resourceId && state.agentName === agentName;
+					const nextModeState = modeState ?? states.find(isScope)?.modeState;
+					return {
+						metadata: {
+							...thread.metadata,
+							activeSkillStates: [
+								...states.filter((state) => !isScope(state)),
+								{
+									resourceId,
+									agentName,
+									skillIds,
+									...(nextModeState ? { modeState: nextModeState } : {}),
+								},
+							],
+						},
+					};
+				},
 			});
 			if (!updated) throw new UnexpectedError('Cannot save active skills for a missing thread');
+		},
+		loadModeState: async ({ threadId, resourceId, agentName }) => {
+			const thread = await this.getThread(threadId);
+			return activeSkillStates(thread?.metadata).find(
+				(state) => state.resourceId === resourceId && state.agentName === agentName,
+			)?.modeState;
 		},
 	};
 

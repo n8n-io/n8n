@@ -427,6 +427,74 @@ describe('active skills', () => {
 		expect(active.instructions()).toBeUndefined();
 	});
 
+	it('anchors skills restored by a mode switch to the pinned switch result', async () => {
+		const modeSource = createRuntimeSkillSource([
+			{
+				id: 'agent-rules',
+				name: 'agent-rules',
+				description: 'Build agents.',
+				instructions: 'Agent rules.',
+				recommendedMode: 'agents',
+			},
+		]);
+		const switchCall = (toolCallId: string, mode: string) => ({
+			id: `${toolCallId}-message`,
+			role: 'assistant' as const,
+			content: [
+				{
+					type: 'tool-call' as const,
+					toolName: 'switch_mode',
+					toolCallId,
+					input: { mode },
+					state: 'resolved' as const,
+					output: { status: 'switched', mode },
+				},
+			],
+		});
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(
+			modeSource,
+			'assistant',
+			memory.skillState,
+			new Set(['agents', 'build']),
+		);
+		const list = new AgentMessageList();
+		list.addResponse([
+			switchCall('to-agents', 'agents'),
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'agent-load',
+						input: { skillId: 'agent-rules' },
+						state: 'resolved',
+						output: { success: true },
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+		await active.enterMode('agents', { toolCallId: 'to-agents' });
+		await active.enterMode('build');
+		expect(list.activeSkillIds).toEqual([]);
+
+		// The switch back masks the history and pins only the switch message.
+		list.addResponse([switchCall('back-to-agents', 'agents')]);
+		await active.enterMode('agents', { toolCallId: 'back-to-agents' });
+		mask(list);
+		list.pinModeSwitch('back-to-agents-message');
+
+		expect(list.activeSkillIds).toEqual(['agent-rules']);
+		expect(active.instructions()).toBeUndefined();
+		const switchResult = active
+			.modelMessages(list.forLlm('').messages, list)
+			.flatMap((message) => (message.role === 'tool' ? message.content : []))
+			.find((part) => part.type === 'tool-result' && part.toolCallId === 'back-to-agents');
+		expect(JSON.stringify(switchResult)).toContain('Agent rules.');
+	});
+
 	it('records concurrent loads without dropping either skill', async () => {
 		const memory = new InMemoryMemory();
 		const active = new ActiveSkills(source, 'assistant', memory.skillState);

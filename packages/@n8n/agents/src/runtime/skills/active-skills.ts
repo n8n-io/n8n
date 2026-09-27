@@ -4,12 +4,15 @@ import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillContent,
+	type RuntimeSkillModeState,
+	type RuntimeSkillRegistry,
 	type RuntimeSkillSource,
 	type RuntimeSkillStateScope,
 	type RuntimeSkillStateStore,
 } from '../../skills/types';
 import type { AgentPersistenceOptions } from '../../types/sdk/agent';
 import type { AgentMessageList } from '../model/message-list';
+import { appendToolResultText } from '../model/tool-result-text';
 
 /**
  * Keeps trusted skill instructions available without invalidating the cached
@@ -41,14 +44,27 @@ export class ActiveSkills {
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
 
+	/** The tool mode that the active skills belong to; undefined until a mode is entered. */
+	private mode?: string;
+
+	/** Active skill IDs for each tool mode of the thread, so a return restores them. */
+	private readonly modeSkillIds = new Map<string, string[]>();
+
+	/**
+	 * @param modeNames Tool modes that the agent configures. A skill whose
+	 * `recommendedMode` is not one of them stays active in every mode.
+	 */
 	constructor(
 		private readonly source: RuntimeSkillSource,
 		private readonly agentName: string,
 		private readonly store?: RuntimeSkillStateStore,
+		private readonly modeNames: ReadonlySet<string> = new Set(),
 	) {}
 
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
+		this.modeSkillIds.clear();
+		this.mode = undefined;
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -57,6 +73,16 @@ export class ActiveSkills {
 					agentName: this.agentName,
 				}
 			: undefined;
+		const modeState =
+			this.scope && this.modeNames.size > 0
+				? await this.store?.loadModeState?.(this.scope)
+				: undefined;
+		if (modeState) {
+			this.mode = modeState.mode;
+			for (const [mode, ids] of Object.entries(modeState.modeSkillIds)) {
+				this.modeSkillIds.set(mode, [...ids]);
+			}
+		}
 		const stored =
 			list.activeSkillIds === undefined && this.scope
 				? await this.store?.load(this.scope)
@@ -97,6 +123,74 @@ export class ActiveSkills {
 			await this.persist();
 		}
 		return skill;
+	}
+
+	/**
+	 * Make the active skills match `mode`. The skills of the mode that is left
+	 * are saved for that mode. Active skills that belong to another mode are
+	 * deactivated. The skills saved for `mode` are activated again. Skills with
+	 * no mode stay active. Returns the IDs that are active afterwards.
+	 *
+	 * `anchor` is the tool call that switched the mode. Every active skill is
+	 * stamped on it. The mode switch can mask the results that activated the
+	 * skills, and the pinned switch result keeps the skills out of `system`.
+	 */
+	async enterMode(mode: string, anchor?: { toolCallId: string }): Promise<string[]> {
+		const list = this.list;
+		if (!list) throw new Error('Active skills must be restored before a mode change');
+		if (this.mode === mode) {
+			this.stampAll(list, anchor);
+			return [...this.loaded.keys()];
+		}
+
+		const previous = this.mode;
+		const current = [...this.loaded.keys()];
+		if (previous !== undefined) {
+			this.modeSkillIds.set(previous, current);
+		} else {
+			// Without a saved mode, set aside each skill under its own mode.
+			for (const id of current) {
+				const skillMode = this.skillMode(id);
+				if (skillMode === undefined || skillMode === mode) continue;
+				this.modeSkillIds.set(skillMode, [...(this.modeSkillIds.get(skillMode) ?? []), id]);
+			}
+		}
+
+		const next = [
+			...new Set([
+				...current.filter((id) => {
+					const skillMode = this.skillMode(id);
+					return skillMode === undefined || skillMode === mode;
+				}),
+				...(this.modeSkillIds.get(mode) ?? []),
+			]),
+		];
+		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
+		const kept = new Map<string, RuntimeSkillContent>();
+		for (const id of next) {
+			if (!registered.has(id)) continue;
+			const skill = this.loaded.get(id) ?? (await this.source.loadSkill(id));
+			if (skill) kept.set(id, skill);
+		}
+		this.loaded.clear();
+		for (const [id, skill] of kept) this.loaded.set(id, skill);
+
+		this.mode = mode;
+		list.activeSkillIds = [...this.loaded.keys()];
+		this.stampAll(list, anchor);
+		await this.persist();
+		return [...this.loaded.keys()];
+	}
+
+	private stampAll(list: AgentMessageList, anchor: { toolCallId: string } | undefined): void {
+		if (!anchor) return;
+		for (const id of this.loaded.keys()) list.stampActivatedSkill(anchor.toolCallId, id);
+	}
+
+	/** The configured tool mode that a skill belongs to; a reference inherits its owner's mode. */
+	private skillMode(skillId: string): string | undefined {
+		const mode = resolveSkillMode(this.source.registry, skillId);
+		return mode !== undefined && this.modeNames.has(mode) ? mode : undefined;
 	}
 
 	toolDependencies(): string[] {
@@ -294,38 +388,37 @@ export class ActiveSkills {
 		const store = this.store;
 		if (!scope || !store) return;
 		const ids = [...(this.list?.activeSkillIds ?? [])];
+		const modeState = this.modeState(ids);
 		// Concurrent tool calls must not overwrite a newer activation with an older set.
-		const save = this.pendingSave.then(async () => await store.save(scope, ids));
+		const save = this.pendingSave.then(async () => await store.save(scope, ids, modeState));
 		this.pendingSave = save.catch(() => undefined);
 		await save;
+	}
+
+	/** The saved mode state, with the current mode's entry set to `activeIds`. */
+	private modeState(activeIds: string[]): RuntimeSkillModeState | undefined {
+		if (this.mode === undefined) return undefined;
+		this.modeSkillIds.set(this.mode, [...activeIds]);
+		return { mode: this.mode, modeSkillIds: Object.fromEntries(this.modeSkillIds) };
 	}
 }
 
 /**
- * Append trusted text parts after a tool result's own output. Text and JSON
- * outputs become content parts so the skill text is a separate block from the
- * (possibly untrusted-wrapped) tool output. Error outputs are left alone.
+ * The `recommendedMode` of a skill, or of the owner of a reference skill.
+ * Returns undefined when neither declares a mode.
  */
-function appendToolResultText(part: ToolResultPart, texts: string[]): ToolResultPart {
-	const extra = texts.map((text) => ({ type: 'text' as const, text }));
-	const { output } = part;
-	switch (output.type) {
-		case 'content':
-			return { ...part, output: { type: 'content', value: [...output.value, ...extra] } };
-		case 'text':
-			return {
-				...part,
-				output: { type: 'content', value: [{ type: 'text', text: output.value }, ...extra] },
-			};
-		case 'json':
-			return {
-				...part,
-				output: {
-					type: 'content',
-					value: [{ type: 'text', text: JSON.stringify(output.value) }, ...extra],
-				},
-			};
-		default:
-			return part;
+export function resolveSkillMode(
+	registry: RuntimeSkillRegistry,
+	skillId: string,
+): string | undefined {
+	const seen = new Set<string>();
+	let id: string | undefined = skillId;
+	while (id !== undefined && !seen.has(id)) {
+		seen.add(id);
+		const entry = registry.skills.find((skill) => skill.id === id);
+		if (!entry) return undefined;
+		if (entry.recommendedMode) return entry.recommendedMode;
+		id = entry.parents?.[0];
 	}
+	return undefined;
 }

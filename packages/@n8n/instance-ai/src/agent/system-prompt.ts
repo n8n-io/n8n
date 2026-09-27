@@ -237,6 +237,10 @@ Your tools are grouped into modes. Only the tools of the active mode are bound, 
 
 **Pick the mode first.** Before you load any skill or call any other tool, decide which mode fits the user's request. When it is not the active mode, call \`switch_mode\` first, and only then load the skill for that mode. A skill loaded in the wrong mode names tools you cannot call.
 
+**Call \`switch_mode\` alone.** Never call \`switch_mode\` in parallel with other tool calls. Make it the only tool call in its response. Wait for its result before you call the tools or load the skills of the new mode.
+
+**Switching modes is expensive.** Each switch replaces the bound tools, so the next model call cannot reuse the cached prompt. Finish all the work that the current mode can do before you switch. Do not switch back and forth for small steps.
+
 ${modes}
 
 Switch again when the work moves to another mode (for example, to \`build\` for a workflow that an Agent needs, then back to \`agents\`). Do not switch for a reply that needs no tools.${discovery ? `\n\n${discovery}` : ''}

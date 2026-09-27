@@ -224,6 +224,7 @@ export type {
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
+	RuntimeSkillModeState,
 	RuntimeSkillSource,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,

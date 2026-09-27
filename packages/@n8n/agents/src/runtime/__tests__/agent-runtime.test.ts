@@ -6534,7 +6534,7 @@ describe('tool systemInstruction merging', () => {
 		expect(afterFirst).not.toContain('Always confirm before using deferred_capability.');
 	});
 
-	it("keeps a mode-scoped tool's systemInstruction out of the cached system message across a mode switch", async () => {
+	it("delivers a mode-scoped tool's systemInstruction on the switch result, not the system prompt", async () => {
 		const coreTool: BuiltTool = {
 			name: 'core_tool',
 			description: 'Core tool',
@@ -6576,20 +6576,26 @@ describe('tool systemInstruction merging', () => {
 		await runtime.generate('switch to mode b');
 
 		const calls = generateText.mock.calls as Array<
-			[{ instructions: Array<{ content: string }> | { content: string } }]
+			[
+				{
+					instructions: Array<{ content: string }> | { content: string };
+					messages: Array<{ role: string; content: unknown }>;
+				},
+			]
 		>;
 		const systemParts = (index: number) => {
 			const system = calls[index][0].instructions;
 			return Array.isArray(system) ? system.map((entry) => entry.content) : [system.content];
 		};
-		const [beforeFirst, ...beforeRest] = systemParts(0);
-		const [afterFirst, ...afterRest] = systemParts(1);
 
-		expect(beforeFirst).toContain('Core rule.');
-		expect(afterFirst).toBe(beforeFirst);
-		expect([beforeFirst, ...beforeRest].join('')).not.toContain('Mode b rule.');
-		expect(afterFirst).not.toContain('Mode b rule.');
-		expect(afterRest.join('')).toContain('Mode b rule.');
+		expect(systemParts(0).join('')).toContain('Core rule.');
+		expect(systemParts(1)).toEqual(systemParts(0));
+		expect(systemParts(1).join('')).not.toContain('Mode b rule.');
+		const switchResult = calls[1][0].messages
+			.filter((message) => message.role === 'tool')
+			.flatMap((message) => message.content as Array<{ toolCallId?: string }>)
+			.find((part) => part.toolCallId === 'tc-switch');
+		expect(JSON.stringify(switchResult)).toContain('Mode b rule.');
 	});
 });
 

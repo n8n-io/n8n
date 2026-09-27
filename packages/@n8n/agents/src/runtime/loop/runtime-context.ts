@@ -113,8 +113,14 @@ export class RuntimeContextBuilder {
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
-		const { instructions: effectiveInstructions, volatileInstructions } =
-			this.composeEffectiveInstructions(allUserTools);
+		const modeSwitchToolCallId = list
+			? this.toolModeManager?.findCurrentModeSwitch(list.llmVisibleMessages())
+			: undefined;
+		const {
+			instructions: effectiveInstructions,
+			volatileInstructions,
+			modeInstructions,
+		} = this.composeEffectiveInstructions(allUserTools, modeSwitchToolCallId !== undefined);
 
 		return {
 			toolMap,
@@ -125,6 +131,10 @@ export class RuntimeContextBuilder {
 				[volatileInstructions, this.toolModeManager?.instructions()]
 					.filter((value): value is string => Boolean(value))
 					.join('\n\n') || undefined,
+			modeRules:
+				modeSwitchToolCallId && modeInstructions
+					? { toolCallId: modeSwitchToolCallId, text: modeInstructions }
+					: undefined,
 			staticToolCacheName: this.getStaticToolCacheName(allUserTools),
 		};
 	}
@@ -272,18 +282,30 @@ export class RuntimeContextBuilder {
 	 *   or changing it on a mode switch, would invalidate the whole prefix
 	 *   (OpenAI's automatic cache, and the Anthropic breakpoint). Sent as the
 	 *   uncached system message instead (see `buildSystemMessages`).
+	 * - `modeInstructions`: fragments from tools bound to the current tool mode,
+	 *   when `anchorModeRules` is set. The runtime appends them to the result of
+	 *   the `switch_mode` call that entered the mode. The system prompt then
+	 *   stays the same in every mode, and a return to a mode whose switch
+	 *   history is masked does not rewrite it.
 	 */
-	private composeEffectiveInstructions(tools: BuiltTool[]): {
+	private composeEffectiveInstructions(
+		tools: BuiltTool[],
+		anchorModeRules: boolean,
+	): {
 		instructions: string;
 		volatileInstructions: string | undefined;
+		modeInstructions: string | undefined;
 	} {
 		const loadedToolNames = new Set(
 			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
 		);
-		const isVolatile = (tool: BuiltTool) =>
-			loadedToolNames.has(tool.name) || (this.toolModeManager?.isModeScoped(tool.name) ?? false);
-		const stableFragments: string[] = [];
-		const volatileFragments: string[] = [];
+		const bucketOf = (tool: BuiltTool): 'stable' | 'volatile' | 'mode' => {
+			if (this.toolModeManager?.isModeScoped(tool.name)) {
+				return anchorModeRules ? 'mode' : 'volatile';
+			}
+			return loadedToolNames.has(tool.name) ? 'volatile' : 'stable';
+		};
+		const fragments = { stable: [] as string[], volatile: [] as string[], mode: [] as string[] };
 		for (const tool of tools) {
 			if (
 				typeof tool.systemInstruction !== 'string' ||
@@ -291,19 +313,19 @@ export class RuntimeContextBuilder {
 			) {
 				continue;
 			}
-			(isVolatile(tool) ? volatileFragments : stableFragments).push(tool.systemInstruction);
+			fragments[bucketOf(tool)].push(tool.systemInstruction);
 		}
 
-		// Define the untrusted-data boundary ahead of the first wrapped result.
-		// Goes in the cached block unless every untrusted tool is volatile,
-		// mirroring the fragment split above.
-		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
-		if (untrustedTools.length > 0) {
-			const target = untrustedTools.some((tool) => !isVolatile(tool))
-				? stableFragments
-				: volatileFragments;
-			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
-		}
+		// Define the untrusted-data boundary ahead of the first wrapped result,
+		// in the earliest bucket that holds an untrusted tool.
+		const untrustedBuckets = new Set(
+			tools.filter((tool) => tool.outputTrust === 'untrusted').map(bucketOf),
+		);
+		const doctrineBucket = (['stable', 'volatile', 'mode'] as const).find((bucket) =>
+			untrustedBuckets.has(bucket),
+		);
+		if (doctrineBucket) fragments[doctrineBucket].unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		const stableFragments = fragments.stable;
 
 		const userInstructions = this.config.instructions;
 		const stableBlock = wrapBuiltInRules(stableFragments);
@@ -315,7 +337,8 @@ export class RuntimeContextBuilder {
 
 		return {
 			instructions,
-			volatileInstructions: wrapBuiltInRules(volatileFragments),
+			volatileInstructions: wrapBuiltInRules(fragments.volatile),
+			modeInstructions: wrapBuiltInRules(fragments.mode),
 		};
 	}
 
