@@ -4,7 +4,6 @@ import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
 import { ExpressionExtensions } from '../src/extensions';
 import {
-	evaluateNatively,
 	isNativelyEvaluable,
 	CALLABLE_METHODS,
 	MAX_RESULT_LENGTH,
@@ -114,8 +113,8 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// join('') is bounded by the elements, not the separator.
 	"={{ $json.item.manyBig.join('') }}",
 	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
-	// Object arguments to string methods: a RegExp value in data would run as
-	// a live pattern here, while the engines never see it as a regex.
+	// Object arguments to string methods coerce on the host where the isolates
+	// see a copy; the engine owns them.
 	"={{ $json.item.name.replace($json.item.re, 'X') }}",
 	'={{ $json.item.name.includes($json.item.re) }}',
 	'={{ $json.item.name.slice($json.item.my_object) }}',
@@ -124,11 +123,6 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	'={{ $json.item.names.includes($json.item.my_object) }}',
 	'={{ $json.item.names.concat($json.item.my_object) }}',
 	'={{ $json.item.names.slice($json.item.my_object) }}',
-	// Sparse arrays: holes do not cross the bridge the way they exist here.
-	'={{ $json.item.sparse }}',
-	'={{ $json.item.sparse.flat() }}',
-	'={{ $json.item.sparse.slice(0) }}',
-	'={{ $json.item.names.concat($json.item.sparse) }}',
 ];
 
 const DECLINED_CORPUS: string[] = [
@@ -223,8 +217,6 @@ describe('Expression - fast native evaluation parity', () => {
 				manyEmpty: new Array<string>(20_000).fill(''),
 				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
 				re: /o/g,
-				// eslint-disable-next-line no-sparse-arrays
-				sparse: [1, , 3] as unknown[],
 			},
 		},
 	});
@@ -330,131 +322,6 @@ describe('Expression - fast native evaluation parity', () => {
 
 		(result as { addresses: { primary: string } }).addresses.primary = 'changed';
 		expect(fresh.json.item.my_object.addresses.primary).toBe('123 Main St');
-	});
-
-	// The interpreter must never run a coercion hook carried in data: the
-	// engines only ever see structured-clone copies, and a hook on the host has
-	// no isolate timeout. Called directly so the engine re-run cannot mask a
-	// call made by the native attempt.
-	describe('coercion hooks on array elements never run natively', () => {
-		let hookCalls = 0;
-		const hooked = { toString: () => ((hookCalls += 1), 'x') };
-		const data = { $json: { rows: [hooked, 'y'] } } as never;
-
-		beforeEach(() => {
-			hookCalls = 0;
-		});
-
-		test.each(["{{ $json.rows.join(',') }}", '{{ $json.rows.toSorted() }}'])(
-			'%s bails to the engine',
-			(expr) => {
-				expect(evaluateNatively(expr, data)).toEqual({ handled: false });
-				expect(hookCalls).toBe(0);
-			},
-		);
-
-		test('an own `every` on the receiver does not bypass the guard', () => {
-			const rows = [hooked, 'y'];
-			Object.defineProperty(rows, 'every', { value: () => true, enumerable: false });
-			const shadowed = { $json: { rows } } as never;
-
-			expect(evaluateNatively("{{ $json.rows.join(',') }}", shadowed)).toEqual({ handled: false });
-			expect(hookCalls).toBe(0);
-		});
-
-		test('an index getter is read once, so it cannot change between check and use', () => {
-			let reads = 0;
-			const rows: unknown[] = ['a', 'b'];
-			Object.defineProperty(rows, 0, {
-				enumerable: true,
-				get: () => (reads++ === 0 ? 'x' : hooked),
-			});
-			const flipping = { $json: { rows } } as never;
-
-			expect(evaluateNatively("{{ $json.rows.join(',') }}", flipping)).toEqual({
-				handled: true,
-				value: 'x,b',
-			});
-			expect(hookCalls).toBe(0);
-		});
-
-		test('an index getter that appends to the array does not extend the copy', () => {
-			const rows: unknown[] = ['a', 'b'];
-			Object.defineProperty(rows, 0, {
-				enumerable: true,
-				get: () => {
-					rows.push('more');
-					return 'x';
-				},
-			});
-			const growing = { $json: { rows } } as never;
-
-			expect(evaluateNatively("{{ $json.rows.join(',') }}", growing)).toEqual({
-				handled: true,
-				value: 'x,b',
-			});
-		});
-
-		test.each([
-			['a function element', () => 1],
-			['a symbol element', Symbol('s')],
-		])('%s hands the array to the engine', (_label, element) => {
-			const nonTransferable = { $json: { rows: [element, 'y'] } } as never;
-
-			expect(evaluateNatively('{{ $json.rows.at(0) }}', nonTransferable)).toEqual({
-				handled: false,
-			});
-			expect(evaluateNatively("x: {{ $json.rows.join('') }}", nonTransferable)).toEqual({
-				handled: false,
-			});
-		});
-
-		test('an own `constructor` with Symbol.species never runs', () => {
-			let speciesCalls = 0;
-			const rows = [1, 2, 3];
-			Object.defineProperty(rows, 'constructor', {
-				enumerable: false,
-				value: {
-					[Symbol.species]: function Hijack() {
-						speciesCalls += 1;
-						return [];
-					},
-				},
-			});
-			const hijacked = { $json: { rows } } as never;
-
-			expect(evaluateNatively('{{ $json.rows.slice(1) }}', hijacked)).toEqual({
-				handled: true,
-				value: [2, 3],
-			});
-			expect(speciesCalls).toBe(0);
-		});
-
-		test('Symbol.isConcatSpreadable on a concat argument is never read', () => {
-			let reads = 0;
-			const extra = ['c'];
-			Object.defineProperty(extra, Symbol.isConcatSpreadable, {
-				get: () => {
-					reads += 1;
-					return true;
-				},
-			});
-			const spreadable = { $json: { rows: ['a'], extra } } as never;
-
-			expect(evaluateNatively('{{ $json.rows.concat($json.extra) }}', spreadable)).toEqual({
-				handled: true,
-				value: ['a', 'c'],
-			});
-			expect(reads).toBe(0);
-		});
-
-		test.each(["{{ $json.rows.includes('y') }}", '{{ $json.rows.indexOf(1) }}'])(
-			'%s does not coerce elements and stays native',
-			(expr) => {
-				expect(evaluateNatively(expr, data)).toEqual({ handled: true, value: expect.anything() });
-				expect(hookCalls).toBe(0);
-			},
-		);
 	});
 
 	// Divergences accepted on purpose, all against the legacy engine only:
