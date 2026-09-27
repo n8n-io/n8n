@@ -1,8 +1,9 @@
 /** Compute per-package scope and dispatch to vitest with the right flags. */
 
 import { spawnSync } from 'node:child_process';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 
+import { toPosix } from './path-utils.js';
 import { computeScope, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
@@ -12,6 +13,46 @@ export interface TestScopedOptions {
 	packageName?: string;
 	affectedPackages?: string[] | null;
 	passthroughArgs: string[];
+	/** True when the run collects coverage (`COVERAGE_ENABLED=true`). */
+	collectCoverage?: boolean;
+}
+
+const COVERABLE_SOURCE = /\.(?:[cm]?[jt]sx?|vue)$/;
+// Mirrors `coverageExcludes` in @n8n/vitest-config: these never count towards coverage.
+const NON_COVERABLE = [
+	/\.(?:test|spec)\.[cm]?[jt]sx?$/,
+	/(?:^|\/)__(?:tests|mocks)__\//,
+	/\.d\.ts$/,
+];
+const GLOB_SPECIAL = /[*?[\]{}()!+@]/g;
+
+/**
+ * Build the vitest coverage flags for a run with a CHANGED_FILES signal.
+ *
+ * Patch coverage needs only the changed lines, so measure only the changed
+ * source files of this package. Istanbul instruments only the included files,
+ * so the rest of the code runs at full speed. V8 coverage slows down all the
+ * code that runs, and the default include (`src/**`) makes vitest also report
+ * every untested file. When the package has no changed source files, coverage
+ * is turned off.
+ */
+export function buildCoverageArgs(
+	changedFiles: string[],
+	packageDir: string,
+	rootDir: string,
+): string[] {
+	const absolutePackageDir = isAbsolute(packageDir) ? packageDir : resolve(rootDir, packageDir);
+	const sources = changedFiles
+		.map((f) => toPosix(relative(absolutePackageDir, resolve(rootDir, f))))
+		.filter((f) => !f.startsWith('../') && !isAbsolute(f))
+		.filter((f) => COVERABLE_SOURCE.test(f) && !NON_COVERABLE.some((p) => p.test(f)));
+
+	if (sources.length === 0) return ['--coverage.enabled=false'];
+	return [
+		'--coverage.provider=istanbul',
+		// vitest reads `include` as globs, so escape characters that would change the match.
+		...sources.map((f) => `--coverage.include=${f.replace(GLOB_SPECIAL, '\\$&')}`),
+	];
 }
 
 /**
@@ -54,7 +95,19 @@ export function runTestScoped(options: TestScopedOptions): number {
 		console.log(`[janitor:test-scoped] scoping to ${scope.files.length} file(s)`);
 	}
 
-	const args = buildRunnerArgs(scope, options.rootDir, options.passthroughArgs);
+	const coverageArgs =
+		options.collectCoverage && options.changedFiles !== null
+			? buildCoverageArgs(options.changedFiles, options.packageDir, options.rootDir)
+			: [];
+	if (coverageArgs.length > 0) {
+		console.log(`[janitor:test-scoped] coverage: ${coverageArgs.join(' ')}`);
+	}
+
+	// Coverage flags go first, so a passthrough flag wins for single-value options.
+	const args = buildRunnerArgs(scope, options.rootDir, [
+		...coverageArgs,
+		...options.passthroughArgs,
+	]);
 	// Pass cwd explicitly so an override via --package-dir is honoured
 	// (otherwise spawnSync inherits the caller's cwd and vitest would
 	// resolve config + tests from the wrong project).

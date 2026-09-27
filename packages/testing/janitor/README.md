@@ -248,6 +248,14 @@ plus setup files at `<pkg>/vitest.setup.*` and
 `<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 
+**Coverage on PR runs:** when `COVERAGE_ENABLED=true` and `CHANGED_FILES` is
+set, `test-scoped` adds `--coverage.provider=istanbul` and one
+`--coverage.include` for each changed source file in the package. Patch
+coverage needs only the changed lines. Istanbul instruments only those files,
+so the rest of the code runs at full speed. V8 coverage slows down all code
+that runs. When the package has no changed source files, coverage is off. With
+no change signal (master, nightly), the vitest config decides coverage.
+
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.
