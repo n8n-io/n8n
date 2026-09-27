@@ -112,6 +112,11 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	"={{ $json.item.name.replaceAll('o', '$`') }}",
 	// join('') is bounded by the elements, not the separator.
 	"={{ $json.item.manyBig.join('') }}",
+	// Argument defaults: a missing replacement inserts "undefined", a null
+	// separator joins with "null".
+	"={{ $json.item.big.replaceAll('y') }}",
+	"={{ $json.item.bigger.replaceAll('y') }}",
+	'={{ $json.item.manyEmpty.join(null) }}',
 	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
 	// Object arguments to string methods coerce on the host where the isolates
 	// see a copy; the engine owns them.
@@ -214,6 +219,7 @@ describe('Expression - fast native evaluation parity', () => {
 				names: ['bar', 'baz'],
 				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
 				big: 'y'.repeat(20_000),
+				bigger: 'y'.repeat(150_000),
 				manyEmpty: new Array<string>(20_000).fill(''),
 				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
 				re: /o/g,
@@ -326,7 +332,8 @@ describe('Expression - fast native evaluation parity', () => {
 
 	// Divergences accepted on purpose, all against the legacy engine only:
 	// native evaluation sides with the vm/quickjs engines, which the parity
-	// assertions below confirm. Both need data only a Code node can produce.
+	// assertions below confirm. Both need data no node should produce; the
+	// engine does not enforce that yet, so the divergence is pinned.
 	// Pinned so a change in either direction is visible.
 	describe('known divergences from the legacy engine on non-JSON data', () => {
 		const exotic = {

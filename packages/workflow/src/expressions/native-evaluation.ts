@@ -444,7 +444,8 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 	let upperBound = 0;
 
 	if (method === 'replaceAll' && typeof receiver === 'string') {
-		const replacement = String(args[1] ?? '');
+		// A missing replacement inserts the string "undefined".
+		const replacement = args.length < 2 ? 'undefined' : String(args[1]);
 
 		// `$&`, `$\``, `$'` splice match context into every replacement, so
 		// the result is not bounded by the replacement's length.
@@ -452,7 +453,8 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 
 		upperBound = (receiver.length + 1) * (replacement.length + 1);
 	} else if (method === 'join' && Array.isArray(receiver)) {
-		const separator = String(args[0] ?? ',');
+		// Only an undefined separator means ","; null joins with "null".
+		const separator = args[0] === undefined ? ',' : String(args[0]);
 		upperBound = separator.length * Math.max(receiver.length - 1, 0);
 
 		for (const element of receiver) {
