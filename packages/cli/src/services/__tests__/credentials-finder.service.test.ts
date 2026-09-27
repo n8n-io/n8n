@@ -6,6 +6,7 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type Project,
 	type Role,
 	type User,
 } from '@n8n/db';
@@ -1002,6 +1003,95 @@ describe('CredentialsFinderService', () => {
 			);
 
 			expect(result).toEqual(new Set());
+		});
+	});
+
+	describe('findUnusableCredentialsForUser', () => {
+		const owner = mock<User>({ id: 'owner', role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ id: 'member', role: GLOBAL_MEMBER_ROLE });
+
+		// A see-only instance role holds list and read but not use, so it must not
+		// short-circuit the per-credential question the way an Owner does.
+		const viewOnlyRole = {
+			slug: 'global:cred-viewer',
+			displayName: 'Credential viewer',
+			description: null,
+			systemRole: false,
+			roleType: 'global',
+			scopes: ['credential:list', 'credential:read'].map((scope) => ({
+				slug: scope,
+				displayName: scope,
+				description: null,
+			})),
+		} as Role;
+
+		it('reads nothing for an empty list', async () => {
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, []),
+			).resolves.toEqual([]);
+			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('names what the user cannot use, with the project to ask', async () => {
+			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: "Alice's Gmail" },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+				new Map([['cred-1', ownerProject]]),
+			);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: "Alice's Gmail", exists: true, ownerProject }]);
+		});
+
+		it('returns nothing when the user can use every credential', async () => {
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
+			).resolves.toEqual([]);
+			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
+		});
+
+		it('asks nothing of a user who may use any credential', async () => {
+			credentialsRepository.findExistingIds.mockResolvedValueOnce(['cred-1']);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1']),
+			).resolves.toEqual([]);
+			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('still reports a deleted credential to a user who may use any credential', async () => {
+			credentialsRepository.findExistingIds.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['gone']),
+			).resolves.toEqual([{ id: 'gone', name: 'gone', exists: false, ownerProject: null }]);
+		});
+
+		it('does not short-circuit for a role that can see but not use', async () => {
+			const viewer = mock<User>({ id: 'viewer', role: viewOnlyRole });
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Team Gmail' },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(viewer, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject: null }]);
+			expect(sharedCredentialsRepository.find).toHaveBeenCalled();
 		});
 	});
 
