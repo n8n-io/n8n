@@ -26,6 +26,12 @@ export class WebhookResponder {
 		this.responded = true;
 	}
 
+	/** Reports that another party answered the request. */
+	respondWithNoResponse(): void {
+		this.sendResponse(null, { noWebhookResponse: true });
+		this.responded = true;
+	}
+
 	/** Sends an error response and records that the request has a response. */
 	respondWithError(error: Error): void {
 		this.sendResponse(error, {});
