@@ -3376,6 +3376,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       '@typescript/native':
         specifier: catalog:typescript-tooling
         version: typescript@7.0.2
@@ -7627,6 +7630,9 @@ importers:
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../@n8n/vitest-config
       glob:
         specifier: 10.5.0
         version: 10.5.0

@@ -35,6 +35,9 @@ on:
         type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
+  # With a change signal, the shared vitest configs measure only the changed files.
+  # Turbo hashes this value, so a scoped coverage result never replays in a full run.
+  COVERAGE_SCOPE: ${{ inputs.changedFiles != '' && 'changed-files' || 'all' }}
 
 jobs:
   unit-test-backend:
