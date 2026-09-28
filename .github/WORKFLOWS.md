@@ -960,7 +960,7 @@ from the master ruleset, and delete this section (tracked in DEVP-887).
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
-**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads
+**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads. The PR `install-and-build` job uses it: every other job waits for it, and a cold build uses all 4 vCPUs of a smaller runner.
 
 ### Runner Provider Toggle
 
