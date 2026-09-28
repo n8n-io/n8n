@@ -637,7 +637,7 @@ length.doc = {
 	hidden: true,
 	description: 'Returns the character count of a string.',
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string',
+	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringlength',
 };
 
 isDomain.doc = {

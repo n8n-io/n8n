@@ -38,6 +38,13 @@ export class OpenAiAssistant implements INodeType {
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/assistant-operations',
+					},
+				],
+			},
 		},
 		inputs: [
 			{ type: NodeConnectionTypes.Main },
