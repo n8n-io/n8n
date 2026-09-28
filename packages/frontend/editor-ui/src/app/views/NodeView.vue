@@ -612,7 +612,7 @@ async function onCopyNodes(ids: string[]) {
 			return;
 		}
 
-		if (!(await copyNodes(ids))) return;
+		await copyNodes(ids);
 
 		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 	};

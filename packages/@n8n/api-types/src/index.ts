@@ -152,6 +152,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
 	credentialTypePolicyIdParamSchema,
@@ -386,6 +387,8 @@ export {
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
+	agentActivitySchema,
+	agentChangeSchema,
 	agentCompletedPayloadSchema,
 	textDeltaPayloadSchema,
 	reasoningDeltaPayloadSchema,
@@ -567,6 +570,8 @@ export type {
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
+	InstanceAiAgentActivity,
+	InstanceAiAgentChange,
 	TaskItem,
 	TaskList,
 	InstanceAiRunStartEvent,

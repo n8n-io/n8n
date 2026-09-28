@@ -147,6 +147,11 @@ export type PubSubCommandMap = {
 		userId: string;
 	};
 
+	'relay-agent-message-queue-update': {
+		data: PushPayload<'agentMessageQueueUpdated'>;
+		userIds: string[];
+	};
+
 	'relay-agent-background-tasks-update': {
 		data: PushPayload<'agentBackgroundTasksUpdated'>;
 		userIds: string[];

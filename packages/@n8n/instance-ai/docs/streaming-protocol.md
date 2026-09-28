@@ -217,7 +217,7 @@ The orchestrator has started a child or embedded specialist agent.
     "role": "agent-builder",
     "tools": [],
     "kind": "agent-builder",
-    "title": "Building agent"
+    "activity": "exploring"
   }
 }
 ```
@@ -237,12 +237,14 @@ A child or embedded specialist agent has finished its work.
   "agentId": "agent-002",
   "payload": {
     "role": "agent-builder",
-    "result": "Updated the support agent"
+    "result": "Explained the support agent configuration",
+    "agentChange": "none"
   }
 }
 ```
 
-The frontend marks the child agent node as completed.
+The frontend marks the child agent node as completed. For Agent Builder runs,
+`agentChange` states if the run created, updated, or only inspected the Agent.
 
 ### `confirmation-request`
 

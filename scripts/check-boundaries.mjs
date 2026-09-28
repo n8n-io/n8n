@@ -6,8 +6,10 @@
  * committed baseline — new code stays clean, the backlog burns down over time.
  *
  * Mirrors the incremental-cleanup approach already used by the Playwright
- * janitor (`.janitor-baseline.json`). Baseline is updated manually after real
- * fixes, never automatically.
+ * janitor (`.janitor-baseline.json`). The nightly workflow
+ * `util-update-boundaries-baseline.yml` lowers the baseline when master has
+ * fewer issues. Nothing raises it automatically: a count above the baseline
+ * fails the nightly instead.
  *
  * The baseline is the POST-BUILD count: CI's lint job builds dependencies before
  * this check runs, and built dist trees surface ~8 extra issues that a cold
