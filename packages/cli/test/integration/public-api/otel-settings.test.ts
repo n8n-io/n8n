@@ -489,7 +489,9 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 
 		it('rejects an unknown field with 400', async () => {
-			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -528,7 +530,9 @@ describe('OpenTelemetry settings in Public API', () => {
 
 		it('rejects with 403 when the API key lacks the otel:manage scope', async () => {
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
-			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)

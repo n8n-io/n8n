@@ -13,12 +13,7 @@ import {
 import type { Response } from 'express';
 
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
-import { OtelService, type OtelTestTraceResult } from '@/modules/otel/otel.service';
-
-const toOtelTestTracePublicDto = (result: OtelTestTraceResult): OtelTestTraceResultPublicDto => ({
-	success: result.success,
-	...(!result.success ? { error: result.error } : {}),
-});
+import { OtelService } from '@/modules/otel/otel.service';
 
 @PublicApiController('/settings/otel')
 export class OtelPublicController {
@@ -41,7 +36,6 @@ export class OtelPublicController {
 		@Body body: OtelTestTraceRequestPublicDto,
 	): Promise<OtelTestTraceResultPublicDto> {
 		const connection = this.otelSettingsService.resolveTestConnection(body);
-		const result = await this.otelService.sendTestTrace(connection);
-		return toOtelTestTracePublicDto(result);
+		return await this.otelService.sendTestTrace(connection);
 	}
 }
