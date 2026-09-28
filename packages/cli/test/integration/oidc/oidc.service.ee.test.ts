@@ -27,6 +27,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { registerSsoProvisioningHandler } from '@/modules/provisioning.ee/register';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { JwtService } from '@/services/jwt.service';
@@ -35,6 +36,8 @@ import { createUser } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();
+	// The provisioning module registers this on init, which tests don't run.
+	registerSsoProvisioningHandler();
 });
 
 afterAll(async () => {
