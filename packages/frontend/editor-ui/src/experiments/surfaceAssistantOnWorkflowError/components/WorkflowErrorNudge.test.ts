@@ -11,6 +11,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import {
+	dismissWorkflowErrorNudge,
 	resetSurfaceAssistantOnWorkflowError,
 	useSurfaceAssistantOnWorkflowError,
 	WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS,
@@ -51,8 +52,8 @@ async function showCta(assistantEnabled = true, workflowId = WORKFLOW_ID) {
 	appRoot = document.createElement('div');
 	appRoot.id = 'n8n-app';
 	appRoot.innerHTML =
-		'<div class="el-notification content-toast workflow-error-nudge-toast"><div class="el-notification__group"></div></div>' +
-		'<div class="el-notification content-toast"><div class="el-notification__group"></div></div>';
+		'<div class="el-notification content-toast workflow-error-nudge-toast" style="bottom: 16px"><div class="el-notification__group"></div></div>' +
+		'<div class="el-notification content-toast" style="bottom: 72px"><div class="el-notification__group"></div></div>';
 	document.body.append(appRoot);
 
 	unmount = renderComponent({ pinia: createTestingPinia() }).unmount;
@@ -113,6 +114,43 @@ describe('WorkflowErrorNudge', () => {
 		);
 	});
 
+	it('restacks the toasts with the height of the mounted button', async () => {
+		const TOAST_HEIGHT_PX = 40;
+		const BUTTON_HEIGHT_PX = 40;
+		const offsetHeight = vi
+			.spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+			.mockImplementation(function (this: HTMLElement) {
+				const hasButton = this.querySelector('[data-test-id="workflow-error-nudge-action"]');
+				return hasButton ? TOAST_HEIGHT_PX + BUTTON_HEIGHT_PX : TOAST_HEIGHT_PX;
+			});
+
+		await showCta();
+
+		const toastAbove = appRoot?.querySelector<HTMLElement>(
+			'.el-notification:not(.workflow-error-nudge-toast)',
+		);
+		expect(toastAbove?.style.bottom).toBe(`${16 + TOAST_HEIGHT_PX + BUTTON_HEIGHT_PX + 16}px`);
+		offsetHeight.mockRestore();
+	});
+
+	it('hides the canvas hint when the nudge is dismissed while the button is hovered', async () => {
+		const canvasButton = document.createElement('button');
+		canvasButton.dataset.testId = 'instance-ai-canvas-action-button';
+		document.body.append(canvasButton);
+		const button = await showCtaButton();
+
+		await userEvent.hover(button);
+		expect(
+			document.querySelector('[data-test-id="workflow-error-nudge-canvas-hint"]'),
+		).not.toBeNull();
+
+		dismissWorkflowErrorNudge();
+		await nextTick();
+
+		expect(document.querySelector('[data-test-id="workflow-error-nudge-canvas-hint"]')).toBeNull();
+		canvasButton.remove();
+	});
+
 	it('does not inject the button when the error belongs to another workflow', async () => {
 		const group = await showCta(true, 'other-workflow');
 
@@ -131,6 +169,18 @@ describe('WorkflowErrorNudge', () => {
 		);
 		expect(openWorkflow).toHaveBeenCalledWith('workflow_error_nudge');
 		expect(push).not.toHaveBeenCalled();
+	});
+
+	it('reports the arm the nudge was shown under, even if the flag changes before the click', async () => {
+		const button = await showCtaButton(true);
+		mockedStore(usePostHog).getVariant.mockReturnValue('control');
+
+		await userEvent.click(button);
+
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT,
+			expect.objectContaining({ variant: 'variant' }),
+		);
 	});
 
 	it('opens Assistant settings and sends telemetry when Assistant is disabled', async () => {

@@ -15,11 +15,18 @@ export const WORKFLOW_ERROR_NUDGE_BORDER_PASS_MS = 800;
 export const WORKFLOW_ERROR_NUDGE_TOAST_CLASS = 'workflow-error-nudge-toast';
 export const WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS = `content-toast ${WORKFLOW_ERROR_NUDGE_TOAST_CLASS}`;
 
+export type WorkflowErrorNudgeVariant = (typeof SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT)[
+	| 'control'
+	| 'variant'];
+
 let lastTriggeredExecutionId: string | undefined;
 let showNudgeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const isWorkflowErrorNudgeVisible = ref(false);
 export const workflowErrorNudgeWorkflowId = ref<string | undefined>();
+export const workflowErrorNudgeVariant = ref<WorkflowErrorNudgeVariant>(
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.control,
+);
 
 function clearShowNudgeTimer() {
 	if (showNudgeTimer === undefined) return;
@@ -41,6 +48,7 @@ export function releaseWorkflowErrorNudge(executionId: string) {
 export function resetSurfaceAssistantOnWorkflowError() {
 	lastTriggeredExecutionId = undefined;
 	workflowErrorNudgeWorkflowId.value = undefined;
+	workflowErrorNudgeVariant.value = SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.control;
 	clearShowNudgeTimer();
 	isWorkflowErrorNudgeVisible.value = false;
 }
@@ -90,6 +98,7 @@ export function useSurfaceAssistantOnWorkflowError() {
 
 		lastTriggeredExecutionId = executionId;
 		workflowErrorNudgeWorkflowId.value = workflowId;
+		workflowErrorNudgeVariant.value = SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.variant;
 		clearShowNudgeTimer();
 		showNudgeTimer = setTimeout(() => {
 			showNudgeTimer = undefined;

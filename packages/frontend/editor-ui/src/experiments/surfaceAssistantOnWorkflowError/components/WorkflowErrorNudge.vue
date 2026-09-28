@@ -4,7 +4,7 @@
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useInstanceAiHandoffCapability } from '@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability';
@@ -14,6 +14,7 @@ import {
 	WORKFLOW_ERROR_NUDGE_TOAST_CLASS,
 	dismissWorkflowErrorNudge,
 	isWorkflowErrorNudgeVisible,
+	workflowErrorNudgeVariant,
 	workflowErrorNudgeWorkflowId,
 } from '../composables/useSurfaceAssistantOnWorkflowError';
 import { buildNudgeOutline, type NudgeOutline } from '../workflowErrorNudgeOutline';
@@ -159,8 +160,8 @@ function syncEmbedHost() {
 	const host = document.createElement('div');
 	group.append(host);
 	embedHost.value = host;
-	restackContentToasts(contentToasts(root));
-	trackFixWithAssistantNudgeViewed();
+	void nextTick(() => restackContentToasts(contentToasts(root)));
+	trackFixWithAssistantNudgeViewed(workflowErrorNudgeVariant.value);
 }
 
 function startEmbedded() {
@@ -177,6 +178,7 @@ function stopTracking() {
 	mutationObserver = undefined;
 	stopCardOutline();
 	removeEmbedHost();
+	previewHovered.value = false;
 }
 
 function isAssistantEnabled(): boolean {
@@ -193,7 +195,7 @@ async function onFixWithAssistant() {
 			};
 	if (!open) return;
 
-	trackErrorToastFixWithAssistantClick(assistantEnabled);
+	trackErrorToastFixWithAssistantClick(workflowErrorNudgeVariant.value, assistantEnabled);
 
 	opening.value = true;
 	try {

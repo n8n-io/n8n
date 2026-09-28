@@ -3,35 +3,24 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT } from '@/app/constants/experiments';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
+import type { WorkflowErrorNudgeVariant } from './composables/useSurfaceAssistantOnWorkflowError';
 
-function experimentVariant() {
-	const currentVariant = usePostHog().getVariant(
-		SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
-	);
-	return currentVariant === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.variant
-		? SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.variant
-		: SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.control;
-}
-
-export function trackFixWithAssistantNudgeViewed() {
+export function trackFixWithAssistantNudgeViewed(variant: WorkflowErrorNudgeVariant) {
 	useTelemetry().track(
 		TELEMETRY_EVENT.INSTANCE_AI.USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE,
-		getExperimentTelemetryPayload(
-			SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT,
-			experimentVariant(),
-		),
+		getExperimentTelemetryPayload(SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, variant),
 	);
 }
 
-export function trackErrorToastFixWithAssistantClick(assistantEnabled: boolean) {
+export function trackErrorToastFixWithAssistantClick(
+	variant: WorkflowErrorNudgeVariant,
+	assistantEnabled: boolean,
+) {
 	useTelemetry().track(
 		TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT,
-		getExperimentTelemetryPayload(
-			SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT,
-			experimentVariant(),
-			{ assistant_enabled: assistantEnabled },
-		),
+		getExperimentTelemetryPayload(SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, variant, {
+			assistant_enabled: assistantEnabled,
+		}),
 	);
 }

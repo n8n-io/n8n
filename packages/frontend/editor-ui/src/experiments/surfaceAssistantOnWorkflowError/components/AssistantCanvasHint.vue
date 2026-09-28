@@ -44,7 +44,7 @@ onBeforeUnmount(() => {
 			:style="{ top: `${hintTopPx}px`, right: `${hintRightPx}px` }"
 		>
 			<div :class="$style.card">
-				<N8nIcon icon="info" color="--color--neutral-white" size="large" :class="$style.icon" />
+				<N8nIcon icon="info" color="text-base" size="large" :class="$style.icon" />
 				<N8nText tag="p" size="medium" :class="$style.text">
 					{{ i18n.baseText('experiments.surfaceAssistantOnWorkflowError.nudge.canvasHint') }}
 				</N8nText>
