@@ -247,4 +247,8 @@ export const workflowDetailsOutputSchema = z.object({
 		.describe(
 			"Trigger info for the published (active) version, which production executions via execute_workflow run. Only present when it differs from the draft's triggerInfo.",
 		),
+	mcpAccessNotice: z
+		.string()
+		.optional()
+		.describe('How to enable MCP access for this workflow. Present when MCP access is disabled.'),
 });

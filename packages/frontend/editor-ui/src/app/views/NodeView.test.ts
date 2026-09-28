@@ -15,6 +15,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
 import { VIEWS } from '../constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants/modals';
+import { useUIStore } from '../stores/ui.store';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -114,6 +116,22 @@ describe('NodeView', () => {
 			},
 		});
 	}
+
+	it('opens the MCP setting from a deep link and keeps other query parameters', async () => {
+		routeMock.query = { settings: 'mcp', source: 'external' };
+
+		renderNodeView();
+
+		await waitFor(() =>
+			expect(useUIStore().modalsById[WORKFLOW_SETTINGS_MODAL_KEY]).toMatchObject({
+				open: true,
+				data: { focus: 'mcp' },
+			}),
+		);
+		expect(routerMock.replace).toHaveBeenCalledWith({
+			query: { settings: undefined, source: 'external' },
+		});
+	});
 
 	describe('Trigger node selection', () => {
 		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });

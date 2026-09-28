@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
+import { UrlService } from '@/services/url.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -57,6 +58,11 @@ describe('getSdkReferenceHint', () => {
 
 describe('getMcpWorkflow', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
+	beforeEach(() => {
+		mockInstance(UrlService, {
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com/n8n'),
+		});
+	});
 
 	describe('permission checks', () => {
 		test('throws generic error when workflow not found (does not reveal if workflow exists)', async () => {
@@ -205,6 +211,46 @@ describe('getMcpWorkflow', () => {
 			).rejects.toMatchObject({
 				reason: 'not_available_in_mcp',
 			});
+		});
+
+		test('links to the workflow MCP setting only when the user can read the workflow', async () => {
+			const workflow = createWorkflow({
+				id: 'wf / 1',
+				settings: { availableInMCP: false },
+			});
+			const findWorkflowForUser = vi.fn().mockResolvedValueOnce(workflow).mockResolvedValue(null);
+			const workflowFinderService = mockInstance(WorkflowFinderService, { findWorkflowForUser });
+
+			await expect(
+				getMcpWorkflow('wf / 1', user, ['workflow:execute'], workflowFinderService),
+			).rejects.toThrow('https://n8n.example.com/n8n/workflow/wf%20%2F%201?settings=mcp');
+
+			await expect(
+				getMcpWorkflow('wf / 1', user, ['workflow:execute'], workflowFinderService),
+			).rejects.toThrow("Workflow not found or you don't have permission to access it.");
+		});
+
+		test('allows read-only details while keeping permission and archive checks', async () => {
+			const workflow = createWorkflow({ settings: { availableInMCP: false } });
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, { findWorkflowForUser });
+
+			await expect(
+				getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService, {
+					allowUnavailableInMcp: true,
+					includeTags: true,
+				}),
+			).resolves.toBe(workflow);
+			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:read'], {
+				includeTags: true,
+			});
+
+			findWorkflowForUser.mockResolvedValueOnce(createWorkflow({ isArchived: true }));
+			await expect(
+				getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService, {
+					allowUnavailableInMcp: true,
+				}),
+			).rejects.toMatchObject({ reason: 'workflow_archived' });
 		});
 	});
 

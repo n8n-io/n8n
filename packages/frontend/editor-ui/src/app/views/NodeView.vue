@@ -408,6 +408,17 @@ function initializeRoute() {
 	});
 }
 
+function openWorkflowSettingsFromRoute() {
+	if (!route.query.settings) return;
+
+	if (route.query.settings === 'mcp') {
+		uiStore.openModalWithData({ name: WORKFLOW_SETTINGS_MODAL_KEY, data: { focus: 'mcp' } });
+	} else {
+		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	}
+	void router.replace({ query: { ...route.query, settings: undefined } });
+}
+
 function updateNodesIssues() {
 	nodeHelpers.updateNodesInputIssues();
 	nodeHelpers.updateNodesCredentialsIssues();
@@ -1995,11 +2006,7 @@ onMounted(async () => {
 
 	try {
 		initializeRoute();
-
-		if (route.query.settings) {
-			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			void router.replace({ query: { settings: undefined } });
-		}
+		openWorkflowSettingsFromRoute();
 	} finally {
 		isLoading.value = false;
 
@@ -2026,6 +2033,8 @@ onMounted(async () => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
+
+watch(() => route.query.settings, openWorkflowSettingsFromRoute);
 
 onBeforeUnmount(() => {
 	isUnmounted = true;

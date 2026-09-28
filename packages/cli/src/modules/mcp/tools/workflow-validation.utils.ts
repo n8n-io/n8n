@@ -1,6 +1,8 @@
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
+import { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowAccessError } from '../mcp.errors';
@@ -41,7 +43,16 @@ export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
 	includeTags?: boolean;
 	includeParentFolder?: boolean;
+	allowUnavailableInMcp?: boolean;
 };
+
+export function workflowMcpSettingsUrl(workflowId: string): string {
+	return `${Container.get(UrlService).getInstanceBaseUrl()}/workflow/${encodeURIComponent(workflowId)}?settings=mcp`;
+}
+
+export function workflowMcpAvailabilityMessage(workflowId: string): string {
+	return `Workflow is not available in MCP. Enable MCP access in the workflow settings: ${workflowMcpSettingsUrl(workflowId)}`;
+}
 
 /**
  * Validates an already-fetched workflow for MCP operations: permission
@@ -51,7 +62,7 @@ export type GetMcpWorkflowOptions = {
  */
 export function validateMcpWorkflow<
 	T extends Pick<FoundWorkflow, 'id' | 'isArchived' | 'settings'>,
->(workflow: T | null | undefined): T {
+>(workflow: T | null | undefined, allowUnavailableInMcp = false): T {
 	if (!workflow) {
 		throw new WorkflowAccessError(
 			"Workflow not found or you don't have permission to access it.",
@@ -66,9 +77,9 @@ export function validateMcpWorkflow<
 		);
 	}
 
-	if (!workflow.settings?.availableInMCP) {
+	if (!allowUnavailableInMcp && !workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
+			workflowMcpAvailabilityMessage(workflow.id),
 			'not_available_in_mcp',
 		);
 	}
@@ -89,12 +100,13 @@ export async function getMcpWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	options?: GetMcpWorkflowOptions,
 ): Promise<FoundWorkflow> {
+	const { allowUnavailableInMcp, ...finderOptions } = options ?? {};
 	const workflow = await workflowFinderService.findWorkflowForUser(
 		workflowId,
 		user,
 		scopes,
-		options ?? {},
+		finderOptions,
 	);
 
-	return validateMcpWorkflow(workflow);
+	return validateMcpWorkflow(workflow, allowUnavailableInMcp);
 }
