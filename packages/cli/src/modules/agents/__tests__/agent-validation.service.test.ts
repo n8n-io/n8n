@@ -3,6 +3,7 @@ import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { resolveToolNodeType } from '@/node-execution/resolve-tool-node-type';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -14,6 +15,10 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentPolicyService } from '../agent-policy.service';
+
+vi.mock('@/node-execution/resolve-tool-node-type', () => ({
+	resolveToolNodeType: vi.fn((nodeType: string) => nodeType),
+}));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -77,7 +82,7 @@ function makeService() {
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
 	const agentPolicyService = mock<AgentPolicyService>();
-	agentPolicyService.evaluatePublish.mockResolvedValue([]);
+	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -447,6 +452,10 @@ describe('AgentValidationService — structured issues', () => {
 			subject,
 		});
 
+		beforeEach(() => {
+			vi.mocked(resolveToolNodeType).mockImplementation((nodeType) => nodeType);
+		});
+
 		function setUp() {
 			const setup = makeService();
 			setup.nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -465,10 +474,12 @@ describe('AgentValidationService — structured issues', () => {
 
 		it('points a blocked node type and a blocked credential type at the tool that uses them', async () => {
 			const { service, agentPolicyService } = setUp();
-			agentPolicyService.evaluatePublish.mockResolvedValue([
-				blockedBy('nodeType', 'n8n-nodes-base.slack'),
-				blockedBy('credentialType', 'slackApi'),
-			]);
+			agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [
+					blockedBy('nodeType', 'n8n-nodes-base.slack'),
+					blockedBy('credentialType', 'slackApi'),
+				],
+			});
 
 			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
 
@@ -497,13 +508,83 @@ describe('AgentValidationService — structured issues', () => {
 
 		it('ignores a violation about something no tool uses', async () => {
 			const { service, agentPolicyService } = setUp();
-			agentPolicyService.evaluatePublish.mockResolvedValue([
-				blockedBy('nodeType', 'n8n-nodes-base.code'),
-			]);
+			agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [blockedBy('nodeType', 'n8n-nodes-base.code')],
+			});
 
 			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
 
 			expect(result.issues).toEqual([]);
+		});
+
+		it('points a violation on the `…Tool` variant at the tool that runs as it', async () => {
+			const { service, agentPolicyService } = setUp();
+			vi.mocked(resolveToolNodeType).mockImplementation((nodeType) => `${nodeType}Tool`);
+			agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [blockedBy('nodeType', 'n8n-nodes-base.slackTool')],
+			});
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.issues).toEqual([
+				expect.objectContaining({ path: 'tools.0.node.nodeType', reason: 'blocked_by_policy' }),
+			]);
+		});
+
+		it('points a violation inside an embedded inline agent at the tool that embeds it', async () => {
+			const setup = setUp();
+			const messageAnAgentTool = {
+				type: 'node' as const,
+				name: 'ask_helper',
+				node: {
+					nodeType: 'n8n-nodes-base.messageAnAgent',
+					nodeTypeVersion: 2,
+					nodeParameters: {
+						agentSource: 'inline',
+						inlineAgent: { config: { tools: [slackTool] } },
+					},
+				},
+			};
+			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, tools: [messageAnAgentTool] }),
+			);
+			setup.agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [blockedBy('nodeType', 'n8n-nodes-base.slack')],
+			});
+
+			const result = await setup.service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+			);
+
+			expect(result.issues).toContainEqual(
+				expect.objectContaining({
+					path: 'tools.0.node.nodeParameters.inlineAgent',
+					capability: { kind: 'tool', id: 'ask_helper', index: 0, toolType: 'node' },
+					reason: 'blocked_by_policy',
+				}),
+			);
+		});
+
+		it('reports a policy check that failed to run instead of a valid result', async () => {
+			const { service, agentPolicyService } = setUp();
+			agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [],
+				checkErrors: [{ checkId: 'node-type-availability', correlationId: 'corr-1' }],
+			});
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.status).toBe('invalid');
+			expect(result.issues).toEqual([
+				{
+					code: 'invalid_value',
+					path: 'tools',
+					capability: { kind: 'tool' },
+					reason: 'policy_check_failed',
+				},
+			]);
 		});
 
 		// A blocked tool fails on its own at run time; it must not refuse the whole chat.

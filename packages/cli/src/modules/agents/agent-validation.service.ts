@@ -26,12 +26,14 @@ import { Service } from '@n8n/di';
 import {
 	isMcpOAuth2Authentication,
 	NodeHelpers,
+	type INode,
 	type INodeParameters,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { toPolicedNodes } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -78,18 +80,23 @@ function issue(
 
 /** Where on a node tool a violation points, or `undefined` when it is about something else. */
 function policyIssuePath(
-	tool: AgentJsonNodeToolConfig,
+	policedNodes: INode[],
 	index: number,
 	{ subject, subjectType }: PolicyViolation,
 ): string | undefined {
 	if (subject === undefined) return undefined;
-	if (subjectType === 'nodeType' && subject === tool.node.nodeType) {
-		return `tools.${index}.node.nodeType`;
+	// The tool's own node comes first; any after it belong to an inline agent the tool embeds.
+	const [own, ...embedded] = policedNodes;
+	const matches = (node: INode) =>
+		(subjectType === 'nodeType' && node.type === subject) ||
+		(subjectType === 'credentialType' && subject in (node.credentials ?? {}));
+
+	if (own && matches(own)) {
+		return subjectType === 'nodeType'
+			? `tools.${index}.node.nodeType`
+			: `tools.${index}.node.credentials.${subject}`;
 	}
-	if (subjectType === 'credentialType' && subject in (tool.node.credentials ?? {})) {
-		return `tools.${index}.node.credentials.${subject}`;
-	}
-	return undefined;
+	return embedded.some(matches) ? `tools.${index}.node.nodeParameters.inlineAgent` : undefined;
 }
 
 function agentIssue(
@@ -326,19 +333,24 @@ export class AgentValidationService {
 		ctx: ConfigurationValidationContext,
 		issues: AgentConfigValidationIssue[],
 	) {
-		const violations = await this.agentPolicyService.evaluatePublish(
+		const { violations, checkErrors } = await this.agentPolicyService.evaluatePublish(
 			ctx.projectId,
 			ctx.agentId,
 			ctx.config,
 		);
+		// Publish fails closed when a check cannot run, so validation must not report valid.
+		if (checkErrors && checkErrors.length > 0) {
+			issues.push(issue('invalid_value', 'tools', { kind: 'tool' }, 'policy_check_failed'));
+		}
 		if (violations.length === 0) return;
 
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
 			if (tool.type !== 'node') continue;
+			const policedNodes = toPolicedNodes([tool]);
 			for (const violation of violations) {
-				const path = policyIssuePath(tool, index, violation);
+				const path = policyIssuePath(policedNodes, index, violation);
 				if (!path) continue;
 				issues.push(
 					issue(

@@ -90,7 +90,7 @@ export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
 /**
  * The node-types resolver may hand us the `*Tool` variant of a node
  * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
- * in `node-tool-factory.ts`). Strip that suffix before checking the denylist
+ * in `resolve-tool-node-type.ts`). Strip that suffix before checking the denylist
  * so both the base and tool-wrapped forms are caught.
  */
 function stripAgentToolSuffix(nodeType: string): string {
@@ -306,7 +306,10 @@ export class EphemeralNodeExecutor {
 		};
 		// Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
 		await this.policyEnforcementService.enforceWorkflowStart(
-			{ workflow: { id: null, name: node.name, nodes: [node] }, projectId: tool.projectId },
+			{
+				workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' },
+				projectId: tool.projectId,
+			},
 			{ kind: 'system', reason: 'execution' },
 		);
 		const workflow = new Workflow({

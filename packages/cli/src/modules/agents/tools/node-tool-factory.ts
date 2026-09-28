@@ -10,10 +10,11 @@ import type {
 	INodeParameters,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import { resolveToolNodeType } from '@/node-execution/resolve-tool-node-type';
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -48,18 +49,6 @@ function toExecutorCredentials(
 		}
 	}
 	return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
-	if (isToolType(nodeType)) return nodeType;
-
-	const toolNodeType = `${nodeType}Tool`;
-	try {
-		Container.get(NodeTypes).getByNameAndVersion(toolNodeType, nodeTypeVersion);
-		return toolNodeType;
-	} catch {
-		return nodeType;
-	}
 }
 
 function createNativeStringToolInputSchema(description: string): z.ZodType {

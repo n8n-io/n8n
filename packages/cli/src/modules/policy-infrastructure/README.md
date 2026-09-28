@@ -146,19 +146,23 @@ points, so every check that reads `nodes` covers agents with no change.
 
 - **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
   are its node tools, one node each, built by `toPolicedNodes` in
-  `src/policy/policed-agent-nodes.ts`. The token binds to an `agent` subject, and
-  the audit line records `agentId` and `agentName`.
+  `src/policy/policed-agent-nodes.ts`. Each node has the type the tool runs as,
+  which is its `…Tool` variant when one exists. The token binds to an `agent`
+  subject, and the audit line records `agentId` and `agentName`.
 - **Agent hosts:** config update and create (`workflowSave`), revert
   (`workflowSave` over the current draft), publish (`workflowPublish`), and
-  publish-scope validation (`evaluateWorkflowPublish`).
+  publish-scope validation (`evaluateWorkflowPublish`). Validation reports a
+  check that fails to run as an issue, because publish refuses in that case.
 - **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
   So `workflowExecuteBefore` never fires. The executor calls `workflowStart` on
   the one-node workflow it builds, and returns a refusal as a tool error.
 - **Inline agents.** `PolicyEnforcementService` adds the node tools of an inline
   agent in a Message an Agent node to the nodes it gives the checks, at every
-  workflow point. The token still binds to the nodes the host writes. An inline
-  agent set by an expression is not expanded; the executor polices its tools
-  when they run.
+  workflow point. An agent tool that is itself a Message an Agent node adds its
+  inline tools the same way. The added nodes are for the checks only. The token
+  binds to the host's own subject, and the host does not write the added nodes.
+  An inline agent set by an expression is not expanded; the executor polices its
+  tools when they run.
 
 ## Fail posture
 
