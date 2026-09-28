@@ -7,7 +7,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 
 vi.mock('@/app/router', () => ({
 	default: {
@@ -95,7 +95,7 @@ describe('MCPWorkflowsSelect', () => {
 
 		it('should handle async workflow fetching', async () => {
 			// Create a promise that doesn't resolve immediately
-			let resolvePromise: (value: { count: number; data: WorkflowListItem[] }) => void;
+			let resolvePromise: (value: { count: number; data: McpWorkflow[] }) => void;
 			mcpStore.getMcpEligibleWorkflows.mockImplementation(
 				async () =>
 					await new Promise((resolve) => {

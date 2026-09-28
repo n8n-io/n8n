@@ -44,7 +44,7 @@ const props = withDefaults(
 		searchMode: 'internal',
 	},
 );
-defineSlots<DropdownMenuItemSlots<T, D>>();
+const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
 
 const emit = defineEmits<{
 	select: [value: T];
@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
 		>
 			<DropdownMenuSubTrigger
 				:id="htmlId"
-				:aria-selected="highlighted || undefined"
+				:data-virtual-highlighted="highlighted ? '' : undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[
@@ -318,6 +318,21 @@ onBeforeUnmount(() => {
 					data-sub-menu-action="open"
 					@click.stop="handleSubMenuIndicatorClick"
 				>
+					<slot
+						v-if="slots['item-trailing']"
+						name="item-trailing"
+						:item="props"
+						:ui="trailingProps"
+					/>
+					<Icon
+						icon="chevron-right"
+						:class="$style['sub-indicator']"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						size="large"
+					/>
+				</span>
+				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
+					<slot name="item-trailing" :item="props" :ui="trailingProps" />
 					<Icon
 						icon="chevron-right"
 						:class="$style['sub-indicator']"
@@ -453,7 +468,7 @@ onBeforeUnmount(() => {
 			v-else-if="checkbox"
 			:id="htmlId"
 			:model-value="checked"
-			:aria-selected="highlighted || undefined"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[
@@ -493,7 +508,7 @@ onBeforeUnmount(() => {
 		<DropdownMenuItem
 			v-else
 			:id="htmlId"
-			:aria-selected="highlighted || undefined"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[
@@ -575,7 +590,7 @@ onBeforeUnmount(() => {
 	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
-		&[aria-selected='true'] {
+		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
 			cursor: pointer;
 		}
@@ -589,7 +604,7 @@ onBeforeUnmount(() => {
 	&.destructive.destructive:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
-		&[aria-selected='true'] {
+		&[data-virtual-highlighted] {
 			.item-label.item-label {
 				color: var(--text-color--danger);
 			}
@@ -602,7 +617,7 @@ onBeforeUnmount(() => {
 		}
 	}
 
-	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {
+	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
 		&:hover,
 		&[data-highlighted] {
 			background-color: transparent;
@@ -612,7 +627,7 @@ onBeforeUnmount(() => {
 
 .sub-trigger {
 	&:not([data-disabled]) {
-		&[aria-selected='true'],
+		&[data-virtual-highlighted],
 		&[data-state='open'] {
 			background-color: var(--background--hover);
 			cursor: pointer;
@@ -634,10 +649,13 @@ onBeforeUnmount(() => {
 
 .sub-indicator-action {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 	margin-left: auto;
 }
 
+.sub-indicator-action .item-trailing,
 .sub-indicator-action .sub-indicator {
 	margin-left: 0;
 }

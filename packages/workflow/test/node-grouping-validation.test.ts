@@ -10,6 +10,7 @@ import {
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
 	validateWorkflowGroups,
+	type NodeGroupRuleOptions,
 } from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
@@ -83,16 +84,78 @@ function validateGrouping({
 	nodes,
 	connectionsBySourceNode,
 	nodeTypes = { 'n8n-nodes-base.set': makeNodeType() },
+	allowTriggerInGroup,
+	allowMultipleBoundaryNodes,
 }: {
 	nodes: INode[];
 	connectionsBySourceNode: IConnections;
 	nodeTypes?: Record<string, INodeTypeDescription>;
-}) {
+} & NodeGroupRuleOptions) {
 	return validateNodeSelectionForGrouping({
 		nodes,
 		connectionsBySourceNode,
 		getNodeType: (node) => nodeTypes[node.type],
+		allowTriggerInGroup,
+		allowMultipleBoundaryNodes,
 	});
+}
+
+const triggerNodeTypes = {
+	'n8n-nodes-base.manualTrigger': makeNodeType({
+		name: 'n8n-nodes-base.manualTrigger',
+		group: ['trigger'],
+	}),
+	'n8n-nodes-base.set': makeNodeType(),
+};
+
+/** A linear graph whose first node is a trigger. */
+function makeTriggeredGraph() {
+	const graph = makeLinearGraph();
+	graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+	return graph;
+}
+
+const mainTo = (node: string) => [{ node, type: NodeConnectionTypes.Main, index: 0 }];
+
+/**
+ * Outside -> A and Outside -> B, both joining at C. Selecting A, B and C gives a
+ * group with two entry nodes.
+ */
+function makeTwoEntryGraph() {
+	const nodes = [
+		makeNode({ id: 'a', name: 'A' }),
+		makeNode({ id: 'b', name: 'B' }),
+		makeNode({ id: 'c', name: 'C' }),
+	];
+
+	const connections: IConnections = {
+		OutsideOne: { main: [mainTo('A')] },
+		OutsideTwo: { main: [mainTo('B')] },
+		A: { main: [mainTo('C')] },
+		B: { main: [mainTo('C')] },
+	};
+
+	return { nodes, connections };
+}
+
+/**
+ * A -> B and A -> C, with B and C each leaving the selection. Selecting A, B and
+ * C gives a group with two exit nodes.
+ */
+function makeTwoExitGraph() {
+	const nodes = [
+		makeNode({ id: 'a', name: 'A' }),
+		makeNode({ id: 'b', name: 'B' }),
+		makeNode({ id: 'c', name: 'C' }),
+	];
+
+	const connections: IConnections = {
+		A: { main: [[...mainTo('B'), ...mainTo('C')]] },
+		B: { main: [mainTo('OutsideOne')] },
+		C: { main: [mainTo('OutsideTwo')] },
+	};
+
+	return { nodes, connections };
 }
 
 describe('node grouping validation', () => {
@@ -158,23 +221,345 @@ describe('node grouping validation', () => {
 		).toBe(true);
 	});
 
-	it('returns trigger-selected when the selection contains a trigger', () => {
-		const graph = makeLinearGraph();
-		graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+	// Extraction builds a runnable sub-workflow, so it keeps the strict rules whatever
+	// the rollout says. This block outlives the flag.
+	describe('sub-workflow extraction', () => {
+		const extract = (
+			nodes: INode[],
+			connectionsBySourceNode: IConnections,
+			rules: NodeGroupRuleOptions,
+		) =>
+			validateNodeSelectionForExtraction({
+				nodes,
+				connectionsBySourceNode,
+				getNodeType: () => makeNodeType(),
+				...rules,
+			});
 
-		const result = validateGrouping({
-			nodes: [graph.nodes[0], graph.nodes[1]],
-			connectionsBySourceNode: graph.connections,
-			nodeTypes: {
-				'n8n-nodes-base.manualTrigger': makeNodeType({
-					name: 'n8n-nodes-base.manualTrigger',
-					group: ['trigger'],
-				}),
-				'n8n-nodes-base.set': makeNodeType(),
+		const everyRuleCombination: NodeGroupRuleOptions[] = [
+			{ allowTriggerInGroup: false, allowMultipleBoundaryNodes: false },
+			{ allowTriggerInGroup: true, allowMultipleBoundaryNodes: false },
+			{ allowTriggerInGroup: false, allowMultipleBoundaryNodes: true },
+			{ allowTriggerInGroup: true, allowMultipleBoundaryNodes: true },
+		];
+
+		test.each(everyRuleCombination)(
+			'rejects two entry nodes with any rule set (trigger: $allowTriggerInGroup, boundaries: $allowMultipleBoundaryNodes)',
+			(rules) => {
+				const graph = makeTwoEntryGraph();
+
+				const result = extract(graph.nodes, graph.connections, rules);
+
+				expect(result.valid).toBe(false);
+
+				if (!result.valid) {
+					expect(result.reason).toBe('invalid-subgraph');
+				}
 			},
+		);
+
+		test.each(everyRuleCombination)(
+			'rejects two exit nodes with any rule set (trigger: $allowTriggerInGroup, boundaries: $allowMultipleBoundaryNodes)',
+			(rules) => {
+				const graph = makeTwoExitGraph();
+
+				const result = extract(graph.nodes, graph.connections, rules);
+
+				expect(result.valid).toBe(false);
+
+				if (!result.valid) {
+					expect(result.reason).toBe('invalid-subgraph');
+				}
+			},
+		);
+
+		// Worded without the rules on purpose. The cases above name them, so they go
+		// with the flags; this one states the permanent rule and must survive that.
+		it('needs one entry and one exit node', () => {
+			expect(extract(makeTwoEntryGraph().nodes, makeTwoEntryGraph().connections, {}).valid).toBe(
+				false,
+			);
+			expect(extract(makeTwoExitGraph().nodes, makeTwoExitGraph().connections, {}).valid).toBe(
+				false,
+			);
+		});
+	});
+
+	// The rules the rollout lifts. Each block goes when its own flag becomes
+	// permanent; the "with both rules on" block stays.
+	describe('with both rules off', () => {
+		it('returns trigger-selected when the selection contains a trigger', () => {
+			const graph = makeTriggeredGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: triggerNodeTypes,
+			});
+
+			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
 		});
 
-		expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+		it('returns invalid-subgraph when two different nodes take input from outside', () => {
+			const graph = makeTwoEntryGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('returns invalid-subgraph when two different nodes send output outside', () => {
+			const graph = makeTwoExitGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+	});
+
+	// One flag must not lift the other rule.
+	describe('with the trigger rule on alone', () => {
+		it('accepts a trigger together with the nodes that follow it', () => {
+			const graph = makeTriggeredGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: triggerNodeTypes,
+				allowTriggerInGroup: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects a group with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				allowTriggerInGroup: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('still rejects a group with two exit nodes', () => {
+			const graph = makeTwoExitGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				allowTriggerInGroup: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+	});
+
+	describe('with the boundary rule on alone', () => {
+		it('accepts a group whose members take input from outside at two different nodes', () => {
+			const graph = makeTwoEntryGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('accepts a group whose members send output outside from two different nodes', () => {
+			const graph = makeTwoExitGraph();
+
+			const result = validateGrouping({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects a group that holds a trigger', () => {
+			const graph = makeTriggeredGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: triggerNodeTypes,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+		});
+
+		// The rule lifts the count of entry and exit nodes. A group still has to be
+		// a whole slice of the graph, so an edge into or out of the middle stays out.
+		it('still rejects an outside edge into a member that is not a root', () => {
+			const nodes = [
+				makeNode({ id: 'a', name: 'A' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+			];
+			const connections: IConnections = {
+				Outside: { main: [[...mainTo('A'), ...mainTo('B')]] },
+				A: { main: [mainTo('B')] },
+				B: { main: [mainTo('C')] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('still rejects an outside edge from a member that is not a leaf', () => {
+			const nodes = [
+				makeNode({ id: 'a', name: 'A' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+			];
+			const connections: IConnections = {
+				A: { main: [mainTo('B')] },
+				B: { main: [[...mainTo('C'), ...mainTo('Outside')]] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+	});
+
+	describe('with both rules on', () => {
+		it('accepts a trigger together with two entry nodes', () => {
+			// Trigger, B and C all feed X. B and C each take input from outside, so
+			// the group holds a trigger and two entry nodes at once.
+			const nodes = [
+				makeNode({ id: 'trigger', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+				makeNode({ id: 'x', name: 'X' }),
+			];
+			const connections: IConnections = {
+				Trigger: { main: [mainTo('X')] },
+				OutsideOne: { main: [mainTo('B')] },
+				OutsideTwo: { main: [mainTo('C')] },
+				B: { main: [mainTo('X')] },
+				C: { main: [mainTo('X')] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				nodeTypes: triggerNodeTypes,
+				allowTriggerInGroup: true,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects a non-main connection that crosses the group boundary', () => {
+			const graph = makeTriggeredGraph();
+			const model = makeNode({ id: 'model', name: 'Model' });
+			const connectionsBySourceNode: IConnections = {
+				...graph.connections,
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+			};
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], model],
+				connectionsBySourceNode,
+				nodeTypes: triggerNodeTypes,
+				allowTriggerInGroup: true,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('non-main-boundary');
+			}
+		});
+
+		it('still rejects two islands with no path between them', () => {
+			const nodes = [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })];
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: {},
+				allowTriggerInGroup: true,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		// Each island is a root and a leaf, so the entry and exit counts say nothing
+		// about them. `findDisconnectedSelectionError` is what refuses this shape.
+		it('still rejects two islands that each take input and send output outside', () => {
+			const nodes = [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })];
+			const connections: IConnections = {
+				OutsideInOne: { main: [mainTo('A')] },
+				OutsideInTwo: { main: [mainTo('B')] },
+				A: { main: [mainTo('OutsideOutOne')] },
+				B: { main: [mainTo('OutsideOutTwo')] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowTriggerInGroup: true,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
 	});
 
 	it('returns invalid-subgraph when selected nodes skip an intermediate node', () => {
@@ -795,6 +1180,29 @@ describe('validateWorkflowGroups', () => {
 				message: 'Node group "Group" cannot contain trigger nodes: Trigger.',
 			},
 		]);
+	});
+
+	it('accepts a group containing a trigger node when the trigger rule is on', () => {
+		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		const connections: IConnections = {
+			Trigger: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+			...graph.connections,
+		};
+
+		const result = validateWorkflowGroups({
+			nodes: [...graph.nodes, trigger],
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }],
+			getNodeType,
+			allowTriggerInGroup: true,
+		});
+
+		expect(result.valid).toBe(true);
 	});
 
 	it('reports a group crossing a non-main connection boundary', () => {

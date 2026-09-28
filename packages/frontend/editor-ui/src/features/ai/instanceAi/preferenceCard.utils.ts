@@ -1,5 +1,9 @@
-import type { InstanceAiPreferenceCardEvent, InstanceAiToolCallState } from '@n8n/api-types';
-import { instanceAiEventSchema } from '@n8n/api-types';
+import type {
+	AiPreferenceScope,
+	InstanceAiPreferenceCardEvent,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+import { aiPreferenceScopeSchema, instanceAiEventSchema } from '@n8n/api-types';
 
 export const SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
 
@@ -12,7 +16,13 @@ export function isPreferenceCardEvent(value: unknown): value is InstanceAiPrefer
 
 export interface SavedPreferenceResult {
 	ok: true;
-	preference: { id: string; content: string; scope: 'user' };
+	preference: {
+		id: string;
+		content: string;
+		scope: AiPreferenceScope;
+		projectId?: string | null;
+		userId?: string | null;
+	};
 }
 
 /** True only for a tool result that wrote a row. A refusal (`ok: false`) and a
@@ -31,7 +41,7 @@ export function isSavedPreferenceResult(result: unknown): result is SavedPrefere
 		'content' in preference &&
 		typeof preference.content === 'string' &&
 		'scope' in preference &&
-		preference.scope === 'user'
+		aiPreferenceScopeSchema.safeParse(preference.scope).success
 	);
 }
 
@@ -60,18 +70,35 @@ export function isPreferenceWriteOutcome(tc: InstanceAiToolCallState): boolean {
 
 export type PreferenceCardState = 'saved' | 'edited' | 'undone';
 
-/** The card's state and the text it shows, from the tool result plus any later fact.
- *  Only the save tool's result counts: another tool may answer in the same shape. */
-export function resolvePreferenceCard(
-	tc: InstanceAiToolCallState,
-): { state: PreferenceCardState; preferenceId: string; content: string } | null {
+export interface PreferenceCardView {
+	state: PreferenceCardState;
+	preferenceId: string;
+	content: string;
+	scope: AiPreferenceScope;
+	projectId: string | null;
+	/** The owner of a user-scoped row, when the result carried it. */
+	userId: string | null;
+}
+
+/** The card's state, text and scope, from the tool result plus any later fact.
+ *  Only the save tool's result counts: another tool may answer in the same shape.
+ *  A fact that names a scope wins over the result, so a move shows after a reload. */
+export function resolvePreferenceCard(tc: InstanceAiToolCallState): PreferenceCardView | null {
 	if (tc.toolName !== SAVE_USER_PREFERENCE_TOOL_NAME) return null;
 	if (!isSavedPreferenceResult(tc.result)) return null;
+	const saved = tc.result.preference;
 	const later = tc.preferenceCard;
+	const scope = later?.scope ?? saved.scope;
+	// A fact names the project it landed in. Without a fact the result's project holds.
+	// A fact with another scope means the project is gone, whatever the result says.
+	const projectId = later?.scope ? (later.projectId ?? null) : (saved.projectId ?? null);
 	return {
 		state: later?.state ?? 'saved',
-		preferenceId: tc.result.preference.id,
-		content: later?.content ?? tc.result.preference.content,
+		preferenceId: saved.id,
+		content: later?.content ?? saved.content,
+		scope,
+		projectId: scope === 'project' ? projectId : null,
+		userId: saved.userId ?? null,
 	};
 }
 

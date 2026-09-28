@@ -168,6 +168,8 @@ describe('OAuthServerService', () => {
 				'https://n8n.example.com/webhook/f0a1b2c3-d4e5-4678-9abc-def012345678/chat';
 			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
 			let firstPartyService: OAuthServerService;
+			const firstPartyRow = (url: string) =>
+				({ id: url, name: url, redirectUris: [url], isFirstParty: true }) as OAuthClient;
 
 			beforeAll(() => {
 				const registry = new ProtectedResourceRegistry(mock<Logger>());
@@ -272,6 +274,28 @@ describe('OAuthServerService', () => {
 					client_id: CHAT_FIRST_PARTY_URL,
 					client_name: 'My Chat',
 					redirect_uris: [CHAT_FIRST_PARTY_URL],
+				});
+			});
+
+			// The persisted row is only an FK placeholder; the live resource decides. Covers
+			// a webhook switched to bearer-only after its virtual client was already created.
+			it('returns undefined for a persisted first-party row whose resource is no longer first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(NON_FIRST_PARTY_URL));
+
+				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('returns a persisted first-party row while its resource is still first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(FIRST_PARTY_URL));
+
+				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(result).toMatchObject({
+					client_id: FIRST_PARTY_URL,
+					redirect_uris: [FIRST_PARTY_URL],
 				});
 			});
 

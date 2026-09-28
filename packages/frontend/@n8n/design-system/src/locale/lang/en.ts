@@ -208,6 +208,7 @@ export default {
 	'iconPicker.emojiSection.symbols': 'Symbols',
 	'iconPicker.emojiSection.flags': 'Flags',
 	'actionDropdown.activator': 'Actions',
+	'breadcrumbs.showMoreItems': 'Show more items',
 	'askAssistantChat.close': 'Close',
 	'sendStopButton.stop': 'Stop',
 	'sendStopButton.send': 'Send',

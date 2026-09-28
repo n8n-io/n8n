@@ -95,12 +95,6 @@ paths:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/test-runs/{runId}/cancel:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
-  /data-tables:
-    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
-  /data-tables/{dataTableId}:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
   /data-tables/{dataTableId}/rows:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
   /data-tables/{dataTableId}/rows/update:
@@ -123,6 +117,8 @@ paths:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
+  /n8n-packages/import-selection:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml'
   /settings/log-streaming/event-types:
     $ref: './handlers/log-streaming/spec/paths/event-types.yml'
   /settings/log-streaming/destinations:

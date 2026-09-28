@@ -61,6 +61,78 @@ export const useContextStore = defineStore('context', () => {
 		return pages.flat();
 	}
 
+	/**
+	 * The rows behind ids a reader holds, kept for lookup rather than for a list. A chat
+	 * card names the scope its own last write named, and a move made on the settings page
+	 * or over MCP never reaches it, so the card reads the row from here instead.
+	 */
+	const rowById = ref(new Map<string, Preference>());
+	let pendingIds = new Set<string>();
+	let pendingRead: Promise<void> | undefined;
+	/**
+	 * Counts the writes this store makes itself, and stamps the row each one touched. A read
+	 * carries the count it started at, so it cannot undo a write that landed while it was in
+	 * flight. Without it, a read begun on mount could put a row back where a save just moved
+	 * it from, or restore one a removal deleted.
+	 */
+	let writes = 0;
+	const writtenAt = new Map<string, number>();
+	let pendingStartedAt = 0;
+
+	/**
+	 * Resolves rows by id. Every ask in the same tick becomes one read, so a turn with
+	 * several cards costs one request. An id the read does not return stays unresolved:
+	 * the caller keeps what it already knew, rather than reading a row it may not see
+	 * as a row that changed. A failed read resolves nothing and throws nothing, for the
+	 * same reason.
+	 */
+	async function resolveRows(ids: string[]): Promise<void> {
+		for (const id of ids) pendingIds.add(id);
+		// Read before the batch is queued, not inside it: a write made between this call and
+		// the microtask that runs the read is still newer than what the read will return.
+		if (pendingRead === undefined) pendingStartedAt = writes;
+		const read = (pendingRead ??= (async () => {
+			// One microtask, so cards that render together join the same read.
+			await Promise.resolve();
+			const batch = [...pendingIds];
+			const startedAt = pendingStartedAt;
+			pendingIds = new Set();
+			pendingRead = undefined;
+			if (batch.length === 0) return;
+			try {
+				const rows = await fetchPreferencesByIds(batch);
+				const next = new Map(rowById.value);
+				for (const row of rows) {
+					// A write that landed while this read ran knows better than the read does.
+					if ((writtenAt.get(row.id) ?? 0) > startedAt) continue;
+					next.set(row.id, row);
+				}
+				rowById.value = next;
+			} catch {
+				// The caller falls back to what it knew.
+			}
+		})());
+		await read;
+	}
+
+	/** Records a row a write just returned, so the reader does not wait for another read. */
+	function setRow(row: Preference) {
+		writtenAt.set(row.id, ++writes);
+		const next = new Map(rowById.value);
+		next.set(row.id, row);
+		rowById.value = next;
+	}
+
+	/** Drops a row a write just removed. Stamps it even when it was never resolved, so a read
+	 *  already in flight cannot bring the deleted row back. */
+	function forgetRow(id: string) {
+		writtenAt.set(id, ++writes);
+		if (!rowById.value.has(id)) return;
+		const next = new Map(rowById.value);
+		next.delete(id);
+		rowById.value = next;
+	}
+
 	async function fetchPreferenceCount() {
 		const countRead = ++latestCountRead;
 		const total = await api.getPreferenceCount(rootStore.restApiContext);
@@ -68,16 +140,24 @@ export const useContextStore = defineStore('context', () => {
 		return total;
 	}
 
+	// The settings page writes through these. Each one keeps `rowById` in step, so a chat card
+	// reading the same row does not paint the state this write replaced.
+
 	async function createPreference(payload: AiPreferenceRequestDto) {
-		return await api.createPreference(rootStore.restApiContext, payload);
+		const created = await api.createPreference(rootStore.restApiContext, payload);
+		setRow(created);
+		return created;
 	}
 
 	async function updatePreference(id: string, payload: AiPreferenceRequestDto) {
-		return await api.updatePreference(rootStore.restApiContext, id, payload);
+		const updated = await api.updatePreference(rootStore.restApiContext, id, payload);
+		setRow(updated);
+		return updated;
 	}
 
 	async function deletePreference(id: string) {
 		await api.deletePreference(rootStore.restApiContext, id);
+		forgetRow(id);
 	}
 
 	/** Deletes every row it can and reports the failures. */
@@ -88,8 +168,10 @@ export const useContextStore = defineStore('context', () => {
 		const result: BulkDeleteResult = { deleted: [], failed: [] };
 		results.forEach((outcome, index) => {
 			const id = ids[index];
-			if (outcome.status === 'fulfilled') result.deleted.push(id);
-			else result.failed.push({ id, error: outcome.reason });
+			if (outcome.status === 'fulfilled') {
+				result.deleted.push(id);
+				forgetRow(id);
+			} else result.failed.push({ id, error: outcome.reason });
 		});
 		return result;
 	}
@@ -98,8 +180,12 @@ export const useContextStore = defineStore('context', () => {
 		preferences,
 		count,
 		loading,
+		rowById,
 		fetchPreferences,
 		fetchPreferencesByIds,
+		resolveRows,
+		setRow,
+		forgetRow,
 		fetchPreferenceCount,
 		createPreference,
 		updatePreference,
