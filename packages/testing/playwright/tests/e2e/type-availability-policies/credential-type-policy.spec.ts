@@ -5,6 +5,7 @@ import {
 	availabilityInProjects,
 	findAvailability,
 	manualRunOutcome,
+	prepareTypePolicyInstance,
 	publishOutcome,
 	saveMovedNodes,
 	headerAuthCredential,
@@ -58,23 +59,12 @@ test.describe(
 		let policies: TypePolicyApiHelper<'credential'>;
 
 		test.beforeEach(async ({ api }) => {
-			expect(
-				await api.getActiveModules(),
-				'the type-availability-policies module is not active: the instance needs a license granting feat:typeAvailabilityPolicies at startup',
-			).toContain('type-availability-policies');
-
-			// The check reads the license on every decision, not only at startup.
-			await api.enableFeature('typeAvailabilityPolicies');
-			await api.enableProjectFeatures();
-			await api.setMaxTeamProjectsQuota(-1);
+			await prepareTypePolicyInstance(api);
 
 			const { rawApiKey } = await api.publicApi.createApiKey(undefined, [
 				'credentialTypePolicy:manage',
 			]);
 			policies = api.credentialTypePolicies.viaPublicApi(rawApiKey);
-			await policies.resetInstancePolicy();
-			// Specs share one instance in a local run, so clear the other kind as well.
-			await api.nodeTypePolicies.resetInstancePolicy();
 		});
 
 		test.describe('saving a credential of a blocked type', () => {

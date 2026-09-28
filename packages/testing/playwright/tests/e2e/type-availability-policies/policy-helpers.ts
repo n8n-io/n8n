@@ -4,7 +4,9 @@ import flatted from 'flatted';
 import { nanoid } from 'nanoid';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
+import { expect } from '../../../fixtures/base';
 import type { ApiHelpers } from '../../../services/api-helper';
+import { resetAllTypePolicies } from '../../../services/type-policy-api-helper';
 
 export const NO_OP = { type: 'n8n-nodes-base.noOp', name: 'No Operation, do nothing' };
 export const SET = { type: 'n8n-nodes-base.set', name: 'Edit Fields' };
@@ -26,6 +28,20 @@ export interface PolicyViolation {
 type AvailabilityReader = (
 	projectId: string,
 ) => Promise<Array<{ name: string; available: boolean; scope?: string }>>;
+
+/** Readies an instance for a type policy spec: module, license and projects on, no rules left. */
+export async function prepareTypePolicyInstance(api: ApiHelpers) {
+	expect(
+		await api.getActiveModules(),
+		'the type-availability-policies module is not active: the instance needs a license granting feat:typeAvailabilityPolicies at startup',
+	).toContain('type-availability-policies');
+
+	// The check reads the license on every decision, not only at startup.
+	await api.enableFeature('typeAvailabilityPolicies');
+	await api.enableProjectFeatures();
+	await api.setMaxTeamProjectsQuota(-1);
+	await resetAllTypePolicies(api);
+}
 
 function scheduleTrigger(): INode {
 	return {

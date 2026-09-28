@@ -5,6 +5,7 @@ import {
 	availabilityInProjects,
 	findAvailability,
 	manualRunOutcome,
+	prepareTypePolicyInstance,
 	publishOutcome,
 	saveMovedNodes,
 	loadPostgresColumns,
@@ -53,18 +54,7 @@ test.describe(
 		test.describe.configure({ mode: 'default' });
 
 		test.beforeEach(async ({ api }) => {
-			expect(
-				await api.getActiveModules(),
-				'the type-availability-policies module is not active: the instance needs a license granting feat:typeAvailabilityPolicies at startup',
-			).toContain('type-availability-policies');
-
-			// The check reads the license on every decision, not only at startup.
-			await api.enableFeature('typeAvailabilityPolicies');
-			await api.enableProjectFeatures();
-			await api.setMaxTeamProjectsQuota(-1);
-			// Specs share one instance in a local run, so clear the other kind as well.
-			await api.nodeTypePolicies.resetInstancePolicy();
-			await api.credentialTypePolicies.resetInstancePolicy();
+			await prepareTypePolicyInstance(api);
 		});
 
 		test.describe('an instance block on an existing workflow', () => {

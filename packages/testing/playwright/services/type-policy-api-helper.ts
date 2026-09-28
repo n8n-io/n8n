@@ -18,6 +18,8 @@ const ENDPOINTS = {
 
 type TypePolicyKind = keyof typeof ENDPOINTS;
 
+const TYPE_POLICY_KINDS = Object.keys(ENDPOINTS) as TypePolicyKind[];
+
 type AvailabilityResponse<K extends TypePolicyKind> = K extends 'node'
 	? AvailableTypesResponse
 	: AvailableCredentialTypesResponse;
@@ -34,6 +36,13 @@ export function policyRule<A extends PolicyAction>(
 	typeName: string,
 ): PolicyRule & { action: A } {
 	return { id: `${action}-${nanoid(6)}`, action, selector: { kind: 'name', value: typeName } };
+}
+
+/** Allows every type of every kind on the instance, so a new kind needs no spec edits. */
+export async function resetAllTypePolicies(api: ApiHelpers) {
+	for (const kind of TYPE_POLICY_KINDS) {
+		await new TypePolicyApiHelper(api, kind).resetInstancePolicy();
+	}
 }
 
 /**

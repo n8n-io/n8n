@@ -2,6 +2,7 @@ import {
 	executionErrorOf,
 	POSTGRES_CREDENTIAL,
 	postgresCredential,
+	prepareTypePolicyInstance,
 	webhookToPostgresWorkflow,
 } from './policy-helpers';
 import { expect, test } from '../../../fixtures/base';
@@ -24,15 +25,7 @@ test.describe(
 		test('should fail a production run on the worker when its credential type is blocked', async ({
 			api,
 		}) => {
-			expect(
-				await api.getActiveModules(),
-				'the type-availability-policies module is not active: the instance needs a license granting feat:typeAvailabilityPolicies at startup',
-			).toContain('type-availability-policies');
-			await api.enableFeature('typeAvailabilityPolicies');
-			await api.enableProjectFeatures();
-			await api.setMaxTeamProjectsQuota(-1);
-			await api.nodeTypePolicies.resetInstancePolicy();
-			await api.credentialTypePolicies.resetInstancePolicy();
+			await prepareTypePolicyInstance(api);
 
 			const { id: projectId } = await api.projects.createProject();
 			const created = await api.credentials.createCredential(postgresCredential(projectId));
