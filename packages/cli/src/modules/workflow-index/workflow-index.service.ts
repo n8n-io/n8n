@@ -67,12 +67,17 @@ export class WorkflowIndexService {
 			// At activation time, the draft nodes are the published nodes.
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
+		this.eventService.on('workflow-deactivated', async ({ workflowId }) => {
+			await this.removePublishedDependenciesForWorkflow(workflowId);
+		});
 	}
 
 	async buildIndex() {
 		return await this.tracing.startSpan(
 			{ name: 'WorkflowIndex build', op: 'workflow-index.build' },
 			async (span) => {
+				// Published backfill skips unpublished workflows, so clear their old rows here.
+				await this.dependencyRepository.removePublishedDependenciesForUnpublishedWorkflows();
 				const draftCount = await this.buildIndexInternal(
 					async (batchSize) =>
 						await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
@@ -182,6 +187,20 @@ export class WorkflowIndexService {
 			},
 			async (span) => {
 				await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
+	}
+
+	async removePublishedDependenciesForWorkflow(workflowId: string) {
+		return await this.tracing.startSpan(
+			{
+				name: 'WorkflowIndex remove published',
+				op: 'workflow-index.remove-published',
+				attributes: this.tracing.pickWorkflowAttributes({ id: workflowId }),
+			},
+			async (span) => {
+				await this.dependencyRepository.removePublishedDependenciesForWorkflow(workflowId);
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);

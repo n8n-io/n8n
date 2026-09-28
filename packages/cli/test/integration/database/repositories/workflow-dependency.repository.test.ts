@@ -1,6 +1,8 @@
 import {
 	testDb,
 	createWorkflow,
+	createWorkflowWithHistory,
+	setActiveVersion,
 	createTeamProject,
 	linkUserToProject,
 } from '@n8n/backend-test-utils';
@@ -315,6 +317,57 @@ describe('WorkflowDependencyRepository', () => {
 			expect(savedDependencies).toHaveLength(1);
 			expect(savedDependencies[0].workflowVersionId).toBe(2);
 			expect(savedDependencies[0].dependencyKey).toBe('cred-2');
+		});
+	});
+
+	describe('removePublishedDependenciesForWorkflow()', () => {
+		it('removes published rows and leaves draft rows intact', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const draft = new WorkflowDependencies(workflow.id, 1);
+			draft.add({ dependencyType: 'credentialId', dependencyKey: 'new', dependencyInfo: null });
+			const published = new WorkflowDependencies(workflow.id, 1, 'v1');
+			published.add({ dependencyType: 'credentialId', dependencyKey: 'old', dependencyInfo: null });
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, draft);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+
+			await workflowDependencyRepository.removePublishedDependenciesForWorkflow(workflow.id);
+
+			const remaining = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(remaining).toHaveLength(1);
+			expect(remaining[0]).toMatchObject({ dependencyKey: 'new', publishedVersionId: null });
+		});
+	});
+
+	describe('removePublishedDependenciesForUnpublishedWorkflows()', () => {
+		it('clears old published rows for workflows without an active version', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const active = await createWorkflowWithHistory({ versionId: 'v2' });
+			await setActiveVersion(active.id, active.versionId);
+			const draft = new WorkflowDependencies(workflow.id, 1);
+			draft.add({ dependencyType: 'credentialId', dependencyKey: 'new', dependencyInfo: null });
+			const published = new WorkflowDependencies(workflow.id, 1, 'v1');
+			published.add({ dependencyType: 'credentialId', dependencyKey: 'old', dependencyInfo: null });
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, draft);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+			const activePublished = new WorkflowDependencies(active.id, 1, active.versionId);
+			activePublished.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'active',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(active.id, activePublished);
+
+			await workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflows();
+
+			const rows = await workflowDependencyRepository.findBy({ workflowId: workflow.id });
+			expect(rows.map(({ dependencyKey }) => dependencyKey)).toEqual(['new']);
+			const activeRows = await workflowDependencyRepository.findBy({
+				workflowId: active.id,
+				dependencyType: 'credentialId',
+			});
+			expect(activeRows.map(({ dependencyKey }) => dependencyKey)).toEqual(['active']);
 		});
 	});
 

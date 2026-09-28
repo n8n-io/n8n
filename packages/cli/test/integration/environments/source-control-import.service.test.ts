@@ -12,6 +12,7 @@ import {
 import {
 	type CredentialsEntity,
 	CredentialsRepository,
+	WorkflowDependencyRepository,
 	type Folder,
 	generateNanoId,
 	type Project,
@@ -46,6 +47,7 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -148,6 +150,7 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
+			Container.get(WorkflowIndexService),
 		);
 	});
 
@@ -1851,6 +1854,28 @@ describe('SourceControlImportService', () => {
 				}
 				return mockFileData.get(pathStr)!;
 			});
+		});
+
+		it('replaces draft credential dependencies when a pull changes the nodes', async () => {
+			const importingUser = await getGlobalOwner();
+			const initial = makeWorkflowImport();
+			initial.nodes[0].credentials = { apiKey: { id: 'old-credential', name: 'Old' } };
+			const existing = await createWorkflowWithHistory(initial, importingUser);
+			await Container.get(WorkflowIndexService).updateIndexForDraft(existing);
+
+			const incoming = makeWorkflowImport({ id: initial.id });
+			incoming.nodes[0].credentials = { apiKey: { id: 'new-credential', name: 'New' } };
+			const file = putWorkflowFile(incoming.id, incoming);
+			await service.importWorkflowFromWorkFolder(
+				[mock<SourceControlledFile>({ id: incoming.id, file })],
+				importingUser.id,
+			);
+
+			const rows = await Container.get(WorkflowDependencyRepository).findBy({
+				workflowId: incoming.id,
+				dependencyType: 'credentialId',
+			});
+			expect(rows.map(({ dependencyKey }) => dependencyKey)).toEqual(['new-credential']);
 		});
 
 		describe('workflow history', () => {

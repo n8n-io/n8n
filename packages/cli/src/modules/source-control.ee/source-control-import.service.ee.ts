@@ -55,6 +55,7 @@ import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-val
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -174,6 +175,7 @@ export class SourceControlImportService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -916,6 +918,8 @@ export class SourceControlImportService {
 			},
 			{ policyCleared: cleared },
 		);
+		const savedWorkflow = await this.workflowRepository.findOneOrFail({ where: { id } });
+		await this.workflowIndexService.updateIndexForDraft(savedWorkflow);
 
 		if (archivedByPull) {
 			// A pull is a system mutation: no acting user to attribute the archive to.

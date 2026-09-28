@@ -42,6 +42,7 @@ import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.se
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -92,6 +93,7 @@ describe('SourceControlImportService', () => {
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const workflowIndexService = mock<WorkflowIndexService>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const credentialsService = mock<CredentialsService>();
 	const transactionManager = mock<EntityManager>();
@@ -140,6 +142,7 @@ describe('SourceControlImportService', () => {
 		workflowPublishGuard,
 		workflowMutationHooks,
 		workflowFinderService,
+		workflowIndexService,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -147,6 +150,15 @@ describe('SourceControlImportService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		workflowRepository.findOneOrFail.mockImplementation(async () =>
+			Object.assign(
+				new WorkflowEntity(),
+				workflowRepository.upsertImportedContent.mock.lastCall?.[0],
+				{
+					versionCounter: 2,
+				},
+			),
+		);
 		workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
 		// Default: nothing is published, so pull deletions never wait on an unpublish.
 		workflowPublishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
@@ -363,6 +375,43 @@ describe('SourceControlImportService', () => {
 					name: mockWorkflowFile2,
 				},
 			]);
+		});
+
+		it('indexes the saved draft with its persisted version after a pull', async () => {
+			const workflow = Object.assign(new WorkflowEntity(), {
+				id: 'workflow1',
+				name: 'Pulled workflow',
+				versionCounter: 7,
+				nodes: [{ id: 'node-1', credentials: { apiKey: { id: 'new-credential' } } }],
+			});
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsertImportedContent.mockResolvedValue(workflow.id);
+			workflowRepository.findOneOrFail.mockResolvedValue(workflow);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: workflow.id,
+					versionId: 'v2',
+					name: workflow.name,
+					nodes: workflow.nodes,
+					connections: {},
+				}),
+			);
+
+			await service.importWorkflowFromWorkFolder(
+				[mock<SourceControlledFile>({ id: workflow.id, file: '/mock/workflow1.json' })],
+				'user1',
+			);
+
+			expect(workflowRepository.findOneOrFail).toHaveBeenCalledWith({ where: { id: workflow.id } });
+			expect(workflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(workflow);
+			expect(workflowRepository.upsertImportedContent.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowIndexService.updateIndexForDraft.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should not touch the local description when the file has no description key', async () => {

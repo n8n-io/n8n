@@ -288,6 +288,23 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	async removePublishedDependenciesForWorkflow(workflowId: string): Promise<void> {
+		await this.delete({ workflowId, publishedVersionId: Not(IsNull()) });
+	}
+
+	async removePublishedDependenciesForUnpublishedWorkflows(): Promise<void> {
+		const driver = this.manager.connection.driver;
+		const unpublishedWorkflows = this.manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.select('workflow.id')
+			.where('workflow.activeVersionId IS NULL');
+		await this.createQueryBuilder()
+			.delete()
+			.where(`${driver.escape('publishedVersionId')} IS NOT NULL`)
+			.andWhere(`${driver.escape('workflowId')} IN (${unpublishedWorkflows.getQuery()})`)
+			.execute();
+	}
+
 	private async acquireLockAndCheckForExistingData(
 		workflowId: string,
 		publishedVersionId: string | null,

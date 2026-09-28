@@ -23,6 +23,7 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
@@ -641,6 +642,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // workflowPublishGuard
 			Container.get(WorkflowMutationHooksProxy),
 			Container.get(WorkflowFinderService),
+			Container.get(WorkflowIndexService),
 		);
 	});
 
