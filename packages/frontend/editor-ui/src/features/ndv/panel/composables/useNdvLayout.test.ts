@@ -138,6 +138,41 @@ describe('useNdvLayout', () => {
 		const totalOf = ({ left, main, right }: { left: number; main: number; right: number }) =>
 			left + main + right;
 
+		it('keeps the output panel visible when stored widths exceed the container', () => {
+			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+			localStorage.setItem(key, JSON.stringify({ left: 12, main: 80, right: 20 }));
+
+			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+
+			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
+			expect(panelWidthPercentage.value.left).toBeGreaterThanOrEqual(12);
+			expect(panelWidthPercentage.value.right).toBeGreaterThanOrEqual(12);
+			expect(panelWidthPercentage.value.main).toBeGreaterThanOrEqual(36.8);
+		});
+
+		it('limits a stored main width larger than the container', () => {
+			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+			localStorage.setItem(key, JSON.stringify({ left: 5, main: 150, right: 5 }));
+
+			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+
+			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
+			expect(panelWidthPercentage.value.main).toBeLessThanOrEqual(76);
+			expect(panelWidthPercentage.value.right).toBeGreaterThanOrEqual(12);
+		});
+
+		it('fits the panels when the container is narrower than their minimum widths', () => {
+			containerWidth.value = 500;
+			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+			localStorage.setItem(key, JSON.stringify({ left: 10, main: 90, right: 10 }));
+
+			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+
+			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
+			expect(panelWidthPercentage.value.left).toBeGreaterThan(0);
+			expect(panelWidthPercentage.value.right).toBeGreaterThan(0);
+		});
+
 		it('spans the full container when stored values fall below the minimums', () => {
 			containerWidth.value = 1317;
 			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
@@ -188,7 +223,7 @@ describe('useNdvLayout', () => {
 			hasInputPanel.value = false;
 			paneType.value = 'inputless';
 			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_INPUTLESS`;
-			localStorage.setItem(key, JSON.stringify({ left: 0, main: 1, right: 1 }));
+			localStorage.setItem(key, JSON.stringify({ left: 30, main: 1, right: 1 }));
 
 			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
 

@@ -83,27 +83,23 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		const minLeft = hasInput ? minPanelWidthPercentage.value : 0;
 		const minRight = minPanelWidthPercentage.value;
 		const minMain = minMainPanelWidthPercentage.value;
+		const minimumScale = Math.min(1, 100 / (minLeft + minMain + minRight));
+		const safeMinLeft = minLeft * minimumScale;
+		const safeMinRight = minRight * minimumScale;
+		const safeMinMain = minMain * minimumScale;
 
-		const newPanelWidth = {
-			left: Math.max(minLeft, left),
-			main: Math.max(minMain, main),
-			right: Math.max(minRight, right),
-		};
+		const newMain = Math.min(Math.max(safeMinMain, main), 100 - safeMinLeft - safeMinRight);
+		const newLeft = hasInput ? Math.max(safeMinLeft, left) : 0;
+		const newRight = Math.max(safeMinRight, right);
+		const sideSpace = 100 - newMain;
+		const sides = newLeft + newRight;
+		const leftShare = newLeft / sides;
+		const adjustedLeft = Math.min(
+			sideSpace - safeMinRight,
+			Math.max(safeMinLeft, newLeft + (sideSpace - sides) * leftShare),
+		);
 
-		const total = newPanelWidth.left + newPanelWidth.main + newPanelWidth.right;
-		const sides = newPanelWidth.left + newPanelWidth.right;
-
-		// Panels must always span the container: distribute any difference across the
-		// side panels, otherwise a short total leaves the canvas showing through.
-		if (total !== 100 && sides > 0) {
-			const diff = 100 - total;
-			const leftShare = newPanelWidth.left / sides;
-
-			newPanelWidth.left = Math.max(minLeft, newPanelWidth.left + diff * leftShare);
-			newPanelWidth.right = Math.max(minRight, newPanelWidth.right + diff * (1 - leftShare));
-		}
-
-		return newPanelWidth;
+		return { left: adjustedLeft, main: newMain, right: sideSpace - adjustedLeft };
 	};
 
 	const persistPanelSize = () => {
