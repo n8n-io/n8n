@@ -113,9 +113,8 @@ describe('License', () => {
 		);
 		await license.init();
 
-		expect(LicenseManager).toHaveBeenCalledWith(
-			expect.objectContaining({ detachFloatingOnShutdown: true }),
-		);
+		const calls = (LicenseManager as MockedClass<typeof LicenseManager>).mock.calls;
+		expect(calls[calls.length - 1][0].detachFloatingOnShutdown).toBe(true);
 	});
 
 	test('does not detach floating entitlements on shutdown in multi-main', async () => {
@@ -128,9 +127,8 @@ describe('License', () => {
 		);
 		await license.init();
 
-		expect(LicenseManager).toHaveBeenCalledWith(
-			expect.objectContaining({ detachFloatingOnShutdown: false }),
-		);
+		const calls = (LicenseManager as MockedClass<typeof LicenseManager>).mock.calls;
+		expect(calls[calls.length - 1][0].detachFloatingOnShutdown).toBe(false);
 	});
 
 	test('attempts to activate license with provided key (initial activation)', async () => {
