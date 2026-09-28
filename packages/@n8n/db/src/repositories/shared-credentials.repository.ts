@@ -86,9 +86,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		).map((s) => s.credentialsId);
 	}
 
-	async findCredentialOwningProject(credentialsId: string) {
+	async findCredentialOwningProject(credentialsId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
 		return (
-			await this.findOne({
+			await trx.findOne(SharedCredentials, {
 				where: { credentialsId, role: 'credential:owner' },
 				relations: { project: true },
 			})

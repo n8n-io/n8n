@@ -7,6 +7,7 @@ import {
 	Project,
 	User,
 	SharedCredentials,
+	SharedCredentialsRepository,
 	ProjectRepository,
 	GLOBAL_OWNER_ROLE,
 	type OperationContext,
@@ -235,11 +236,10 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		// An existing credential keeps its owner project, so its policy applies, not the batch target.
 		let landingProjectId = project.id;
 		if (existing) {
-			const sharedCredential = await transactionManager.findOne(SharedCredentials, {
-				where: { credentialsId: existing.id, role: 'credential:owner' },
-				select: ['projectId'],
-			});
-			if (sharedCredential) landingProjectId = sharedCredential.projectId;
+			const ownerProject = await Container.get(
+				SharedCredentialsRepository,
+			).findCredentialOwningProject(existing.id, transactionManager);
+			if (ownerProject) landingProjectId = ownerProject.id;
 		}
 
 		let cleared: PolicyCleared<'contentImport'>;
