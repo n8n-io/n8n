@@ -69,12 +69,16 @@ export function useAgentMcpDiscovery(projectId: MaybeRefOrGetter<string>) {
 		onCredentialCreated: (context: CredentialCreatedContext) => void,
 	): ToolConnectionCredentialAdapter {
 		return {
-			getCredentialsByType: (authType) =>
-				credentialsStore.getUsableCredentialByType(authType).map((credential) => ({
+			getCredentialsByType: (authType) => {
+				const scope = { projectId: toValue(projectId) };
+				if (!credentialsStore.hasUsableCredentialsForScope(scope)) return [];
+
+				return credentialsStore.getUsableCredentialByType(authType).map((credential) => ({
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-				})),
+				}));
+			},
 			openExistingCredential: (credentialId) => uiStore.openExistingCredential(credentialId),
 			openNewCredential: (authType, item, credentialTypes) => {
 				const resolvedProjectId = toValue(projectId);

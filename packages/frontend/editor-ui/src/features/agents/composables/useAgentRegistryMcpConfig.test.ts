@@ -191,7 +191,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		scope.stop();
 	});
 
-	it('removes the connection when its persisted credential is deleted', async () => {
+	it('ignores deletion of the persisted credential when another draft credential is selected', async () => {
 		const onRemove = vi.fn();
 		const onCredentialDeleted = vi.fn();
 		const modalData: AgentRegistryMcpModalData = {
@@ -217,6 +217,38 @@ describe('useAgentRegistryMcpConfig', () => {
 		await flushPromises();
 
 		await config.selectCredential('githubMcpOAuth2Api', 'credential-2');
+		credentialChangeListeners.onDeleted?.('credential-1');
+
+		expect(onRemove).not.toHaveBeenCalled();
+		expect(onCredentialDeleted).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
+	it('removes the connection when its selected persisted credential is deleted', async () => {
+		const onRemove = vi.fn();
+		const onCredentialDeleted = vi.fn();
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+			onRemove,
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				onCredentialDeleted,
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
 		credentialChangeListeners.onDeleted?.('credential-1');
 
 		expect(onRemove).toHaveBeenCalledOnce();

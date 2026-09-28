@@ -45,6 +45,7 @@ const exposedToolNames = computed(() => {
 });
 
 const selectorValue = computed<AgentApproval | undefined>(() => {
+	// TODO: NODE-6045 - overhaul custom mcp client to support the new permission system fully
 	const { categories, tools } = props.modelValue;
 	if (categories.read === 'require_approval' && categories.write === 'require_approval') {
 		return { mode: 'global' };

@@ -247,14 +247,9 @@ export function useAgentRegistryMcpConfig(
 		listenForCredentialChanges({
 			store: credentialsStore,
 			onCredentialDeleted: (credentialId) => {
-				const persisted = persistedServer.value;
-				if (persisted?.credential === credentialId) {
-					data.value?.onRemove?.();
-					onCredentialDeleted();
-					return;
-				}
 				if (draftServer.value?.credential !== credentialId) return;
-				if (persisted?.credential) {
+				const persisted = persistedServer.value;
+				if (persisted?.credential && persisted.credential !== credentialId) {
 					draftServer.value.credential = persisted.credential;
 					void discover(persisted.credential);
 					return;
