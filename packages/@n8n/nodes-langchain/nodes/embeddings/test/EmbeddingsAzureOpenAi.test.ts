@@ -252,24 +252,33 @@ describe('AzureOpenAIEmbeddings', () => {
 				expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
 			});
 
-			// With no endpoint the host has to come from the resource name.
-			it('should resolve the proxy against the resource host when no endpoint is set', async () => {
-				const mockContext = setupMockContext();
-				mockContext.getCredentials.mockResolvedValue({
-					...entraCredential,
-					resourceName: 'my-resource',
-					apiVersion: 'v1',
-				});
-				selectEntra(mockContext);
+			// The host has to come from the resource name whether the endpoint is absent or blank.
+			// The blank case is the one that needs `||`: an empty string is falsy but not nullish,
+			// so `??` would pass it straight through to the proxy.
+			it.each([
+				['absent', {}],
+				['blank', { endpoint: '' }],
+			])(
+				'should resolve the proxy against the resource host when the endpoint is %s',
+				async (_, endpoint) => {
+					const mockContext = setupMockContext();
+					mockContext.getCredentials.mockResolvedValue({
+						...entraCredential,
+						...endpoint,
+						resourceName: 'my-resource',
+						apiVersion: 'v1',
+					});
+					selectEntra(mockContext);
 
-				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+					await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
 
-				expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(
-					'https://my-resource.openai.azure.com',
-					expect.any(Object),
-					expect.any(Object),
-				);
-			});
+					expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(
+						'https://my-resource.openai.azure.com',
+						expect.any(Object),
+						expect.any(Object),
+					);
+				},
+			);
 
 			// The mint posts the client secret to a stored URL, so it runs inside the egress policy,
 			// as the chat model node's does.
