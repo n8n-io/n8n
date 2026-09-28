@@ -270,6 +270,109 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		});
 	});
 
+	describe('interactive list message for more than 3 options', () => {
+		const fourButtonSuspendStream = (runId: string, toolCallId: string) => [
+			{
+				type: 'tool-call-suspended' as const,
+				runId,
+				toolCallId,
+				toolName: 'select',
+				suspendPayload: {
+					type: 'form' as const,
+					toolName: 'pick_starter',
+					displayName: 'Choose Your Starter',
+					components: [
+						{ type: 'button' as const, label: 'Bulbasaur', value: 'bulbasaur' },
+						{ type: 'button' as const, label: 'Charmander', value: 'charmander' },
+						{ type: 'button' as const, label: 'Squirtle', value: 'squirtle' },
+						{ type: 'button' as const, label: 'Pikachu', value: 'pikachu' },
+					],
+				},
+			},
+			{ type: 'finish' as const, finishReason: 'stop' as const },
+		];
+
+		it('sends a real WhatsApp list message instead of falling back to broken text', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: fourButtonSuspendStream('run-select-1', 'tool-select-1'),
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				expect(ctx.lastPost()?.body).toMatchObject({
+					type: 'interactive',
+					interactive: {
+						type: 'list',
+						action: {
+							sections: [
+								{
+									rows: [
+										{ title: 'Bulbasaur' },
+										{ title: 'Charmander' },
+										{ title: 'Squirtle' },
+										{ title: 'Pikachu' },
+									],
+								},
+							],
+						},
+					},
+				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('resumes the suspended run when the user taps a real list option', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: fourButtonSuspendStream('run-select-2', 'tool-select-2'),
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const body = ctx.lastPost()?.body as {
+					interactive: {
+						action: { sections: Array<{ rows: Array<{ id: string; title: string }> }> };
+					};
+				};
+				const picked = body.interactive.action.sections[0].rows[1];
+				expect(picked.title).toBe('Charmander');
+
+				ctx.nextStream([
+					{ type: 'text-delta', id: 'resume-text', delta: 'Great choice' },
+					{ type: 'finish', finishReason: 'stop' },
+				]);
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: {
+							from: fixtures.contact.wa_id,
+							id: 'wamid.TEST_RESUME_0001',
+							timestamp: String(Math.floor(Date.now() / 1000)),
+							type: 'interactive',
+							interactive: {
+								type: 'list_reply',
+								list_reply: { id: picked.id, title: picked.title },
+							},
+						},
+					}),
+				);
+
+				expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+					expect.objectContaining({
+						runId: 'run-select-2',
+						toolCallId: 'tool-select-2',
+						integrationType: 'whatsapp',
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
 	describe('deriveWhatsAppVerifyToken', () => {
 		it('derives the same verify token for repeated calls with the same agent ID', () => {
 			const first = deriveWhatsAppVerifyToken('encryption-key', 'agent-1');
