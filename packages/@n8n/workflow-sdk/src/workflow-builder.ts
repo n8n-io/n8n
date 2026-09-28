@@ -16,7 +16,7 @@ import type {
 	WorkflowBuilderOptions,
 	ToJSONOptions,
 } from './types/base';
-import { isNodeChain } from './types/base';
+import { isAnchoredStickyNote, isNodeChain } from './types/base';
 import type { ValidationOptions, ValidationResult, ValidationErrorCode } from './validation/index';
 import { ValidationError, ValidationWarning } from './validation/index';
 import { resolveTargetNodeName as resolveTargetNodeNameUtil } from './workflow-builder/connection-utils';
@@ -731,17 +731,36 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// with old IDs. This mapping allows mergeInstanceConnections() to resolve
 		// those stale references to the correct map key (important for auto-renamed nodes).
 		const staleIdToKeyMap = new Map<string, string>();
+		const newIdByKey = new Map<string, string>();
 
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
 			staleIdToKeyMap.set(instance.id, mapKey);
-			const newId =
+			newIdByKey.set(
+				mapKey,
 				instance.config?.id ??
-				existingIdsByName?.get(mapKey) ??
-				generateDeterministicNodeId(this.id, instance.type, mapKey);
+					existingIdsByName?.get(mapKey) ??
+					generateDeterministicNodeId(this.id, instance.type, mapKey),
+			);
+		}
+
+		for (const [mapKey, graphNode] of this._nodes) {
+			const instance = graphNode.instance;
+			const newId = newIdByKey.get(mapKey) ?? instance.id;
+
+			// A sticky's anchors name their nodes by instance id, so they have to follow
+			// the renumbering the way connections and group members already do. Left
+			// stale, every anchor resolves to nothing and the note silently stops
+			// wrapping the nodes it documents.
+			const stickyAnchorIds = isAnchoredStickyNote(instance)
+				? instance.stickyAnchorIds
+						.map((staleId) => staleIdToKeyMap.get(staleId))
+						.map((key) => (key === undefined ? undefined : newIdByKey.get(key)))
+						.filter((id): id is string => id !== undefined)
+				: undefined;
 
 			// Clone the instance with the new ID
-			const newInstance = cloneNodeWithId(instance, newId);
+			const newInstance = cloneNodeWithId(instance, newId, stickyAnchorIds);
 
 			newNodes.set(mapKey, {
 				instance: newInstance,

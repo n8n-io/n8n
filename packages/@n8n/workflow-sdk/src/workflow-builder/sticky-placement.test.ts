@@ -263,6 +263,30 @@ describe('sticky note placement with tidyUp', () => {
 		}
 	});
 
+	it('keeps wrapping its anchors after the node ids are regenerated', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+		const ingest = sticky('## Ingest', [start, fetch], { name: 'Ingest note' });
+		const deliver = sticky('## Deliver', [post, record], { name: 'Deliver note' });
+
+		const builder = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute).to(post).to(record))
+			.add(ingest)
+			.add(deliver);
+
+		// The code-builder renumbers every node before serializing. Anchors name their
+		// nodes by id, so they have to be remapped or the notes quietly stop wrapping.
+		builder.regenerateNodeIds();
+		const json = builder.toJSON({ tidyUp: true });
+
+		const ingestBox = stickyBox(json, 'Ingest note');
+		expect(contains(ingestBox, nodeBox(json, 'Every Friday'))).toBe(true);
+		expect(contains(ingestBox, nodeBox(json, 'Active teams'))).toBe(true);
+
+		const deliverBox = stickyBox(json, 'Deliver note');
+		expect(contains(deliverBox, nodeBox(json, 'DM pre-brief'))).toBe(true);
+		expect(contains(deliverBox, nodeBox(json, 'Record run'))).toBe(true);
+	});
+
 	it('emits every sticky as a sticky note node', () => {
 		const { start, fetch } = buildChain();
 

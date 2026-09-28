@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 
 import { NODE_TYPES, isIfNodeType, isSwitchNodeType } from '../../constants/node-types';
 import {
+	isAnchoredStickyNote,
 	isNodeChain,
 	type AnchoredStickyNote,
 	type NodeInstance,
@@ -1365,11 +1366,35 @@ export function newCredential(name: string, id?: string): NewCredentialValue {
  * Clone a NodeInstance with a new ID.
  * Preserves all other properties including connections.
  * Used by regenerateNodeIds() to create deterministic IDs.
+ *
+ * @param stickyAnchorIds - Anchors for a sticky note, already remapped to the new
+ * node ids. A sticky has to be rebuilt as a sticky, or it loses the anchors that
+ * tell layout which nodes it wraps.
  */
 export function cloneNodeWithId(
 	instance: NodeInstance<string, string, unknown>,
 	newId: string,
+	stickyAnchorIds?: readonly string[],
 ): NodeInstance<string, string, unknown> {
+	if (isAnchoredStickyNote(instance)) {
+		const { config } = instance;
+		const stickyConfig: StickyNoteConfig = {
+			id: config.id,
+			name: config.name,
+			position: config.position,
+			color: config.parameters?.color as number | undefined,
+			width: config.parameters?.width as number | undefined,
+			height: config.parameters?.height as number | undefined,
+		};
+		return new StickyNoteInstance(
+			(config.parameters?.content as string) ?? '',
+			[],
+			stickyConfig,
+			stickyAnchorIds ?? instance.stickyAnchorIds,
+			newId,
+		);
+	}
+
 	const connections =
 		typeof instance.getConnections === 'function' ? instance.getConnections() : [];
 	const isTrigger = 'isTrigger' in instance && instance.isTrigger === true;
