@@ -6,5 +6,7 @@ import { baseConfig } from './vitest.config.base';
 export default mergeConfig(baseConfig, {
 	test: {
 		include: ['**/*.integration.test.ts'],
+		// Skip the shared network guard: these tests reach real services.
+		env: { N8N_TEST_ALLOW_NETWORK: 'true' },
 	},
 });

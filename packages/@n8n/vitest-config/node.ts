@@ -1,10 +1,14 @@
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Alias } from 'vite';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
 import { coverageExcludes } from './coverage-excludes.js';
+
+// Blocks real network access in every worker. See setup/network-guard.ts.
+const networkGuard = fileURLToPath(new URL('./setup/network-guard.js', import.meta.url));
 
 /**
  * Pin dual-build (ESM+CJS) deps to their CJS entry so a single class identity is shared
@@ -50,8 +54,13 @@ export const forkPoolOptions = (): InlineConfig => {
  * Shared test options without the outer defineConfig wrapper.
  * Use this when you need to spread the config into workspace projects.
  */
-export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig => ({
+export const createBaseInlineConfig = ({
+	setupFiles = [],
+	...options
+}: InlineConfig = {}): InlineConfig => ({
 	silent: true,
+	// The guard runs before the package's own setup files.
+	setupFiles: [networkGuard, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
 	globals: true,
 	// Restore `vi.spyOn` spies to their original implementation before each test, so
 	// spies set up once don't leak across tests. Packages may override via `options`.
