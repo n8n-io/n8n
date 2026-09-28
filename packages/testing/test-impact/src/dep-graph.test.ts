@@ -5,7 +5,13 @@ import {
 	changedRuntimeDepsFromManifests,
 	stripDependencyFiles,
 } from './changes.js';
-import { dependentDirs } from './dep-graph.js';
+import {
+	dependentDirs,
+	runtimeClosure,
+	snapshotKeyToName,
+	type LockfileImporters,
+	type LockfileSnapshots,
+} from './dep-graph.js';
 import type { ImpactMap } from './impact-map.js';
 import { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 
@@ -109,5 +115,100 @@ describe('DependencyGraphStrategy', () => {
 	it('contributes nothing when there are no changed deps', () => {
 		const r = new DependencyGraphStrategy(map, importers, []).resolve();
 		expect(r).toEqual({ specs: [], unmapped: [], mode: 'scoped' });
+	});
+});
+
+describe('snapshotKeyToName', () => {
+	it.each([
+		['ajv@8.18.0', 'ajv'],
+		['@scope/pkg@1.0.0', '@scope/pkg'],
+		// peer suffix carries `@`s — must not confuse the version separator
+		['@vitest/coverage-v8@4.1.9(vitest@4.1.9)', '@vitest/coverage-v8'],
+		['vite@5.0.0(sass@1.98.0)(terser@5.0.0)', 'vite'],
+		['plain-name', 'plain-name'],
+	])('%s → %s', (key, expected) => {
+		expect(snapshotKeyToName(key)).toBe(expected);
+	});
+});
+
+describe('runtimeClosure', () => {
+	// cli links core (runtime) → ajv → fast-uri; test-utils declares vitest but
+	// is only reachable via devDependencies, so it must stay out.
+	const importers: LockfileImporters = {
+		'packages/cli': {
+			dependencies: {
+				'n8n-core': { specifier: 'workspace:*', version: 'link:../core' },
+				axios: { specifier: '^1.0.0', version: '1.0.0' },
+			},
+			devDependencies: {
+				'test-utils': { specifier: 'workspace:*', version: 'link:../test-utils' },
+			},
+		},
+		'packages/core': {
+			dependencies: { ajv: { specifier: '^8.0.0', version: '8.18.0' } },
+		},
+		'packages/test-utils': {
+			dependencies: { vitest: { specifier: '^4.0.0', version: '4.1.9' } },
+		},
+	};
+	const snapshots: LockfileSnapshots = {
+		'ajv@8.18.0': { dependencies: { 'fast-uri': '3.1.3' } },
+		'fast-uri@3.1.3': {},
+		'axios@1.0.0': {},
+		'vitest@4.1.9': { dependencies: { '@vitest/browser': '4.1.9' } },
+		'@vitest/browser@4.1.9': {},
+	};
+	const opts = {
+		deployRoots: ['packages/cli'],
+		runtimeSections: ['dependencies', 'optionalDependencies'],
+	};
+
+	it('follows workspace link: edges from the deploy roots', () => {
+		const closure = runtimeClosure(importers, snapshots, opts);
+		expect(closure.has('ajv')).toBe(true);
+		expect(closure.has('axios')).toBe(true);
+	});
+	it('reaches a dep only present via a transitive snapshot edge (the fast-uri shape)', () => {
+		expect(runtimeClosure(importers, snapshots, opts).has('fast-uri')).toBe(true);
+	});
+	it('excludes deps of a workspace package reachable only via devDependencies (the vitest shape)', () => {
+		const closure = runtimeClosure(importers, snapshots, opts);
+		expect(closure.has('vitest')).toBe(false);
+		expect(closure.has('@vitest/browser')).toBe(false);
+	});
+	it('with empty snapshots the closure is just the declared external roots', () => {
+		expect([...runtimeClosure(importers, {}, opts)].sort()).toEqual(['ajv', 'axios']);
+	});
+	it('roots the real package behind an npm: alias in an importer (the zod-from-json-schema shape)', () => {
+		const aliased: LockfileImporters = {
+			'packages/cli': {
+				dependencies: {
+					'zod-v3': {
+						specifier: 'npm:zod-from-json-schema@^0.0.5',
+						version: 'zod-from-json-schema@0.0.5',
+					},
+				},
+			},
+		};
+		const snaps: LockfileSnapshots = {
+			'zod-from-json-schema@0.0.5': { dependencies: { zod: '3.25.76' } },
+		};
+		const closure = runtimeClosure(aliased, snaps, opts);
+		expect(closure.has('zod-from-json-schema')).toBe(true);
+		expect(closure.has('zod')).toBe(true);
+	});
+	it('follows an aliased dep inside a snapshot (the string-width-cjs shape)', () => {
+		const snaps: LockfileSnapshots = {
+			'ajv@8.18.0': { dependencies: { 'string-width-cjs': 'string-width@4.2.3' } },
+			'string-width@4.2.3': { dependencies: { 'emoji-regex': '8.0.0' } },
+		};
+		const closure = runtimeClosure(importers, snaps, opts);
+		expect(closure.has('string-width')).toBe(true);
+		expect(closure.has('emoji-regex')).toBe(true);
+	});
+	it('unknown deploy root → empty closure, no throw', () => {
+		expect(
+			runtimeClosure(importers, snapshots, { ...opts, deployRoots: ['packages/nope'] }).size,
+		).toBe(0);
 	});
 });

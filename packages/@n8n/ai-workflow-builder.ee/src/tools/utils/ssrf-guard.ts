@@ -10,9 +10,9 @@
  * network package.
  */
 import type { SsrfBridge } from '@n8n/backend-network/transport';
-import { createResultOk, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
-import type { LookupFunction } from 'node:net';
 
 export type SsrfGuard = Pick<
 	SsrfBridge,
@@ -39,7 +39,7 @@ export function createPassthroughSsrfGuard(): SsrfGuard {
 		validateUrl: async () => createResultOk(undefined),
 		validateRedirectSync: () => {},
 		// `dns.lookup` is a valid LookupFunction; axios callbackifies it.
-		createSecureLookup: () => dns.lookup as unknown as LookupFunction,
+		createSecureLookup: () => dns.lookup,
 	};
 }
 

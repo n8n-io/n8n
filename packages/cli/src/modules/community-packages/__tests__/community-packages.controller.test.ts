@@ -77,7 +77,11 @@ describe('CommunityPackagesController', () => {
 			});
 			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
-					checksum: 'checksum',
+					npmVersion: '1.1.1',
+					checksum: 'latest-checksum',
+					// The requested version is older than the registry's latest, so its
+					// checksum must come from the per-version history.
+					nodeVersions: [{ npmVersion: '1.0.0', checksum: 'checksum' }],
 				}),
 			);
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
@@ -85,8 +89,7 @@ describe('CommunityPackagesController', () => {
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
 			});
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
 				status: 'OK',
 			});

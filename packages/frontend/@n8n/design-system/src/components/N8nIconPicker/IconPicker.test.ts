@@ -24,6 +24,11 @@ vi.mock('./lucideIconData', () => ({
 			categories: ['design'],
 		},
 		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
+		bot: {
+			keywords: ['bot', 'robot', 'ai', 'assistant'],
+			categories: ['development'],
+		},
+		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
 		settings: {
 			keywords: ['settings', 'gear', 'preferences'],
 			categories: ['development'],
@@ -101,13 +106,6 @@ function getTabElement(tabContainer: Element): Element | null {
 describe('IconPicker', () => {
 	beforeEach(() => {
 		localStorage.clear();
-		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
-			this: HTMLElement,
-		) {
-			if (this.classList?.contains('recycle-scroller-wrapper')) return 280;
-			if (this.classList?.contains('recycle-scroller-item')) return 32;
-			return 32;
-		});
 	});
 
 	it('opens popup and shows icons tab by default', async () => {
@@ -135,7 +133,82 @@ describe('IconPicker', () => {
 
 		// Wait for data to load and icons to render
 		const icons = await findAllByTestId('icon-picker-icon');
-		expect(icons).toHaveLength(4); // smile, star, heart, layers from mock
+		expect(icons).toHaveLength(4); // smile, star, heart, palette from mock
+	});
+
+	it('opens the tab that matches the selected item type', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'emoji', value: '😀' },
+				buttonTooltip: 'Select an emoji',
+				defaultTab: 'icons',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
+		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
+	});
+
+	it('opens the configured default tab when there is no selected item', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				buttonTooltip: 'Select an item',
+				defaultTab: 'emojis',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
+		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
+	});
+
+	it('can hide emoji controls without narrowing icon results', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId, queryByText } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+				iconsOnly: true,
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		expect(getByTestId('icon-picker-popup').className).toContain('iconsOnly');
+		expect(queryByTestId('icon-picker-tabs')).toBeNull();
+		expect(queryByTestId('tab-emojis')).toBeNull();
+		expect(queryByText('Emojis')).toBeNull();
+		expect(queryByTestId('emoji-skin-tone-trigger')).toBeNull();
+
+		const icons = await findAllByTestId('icon-picker-icon');
+		expect(icons).toHaveLength(4);
+
+		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).toContain('Smile');
+		expect(iconLabels).toContain('Star');
+		expect(iconLabels).toContain('Palette');
+		expect(iconLabels).toContain('Heart');
+		expect(iconLabels).not.toContain('Bot');
+		expect(iconLabels).not.toContain('Settings');
 	});
 
 	it('renders icon picker with custom icon and tooltip', async () => {
@@ -255,6 +328,108 @@ describe('IconPicker', () => {
 			type: 'emoji',
 			value: '😀',
 		});
+	});
+
+	it('supports keyboard navigation and selection from the search input', async function () {
+		const { emitted, findAllByTestId, getByTestId, queryByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		const searchInput = getByTestId('icon-picker-search');
+		expect(getByTestId('icon-picker-popup').querySelector('[role="grid"]')).not.toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+
+		const firstOption = document.getElementById('icon-picker-option-1-0');
+		expect(firstOption).toHaveAttribute('data-active', 'true');
+		expect(firstOption).toHaveAttribute('tabindex', '-1');
+
+		expect(searchInput.closest('[class*="searchWithActiveItem"]')).not.toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowRight' });
+		const nextOption = document.querySelector('[data-active="true"]');
+		expect(nextOption).not.toBe(firstOption);
+		expect(nextOption).toHaveAttribute('aria-label', 'Smile');
+
+		await fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+		expect(queryByTestId('icon-picker-popup')).toBeNull();
+		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
+			type: 'icon',
+			value: 'smile',
+			color: undefined,
+		});
+	});
+
+	it('clears the active item when navigating above the grid or leaving search', async function () {
+		const { findAllByTestId, getByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+		expect(document.querySelector('[data-active="true"]')).not.toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowUp' });
+		expect(document.querySelector('[data-active="true"]')).toBeNull();
+		expect(searchInput).not.toHaveAttribute('aria-activedescendant');
+		expect(searchInput.closest('[class*="searchWithActiveItem"]')).toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+		await fireEvent.blur(searchInput);
+		expect(document.querySelector('[data-active="true"]')).toBeNull();
+		expect(searchInput).not.toHaveAttribute('aria-activedescendant');
+	});
+
+	it('reopens on the tab that matches the selected item', async function () {
+		const view = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an item',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(view.getByTestId('icon-picker-button'));
+		const emojiTab = getTabElement(view.getByTestId('tab-emojis'));
+		await fireEvent.click(emojiTab ?? view.getByTestId('tab-emojis'));
+		const emojis = await view.findAllByTestId('icon-picker-emoji');
+		await fireEvent.click(emojis[0]);
+
+		await view.rerender({
+			modelValue: { type: 'emoji', value: '😀' },
+			buttonTooltip: 'Select an item',
+		});
+		await fireEvent.click(view.getByTestId('icon-picker-button'));
+
+		const activeEmojiTab = getTabElement(view.getByTestId('tab-emojis'));
+		expect(activeEmojiTab?.className).toContain('activeTab');
 	});
 
 	it('filters icons by search query', async () => {
@@ -438,7 +613,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
-				stubs: ['N8nIcon', 'N8nButton'],
+				stubs: ['N8nIcon'],
 			},
 		});
 
@@ -532,13 +707,14 @@ describe('IconPicker', () => {
 
 		await fireEvent.click(getByTestId('icon-picker-button'));
 
-		// Mock has 5 icons (smile, star, heart, palette, settings)
-		// but 'settings' is blocklisted, so only 4 should render
+		// Mock has 6 icons (smile, star, heart, palette, bot, settings)
+		// but 'bot' and 'settings' are blocklisted, so only 4 should render
 		const icons = await findAllByTestId('icon-picker-icon');
 		expect(icons).toHaveLength(4);
 
 		// Verify the blocklisted icon is not present via aria-label
 		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).not.toContain('Bot');
 		expect(iconLabels).not.toContain('Settings');
 		expect(iconLabels).toContain('Smile');
 		expect(iconLabels).toContain('Star');
@@ -562,7 +738,6 @@ describe('IconPicker', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 		await findAllByTestId('icon-picker-icon');
 
-		// Search for a blocklisted icon by its exact name
 		const searchInput = getByTestId('icon-picker-search');
 		await fireEvent.update(searchInput, 'settings');
 

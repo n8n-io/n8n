@@ -1,15 +1,22 @@
-import type { ExecutionSummaries } from '@n8n/db';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import type { ExecutionCursor } from '@/executions/execution-cursor';
+import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
+	const executionListService = mock<ExecutionListService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
 
 	const executionsController = new ExecutionsController(
@@ -17,6 +24,7 @@ describe('ExecutionsController', () => {
 		mock(),
 		workflowSharingService,
 		mock(),
+		executionListService,
 	);
 
 	beforeEach(() => {
@@ -24,131 +32,109 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getOne', () => {
-		it('should 400 when execution is not a number', async () => {
+		it('should 400 when the id is neither a positive integer nor a uuid', async () => {
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: 'test' } });
 
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
 		});
+
+		it('should pass an engine v2 id through to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const req = mock<ExecutionRequest.GetOne>({ params: { id: V2_EXECUTION_ID } });
+
+			await executionsController.getOne(req);
+
+			expect(executionService.findOne).toHaveBeenCalledWith(req, ['wf-1']);
+		});
+	});
+
+	describe('update', () => {
+		it('should 400 when the id is neither a positive integer nor a uuid', async () => {
+			const req = mock<ExecutionRequest.Update>({ params: { id: 'test' } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should 501 for an engine v2 id, which has no annotation store', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(NotImplementedError);
+			expect(executionService.annotate).not.toHaveBeenCalled();
+		});
+
+		it('should 404 for an engine v2 id when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(NotFoundError);
+			expect(executionService.annotate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete', () => {
+		it('should 404 when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(
+				executionsController.delete(mock(), mock(), DeleteExecutionsDto.parse({ ids: ['1'] })),
+			).rejects.toThrow(NotFoundError);
+
+			expect(executionService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should pass the user, payload and accessible workflow ids to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const user = mock<User>({ id: 'user-1' });
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionsController.delete(mock<AuthenticatedRequest>({ user }), mock(), payload);
+
+			expect(executionService.delete).toHaveBeenCalledWith(user, payload, ['wf-1']);
+		});
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = {
-			count: 0,
-			estimated: false,
-			results: [],
-			concurrentExecutionsCount: -1,
-		};
-
-		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: ['waiting'],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-		];
-
-		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
-			},
-		];
-
-		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
-
-		describe('if either status or range provided', () => {
-			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
-				'should fetch executions per query',
-				async (rangeQuery) => {
-					executionService.buildSharingOptions.mockResolvedValue({
-						workflowRoles: [],
-						projectRoles: [],
-					});
-					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
-					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-					await executionsController.getMany(req);
-
-					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
-					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
-					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-				},
-			);
-		});
-
-		describe('if neither status nor range provided', () => {
-			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
-				'should fetch executions per query',
-				async (rangeQuery) => {
-					executionService.buildSharingOptions.mockResolvedValue({
-						workflowRoles: [],
-						projectRoles: [],
-					});
-					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
-					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-					await executionsController.getMany(req);
-
-					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
-					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
-					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-				},
-			);
-		});
-
-		describe('if both status and range provided', () => {
-			it('should fetch executions per query', async () => {
-				executionService.buildSharingOptions.mockResolvedValue({
-					workflowRoles: [],
-					projectRoles: [],
-				});
-				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
+		it.each([undefined, [], ['success']] as const)(
+			'passes filters and cursor to the editor list for %s',
+			async (status) => {
 				const rangeQuery: ExecutionSummaries.RangeQuery = {
 					kind: 'range',
-					workflowId: undefined,
-					status: ['success'],
-					range: { lastId: '999', firstId: '111', limit: 5 },
+					range: { limit: 20 },
+					status: status ? [...status] : undefined,
 				};
+				const user = mock<User>({ id: 'member' });
+				const sharingOptions = {
+					scopes: ['workflow:read' as const],
+					workflowRoles: ['workflow:editor'],
+					projectRoles: ['project:viewer'],
+				};
+				executionListService.buildSharingOptions.mockResolvedValue(sharingOptions);
+				executionListService.listExecutionsForUI.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+					nextCursor: null,
+				});
+				// The middleware decodes the cursor, so the controller forwards the
+				// decoded object rather than the query param.
+				const cursor: ExecutionCursor = {
+					version: 1,
+					v1: { id: '10', timestamp: '2026-09-07T12:00:00.000Z' },
+				};
+				const req = mock<ExecutionRequest.GetMany>({ rangeQuery, user, cursor });
 
-				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-				await executionsController.getMany(req);
-
-				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
-				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
-				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-			});
-		});
+				await expect(executionsController.getMany(req)).resolves.toMatchObject({
+					results: [],
+					nextCursor: null,
+				});
+				expect(executionListService.listExecutionsForUI).toHaveBeenCalledWith(
+					expect.objectContaining({ user, sharingOptions, status: rangeQuery.status }),
+					cursor,
+				);
+				expect(executionListService.addScopes).toHaveBeenCalledWith(user, []);
+			},
+		);
 	});
 
 	describe('stop', () => {

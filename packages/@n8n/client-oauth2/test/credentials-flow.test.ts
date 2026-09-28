@@ -1,6 +1,6 @@
+import { CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
 import nock from 'nock';
 
-import { CLIENT_ASSERTION_TYPE } from '@/client-assertion';
 import { ClientOAuth2, type ClientOAuth2Options } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
 import type { Headers } from '@/types';
@@ -69,6 +69,23 @@ describe('CredentialsFlow', () => {
 			const { headers, body } = await requestPromise;
 			expect(headers.authorization).toBe('Basic YWJjOjEyMw==');
 			expect(body).toEqual('grant_type=client_credentials&scope=notifications');
+		});
+
+		it('should send caller-supplied headers on the token request, without dropping Authorization', async () => {
+			const authClient = new ClientOAuth2({
+				clientId: config.clientId,
+				clientSecret: config.clientSecret,
+				accessTokenUri: config.accessTokenUri,
+				authorizationGrants: ['credentials'],
+				headers: { 'User-Agent': 'test-agent/1.0' },
+			});
+			const requestPromise = mockTokenCall();
+
+			await authClient.credentials.getToken();
+
+			const { headers } = await requestPromise;
+			expect(headers['user-agent']).toBe('test-agent/1.0');
+			expect(headers.authorization).toBe('Basic YWJjOjEyMw==');
 		});
 
 		it('when scopes are undefined, it should not send scopes to an auth server', async () => {

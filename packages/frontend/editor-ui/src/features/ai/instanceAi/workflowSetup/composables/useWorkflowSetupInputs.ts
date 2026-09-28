@@ -23,6 +23,8 @@ export function useWorkflowSetupInputs(deps: {
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;
 	isCredentialTestFailed: (section: WorkflowSetupSection) => boolean;
 	isSectionSkipped: (section: WorkflowSetupSection) => boolean;
+	/** Complete or skipped: the wizard has nothing left to ask for this section. */
+	isSectionHandled: (section: WorkflowSetupSection) => boolean;
 	markSectionSkipped: (section: WorkflowSetupSection) => void;
 	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 } {
@@ -140,6 +142,10 @@ export function useWorkflowSetupInputs(deps: {
 		return isCredentialComplete(section) && areParametersComplete(section);
 	}
 
+	function isSectionHandled(section: WorkflowSetupSection): boolean {
+		return isSectionComplete(section) || isSectionSkipped(section);
+	}
+
 	function isCredentialTestFailed(section: WorkflowSetupSection): boolean {
 		if (!section.credentialType) return false;
 		const selectedCredentialId = getSelectedCredentialId(section);
@@ -155,11 +161,27 @@ export function useWorkflowSetupInputs(deps: {
 
 		const nodeCredentials = buildNodeCredentials(includeCredential);
 		const nodeParameters = buildNodeParameters(includeParams);
+		const skippedNodes = buildSkippedNodeNames();
 
 		return {
 			...(Object.keys(nodeCredentials).length > 0 ? { nodeCredentials } : {}),
 			...(Object.keys(nodeParameters).length > 0 ? { nodeParameters } : {}),
+			...(skippedNodes.length > 0 ? { skippedNodes } : {}),
 		};
+	}
+
+	/**
+	 * Every node behind a skipped section — a credential section can cover several nodes, and
+	 * the backend keys the decision off node names.
+	 */
+	function buildSkippedNodeNames(): string[] {
+		const names = new Set<string>();
+		for (const section of deps.sections.value) {
+			if (!isSectionSkipped(section)) continue;
+			names.add(section.targetNodeName);
+			for (const target of section.credentialTargetNodes) names.add(target.name);
+		}
+		return [...names];
 	}
 
 	function buildNodeCredentials(
@@ -264,6 +286,7 @@ export function useWorkflowSetupInputs(deps: {
 		isSectionComplete,
 		isCredentialTestFailed,
 		isSectionSkipped,
+		isSectionHandled,
 		markSectionSkipped,
 		buildCompletedSetupPayload,
 	};

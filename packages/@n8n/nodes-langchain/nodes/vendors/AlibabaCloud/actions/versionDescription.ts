@@ -14,7 +14,7 @@ export const versionDescription: INodeTypeDescription = {
 	version: [1, 1.1],
 	defaultVersion: 1.1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with all models available on Qwen Cloud',
+	description: 'Message Qwen models, analyze images, and generate images and video',
 	defaults: {
 		name: 'Qwen Cloud',
 	},

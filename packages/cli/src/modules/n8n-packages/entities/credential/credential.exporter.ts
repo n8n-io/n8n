@@ -1,12 +1,15 @@
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
+import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { WorkflowCredentialRequirement } from './credential.types';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
@@ -20,6 +23,9 @@ export interface CredentialExportRequest {
 	user: User;
 	requirements: WorkflowCredentialRequirement[];
 	writer: PackageWriter;
+	credentialExportPolicy: CredentialExportPolicy;
+	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
+	projectTargetsById?: Map<string, string>;
 }
 
 export interface CredentialExportResult {
@@ -35,7 +41,6 @@ export class CredentialExporter {
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
-		const allocator = new UniqueFilenameAllocator('credentials', 'credential');
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
@@ -56,19 +61,42 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
-				const target = allocator.allocate(name);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
-					`${target}/credential.json`,
-					JSON.stringify(this.credentialSerializer.serialize(credential), null, '\t'),
+				const data = await selectCredentialDataForExport(
+					request.credentialExportPolicy,
+					async () =>
+						await new Credentials(
+							{ id: credential.id, name: credential.name },
+							credential.type,
+							credential.data,
+						).getData(),
 				);
-				entries.push({ id, name, target });
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'credentials',
+						projectScopedDirectory(
+							'credentials',
+							this.ownerProjectId(credential),
+							request.projectTargetsById,
+						),
+						{ id, name },
+						this.credentialSerializer.serialize(credential, { data }),
+					),
+				);
 			}
 
 			requirements.push({ id, name, type, usedByWorkflows });
 		}
 
 		return { entries, requirements };
+	}
+
+	/**
+	 * A credential has no owner column: its owner is the project on the
+	 * `credential:owner` sharing. Undefined for a global credential.
+	 */
+	private ownerProjectId(credential: CredentialsEntity): string | undefined {
+		return credential.shared?.find((sharing) => sharing.role === 'credential:owner')?.projectId;
 	}
 
 	private groupByCredentialId(

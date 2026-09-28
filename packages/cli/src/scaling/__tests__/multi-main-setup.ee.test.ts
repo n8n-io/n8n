@@ -5,7 +5,7 @@ import type { MultiMainEventHandler } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { createResultOk, createResultError } from '@n8n/utils/result';
 
 import type { LeaderElectionClient } from '@/scaling/leader-election-client';
 

@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createChatHubModuleSettings } from './__test__/data';
 import SettingsChatHubView from './SettingsChatHubView.vue';
 
+const { hasPermissionMock } = vi.hoisted(() => ({
+	hasPermissionMock: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: hasPermissionMock,
+}));
+
 const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	settingsState: {
 		enabled: true as boolean | undefined,
@@ -13,7 +21,7 @@ const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get moduleSettings() {
 			return { 'chat-hub': createChatHubModuleSettings({ enabled: settingsState.enabled }) };
@@ -34,10 +42,6 @@ vi.mock('./chat.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
-	useUsersStore: () => ({ isInstanceOwner: true, isAdmin: true }),
-}));
-
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		fetchAllCredentials: vi.fn().mockResolvedValue(undefined),
@@ -49,11 +53,11 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: vi.fn(), openNewCredential: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -78,6 +82,7 @@ describe('SettingsChatHubView', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		hasPermissionMock.mockReturnValue(true);
 		settingsState.enabled = true;
 		settingsState.isChatFeatureEnabled = true;
 	});
@@ -119,5 +124,13 @@ describe('SettingsChatHubView', () => {
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
+	});
+
+	it('disables the toggle for users without chatHub:manage scope', () => {
+		hasPermissionMock.mockReturnValue(false);
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('chat-hub-enabled-switch')).toBeDisabled();
 	});
 });

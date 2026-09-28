@@ -16,11 +16,17 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
-import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import {
+	buildInstanceAiArtifactCredentialQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../composables/useInstanceAiHandoff';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
 	workflowId: string;
@@ -31,15 +37,18 @@ export interface WorkflowFailuresReport {
 const props = withDefaults(
 	defineProps<{
 		workflowId: string;
+		/** Node whose NDV opens after the workflow loads. */
+		initialNodeId?: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
 		/** Latest completed execution produced by the agent for this workflow. */
 		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0, executionResult: undefined },
+	{ initialNodeId: undefined, refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
+	'initial-node-id-consumed': [];
 	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
@@ -107,11 +116,31 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	reportWorkflowFailures,
 });
 
+let pendingInitialNodeId = props.initialNodeId;
+
+function handleWorkflowLoaded(workflowId: string) {
+	restoreExecutionResult();
+
+	const nodeId = pendingInitialNodeId;
+	pendingInitialNodeId = undefined;
+	if (!nodeId) return;
+	emit('initial-node-id-consumed');
+
+	const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const node = documentStore.getNodeById(nodeId);
+	if (!node) return;
+
+	useNDVStore(documentStore.documentId).setActiveNodeName(node.name, 'other');
+}
+
 // === Editing lock ===
-// Lock the artifact's editor while the agent is actively mutating THIS
-// workflow, so the user can't drag nodes into a mid-stream conflict.
-// `isAgentEditingWorkflow` defines the signals that trigger the lock.
+// Lock the artifact's editor while the agent is working, so the user can't
+// drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
+// signals below only fire around tool calls that name a workflowId — leaving
+// the canvas editable through workspace file edits and failed builds.
 const thread = useThread();
+const isAgentWorking = useIsAgentWorking();
+const settingsStore = useInstanceAiSettingsStore();
 
 // The workflow + execution the editor handed off, applied once when this
 // preview first opens. Consumed (cleared) here, so it never re-applies on a
@@ -130,19 +159,23 @@ const isAgentEditingThisWorkflow = computed(() => {
 });
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
-// standalone AI helpers (`false`), forces the canvas read-only while a
-// workflow-builder agent is mutating this workflow, and suppresses workflow
+// standalone AI helpers (`false`), forces the canvas read-only while the agent
+// is working (see the editing lock above), and suppresses workflow
 // execution result toasts (success + error) — the agent surfaces run outcomes
-// in the thread UI, so the canvas would only duplicate them. NodeView derives
-// its read-only state from these via useEditorContext(); usePushConnection
-// reads the toast flags to gate execution result notifications.
+// in the thread UI, so the canvas would only duplicate them. The execute button
+// demotes to a secondary action — the conversation is the primary surface here.
+// NodeView derives its read-only state from these via useEditorContext();
+// usePushConnection reads the toast flags to gate execution result
+// notifications.
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
 	askAi: false,
-	readOnly: isAgentEditingThisWorkflow.value,
+	readOnly: isAgentWorking.value || isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
+	executionButtonType: 'secondary',
+	credentialSetupWarnings: settingsStore.isInstanceAiSetupPanelEnabled,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 
@@ -154,11 +187,14 @@ const rootStore = useRootStore();
 // already the thread's subject, which hides the editor hand-off button here.
 const instanceAiCapability: InstanceAiEditorCapability = {
 	openCredential: async (credential) => {
-		void thread.sendMessage(
-			buildInstanceAiArtifactCredentialQuestion(credential),
-			undefined,
-			rootStore.pushRef,
-		);
+		// The handoff context carries the recipe's verified key page and the
+		// paste-only steering; without it the agent re-researches or suggests
+		// editing the pre-filled form.
+		void thread.sendMessage(buildInstanceAiArtifactCredentialQuestion(credential), {
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			pushRef: rootStore.pushRef,
+			handoffContext: buildInstanceAiCredentialHandoffContext(credential),
+		});
 		// Appends to the current thread → close the modal so the conversation shows.
 		return true;
 	},
@@ -174,7 +210,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
-			@workflow-loaded="restoreExecutionResult"
+			@workflow-loaded="handleWorkflowLoaded"
 		/>
 	</div>
 </template>

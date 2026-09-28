@@ -10,10 +10,13 @@ describe('SentryTracing', () => {
 	let sentryTracing: SentryTracing;
 	const mockSentry = mock({
 		startSpan: vi.fn(),
+		startNewTrace: vi.fn(),
 	});
 
 	beforeEach(() => {
 		mockClear(mockSentry);
+		// Pass through to the callback so the wrapped span still runs.
+		mockSentry.startNewTrace.mockImplementation((cb) => cb());
 
 		sentryTracing = new SentryTracing(mockSentry);
 	});
@@ -123,6 +126,23 @@ describe('SentryTracing', () => {
 
 			expect(result).toBe('inner-result');
 			expect(mockSentry.startSpan).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('startNewTraceSpan', () => {
+		it('wraps the span in a new trace and returns the callback result', async () => {
+			const options: StartSpanOptions = { name: 'new-trace-span' };
+			const mockSpan = { name: 'mock-span' } as unknown as Sentry.Span;
+			const callback = vi.fn().mockResolvedValue('result');
+
+			mockSentry.startSpan.mockImplementation(async (_opts, cb) => await cb(mockSpan));
+
+			const result = await sentryTracing.startNewTraceSpan(options, callback);
+
+			expect(mockSentry.startNewTrace).toHaveBeenCalledWith(expect.any(Function));
+			expect(mockSentry.startSpan).toHaveBeenCalledWith(options, expect.any(Function));
+			expect(callback).toHaveBeenCalledWith(mockSpan);
+			expect(result).toBe('result');
 		});
 	});
 

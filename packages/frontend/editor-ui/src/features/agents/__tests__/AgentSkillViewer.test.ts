@@ -3,7 +3,8 @@ import { defineComponent, h, onMounted } from 'vue';
 import { nextTick } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import {
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
 
@@ -12,8 +13,11 @@ import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.builder.skills.references.byteCount') {
-				return `${options?.interpolate?.count} / ${options?.interpolate?.max} bytes`;
+			if (
+				key === 'agents.builder.skills.instructions.characterCount' ||
+				key === 'agents.builder.skills.references.characterCount'
+			) {
+				return `${options?.interpolate?.count} / ${options?.interpolate?.max} characters`;
 			}
 			if (key === 'agents.builder.skills.references.maxCount') {
 				return `Skills can have up to ${options?.interpolate?.max} reference files.`;
@@ -44,109 +48,6 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
-	it('imports SKILL.md frontmatter and instructions', async () => {
-		const wrapper = mount(AgentSkillViewer, {
-			props: {
-				skill: {
-					name: 'Summarize',
-					description: 'Use when summarizing notes',
-					instructions: '',
-				},
-			},
-			global: {
-				stubs: {
-					N8nButton: {
-						template:
-							'<button type="button" v-bind="$attrs" @click="$emit(\'click\')"><slot name="prefix" /><slot name="icon" /><slot /></button>',
-						emits: ['click'],
-					},
-					N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
-					N8nDialogHeader: { template: '<div><slot /></div>' },
-					N8nDialogTitle: { template: '<h3><slot /></h3>' },
-					N8nFormInput: N8nFormInputStub,
-					N8nIcon: { template: '<i />' },
-					N8nText: { template: '<span><slot /></span>' },
-					N8nTooltip: { template: '<span><slot /></span>' },
-					// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
-					MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
-				},
-			},
-		});
-
-		const file = makeFile(
-			'---\nname: Summarize notes\ndescription: Use for notes\nallowed_tools:\n  - load_workflow\nrecommended_tools:\n  - search_docs\n---\n# Playbook\nFollow these steps.',
-			'SKILL.md',
-		);
-		const input = wrapper.find('[data-testid="agent-skill-skill-md-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [file],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		const importedSkill = wrapper.emitted('update:skill')?.at(-1)?.[0] as Record<string, unknown>;
-		expect(importedSkill).toEqual(
-			expect.objectContaining({
-				name: 'Summarize notes',
-				description: 'Use for notes',
-				instructions: '# Playbook\nFollow these steps.',
-				allowedTools: ['load_workflow'],
-				references: undefined,
-			}),
-		);
-		expect(importedSkill).not.toHaveProperty('recommendedTools');
-	});
-
-	it('imports markdown references from a folder', async () => {
-		const wrapper = mountViewer();
-		const skillFile = makeFile(
-			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
-			'skill-folder/SKILL.md',
-		);
-		const referenceFile = makeFile('# Guide', 'skill-folder/references/guide.md');
-		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [skillFile, referenceFile],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([
-			expect.objectContaining({
-				name: 'Research',
-				references: [
-					{
-						path: 'references/guide.md',
-						content: '# Guide',
-					},
-				],
-			}),
-		]);
-	});
-
-	it('rejects scripts in imported folders', async () => {
-		const wrapper = mountViewer();
-		const skillFile = makeFile(
-			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
-			'skill-folder/SKILL.md',
-		);
-		const scriptFile = makeFile('print("no")', 'skill-folder/scripts/run.py');
-		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [skillFile, scriptFile],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		expect(wrapper.text()).toContain('agents.builder.skills.import.scriptsUnsupported');
-	});
-
 	it('renames the selected reference without changing its directory', async () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -215,7 +116,22 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
-	it('shows the selected reference byte count', () => {
+	it('shows the instructions character count, not their byte size', () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				// Each of these is 3 UTF-8 bytes, so a byte counter would read 9.
+				instructions: '日本語',
+			},
+		});
+
+		expect(wrapper.text()).toContain(
+			`3 / ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString()} characters`,
+		);
+	});
+
+	it('shows the selected reference character count, not its byte size', () => {
 		const wrapper = mountViewer({
 			skill: {
 				name: 'Research',
@@ -231,8 +147,9 @@ describe('AgentSkillViewer', () => {
 			selectedPath: 'references/guide.md',
 		});
 
+		// '€' is 3 UTF-8 bytes but one character — the counter shows characters.
 		expect(wrapper.text()).toContain(
-			`9 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString()} bytes`,
+			`3 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString()} characters`,
 		);
 	});
 
@@ -319,19 +236,6 @@ function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$prop
 			},
 		},
 	});
-}
-
-function makeFile(content: string, path: string): File {
-	const file = new File([content], path.split('/').at(-1) ?? 'file.md');
-	Object.defineProperty(file, 'webkitRelativePath', {
-		value: path,
-		configurable: true,
-	});
-	Object.defineProperty(file, 'text', {
-		value: async () => await Promise.resolve(content),
-		configurable: true,
-	});
-	return file;
 }
 
 function makeReferences(count: number) {

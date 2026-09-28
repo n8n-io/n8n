@@ -1,6 +1,11 @@
 import type { IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { resolveParameter, useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import {
+	resolveParameter,
+	resolveRequiredParameters,
+	useWorkflowHelpers,
+} from '@/app/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -10,7 +15,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections, IRunData } from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	IConnections,
+	INodeProperties,
+	IRunData,
+} from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
@@ -1062,6 +1072,65 @@ describe('useWorkflowHelpers', () => {
 		});
 	});
 
+	describe('removeForeignCredentialsFromWorkflow', () => {
+		const ownedCredential = { id: 'cred-1', name: 'Mine' } as ICredentialsResponse;
+		const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+		it('keeps n8n credits credentials that have no stored id', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: { openAiApi: gatewayCredential },
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('drops credentials the user cannot use', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: {
+							openAiApi: gatewayCredential,
+							slackApi: { id: 'foreign', name: 'Someone else' },
+						},
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('keeps owned credentials alongside n8n credits', () => {
+			const workflow: WorkflowData = {
+				nodes: [
+					createTestNode({
+						credentials: {
+							openAiApi: gatewayCredential,
+							slackApi: { id: ownedCredential.id, name: ownedCredential.name },
+						},
+					}),
+				],
+				connections: {},
+			};
+
+			useWorkflowHelpers().removeForeignCredentialsFromWorkflow(workflow, [ownedCredential]);
+
+			expect(workflow.nodes[0].credentials).toEqual({
+				openAiApi: gatewayCredential,
+				slackApi: { id: ownedCredential.id, name: ownedCredential.name },
+			});
+		});
+	});
+
 	describe('getNodeTypes() - getByNameAndVersion', () => {
 		let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
@@ -1310,5 +1379,167 @@ describe(resolveParameter, () => {
 
 			expect(result?.params).toBeDefined();
 		});
+	});
+
+	describe('bare identifier resolution', () => {
+		const resolveExpression = async (
+			expression: string,
+			additionalKeys: Record<string, string> = {},
+		) => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
+
+			const result = await resolveParameter(
+				{ value: expression },
+				workflowDocumentStore.documentId,
+				{
+					localResolve: true,
+					additionalKeys,
+					nodeName: 'n0',
+				},
+			);
+
+			return result?.value;
+		};
+
+		// Each name is a real jsdom global, so resolving against the realm instead of the data
+		// context would surface it.
+		it.each([
+			[
+				'a let binding in a nested block',
+				'crypto',
+				"(() => { { let crypto = 'block scoped'; } return crypto; })()",
+			],
+			[
+				'a function declaration in a block',
+				'performance',
+				"(() => { { function performance() { return 'block scoped'; } } return performance; })()",
+			],
+			[
+				'a generator declaration in a block',
+				'localStorage',
+				'(() => { { function* localStorage() {} } return localStorage; })()',
+			],
+			[
+				'an async function declaration in a block',
+				'navigator',
+				'(() => { { async function navigator() {} } return navigator; })()',
+			],
+			[
+				'a let binding enclosing a block with a function declaration of the same name',
+				'history',
+				"(() => { { let history = 'outer block'; { function history() {} } } return history; })()",
+			],
+			[
+				'a lexical for-head binding enclosing the loop body',
+				'screen',
+				'(() => { for (let screen = 0; screen < 1; screen++) { let step = screen; } return screen; })()',
+			],
+		])(
+			'should read %s from the data context once out of its declaring block',
+			async (_shape, name, body) => {
+				const expression = `={{ ${body} }}`;
+
+				await expect(resolveExpression(expression, { [name]: 'from data context' })).resolves.toBe(
+					'from data context',
+				);
+
+				await expect(resolveExpression(expression)).resolves.toBeUndefined();
+			},
+		);
+
+		it('should keep a function declared at function-body level callable in that body', async () => {
+			const result = await resolveExpression(
+				"={{ (() => { function location() { return 'local function'; } return location(); })() }}",
+				{ location: 'from data context' },
+			);
+
+			expect(result).toBe('local function');
+		});
+	});
+});
+
+describe('resolveRequiredParameters', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	const createParameter = (loadOptionsDependsOn: string[]): INodeProperties => ({
+		displayName: 'Fallback Output',
+		name: 'fallbackOutput',
+		type: 'options',
+		default: 'none',
+		typeOptions: { loadOptionsDependsOn },
+	});
+
+	const createResolveContext = () => {
+		const workflowData = createTestWorkflow({
+			nodes: [createTestNode({ name: 'Switch' })],
+		});
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+		workflowDocumentStore.hydrate(workflowData);
+
+		return {
+			workflowDocumentId: workflowDocumentStore.documentId,
+			opts: {
+				localResolve: true as const,
+				nodeName: 'Switch',
+				additionalKeys: {},
+			},
+		};
+	};
+
+	it('should preserve structure and resolve available leaves when an optional expression fails', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		const result = await resolveRequiredParameters(
+			createParameter(['rules.values']),
+			{
+				rules: {
+					values: [
+						{
+							conditions: {
+								leftValue: '={{ $json.missing.toUpperCase() }}',
+								rightValue: '={{ 2 + 2 }}',
+							},
+							outputKey: 'Matched',
+						},
+					],
+				},
+			},
+			workflowDocumentId,
+			opts,
+		);
+
+		expect(result).toEqual({
+			rules: {
+				values: [
+					{
+						conditions: { leftValue: null, rightValue: 4 },
+						outputKey: 'Matched',
+					},
+				],
+			},
+		});
+	});
+
+	it('should reject when a required parameter cannot be resolved', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		await expect(
+			resolveRequiredParameters(
+				createParameter(['rules']),
+				{ rules: '={{ $json.missing.toUpperCase() }}' },
+				workflowDocumentId,
+				opts,
+			),
+		).rejects.toThrow();
 	});
 });

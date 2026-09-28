@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { N8N_VERSION } from '../../../constants';
+import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
@@ -23,6 +24,7 @@ describe('BreakingChangeService', () => {
 	let workflowStatisticsRepository: Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
 	let cacheService: Mocked<CacheService>;
+	let errorReporter: Mocked<ErrorReporter>;
 	let service: BreakingChangeService;
 
 	beforeEach(() => {
@@ -32,6 +34,7 @@ describe('BreakingChangeService', () => {
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 		cacheService = mock<CacheService>();
+		errorReporter = mock<ErrorReporter>();
 
 		// Mock getHashValue to call refreshFn directly (bypass caching for tests)
 		cacheService.getHashValue.mockImplementation(async (_key, _hashKey, options) => {
@@ -46,11 +49,12 @@ describe('BreakingChangeService', () => {
 
 		service = new BreakingChangeService(
 			ruleRegistry,
+			new MigrationRegistry(logger),
 			workflowRepository,
 			workflowStatisticsRepository,
 			cacheService,
 			logger,
-			mock<ErrorReporter>(),
+			errorReporter,
 		);
 
 		// Manually register only the rules we want to test with
@@ -181,6 +185,39 @@ describe('BreakingChangeService', () => {
 			// Verify all three requests received the same result
 			expect(result1).toEqual(result2);
 			expect(result2).toEqual(result3);
+		});
+
+		it('should skip a rule that throws for a workflow and keep the other results', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
+
+			const result = await service.getDetectionResults('v2');
+
+			const ruleIds = result.report.workflowResults.map((r) => r.ruleId);
+			expect(ruleIds).toContain('removed-nodes-v2');
+			expect(ruleIds).not.toContain(throwingRule.id);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({ extra: { ruleId: throwingRule.id, workflowId: 'wf-1' } }),
+			);
+		});
+
+		it('should reject when detection fails and allow a later detection to run', async () => {
+			workflowRepository.count.mockRejectedValueOnce(new Error('db down'));
+			workflowRepository.count.mockResolvedValue(0);
+			workflowRepository.find.mockResolvedValue([]);
+
+			await expect(service.getDetectionResults('v2')).rejects.toThrow('db down');
+
+			const detectSpy = vi.spyOn(service, 'detect');
+			await expect(service.getDetectionResults('v2')).resolves.toBeDefined();
+			expect(detectSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should clean up ongoing detection promise after completion', async () => {

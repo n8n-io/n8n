@@ -6,7 +6,7 @@
  *
  * Prerequisites:
  * - Log streaming feature enabled (enterprise license)
- * - @capability:observability tag to bring up VictoriaLogs
+ * - The observability capability starts VictoriaLogs
  */
 
 import { test, expect } from '../../../../fixtures/base';
@@ -15,7 +15,7 @@ import { test, expect } from '../../../../fixtures/base';
 test.use({ capability: 'observability' });
 
 test.describe(
-	'Log Streaming to VictoriaLogs @capability:observability @licensed',
+	'Log Streaming to VictoriaLogs @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
@@ -59,7 +59,7 @@ test.describe(
 			await api.deleteLogStreamingDestination(destination.id);
 		});
 
-		test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
+		test('should query metrics from VictoriaMetrics @engine:v2', async ({ api, services }) => {
 			const obs = services.observability;
 
 			// Import and activate a webhook workflow to generate metrics

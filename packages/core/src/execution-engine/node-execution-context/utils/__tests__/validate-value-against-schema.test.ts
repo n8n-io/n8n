@@ -464,5 +464,244 @@ describe('validateValueAgainstSchema', () => {
 				).toThrow("Invalid input for 'count' [item 0]");
 			});
 		});
+
+		describe('convertFieldsToString across the 1.4 boundary', () => {
+			// Mirrors Execute Sub-workflow: two variants of the same property, resolved by
+			// node version, where only the 1.4+ variant sets `alwaysConvertFieldsToString`.
+			const workflowInputsVariant = (
+				versionCondition: unknown,
+				alwaysConvertFieldsToString: boolean,
+			) => ({
+				displayName: 'Workflow Inputs',
+				name: 'workflowInputs',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				typeOptions: {
+					resourceMapper: {
+						showTypeConversionOptions: true,
+						alwaysConvertFieldsToString,
+						mode: 'map',
+					},
+				},
+				displayOptions: { show: { '@version': [versionCondition] } },
+			});
+
+			const nodeType = {
+				description: {
+					properties: [
+						workflowInputsVariant({ _cnd: { between: { from: 1.2, to: 1.3 } } }, false),
+						workflowInputsVariant({ _cnd: { gte: 1.4 } }, true),
+					],
+				},
+			} as unknown as INodeType;
+
+			const makeNode = (typeVersion: number, flags: Record<string, unknown>): INode =>
+				({
+					parameters: {
+						workflowInputs: {
+							mappingMode: 'defineBelow',
+							value: { note: '={{ $json.note }}' },
+							matchingColumns: [],
+							...flags,
+							schema: [
+								{
+									id: 'note',
+									displayName: 'note',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'call sub-workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion,
+					position: [420, 0],
+				}) as unknown as INode;
+
+			const run = (typeVersion: number, flags: Record<string, unknown>) =>
+				validateValueAgainstSchema(
+					makeNode(typeVersion, flags),
+					nodeType,
+					{ note: 42 },
+					'workflowInputs.value',
+					0,
+					0,
+				);
+
+			describe.each([1.2, 1.3])('on v%s the stored flag still decides', (typeVersion) => {
+				// Anything authored outside the NDV can omit the flag, so these two must keep
+				// passing values through untouched rather than starting to reject them.
+				test('passes the value through when the flag is absent', () => {
+					expect(run(typeVersion, { attemptToConvertTypes: false })).toEqual({ note: 42 });
+				});
+
+				test('passes the value through when the flag is false', () => {
+					expect(
+						run(typeVersion, { attemptToConvertTypes: false, convertFieldsToString: false }),
+					).toEqual({ note: 42 });
+				});
+
+				test('rejects a type mismatch when the flag is true', () => {
+					expect(() =>
+						run(typeVersion, { attemptToConvertTypes: false, convertFieldsToString: true }),
+					).toThrow(ExpressionError);
+				});
+			});
+
+			describe('on v1.4 the stored flag is ignored', () => {
+				test('casts to string even when the flag is false', () => {
+					expect(run(1.4, { attemptToConvertTypes: true, convertFieldsToString: false })).toEqual({
+						note: '42',
+					});
+				});
+
+				test('casts to string when the flag is absent', () => {
+					expect(run(1.4, { attemptToConvertTypes: true })).toEqual({ note: '42' });
+				});
+
+				test('rejects a type mismatch when conversion is off, whatever the flag says', () => {
+					expect(() =>
+						run(1.4, { attemptToConvertTypes: false, convertFieldsToString: false }),
+					).toThrow(ExpressionError);
+				});
+			});
+		});
+
+		describe('schema field lookup', () => {
+			const nodeType = {
+				description: {
+					properties: [
+						{
+							displayName: 'Columns',
+							name: 'columns',
+							type: 'resourceMapper',
+							typeOptions: {
+								resourceMapper: {
+									mode: 'add',
+								},
+							},
+						},
+					],
+				},
+			} as unknown as INodeType;
+
+			const schemaField = (id: string, type: string, required = false) => ({
+				id,
+				displayName: id,
+				required,
+				defaultMatch: false,
+				display: true,
+				type,
+				canBeUsedToMatch: false,
+			});
+
+			const makeNode = (schema: unknown[], value: IDataObject) =>
+				({
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value,
+							matchingColumns: [],
+							attemptToConvertTypes: false,
+							schema,
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'add products to DB',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.3,
+					position: [420, 0],
+				}) as unknown as INode;
+
+			const parameterName = 'columns.value';
+
+			test('resolves every value against its own schema entry, whatever its position', () => {
+				const schema = [
+					schemaField('a', 'number'),
+					schemaField('b', 'string'),
+					schemaField('c', 'number'),
+					schemaField('d', 'boolean'),
+				];
+				const value = { d: 'true', c: '3', b: 2, a: '1' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				// `a`, `c` and `d` are cast to their schema type; `b` keeps its type, as
+				// validateFieldType does not coerce values for string fields.
+				expect(result).toEqual({ a: 1, b: 2, c: 3, d: true });
+			});
+
+			test('uses the first entry when a field id appears twice, like Array.prototype.find', () => {
+				const schema = [schemaField('dup', 'number'), schemaField('dup', 'string')];
+				const value = { dup: '42' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				// The first entry types `dup` as a number, so the string is cast. Had the second
+				// (string) entry won, the value would have stayed '42'.
+				expect(result).toEqual({ dup: 42 });
+			});
+
+			test('leaves values that have no schema entry untouched', () => {
+				const schema = [schemaField('known', 'number')];
+				const value = { known: '7', unknown: 'abc' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				expect(result).toEqual({ known: 7, unknown: 'abc' });
+			});
+
+			// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+			// `schema: null` reaches the lookup. Indexing now runs before the loop, where the
+			// previous `schema.find` only ran inside it — an empty value never touched it.
+			describe.each([
+				['null', null],
+				['undefined', undefined],
+				['empty', []],
+			])('when the stored schema is %s', (_label, schema) => {
+				test('resolves no field instead of throwing', () => {
+					const value = { anything: 'kept' };
+
+					const result = validateValueAgainstSchema(
+						makeNode(schema as unknown as unknown[], value),
+						nodeType,
+						value,
+						parameterName,
+						0,
+						0,
+					);
+
+					expect(result).toEqual({ anything: 'kept' });
+				});
+			});
+		});
 	});
 });

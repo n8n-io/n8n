@@ -26,7 +26,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('./settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn().mockReturnValue({
 		pushBackend: 'websocket',
 	}),
@@ -125,6 +125,39 @@ describe('usePushConnectionStore', () => {
 			vi.advanceTimersByTime(500);
 			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
 			expect(store.isConnectionRequested).toBe(true);
+		});
+
+		test('should keep the connection open until the last owner disconnects', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			store.pushConnect();
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+			expect(store.isConnectionRequested).toBe(true);
+
+			vi.advanceTimersByTime(500);
+
+			store.pushDisconnect();
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+			expect(store.isConnectionRequested).toBe(true);
+
+			store.pushDisconnect();
+			vi.advanceTimersByTime(500);
+			expect(mockWebSocketClient.disconnect).toHaveBeenCalledTimes(1);
+			expect(store.isConnectionRequested).toBe(false);
+		});
+
+		test('should ignore disconnect calls that exceed connect calls', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			vi.advanceTimersByTime(500);
+
+			store.pushDisconnect();
+			store.pushDisconnect();
+			vi.advanceTimersByTime(500);
+
+			expect(mockWebSocketClient.disconnect).toHaveBeenCalledTimes(1);
 		});
 
 		test('should not disconnect if connect is called during disconnect debounce window', () => {

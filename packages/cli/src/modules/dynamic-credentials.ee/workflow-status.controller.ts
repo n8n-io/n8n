@@ -8,7 +8,7 @@ import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
@@ -80,7 +80,7 @@ export class WorkflowStatusController {
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			credentialContext,
-			user,
+			{ user },
 		);
 
 		const isReady = status.every((s) => s.status === 'configured');

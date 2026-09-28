@@ -1,0 +1,75 @@
+diff --git a/dist/Combobox/ComboboxRoot.cjs b/dist/Combobox/ComboboxRoot.cjs
+index 024be3d3c606330d644aa9bad79c4ffa5893edc5..3e4234f28e51cd328d35d5b59c310b0057c9191a 100644
+--- a/dist/Combobox/ComboboxRoot.cjs
++++ b/dist/Combobox/ComboboxRoot.cjs
+@@ -118,11 +118,14 @@ var ComboboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ (
+ 				await (0, vue.nextTick)();
+ 				primitiveElement.value?.highlightSelected();
+ 				isUserInputted.value = true;
+-			} else isUserInputted.value = false;
+-			inputElement.value?.focus();
+-			setTimeout(() => {
+-				if (!val && props.resetSearchTermOnBlur) resetSearchTerm.trigger();
+-			}, 1);
++				// Only focus when opening — focusing on close steals Tab (reka-ui#2284)
++				inputElement.value?.focus();
++			} else {
++				isUserInputted.value = false;
++				setTimeout(() => {
++					if (!val && props.resetSearchTermOnBlur) resetSearchTerm.trigger();
++				}, 1);
++			}
+ 		}
+ 		const resetSearchTerm = (0, __vueuse_core.createEventHook)();
+ 		const isUserInputted = (0, vue.ref)(false);
+diff --git a/dist/Combobox/ComboboxRoot.js b/dist/Combobox/ComboboxRoot.js
+index ab18626e4d2e4de85df95dc2cc348ec2fea15271..de5b9c3bb3f95fe2bc6249a49363d5de17df69db 100644
+--- a/dist/Combobox/ComboboxRoot.js
++++ b/dist/Combobox/ComboboxRoot.js
+@@ -117,11 +117,14 @@ var ComboboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ d
+ 				await nextTick();
+ 				primitiveElement.value?.highlightSelected();
+ 				isUserInputted.value = true;
+-			} else isUserInputted.value = false;
+-			inputElement.value?.focus();
+-			setTimeout(() => {
+-				if (!val && props.resetSearchTermOnBlur) resetSearchTerm.trigger();
+-			}, 1);
++				// Only focus when opening — focusing on close steals Tab (reka-ui#2284)
++				inputElement.value?.focus();
++			} else {
++				isUserInputted.value = false;
++				setTimeout(() => {
++					if (!val && props.resetSearchTermOnBlur) resetSearchTerm.trigger();
++				}, 1);
++			}
+ 		}
+ 		const resetSearchTerm = createEventHook();
+ 		const isUserInputted = ref(false);
+diff --git a/src/Combobox/ComboboxRoot.vue b/src/Combobox/ComboboxRoot.vue
+index ad142f07d8110fbef8f8793c54540e48cfec456d..8e74b2144596ce3cd71475e704b6818360d64cb6 100644
+--- a/src/Combobox/ComboboxRoot.vue
++++ b/src/Combobox/ComboboxRoot.vue
+@@ -125,16 +125,16 @@ async function onOpenChange(val: boolean) {
+     await nextTick()
+     primitiveElement.value?.highlightSelected()
+     isUserInputted.value = true
++    // Only focus when opening — focusing on close steals Tab (reka-ui#2284)
++    inputElement.value?.focus()
+   }
+   else {
+     isUserInputted.value = false
++    setTimeout(() => {
++      if (!val && props.resetSearchTermOnBlur)
++        resetSearchTerm.trigger()
++    }, 1)
+   }
+-
+-  inputElement.value?.focus()
+-  setTimeout(() => {
+-    if (!val && props.resetSearchTermOnBlur)
+-      resetSearchTerm.trigger()
+-  }, 1)
+ }
+ 
+ const resetSearchTerm = createEventHook()

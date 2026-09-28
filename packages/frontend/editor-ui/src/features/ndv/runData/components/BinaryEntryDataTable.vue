@@ -6,8 +6,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { computed } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 
 const BYTES_THRESHOLD = 1048576; // 1MB
 
@@ -30,12 +31,7 @@ const tablePreview = computed(() => {
 	return isImageType && passThreshold;
 });
 
-const fileName = computed(() => {
-	const { fileName, fileExtension } = props.value;
-	const name = fileName ?? 'file';
-	if (name?.includes('.')) return name;
-	return fileExtension ? `${name}.${fileExtension}` : name;
-});
+const fileName = computed(() => getBinaryDataFileName(props.value));
 
 const fileUrl = computed(() => {
 	const { id, mimeType } = props.value;

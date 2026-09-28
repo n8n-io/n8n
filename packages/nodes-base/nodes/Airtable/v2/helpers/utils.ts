@@ -32,6 +32,27 @@ export function removeIgnored(data: IDataObject, ignore: string | string[]) {
 	}
 }
 
+/**
+ * Compare a value from the Airtable API response with a value from the user input.
+ * Airtable returns array values for Lookup and Linked Record fields (e.g. ["value"]),
+ * while user input typically provides scalar values (e.g. "value"). This helper
+ * handles that mismatch so that matching by such fields works correctly.
+ */
+export function valuesMatch(recordValue: unknown, inputValue: unknown): boolean {
+	if (recordValue === inputValue) return true;
+
+	if (Array.isArray(recordValue) && !Array.isArray(inputValue)) {
+		return recordValue.includes(inputValue);
+	}
+
+	if (Array.isArray(recordValue) && Array.isArray(inputValue)) {
+		if (recordValue.length !== inputValue.length) return false;
+		return recordValue.every((v, i) => v === inputValue[i]);
+	}
+
+	return false;
+}
+
 export function findMatches(
 	data: UpdateRecord[],
 	keys: string[],
@@ -41,7 +62,7 @@ export function findMatches(
 	if (updateAll) {
 		const matches = data.filter((record) => {
 			for (const key of keys) {
-				if (record.fields[key] !== fields[key]) {
+				if (!valuesMatch(record.fields[key], fields[key])) {
 					return false;
 				}
 			}
@@ -56,7 +77,7 @@ export function findMatches(
 	} else {
 		const match = data.find((record) => {
 			for (const key of keys) {
-				if (record.fields[key] !== fields[key]) {
+				if (!valuesMatch(record.fields[key], fields[key])) {
 					return false;
 				}
 			}

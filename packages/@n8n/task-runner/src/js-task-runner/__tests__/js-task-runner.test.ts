@@ -1159,17 +1159,25 @@ describe('JsTaskRunner', () => {
 		});
 
 		describe('all external modules allowed with *', () => {
-			const testCases = Object.keys(packageJson.dependencies);
+			// Packages that use subpath exports only (no root "." export) must be
+			// tested via a known subpath instead of the bare package name.
+			const subpathOnlyModules: Record<string, string> = {
+				'@n8n/utils': '@n8n/utils/result',
+			};
+			const testCases = Object.keys(packageJson.dependencies).map((dep) => ({
+				dep,
+				requirePath: subpathOnlyModules[dep] ?? dep,
+			}));
 			const runner = createRunnerWithOpts({
 				allowedExternalModules: '*',
 			});
 
 			test.each(testCases)(
-				'should be able to require %s in runOnceForAllItems mode',
-				async (module) => {
+				'should be able to require $dep in runOnceForAllItems mode',
+				async ({ requirePath }) => {
 					await expect(
 						executeForAllItems({
-							code: `return { val: require('${module}') }`,
+							code: `return { val: require('${requirePath}') }`,
 							inputItems,
 							runner,
 						}),
@@ -1178,11 +1186,11 @@ describe('JsTaskRunner', () => {
 			);
 
 			test.each(testCases)(
-				'should be able to require %s in runOnceForEachItem mode',
-				async (module) => {
+				'should be able to require $dep in runOnceForEachItem mode',
+				async ({ requirePath }) => {
 					await expect(
 						executeForEachItem({
-							code: `return { val: require('${module}') }`,
+							code: `return { val: require('${requirePath}') }`,
 							inputItems,
 							runner,
 						}),
@@ -1332,6 +1340,28 @@ describe('JsTaskRunner', () => {
 						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
 					}),
 				).rejects.toThrow(ExecutionError);
+			},
+		);
+
+		// A database driver error, e.g. `pg`'s `DatabaseError`, sets `name` to
+		// `'error'`, so V8 renders the stack header lowercased as `error: <message>`.
+		// The message the database gave must survive to the user.
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should surface the message of a rethrown database error in %s mode',
+			async (nodeMode) => {
+				const code = `
+					const dbError = new Error('duplicate key value violates unique constraint "users_email_key"');
+					dbError.name = 'error';
+					dbError.code = '23505';
+					throw dbError;
+				`;
+
+				await expect(
+					execTaskWithParams({
+						task: newTaskParamsWithSettings({ code, nodeMode }),
+						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow('duplicate key value violates unique constraint "users_email_key"');
 			},
 		);
 

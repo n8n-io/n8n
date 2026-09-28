@@ -1,3 +1,5 @@
+import type { AffectedResourceKind } from '@n8n/mcp-browser';
+
 import type { PermissionMode, ToolGroup } from './config';
 import { isProtectedSettingsPath, TOOL_GROUP_DEFINITIONS } from './config';
 import type { SettingsStore } from './settings-store';
@@ -71,8 +73,12 @@ export class GatewaySession {
 	 *  2. Persistent allow list → 'allow'
 	 *  3. Session allow set     → 'allow'
 	 *  4. Group mode            → via getGroupMode() (includes cross-group constraints)
+	 *
+	 * Step 4 does not blanket-allow credential creation. Writing a credential needs
+	 * an approval aimed at that resource, so a group-wide mode alone leaves it at
+	 * 'ask'.
 	 */
-	check(toolGroup: ToolGroup, resource: string): PermissionMode {
+	check(toolGroup: ToolGroup, resource: string, kind?: AffectedResourceKind): PermissionMode {
 		// Self-protection: prevent tools from accessing the gateway settings directory
 		if (
 			(toolGroup === 'filesystemWrite' || toolGroup === 'filesystemRead') &&
@@ -85,7 +91,10 @@ export class GatewaySession {
 		if (rp.deny.includes(resource)) return 'deny';
 		if (rp.allow.includes(resource)) return 'allow';
 		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
-		return this.getGroupMode(toolGroup);
+
+		const groupMode = this.getGroupMode(toolGroup);
+		if (groupMode === 'allow' && kind === 'credential-write') return 'ask';
+		return groupMode;
 	}
 
 	// ---------------------------------------------------------------------------

@@ -48,6 +48,7 @@ export async function quickBooksApiRequest(
 		qs,
 		body,
 		json: !isDownload,
+		headers: {},
 	};
 
 	if (!Object.keys(body).length) {

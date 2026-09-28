@@ -5,8 +5,9 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
+import { isNodeItemRestricted } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
+import { type CommandBarItem } from '@n8n/design-system';
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -53,24 +54,32 @@ export function useNodeCommands(options: {
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
 		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
+	// Restricted types stay listed, like in the nodes panel: greyed, locked, last, and inert.
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
-		return generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+		const nodes = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+		const restricted = new Set(nodes.filter((node) => isNodeItemRestricted(node.name)));
+		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];
 	});
 
 	const buildAddNodeCommand = (node: SimplifiedNodeType, isRoot: boolean): CommandBarItem => {
 		const { name, displayName } = node;
 
-		const title = isRoot ? `${i18n.baseText('generic.add')} ${displayName}` : displayName;
+		const titleText = isRoot ? `${i18n.baseText('generic.add')} ${displayName}` : displayName;
 		const section = isRoot
 			? i18n.baseText('commandBar.sections.nodes')
 			: i18n.baseText('commandBar.nodes.addNode');
+		const disabled = isNodeItemRestricted(name);
+		const title = disabled
+			? { component: CommandBarItemTitle, props: { title: titleText, icon: 'lock' } }
+			: titleText;
 
 		return {
 			id: name,
 			title,
 			section,
+			disabled,
 			keywords: [displayName],
 			icon: {
 				component: NodeIcon as Component,

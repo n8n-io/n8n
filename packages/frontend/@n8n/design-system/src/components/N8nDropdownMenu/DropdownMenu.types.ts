@@ -1,3 +1,4 @@
+import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
 import type { IconOrEmoji } from '../N8nIconPicker/types';
@@ -5,6 +6,41 @@ import type { IconOrEmoji } from '../N8nIconPicker/types';
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
 export const DropdownMenuPortalTargetKey: InjectionKey<Ref<string | HTMLElement | undefined>> =
 	Symbol('DropdownMenuPortalTarget');
+
+/**
+ * Injection key overriding the max-height cap of nested sub-menu content, per
+ * dropdown. Default (unset) keeps the shared cap — only opted-in dropdowns pass it.
+ */
+export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> = Symbol(
+	'DropdownMenuSubMaxHeight',
+);
+
+/** Injection key for preserving the root menu width across portaled sub-menus. */
+export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
+
+export interface DropdownMenuExternalNavigationController {
+	/** Handles a key for one visible menu level. */
+	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Highlights the first enabled item in this menu level. */
+	highlightFirstItem: () => void;
+	/** Returns the DOM ID of this menu level's highlighted item. */
+	getActiveDescendantId: () => string | undefined;
+}
+
+export interface DropdownMenuExternalNavigationContext {
+	/** Registers a visible menu level and returns its cleanup function. */
+	register: (controller: DropdownMenuExternalNavigationController) => () => void;
+	/** Makes a visible menu level the external keyboard target. */
+	activate: (controller: DropdownMenuExternalNavigationController) => void;
+	/** Restores focus to the external text control. */
+	focusTarget: () => void;
+	/** Synchronizes the external text control's active descendant. */
+	syncActiveDescendant: () => void;
+}
+
+/** Injection key for coordinating virtual focus across external-search submenus. */
+export const DropdownMenuExternalNavigationKey: InjectionKey<DropdownMenuExternalNavigationContext> =
+	Symbol('DropdownMenuExternalNavigation');
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
@@ -27,6 +63,23 @@ export type DropdownMenuAlign = 'start' | 'end' | 'center';
 
 export type DropdownMenuTrigger = 'click' | 'hover';
 
+/** Selects whether the menu or an external text control owns search focus. */
+export type DropdownMenuSearchMode = 'internal' | 'external';
+
+/** Methods exposed by N8nDropdownMenu. */
+export interface DropdownMenuExposed {
+	/** Opens the menu. */
+	open: () => void;
+	/** Closes the menu. */
+	close: () => void;
+	/** Highlights the first enabled item in a searchable menu. */
+	highlightFirstItem: () => void;
+	/** Handles menu navigation from an external text control. */
+	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Moves focus to the rendered trigger element. */
+	focusTrigger: () => void;
+}
+
 export type DropdownMenuItemProps<T = string, D = never> = {
 	/** Unique identifier for the item */
 	id: T;
@@ -42,6 +95,14 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	divided?: boolean;
 	/** Whether to show a checkmark indicator */
 	checked?: boolean;
+	/** Keep the menu open after this item is selected (e.g. toggle rows). */
+	keepOpen?: boolean;
+	/** Prevent the menu from returning focus to its trigger after this item closes it. */
+	suppressCloseAutoFocus?: boolean;
+	/** Render as a non-interactive section header label instead of a selectable item. */
+	header?: boolean;
+	/** Whether to expose the item as a menu item checkbox */
+	checkbox?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
@@ -52,6 +113,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	loadingItemCount?: number;
 	/** Enable search functionality for this item's children */
 	searchable?: boolean;
+	/** Allow selecting an item that also opens a sub-menu. */
+	selectable?: boolean;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Whether this item is currently highlighted via keyboard navigation */
@@ -60,6 +123,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	subMenuOpen?: boolean;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
+	/** Whether this item should be rendered as a destructive action (e.g. delete) */
+	destructive?: boolean;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -69,8 +134,12 @@ export interface DropdownMenuProps<T = string, D = never> {
 	contentTestId?: string;
 	/** Portal target element (e.g. pop-out window's document.body). When set, portals content to the specified element. Use with `modal: false` in cross-window contexts. */
 	portalTarget?: string | HTMLElement;
+	/** Element or virtual element used to position the menu instead of its trigger. */
+	reference?: DropdownMenuContentProps['reference'];
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 	/** Array of menu items to display */
 	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */
@@ -89,6 +158,10 @@ export interface DropdownMenuProps<T = string, D = never> {
 	teleported?: boolean;
 	/** Maximum height of the dropdown menu */
 	maxHeight?: string | number;
+	/** Maximum width of the dropdown menu. */
+	width?: string;
+	/** Overrides the max-height cap of nested sub-menu content (CSS length). */
+	subMenuMaxHeight?: string | number;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
@@ -99,6 +172,10 @@ export interface DropdownMenuProps<T = string, D = never> {
 	dataTestId?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
+	/** Select whether search focus stays inside the menu or in an external text control. */
+	searchMode?: DropdownMenuSearchMode;
+	/** Text control that owns focus when searchMode is external. */
+	externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
@@ -123,7 +200,7 @@ export interface DropdownMenuEmits<T = string, D = never> {
 type SlotUiProps = { class: string };
 
 export interface DropdownMenuSlots<T = string, D = never> {
-	/** Custom trigger element (replaces default button) */
+	/** Replaces the default button with one focusable root that forwards attributes and listeners. */
 	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
 	content?: () => void;

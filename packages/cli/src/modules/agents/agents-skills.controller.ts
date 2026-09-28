@@ -13,10 +13,14 @@ import {
 import type { Response } from 'express';
 
 import { AgentSkillsService } from './agent-skills.service';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
-	constructor(private readonly agentSkillsService: AgentSkillsService) {}
+	constructor(
+		private readonly agentSkillsService: AgentSkillsService,
+		private readonly collaborationService: CollaborationService,
+	) {}
 
 	@Get('/:agentId/skills')
 	@ProjectScope('agent:read')
@@ -46,7 +50,19 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'create skill for',
+		);
+		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -59,7 +75,27 @@ export class AgentsSkillsController {
 		@Body payload: UpdateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.updateSkill(agentId, projectId, skillId, payload);
+		const { baseSkillHash, ...updates } = payload;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update skill for',
+		);
+		return await this.agentSkillsService.updateSkill(
+			agentId,
+			projectId,
+			skillId,
+			updates,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+			baseSkillHash,
+		);
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -71,7 +107,19 @@ export class AgentsSkillsController {
 		@Param('skillId') skillId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'delete skill for',
+		);
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 		return { ok: true };
 	}
 }

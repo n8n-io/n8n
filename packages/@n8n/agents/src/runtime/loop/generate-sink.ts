@@ -1,3 +1,4 @@
+import { finalizeRun } from './run-output-sink';
 import type {
 	CompleteEmission,
 	ModelCallContext,
@@ -5,12 +6,15 @@ import type {
 	RunOutputSink,
 	RunServices,
 	SuspendEmission,
-} from './run-output-sink';
+} from '../../types/runtime/agent-loop';
+import { classifyModelTurnError } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
-import type { ToolCallBatchResult } from '../tools/tool-call-executor';
+import { toTokenUsage } from '../streaming/stream';
+import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
 
 /**
  * Non-streaming output sink: drives the loop with `generateText`, accumulates a
@@ -29,24 +33,33 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		const { generateText } = loadAi();
 		const result = await generateText({
 			model: ctx.model,
-			system: ctx.system,
+			instructions: ctx.system,
 			messages: ctx.messages,
+			allowSystemInMessages: true,
 			abortSignal: ctx.abortSignal,
+			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
+			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
+		}).catch(async (error: unknown) => {
+			if (isAttachmentValidationError(error)) await ctx.onInputRejected?.(error);
+			throw error;
 		});
 
 		const aiFinishReason = result.finishReason;
+		const newMessages = fromAiMessages(result.response.messages);
+		const errorReason = classifyModelTurnError({ aiFinishReason, newMessages });
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage: result.usage,
-			newMessages: fromAiMessages(result.response.messages),
+			usage: toTokenUsage(result.usage, result.providerMetadata),
+			newMessages,
 			toolCalls: result.toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? result.output : undefined,
+			...(errorReason && { errorReason }),
 		};
 	}
 
@@ -78,11 +91,8 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 	}
 
 	async finishComplete(emission: CompleteEmission): Promise<GenerateResult> {
-		const { list, options, finishReason, usage, structuredOutput } = emission;
-		await this.services.saveToMemory(list, options);
-		await this.services.maybeGenerateTitle(list, options);
-		await this.services.cleanupRun();
-		await this.services.flushTelemetry(options);
+		const { list, finishReason, usage, structuredOutput } = emission;
+		await finalizeRun(this.services, emission);
 
 		return {
 			runId: this.services.runId,

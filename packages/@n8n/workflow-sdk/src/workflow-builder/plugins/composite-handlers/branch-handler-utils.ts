@@ -12,6 +12,7 @@
 import type {
 	ConnectionTarget,
 	NodeInstance,
+	NodeChain,
 	IfElseComposite,
 	SwitchCaseComposite,
 } from '../../../types/base';
@@ -30,11 +31,61 @@ import {
 import type { MutablePluginContext } from '../types';
 
 /**
+ * Entry node for a builder created inline from a chain.
+ * a.to(ifNode).onTrue(...) yields a builder whose prefix chain is a → ifNode; edges into
+ * that composite enter at the chain head `a`. Builders without a prefix chain (standalone,
+ * or claimed by feeder chains) enter at their branching node via the guards below.
+ */
+export function getPrefixChainHead(target: unknown): { id: string; name: string } | undefined {
+	const candidate = target as { prefixChain?: { head: { id: string; name: string } } };
+	return candidate.prefixChain?.head;
+}
+
+/** All chains attached to a builder: the inline prefix chain plus every feeder chain. */
+function getBuilderChains(target: unknown): NodeChain[] {
+	const candidate = target as { prefixChain?: NodeChain; feederChains?: NodeChain[] };
+	const chains: NodeChain[] = [];
+	if (candidate.prefixChain) chains.push(candidate.prefixChain);
+	if (candidate.feederChains) chains.push(...candidate.feederChains);
+	return chains;
+}
+
+/**
+ * Collect pin data from every chain attached to a builder (prefix and feeders).
+ * Skips the builder itself: a feeder chain contains the builder as its tail.
+ */
+export function collectFromBuilderChains(
+	target: unknown,
+	collector: (node: NodeInstance<string, string, unknown>) => void,
+): void {
+	for (const chain of getBuilderChains(target)) {
+		for (const chainNode of chain.allNodes) {
+			if (chainNode && chainNode !== target) {
+				collector(chainNode);
+			}
+		}
+	}
+}
+
+/** Materialize every chain attached to a builder (prefix and feeders). */
+export function addBuilderChainsToGraph(target: unknown, ctx: MutablePluginContext): void {
+	for (const chain of getBuilderChains(target)) {
+		ctx.addBranchToGraph(chain);
+	}
+}
+
+/**
  * Get the head node ID from a target (which could be a node, chain, or composite).
  * Mirrors getTargetNodeName but returns .id instead of .name.
  */
 export function getTargetNodeId(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
+
+	// A prefix chain overrides the builder guards: the composite entry is the chain head.
+	const prefixHead = getPrefixChainHead(target);
+	if (prefixHead) {
+		return prefixHead.id;
+	}
 
 	if (isInputTarget(target)) {
 		return target.node.id;
@@ -78,6 +129,12 @@ export function getTargetNodeId(target: unknown): string | undefined {
  */
 export function getTargetNodeName(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
+
+	// A prefix chain overrides the builder guards: the composite entry is the chain head.
+	const prefixHead = getPrefixChainHead(target);
+	if (prefixHead) {
+		return prefixHead.name;
+	}
 
 	// Handle InputTarget (e.g. merge.input(1)) - return the underlying node's name
 	if (isInputTarget(target)) {

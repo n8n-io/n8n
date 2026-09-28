@@ -86,7 +86,7 @@ describe('GoogleApi Credential', () => {
 		it('posts the JWT assertion as a form-urlencoded token request', async () => {
 			await credential.authenticate(baseCredentials, requestOptions);
 
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://oauth2.googleapis.com/token',
@@ -102,6 +102,14 @@ describe('GoogleApi Credential', () => {
 			const result = await credential.authenticate(baseCredentials, requestOptions);
 
 			expect(result.headers?.Authorization).toBe('Bearer abc123');
+		});
+
+		it('signs the assertion with only standard JWT header fields', async () => {
+			await credential.authenticate(baseCredentials, requestOptions);
+
+			const signOptions = mockedSign.mock.calls[0][2] as { header: Record<string, unknown> };
+			expect(signOptions.header).toEqual({ typ: 'JWT', alg: 'RS256' });
+			expect(signOptions.header).not.toHaveProperty('kid');
 		});
 	});
 });

@@ -1,7 +1,8 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type {
 	AddDataTableColumnOptions,
 	INode,
@@ -10,16 +11,17 @@ import type {
 	UpsertDataTableRowOptions,
 	Workflow,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableProxyService } from '../data-table-proxy.service';
-import type { DataTableService } from '../data-table.service';
+import { DataTableService } from '../data-table.service';
 
 const PROJECT_ID = 'project-id';
 
@@ -32,7 +34,7 @@ describe('DataTableProxyService', () => {
 	let dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 	let ownershipServiceMock = mock<OwnershipService>();
 	let loggerMock = mock<Logger>();
-	let sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
+	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
 
 	let workflow: Workflow;
@@ -44,17 +46,15 @@ describe('DataTableProxyService', () => {
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 		ownershipServiceMock = mock<OwnershipService>();
 		loggerMock = mock<Logger>();
-		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
+		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
 			ownershipServiceMock,
 			loggerMock,
-			sourceControlPreferencesServiceMock,
+			instanceWriteAccessMock,
 		);
 
 		workflow = mock<Workflow>({
@@ -281,13 +281,64 @@ describe('DataTableProxyService', () => {
 			true,
 		);
 	});
+
+	describe('getDataTableProxy existence validation', () => {
+		it('rethrows non-not-found errors unwrapped', async () => {
+			const dbError = new Error('connection lost');
+			dataTableServiceMock.validateDataTableExists.mockRejectedValue(dbError);
+
+			await expect(
+				dataTableProxyService.getDataTableProxy(workflow, node, 'dataTable-id'),
+			).rejects.toBe(dbError);
+		});
+	});
+});
+
+describe('DataTableProxyService (with database)', () => {
+	const node = mock<INode>({ type: 'n8n-nodes-base.dataTable' });
+	const workflow = mock<Workflow>({ id: 'workflow-id' });
+
+	afterEach(async () => {
+		await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
+	});
+
+	it('resolves the proxy when the data table exists in the project', async () => {
+		const project = await createTeamProject();
+		const table = await Container.get(DataTableService).createDataTable(project.id, {
+			name: 'Existing Table',
+			columns: [],
+		});
+
+		await expect(
+			Container.get(DataTableProxyService).getDataTableProxy(workflow, node, table.id, project.id),
+		).resolves.toBeDefined();
+	});
+
+	it('throws NodeOperationError when the table exists only in another project', async () => {
+		const projectA = await createTeamProject();
+		const projectB = await createTeamProject();
+		const table = await Container.get(DataTableService).createDataTable(projectB.id, {
+			name: 'Other Project Table',
+			columns: [],
+		});
+
+		const promise = Container.get(DataTableProxyService).getDataTableProxy(
+			workflow,
+			node,
+			table.id,
+			projectA.id,
+		);
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toThrow(table.id);
+	});
 });
 
 describe('makeDataTableOperationsForUser', () => {
 	let dataTableServiceMock = mock<DataTableService>();
 	let dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 	let loggerMock = mock<Logger>();
-	let sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
+	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
 	let userHasScopesSpy: MockInstance;
 
@@ -297,17 +348,15 @@ describe('makeDataTableOperationsForUser', () => {
 		dataTableServiceMock = mock<DataTableService>();
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 		loggerMock = mock<Logger>();
-		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
+		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
 			mock<OwnershipService>(),
 			loggerMock,
-			sourceControlPreferencesServiceMock,
+			instanceWriteAccessMock,
 		);
 
 		userHasScopesSpy = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -546,11 +595,76 @@ describe('makeDataTableOperationsForUser', () => {
 		});
 	});
 
+	describe('dataTable:readRow scope on row-returning writes', () => {
+		// grants the `dataTable:writeRow` check and denies the `dataTable:readRow`
+		// one that follows it
+		const denyReadRow = () => {
+			userHasScopesSpy.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+		};
+
+		const updateOptions = {
+			filter: {
+				filters: [{ columnName: 'x', condition: 'eq' as const, value: 'y' }],
+				type: 'and' as const,
+			},
+			data: { x: 'z' },
+		};
+
+		it('should require dataTable:readRow for updateRows', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+
+			await ops.updateRows('dt-1', PROJECT_ID, updateOptions);
+
+			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+				projectId: PROJECT_ID,
+			});
+		});
+
+		it('should reject updateRows when user lacks dataTable:readRow', async () => {
+			denyReadRow();
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+
+			await expect(ops.updateRows('dt-1', PROJECT_ID, updateOptions)).rejects.toThrow(
+				"User does not have 'dataTable:readRow' access on project",
+			);
+
+			expect(dataTableServiceMock.updateRows).not.toHaveBeenCalled();
+		});
+
+		it('should require dataTable:readRow for deleteRows', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+
+			await ops.deleteRows('dt-1', PROJECT_ID, { filter: updateOptions.filter });
+
+			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+				projectId: PROJECT_ID,
+			});
+		});
+
+		it('should reject deleteRows when user lacks dataTable:readRow', async () => {
+			denyReadRow();
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+
+			await expect(
+				ops.deleteRows('dt-1', PROJECT_ID, { filter: updateOptions.filter }),
+			).rejects.toThrow("User does not have 'dataTable:readRow' access on project");
+
+			expect(dataTableServiceMock.deleteRows).not.toHaveBeenCalled();
+		});
+
+		it('should not require dataTable:readRow for insertRows', async () => {
+			denyReadRow();
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+
+			await ops.insertRows('dt-1', PROJECT_ID, [{ name: 'test' }], 'count');
+
+			expect(dataTableServiceMock.insertRows).toHaveBeenCalled();
+		});
+	});
+
 	describe('read-only instance protection', () => {
 		beforeEach(() => {
-			sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-				branchReadOnly: true,
-			} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+			instanceWriteAccessMock.isReadOnly.mockReturnValue(true);
 		});
 
 		it('should reject createDataTable on a read-only instance', async () => {

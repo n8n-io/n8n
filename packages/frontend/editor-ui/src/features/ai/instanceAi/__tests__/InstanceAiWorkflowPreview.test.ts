@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, nextTick, reactive } from 'vue';
+import { defineComponent, h, inject, nextTick, reactive } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	usePushConnectionStore,
@@ -13,9 +13,16 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createTestNode } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { RememberedManualExecution } from '../canvasPreview.utils';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
 
@@ -26,6 +33,9 @@ const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
 
 const thread = reactive({
 	messages: [],
+	isStreaming: false,
+	isHydratingThread: false,
+	isSendingMessage: false,
 	consumePendingHandoff: vi.fn(),
 	sendMessage: vi.fn(),
 	rememberManualExecution: (
@@ -53,11 +63,14 @@ const WorkflowCanvasHostStub = defineComponent({
 	emits: ['workflow-loaded'],
 	setup(_, { emit, expose }) {
 		expose({ requestFitView: vi.fn() });
+		// Surfaces the host's read-only override so the editing lock is assertable.
+		const features = inject(EditorEnabledFeaturesKey, null);
 		return () =>
 			h(
 				'button',
 				{
 					'data-test-id': 'workflow-loaded',
+					'data-read-only': String(features?.value.readOnly ?? false),
 					onClick: () => emit('workflow-loaded', 'wf-1'),
 				},
 				'loaded',
@@ -109,6 +122,7 @@ function makeExecution(id: string, options: MakeExecutionOptions = {}): IExecuti
 interface MountPreviewOptions {
 	executionFactory?: (executionId: string) => IExecutionResponse;
 	executionResult?: { executionId: string; status: 'success' | 'error' };
+	initialNodeId?: string;
 }
 
 async function mountPreview(options: MountPreviewOptions = {}) {
@@ -135,6 +149,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 		props: {
 			workflowId: 'wf-1',
 			executionResult,
+			initialNodeId: options.initialNodeId,
 		},
 		global: {
 			stubs: {
@@ -150,9 +165,36 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 describe('InstanceAiWorkflowPreview', () => {
 	beforeEach(() => {
 		thread.messages = [];
+		thread.isStreaming = false;
+		thread.isHydratingThread = false;
+		thread.isSendingMessage = false;
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
+	});
+
+	describe('editing lock', () => {
+		const readOnly = (wrapper: Awaited<ReturnType<typeof mountPreview>>['wrapper']) =>
+			wrapper.find('[data-test-id="workflow-loaded"]').attributes('data-read-only');
+
+		it('leaves the canvas editable while the agent is idle', async () => {
+			const { wrapper } = await mountPreview();
+
+			expect(readOnly(wrapper)).toBe('false');
+		});
+
+		it.each([
+			['isStreaming', 'isStreaming'],
+			['isHydratingThread', 'isHydratingThread'],
+			['isSendingMessage', 'isSendingMessage'],
+		] as const)('locks the canvas while %s', async (_label, flag) => {
+			const { wrapper } = await mountPreview();
+
+			thread[flag] = true;
+			await nextTick();
+
+			expect(readOnly(wrapper)).toBe('true');
+		});
 	});
 
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {
@@ -172,6 +214,28 @@ describe('InstanceAiWorkflowPreview', () => {
 			id: 'exec-agent-1',
 		});
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+	});
+
+	it('opens the returned node once after the artifact workflow loads', async () => {
+		const { wrapper } = await mountPreview({ initialNodeId: 'node-1' });
+		const documentId = createWorkflowDocumentId('wf-1');
+		useWorkflowDocumentStore(documentId).setNodes([
+			createTestNode({ id: 'node-1', name: 'Returned node' }),
+		]);
+		const ndvStore = useNDVStore(documentId);
+
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await nextTick();
+
+		expect(ndvStore.activeNodeName).toBe('Returned node');
+		expect(wrapper.emitted('initial-node-id-consumed')).toHaveLength(1);
+
+		ndvStore.unsetActiveNodeName();
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await nextTick();
+
+		expect(ndvStore.activeNodeName).toBeNull();
+		expect(wrapper.emitted('initial-node-id-consumed')).toHaveLength(1);
 	});
 
 	it('restores the cached agent execution after workflow setup reload disposes state', async () => {
@@ -382,5 +446,64 @@ describe('InstanceAiWorkflowPreview', () => {
 		const restoredExecutionState = useWorkflowExecutionStateStore(documentId);
 		expect(restoredExecutionState.displayedExecutionId).toBe('exec-agent-2');
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-agent-2');
+	});
+
+	it('opens the logs panel when an execution starts for the previewed workflow', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		// User run from the embedded canvas.
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-user-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+
+		// Agent run while the artifact is open.
+		logsStore.toggleOpen(false);
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-agent-2',
+					mode: 'manual',
+					source: 'instance_ai',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+	});
+
+	it('does not open the logs panel for executions of other workflows', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-other-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-2',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		expect(logsStore.isOpen).toBe(false);
 	});
 });

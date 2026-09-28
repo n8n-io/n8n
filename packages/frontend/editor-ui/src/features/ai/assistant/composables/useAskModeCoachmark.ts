@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';

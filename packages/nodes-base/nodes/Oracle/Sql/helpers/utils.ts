@@ -1,15 +1,17 @@
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeOperationError, safeRegex, UserError } from 'n8n-workflow';
 import oracledb from 'oracledb';
 
+import { routeBinaryProperties } from '@utils/binary';
 import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type {
@@ -26,6 +28,7 @@ import type {
 	OracleDBNodeOptions,
 	TableColumnRow,
 } from './interfaces';
+import { operatorOptions } from '../actions/common.descriptions';
 
 type DefaultStringBindParam = Omit<
 	Extract<ExecuteOpBindParam, { datatype: 'string' }>,
@@ -210,6 +213,10 @@ export function quoteSqlIdentifier(name: string): string {
 	 *  Invalid examples:
 	 * 	 my"column → contains an illegal ".
 	 *	 my..column → double dot not allowed.
+	 *
+	 *  A single quote is legal here: Oracle double-quoted identifiers may contain
+	 *  any character except " (e.g. "O'Brien"). Callers that embed the result in a
+	 *  string literal (the Drop path) must escape it via escapeSqlStringLiteral.
 	 */
 	const validateRegex = /^(?:"[^"]+"|[^".]+)(?:\.(?:"[^"]+"|[^".]+))*$/;
 	if (!validateRegex.test(name)) {
@@ -229,6 +236,25 @@ export function quoteSqlIdentifier(name: string): string {
 	const quotedParts = groups.map((g) => `"${g}"`);
 	return quotedParts.join('.');
 }
+
+// Escapes a value for embedding inside an Oracle single-quoted text literal.
+// Doubling ' is Oracle's only literal escape (no backslash processing), so a
+// quoted identifier such as "O'Brien" cannot terminate the surrounding literal.
+export function escapeSqlStringLiteral(value: string): string {
+	return value.replace(/'/g, "''");
+}
+
+// Operators are concatenated into the WHERE clause, so only a fixed set is allowed.
+// Derived from the Operator dropdown (so a new dropdown entry is permitted automatically),
+// plus the case/synonym variants Oracle accepts that arrive via an expression-driven value.
+const VALID_WHERE_OPERATORS = new Set<string>([
+	...operatorOptions.map((option) =>
+		option.value === 'equal' ? '=' : String(option.value).toUpperCase(),
+	),
+	'<>',
+	'^=',
+	'NOT LIKE',
+]);
 
 export function addSortRules(query: string, rules: SortRule[]): string {
 	if (rules.length === 0) return query;
@@ -411,26 +437,70 @@ function normalizeOutBinds(
 	return rows;
 }
 
-function _getResponseForOutbinds(
+async function _getResponseForOutbinds(
 	this: IExecuteFunctions,
 	results: oracledb.Results<unknown> | oracledb.Result<unknown>,
 	stmtBatching: string,
 	outputColumns: string[] = [],
 	returnData: INodeExecutionData[] = [],
+	serializeDates = false,
 ) {
 	if (results.outBinds) {
 		const normalizedRows = normalizeOutBinds(results.outBinds, stmtBatching, outputColumns);
 
 		for (let j = 0; j < normalizedRows.length; j++) {
-			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
+			let row = normalizedRows[j];
+			let binary: IBinaryKeyData = {};
+
+			if (serializeDates) {
+				// RETURNING values bypass the fetch handler, so binds arrive as live JS objects that
+				// need routing (BLOB/RAW to binary) and serializing (date binds to ISO strings)
+				const routed = await routeBinaryProperties.call(this, row as IDataObject);
+				row = routed.json;
+				binary = routed.binary;
+			}
+
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(row), {
 				itemData: { item: j },
 			});
 			if (!executionData?.length) continue;
 			for (const entry of executionData) {
+				if (Object.keys(binary).length) {
+					entry.binary = { ...(entry.binary ?? {}), ...binary };
+				}
 				returnData.push(entry);
 			}
 		}
 	}
+}
+
+async function _getResponseForRows(
+	this: IExecuteFunctions,
+	rows: IDataObject[],
+	itemIndex: number,
+	routeBinary: boolean,
+): Promise<INodeExecutionData[]> {
+	if (!routeBinary) {
+		return this.helpers.constructExecutionMetaData(wrapData(rows), {
+			itemData: { item: itemIndex },
+		});
+	}
+
+	const returnData: INodeExecutionData[] = [];
+	for (const row of rows) {
+		// Fetched BLOB/RAW columns arrive as Buffers; route them to binary like the outBinds path
+		const { json, binary } = await routeBinaryProperties.call(this, row);
+		const executionData = this.helpers.constructExecutionMetaData(wrapData(json), {
+			itemData: { item: itemIndex },
+		});
+		for (const entry of executionData) {
+			if (Object.keys(binary).length) {
+				entry.binary = { ...(entry.binary ?? {}), ...binary };
+			}
+			returnData.push(entry);
+		}
+	}
+	return returnData;
 }
 
 /*
@@ -488,18 +558,21 @@ export function configureQueryRunner(
 				? 'single'
 				: 'independently';
 		const stmtBatching = (options.stmtBatching as QueryMode) || defaultBatching;
+		const serializeDates = node.typeVersion >= 1.1;
 
 		if (stmtBatching === 'transaction' || stmtBatching === 'independently') {
 			// setup fetch Handler for specific types.
+			const dateDbTypes: oracledb.DbType[] = [
+				oracledb.DB_TYPE_DATE,
+				oracledb.DB_TYPE_TIMESTAMP_TZ,
+				oracledb.DB_TYPE_TIMESTAMP_LTZ,
+			];
+			if (node.typeVersion >= 1.1) {
+				// Plain TIMESTAMP columns used to leak JS Date objects
+				dateDbTypes.push(oracledb.DB_TYPE_TIMESTAMP);
+			}
 			const executeFetchHandler = function (metaData: oracledb.Metadata<any>) {
-				if (
-					metaData.dbType &&
-					[
-						oracledb.DB_TYPE_DATE,
-						oracledb.DB_TYPE_TIMESTAMP_TZ,
-						oracledb.DB_TYPE_TIMESTAMP_LTZ,
-					].includes(metaData.dbType as any)
-				) {
+				if (metaData.dbType && dateDbTypes.includes(metaData.dbType as any)) {
 					return {
 						converter: (val: unknown) => {
 							if (!(val instanceof Date)) return val;
@@ -564,12 +637,13 @@ export function configureQueryRunner(
 						returnData.push({ json: { message: error.message }, pairedItem });
 					}
 				} else {
-					_getResponseForOutbinds.call(
+					await _getResponseForOutbinds.call(
 						this,
 						results,
 						stmtBatching,
 						queries[0].outputColumns,
 						returnData,
+						serializeDates,
 					);
 				}
 
@@ -612,21 +686,24 @@ export function configureQueryRunner(
 						doesRowExist(query, transactionResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(
+						await _getResponseForOutbinds.call(
 							this,
 							transactionResults,
 							stmtBatching,
 							outputColumns,
 							resultOutBinds,
+							serializeDates,
 						);
 						if (!resultOutBinds.length) {
 							let rowData = transactionResults.rows ?? [];
 							if (!rowData.length) {
 								rowData = [emptyRowData];
 							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData(rowData as IDataObject[]),
-								{ itemData: { item: i } },
+							const executionData = await _getResponseForRows.call(
+								this,
+								rowData as IDataObject[],
+								i,
+								serializeDates,
 							);
 
 							returnData = returnData.concat(executionData);
@@ -671,12 +748,13 @@ export function configureQueryRunner(
 						doesRowExist(query, taskResults);
 
 						const resultOutBinds: INodeExecutionData[] = [];
-						_getResponseForOutbinds.call(
+						await _getResponseForOutbinds.call(
 							this,
 							taskResults,
 							stmtBatching,
 							outputColumns,
 							resultOutBinds,
+							serializeDates,
 						);
 						if (!resultOutBinds.length) {
 							// select query or no returning clause in DML
@@ -684,9 +762,11 @@ export function configureQueryRunner(
 							if (!rowData.length) {
 								rowData = [emptyRowData];
 							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData(rowData as IDataObject[]),
-								{ itemData: { item: i } },
+							const executionData = await _getResponseForRows.call(
+								this,
+								rowData as IDataObject[],
+								i,
+								serializeDates,
 							);
 							returnData = returnData.concat(executionData);
 						} else {
@@ -753,6 +833,8 @@ export function addWhereClauses(
 	clauses: WhereClause[],
 	combineConditions: string,
 	schema: ColumnMap,
+	node: INode,
+	itemIndex: number,
 	isExecuteMany: boolean = false,
 ): [string, oracledb.BindParameter[] | oracledb.BindDefinition[]] {
 	if (clauses.length === 0) return [query, []];
@@ -770,6 +852,22 @@ export function addWhereClauses(
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
 		}
+
+		// The operator can be expression-driven, so accept the case/whitespace variants
+		// Oracle itself tolerates, then check against the fixed set it is concatenated from.
+		// An expression can also yield a non-string; route that to the invalid-operator error.
+		const normalizedCondition =
+			typeof clause.condition === 'string'
+				? clause.condition.trim().replace(/\s+/g, ' ').toUpperCase()
+				: '';
+		if (!VALID_WHERE_OPERATORS.has(normalizedCondition)) {
+			throw new NodeOperationError(
+				node,
+				`Operator "${clause.condition}" is not valid. Supported operators: ${[...VALID_WHERE_OPERATORS].join(', ')}`,
+				{ itemIndex },
+			);
+		}
+		clause.condition = normalizedCondition;
 
 		// The condition value is json type, so convert to required type only
 		// if fixed expression is used instead of n8n expressions.
@@ -864,11 +962,8 @@ function generateBindVariablesList(
 		generatedSqlString += `:${newParamName},`;
 	}
 
-	// replace :bindname
-	const regex = new RegExp(`:${escapedName}(?![A-Za-z0-9_$#])`, 'g');
-
 	generatedSqlString = generatedSqlString.slice(0, -1) + ')'; //replace trailing comma with closing parenthesis.
-	return query.replace(regex, generatedSqlString);
+	return safeRegex.replace(`:${escapedName}(?![A-Za-z0-9_$#])`, query, 'g', generatedSqlString);
 }
 
 function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number[] } {

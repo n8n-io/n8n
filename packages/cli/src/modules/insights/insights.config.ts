@@ -1,6 +1,10 @@
 import { Config, Env } from '@n8n/config';
+import { z } from 'zod';
 
 import { INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
+
+/** A task cadence, which the scheduler rejects unless it is above zero. */
+const cadenceSchema = z.coerce.number().positive().finite();
 
 @Config
 export class InsightsConfig {
@@ -8,7 +12,7 @@ export class InsightsConfig {
 	 * The interval in minutes at which the insights data should be compacted.
 	 * Default: 60
 	 */
-	@Env('N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES')
+	@Env('N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES', cadenceSchema)
 	compactionIntervalMinutes: number = 60;
 
 	/**
@@ -57,7 +61,7 @@ export class InsightsConfig {
 	 * How often (hours) insights data will be checked for regular deletion.
 	 * Default: 24
 	 */
-	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS')
+	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS', cadenceSchema)
 	pruneCheckIntervalHours: number = 24;
 
 	/**

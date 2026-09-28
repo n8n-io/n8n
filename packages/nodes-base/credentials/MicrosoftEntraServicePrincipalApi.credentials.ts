@@ -1,3 +1,4 @@
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -9,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
-import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
+import {
+	getTokenRequestClient,
+	hasAccessToken,
+	TOKEN_REQUEST_TIMEOUT,
+} from './common/token-request';
 
 const DEFAULT_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 const DEFAULT_LOGIN_HOST = 'https://login.microsoftonline.com';
@@ -31,21 +36,6 @@ const LOGIN_HOSTS_BY_GRAPH_URL: Record<string, string> = {
 	'https://microsoftgraph.chinacloudapi.cn': 'https://login.partner.microsoftonline.cn',
 };
 
-interface TokenResponse {
-	access_token?: string;
-	token_type?: string;
-	expires_in?: number;
-}
-
-function hasAccessToken(response: unknown): response is TokenResponse & { access_token: string } {
-	return (
-		typeof response === 'object' &&
-		response !== null &&
-		typeof (response as { access_token?: unknown }).access_token === 'string' &&
-		(response as { access_token: string }).access_token.length > 0
-	);
-}
-
 // Reads + trims the credential fields the token exchange depends on. Pasted IDs
 // often carry whitespace, so trimming happens once here.
 function readCredentials(credentials: ICredentialDataDecryptedObject) {
@@ -55,6 +45,8 @@ function readCredentials(credentials: ICredentialDataDecryptedObject) {
 		tenantId: stringOrEmpty(credentials.tenantId),
 		clientId: stringOrEmpty(credentials.clientId),
 		clientSecret: stringOrEmpty(credentials.clientSecret),
+		privateKey: stringOrEmpty(credentials.privateKey),
+		certificate: stringOrEmpty(credentials.certificate),
 		graphApiBaseUrl: stringOrEmpty(credentials.graphApiBaseUrl),
 	};
 }
@@ -66,12 +58,22 @@ function readCredentials(credentials: ICredentialDataDecryptedObject) {
  * Exported for unit testing. Validation runs before any network call.
  */
 export async function getAccessToken(credentials: ICredentialDataDecryptedObject): Promise<string> {
-	const { authentication, tenantId, clientId, clientSecret, graphApiBaseUrl } =
-		readCredentials(credentials);
+	const {
+		authentication,
+		tenantId,
+		clientId,
+		clientSecret,
+		privateKey,
+		certificate,
+		graphApiBaseUrl,
+	} = readCredentials(credentials);
 
 	// Defense beyond the `required: true` UI gate — a programmatically-set credential
-	// could omit these and build a malformed `.../undefined/oauth2/...` URL.
-	if (!tenantId || !clientId || !clientSecret) {
+	// could omit these and build a malformed `.../undefined/oauth2/...` URL. The secret
+	// path needs a secret; the certificate path needs both the key and the certificate.
+	const hasAuthSecret =
+		authentication === 'certificate' ? Boolean(privateKey && certificate) : Boolean(clientSecret);
+	if (!tenantId || !clientId || !hasAuthSecret) {
 		throw new OperationalError('Microsoft Entra credentials are incomplete');
 	}
 
@@ -110,10 +112,12 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 		scope,
 	});
 
-	// Branch point for ENT-86: certificate auth appends `client_assertion_type` +
-	// `client_assertion` (x5t) here. No crypto imports until then.
 	if (authentication === 'certificate') {
-		// ENT-86 placeholder — intentionally not implemented in Phase 1.
+		body.append('client_assertion_type', CLIENT_ASSERTION_TYPE);
+		body.append(
+			'client_assertion',
+			buildClientAssertion({ clientId, accessTokenUri: tokenUrl, privateKey, certificate }),
+		);
 	} else {
 		body.append('client_secret', clientSecret);
 	}
@@ -147,7 +151,7 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 
 	displayName = 'Microsoft Entra Service Principal';
 
-	documentationUrl = 'microsoftentra';
+	documentationUrl = 'microsoftentraserviceprincipal';
 
 	icon: Icon = 'file:icons/Microsoft.svg';
 
@@ -161,19 +165,19 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 			},
 			default: '',
 		},
-		// ENT-86 flips this to `type: 'options'` and adds the `certificate` value — the
-		// field `name` and the stored value stay constant, so existing credentials keep
-		// working unchanged (no migration). `clientSecret`/(future)`certificate` fields
-		// gate on it via `displayOptions`.
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden',
+			type: 'options',
+			options: [
+				{ name: 'Client Secret', value: 'clientSecret' },
+				{ name: 'Certificate', value: 'certificate' },
+			],
 			default: 'clientSecret',
 		},
 		{
 			displayName:
-				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test reads the organization via Microsoft Graph, so the app needs Organization.Read.All (or Directory.Read.All) for the test to pass.',
+				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test only checks that the app can sign in. A missing or unconsented permission shows up as an error when a node runs, not here.',
 			name: 'setupNotice',
 			type: 'notice',
 			default: '',
@@ -212,6 +216,40 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 			description: 'A client secret created under Certificates & secrets',
 		},
 		{
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['certificate'],
+				},
+			},
+			description:
+				'The PEM-encoded RSA private key matching the certificate uploaded to the app registration. Line breaks may be flattened.',
+		},
+		{
+			displayName: 'Certificate',
+			name: 'certificate',
+			type: 'string',
+			typeOptions: {
+				rows: 4,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['certificate'],
+				},
+			},
+			description:
+				'The PEM-encoded public certificate uploaded under Certificates & secrets on the app registration',
+		},
+		{
 			displayName: 'Microsoft Graph API Base URL',
 			name: 'graphApiBaseUrl',
 			type: 'options',
@@ -232,9 +270,9 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		},
 	];
 
-	// Only called when "accessToken" (the expirable property) is empty, on a 401 retry,
-	// or during a credential test. Core drives expiry refresh through its 401 retry path,
-	// so we deliberately do not persist `expires_in` or run a credential-side TTL.
+	// Only called when "accessToken" (the expirable property) is empty or on a 401 retry.
+	// Core drives expiry refresh through its 401 retry path, so we deliberately do not
+	// persist `expires_in` or run a credential-side TTL.
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const accessToken = await getAccessToken(credentials);
 		return { accessToken };
@@ -254,10 +292,11 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		return requestOptions;
 	}
 
+	// The service document needs no application permission, so the test passes on the mint alone.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.graphApiBaseUrl || "https://graph.microsoft.com"}}',
-			url: '/v1.0/organization',
+			url: '/v1.0/',
 			method: 'GET',
 		},
 	};

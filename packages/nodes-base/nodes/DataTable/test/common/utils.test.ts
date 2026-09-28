@@ -205,7 +205,7 @@ describe('dataObjectToApiInput', () => {
 
 describe('buildGetManyFilter', () => {
 	describe('isEmpty/isNotEmpty translation', () => {
-		it('should translate isEmpty to eq with null value', () => {
+		it('should translate isEmpty on a string column to the isEmpty condition', () => {
 			const fieldEntries = [
 				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
 			];
@@ -217,14 +217,14 @@ describe('buildGetManyFilter', () => {
 				filters: [
 					{
 						columnName: 'name',
-						condition: 'eq',
+						condition: 'isEmpty',
 						value: null,
 					},
 				],
 			});
 		});
 
-		it('should translate isNotEmpty to neq with null value', () => {
+		it('should translate isNotEmpty on a string column to the isNotEmpty condition', () => {
 			const fieldEntries = [
 				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 			];
@@ -236,6 +236,36 @@ describe('buildGetManyFilter', () => {
 				filters: [
 					{
 						columnName: 'email',
+						condition: 'isNotEmpty',
+						value: null,
+					},
+				],
+			});
+		});
+
+		it('should translate isEmpty/isNotEmpty on non-string columns to eq/neq null', () => {
+			const fieldEntries = [
+				{ keyName: 'age', condition: 'isEmpty' as const, keyValue: 'ignored' },
+				{ keyName: 'createdAt', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(
+				fieldEntries,
+				ALL_CONDITIONS,
+				{ age: 'number', createdAt: 'date' },
+				mockNode,
+			);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'age',
+						condition: 'eq',
+						value: null,
+					},
+					{
+						columnName: 'createdAt',
 						condition: 'neq',
 						value: null,
 					},
@@ -271,12 +301,12 @@ describe('buildGetManyFilter', () => {
 					},
 					{
 						columnName: 'email',
-						condition: 'eq',
+						condition: 'isEmpty',
 						value: null,
 					},
 					{
 						columnName: 'phone',
-						condition: 'neq',
+						condition: 'isNotEmpty',
 						value: null,
 					},
 				],

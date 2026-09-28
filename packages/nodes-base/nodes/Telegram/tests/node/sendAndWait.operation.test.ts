@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { InstanceSettings, parseHitlCallbackReference } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
@@ -6,6 +8,9 @@ import * as genericFunctions from '../../GenericFunctions';
 import { Telegram } from '../../Telegram.node';
 import type { Mock } from 'vitest';
 import type * as _importType0 from '../../GenericFunctions';
+
+const TEST_HMAC_SECRET = 'test-hmac-secret';
+Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 vi.mock('../../GenericFunctions', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
@@ -37,6 +42,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 
 		//createSendAndWaitMessageBody
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
@@ -86,6 +92,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
@@ -113,6 +120,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
@@ -128,5 +136,55 @@ describe('Test Telegram, message => sendAndWait', () => {
 
 		await expect(telegram.execute.call(mockExecuteFunctions)).rejects.toThrow('chat_not_found');
 		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+});
+
+describe('createSendAndWaitMessageBody - chat approval callback references', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('mints an approve callback with decision "a" and a decline callback with decision "d"', () => {
+		const context = mock<IExecuteFunctions>();
+		context.getExecutionId.mockReturnValue('exec-42');
+		context.getInstanceId.mockReturnValue('instanceId');
+		context.getSignedResumeUrl.mockImplementation(
+			(params) =>
+				`http://localhost/waiting-webhook/nodeID?approved=${params?.approved}&signature=abc`,
+		);
+		context.getNodeParameter.mockImplementation((name: string) => {
+			switch (name) {
+				case 'chatId':
+					return 'chatID';
+				case 'message':
+					return 'my message';
+				case 'subject':
+					return 'my subject';
+				case 'approvalOptions.values':
+					return {
+						approvalType: 'double',
+						approveLabel: 'Approve',
+						disapproveLabel: 'Decline',
+					};
+				case 'responseType':
+					return 'approval';
+				default:
+					return {};
+			}
+		});
+
+		const body = genericFunctions.createSendAndWaitMessageBody(context, true);
+
+		const buttons = body.reply_markup.inline_keyboard[0] as Array<{
+			text: string;
+			callback_data: string;
+		}>;
+		const decisionForLabel = (label: string) => {
+			const button = buttons.find((b) => b.text === label);
+			return button && parseHitlCallbackReference(button.callback_data)?.decision;
+		};
+
+		expect(decisionForLabel('Approve')).toBe('a');
+		expect(decisionForLabel('Decline')).toBe('d');
 	});
 });

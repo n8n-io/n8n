@@ -78,3 +78,10 @@ export type WorkflowPushMessage =
 	| WorkflowAutoDeactivated
 	| WorkflowUpdated
 	| WorkflowSettingsUpdated;
+
+/** Push messages that report the outcome of a workflow publication. */
+export type WorkflowPublicationStatusMessage =
+	| WorkflowActivated
+	| WorkflowFailedToActivate
+	| WorkflowPartiallyActivated
+	| WorkflowDeactivated;

@@ -1,5 +1,6 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import {
 	createCanvasGroupNodeId,
@@ -95,6 +96,10 @@ export function buildNodeGroupLayoutComponents({
 
 	for (const node of nodes) {
 		if (groupedNodeIds.has(node.id)) continue;
+		// Components in this list can receive live push offsets when an expanded
+		// group overlaps them. Sticky notes are annotations that may cover groups,
+		// so exclude them from the push calculation.
+		if (node.type === STICKY_NODE_TYPE) continue;
 		components.push({
 			id: node.id,
 			kind: 'node',

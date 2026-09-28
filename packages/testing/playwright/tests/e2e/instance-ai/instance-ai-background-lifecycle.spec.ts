@@ -5,7 +5,7 @@ const BACKGROUND_CANCELLED_TEXT = 'The background workflow-builder task was canc
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI background lifecycle @capability:proxy',
+	'Instance AI background lifecycle',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

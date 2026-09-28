@@ -1,4 +1,4 @@
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
+import { HttpError, Unauthorized } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
@@ -55,7 +55,15 @@ export function isResponseError(error: Error): error is ResponseError {
 	return false;
 }
 
-export function classifyHttpError(error: Error): HttpErrorDescriptor {
+export type HttpErrorClassifierContext = {
+	/** Whether the request carried a session cookie, regardless of whether it was valid. */
+	hasSessionCookie?: boolean;
+};
+
+export function classifyHttpError(
+	error: Error,
+	context?: HttpErrorClassifierContext,
+): HttpErrorDescriptor {
 	if (isResponseError(error)) {
 		const descriptor: HttpErrorDescriptor & { kind: HttpErrorKind.responseError } = {
 			kind: HttpErrorKind.responseError,
@@ -78,6 +86,12 @@ export function classifyHttpError(error: Error): HttpErrorDescriptor {
 
 	if (error instanceof UnexpectedError) {
 		return { kind: HttpErrorKind.unexpectedError, message: error.message };
+	}
+
+	// Replacing express-openapi-validator's 'api key header required' error message
+	// for requests that contained a session cookie.
+	if (error instanceof Unauthorized && context?.hasSessionCookie) {
+		return { kind: HttpErrorKind.httpError, status: 401, message: 'Unauthorized' };
 	}
 
 	if (error instanceof HttpError) {

@@ -356,7 +356,7 @@ export const arrayMethods: NativeDoc = {
 		reverse: {
 			doc: {
 				name: 'reverse',
-				description: 'Reverses the order of the elements in the array',
+				description: 'Returns a new array with the elements in reverse order',
 				examples: [
 					{ example: "['dog', 'bites', 'man'].reverse()", evaluated: "['man', 'bites', 'dog']" },
 				],

@@ -203,69 +203,83 @@ const ALLOWED_FIELD_TYPES = [
 	'hiddenField',
 ];
 
+const tryToParseFormFieldOptions = (rawOptions: unknown, index: number): object => {
+	const asObject = Array.isArray(rawOptions) ? { values: rawOptions } : rawOptions;
+
+	const invalidValuesError = new UserError(
+		`Field dropdown in field ${index} has no 'values' property that contains an array of options`,
+	);
+
+	if (typeof asObject !== 'object' || asObject === null) throw invalidValuesError;
+
+	const { values } = asObject as { [key: string]: unknown };
+	if (!Array.isArray(values)) throw invalidValuesError;
+
+	const options: unknown[] = values;
+	for (const [optionIndex, option] of options.entries()) {
+		if (
+			typeof option !== 'object' ||
+			option === null ||
+			Object.keys(option).length !== 1 ||
+			typeof (option as { option?: unknown }).option !== 'string'
+		) {
+			throw new UserError(`Field dropdown in field ${index} has an invalid option ${optionIndex}`);
+		}
+	}
+
+	return asObject;
+};
+
 export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
 	const fields: FormFieldsParameter = [];
 
+	let rawFields: Array<{ [key: string]: unknown }>;
 	try {
-		const rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
+		rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
 			acceptJSObject: true,
 		});
+	} catch (error) {
+		// Keep the engine message, it contains the error position
+		throw new UserError(`Value is not valid JSON: ${(error as Error).message}`);
+	}
 
-		for (const [index, field] of rawFields.entries()) {
-			for (const key of Object.keys(field)) {
-				if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
-					throw new UserError(`Key '${key}' in field ${index} is not valid for form fields`);
-				}
-				if (
-					key !== 'fieldOptions' &&
-					!['string', 'number', 'boolean'].includes(typeof field[key])
-				) {
-					field[key] = String(field[key]);
-				} else if (typeof field[key] === 'string' && key !== 'html') {
-					field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-				}
+	if (!Array.isArray(rawFields)) {
+		throw new UserError(
+			`Form fields must be an array of objects, but we got ${getValueDescription(rawFields)}`,
+		);
+	}
 
-				if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
-					throw new UserError(
-						`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
-					);
-				}
+	for (const [index, field] of rawFields.entries()) {
+		if (typeof field !== 'object' || field === null || Array.isArray(field)) {
+			throw new UserError(
+				`Field ${index} must be an object, but we got ${getValueDescription(field)}`,
+			);
+		}
 
-				if (key === 'fieldOptions') {
-					if (Array.isArray(field[key])) {
-						field[key] = { values: field[key] };
-					}
-
-					if (
-						typeof field[key] !== 'object' ||
-						!(field[key] as { [key: string]: unknown }).values
-					) {
-						throw new UserError(
-							`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
-						);
-					}
-
-					for (const [optionIndex, option] of (
-						(field[key] as { [key: string]: unknown }).values as Array<{
-							[key: string]: { option: string };
-						}>
-					).entries()) {
-						if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
-							throw new UserError(
-								`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
-							);
-						}
-					}
-				}
+		for (const key of Object.keys(field)) {
+			if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
+				throw new UserError(`Key '${key}' in field ${index} is not valid for form fields`);
+			}
+			if (key !== 'fieldOptions' && !['string', 'number', 'boolean'].includes(typeof field[key])) {
+				field[key] = String(field[key]);
+			} else if (typeof field[key] === 'string' && key !== 'html') {
+				field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 			}
 
-			fields.push(field as FormFieldsParameter[number]);
-		}
-	} catch (error) {
-		if (error instanceof ApplicationError || error instanceof BaseError) throw error;
+			if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
+				throw new UserError(
+					`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
+				);
+			}
 
-		throw new UserError('Value is not valid JSON');
+			if (key === 'fieldOptions') {
+				field[key] = tryToParseFormFieldOptions(field[key], index);
+			}
+		}
+
+		fields.push(field as FormFieldsParameter[number]);
 	}
+
 	return fields;
 };
 

@@ -7,7 +7,8 @@ import type {
 	ExecutionStatus,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, SerializedCursor } from '@n8n/api-types';
+import { compareExecutionListItems } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -26,7 +27,7 @@ import {
 	getDefaultExecutionFilters,
 } from './executions.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -34,6 +35,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const settingsStore = useSettingsStore();
 
 	const loading = ref(false);
+	const initialLoadComplete = ref(false);
 	const itemsPerPage = ref(10);
 
 	const activeExecution = ref<ExecutionSummary | null>(null);
@@ -58,14 +60,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
-	const executionsCountEstimated = ref(false);
+	const hasMoreExecutions = ref(true);
+	const nextCursor = ref<SerializedCursor | null>(null);
+	let loadedPages = 0;
+	let activeFilterKey: string | undefined;
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
 
-		data.sort((a, b) => {
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		});
+		data.sort(compareExecutionListItems);
 
 		return data;
 	});
@@ -154,41 +157,93 @@ export const useExecutionsStore = defineStore('executions', () => {
 		await startAutoRefreshInterval(workflowId);
 	}
 
-	async function fetchExecutions(
-		filter = executionsFilters.value,
-		lastId?: string,
-		firstId?: string,
-	) {
+	/** One page of executions, straight from the server. Leaves the loaded list alone. */
+	async function fetchExecutionsPage(filter: ExecutionsQueryFilter, cursor?: SerializedCursor) {
+		return await makeRestApiRequest<IExecutionsListResponse>(
+			rootStore.restApiContext,
+			'GET',
+			'/executions',
+			{ filter, cursor, limit: itemsPerPage.value },
+		);
+	}
+
+	/**
+	 * `first` replaces the loaded pages, `more` appends the page after them, and
+	 * `refresh` reloads the first page and keeps the rest.
+	 */
+	type PageToLoad = 'first' | 'more' | 'refresh';
+
+	async function loadExecutionsPage(filter: ExecutionsQueryFilter, page: PageToLoad) {
+		// `executionFilterToQueryFilter` writes the keys in a fixed order, so equal
+		// filters stringify the same way. A stable stringify is not necessary.
+		const filterKey = JSON.stringify(filter);
+
+		// A different filter invalidates every loaded page, and every cursor into them.
+		if (activeFilterKey !== filterKey) {
+			executionsById.value = {};
+			currentExecutionsById.value = {};
+			nextCursor.value = null;
+			loadedPages = 0;
+			activeFilterKey = filterKey;
+			page = 'first';
+		}
+
+		const cursor = page === 'more' ? nextCursor.value : null;
+		if (page === 'more' && !cursor) return undefined; // the list has no next page
+
 		loading.value = true;
 		try {
-			const data = await makeRestApiRequest<IExecutionsListResponse>(
-				rootStore.restApiContext,
-				'GET',
-				'/executions',
-				{
-					...(filter ? { filter } : {}),
-					...(firstId ? { firstId } : {}),
-					...(lastId ? { lastId } : {}),
-					limit: itemsPerPage.value,
-				},
-			);
+			const data = await fetchExecutionsPage(filter, cursor ?? undefined);
 
-			currentExecutionsById.value = {};
+			// The filter changed while the request was in flight, so its rows are stale.
+			if (activeFilterKey !== filterKey) return data;
+
+			// Only the top of the list carries the current set, and a cursor page holds
+			// completed rows alone, so a page appended below must leave that set alone.
+			if (page !== 'more') currentExecutionsById.value = {};
 			data.results.forEach((execution) => {
 				if (['new', 'running'].includes(execution.status as string)) {
+					delete executionsById.value[execution.id];
 					addCurrentExecution(execution);
 				} else {
+					delete currentExecutionsById.value[execution.id];
 					addExecution(execution);
 				}
 			});
 
-			executionsCount.value = data.count;
-			executionsCountEstimated.value = data.estimated;
+			// A refresh only reloads the top of the list, so it must not pull the
+			// continuation back to page one once "load more" has moved it deeper.
+			if (page !== 'refresh' || loadedPages <= 1) {
+				nextCursor.value = data.nextCursor;
+				hasMoreExecutions.value = data.nextCursor !== null;
+			}
+			if (page === 'first') loadedPages = 1;
+			if (page === 'more') loadedPages += 1;
+
+			// A cursor page counts every status, the first page counts completed only.
+			// Keep the first page's total, so the count cannot change meaning midway.
+			if (page !== 'more') executionsCount.value = data.count;
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
 			loading.value = false;
+			initialLoadComplete.value = true;
 		}
+	}
+
+	/** Load the first page, replacing the pages loaded so far. */
+	async function fetchExecutions(filter = executionsFilters.value) {
+		return await loadExecutionsPage(filter, 'first');
+	}
+
+	/** Append the page after the last one loaded. Does nothing at the end of the list. */
+	async function loadMoreExecutions(filter = executionsFilters.value) {
+		return await loadExecutionsPage(filter, 'more');
+	}
+
+	/** Reload the first page, keeping the pages already loaded below it. */
+	async function refreshExecutions(filter = executionsFilters.value) {
+		return await loadExecutionsPage(filter, 'refresh');
 	}
 
 	async function fetchExecution(
@@ -213,7 +268,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
-				await fetchExecutions(autoRefreshExecutionFilters);
+				await refreshExecutions(autoRefreshExecutionFilters);
 				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
@@ -331,31 +386,40 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById.value = {};
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
-		executionsCountEstimated.value = false;
 		concurrentExecutionsCount.value = 0;
+		hasMoreExecutions.value = true;
+		nextCursor.value = null;
+		loadedPages = 0;
+		activeFilterKey = undefined;
 	}
 
 	function reset() {
 		itemsPerPage.value = 10;
 		filters.value = getDefaultExecutionFilters();
 		autoRefresh.value = true;
+		initialLoadComplete.value = false;
 		resetData();
 		stopAutoRefreshInterval();
 	}
 
 	return {
 		loading,
+		initialLoadComplete,
 		annotateExecution,
 		executionsById,
 		executions,
 		executionsCount,
-		executionsCountEstimated,
+		hasMoreExecutions,
+		nextCursor,
 		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,
 		currentExecutionsByWorkflowId,
 		activeExecution,
 		fetchExecutions,
+		loadMoreExecutions,
+		refreshExecutions,
+		fetchExecutionsPage,
 		fetchExecution,
 		autoRefresh,
 		autoRefreshTimeout,

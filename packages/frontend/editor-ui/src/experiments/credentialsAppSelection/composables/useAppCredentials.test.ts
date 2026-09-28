@@ -390,6 +390,33 @@ describe('useAppCredentials', () => {
 			expect(appEntries.value[0].supportsInstantOAuth).toBe(false);
 		});
 
+		it('should prioritize a vendor-base OAuth2 child over API key credentials', () => {
+			const oAuth2Cred = createMockCredentialType({
+				name: 'jiraSoftwareCloudOAuth2Api',
+				displayName: 'Jira SW Cloud OAuth2',
+				extends: ['atlassianOAuth2Api'],
+			});
+			const apiKeyCred = createMockCredentialType({
+				name: 'jiraSoftwareCloudApi',
+				displayName: 'Jira SW Cloud API',
+			});
+
+			credentialsStore.allCredentialTypes = [apiKeyCred, oAuth2Cred];
+
+			nodeTypesStore.visibleNodeTypes = [
+				createMockNodeType({
+					name: 'n8n-nodes-base.jira',
+					displayName: 'Jira Software',
+					credentials: [{ name: 'jiraSoftwareCloudApi' }, { name: 'jiraSoftwareCloudOAuth2Api' }],
+				}),
+			];
+
+			const { appEntries } = useAppCredentials();
+
+			expect(appEntries.value).toHaveLength(1);
+			expect(appEntries.value[0].credentialType?.name).toBe('jiraSoftwareCloudOAuth2Api');
+		});
+
 		it('should mark supportsInstantOAuth as false for API key credentials', () => {
 			const apiKeyCred = createMockCredentialType({
 				name: 'stripeApi',

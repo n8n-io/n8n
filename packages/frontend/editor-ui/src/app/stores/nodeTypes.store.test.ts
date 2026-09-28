@@ -155,6 +155,35 @@ describe('useNodeTypesStore', () => {
 		});
 	});
 
+	describe('setNodeTypes / removeNodeTypes', () => {
+		const nodeType = makeNodeType({
+			name: 'n8n-nodes-base.testNode',
+			outputs: [NodeConnectionTypes.Main],
+		});
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+		});
+
+		it('should update computed dependents when the catalog is replaced', () => {
+			const store = useNodeTypesStore();
+
+			// Read before writing so the computeds cache and track the catalog ref
+			expect(store.allNodeTypes).toEqual([]);
+			expect(store.getNodeType(nodeType.name)).toBeNull();
+
+			store.setNodeTypes([nodeType]);
+
+			expect(store.allNodeTypes).toEqual([nodeType]);
+			expect(store.getNodeType(nodeType.name)).toEqual(nodeType);
+
+			store.removeNodeTypes([nodeType]);
+
+			expect(store.allNodeTypes).toEqual([]);
+			expect(store.getNodeType(nodeType.name)).toBeNull();
+		});
+	});
+
 	describe('getNodeTypes', () => {
 		const restNode = makeNodeType({
 			name: 'n8n-nodes-base.restNode',

@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { locatorByIndex } from '../../utils/index-helper';
 
@@ -74,11 +74,18 @@ export class InlineExpressionEditor {
 		return this.page.getByTestId('inline-expression-editor-item-next');
 	}
 
+	// Park the cursor away from run-data rows; hovering one disables the item next/prev buttons.
+	async moveMouseAway(): Promise<void> {
+		await this.page.mouse.move(0, 0);
+	}
+
 	async selectNextItem(): Promise<void> {
+		await this.moveMouseAway();
 		await this.getItemNextButton().click();
 	}
 
 	async selectPrevItem(): Promise<void> {
+		await this.moveMouseAway();
 		await this.getItemPrevButton().click();
 	}
 
@@ -92,11 +99,16 @@ export class InlineExpressionEditor {
 			.click();
 	}
 
+	// The editor rewrites its own document as a parameter value settles, which drops a
+	// selection taken before that lands, so the clear repeats until the document is empty.
 	async clear(parameterName?: string): Promise<void> {
 		const editor = this.getInput(parameterName);
-		await editor.click();
-		await this.page.keyboard.press('ControlOrMeta+A');
-		await this.page.keyboard.press('Delete');
+		await expect(async () => {
+			await editor.click();
+			await this.page.keyboard.press('ControlOrMeta+A');
+			await this.page.keyboard.press('Delete');
+			expect((await editor.locator('.cm-content').textContent())?.trim()).toBe('');
+		}).toPass({ timeout: 15_000 });
 	}
 
 	async type(text: string, parameterName?: string): Promise<void> {

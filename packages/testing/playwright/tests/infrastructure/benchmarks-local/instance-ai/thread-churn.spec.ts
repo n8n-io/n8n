@@ -9,7 +9,7 @@ test.use(instanceAiTestConfig);
 const ROUNDS = 3;
 
 test.describe(
-	'Instance-AI Memory: Parallel Workflow Builds @capability:observability',
+	'Instance-AI Memory: Parallel Workflow Builds',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

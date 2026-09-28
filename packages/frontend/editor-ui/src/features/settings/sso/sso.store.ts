@@ -1,4 +1,4 @@
-import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
+import { AuthenticationMethod, type OidcConfigDto, type SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -7,7 +7,6 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import type { IDataObject } from 'n8n-workflow';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 export const SupportedProtocols = {
 	SAML: 'saml',
@@ -19,7 +18,7 @@ export type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof Sup
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 
-	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
+	const authenticationMethod = ref<AuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
 	const ssoManagedByEnv = ref(false);
 
@@ -36,8 +35,28 @@ export const useSSOStore = defineStore('sso', () => {
 	const getSSORedirectUrl = async (existingRedirect?: string) =>
 		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
+	/**
+	 * Browser URL that starts the login with the active SSO protocol. SAML asks the
+	 * backend for its redirect; OIDC has a static login endpoint that takes the
+	 * in-app destination as a query parameter and returns there after the callback.
+	 */
+	const getSsoLoginUrl = async (existingRedirect = ''): Promise<string> => {
+		if (isDefaultAuthenticationSaml.value) {
+			return await getSSORedirectUrl(existingRedirect);
+		}
+
+		const oidcLoginUrl = oidc.value.loginUrl;
+		if (!oidcLoginUrl) {
+			throw new Error('The OIDC login URL is not configured');
+		}
+		if (!existingRedirect) return oidcLoginUrl;
+
+		const separator = oidcLoginUrl.includes('?') ? '&' : '?';
+		return `${oidcLoginUrl}${separator}${new URLSearchParams({ redirect: existingRedirect })}`;
+	};
+
 	const initialize = (options: {
-		authenticationMethod: UserManagementAuthenticationMethod;
+		authenticationMethod: AuthenticationMethod;
 		managedByEnv?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
@@ -97,7 +116,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const isEnterpriseSamlEnabled = ref(false);
 
 	const isDefaultAuthenticationSaml = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
+		() => authenticationMethod.value === AuthenticationMethod.Saml,
 	);
 
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
@@ -158,7 +177,7 @@ export const useSSOStore = defineStore('sso', () => {
 	});
 
 	const isDefaultAuthenticationOidc = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Oidc,
+		() => authenticationMethod.value === AuthenticationMethod.Oidc,
 	);
 
 	/**
@@ -212,6 +231,7 @@ export const useSSOStore = defineStore('sso', () => {
 	return {
 		showSsoLoginButton,
 		getSSORedirectUrl,
+		getSsoLoginUrl,
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,

@@ -97,6 +97,55 @@ describe('useWorkflowSetupInputs', () => {
 		nodeTypesStore.getNodeType.mockReturnValue(null);
 	});
 
+	it('completes a section once a tested credential is selected and the resource is picked', () => {
+		nodeTypesStore.getNodeType.mockReturnValue({
+			name: 'n8n-nodes-base.slack',
+			properties: [
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'resourceLocator',
+					required: true,
+					default: { mode: 'list', value: '' },
+				},
+			],
+		});
+		credentialTest.testableTypes.add('slackApi');
+		addCredential({ id: 'cred-1', type: 'slackApi', name: 'johannes-bot-token' });
+		const section = makeWorkflowSetupSection({
+			id: 'Get Channel History:slackApi',
+			targetNodeName: 'Get Channel History',
+			credentialType: 'slackApi',
+			parameterNames: ['channelId'],
+			node: {
+				id: 'slack',
+				name: 'Get Channel History',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.5,
+				parameters: { channelId: { __rl: true, mode: 'list', value: '' } },
+			},
+		});
+		const h = setupHarness([section]);
+
+		expect(h.inputs.isSectionComplete(section)).toBe(false);
+
+		// Selecting a credential alone must not complete the section: the
+		// required channel is still unset (the INS-855 stuck state).
+		h.inputs.setCredential(section, 'cred-1');
+		credentialsStore.credentialTestResults.set('cred-1', 'success');
+		expect(h.inputs.isSectionComplete(section)).toBe(false);
+
+		// Picking from the list emits a full resource locator value.
+		h.inputs.setParameterValue(section, 'channelId', {
+			__rl: true,
+			mode: 'list',
+			value: 'C078Q83RKPZ',
+			cachedResultName: 'mission-competitor-automatic-changelog',
+		});
+
+		expect(h.inputs.isSectionComplete(section)).toBe(true);
+	});
+
 	it('sets a selection, tests it in the background, and clears a previous skip', () => {
 		addCredential({ id: 'cred-1', type: 'httpBasicAuth', name: 'HTTP credential' });
 		const h = setupHarness();
@@ -203,6 +252,18 @@ describe('useWorkflowSetupInputs', () => {
 				'HTTP Request': { httpBasicAuth: 'cred-1' },
 				Slack: { slackApi: 'cred-2' },
 			},
+		});
+	});
+
+	it('reports skipped sections so the backend stops asking for them', () => {
+		// Without this the backend only sees an unconfigured node, which reads as "ask again".
+		const h = setupHarness();
+		h.inputs.setCredential(h.sectionB, 'cred-2');
+		h.inputs.markSectionSkipped(h.sectionA);
+
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: { Slack: { slackApi: 'cred-2' } },
+			skippedNodes: ['HTTP Request'],
 		});
 	});
 
@@ -517,6 +578,9 @@ describe('useWorkflowSetupInputs', () => {
 		h.inputs.setCredential(groupedSection, 'cred-1');
 		h.inputs.markSectionSkipped(groupedSection);
 
-		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
+		// No credentials applied, and every node behind the section is reported as skipped.
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			skippedNodes: ['Primary', 'Follower'],
+		});
 	});
 });

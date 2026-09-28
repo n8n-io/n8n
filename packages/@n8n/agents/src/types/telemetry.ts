@@ -1,4 +1,4 @@
-import type { TelemetryIntegration } from 'ai';
+import type { Telemetry as AiSdkTelemetry } from 'ai';
 
 /** OTel-compatible attribute values (no undefined). */
 export type AttributeValue = string | number | boolean | string[] | number[] | boolean[];
@@ -10,6 +10,12 @@ export type AttributeValue = string | number | boolean | string[] | number[] | b
  * type is opaque so OTel remains a true optional peer dependency.
  */
 export type OpaqueTracer = unknown;
+
+/**
+ * Opaque handle for an OTel span link. Same opaque-type rationale as
+ * OpaqueTracer — keeps OTel an optional peer dependency.
+ */
+export type OpaqueSpanLink = unknown;
 
 /**
  * Opaque handle for an OTel tracer provider (for flush/shutdown).
@@ -28,11 +34,30 @@ export interface BuiltTelemetry {
 	readonly recordOutputs: boolean;
 	/** Whether AgentRuntime should add a generic chain span around generate/stream loops. */
 	readonly runtimeRootSpanEnabled?: boolean;
+	/**
+	 * Whether the runtime's root span anchors a new trace (`root: true`) or
+	 * nests under the ambient active OTel context. Defaults to `true`
+	 * (self-contained trace). Set to `false` by `deriveSubAgentTelemetry` for
+	 * delegated sub-agent runs, so their span nests under the parent's
+	 * delegate-tool-call span instead of starting a separate trace.
+	 */
+	readonly rootAnchored?: boolean;
 	/** Integrations are pre-wrapped with redaction if .redact() was set at build time. */
-	readonly integrations: TelemetryIntegration[];
+	readonly integrations: AiSdkTelemetry[];
+	/** @internal Rebuild metadata-sensitive integrations for the effective run metadata. */
+	readonly resolveIntegrations?: (
+		metadata: Record<string, AttributeValue> | undefined,
+	) => AiSdkTelemetry[];
 	readonly tracer?: OpaqueTracer;
 	/** @internal Provider reference for flush/shutdown. Only set when .otlpEndpoint() is used. */
 	readonly provider?: OpaqueTracerProvider;
 	/** Declared credential name for the telemetry provider (e.g. 'langsmith'). */
 	readonly credentialName?: string;
+	/**
+	 * Set automatically by `LangSmithTelemetry.build()`. Discriminates
+	 * LangSmith-flavored telemetry (which wants `langsmith.*` span
+	 * attributes) from generic OTel telemetry (plain OTLP backends, which
+	 * only want the generic `gen_ai.*` attributes).
+	 */
+	readonly isLangSmith?: boolean;
 }

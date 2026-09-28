@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { MetricScale } from '@n8n/api-types';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	formatMetricLabel,
@@ -16,6 +17,7 @@ const props = defineProps<{
 	currentValue: number | undefined;
 	delta: number | undefined;
 	category?: MetricCategory;
+	scale?: MetricScale;
 	sourceNodeName?: string;
 	// Per-case raw values; sum form ("13/15") shows on hover only.
 	caseValues?: Array<number | undefined>;
@@ -23,11 +25,15 @@ const props = defineProps<{
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
 const formattedValue = computed(() =>
-	formatMetricPercent(props.currentValue, { category: props.category }),
+	formatMetricPercent(props.currentValue, {
+		key: props.name,
+		category: props.category,
+		scale: props.scale,
+	}),
 );
 const formattedLabel = computed(() => formatMetricLabel(props.name));
 const formattedSumScore = computed(() =>
-	formatMetricRawScoreSum(props.caseValues ?? [], { category: props.category }),
+	formatMetricRawScoreSum(props.caseValues ?? [], { category: props.category, scale: props.scale }),
 );
 const valueTooltip = computed(() =>
 	formattedSumScore.value ? `${formattedValue.value} • ${formattedSumScore.value}` : '',
@@ -46,7 +52,7 @@ const valueTooltip = computed(() =>
 				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			</N8nTooltip>
 			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" :category="category" />
+			<TrendDeltaBadge :delta="delta" />
 		</div>
 	</div>
 </template>

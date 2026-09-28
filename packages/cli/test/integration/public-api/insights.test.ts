@@ -1,11 +1,18 @@
 import { insightsSummarySchema } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { type User } from '@n8n/db';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import { type Project, type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { addApiKey, createOwnerWithApiKey, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
@@ -23,7 +30,13 @@ let authUnscopedAgent: SuperAgentTest;
 
 async function createSummaryMetrics(
 	workflow: Awaited<ReturnType<typeof createWorkflow>>,
-	values: { success?: number; failure?: number; runtimeMs?: number; timeSavedMin?: number },
+	values: {
+		success?: number;
+		failure?: number;
+		runtimeMs?: number;
+		timeSavedMin?: number;
+		billable?: number;
+	},
 ) {
 	const periodStart = DateTime.utc().minus({ days: 1 });
 	const periodUnit = 'day' as const;
@@ -63,6 +76,15 @@ async function createSummaryMetrics(
 			periodUnit,
 		});
 	}
+
+	if (values.billable !== undefined) {
+		await createCompactedInsightsEvent(workflow, {
+			type: 'billable',
+			value: values.billable,
+			periodStart,
+			periodUnit,
+		});
+	}
 }
 
 beforeAll(async () => {
@@ -78,11 +100,103 @@ beforeEach(async () => {
 
 describe('GET /insights/summary', () => {
 	test('returns 401 without API key', async () => {
-		await testServer.publicApiAgentWithoutApiKey().get('/insights/summary').expect(401);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get('/insights/summary')
+			.expect(401);
+
+		expect(response.body).toEqual({ message: 'Unauthorized' });
+	});
+
+	test('returns data via session cookie, without an API key', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, {
+			success: 3,
+			failure: 1,
+			runtimeMs: 400,
+			timeSavedMin: 20,
+			billable: 3,
+		});
+
+		const response = await testServer
+			.publicApiAgentWithCookie(scopedOwner)
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(4);
+		expect(response.body.failed.value).toBe(1);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
+	test('returns 401 with an invalid session cookie', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+		const response = await agent.get('/insights/summary').expect(401);
+
+		expect(response.body).toEqual({ message: 'Unauthorized' });
 	});
 
 	test('returns 403 without insights:read scope', async () => {
-		await authUnscopedAgent.get('/insights/summary').expect(403);
+		const response = await authUnscopedAgent.get('/insights/summary').expect(403);
+
+		expect(response.body).toEqual({ message: 'Forbidden' });
+	});
+
+	test('returns 400 for a malformed startDate', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: 'not-a-date' })
+			.expect(400);
+
+		expect(response.body.message).toContain('request/query/startDate');
+	});
+
+	test('returns 400 for a date-time without a timezone', async () => {
+		await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: '2024-01-01T00:00:00' })
+			.expect(400);
+	});
+
+	test('returns 400 for a date-time with an out-of-range offset', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: '2024-01-01T00:00:00+99:99' })
+			.expect(400);
+
+		expect(response.body.message).toContain('request/query/startDate');
+	});
+
+	test('returns 403 when startDate is older than the licensed history', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: DateTime.utc().minus({ days: 366 }).toISO() })
+			.expect(403);
+
+		expect(response.body).toEqual({
+			message: 'The selected date range exceeds the maximum history allowed by your license',
+		});
+	});
+
+	test('returns 400 when endDate is before startDate', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 1 }).toISO(),
+				endDate: DateTime.utc().minus({ days: 2 }).toISO(),
+			})
+			.expect(400);
+
+		expect(response.body).toEqual({
+			message: 'endDate must be the same as or after startDate',
+		});
 	});
 
 	test('returns data matching InsightsSummary schema', async () => {
@@ -94,6 +208,7 @@ describe('GET /insights/summary', () => {
 			failure: 1,
 			runtimeMs: 400,
 			timeSavedMin: 20,
+			billable: 3,
 		});
 
 		const response = await authScopedAgent
@@ -106,8 +221,13 @@ describe('GET /insights/summary', () => {
 
 		const parsed = insightsSummarySchema.safeParse(response.body);
 		expect(parsed.success).toBe(true);
-		expect(response.body.total.value).toBe(4);
-		expect(response.body.failed.value).toBe(1);
+		expect(response.body).toStrictEqual({
+			total: { value: 4, deviation: null, unit: 'count' },
+			failed: { value: 1, deviation: null, unit: 'count' },
+			failureRate: { value: 0.25, deviation: null, unit: 'ratio' },
+			timeSaved: { value: 20, deviation: null, unit: 'minute' },
+			averageRunTime: { value: 100, deviation: null, unit: 'millisecond' },
+		});
 	});
 
 	test('respects startDate and endDate filters', async () => {
@@ -139,6 +259,46 @@ describe('GET /insights/summary', () => {
 		expect(response.body.total.value).toBe(2);
 	});
 
+	test('does not expose stored billable rows on the summary', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, {
+			success: 10,
+			failure: 2,
+			billable: 9,
+		});
+
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(12);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
+	test('does not count billable rows toward total', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, { billable: 7 });
+
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(0);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
 	test('respects projectId filter', async () => {
 		const [firstProject, secondProject] = await Promise.all([
 			createTeamProject(),
@@ -154,12 +314,14 @@ describe('GET /insights/summary', () => {
 			failure: 1,
 			runtimeMs: 400,
 			timeSavedMin: 20,
+			billable: 3,
 		});
 		await createSummaryMetrics(secondWorkflow, {
 			success: 5,
 			failure: 0,
 			runtimeMs: 500,
 			timeSavedMin: 25,
+			billable: 5,
 		});
 
 		const response = await authScopedAgent
@@ -173,5 +335,71 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
+	describe('project access', () => {
+		let viewer: User;
+		let viewerAgent: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+		let accessibleWorkflow: Awaited<ReturnType<typeof createWorkflow>>;
+		let inaccessibleWorkflow: Awaited<ReturnType<typeof createWorkflow>>;
+
+		beforeAll(async () => {
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			viewer = await createUser({ role: insightsRole });
+			viewer.apiKeys = [await addApiKey(viewer, { scopes: ['insights:read'] })];
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+			accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+		});
+
+		beforeEach(() => {
+			viewerAgent = testServer.publicApiAgentFor(viewer);
+		});
+
+		test('returns 403 for a project the API key holder cannot read', async () => {
+			await viewerAgent
+				.get('/insights/summary')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+		});
+
+		test('returns the summary for a project the API key holder can read', async () => {
+			await viewerAgent
+				.get('/insights/summary')
+				.query({ projectId: accessibleProject.id })
+				.expect(200);
+		});
+
+		test('aggregates only accessible projects when no project is requested', async () => {
+			const accessibleSuccessfulExecutions = 3;
+			const inaccessibleSuccessfulExecutions = 5;
+
+			await createSummaryMetrics(accessibleWorkflow, { success: accessibleSuccessfulExecutions });
+			await createSummaryMetrics(inaccessibleWorkflow, {
+				success: inaccessibleSuccessfulExecutions,
+			});
+
+			const response = await viewerAgent
+				.get('/insights/summary')
+				.query({
+					startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+					endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+				})
+				.expect(200);
+
+			expect(response.body.total.value).toBe(accessibleSuccessfulExecutions);
+		});
 	});
 });

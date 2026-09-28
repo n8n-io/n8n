@@ -1,5 +1,5 @@
 import { type LogDetailsPanelState } from '@/features/execution/logs/logs.types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE,

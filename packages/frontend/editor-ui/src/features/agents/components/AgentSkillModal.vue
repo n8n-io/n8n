@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
+import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
+import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
+import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -20,6 +24,11 @@ export type AgentSkillModalData = {
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: AgentSkillAllowedToolOption[];
+	/**
+	 * Names of the agent's other skills, so a duplicate name blocks save while
+	 * the modal is still open — skill names must be unique per agent.
+	 */
+	existingSkillNames?: string[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (id: string) => void;
 };
@@ -32,10 +41,23 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function getDefaultSkillName(): string {
+	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
+	const existingNames = new Set(
+		(props.data.existingSkillNames ?? []).map((name) => name.trim().toLowerCase()),
+	);
+	if (!existingNames.has(baseName.toLowerCase())) return baseName;
+
+	let suffix = 2;
+	while (existingNames.has(`${baseName} ${suffix}`.toLowerCase())) suffix += 1;
+	return `${baseName} ${suffix}`;
+}
 
 const skill = ref<AgentSkill>(
 	normalizeSkill({
-		name: props.data.skill?.name ?? '',
+		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
@@ -45,10 +67,22 @@ const skill = ref<AgentSkill>(
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
+const step = ref<'upload' | 'manual' | 'edit'>(
+	props.data.skill || props.data.skillId ? 'edit' : 'upload',
+);
+const isImporting = ref(false);
 
 const isEditing = computed(() => !!props.data.skillId);
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
+);
+// A skill saved through this modal always has instructions (required below), so
+// empty instructions on an existing ref mean its stored content is gone — the
+// backend validation issue this modal opened from. Detected from the opening
+// data rather than threaded validation state, so it stays correct even if this
+// modal is ever opened from a surface that doesn't know about validation issues.
+const openedWithMissingContent = computed(
+	() => isEditing.value && !(props.data.skill?.instructions ?? '').trim(),
 );
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
@@ -61,6 +95,12 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameRequired');
 	} else if (name.length > 128) {
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameMaxLength');
+	} else if (
+		(props.data.existingSkillNames ?? []).some(
+			(existingName) => existingName.trim().toLowerCase() === name.toLowerCase(),
+		)
+	) {
+		errors.name = i18n.baseText('agents.builder.skills.validation.nameDuplicate');
 	}
 
 	if (!description) {
@@ -71,6 +111,10 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
+	} else if (skill.value.instructions.length > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
+		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
+			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
+		});
 	}
 	if (skill.value.references?.some((reference) => !reference.content.trim())) {
 		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
@@ -79,8 +123,28 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	return errors;
 });
 
-const visibleErrors = computed(() => (submitted.value ? validationErrors.value : {}));
-const canSave = computed(() => formIsValid.value);
+const visibleErrors = computed(() =>
+	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
+);
+const visibleNameError = computed(() =>
+	submitted.value ? (validationErrors.value.name ?? '') : '',
+);
+const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
+
+function onSkillUploaded(importedSkill: AgentSkill) {
+	skill.value = normalizeSkill(importedSkill);
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	step.value = 'edit';
+}
+
+function onBack() {
+	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	formIsValid.value = false;
+	step.value = 'upload';
+}
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
@@ -175,20 +239,40 @@ function onRemove() {
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		width="1100px"
-		:custom-class="$style.modal"
+	<AgentModal
+		:open="modalOpen"
+		:title="step === 'upload' ? i18n.baseText('agents.builder.skills.add') : skill.name"
+		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
+		:title-max-length="128"
+		:title-error="visibleNameError"
+		:editable-title="step !== 'upload'"
+		:show-back="step === 'manual'"
+		:show-footer="step !== 'upload'"
+		:busy="isImporting"
+		size="fit"
+		body-flush
 		data-testid="agent-skill-modal"
+		@update:open="!$event && closeModal()"
+		@update:title="onSkillUpdate({ name: $event })"
+		@back="onBack"
 	>
-		<template #header>
-			<N8nHeading tag="h2" size="large">
-				{{ i18n.baseText('agents.builder.skills.create.title') }}
-			</N8nHeading>
-		</template>
-
-		<template #content>
-			<div :class="$style.content">
+		<N8nCallout
+			v-if="openedWithMissingContent"
+			theme="warning"
+			:class="$style.missingContentCallout"
+			data-testid="agent-skill-missing-content-callout"
+		>
+			{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+		</N8nCallout>
+		<div :class="$style.content">
+			<AgentSkillUpload
+				v-if="step === 'upload'"
+				v-model:busy="isImporting"
+				@uploaded="onSkillUploaded"
+				@add-manually="step = 'manual'"
+				@import:skill="onImportSkill"
+			/>
+			<template v-else>
 				<AgentSkillFileNav
 					:skill="skill"
 					:selected-path="selectedPath"
@@ -202,68 +286,46 @@ function onRemove() {
 					:available-tools="props.data.availableTools ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
-					:scrollable="false"
-					:show-validation-warnings="submitted"
-					@import:skill="onImportSkill"
+					:show-validation-warnings="submitted || openedWithMissingContent"
 					@select:path="selectedPath = $event"
 					@update:skill="onSkillUpdate"
 					@update:valid="onValidUpdate"
 				/>
-			</div>
-		</template>
+			</template>
+		</div>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					v-if="isEditing && data.onRemove"
-					variant="subtle"
-					data-testid="agent-skill-remove"
-					@click="onRemove"
-				>
-					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-					{{ i18n.baseText('agents.builder.skills.remove') }}
-				</N8nButton>
-				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
-						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						:disabled="!canSave"
-						data-testid="agent-skill-create-save"
-						@click="onSave"
-					>
-						{{ i18n.baseText('agents.builder.skills.create.save') }}
-					</N8nButton>
-				</div>
-			</div>
+		<template v-if="isEditing && data.onRemove" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.skills.remove') }}
+			</N8nButton>
 		</template>
-	</Modal>
+		<template #footerActions>
+			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+				{{ i18n.baseText('agents.builder.skills.save') }}
+			</N8nButton>
+		</template>
+	</AgentModal>
 </template>
 
 <style module>
 .content {
-	height: 620px;
-	min-height: 0;
-	margin: 0 calc(-1 * var(--spacing--lg)) calc(-1 * var(--spacing--lg));
+	/* The Design System has no width preset between 2xlarge and full. */
+	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
+	min-height: min(
+		calc(70dvh - var(--spacing--lg)),
+		calc(var(--height--5xl) * 6 - var(--spacing--lg))
+	);
 	display: flex;
 }
 
-.modal {
-	:global(.modal-content) {
-		overflow: hidden;
+.missingContentCallout {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+@media (max-width: 480px) {
+	.content {
+		flex-direction: column;
 	}
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
 }
 </style>

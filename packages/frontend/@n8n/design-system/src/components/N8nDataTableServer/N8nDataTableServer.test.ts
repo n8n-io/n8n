@@ -1,9 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor, within } from '@testing-library/vue';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nDataTableServer);
 
@@ -100,7 +99,7 @@ describe('N8nDataTableServer', () => {
 
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+		await userEvent.click(within(getByTestId('pagination')).getByText('2'));
 
 		expect(emitted('update:options').length).toBe(3);
 		expect(emitted('update:options')[0]).toStrictEqual([
@@ -160,6 +159,29 @@ describe('N8nDataTableServer', () => {
 		});
 
 		expect(queryByTestId('pagination')).not.toBeInTheDocument();
+	});
+
+	it('should sync external selection model changes into row checkboxes', async () => {
+		const selectionItems = items.slice(0, 3);
+		const { container, emitted, rerender } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: selectionItems, headers, itemsLength: 3, showSelect: true, selection: [] },
+		});
+
+		const rowCheckboxes = container.querySelectorAll<HTMLElement>('tbody [role="checkbox"]');
+		expect(rowCheckboxes.length).toBe(3);
+
+		await userEvent.click(rowCheckboxes[0]);
+
+		expect(emitted('update:selection').at(-1)).toEqual([[selectionItems[0].id]]);
+		expect(rowCheckboxes[0]).toHaveAttribute('aria-checked', 'true');
+
+		// Clearing the model from the outside must uncheck the rows
+		await rerender({ selection: [] });
+
+		await waitFor(() => {
+			expect(rowCheckboxes[0]).toHaveAttribute('aria-checked', 'false');
+		});
 	});
 
 	it('should adjust page to highest available when page size changes and current page exceeds maximum', async () => {

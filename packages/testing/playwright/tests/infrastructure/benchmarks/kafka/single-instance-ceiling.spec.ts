@@ -1,9 +1,16 @@
 import { test } from '../../../../fixtures/base';
 import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-projects';
-import { kafkaDriver } from '../../../../utils/benchmark';
-import { runLoadTest } from '../harness/load-harness';
+import { VM_EAGER_BENCHMARK_PROFILE } from '../../../../utils/benchmark';
+import { runKafkaBacklogTest } from '../harness/kafka-backlog-harness';
 
-test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) });
+const MESSAGE_COUNT = 5_000;
+
+test.use({
+	capability: benchConfig(`single-instance-ceiling-${VM_EAGER_BENCHMARK_PROFILE.isolationSuffix}`, {
+		kafka: true,
+		env: VM_EAGER_BENCHMARK_PROFILE.env,
+	}),
+});
 
 test.describe(
 	'How much can we process on a single instance?',
@@ -15,21 +22,16 @@ test.describe(
 		],
 	},
 	() => {
-		test('Kafka trigger + 1 noop, 1KB payload, 150k msgs', async ({ api, services }, testInfo) => {
-			const handle = await kafkaDriver.setup({
-				api,
-				services,
-				scenario: { nodeCount: 1, payloadSize: '1KB', nodeOutputSize: 'noop', partitions: 3 },
-			});
-			await runLoadTest({
-				handle,
+		test('Kafka trigger + 1 noop, 1KB payload, 5k msgs', async ({ api, services }, testInfo) => {
+			await runKafkaBacklogTest({
 				api,
 				services,
 				testInfo,
-				load: { type: 'preloaded', count: 150_000 },
-				trigger: 'kafka',
-				timeoutMs: 1_800_000,
+				messageCount: MESSAGE_COUNT,
+				timeoutMs: 300_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
+				minimumCompletionRatio: 1,
+				dimensions: VM_EAGER_BENCHMARK_PROFILE.dimensions,
 			});
 		});
 	},

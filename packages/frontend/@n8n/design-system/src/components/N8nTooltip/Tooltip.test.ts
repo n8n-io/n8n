@@ -257,8 +257,8 @@ describe('components/N8nTooltip', () => {
 	});
 
 	describe('teleportation', () => {
-		it('should teleport tooltip to body by default', async () => {
-			render(Tooltip, {
+		it('should teleport tooltip outside its container by default', async () => {
+			const { container } = render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
 					visible: true,
@@ -268,15 +268,13 @@ describe('components/N8nTooltip', () => {
 				},
 			});
 
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
-				// Tooltip should be teleported (rendered via portal)
-			});
+			const tooltipContent = await getTooltip();
+			expect(container).not.toContainElement(tooltipContent);
+			expect(document.body).toContainElement(tooltipContent);
 		});
 
-		it('should not teleport when teleported is false', async () => {
-			render(Tooltip, {
+		it('should render tooltip inside its container when teleported is false', async () => {
+			const { container } = render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
 					teleported: false,
@@ -287,10 +285,8 @@ describe('components/N8nTooltip', () => {
 				},
 			});
 
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
-			});
+			const tooltipContent = await getTooltip();
+			expect(container).toContainElement(tooltipContent);
 		});
 	});
 

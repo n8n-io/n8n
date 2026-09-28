@@ -48,6 +48,8 @@ describe('SsoInstanceSettingsLoader → OIDC', () => {
 			oidcLoginEnabled: true,
 			oidcPrompt: 'consent',
 			oidcAcrValues: 'mfa, phrh',
+			oidcAdditionalScopes: 'offline_access',
+			oidcRpInitiatedLogoutEnabled: true,
 			ssoUserRoleProvisioning: 'instance_and_project_roles',
 		});
 
@@ -65,5 +67,7 @@ describe('SsoInstanceSettingsLoader → OIDC', () => {
 		expect(config.loginEnabled).toBe(true);
 		expect(config.prompt).toBe('consent');
 		expect(config.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
+		expect(config.additionalScopes).toBe('offline_access');
+		expect(config.rpInitiatedLogoutEnabled).toBe(true);
 	});
 });

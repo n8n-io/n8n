@@ -3,8 +3,9 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { UserError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
+import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -26,6 +27,18 @@ interface WritableSettings {
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
+
+/**
+ * The subset of `DeploymentKeyRepository` the deployment-state initializers
+ * use. Typed inline rather than imported from `@n8n/db` to avoid a circular
+ * package dependency: `@n8n/db` depends on `n8n-core` at runtime.
+ */
+export type DeploymentStateRepo = {
+	findActiveIdentifier(type: string): Promise<{ value: string } | null>;
+	seedActiveIdentifier(type: string, value: string): Promise<void>;
+	findActiveSigningSecret(type: string, opts?: { rewrapLegacy?: boolean }): Promise<string | null>;
+	seedSigningSecret(type: string, secret: string): Promise<void>;
+};
 
 @Service()
 export class InstanceSettings {
@@ -59,7 +72,24 @@ export class InstanceSettings {
 	 */
 	instanceId: string;
 
+	/**
+	 * Encryption-key-derived value of `instanceId`, before any env or DB
+	 * override is applied by `initialize()`. Used as the license device
+	 * fingerprint when the override is too short for the license server.
+	 */
+	readonly derivedInstanceId: string;
+
 	hmacSignatureSecret: string;
+
+	/**
+	 * Whether this process may create deployment-wide state, e.g. seed
+	 * deployment keys. Server processes (`start`, `worker`, `webhook`) may;
+	 * a one-off CLI command must not pin state for the whole deployment and
+	 * may run with restricted DB credentials. Set by `initialize()` from the
+	 * command's `seedsInstanceIdentity`; defaults to true for processes that
+	 * never call `initialize()` (e.g. tests).
+	 */
+	canSeedDeploymentState = true;
 
 	readonly instanceType: InstanceType;
 
@@ -68,11 +98,12 @@ export class InstanceSettings {
 		private readonly logger: Logger,
 	) {
 		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
-		this.instanceId = this.generateInstanceId();
+		this.derivedInstanceId = this.generateInstanceId();
+		this.instanceId = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
 	}
 
@@ -82,22 +113,23 @@ export class InstanceSettings {
 	 *
 	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
 	 *
+	 * When `canSeed` is false, missing rows are not created: only server
+	 * processes hold the deployment's encryption key, so a one-off CLI command
+	 * must not pin the identity for the whole deployment.
+	 *
 	 * The repo parameter is typed inline rather than imported from @n8n/db to
 	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
 	 */
-	async initialize(repo: {
-		findActiveByType(type: string): Promise<{ value: string } | null>;
-		insertOrIgnore(entity: {
-			type: string;
-			value: string;
-			status: string;
-			algorithm: null;
-		}): Promise<void>;
-	}): Promise<void> {
-		await this.initSecret(
+	async initialize(
+		repo: DeploymentStateRepo,
+		{ canSeed = true }: { canSeed?: boolean } = {},
+	): Promise<void> {
+		this.canSeedDeploymentState = canSeed;
+		await this.initIdentifier(
 			repo,
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
+			canSeed,
 			() => this.instanceId,
 			(v) => {
 				this.instanceId = v;
@@ -107,6 +139,7 @@ export class InstanceSettings {
 			repo,
 			'signing.hmac',
 			process.env.N8N_HMAC_SIGNATURE_SECRET,
+			canSeed,
 			() => this.hmacSignatureSecret,
 			(v) => {
 				this.hmacSignatureSecret = v;
@@ -114,18 +147,12 @@ export class InstanceSettings {
 		);
 	}
 
-	private async initSecret(
-		repo: {
-			findActiveByType(type: string): Promise<{ value: string } | null>;
-			insertOrIgnore(entity: {
-				type: string;
-				value: string;
-				status: string;
-				algorithm: null;
-			}): Promise<void>;
-		},
+	/** Plain identifier rows (not secret): stored and read as-is. */
+	private async initIdentifier(
+		repo: DeploymentStateRepo,
 		type: string,
 		envValue: string | undefined,
+		canSeed: boolean,
 		get: () => string,
 		set: (v: string) => void,
 	): Promise<void> {
@@ -133,14 +160,46 @@ export class InstanceSettings {
 			set(envValue);
 			return;
 		}
-		const existing = await repo.findActiveByType(type);
+		const existing = await repo.findActiveIdentifier(type);
 		if (existing) {
 			set(existing.value);
 			return;
 		}
-		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
-		const winner = await repo.findActiveByType(type);
+		if (!canSeed) return;
+		await repo.seedActiveIdentifier(type, get());
+		const winner = await repo.findActiveIdentifier(type);
 		if (winner) set(winner.value);
+	}
+
+	/**
+	 * Secret rows: stored through the repository's signing-secret methods,
+	 * which own the at-rest format. A row found in the pre-wrap form is
+	 * upgraded in place, but only by processes allowed to write deployment
+	 * state (`canSeed`) — a one-off CLI command must not mutate it.
+	 */
+	private async initSecret(
+		repo: DeploymentStateRepo,
+		type: string,
+		envValue: string | undefined,
+		canSeed: boolean,
+		get: () => string,
+		set: (v: string) => void,
+	): Promise<void> {
+		if (envValue) {
+			set(envValue);
+			return;
+		}
+		const existing = await repo.findActiveSigningSecret(type, { rewrapLegacy: canSeed });
+		if (existing !== null) {
+			set(existing);
+			return;
+		}
+		if (!canSeed) return;
+		await repo.seedSigningSecret(type, get());
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret(type, { rewrapLegacy: true });
+		if (winner !== null) set(winner);
 	}
 
 	/**

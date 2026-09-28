@@ -37,6 +37,41 @@ export default new Tool('double')
   .handler(async (input) => ({ result: input.value * 2 }));
 `;
 
+const TOOL_WITH_MESSAGE_CODE = `
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+export default new Tool('double_with_message')
+  .description('Doubles a number and renders a message')
+  .input(z.object({ value: z.number() }))
+  .handler(async (input) => ({ result: input.value * 2 }))
+  .toMessage((output) => ({
+    role: 'assistant',
+    content: [{ type: 'text', text: \`Doubled result: \${output.result}\` }],
+  }));
+`;
+
+const TOOL_WITH_BINARY_MESSAGE_CODE = `
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+export default new Tool('binary_message')
+  .description('Returns binary file message parts')
+  .input(z.object({}))
+  .handler(async () => ({
+    typedArray: new Uint8Array([0, 127, 255]),
+    arrayBuffer: new Uint8Array([1, 2, 3]).buffer,
+  }))
+  .toMessage((output) => ({
+    role: 'assistant',
+    content: [
+      { type: 'file', mediaType: 'application/octet-stream', data: output.typedArray },
+      { type: 'file', mediaType: 'image/png', data: output.arrayBuffer },
+      { type: 'file', mediaType: 'application/octet-stream', data: output.nodeBuffer },
+    ],
+  }));
+`;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -332,6 +367,40 @@ describe('AgentSecureRuntime', () => {
 	it('executeToolInIsolate executes a tool handler', async () => {
 		const result = await runtime.executeToolInIsolate(SIMPLE_TOOL_CODE, { value: 21 }, {});
 		expect(result).toEqual({ result: 42 });
+	});
+
+	it('executes a tool message transform through the tool executor', async () => {
+		const executor = runtime.createToolExecutor({
+			double_with_message: TOOL_WITH_MESSAGE_CODE,
+		});
+		const message = await executor.executeToMessage('double_with_message', {
+			result: 42,
+		});
+
+		expect(message).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: 'Doubled result: 42' }],
+		});
+	});
+
+	it('preserves binary data through tool execution and message transforms', async () => {
+		const executor = runtime.createToolExecutor({
+			binary_message: TOOL_WITH_BINARY_MESSAGE_CODE,
+		});
+		const output = (await executor.executeTool('binary_message', {}, {})) as Record<
+			string,
+			unknown
+		>;
+		const message = await executor.executeToMessage('binary_message', {
+			...output,
+			nodeBuffer: Buffer.from([4, 5, 6]),
+		});
+		if (!message || !('content' in message)) throw new Error('Expected a binary message');
+		const files = message.content.filter((part) => part.type === 'file');
+
+		expect(Array.from(files[0]?.data as Uint8Array)).toEqual([0, 127, 255]);
+		expect(Array.from(new Uint8Array(files[1]?.data as ArrayBuffer))).toEqual([1, 2, 3]);
+		expect(Array.from(files[2]?.data as Uint8Array)).toEqual([4, 5, 6]);
 	});
 
 	it('concurrent describeToolSecurely calls all resolve', async () => {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_EVALUATION,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isNodeCreatorOpenFromConnection,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
@@ -15,7 +18,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
@@ -27,7 +30,9 @@ import {
 	TriggerView,
 	type NodeView,
 } from '../../views/viewsData';
+import { getNodeCreatorSearchItems } from '../../nodeCreator.utils';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
+import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
 
@@ -35,18 +40,33 @@ import CommunityNodeDetails from '@/features/settings/communityNodes/components/
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
-const { callDebounced } = useDebounce();
+const { callDebounced, debounce } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
+const uiStore = useUIStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const { isAdminOrOwner } = useUsersStore();
+
+const isAddingInsideGroup = computed(() => {
+	// Currently the only way to add an item inside group is from connection inside group
+	if (!isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource)) return false;
+
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	return (
+		sourceNodeId !== undefined &&
+		workflowDocumentStore.value.getGroupForNode(sourceNodeId) !== undefined
+	);
+});
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -55,6 +75,8 @@ const communityNodeDetails = computed(() => activeViewStack.value.communityNodeD
 const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
+
+const isAgentsMode = computed(() => useViewStacks().activeViewStackMode === 'agents');
 
 const searchPlaceholder = computed(() => {
 	let node = activeViewStack.value?.title as string;
@@ -67,6 +89,10 @@ const searchPlaceholder = computed(() => {
 		return i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 			interpolate: { node },
 		});
+	}
+
+	if (isAgentsMode.value) {
+		return i18n.baseText('nodeCreator.agentsPanel.searchPlaceholder');
 	}
 
 	return i18n.baseText('nodeCreator.searchBar.searchNodes');
@@ -102,28 +128,65 @@ function getDefaultActiveIndex(search: string = ''): number {
 	return 0;
 }
 
+function applySearch(value: string) {
+	if (!activeViewStack.value.uuid) return;
+	// Re-applying an identical term (e.g. a trailing space, trimmed on emit) would
+	// regenerate item uuids without the memoized list DOM picking them up,
+	// breaking Enter selection.
+	if (activeViewStack.value.search === value) return;
+	updateCurrentViewStack({ search: value });
+	void setActiveItemIndex(getDefaultActiveIndex(value));
+	if (value.length) {
+		callDebounced(
+			nodeCreatorStore.onNodeFilterChanged,
+			{ trailing: true, debounceTime: 2000 },
+			{
+				newValue: value,
+				filteredNodes: activeViewStack.value.items ?? [],
+				filterMode: activeViewStack.value.rootView ?? 'Regular',
+				subcategory: activeViewStack.value.subcategory,
+				title: activeViewStack.value.title,
+			},
+		);
+	}
+}
+
+// Debounce the actual filtering so rapid typing doesn't re-run the fuzzy
+// search (and re-render the list) on every keystroke. The view stack search is
+// only written once the user pauses, keeping the input responsive.
+const debouncedApplySearch = debounce(
+	(value: string, scheduledForViewUuid: string | undefined) => {
+		// The user may have navigated to another view (e.g. selected an item)
+		// while the search was pending; the stale term must not leak into it.
+		if (activeViewStack.value.uuid !== scheduledForViewUuid) return;
+		applySearch(value);
+	},
+	{ trailing: true, debounceTime: DEBOUNCE_TIME.INPUT.SEARCH },
+);
+
 function onSearch(value: string) {
-	if (activeViewStack.value.uuid) {
-		updateCurrentViewStack({ search: value });
-		void setActiveItemIndex(getDefaultActiveIndex(value));
-		if (value.length) {
-			callDebounced(
-				nodeCreatorStore.onNodeFilterChanged,
-				{ trailing: true, debounceTime: 2000 },
-				{
-					newValue: value,
-					filteredNodes: activeViewStack.value.items ?? [],
-					filterMode: activeViewStack.value.rootView ?? 'Regular',
-					subcategory: activeViewStack.value.subcategory,
-					title: activeViewStack.value.title,
-				},
-			);
-		}
+	if (value === '') {
+		// Clearing must take effect immediately, and a pending search for the
+		// previous value must not re-filter afterwards.
+		debouncedApplySearch.cancel();
+		applySearch(value);
+		return;
+	}
+	void debouncedApplySearch(value, activeViewStack.value.uuid);
+}
+
+function flushPendingSearchOnNavigation(event: KeyboardEvent) {
+	// Selection keys must act on the filtered list, so a pending search is
+	// applied synchronously before keyboard navigation reads the rendered items.
+	if (['Enter', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+		void debouncedApplySearch.flush();
 	}
 }
 
 function onTransitionEnd() {
-	cleanupopeningContext();
+	if (viewStacks.value.length === 0) {
+		cleanupopeningContext();
+	}
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
@@ -132,11 +195,15 @@ function cleanupopeningContext() {
 }
 
 onMounted(() => {
+	// Registered before attachKeydownEvent so the flush runs first: keyboard
+	// navigation stops propagation of these keys on the same capture target.
+	document.addEventListener('keydown', flushPendingSearchOnNavigation, { capture: true });
 	attachKeydownEvent();
 	void setActiveItemIndex(getDefaultActiveIndex());
 });
 
 onUnmounted(() => {
+	document.removeEventListener('keydown', flushPendingSearchOnNavigation, { capture: true });
 	cleanupopeningContext();
 	detachKeydownEvent();
 });
@@ -168,17 +235,21 @@ watch(
 			return;
 		}
 		const view = matchedView(mergedNodes);
+		const viewItems = isAddingInsideGroup.value
+			? // Forbid adding groups inside groups (nesting not supported)
+				view.items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)
+			: view.items;
 		const viewStack: ViewStack = {
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
-			items: view.items as INodeCreateElement[],
+			items: viewItems as INodeCreateElement[],
 			nodeIcon: view.nodeIcon,
 			info: view.info,
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, viewItems),
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);
@@ -275,6 +346,9 @@ function onBackButton() {
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
+				<!-- Agents mode -->
+				<AgentsRenderer v-else-if="isAgentsMode" v-bind="$attrs" />
+
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
 			</div>
@@ -282,6 +356,7 @@ function onBackButton() {
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails.packageName"
+				:node-type-name="communityNodeDetails.key"
 				:show-manage="communityNodeDetails.installed && isAdminOrOwner"
 			/>
 		</aside>
@@ -289,6 +364,8 @@ function onBackButton() {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 :global(.panel-slide-in-leave-active),
 :global(.panel-slide-in-enter-active),
 :global(.panel-slide-out-leave-active),
@@ -414,6 +491,8 @@ function onBackButton() {
 </style>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 @each $node-type in $supplemental-node-types {
 	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
 		.n8n-node-icon svg {

@@ -1,6 +1,5 @@
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 
 import type { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
@@ -106,13 +105,11 @@ const config = mockInstance(TokenExchangeConfig, {
 let service: TrustedKeyService;
 let sourceRepo: TrustedKeySourceRepository;
 let keyRepo: TrustedKeyRepository;
-let instanceSettings: InstanceSettings;
 
 beforeAll(async () => {
 	await testModules.loadModules(['token-exchange']);
 	await testDb.init();
 
-	instanceSettings = Container.get(InstanceSettings);
 	service = Container.get(TrustedKeyService);
 	sourceRepo = Container.get(TrustedKeySourceRepository);
 	keyRepo = Container.get(TrustedKeyRepository);
@@ -123,12 +120,6 @@ beforeEach(async () => {
 	// Reset config defaults
 	config.trustedKeys = '';
 	config.keyRefreshIntervalSeconds = 300;
-	// Default to leader
-	Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
-});
-
-afterEach(() => {
-	service.stopRefresh();
 });
 
 afterAll(async () => {
@@ -207,26 +198,6 @@ describe('TrustedKeyService (integration)', () => {
 			expect(sourceIds).not.toContain('old-source');
 		});
 
-		it('should sync on follower without starting the refresh poller', async () => {
-			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
-			config.trustedKeys = JSON.stringify([staticKeyEntry()]);
-
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			try {
-				await service.initialize();
-
-				const sources = await sourceRepo.find();
-				expect(sources).toHaveLength(1);
-				expect(sources[0].status).toBe('healthy');
-				expect(await keyRepo.find()).toHaveLength(1);
-
-				expect(setIntervalSpy).not.toHaveBeenCalled();
-			} finally {
-				setIntervalSpy.mockRestore();
-			}
-		});
-
 		it('should remove all sources and keys when config becomes empty', async () => {
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'old-key' })]);
 			await service.initialize();
@@ -243,29 +214,19 @@ describe('TrustedKeyService (integration)', () => {
 	});
 
 	describe('onLeaderTakeover', () => {
-		it('should refresh keys and start the poller on leader takeover', async () => {
-			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
+		it('should refresh keys on leader takeover', async () => {
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'takeover-key' })]);
 			await service.initialize();
 
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+			await service.onLeaderTakeover();
 
-			try {
-				Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
-				await service.onLeaderTakeover();
+			const sources = await sourceRepo.find();
+			expect(sources).toHaveLength(1);
+			expect(sources[0].status).toBe('healthy');
 
-				const sources = await sourceRepo.find();
-				expect(sources).toHaveLength(1);
-				expect(sources[0].status).toBe('healthy');
-
-				const keys = await keyRepo.find();
-				expect(keys).toHaveLength(1);
-				expect(keys[0].kid).toBe('takeover-key');
-
-				expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-			} finally {
-				setIntervalSpy.mockRestore();
-			}
+			const keys = await keyRepo.find();
+			expect(keys).toHaveLength(1);
+			expect(keys[0].kid).toBe('takeover-key');
 		});
 	});
 

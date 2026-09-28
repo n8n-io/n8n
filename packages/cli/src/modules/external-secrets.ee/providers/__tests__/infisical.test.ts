@@ -3,6 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
@@ -60,9 +61,34 @@ const WORKSPACE_PATH = `/api/v1/workspace/${PROJECT_ID}`;
 const LOGIN_PATH = '/api/v1/auth/universal-auth/login';
 const SECRETS_PATH = '/api/v4/secrets';
 
+const infisicalConnectSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	authMethod: 'universalAuth',
+};
+
+const infisicalTestSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+};
+
+const infisicalUpdateSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	environment: ENVIRONMENT,
+	secretPath: SECRET_PATH,
+};
+
 describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
+
+	mockInstance(ExternalSecretsConfig, { connectTimeout: 20, refreshTimeout: 45 });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+	});
 
 	function createProvider(routes: Route[]) {
 		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
@@ -95,7 +121,8 @@ describe('InfisicalProvider', () => {
 			expect(requests).toHaveBeenCalledWith({
 				baseURL: SITE_URL,
 				headers: expect.any(Function),
-				ssrf: 'disabled',
+				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 45_000,
 			});
 		});
 
@@ -191,6 +218,17 @@ describe('InfisicalProvider', () => {
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe('Connection refused. Check the Site URL.');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Infisical provider test failed',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalTestSettingsLogContext,
+					operation: 'test',
+					endpoint: 'workspace',
+					errorCode: 'ECONNREFUSED',
+				}),
+			);
 		});
 	});
 
@@ -203,6 +241,16 @@ describe('InfisicalProvider', () => {
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect Infisical provider',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
+					operation: 'connect',
+					statusCode: 401,
+				}),
+			);
 		});
 	});
 
@@ -272,6 +320,47 @@ describe('InfisicalProvider', () => {
 				.filter((options) => options.url.endsWith(SECRETS_PATH));
 			expect(secretsCalls).toHaveLength(2);
 			expect(secretsCalls[1].headers).toMatchObject({ Authorization: 'Bearer refreshed-token' });
+		});
+
+		it('logs and rethrows update failures', async () => {
+			const { provider } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, status: 500, body: { message: 'Failed' } },
+			]);
+
+			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to update Infisical provider secrets',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalUpdateSettingsLogContext,
+					operation: 'update',
+					endpoint: 'secrets',
+					statusCode: 500,
+				}),
+			);
+		});
+
+		it('logs token refresh failures before attempting to reconnect', async () => {
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, networkError: 'ECONNREFUSED' },
+			]);
+			const connect = vi.spyOn(provider, 'connect').mockResolvedValue();
+
+			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh Infisical token. Attempting reconnect.',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
+					operation: 'tokenRefresh',
+					errorCode: 'ECONNREFUSED',
+				}),
+			);
+			expect(connect).toHaveBeenCalled();
 		});
 
 		it('caches secrets from imports alongside top-level secrets', async () => {

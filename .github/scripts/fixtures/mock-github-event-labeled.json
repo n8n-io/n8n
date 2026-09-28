@@ -1,0 +1,7 @@
+{
+	"action": "labeled",
+	"label": { "name": "Backport to Beta" },
+	"pull_request": {
+		"labels": ["release", "Backport to Stable", "Backport to Beta"]
+	}
+}

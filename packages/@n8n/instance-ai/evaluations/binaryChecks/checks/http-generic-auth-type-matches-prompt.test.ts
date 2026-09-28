@@ -6,6 +6,7 @@ function workflowWithHttpRequest(parameters: Record<string, unknown>): WorkflowR
 		id: 'wf-1',
 		name: 'HTTP auth test',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{
 				name: 'Manual Trigger',
@@ -112,6 +113,7 @@ describe('httpGenericAuthTypeMatchesPrompt', () => {
 			id: 'wf-2',
 			name: 'Slack only',
 			active: false,
+			versionId: 'test-version',
 			nodes: [
 				{
 					name: 'Manual Trigger',

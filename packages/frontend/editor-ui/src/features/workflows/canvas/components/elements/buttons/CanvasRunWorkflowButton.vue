@@ -28,16 +28,16 @@ const props = withDefaults(
 		label?: string;
 		size?: 'small' | 'medium' | 'large';
 		includeChatTrigger?: boolean;
-		/** When the canvas is embedded in another view (e.g. the Instance AI
-		 * workflow preview iframe) the execute button is a secondary action,
-		 * not the primary CTA — render it less prominently. */
-		embedded?: boolean;
+		/** `'secondary'` renders the button as a secondary action instead of the
+		 * primary CTA (e.g. in the Instance AI artifact or the demo view, where
+		 * the canvas isn't the primary surface). */
+		type?: 'primary' | 'secondary';
 		getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 	}>(),
-	{ embedded: false },
+	{ type: 'primary' },
 );
 
-const buttonVariant = computed(() => (props.embedded ? 'subtle' : 'solid'));
+const buttonVariant = computed(() => (props.type === 'secondary' ? 'subtle' : 'solid'));
 
 const i18n = useI18n();
 

@@ -1,13 +1,12 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
@@ -25,7 +24,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface TelegramUserFixture {
@@ -52,7 +50,15 @@ export interface TelegramMessageFixture {
 	chat: TelegramChatFixture;
 	date: number;
 	text?: string;
+	caption?: string;
 	message_thread_id?: number;
+	photo?: Array<{
+		file_id: string;
+		file_unique_id: string;
+		width: number;
+		height: number;
+		file_size?: number;
+	}>;
 }
 
 export interface TelegramCallbackQueryFixture {
@@ -86,6 +92,7 @@ export interface TelegramReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	apiCalls: TelegramApiCall[];
@@ -117,21 +124,41 @@ function telegramMethodFromUrl(url: string): string {
  * `getMe` returns the bot fixture (so the adapter learns its identity), and
  * `sendMessage` returns a minimal message; every call is recorded for assertions.
  */
-function installTelegramApiStub(bot: TelegramUserFixture) {
+function installTelegramApiStub(bot: TelegramUserFixture, failedMethods: string[] = []) {
 	let nextMessageId = 1000;
 	return installFetchStub({
 		match: /api\.telegram\.org/,
 		onRequest: ({ url, body }) => {
 			const method = telegramMethodFromUrl(url);
+			if (failedMethods.includes(method)) {
+				return {
+					apiCall: { method, body },
+					responseBody: { ok: false, error_code: 500, description: 'Test failure' },
+				};
+			}
 			let result: unknown = true;
 			if (method === 'getMe') {
 				result = bot;
-			} else if (method === 'sendMessage') {
+			} else if (method === 'sendMessage' || method === 'sendRichMessage') {
+				const richMessage = body.rich_message;
+				const richMarkdown =
+					richMessage &&
+					typeof richMessage === 'object' &&
+					'markdown' in richMessage &&
+					typeof richMessage.markdown === 'string'
+						? richMessage.markdown
+						: '';
 				result = {
 					message_id: nextMessageId++,
 					chat: { id: Number(body.chat_id) },
 					date: 1719000000,
-					text: body.text ?? '',
+					...(method === 'sendRichMessage'
+						? {
+								rich_message: {
+									blocks: [{ type: 'paragraph', text: richMarkdown }],
+								},
+							}
+						: { text: body.text ?? '' }),
 				};
 			}
 			return { apiCall: { method, body }, responseBody: { ok: true, result } };
@@ -149,8 +176,6 @@ function createIntegration() {
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 		mock<OutboundHttp>(),
-		{ enabled: false } as SsrfProtectionConfig,
-		mock<SsrfProtectionService>(),
 	);
 }
 
@@ -158,6 +183,7 @@ export function callbackPayloadWithData(
 	payload: TelegramUpdateFixture,
 	data: string,
 	messageId: number,
+	messageText?: string,
 ): TelegramUpdateFixture {
 	return {
 		...payload,
@@ -166,7 +192,11 @@ export function callbackPayloadWithData(
 					...payload.callback_query,
 					data,
 					message: payload.callback_query.message
-						? { ...payload.callback_query.message, message_id: messageId }
+						? {
+								...payload.callback_query.message,
+								message_id: messageId,
+								...(messageText !== undefined ? { text: messageText } : {}),
+							}
 						: undefined,
 				}
 			: undefined,
@@ -178,9 +208,10 @@ export async function createTelegramReplayContext(
 	options: {
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
+		failedApiMethods?: string[];
 	} = {},
 ): Promise<TelegramReplayContext> {
-	const stub = installTelegramApiStub(fixtures.bot);
+	const stub = installTelegramApiStub(fixtures.bot, options.failedApiMethods);
 
 	// Dynamic imports — the chat packages are ESM-only. Unlike production (which
 	// must route through esm-loader to dodge the CJS transform), vitest loads ESM
@@ -199,6 +230,7 @@ export async function createTelegramReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { telegram: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration = options.integration ?? {
@@ -221,7 +253,7 @@ export async function createTelegramReplayContext(
 	const sendTelegramWebhook = async (payload: unknown) => {
 		const headers = new Headers();
 		headers.set('x-telegram-bot-api-secret-token', TELEGRAM_SECRET_TOKEN);
-		return await sendJsonWebhook(
+		return await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.telegram(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/telegram',
 			payload,
@@ -235,10 +267,13 @@ export async function createTelegramReplayContext(
 		apiCalls: stub.apiCalls,
 		sendTelegramWebhook,
 		sendWebhook: sendTelegramWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastApiCall: (method: string) => stub.apiCalls.filter((call) => call.method === method).at(-1),
-		lastPost: () => stub.apiCalls.filter((call) => call.method === 'sendMessage').at(-1),
+		lastPost: () =>
+			stub.apiCalls
+				.filter((call) => call.method === 'sendMessage' || call.method === 'sendRichMessage')
+				.at(-1),
 		shutdown: async () => {
 			try {
 				await setup.shutdown();
@@ -251,6 +286,7 @@ export async function createTelegramReplayContext(
 
 export function getTelegramInlineCallbackData(
 	call: TelegramApiCall | undefined,
+	buttonIndex = 0,
 ): string | undefined {
 	// The real adapter sends `reply_markup` as a JSON object in the request body
 	// (Telegram accepts it inline in JSON mode); tolerate a stringified form too.
@@ -266,5 +302,5 @@ export function getTelegramInlineCallbackData(
 	if (!markup || typeof markup !== 'object') return undefined;
 	const inlineKeyboard = (markup as { inline_keyboard?: Array<Array<{ callback_data?: string }>> })
 		.inline_keyboard;
-	return inlineKeyboard?.[0]?.[0]?.callback_data;
+	return inlineKeyboard?.flat()[buttonIndex]?.callback_data;
 }

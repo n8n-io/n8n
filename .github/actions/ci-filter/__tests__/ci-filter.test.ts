@@ -13,6 +13,7 @@ import {
 	getChangedFiles,
 	getAddedFiles,
 	getMergeBase,
+	resolveHeadRef,
 } from '../ci-filter.mjs';
 
 // --- matchGlob ---
@@ -392,6 +393,100 @@ describe('getChangedFiles', () => {
 
 	it('getAddedFiles rejects unsafe base refs', () => {
 		assert.throws(() => getAddedFiles('main; rm -rf /'), /Unsafe/);
+	});
+});
+
+// --- resolveHeadRef ---
+
+describe('resolveHeadRef', () => {
+	it('diffs the PR head (second parent of the test merge) on pull request events', () => {
+		assert.equal(resolveHeadRef('pull_request'), 'HEAD^2');
+		assert.equal(resolveHeadRef('pull_request_review'), 'HEAD^2');
+	});
+
+	it('diffs HEAD on every other event', () => {
+		assert.equal(resolveHeadRef('merge_group'), 'HEAD');
+		assert.equal(resolveHeadRef('workflow_dispatch'), 'HEAD');
+		assert.equal(resolveHeadRef(undefined), 'HEAD');
+	});
+});
+
+// --- getChangedFiles on a stacked PR's test-merge commit (shallow clone) ---
+
+describe('getChangedFiles (stacked PR test merge)', () => {
+	const builderDir = mkdtempSync(join(tmpdir(), 'ci-filter-build-stack-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-stack-'));
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-stack-'));
+	const originalCwd = process.cwd();
+	const originalStep = process.env.CI_FILTER_DEEPEN_STEP;
+	const git = (args: string[], cwd: string) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], builderDir);
+		git(['config', 'user.email', 'test@test.local'], builderDir);
+		git(['config', 'user.name', 'test'], builderDir);
+		git(['remote', 'add', 'origin', remoteDir], builderDir);
+
+		writeFileSync(join(builderDir, 'shared.ts'), 'shared\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'root'], builderDir);
+		git(['push', 'origin', 'main'], builderDir);
+
+		// Bottom of the stack: parent PR branch off root
+		git(['checkout', '-b', 'parent-branch'], builderDir);
+		writeFileSync(join(builderDir, 'parent.ts'), 'parent\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'parent PR change'], builderDir);
+		git(['push', 'origin', 'parent-branch'], builderDir);
+
+		// Top of the stack: this PR branches off the parent PR
+		git(['checkout', '-b', 'pr-branch'], builderDir);
+		writeFileSync(join(builderDir, 'pr-only.ts'), 'pr\n');
+		git(['add', '.'], builderDir);
+		git(['commit', '-m', 'PR change'], builderDir);
+
+		// main drifts after the stack was created
+		git(['checkout', 'main'], builderDir);
+		writeFileSync(join(builderDir, 'shared.ts'), 'shared\ndrift\n');
+		git(['commit', '-am', 'main moves'], builderDir);
+		git(['push', 'origin', 'main'], builderDir);
+
+		// GitHub builds the parent PR's test merge against main, then builds
+		// this PR's test merge on top of it instead of on parent-branch.
+		git(['checkout', '--detach', 'main'], builderDir);
+		git(['merge', '--no-ff', '-m', 'Merge parent-branch into main', 'parent-branch'], builderDir);
+		git(['merge', '--no-ff', '-m', 'Merge pr-branch into parent merge', 'pr-branch'], builderDir);
+		git(['push', 'origin', 'HEAD:refs/pull/1/merge'], builderDir);
+
+		// Mirror actions/checkout: depth-1 fetch of the test-merge ref
+		git(['init'], repoDir);
+		git(['remote', 'add', 'origin', `file://${remoteDir}`], repoDir);
+		git(['fetch', '--depth=1', 'origin', '+refs/pull/1/merge:refs/remotes/pull/1/merge'], repoDir);
+		git(['checkout', '--force', 'refs/remotes/pull/1/merge'], repoDir);
+		process.env.CI_FILTER_DEEPEN_STEP = '1';
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		if (originalStep === undefined) delete process.env.CI_FILTER_DEEPEN_STEP;
+		else process.env.CI_FILTER_DEEPEN_STEP = originalStep;
+		rmSync(builderDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+		rmSync(repoDir, { recursive: true, force: true });
+	});
+
+	it('diffing HEAD reports the base-branch drift carried by the parent test merge', () => {
+		assert.equal(git(['rev-parse', '--is-shallow-repository'], repoDir), 'true');
+		assert.deepEqual(getChangedFiles('parent-branch', 'HEAD').sort(), ['pr-only.ts', 'shared.ts']);
+	});
+
+	it('diffing HEAD^2 reports only the files this PR changes', () => {
+		assert.deepEqual(getChangedFiles('parent-branch', 'HEAD^2'), ['pr-only.ts']);
+		assert.deepEqual(getAddedFiles('parent-branch', 'HEAD^2'), ['pr-only.ts']);
+		assert.equal(getMergeBase('HEAD^2'), git(['rev-parse', 'origin/parent-branch'], repoDir));
 	});
 });
 

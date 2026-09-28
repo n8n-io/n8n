@@ -5,7 +5,7 @@ import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vu
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { createTestingPinia } from '@pinia/testing';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{

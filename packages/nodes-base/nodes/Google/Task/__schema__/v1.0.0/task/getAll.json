@@ -30,6 +30,9 @@
                 }
             }
         },
+        "notes": {
+            "type": "string"
+        },
         "position": {
             "type": "string"
         },
@@ -49,5 +52,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

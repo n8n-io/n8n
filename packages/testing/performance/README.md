@@ -27,31 +27,25 @@ pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% 
 
 ## CI Regression Detection
 
-Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It comments on PRs with results and regression warnings.
+CI benchmarks are paused. CI used [CodSpeed](https://codspeed.io), and `@codspeed/vitest-plugin` does not support Vitest 5 yet. Add the `performance` job back to `.github/workflows/ci-master.yml` when the plugin supports Vitest 5.
 
-You can also trigger benchmarks manually for any branch via **Actions > Test: Benchmarks > Run workflow**.
-
-### Local vs CI
-
-| | Local (`bench`) | CI |
-|---|---|---|
-| **Measurement** | Wall-clock time (Hz, ms) | CPU instruction count |
-| **Noise** | 15-30% variance | Near-zero variance |
-| **Best for** | Quick sanity checks, comparing approaches | Automated regression detection |
-
-Local benchmarks are useful for eyeballing performance during development. Use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session.
+Until then, use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session. Local results measure wall-clock time and have 15-30% variance.
 
 ## Adding a Benchmark
 
+Use `defineBench` from `bench-options.ts`. It runs one benchmark with the shared tuning. Keep every benchmark name unique.
+
 ```typescript
 // benchmarks/my-feature/thing.bench.ts
-import { bench, describe } from 'vitest';
+import { describe } from 'vitest';
+
+import { defineBench } from '../bench-options';
 
 // Setup runs once, not measured
 const data = createTestData();
 
 describe('My Feature', () => {
-  bench('operation name', () => {
+  defineBench('operation name', () => {
     doTheThing(data);
   });
 });

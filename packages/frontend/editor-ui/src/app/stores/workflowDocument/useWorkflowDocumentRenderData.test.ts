@@ -8,7 +8,7 @@ import {
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -210,6 +210,35 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		expect(render?.type).toBe('default');
 	});
 
+	it('renders empty-group anchors as placeholders', () => {
+		const { docId } = setupWorkflow('wf-empty-group-anchor-placeholder', [
+			{
+				id: 'anchor',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('anchor')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(true);
+	});
+
+	it('does not render a regular No-Op as a placeholder', () => {
+		const { docId } = setupWorkflow('wf-regular-no-op-placeholder', [
+			{
+				id: 'regular-no-op',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('regular-no-op')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(false);
+	});
+
 	it('returns a sticky-note render type for sticky nodes', () => {
 		const { docId } = setupWorkflow('wf-fusion-sticky', [
 			{ id: 's', name: 'Sticky', type: 'n8n-nodes-base.stickyNote' },
@@ -218,6 +247,83 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 
 		const render = renderData.renderTypeByNodeId.get('s')?.value;
 		expect(render?.type).toBe('n8n-nodes-base.stickyNote');
+	});
+
+	it('returns an agent render type threading the agentId for v2 AI Agent nodes', () => {
+		const agentId = { __rl: true, mode: 'list', value: 'agent-1', cachedResultName: 'My Agent' };
+		const { docId } = setupWorkflow('wf-fusion-agent', [
+			{
+				id: 'ag',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				parameters: { agentId },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('ag')?.value;
+		expect(render?.type).toBe('n8n-nodes-base.messageAnAgent');
+		expect(render && 'options' in render ? render.options : undefined).toEqual({
+			agentId,
+			// No stored agentSource resolves to referenced (pre-switch nodes).
+			agentSource: 'referenced',
+			inlineSummary: undefined,
+		});
+	});
+
+	it('projects the inline definition into a capability summary for inline-mode v2 AI Agent nodes', () => {
+		const inlineAgent = {
+			config: {
+				name: 'Embedded',
+				model: 'openai/gpt-5',
+				instructions: 'Do things.',
+				tools: [{ type: 'workflow' as const, workflow: 'Lookup Orders' }],
+			},
+		};
+		const { docId } = setupWorkflow('wf-fusion-agent-inline', [
+			{
+				id: 'ag',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				parameters: { agentSource: 'inline', inlineAgent },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('ag')?.value;
+		expect(render && 'options' in render ? render.options : undefined).toEqual({
+			agentId: undefined,
+			agentSource: 'inline',
+			// The card renders only name/model/tools — the full config
+			// (instructions, tool parameters) stays out of the render options.
+			inlineSummary: {
+				id: 'inline:ag',
+				name: 'Embedded',
+				model: { provider: 'openai', model: 'gpt-5' },
+				channels: [],
+				tools: [{ type: 'workflow', name: 'Lookup Orders' }],
+				mcpServers: [],
+				skills: [],
+				tasks: [],
+			},
+		});
+	});
+
+	it('uses the default render type for v1 AI Agent nodes (legacy picker)', () => {
+		const { docId } = setupWorkflow('wf-fusion-agent-v1', [
+			{
+				id: 'ag1',
+				name: 'Agent v1',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 1,
+				parameters: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.renderTypeByNodeId.get('ag1')?.value?.type).toBe('default');
 	});
 
 	it('assigns z-index entries only for sticky notes via additionalPropertiesByNodeId', () => {

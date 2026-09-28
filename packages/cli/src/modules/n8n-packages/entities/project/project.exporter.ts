@@ -1,22 +1,47 @@
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ProjectSerializer } from './project.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-
-import { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import { FolderExporter } from '../folder/folder.exporter';
+import type { FolderExportResult } from '../folder/folder.exporter';
+import {
+	assertEveryRequestedEntityAccessible,
+	PackageEntityNotFoundError,
+} from '../package-export.errors';
+import { mergeRequirements } from '../requirements.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
+import { WorkflowExporter } from '../workflow/workflow.exporter';
+import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
 export interface ProjectExportRequest {
 	user: User;
 	projectIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
+	includeArchivedWorkflows: boolean;
+	/**
+	 * Export only these workflows from the projects, with the folders on the
+	 * path to them. Omit to export whole projects. An empty array writes the
+	 * project shells only. Every id must belong to one of `projectIds`.
+	 */
+	workflowIds?: string[];
 }
 
-export interface ProjectExportResult {
+interface ProjectExportResult {
 	entries: ManifestEntry[];
+	folderEntries: ManifestEntry[];
+	workflowEntries: ManifestEntry[];
+	requirements: WorkflowExportRequirements;
+	projectTargetsById: Map<string, string>;
 }
 
 @Service()
@@ -24,6 +49,10 @@ export class ProjectExporter {
 	constructor(
 		private readonly projectService: ProjectService,
 		private readonly projectSerializer: ProjectSerializer,
+		private readonly folderFinder: FolderFinderService,
+		private readonly workflowFinder: WorkflowFinderService,
+		private readonly folderExporter: FolderExporter,
+		private readonly workflowExporter: WorkflowExporter,
 	) {}
 
 	async export(request: ProjectExportRequest): Promise<ProjectExportResult> {
@@ -33,47 +62,151 @@ export class ProjectExporter {
 			['project:export'],
 		);
 
-		this.assertAllRequestedProjectsFound(request.projectIds, projects);
+		await assertEveryRequestedEntityAccessible(
+			'project',
+			request.projectIds,
+			projects,
+			async (ids) => await this.projectService.findExistingProjectIds(ids),
+		);
 
-		const entries: ManifestEntry[] = [];
-		const targets = new UniqueFilenameAllocator('projects', 'project');
+		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
+
+		if (request.workflowIds) {
+			await this.assertSelectionInProjects(request.workflowIds, projects, request.user);
+		}
+
+		const projectsDir = packageDirectory('projects');
+		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const target = targets.allocate(project.name);
-			const serialized = this.projectSerializer.serialize(project);
-
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
-
-			entries.push({
-				id: project.id,
-				name: project.name,
-				target,
-			});
+			results.push(await this.exportProject(project, projectsDir, request, selectedWorkflowIds));
 		}
 
-		return { entries };
+		return this.mergeProjectExportResults(results);
 	}
 
-	private assertAllRequestedProjectsFound(
-		requestedProjectIds: string[],
-		foundProjects: Array<{ id: string }>,
-	) {
-		const foundProjectIds = new Set(foundProjects.map(({ id }) => id));
-		const missingProjectIds = requestedProjectIds.filter((id) => !foundProjectIds.has(id));
-
-		if (missingProjectIds.length > 0) {
-			const displayedProjectIds = missingProjectIds.slice(0, 20);
-			const omittedCount = missingProjectIds.length - displayedProjectIds.length;
-
-			throw new UserError(
-				`${missingProjectIds.length} project(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing project IDs: ${displayedProjectIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
+	private async assertSelectionInProjects(
+		workflowIds: string[],
+		projects: Project[],
+		user: User,
+	): Promise<void> {
+		const members = new Set<string>();
+		for (const project of projects) {
+			const ids = await this.workflowFinder.findAllWorkflowIdsForUser(
+				user,
+				['workflow:export'],
+				undefined,
+				project.id,
 			);
+			for (const id of ids) members.add(id);
 		}
+
+		const missing = workflowIds.filter((id) => !members.has(id));
+		if (missing.length === 0) return;
+
+		throw new PackageEntityNotFoundError(
+			`${missing.length} workflow(s) not found in the requested project(s). Export aborted.`,
+			{ description: `Missing workflow IDs: ${missing.join(', ')}` },
+		);
+	}
+
+	private async exportProject(
+		project: Project,
+		projectsDir: string,
+		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
+	): Promise<ProjectExportResult> {
+		const entry = await writeManifestEntry(
+			request.writer,
+			'projects',
+			projectsDir,
+			project,
+			this.projectSerializer.serialize(project),
+		);
+		const folders = await this.exportProjectFolders(
+			project.id,
+			entry.target,
+			request,
+			selectedWorkflowIds,
+		);
+		const rootWorkflows = await this.exportProjectRootWorkflows(
+			project.id,
+			entry.target,
+			request,
+			selectedWorkflowIds,
+		);
+
+		return {
+			entries: [entry],
+			folderEntries: folders.entries,
+			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
+			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
+			projectTargetsById: new Map([[project.id, entry.target]]),
+		};
+	}
+
+	private async exportProjectFolders(
+		projectId: string,
+		target: string,
+		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
+	): Promise<FolderExportResult> {
+		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
+		if (folderIds.length === 0) {
+			return {
+				entries: [],
+				workflowEntries: [],
+				requirements: mergeRequirements(),
+			};
+		}
+
+		return await this.folderExporter.export({
+			user: request.user,
+			folderIds,
+			writer: request.writer,
+			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
+			includeArchivedWorkflows: request.includeArchivedWorkflows,
+			basePrefix: target,
+			selectedWorkflowIds,
+		});
+	}
+
+	private async exportProjectRootWorkflows(
+		projectId: string,
+		target: string,
+		request: ProjectExportRequest,
+		selectedWorkflowIds: ReadonlySet<string> | undefined,
+	): Promise<WorkflowExportResult> {
+		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
+			includeArchived: request.includeArchivedWorkflows,
+		});
+		// Filtering the source list keeps the manifest order stable.
+		const selected = selectedWorkflowIds
+			? rootWorkflowIds.filter((id) => selectedWorkflowIds.has(id))
+			: rootWorkflowIds;
+
+		if (selected.length === 0) {
+			return { entries: [], requirements: mergeRequirements() };
+		}
+
+		return await this.workflowExporter.export({
+			user: request.user,
+			workflowIds: selected,
+			writer: request.writer,
+			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
+			basePrefix: target,
+		});
+	}
+
+	private mergeProjectExportResults(results: ProjectExportResult[]): ProjectExportResult {
+		return {
+			entries: results.flatMap((result) => result.entries),
+			folderEntries: results.flatMap((result) => result.folderEntries),
+			workflowEntries: results.flatMap((result) => result.workflowEntries),
+			requirements: mergeRequirements(...results.map((result) => result.requirements)),
+			projectTargetsById: new Map(results.flatMap((result) => [...result.projectTargetsById])),
+		};
 	}
 }

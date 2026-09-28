@@ -8,20 +8,23 @@ let latestStartupFailure: {
 	projectName: string;
 	diagnostics: N8NStartupDiagnostics;
 	message: string;
+	failurePhase?: string;
 } | null = null;
 
 export function recordStartupFailure(
 	projectName: string,
 	diagnostics: N8NStartupDiagnostics,
 	message: string,
+	failurePhase?: string,
 ): void {
-	latestStartupFailure = { projectName, diagnostics, message };
+	latestStartupFailure = { projectName, diagnostics, message, failurePhase };
 }
 
 export function consumeStartupFailure(): {
 	projectName: string;
 	diagnostics: N8NStartupDiagnostics;
 	message: string;
+	failurePhase?: string;
 } | null {
 	const failure = latestStartupFailure;
 	latestStartupFailure = null;

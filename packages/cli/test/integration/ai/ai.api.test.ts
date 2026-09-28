@@ -74,14 +74,17 @@ describe('POST /ai/free-credits', () => {
 			[
 				'credential:connect',
 				'credential:create',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
 				'credential:shareGlobally',
 				'credential:unshare',
 				'credential:update',
+				'credential:use',
 			].sort(),
 		);
 

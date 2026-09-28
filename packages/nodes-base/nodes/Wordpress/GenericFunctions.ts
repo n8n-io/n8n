@@ -42,11 +42,18 @@ export async function wordpressApiRequest(
 		rejectUnauthorized = !(credentials.allowUnauthorizedCerts as boolean);
 	}
 
+	const headers: IDataObject = {
+		Accept: 'application/json',
+		'Content-Type': 'application/json',
+	};
+	// Some WordPress caching plugins ignore the request method and serve a cached
+	// GET response to writes, which silently returns existing posts instead of creating one.
+	if (!['GET', 'HEAD'].includes(method)) {
+		headers['Cache-Control'] = 'no-cache';
+	}
+
 	let options: IRequestOptions = {
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-		},
+		headers,
 		method,
 		qs,
 		body,

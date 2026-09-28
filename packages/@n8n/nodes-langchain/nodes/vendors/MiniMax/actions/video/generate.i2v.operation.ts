@@ -2,52 +2,82 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import type { VideoGenerationResponse } from '../../helpers/interfaces';
-import { apiRequest, getVideoDownloadUrl, pollVideoTask } from '../../transport';
+import { generateVideo } from '../../transport';
+import { assertH3Prompt, H3_MODEL, h3VideoProperties, prepareVideoOutput } from './helpers';
+
+const modelOptionsV1: INodePropertyOptions[] = [
+	{
+		name: 'I2V-01',
+		value: 'I2V-01',
+		description: 'Standard image-to-video model',
+	},
+	{
+		name: 'I2V-01-Director',
+		value: 'I2V-01-Director',
+		description: 'Image-to-video with camera control commands',
+	},
+	{
+		name: 'I2V-01-Live',
+		value: 'I2V-01-live',
+		description: 'Image-to-video live model',
+	},
+	{
+		name: 'MiniMax-Hailuo-02',
+		value: 'MiniMax-Hailuo-02',
+		description: 'Model supporting higher resolution and longer duration',
+	},
+	{
+		name: 'MiniMax-Hailuo-2.3',
+		value: 'MiniMax-Hailuo-2.3',
+		description: 'Hailuo 2.3 model with enhanced realism',
+	},
+	{
+		name: 'MiniMax-Hailuo-2.3-Fast',
+		value: 'MiniMax-Hailuo-2.3-Fast',
+		description: 'Faster image-to-video model for value and efficiency',
+	},
+];
+
+const modelOptionsV1_1: INodePropertyOptions[] = [
+	{
+		name: H3_MODEL,
+		value: H3_MODEL,
+		description: 'Latest multimodal video generation model',
+	},
+	...modelOptionsV1,
+];
 
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: [
-			{
-				name: 'I2V-01',
-				value: 'I2V-01',
-				description: 'Standard image-to-video model',
-			},
-			{
-				name: 'I2V-01-Director',
-				value: 'I2V-01-Director',
-				description: 'Image-to-video with camera control commands',
-			},
-			{
-				name: 'I2V-01-Live',
-				value: 'I2V-01-live',
-				description: 'Image-to-video live model',
-			},
-			{
-				name: 'MiniMax-Hailuo-02',
-				value: 'MiniMax-Hailuo-02',
-				description: 'Model supporting higher resolution and longer duration',
-			},
-			{
-				name: 'MiniMax-Hailuo-2.3',
-				value: 'MiniMax-Hailuo-2.3',
-				description: 'Latest model with enhanced realism',
-			},
-			{
-				name: 'MiniMax-Hailuo-2.3-Fast',
-				value: 'MiniMax-Hailuo-2.3-Fast',
-				description: 'Faster image-to-video model for value and efficiency',
-			},
-		],
+		options: modelOptionsV1,
 		default: 'MiniMax-Hailuo-2.3',
 		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: modelOptionsV1_1,
+		default: H3_MODEL,
+		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Image Input Type',
@@ -102,7 +132,13 @@ const properties: INodeProperties[] = [
 		description:
 			'Optional text description of the video (max 2000 characters). Camera movements can be controlled using [command] syntax.',
 		placeholder: 'e.g. The subject smiles and waves at the camera [Zoom in]',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
+	...h3VideoProperties,
 	{
 		displayName: 'Duration (Seconds)',
 		name: 'duration',
@@ -113,6 +149,11 @@ const properties: INodeProperties[] = [
 		],
 		default: 6,
 		description: 'Duration of the generated video',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
 	{
 		displayName: 'Resolution',
@@ -126,6 +167,11 @@ const properties: INodeProperties[] = [
 		],
 		default: '768P',
 		description: 'Resolution of the generated video. Available options depend on the model.',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
 	{
 		displayName: 'Download Video',
@@ -148,6 +194,11 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to automatically optimize the prompt',
+				displayOptions: {
+					hide: {
+						modelId: [H3_MODEL],
+					},
+				},
 			},
 			{
 				displayName: 'Last Frame Image Input Type',
@@ -160,7 +211,7 @@ const properties: INodeProperties[] = [
 				],
 				default: 'none',
 				description:
-					'Provide a last frame image to generate a first-and-last-frame video. Only supported by MiniMax-Hailuo-2.3 and MiniMax-Hailuo-02.',
+					'Provide a last frame image to generate a first-and-last-frame video. Available only for supported models.',
 			},
 			{
 				displayName: 'Last Frame Image URL',
@@ -201,6 +252,11 @@ const properties: INodeProperties[] = [
 				default: 'none',
 				description:
 					'Provide a face photo for facial consistency in the generated video. Only supported by MiniMax-Hailuo-2.3.',
+				displayOptions: {
+					hide: {
+						modelId: [H3_MODEL],
+					},
+				},
 			},
 			{
 				displayName: 'Subject Reference Image URL',
@@ -211,6 +267,9 @@ const properties: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						subjectReferenceInputType: ['url'],
+					},
+					hide: {
+						modelId: [H3_MODEL],
 					},
 				},
 			},
@@ -226,6 +285,9 @@ const properties: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						subjectReferenceInputType: ['binary'],
+					},
+					hide: {
+						modelId: [H3_MODEL],
 					},
 				},
 			},
@@ -267,10 +329,9 @@ export async function execute(
 	const model = this.getNodeParameter('modelId', itemIndex) as string;
 	const imageInputType = this.getNodeParameter('imageInputType', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex, '') as string;
-	const duration = this.getNodeParameter('duration', itemIndex) as number;
-	const resolution = this.getNodeParameter('resolution', itemIndex) as string;
 	const downloadVideo = this.getNodeParameter('downloadVideo', itemIndex, true) as boolean;
 	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+	const isH3 = model === H3_MODEL;
 
 	let firstFrameImage: string;
 	if (imageInputType === 'binary') {
@@ -281,24 +342,10 @@ export async function execute(
 		firstFrameImage = imageUrl;
 	}
 
-	const body: IDataObject = {
-		model,
-		first_frame_image: firstFrameImage,
-		duration,
-		resolution,
-	};
-
-	if (prompt) {
-		body.prompt = prompt;
-	}
-
-	if (options.promptOptimizer !== undefined) {
-		body.prompt_optimizer = options.promptOptimizer;
-	}
-
 	const lastFrameInputType = (options.lastFrameInputType as string) || 'none';
+	let lastFrameImage: string | undefined;
 	if (lastFrameInputType !== 'none') {
-		body.last_frame_image = await resolveImageInput(
+		lastFrameImage = await resolveImageInput(
 			this,
 			itemIndex,
 			lastFrameInputType,
@@ -307,74 +354,68 @@ export async function execute(
 		);
 	}
 
-	const subjectRefInputType = (options.subjectReferenceInputType as string) || 'none';
-	if (subjectRefInputType !== 'none') {
-		body.subject_reference = [
+	let body: IDataObject;
+	if (isH3) {
+		assertH3Prompt(this, prompt);
+		const content: IDataObject[] = [
+			{ type: 'text', text: prompt },
 			{
-				image: await resolveImageInput(
-					this,
-					itemIndex,
-					subjectRefInputType,
-					(options.subjectReferenceImageUrl as string) || '',
-					(options.subjectReferenceBinaryPropertyName as string) || 'subjectReference',
-				),
+				type: 'image_url',
+				image_url: { url: firstFrameImage },
+				role: 'first_frame',
 			},
 		];
+		if (lastFrameImage) {
+			content.push({
+				type: 'image_url',
+				image_url: { url: lastFrameImage },
+				role: 'last_frame',
+			});
+		}
+
+		body = {
+			model,
+			content,
+			duration: this.getNodeParameter('h3Duration', itemIndex) as number,
+			resolution: this.getNodeParameter('h3Resolution', itemIndex) as string,
+			ratio: 'adaptive',
+		};
+	} else {
+		body = {
+			model,
+			first_frame_image: firstFrameImage,
+			duration: this.getNodeParameter('duration', itemIndex) as number,
+			resolution: this.getNodeParameter('resolution', itemIndex) as string,
+		};
+
+		if (prompt) {
+			body.prompt = prompt;
+		}
+
+		if (options.promptOptimizer !== undefined) {
+			body.prompt_optimizer = options.promptOptimizer;
+		}
+
+		if (lastFrameImage) {
+			body.last_frame_image = lastFrameImage;
+		}
+
+		const subjectRefInputType = (options.subjectReferenceInputType as string) || 'none';
+		if (subjectRefInputType !== 'none') {
+			body.subject_reference = [
+				{
+					image: await resolveImageInput(
+						this,
+						itemIndex,
+						subjectRefInputType,
+						(options.subjectReferenceImageUrl as string) || '',
+						(options.subjectReferenceBinaryPropertyName as string) || 'subjectReference',
+					),
+				},
+			];
+		}
 	}
 
-	const createResponse = (await apiRequest.call(this, 'POST', '/video_generation', {
-		body,
-	})) as VideoGenerationResponse;
-
-	if (createResponse.base_resp?.status_code !== 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Failed to create video task: ${createResponse.base_resp?.status_msg || 'Unknown error'}`,
-		);
-	}
-
-	const taskId = createResponse.task_id;
-	if (!taskId) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'No task_id returned from video generation request',
-		);
-	}
-
-	const { fileId } = await pollVideoTask.call(this, taskId);
-	const videoUrl = await getVideoDownloadUrl.call(this, fileId);
-
-	const jsonData: IDataObject = {
-		videoUrl,
-		taskId,
-		fileId,
-	};
-
-	if (downloadVideo && videoUrl) {
-		const videoResponse = await this.helpers.httpRequest({
-			method: 'GET',
-			url: videoUrl,
-			encoding: 'arraybuffer',
-			returnFullResponse: true,
-		});
-
-		const contentType = (videoResponse.headers?.['content-type'] as string) || 'video/mp4';
-		const fileContent = Buffer.from(videoResponse.body as ArrayBuffer);
-		const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', contentType);
-
-		return [
-			{
-				binary: { data: binaryData },
-				json: jsonData,
-				pairedItem: { item: itemIndex },
-			},
-		];
-	}
-
-	return [
-		{
-			json: jsonData,
-			pairedItem: { item: itemIndex },
-		},
-	];
+	const result = await generateVideo.call(this, isH3 ? 'v2' : 'v1', body);
+	return await prepareVideoOutput(this, itemIndex, result, downloadVideo);
 }

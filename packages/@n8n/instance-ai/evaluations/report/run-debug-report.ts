@@ -21,6 +21,7 @@ import {
 	parseStepSummary,
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
+	stepInstructions,
 } from '@n8n/api-types';
 import fs from 'fs';
 import path from 'path';
@@ -116,7 +117,7 @@ function renderStepDetail(
 	step: InstanceAiRunDebugStep,
 	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[],
 ): string {
-	const parsedSystem = parseSystemPromptForDisplay(step.input?.system);
+	const parsedSystem = parseSystemPromptForDisplay(stepInstructions(step.input));
 	const messageBlocks = parseMessageBlocks(step.input?.messages);
 	const inputExtras = parseInputExtras(step.input);
 	const outputBlocks = parseOutputDisplayBlocks(step.output);
@@ -415,8 +416,12 @@ export function generateRunDebugReport(results: WorkflowTestCaseResult[]): strin
 </html>`;
 }
 
-export function writeRunDebugReport(results: WorkflowTestCaseResult[]): string {
-	const reportDir = path.join(__dirname, '..', '..', '.data');
+/**
+ * Write the LLM debug report into `outputDir` (--output-dir), falling back to
+ * the package-level `.data` directory — same contract as writeWorkflowReport.
+ */
+export function writeRunDebugReport(results: WorkflowTestCaseResult[], outputDir?: string): string {
+	const reportDir = outputDir ?? path.join(__dirname, '..', '..', '.data');
 	if (!fs.existsSync(reportDir)) {
 		fs.mkdirSync(reportDir, { recursive: true });
 	}

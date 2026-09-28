@@ -40,6 +40,22 @@ export class SecuritySettingsApiHelper {
 		}
 	}
 
+	/**
+	 * Turns the instance-wide workflow reviews policy on or off. Needs
+	 * `feat:workflowReviews` as well as the license noted above.
+	 */
+	async setWorkflowReviewsEnabled(enabled: boolean): Promise<void> {
+		const response = await this.api.request.post('/rest/settings/security', {
+			data: { workflowReviews: { enabled } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/settings/security failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
 	async setRedactionFloorRaw(floor: RedactionFloor): Promise<APIResponse> {
 		return await this.api.request.post('/rest/settings/security', {
 			data: { redactionEnforcement: { floor } },

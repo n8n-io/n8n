@@ -2,7 +2,6 @@ import type { N8NConfig } from 'n8n-containers/stack';
 
 /**
  * Capability definitions for `test.use({ capability: 'email' })`.
- * Add `@capability:X` tag to tests for orchestration grouping.
  *
  * Maps capability names to service registry keys.
  * Note: task-runner is always enabled, no capability needed.
@@ -33,7 +32,25 @@ export const CAPABILITIES = {
 	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
+// Community package requests add unrelated traffic to proxy recordings.
+export const PROXY_WITHOUT_COMMUNITY_PACKAGES = {
+	services: ['proxy'],
+	env: { N8N_COMMUNITY_PACKAGES_ENABLED: 'false' },
+} as const satisfies Partial<N8NConfig>;
+
 export type Capability = keyof typeof CAPABILITIES;
+export type CapabilityOption = Capability | N8NConfig;
+
+export function shouldSkipContainerRequirement(
+	capability: CapabilityOption | undefined,
+	isLocal: boolean,
+): boolean {
+	if (!isLocal || !capability) return false;
+	const config = typeof capability === 'string' ? CAPABILITIES[capability] : capability;
+	return (config.services?.length ?? 0) > 0;
+}
+
+export const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 /**
  * Infrastructure modes (`@mode:X` tags). Most tests run against ALL modes via projects.
@@ -48,6 +65,4 @@ export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const
  */
 export const LICENSED_TAG = 'licensed';
 
-// Used by playwright-projects.ts to filter container-only tests in local mode
-export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];
 export const CONTAINER_ONLY_MODES = INFRASTRUCTURE_MODES;

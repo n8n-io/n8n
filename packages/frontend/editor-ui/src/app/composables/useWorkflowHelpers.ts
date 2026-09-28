@@ -15,7 +15,9 @@ import type {
 	IRunData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
+	GenericValue,
 	NodeParameterValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -54,6 +56,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	deriveHomeProject,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -275,6 +278,37 @@ export async function resolveParameter<T = IDataObject>(
 	) as T;
 }
 
+async function resolveParameterLeaves(
+	parameter: NodeParameterValueType,
+	workflowDocumentId: WorkflowDocumentId,
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext,
+): Promise<GenericValue> {
+	if (Array.isArray(parameter)) {
+		return await Promise.all(
+			parameter.map(async (value) => await resolveParameterLeaves(value, workflowDocumentId, opts)),
+		);
+	}
+
+	if (parameter !== null && typeof parameter === 'object') {
+		const entries = await Promise.all(
+			Object.entries(parameter).map(
+				async ([name, value]): Promise<[string, GenericValue]> => [
+					name,
+					await resolveParameterLeaves(value, workflowDocumentId, opts),
+				],
+			),
+		);
+
+		return Object.fromEntries(entries);
+	}
+
+	try {
+		return await resolveParameter<GenericValue>(parameter, workflowDocumentId, opts);
+	} catch {
+		return null;
+	}
+}
+
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
@@ -285,7 +319,7 @@ export async function resolveRequiredParameters(
 
 	const entries = Object.entries(parameters);
 	const resolvedEntries = await Promise.all(
-		entries.map(async ([name, parameter]): Promise<[string, IDataObject | null]> => {
+		entries.map(async ([name, parameter]): Promise<[string, GenericValue]> => {
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
@@ -299,9 +333,10 @@ export async function resolveRequiredParameters(
 						name,
 						await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
 					];
-				} catch (error) {
-					// ignore any expressions errors for non required parameters
-					return [name, null];
+				} catch {
+					// Load options may still need the parameter structure when a nested
+					// expression fails, so resolve a complex parameter recursively.
+					return [name, await resolveParameterLeaves(parameter, workflowDocumentId, opts)];
 				}
 			}
 		}),
@@ -747,6 +782,11 @@ export function useWorkflowHelpers() {
 
 			node.credentials = Object.entries(node.credentials).reduce<INodeCredentials>(
 				(acc, [credentialType, credential]) => {
+					if (credential.__aiGatewayManaged && credential.id === null) {
+						acc[credentialType] = credential;
+						return acc;
+					}
+
 					const isUsableCredential = usableCredentials.some(
 						(ownCredential) => `${ownCredential.id}` === `${credential.id}`,
 					);
@@ -831,7 +871,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 		if (workflowData.checksum) {
 			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}

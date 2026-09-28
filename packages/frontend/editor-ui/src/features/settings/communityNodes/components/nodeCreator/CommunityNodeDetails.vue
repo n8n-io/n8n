@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
@@ -9,6 +9,7 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import {
+	getNodeCreatorSearchItems,
 	prepareCommunityNodeDetailsViewStack,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -47,7 +48,12 @@ const updateViewStack = (key: string) => {
 
 		popViewStack();
 
-		updateCurrentViewStack({ searchItems: nodeCreatorStore.mergedNodes });
+		updateCurrentViewStack({
+			searchItems: getNodeCreatorSearchItems(
+				nodeCreatorStore.mergedNodes,
+				activeViewStack.searchItems ?? [],
+			),
+		});
 
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,

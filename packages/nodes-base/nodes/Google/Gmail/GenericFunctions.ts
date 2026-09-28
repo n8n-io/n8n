@@ -240,6 +240,9 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
+	mailOptions.disableFileAccess = true;
+	mailOptions.disableUrlAccess = true;
+
 	const mail = new MailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.
@@ -401,7 +404,7 @@ export function prepareEmailsInput(
 	itemIndex: number,
 ) {
 	let emails = '';
-
+	input = String(input ?? '');
 	input.split(',').forEach((entry) => {
 		const email = entry.trim();
 
@@ -429,7 +432,7 @@ export function prepareEmailBody(
 	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
-	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	let message = String(this.getNodeParameter('message', itemIndex, '') ?? '').trim();
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
@@ -472,7 +475,7 @@ export async function prepareEmailAttachments(
 
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
-			for (const name of (property as string).split(',')) {
+			for (const name of String(property ?? '').split(',')) {
 				const binaryData = this.helpers.assertBinaryData(itemIndex, name);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
 

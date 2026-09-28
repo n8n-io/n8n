@@ -137,6 +137,18 @@ describe('createInteractionTools', () => {
 				expect(() => getTool().inputSchema.parse({ text: 'hello' })).toThrow();
 			});
 
+			it('accepts a paste mode for values that must land in one operation', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'paste' }),
+				).not.toThrow();
+			});
+
+			it('rejects an unknown mode', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'slowly' }),
+				).toThrow();
+			});
+
 			it('accepts optional clear, submit, delay', () => {
 				expect(() =>
 					getTool().inputSchema.parse({
@@ -166,6 +178,50 @@ describe('createInteractionTools', () => {
 				expect(data.typed).toBe(true);
 				expect(data.text).toBe('hello');
 				expect(data.ref).toBe('e1');
+			});
+
+			it('passes the paste mode down to the adapter', async () => {
+				await getTool().execute(
+					{ element: { ref: 'e1' }, text: '{"a": 1}', mode: 'paste' },
+					TOOL_CONTEXT,
+				);
+
+				expect(mockConnection.adapter.type).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e1' },
+					'{"a": 1}',
+					expect.objectContaining({ mode: 'paste' }),
+				);
+			});
+
+			it('routes a failure through the connection so it can be explained', async () => {
+				// The wrapper stays out of the error taxonomy; BrowserConnection owns it.
+				const failure = new Error('locator.pressSequentially: Timeout 30000ms exceeded.');
+				mockConnection.adapter.type.mockRejectedValue(failure);
+				const explainFailure = mockConnection.connection.explainFailure as unknown as ReturnType<
+					typeof vi.fn
+				>;
+				explainFailure.mockReturnValueOnce(new Error('explained'));
+
+				const result = await getTool().execute(
+					{ element: { ref: 'e1' }, text: 'hello' },
+					TOOL_CONTEXT,
+				);
+
+				expect(explainFailure).toHaveBeenCalledWith(failure);
+				expect(structuredOf(result).error).toBe('explained');
+			});
+
+			it('opens the call before acting, so an earlier block is not blamed on it', async () => {
+				const beginToolCall = mockConnection.connection.beginToolCall as unknown as ReturnType<
+					typeof vi.fn
+				>;
+
+				await getTool().execute({ element: { ref: 'e1' }, text: 'hello' }, TOOL_CONTEXT);
+
+				expect(beginToolCall.mock.invocationCallOrder[0]).toBeLessThan(
+					mockConnection.adapter.type.mock.invocationCallOrder[0],
+				);
 			});
 		});
 	});
@@ -534,6 +590,70 @@ describe('createInteractionTools', () => {
 				expect(data.action).toBe('accept');
 				expect(data.dialogType).toBe('confirm');
 			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// snapshot input param (shared via createConnectedTool)
+	// -----------------------------------------------------------------------
+
+	describe('snapshot input param', () => {
+		const validInputs: Record<string, Record<string, unknown>> = {
+			browser_click: { element: { ref: 'e1' } },
+			browser_type: { element: { ref: 'e1' }, text: 'hi' },
+			browser_select: { element: { ref: 'e1' }, values: ['a'] },
+			browser_drag: { from: { ref: 'e1' }, to: { ref: 'e2' } },
+			browser_hover: { element: { ref: 'e1' } },
+			browser_press: { keys: 'Enter' },
+			browser_scroll: { mode: 'direction', direction: 'down' },
+			browser_upload: { files: ['/tmp/a.txt'] },
+			browser_dialog: { action: 'accept' },
+		};
+
+		it.each(Object.keys(validInputs))('%s accepts snapshot values and rejects invalid', (name) => {
+			const schema = findTool(tools, name).inputSchema;
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'interactive' })).not.toThrow();
+			expect(() =>
+				schema.parse({ ...validInputs[name], snapshot: 'non-interactive' }),
+			).not.toThrow();
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'full' })).toThrow();
+		});
+
+		it('returns an interactive snapshot when snapshot is "interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- button "OK"', refCount: 1 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, true);
+			expect(data.snapshot).toBe('- button "OK"');
+		});
+
+		it('returns a plain snapshot when snapshot is "non-interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- text "Done"', refCount: 0 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'non-interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
+			expect(data.snapshot).toBe('- text "Done"');
+		});
+
+		it('does not snapshot when the param is omitted', async () => {
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' } },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).not.toHaveBeenCalled();
+			expect(data.snapshot).toBeUndefined();
 		});
 	});
 });

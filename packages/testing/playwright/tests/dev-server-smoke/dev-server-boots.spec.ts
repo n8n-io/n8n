@@ -1,6 +1,6 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 
-import { test } from '../../fixtures/base';
+import { expect, test } from '../../fixtures/base';
 
 /**
  * Smoke tests that catch app-wide regressions where the editor-ui fails to boot —
@@ -10,6 +10,8 @@ import { test } from '../../fixtures/base';
  * These tests visit a small set of representative routes and fail the suite if
  * any error-level console message or uncaught page error is observed during the
  * load. They are intentionally light — UI behaviour is covered elsewhere.
+ *
+ * These tests also fail on `[modals]` warnings. See `MODAL_WARNING_RE`.
  *
  * Must run against the Vite dev server (`N8N_EDITOR_URL` set), which is what the
  * `test:dev-server-smoke` script wires up.
@@ -24,18 +26,40 @@ const BENIGN_PATTERNS: Array<{ messageRe: RegExp; reason: string }> = [
 
 const isBenign = (text: string) => BENIGN_PATTERNS.some((p) => p.messageRe.test(text));
 
+/**
+ * An unregistered modal key shows a closed modal. It does not throw an error
+ * (CAT-3967). So a lost registration does not fail any test.
+ *
+ * This warning is the only signal. `import.meta.env.DEV` removes the warning from
+ * the production bundle that the e2e job builds. Only this job starts the dev
+ * server, so only this job can find the warning.
+ *
+ * Other warnings are not fatal. The dev server writes many warnings that are not
+ * defects.
+ */
+const MODAL_WARNING_RE = /\[modals\]/;
+
 const navigateAndAssertNoErrors = async (
 	page: Page,
 	label: string,
 	navigate: () => Promise<void>,
 ) => {
 	const consoleErrors: string[] = [];
+	const modalWarnings: string[] = [];
 	const pageErrors: string[] = [];
 
 	const onConsole = (message: ConsoleMessage) => {
+		const text = message.text();
+		const at = `(at ${message.location().url ?? '<unknown>'})`;
+
+		if (message.type() === 'warning') {
+			if (MODAL_WARNING_RE.test(text)) modalWarnings.push(`${text} ${at}`);
+			return;
+		}
+
 		if (message.type() !== 'error') return;
-		if (isBenign(message.text())) return;
-		consoleErrors.push(`${message.text()} (at ${message.location().url ?? '<unknown>'})`);
+		if (isBenign(text)) return;
+		consoleErrors.push(`${text} ${at}`);
 	};
 	const onPageError = (error: Error) => {
 		const firstFrame = error.stack?.split('\n')[1]?.trim() ?? '';
@@ -65,10 +89,14 @@ const navigateAndAssertNoErrors = async (
 		page.off('pageerror', onPageError);
 	}
 
-	if (pageErrors.length > 0 || consoleErrors.length > 0) {
+	if (pageErrors.length > 0 || consoleErrors.length > 0 || modalWarnings.length > 0) {
 		const sections = [
 			pageErrors.length > 0 && `Uncaught page errors:\n  ${pageErrors.join('\n  ')}`,
 			consoleErrors.length > 0 && `Error-level console messages:\n  ${consoleErrors.join('\n  ')}`,
+			modalWarnings.length > 0 &&
+				`Modal keys nothing defines — the modal will not open, it will not throw:\n  ${modalWarnings.join(
+					'\n  ',
+				)}`,
 			navigationError &&
 				`Navigation also failed (likely a downstream effect): ${navigationError.message.split('\n')[0]}`,
 		].filter(Boolean);
@@ -86,7 +114,7 @@ test.describe(
 			{
 				type: 'description',
 				description:
-					'Boots representative routes against the Vite dev server and fails on any error-level console message or uncaught page error during load.',
+					'Boots representative routes against the Vite dev server and fails on any error-level console message, uncaught page error, or [modals] unknown-key warning during load.',
 			},
 		],
 	},
@@ -95,6 +123,30 @@ test.describe(
 			await navigateAndAssertNoErrors(n8n.page, 'home', async () => {
 				await n8n.start.fromHome();
 			});
+		});
+
+		// The dev frontend proxies REST calls to N8N_PORT. Assert that the browser
+		// makes same-origin requests to the frontend and receives successful responses
+		// from the backend via the proxy.
+		test('REST calls route through the dev server proxy to backend', async ({ n8n }) => {
+			const restRequests: string[] = [];
+
+			n8n.page.on('request', (request) => {
+				const url = new URL(request.url());
+				if (url.pathname.startsWith('/rest/')) {
+					restRequests.push(url.origin);
+				}
+			});
+
+			// Verify that an API call through the helper routes to the backend successfully
+			const activeModules = await n8n.api.getActiveModules();
+			expect(Array.isArray(activeModules)).toBe(true);
+
+			await n8n.start.fromHome();
+
+			const frontendOrigin = new URL(n8n.page.url()).origin;
+			expect(new Set(restRequests)).toEqual(new Set([frontendOrigin]));
+			expect(restRequests.length).toBeGreaterThan(0);
 		});
 
 		test('blank canvas boots cleanly', async ({ n8n }) => {

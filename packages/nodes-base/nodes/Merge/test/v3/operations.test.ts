@@ -123,6 +123,134 @@ describe('Test MergeV3, combineBySql operation', () => {
 			country: 'PL',
 		});
 	});
+
+	it('handles query parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE id = ?',
+			options: {
+				queryParameters: '2',
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			inputsData,
+		);
+
+		expect(returnData[0]).toHaveLength(1);
+		expect(returnData[0][0].json).toEqual({ name: 'Dan' });
+	});
+
+	it('handles query parameters from evaluated values', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE name = ?',
+			options: {
+				queryParameters: ['Dan'],
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			inputsData,
+		);
+
+		expect(returnData[0]).toHaveLength(1);
+		expect(returnData[0][0].json).toEqual({ name: 'Dan' });
+	});
+
+	it('handles unsupported query parameter objects', async () => {
+		const nodeParameters = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE name = ?',
+			options: {
+				queryParameters: [{ name: 'Dan' }],
+			},
+		} as unknown as IDataObject;
+
+		await expect(
+			mode.combineBySql.execute.call(
+				createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+				inputsData,
+			),
+		).rejects.toMatchObject({
+			message: 'Query parameter 1 must be a string, number, boolean, or null',
+		});
+	});
+
+	it('handles unsupported query parameter functions', async () => {
+		const nodeParameters = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE name = ?',
+			options: {
+				queryParameters: [() => 'Dan'],
+			},
+		} as unknown as IDataObject;
+
+		await expect(
+			mode.combineBySql.execute.call(
+				createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+				inputsData,
+			),
+		).rejects.toMatchObject({
+			message: 'Query parameter 1 must be a string, number, boolean, or null',
+		});
+	});
+
+	it('handles unsupported evaluated query parameter values', async () => {
+		const nodeParameters = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE name = ?',
+			options: {
+				queryParameters: false,
+			},
+		} as unknown as IDataObject;
+
+		await expect(
+			mode.combineBySql.execute.call(
+				createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+				inputsData,
+			),
+		).rejects.toMatchObject({
+			message: 'Query parameters must be a string, number, or array',
+		});
+	});
+
+	it('handles query parameter values as text', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE name = ?',
+			options: {
+				queryParameters: "Sam' OR name = 'Dan",
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			inputsData,
+		);
+
+		expect(returnData).toEqual([[]]);
+	});
+
+	it('handles multiple query parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT name FROM input1 WHERE id = ? OR name = ? ORDER BY id',
+			options: {
+				queryParameters: '2,Sam',
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			inputsData,
+		);
+
+		expect(returnData[0].map((item) => item.json.name)).toEqual(['Sam', 'Dan']);
+	});
+
 	it('LEFT JOIN, missing input 2(empty array)', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',

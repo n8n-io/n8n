@@ -6,7 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry } from '../useResourceRegistry';
+import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -46,13 +46,28 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 	} as InstanceAiMessage;
 }
 
-function setup(workflowNameLookup?: (id: string) => string | undefined) {
+function setup(
+	workflowNameLookup?: (id: string) => string | undefined,
+	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
+	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	pendingWorkflowAttachment?: () =>
+		| { type: 'workflow'; id: string; name?: string; executionId?: string }
+		| undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
+	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
+		undefined,
+		agentBuilderTarget,
+		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		transientWorkflowReferences,
+		agentBuilderTargets,
 	);
-	return { messages, producedArtifacts, resourceNameIndex };
+	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +77,7 @@ function setup(workflowNameLookup?: (id: string) => string | undefined) {
 describe('useResourceRegistry', () => {
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -82,10 +97,38 @@ describe('useResourceRegistry', () => {
 				expect.objectContaining({ type: 'workflow', id: 'wf-1', name: 'My Workflow' }),
 			);
 			expect(resourceNameIndex.get('my workflow')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.get('my workflow')?.id).toBe('wf-1');
+		});
+
+		test('keeps the known name when a follow-up call reports a blank name', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Lead routing' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: '' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Lead routing');
+			expect(linkableResourceNameIndex.get('lead routing')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.has('')).toBe(false);
 		});
 
 		test('falls back to args.name when result has no workflowName', async () => {
-			const { messages, producedArtifacts } = setup();
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -105,6 +148,7 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-2')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-2', name: 'From Args' }),
 			);
+			expect(linkableResourceNameIndex.get('from args')?.id).toBe('wf-2');
 		});
 
 		test('falls back to Untitled when neither workflowName nor args.name is present', async () => {
@@ -128,6 +172,67 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-3')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-3', name: 'Untitled' }),
 			);
+		});
+
+		test('replays historical raw workflow update results', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-update', name: 'Updated Workflow' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-update')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-update',
+					name: 'Updated Workflow',
+				}),
+			);
+		});
+
+		test('replays historical workflows get-json results', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'get-json', workflowId: 'wf-existing' },
+								result: {
+									id: 'wf-existing',
+									name: 'Existing Workflow',
+									nodes: [],
+									connections: {},
+									settings: {},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-existing')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-existing',
+					name: 'Existing Workflow',
+				}),
+			);
+			expect(resourceNameIndex.get('existing workflow')?.id).toBe('wf-existing');
 		});
 
 		test('does not collide when multiple workflows have no name', async () => {
@@ -155,6 +260,139 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.get('wf-a')?.id).toBe('wf-a');
 			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
+		});
+	});
+
+	describe('producedArtifacts — message attachments', () => {
+		test('registers the parent workflow from a nodes attachment with display metadata', async () => {
+			const { messages, producedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toMatchObject({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Orders',
+			});
+		});
+
+		test('keeps transient workflow references produced but not linkable', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{
+					referenceId: 'draft-1',
+					workflowId: 'wf-1',
+					workflowName: 'Orders',
+				},
+			]);
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				() => 'Canonical Orders',
+				undefined,
+				undefined,
+				undefined,
+				() => transient.value,
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
+			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
+
+			transient.value = [];
+			await nextTick();
+			expect(producedArtifacts.has('wf-1')).toBe(false);
+		});
+		test('keeps a pending new-agent attachment produced but not linkable', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+							pending: true,
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+				pending: true,
+			});
+			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
+		});
+
+		test('registers a pending workflow attachment as a produced tab', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' });
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(linkableResourceNameIndex.get('faq responder')?.id).toBe('wf-1');
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [{ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' }],
+				}),
+			];
+			pending.value = undefined;
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(producedArtifacts.size).toBe(1);
+		});
+
+		test('falls back to Untitled when the pending workflow name is blank', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-blank', name: '   ' });
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-blank')?.name).toBe('Untitled');
+			expect(linkableResourceNameIndex.get('untitled')?.id).toBe('wf-blank');
 		});
 	});
 
@@ -217,7 +455,7 @@ describe('useResourceRegistry', () => {
 							makeAgentNode({
 								agentId: 'agent-cred-1',
 								role: 'credential-setup',
-								kind: 'delegate',
+								kind: 'builder',
 								status: 'active',
 								targetResource: { type: 'credential', id: 'cred-1' },
 							}),
@@ -342,7 +580,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('mutation result enriches an existing data-table entry with projectId', async () => {
-			const { messages, producedArtifacts } = setup();
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -377,12 +615,328 @@ describe('useResourceRegistry', () => {
 					projectId: 'proj-2',
 				}),
 			);
+			expect(linkableResourceNameIndex.get('signups')?.id).toBe('dt-1');
+		});
+	});
+
+	describe('producedArtifacts — agent registration', () => {
+		test('registers an agent from a targetResource on the agent tree', async () => {
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							name: 'SEO Auditor',
+							projectId: 'project-1',
+						},
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'SEO Auditor',
+				projectId: 'project-1',
+			});
+			expect(resourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
+			expect(linkableResourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
+		});
+
+		test('hydrates projectId from the persisted agent-builder target', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', name: 'Legacy Agent' },
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Legacy Agent',
+				projectId: 'project-1',
+			});
+		});
+
+		test('registers an agent with agentName from a build-agent tool result', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
+		});
+
+		test('does not register an Agent after a read-only builder turn', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', projectId: 'project-1' }],
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								activity: 'exploring',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('agent-1')).toBe(false);
+		});
+
+		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const builder = makeAgentNode({
+				activity: 'exploring',
+				targetResource: { type: 'agent', id: 'agent-1', name: 'New agent' },
+			});
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'New agent',
+							projectId: 'project-1',
+							pending: true,
+						},
+					],
+				}),
+				makeMessage({ id: 'msg-2', agentTree: builder }),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
+			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+
+			messages.value[1].agentTree!.toolCalls.push(
+				makeToolCall({
+					toolName: 'build-agent',
+					result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+				}),
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
+			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+
+			messages.value[1].agentTree!.toolCalls.push(
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'build-agent',
+					result: { ok: true, agentId: 'agent-1', agentChange: 'created' },
+				}),
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBeUndefined();
+			expect(linkableResourceNameIndex.get('new agent')?.id).toBe('agent-1');
+		});
+
+		test('keeps project links for two changed Agents after the thread reloads', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Second Agent' }),
+				undefined,
+				undefined,
+				undefined,
+				() => [
+					{ agentId: 'agent-1', projectId: 'project-1' },
+					{ agentId: 'agent-2', projectId: 'project-1' },
+				],
+			);
+
+			messages.value = [
+				makeMessage({
+					id: 'msg-1',
+					agentTree: makeAgentNode({
+						activity: 'creating',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Draft name',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-1',
+									agentName: 'First Agent',
+									agentChange: 'created',
+								},
+							}),
+						],
+					}),
+				}),
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						activity: 'editing',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-2',
+							name: 'Old name',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-2',
+									agentName: 'Second Agent',
+									agentChange: 'updated',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'First Agent',
+				projectId: 'project-1',
+			});
+			expect(producedArtifacts.get('agent-2')).toMatchObject({
+				type: 'agent',
+				id: 'agent-2',
+				name: 'Second Agent',
+				projectId: 'project-1',
+			});
+		});
+
+		test('a later build-agent result without agentName does not regress a known name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
+		});
+
+		test('names an agent from persisted agent-builder target metadata when no event carried a name', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Metadata Agent',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1' },
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Metadata Agent',
+				projectId: 'project-1',
+			});
+		});
+
+		test('event-derived names win over metadata: unnamed spawn, then named tool result, then metadata enrichment', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Stale Metadata Name',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+				projectId: 'project-1',
+			});
 		});
 	});
 
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -407,10 +961,11 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.size).toBe(0);
 			expect(resourceNameIndex.get('workspace workflow 1')?.id).toBe('wf-list-1');
 			expect(resourceNameIndex.get('workspace workflow 2')?.id).toBe('wf-list-2');
+			expect(linkableResourceNameIndex.size).toBe(0);
 		});
 
 		test('data-tables action=list result is indexed by name only', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -431,6 +986,7 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.size).toBe(0);
 			expect(resourceNameIndex.get('existing table')?.id).toBe('dt-a');
+			expect(linkableResourceNameIndex.get('existing table')).toBeUndefined();
 		});
 
 		test('a later write promotes a previously-listed resource into producedArtifacts', async () => {
@@ -538,7 +1094,7 @@ describe('useResourceRegistry', () => {
 		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
 			'registers data table from %s result with name and projectId',
 			async (toolName) => {
-				const { messages, producedArtifacts } = setup();
+				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -565,6 +1121,7 @@ describe('useResourceRegistry', () => {
 					name: 'Orders',
 					projectId: 'proj-1',
 				});
+				expect(linkableResourceNameIndex.get('orders')?.id).toBe('dt-mut-1');
 			},
 		);
 
@@ -600,7 +1157,7 @@ describe('useResourceRegistry', () => {
 		test.each(['schema', 'query'] as const)(
 			'registers data table from data-tables %s result with resolved metadata',
 			async (action) => {
-				const { messages, producedArtifacts } = setup();
+				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -628,6 +1185,7 @@ describe('useResourceRegistry', () => {
 					name: 'Signups',
 					projectId: 'proj-4',
 				});
+				expect(linkableResourceNameIndex.get('signups')).toBeUndefined();
 			},
 		);
 	});
@@ -649,6 +1207,51 @@ describe('useResourceRegistry', () => {
 			];
 			return result;
 		}
+
+		test('surfaces an unsaved new-agent artifact from the pending marker', async () => {
+			const { producedArtifacts } = setup(undefined, undefined, () => ({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'project-1',
+				name: 'New agent',
+			}));
+			await nextTick();
+
+			expect(producedArtifacts.get('aBcDeFgHiJkLmNoP')).toEqual({
+				type: 'agent',
+				id: 'aBcDeFgHiJkLmNoP',
+				name: 'New agent',
+				projectId: 'project-1',
+				pending: true,
+			});
+		});
+
+		test('drops the pending flag once the agent is bound to the thread', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' }),
+				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'New agent' }),
+			);
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'aBcDeFgHiJkLmNoP',
+							name: 'New agent',
+							projectId: 'project-1',
+							pending: true,
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			const entry = producedArtifacts.get('aBcDeFgHiJkLmNoP');
+			expect(entry?.pending).toBeUndefined();
+			expect(entry?.name).toBe('Support Triage');
+			expect(producedArtifacts.size).toBe(1);
+		});
 
 		test('entry objects keep their identity across rebuilds', async () => {
 			const { messages, producedArtifacts } = setupWithArtifact();

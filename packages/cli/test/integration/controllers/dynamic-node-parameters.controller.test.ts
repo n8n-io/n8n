@@ -64,6 +64,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult = [{ name: 'Test Option', value: 'test' }];
+			vi.spyOn(service, 'getOptionsViaLoadOptionsByPath').mockResolvedValue(expectedResult);
 			vi.spyOn(service, 'getOptionsViaLoadOptions').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent

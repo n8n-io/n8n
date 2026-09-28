@@ -12,6 +12,7 @@ const workflowSourceFileBindingSchema = z.object({
 	filePath: z.string(),
 	workflowId: z.string().optional(),
 	workflowVersionId: z.string().optional(),
+	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
 });
 
@@ -25,8 +26,14 @@ export function hashWorkflowSource(source: string): string {
 	return createHash('sha256').update(source).digest('hex');
 }
 
-export function normalizeWorkflowSourceFilePath(filePath: string): string {
-	return normalizeWorkspaceRelativePath(filePath, { resourceLabel: 'Workflow source file' });
+export function normalizeWorkflowSourceFilePath(
+	filePath: string,
+	options: { workspaceRoot?: string } = {},
+): string {
+	return normalizeWorkspaceRelativePath(filePath, {
+		resourceLabel: 'Workflow source file',
+		workspaceRoot: options.workspaceRoot,
+	});
 }
 
 function parseBindings(raw: unknown): Record<string, WorkflowSourceFileBinding> {
@@ -75,6 +82,30 @@ export async function getWorkflowSourceFileBinding(
 	return getFallbackBindings(context).get(normalizedFilePath);
 }
 
+/**
+ * Bindings that point at a workflow, or at a file path. Thread metadata wins over
+ * the in-memory fallback for the same path. `workflowId` undefined matches every
+ * binding, which lets a caller ask "who owns this path" regardless of workflow.
+ */
+export async function findWorkflowSourceFileBindingsForWorkflow(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+	filePath?: string,
+): Promise<WorkflowSourceFileBinding[]> {
+	const normalizedFilePath = filePath ? normalizeWorkflowSourceFilePath(filePath) : undefined;
+	const threadBindings = (await readThreadBindings(context)) ?? {};
+	const merged = new Map<string, WorkflowSourceFileBinding>(Object.entries(threadBindings));
+	for (const [path, binding] of getFallbackBindings(context)) {
+		if (!merged.has(path)) merged.set(path, binding);
+	}
+
+	return Array.from(merged.values()).filter(
+		(binding) =>
+			(workflowId === undefined || binding.workflowId === workflowId) &&
+			(normalizedFilePath === undefined || binding.filePath === normalizedFilePath),
+	);
+}
+
 export async function saveWorkflowSourceFileBinding(
 	context: InstanceAiContext,
 	binding: WorkflowSourceFileBinding,
@@ -83,6 +114,10 @@ export async function saveWorkflowSourceFileBinding(
 		...binding,
 		filePath: normalizeWorkflowSourceFilePath(binding.filePath),
 	};
+
+	// Always keep the run-local copy: a later thread-metadata read can fail, and the
+	// binding must still be found so an existing file is never treated as unbound.
+	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 
 	if (context.threadMemory && context.threadId) {
 		try {
@@ -103,13 +138,78 @@ export async function saveWorkflowSourceFileBinding(
 		}
 	}
 
-	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 	return normalizedBinding;
+}
+
+/** Bind a source file to an existing workflow, seeding version/checksum for stale-save detection. */
+export async function bindSourceFileToExistingWorkflow(
+	context: InstanceAiContext,
+	binding: WorkflowSourceFileBinding,
+	workflowId: string,
+): Promise<WorkflowSourceFileBinding> {
+	const workflow = await context.workflowService.get(workflowId);
+	return await saveWorkflowSourceFileBinding(context, {
+		...binding,
+		workflowId,
+		workflowVersionId: workflow.versionId,
+		...(workflow.checksum ? { workflowChecksum: workflow.checksum } : {}),
+	});
+}
+
+/** Refresh binding checksum/version from the workflow's current DB state. */
+export async function refreshWorkflowSourceFileBindingFromWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	const workflow = await context.workflowService.get(workflowId);
+	await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+		versionId: workflow.versionId,
+		checksum: workflow.checksum,
+	});
+}
+
+/** Refresh the binding checksum/version after an agent-side DB patch outside build-workflow. */
+export async function refreshWorkflowSourceFileBindingFromSave(
+	context: InstanceAiContext,
+	workflowId: string,
+	saved: { versionId: string; checksum?: string },
+): Promise<void> {
+	const threadBindings = await readThreadBindings(context);
+	const fallback = getFallbackBindings(context);
+	const entries: WorkflowSourceFileBinding[] = [];
+
+	if (threadBindings) {
+		for (const binding of Object.values(threadBindings)) {
+			if (binding.workflowId === workflowId) entries.push(binding);
+		}
+	}
+	for (const binding of fallback.values()) {
+		if (
+			binding.workflowId === workflowId &&
+			!entries.some((e) => e.filePath === binding.filePath)
+		) {
+			entries.push(binding);
+		}
+	}
+
+	for (const binding of entries) {
+		const nextBinding: WorkflowSourceFileBinding = {
+			...binding,
+			workflowVersionId: saved.versionId,
+		};
+		if (saved.checksum !== undefined) {
+			nextBinding.workflowChecksum = saved.checksum;
+		} else {
+			delete nextBinding.workflowChecksum;
+		}
+		await saveWorkflowSourceFileBinding(context, nextBinding);
+	}
 }
 
 export async function readWorkflowSourceFile(
 	context: InstanceAiContext,
 	filePath: string,
+	abortSignal?: AbortSignal,
 ): Promise<{ source: string; sourceHash: string }> {
 	if (!context.workspace) {
 		throw new Error('Runtime workspace is required for workflow source files.');
@@ -119,6 +219,7 @@ export async function readWorkflowSourceFile(
 	const source = await readWorkspaceFile(context.workspace, normalizedFilePath, {
 		logger: context.logger,
 		resourceLabel: 'Workflow source file',
+		abortSignal,
 	});
 
 	if (source === null) {

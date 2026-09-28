@@ -4,6 +4,7 @@ import type {
 	INode,
 	IPollFunctions,
 	IWorkflowMetadata,
+	NodeOperationError,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -505,9 +506,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		});
 
 		it('coerces a non-string id robustly via String(rawId ?? "") and stringifies it into the root', () => {
-			// a number id (e.g. a poll fallback) must be coerced, validated, and used
-			expect(getServicePrincipalResourceRoot('user', 12345 as unknown as string, mockNode)).toBe(
-				'/users/12345',
+			// A number id (e.g. a poll fallback) must be coerced, validated, and used. Asserted
+			// on the drive target: a bare numeric label is a legal drive id but not a valid user
+			// id (the user branch requires a GUID or UPN), so this isolates the coercion behavior.
+			expect(getServicePrincipalResourceRoot('drive', 12345 as unknown as string, mockNode)).toBe(
+				'/drives/12345',
 			);
 		});
 	});
@@ -553,12 +556,80 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			).not.toThrow();
 		});
 
+		it('accepts the widened Entra UPN set (! ^ ~ #) and a B2B guest (#EXT#) UPN for the user target', () => {
+			expect(() => validateResourceTargetId('user', 'o!brien@contoso.com', mockNode)).not.toThrow();
+			expect(() =>
+				validateResourceTargetId('user', 'joe^smith@contoso.com', mockNode),
+			).not.toThrow();
+			expect(() =>
+				validateResourceTargetId('user', 'jane~doe@contoso.com', mockNode),
+			).not.toThrow();
+			expect(() => validateResourceTargetId('user', 'a#b@contoso.com', mockNode)).not.toThrow();
+			expect(() =>
+				validateResourceTargetId('user', 'user_contoso.com#EXT#@tenant.onmicrosoft.com', mockNode),
+			).not.toThrow();
+		});
+
+		it('rejects a bare host / bare label / legal-but-user-invalid host for the user target (bare-host branch is gone)', () => {
+			// The dropped USER_TARGET_HOST regex once accepted these for the user target;
+			// none forms a valid /users/{id}, so all three must now reject.
+			expect(() => validateResourceTargetId('user', 'contoso.com', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+			expect(() => validateResourceTargetId('user', 'jane', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+			expect(() => validateResourceTargetId('user', 'sub.contoso.co.uk', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+		});
+
+		it('rejects an encoded-traversal UPN for the user target (% is not a legal UPN char)', () => {
+			expect(() => validateResourceTargetId('user', '..%2f..%2fx@y.com', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+		});
+
+		it('throws for an unexpected target type instead of treating it as a user', () => {
+			// A valid UPN would pass the user validator; an unknown target must still throw,
+			// proving the value is not silently routed through the user shape.
+			expect(() => validateResourceTargetId('site', 'jane@contoso.com', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+		});
+
 		it('rejects a drive-shaped id ("b!abc") as a user (the "!" is not a valid user id)', () => {
 			expect(() => validateResourceTargetId('user', 'b!abc', mockNode)).toThrow();
 		});
 
 		it('accepts a drive id containing "!"', () => {
 			expect(() => validateResourceTargetId('drive', 'b!abc-123_XYZ', mockNode)).not.toThrow();
+		});
+
+		it('reports the shared "user"-branch empty message (delegates to the shared validator)', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateResourceTargetId('user', '', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('A target ID is required for the Service Principal');
+			expect(caught?.description).toBe(
+				'Set the User ID under "Access As" — app-only Microsoft Graph has no personal context to default to.',
+			);
+		});
+
+		it('keeps the drive-branch empty message unchanged (mentions the personal drive)', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateResourceTargetId('drive', '', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('A target ID is required for the Service Principal');
+			expect(caught?.description).toBe(
+				'Set the User or Drive ID under "Access As" — app-only Microsoft Graph has no personal drive to default to.',
+			);
 		});
 
 		it('throws a static message that never echoes the rejected id', () => {
@@ -609,6 +680,56 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				}),
 			);
 			expect(mockRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('carries a B2B guest (#EXT#) UPN end-to-end into an encoded /users/{id}/drive uri', async () => {
+			const scopeRoot = getServicePrincipalResourceRoot(
+				'user',
+				'user_contoso.com#EXT#@tenant.onmicrosoft.com',
+				mockNode,
+			);
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/drive/items/x',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				scopeRoot,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/drive/items/x',
+				}),
+			);
+		});
+
+		it('carries a "^"/"!" UPN end-to-end into an encoded /users/{id}/drive uri', async () => {
+			const scopeRoot = getServicePrincipalResourceRoot('user', 'joe^smith@contoso.com', mockNode);
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/drive/items/x',
+				{},
+				{},
+				undefined,
+				{},
+				{ json: true },
+				scopeRoot,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/joe%5Esmith%40contoso.com/drive/items/x',
+				}),
+			);
 		});
 
 		it('roots a drive request as /drives/{id}/items/x with no double /drive', async () => {

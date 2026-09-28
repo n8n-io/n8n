@@ -270,6 +270,7 @@ function getParamType(field: ResourceMapperField): NodePropertyTypes {
 		case 'array':
 			return 'json';
 		case 'time':
+		case 'url':
 			return 'string';
 		default:
 			return (field.type as NodePropertyTypes) ?? 'string';

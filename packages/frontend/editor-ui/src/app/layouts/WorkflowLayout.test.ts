@@ -37,7 +37,7 @@ vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'test-workflow-id'),
-		currentWorkflowDocumentStore: shallowRef(null),
+		currentWorkflowDocumentStore: shallowRef({ documentId: 'test-doc-id' }),
 		isTemplateRoute: computed(() => false),
 		isOnboardingRoute: computed(() => false),
 		isDebugRoute: computed(() => false),
@@ -197,5 +197,56 @@ describe('WorkflowLayout', () => {
 		const { unmount } = renderComponent();
 		unmount();
 		expect(mockPushDisconnect).toHaveBeenCalledOnce();
+	});
+
+	it('should show LoadingView instead of RouterView while the document store is not yet available', async () => {
+		// During a workflow load/switch the provided document store is briefly null (disposed
+		// before the new one is created). NodeView must not mount in that window, or its strict
+		// injectNDVStore() reads throw and the canvas renders zero nodes.
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		const state = useWorkflowInitialization();
+		state.currentWorkflowDocumentStore.value = null;
+		vi.mocked(useWorkflowInitialization).mockReturnValueOnce(state);
+
+		const { getByTestId, queryByText } = renderComponent();
+
+		expect(getByTestId('loading-view')).toBeInTheDocument();
+		expect(queryByText('Workflow Content')).not.toBeInTheDocument();
+	});
+
+	it('should show LoadingView while loading even with a document store present', async () => {
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		const state = useWorkflowInitialization();
+		state.isLoading.value = true;
+		vi.mocked(useWorkflowInitialization).mockReturnValueOnce(state);
+
+		const { getByTestId, queryByText } = renderComponent();
+
+		expect(getByTestId('loading-view')).toBeInTheDocument();
+		expect(queryByText('Workflow Content')).not.toBeInTheDocument();
+	});
+
+	it('should render RouterView on the onboarding route even when the document store is null', async () => {
+		// The onboarding route renders a redirect-only view whose onMounted performs the
+		// redirect and never provides a document store. The store gate must not block it,
+		// or the redirect never fires and the page deadlocks on LoadingView.
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		const state = useWorkflowInitialization();
+		state.currentWorkflowDocumentStore.value = null;
+		vi.mocked(useWorkflowInitialization).mockReturnValueOnce({
+			...state,
+			isOnboardingRoute: computed(() => true),
+		});
+
+		const { queryByTestId, getByText } = renderComponent();
+
+		expect(queryByTestId('loading-view')).not.toBeInTheDocument();
+		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 });

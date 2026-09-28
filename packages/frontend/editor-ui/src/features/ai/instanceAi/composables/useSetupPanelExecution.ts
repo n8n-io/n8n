@@ -1,0 +1,256 @@
+import {
+	computed,
+	getCurrentScope,
+	onScopeDispose,
+	reactive,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { v4 as uuidv4 } from 'uuid';
+import { isTerminalExecutionStatus, type TerminalExecutionStatus } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { getWorkflow } from '@/app/api/workflows';
+import { useRunWorkflowApi } from '@/app/composables/useRunWorkflowApi';
+import {
+	createWorkflowDocumentId,
+	useExistingWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { isChatNode } from '@/app/utils/aiUtils';
+import type { ThreadRuntime } from '../instanceAi.store';
+import { getExecutionResultsByWorkflow } from '../canvasPreview.utils';
+
+export interface SetupPanelExecutionResult {
+	workflowId: string;
+	executionId: string;
+	status: TerminalExecutionStatus;
+	notified: boolean;
+}
+
+export function useSetupPanelExecution(options: {
+	workflowId: MaybeRefOrGetter<string | undefined>;
+	thread: Pick<ThreadRuntime, 'id' | 'messages' | 'sendMessage' | 'rememberManualExecution'>;
+}) {
+	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
+	const workflowsStore = useWorkflowsStore();
+	const { runWorkflowApi } = useRunWorkflowApi();
+	const nodeTypesStore = useNodeTypesStore();
+	const pushStore = usePushConnectionStore();
+	const logsStore = useLogsStore();
+	const telemetry = useTelemetry();
+	const toast = useToast();
+	const i18n = useI18n();
+	const runningWorkflows = reactive(new Set<string>());
+	const isRunning = computed(() => runningWorkflows.has(toValue(options.workflowId) ?? ''));
+	let disposed = false;
+	const cancelWaits = new Map<string, () => void>();
+	if (getCurrentScope())
+		onScopeDispose(() => {
+			disposed = true;
+			for (const cancelWait of cancelWaits.values()) cancelWait();
+		});
+
+	async function executeWorkflow(): Promise<SetupPanelExecutionResult | undefined> {
+		const workflowId = toValue(options.workflowId);
+		if (!workflowId || runningWorkflows.has(workflowId) || disposed) return;
+		if (!pushStore.isConnected)
+			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
+		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId));
+		if (executionState.isWorkflowRunning) return;
+		runningWorkflows.add(workflowId);
+		let cleanup = () => {};
+		try {
+			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
+			await nodeTypesStore.loadNodeTypesIfNotLoaded();
+			if (
+				disposed ||
+				toValue(options.workflowId) !== workflowId ||
+				executionState.isWorkflowRunning
+			)
+				return;
+			const triggers = workflow.nodes.filter(
+				(node) => !node.disabled && nodeTypesStore.isTriggerNode(node.type),
+			);
+			const trigger =
+				triggers.find((node) => node.name === executionState.selectedTriggerNodeName) ??
+				triggers[0];
+			if (!trigger)
+				throw new Error(i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting'));
+			logsStore.toggleOpen(true);
+			if (isChatNode(trigger)) {
+				toast.showMessage({
+					title: i18n.baseText('aiAssistant.builder.toast.title'),
+					message: i18n.baseText('aiAssistant.builder.toast.description'),
+					type: 'info',
+				});
+				return;
+			}
+
+			const testContext = {
+				...getTelemetryPayload(),
+				test_request_id: uuidv4(),
+				session_id: rootStore.pushRef,
+				source: 'instance_ai_setup_panel' as const,
+				workflow_id: workflowId,
+				thread_id: options.thread.id,
+			};
+			let agentExecutionId: string | undefined;
+			for (const message of options.thread.messages) {
+				if (message.agentTree)
+					agentExecutionId =
+						getExecutionResultsByWorkflow(message.agentTree).get(workflowId)?.executionId ??
+						agentExecutionId;
+			}
+			const completed = createDeferredPromise<
+				Omit<SetupPanelExecutionResult, 'notified'> | undefined
+			>();
+			const finished = new Map<string, TerminalExecutionStatus>();
+			let executionId: string | undefined;
+			let startedId: string | undefined;
+			let waitingForWebhook = false;
+			let settled = false;
+			const finish = (id: string | undefined, status: TerminalExecutionStatus) => {
+				if (settled) return;
+				settled = true;
+				telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+					...testContext,
+					execution_id: id,
+					status,
+				});
+				completed.resolve(id ? { workflowId, executionId: id, status } : undefined);
+			};
+			const observeId = (id: string) => {
+				executionId = id;
+				if (executionState.activeExecutionId === null) executionState.setActiveExecutionId(id);
+				options.thread.rememberManualExecution(workflowId, id, agentExecutionId);
+				const status = finished.get(id);
+				if (status) finish(id, status);
+			};
+			const readStatus = async () => {
+				if (!executionId || settled || disposed) return;
+				try {
+					const execution = await workflowsStore.fetchExecutionDataById(executionId);
+					if (disposed || execution?.workflowId !== workflowId || execution.id !== executionId)
+						return;
+					if (execution && isTerminalExecutionStatus(execution.status))
+						finish(execution.id, execution.status);
+				} catch {
+					/* Completion can still arrive on the push connection. */
+				}
+			};
+			// Subscribe before starting: short executions can finish before the POST returns.
+			const removeListener = pushStore.addEventListener((event) => {
+				if (
+					event.type === 'testWebhookDeleted' &&
+					event.data.workflowId === workflowId &&
+					!event.data.executionId &&
+					waitingForWebhook &&
+					!executionId
+				) {
+					finish(undefined, 'canceled');
+					return;
+				}
+				if (event.type === 'testWebhookReceived' && event.data.workflowId === workflowId) {
+					startedId = event.data.executionId;
+					if (waitingForWebhook && !executionId) observeId(startedId);
+				}
+				if (
+					event.type === 'executionStarted' &&
+					event.data.workflowId === workflowId &&
+					event.data.source !== 'instance_ai'
+				) {
+					startedId = event.data.executionId;
+					if (waitingForWebhook && !executionId) observeId(startedId);
+				}
+				if (
+					event.type !== 'executionFinished' ||
+					event.data.workflowId !== workflowId ||
+					!isTerminalExecutionStatus(event.data.status)
+				)
+					return;
+				finished.set(event.data.executionId, event.data.status);
+				if (event.data.executionId === executionId) finish(executionId, event.data.status);
+			});
+			const stopReconnectWatch = watch(
+				() => pushStore.isConnected,
+				(connected) => {
+					if (connected) void readStatus();
+				},
+			);
+			cleanup = () => {
+				removeListener();
+				stopReconnectWatch();
+			};
+			cancelWaits.set(workflowId, () => {
+				cleanup();
+				completed.resolve(undefined);
+			});
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, testContext);
+			const response = await runWorkflowApi(
+				{ workflowId, triggerToStartFrom: { name: trigger.name } },
+				executionState.documentId,
+			).catch((error: unknown) => {
+				telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+					...testContext,
+					status: 'request_failed',
+				});
+				throw error;
+			});
+			if (disposed) {
+				if (executionState.activeExecutionId === null) {
+					executionState.setActiveExecutionId(undefined);
+					executionState.setExecutionWaitingForWebhook(false);
+				}
+				return;
+			}
+			waitingForWebhook = response.waitingForWebhook === true;
+			executionState.setExecutionWaitingForWebhook(waitingForWebhook);
+			if (response.executionId) observeId(response.executionId);
+			else if (waitingForWebhook && startedId) observeId(startedId);
+			else if (!waitingForWebhook)
+				throw new Error(i18n.baseText('instanceAi.setupPanel.executeError'));
+			void readStatus();
+			const result = await completed.promise;
+			cleanup();
+			// A mounted canvas handles terminal data itself. Without it, release this run here.
+			if (
+				(!result && executionState.activeExecutionId === null) ||
+				(result &&
+					!useExistingWorkflowDocumentStore(executionState.documentId)?.hydrated &&
+					executionState.activeExecutionId === result.executionId)
+			)
+				executionState.setActiveExecutionId(undefined);
+			executionState.setExecutionWaitingForWebhook(false);
+			if (disposed) return;
+			if (!result) return;
+			const notified = await options.thread.sendMessage(
+				i18n.baseText('instanceAi.setupPanel.executedMessage', {
+					interpolate: { executionId: result.executionId },
+				}),
+				{
+					authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+					pushRef: rootStore.pushRef,
+				},
+			);
+			return { ...result, notified };
+		} finally {
+			cleanup();
+			cancelWaits.delete(workflowId);
+			runningWorkflows.delete(workflowId);
+		}
+	}
+
+	return { executeWorkflow, isRunning };
+}

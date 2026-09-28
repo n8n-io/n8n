@@ -37,11 +37,16 @@ export class TaskBrokerAuthController {
 
 	/**
 	 * Validates a WebSocket upgrade request by checking runner ID and grant token
-	 * @returns Object with validation result and appropriate HTTP status code
+	 * @returns Object with validation result and appropriate HTTP status code. On success,
+	 * `boundRunnerId` is the ID the grant token was minted for, or `null` if it was minted
+	 * without one.
 	 */
-	async validateUpgradeRequest(
-		authHeader: string | undefined,
-	): Promise<{ isValid: boolean; statusCode: number; reason?: string }> {
+	async validateUpgradeRequest(authHeader: string | undefined): Promise<{
+		isValid: boolean;
+		statusCode: number;
+		reason?: string;
+		boundRunnerId?: string;
+	}> {
 		const result = bearerTokenSchema.safeParse(authHeader);
 		if (!result.success) {
 			return {
@@ -52,7 +57,7 @@ export class TaskBrokerAuthController {
 		}
 
 		const grantToken = result.data;
-		const isValid = await this.authService.tryConsumeGrantToken(grantToken);
+		const { isValid, boundRunnerId } = await this.authService.tryConsumeGrantToken(grantToken);
 		if (!isValid) {
 			return {
 				isValid: false,
@@ -61,6 +66,6 @@ export class TaskBrokerAuthController {
 			};
 		}
 
-		return { isValid: true, statusCode: 200 };
+		return { isValid: true, statusCode: 200, ...(boundRunnerId && { boundRunnerId }) };
 	}
 }

@@ -5,11 +5,19 @@
  * a provider envelope the adapter can't read a tool call from.
  */
 
+import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { z } from 'zod';
+
+import {
+	conformContentToSchema,
+	discoverStructuredOutputSchema,
+} from './structured-output-conformance';
 
 const COMPLETION_MOCK_PROMPT = `You simulate ONE response from the LLM that powers an AI agent inside an n8n workflow under evaluation. The agent runs a tool-calling loop and calls you once per turn. Decide the agent's NEXT step and submit it via submit_agent_step.
 
@@ -23,7 +31,10 @@ How to decide:
 
 Rules:
 - kind="tool_call": set toolName to one of the available tools and toolArguments to an object matching THAT tool's input schema EXACTLY (same keys, nesting, and types). Use the SMALLEST valid value for every field — a one-line string, a single-element array — never a long document.
-- kind="final": set content to a short final answer string.
+- kind="final": set content to a short final answer string. Two structured-output cases override this:
+  - If a structured-output / "format final response" style tool is available, NEVER finalize with plain content — call that tool with schema-valid arguments instead.
+  - Only when NO such tool exists but the conversation carries structured-output format instructions (a JSON schema the reply must match): content MUST be exactly JSON that satisfies THAT schema — every declared field present, exact key names, correct types (a numeric field gets a number like 42, never a descriptive string like "about 42" or "below the 42 threshold"). Do NOT add fields the schema does not declare, and do NOT wrap the object in an extra key unless the schema itself declares that wrapper (some parsers require a specific top-level key such as "__structured__output" — include it only when the schema shows it). Reproduce a \`\`\`json code block only if the instructions show one. Keep-it-minimal applies to field VALUES only — never drop declared fields.
+- content is ONLY the assistant's answer (plain text, or the structured JSON). NEVER wrap it in a provider API envelope — no chat.completion/response object, no "choices"/"output"/"id"/"object" keys. The harness adds the wire envelope.
 - Call exactly ONE tool per step. Never fabricate a whole multi-step result in a single turn.
 - If the scenario, node hint, or data context states a specific value, reproduce it; otherwise keep values minimal.`;
 
@@ -65,10 +76,6 @@ const submitStepSchema = z.object({
 		.optional()
 		.describe('Required for kind="final": a short final answer string.'),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function asString(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -148,6 +155,7 @@ function buildUserPrompt(
 	summary: ConversationSummary,
 	options: LlmCompletionMockOptions | undefined,
 	nodeHint: string | undefined,
+	outputSchema: Record<string, unknown> | undefined,
 ): string {
 	const toolList =
 		tools
@@ -169,10 +177,65 @@ function buildUserPrompt(
 			? 'Tool results ARE present — you likely have enough to finalize.'
 			: 'No tool results yet — advance the loop by calling a non-final tool unless none exist.',
 	];
+	// When the request declares a structured-output schema, hand it to the mock
+	// verbatim so it emits the exact keys/types (not a paraphrased "category"
+	// string). This is what steers e.g. a Text Classifier's boolean-per-category
+	// output; the conformance pass then guarantees no extra keys survive.
+	if (outputSchema) {
+		sections.push(
+			'',
+			'## Required structured output',
+			'Your final `content` MUST be JSON matching this schema EXACTLY — include every declared property with the correct type, add no extra keys, and do not wrap it in another object unless the schema itself declares that wrapper:',
+			JSON.stringify(outputSchema),
+		);
+	}
 	if (options?.globalContext) sections.push('', '## Data context', options.globalContext);
 	if (nodeHint) sections.push('', '## Node hint', nodeHint);
 	if (options?.scenarioHints) sections.push('', '## Scenario', options.scenarioHints);
 	return sections.join('\n');
+}
+
+/**
+ * The mock model occasionally emits a full provider wire envelope
+ * (chat.completions / Responses API) as its "answer" instead of the bare
+ * assistant message. The wire server would then wrap that envelope AGAIN, so the
+ * workflow node receives a stringified envelope as its text and its parser fails
+ * ("empty response"). Unwrap a recognised envelope back to the inner assistant
+ * message. Gated on the `object` marker so a legitimate structured-output answer
+ * that merely happens to carry an `output`/`choices` field is never mis-unwrapped.
+ */
+export function unwrapProviderEnvelope(text: string): string {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{')) return text;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(trimmed);
+	} catch {
+		return text;
+	}
+	if (!isRecord(parsed)) return text;
+
+	// OpenAI chat.completions: choices[0].message.content
+	if (parsed.object === 'chat.completion' && isUnknownArray(parsed.choices)) {
+		const first = parsed.choices[0];
+		if (isRecord(first) && isRecord(first.message) && typeof first.message.content === 'string') {
+			return first.message.content;
+		}
+	}
+
+	// OpenAI Responses API: output_text, or output[].content[].text
+	if (parsed.object === 'response') {
+		if (typeof parsed.output_text === 'string') return parsed.output_text;
+		if (isUnknownArray(parsed.output)) {
+			for (const item of parsed.output) {
+				if (!isRecord(item) || !isUnknownArray(item.content)) continue;
+				const firstPart = item.content[0];
+				if (isRecord(firstPart) && typeof firstPart.text === 'string') return firstPart.text;
+			}
+		}
+	}
+
+	return text;
 }
 
 function jsonResponse(body: Record<string, unknown>): EvalMockHttpResponse {
@@ -187,7 +250,14 @@ export function createLlmCompletionMockHandler(
 		const body = requestOptions.body;
 		const tools = extractTools(body);
 		const summary = summarizeConversation(body);
-		const userPrompt = buildUserPrompt(tools, summary, options, options?.nodeHints?.[node.name]);
+		const outputSchema = discoverStructuredOutputSchema(body);
+		const userPrompt = buildUserPrompt(
+			tools,
+			summary,
+			options,
+			options?.nodeHints?.[node.name],
+			outputSchema,
+		);
 
 		const capture: CompletionStep = {};
 		const agent = createEvalAgent('eval-llm-completion-mock', {
@@ -216,7 +286,10 @@ export function createLlmCompletionMockHandler(
 				.build(),
 		);
 
-		const result = await agent.generate(userPrompt);
+		// Hang guard: one stalled model turn must not eat the scenario budget.
+		const result = await agent.generate(userPrompt, {
+			abortSignal: AbortSignal.timeout(120_000),
+		});
 
 		let responseBody: Record<string, unknown>;
 		if (capture.toolName) {
@@ -226,14 +299,26 @@ export function createLlmCompletionMockHandler(
 				tool_calls: [{ name: capture.toolName, arguments: capture.toolArguments ?? {} }],
 			};
 		} else if (capture.kind === 'final') {
-			responseBody = { content: capture.content ?? '' };
+			// Unwrap a stray provider envelope, then conform to any structured-output
+			// schema the request declared (drops invented fields / stray wrappers that
+			// would fail the node's `additionalProperties: false` parser).
+			responseBody = {
+				content: conformContentToSchema(
+					unwrapProviderEnvelope(capture.content ?? ''),
+					outputSchema,
+				),
+			};
 		} else {
 			// Agent never submitted — fall back to its raw text so the turn isn't empty.
 			const fallback = extractText(result).trim();
 			Container.get(Logger).warn(
 				`[EvalMock] llm-completion-mock produced no submit_agent_step for "${node.name}"; using raw text fallback`,
 			);
-			responseBody = { content: fallback || '[eval completion-mock: empty response]' };
+			responseBody = {
+				content:
+					conformContentToSchema(unwrapProviderEnvelope(fallback), outputSchema) ||
+					'[eval completion-mock: empty response]',
+			};
 		}
 
 		return jsonResponse(responseBody);

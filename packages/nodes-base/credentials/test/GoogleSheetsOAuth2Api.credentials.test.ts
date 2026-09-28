@@ -79,7 +79,7 @@ describe('GoogleSheetsOAuth2Api Credential', () => {
 	it('should preserve the existing Google APIs notice', () => {
 		const noticeProperty = googleSheetsOAuth2Api.properties.find((p) => p.name === 'notice');
 		expect(noticeProperty?.type).toBe('notice');
-		expect(noticeProperty?.displayOptions).toEqual({ hideOnCloud: true });
+		expect(noticeProperty?.displayOptions).toEqual({ showOnDeployment: 'hosted' });
 	});
 
 	describe('OAuth2 flow with default scopes', () => {

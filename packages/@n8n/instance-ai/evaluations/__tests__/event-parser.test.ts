@@ -4,8 +4,54 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 	seededTurnCounters,
+	savedWorkflowsFromEvents,
+	lastSavedWorkflowIdFromEvents,
 } from '../outcome/event-parser';
 import type { CapturedEvent, ConversationMetrics, TranscriptTurn } from '../types';
+
+describe('saved workflow names', () => {
+	function saved(id: string, workflowName?: string, success = true): CapturedEvent {
+		return {
+			timestamp: 0,
+			type: 'tool-result',
+			data: {
+				payload: {
+					toolName: 'build-workflow',
+					result: { success, workflowId: id, workflowName },
+				},
+			},
+		};
+	}
+
+	it.each([undefined, '', ' '])('preserves the last name when a later save has name %s', (name) => {
+		const events = [saved('a', 'Contact log'), saved('b', 'Helper'), saved('a', name)];
+		expect(savedWorkflowsFromEvents(events)).toEqual([
+			{ id: 'a', name: 'Contact log' },
+			{ id: 'b', name: 'Helper' },
+			{ id: 'a', name: 'Contact log' },
+		]);
+		expect(lastSavedWorkflowIdFromEvents(events)).toBe('a');
+	});
+
+	it('updates names only after successful saves and falls back to IDs for unknown names', () => {
+		expect(
+			savedWorkflowsFromEvents([
+				saved('a'),
+				saved('a', 'Original'),
+				saved('a', 'Rejected', false),
+				saved('a'),
+				saved('a', 'Renamed'),
+				saved('a'),
+			]),
+		).toEqual([
+			{ id: 'a', name: 'a' },
+			{ id: 'a', name: 'Original' },
+			{ id: 'a', name: 'Original' },
+			{ id: 'a', name: 'Renamed' },
+			{ id: 'a', name: 'Renamed' },
+		]);
+	});
+});
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -17,6 +63,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.workflowIds).toEqual([]);
 		expect(result.executionIds).toEqual([]);
 		expect(result.dataTableIds).toEqual([]);
+		expect(result.artifactRefs).toEqual([]);
 		expect(result.finalText).toBe('');
 		expect(result.toolCalls).toEqual([]);
 		expect(result.agentActivities).toEqual([]);
@@ -160,6 +207,128 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toContain('dt-001');
 	});
 
+	const dataTablesToolEvents = (
+		args: Record<string, unknown>,
+		result: unknown,
+	): CapturedEvent[] => [
+		{
+			timestamp: 1000,
+			type: 'tool-call',
+			data: {
+				type: 'tool-call',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', args },
+			},
+		},
+		{
+			timestamp: 1100,
+			type: 'tool-result',
+			data: {
+				type: 'tool-result',
+				payload: { toolCallId: 'tc-1', toolName: 'data-tables', result },
+			},
+		},
+	];
+
+	it('extracts the nested table id from consolidated data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ table: { id: 'dt-777', name: 'posted_leads' } },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-777']);
+	});
+
+	it('extracts the table id from stringified data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			JSON.stringify({ table: { id: 'dt-999' } }),
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual(['dt-999']);
+	});
+
+	it('does not track data-tables schema results even though they carry a top-level id', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'schema', tableName: 'posted_leads' },
+			{ id: 'dt-888', name: 'posted_leads', columns: [] },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('does not track denied data-tables create results', () => {
+		const events = dataTablesToolEvents(
+			{ action: 'create', name: 'posted_leads' },
+			{ denied: true, reason: 'User denied the action' },
+		);
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.dataTableIds).toEqual([]);
+	});
+
+	it('extracts execution IDs from consolidated executions run results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: { toolCallId: 'tc-1', toolName: 'executions', args: { action: 'run' } },
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-321', status: 'success' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toContain('exec-321');
+	});
+
+	it('does not track executions get results', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						args: { action: 'get', executionId: 'exec-555' },
+					},
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'executions',
+						result: { executionId: 'exec-555', status: 'running' },
+					},
+				},
+			},
+		];
+
+		const result = extractOutcomeFromEvents(events);
+		expect(result.executionIds).toEqual([]);
+	});
+
 	it('captures tool errors', () => {
 		const events: CapturedEvent[] = [
 			{
@@ -194,7 +363,7 @@ describe('extractOutcomeFromEvents', () => {
 				data: {
 					type: 'agent-spawned',
 					agentId: 'agent-1',
-					payload: { agentId: 'agent-1', role: 'builder', parentId: 'root' },
+					payload: { agentId: 'agent-1', role: 'agent-builder', parentId: 'root' },
 				},
 			},
 			{
@@ -210,8 +379,86 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.agentActivities).toHaveLength(1);
-		expect(result.agentActivities[0].role).toBe('builder');
+		expect(result.agentActivities[0].role).toBe('agent-builder');
 		expect(result.agentActivities[0].status).toBe('completed');
+	});
+
+	it('captures agent (agent-spawned targetResource) and config-eval (eval-config create) refs, deduped', () => {
+		const spawn = (agentId: string, targetResource?: Record<string, unknown>): CapturedEvent => ({
+			timestamp: 1000,
+			type: 'agent-spawned',
+			data: {
+				type: 'agent-spawned',
+				agentId,
+				payload: {
+					agentId,
+					role: 'agent-builder',
+					parentId: 'root',
+					...(targetResource ? { targetResource } : {}),
+				},
+			},
+		});
+		const call = (
+			toolCallId: string,
+			toolName: string,
+			args: Record<string, unknown>,
+		): CapturedEvent => ({
+			timestamp: 1050,
+			type: 'tool-call',
+			data: { type: 'tool-call', payload: { toolCallId, toolName, args } },
+		});
+		const resultEvent = (toolCallId: string, result: unknown): CapturedEvent => ({
+			timestamp: 1100,
+			type: 'tool-result',
+			data: { type: 'tool-result', payload: { toolCallId, result } },
+		});
+		const events: CapturedEvent[] = [
+			// build-agent sub-agent announces the created agent via targetResource.
+			spawn('a1', { type: 'agent', id: 'agent-1', projectId: 'p1', name: 'Support' }),
+			// eval-config create → ref is the owning workflow id from the args.
+			call('tc-2', 'eval-config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
+			resultEvent('tc-2', { config: { id: 'cfg-1', workflowId: 'wf-1' } }),
+			// A spawn whose targetResource is a workflow contributes no agent ref.
+			spawn('a2', { type: 'workflow', id: 'wf-2' }),
+			// A spawn with no targetResource contributes nothing.
+			spawn('a3'),
+			// eval-config list only inspects → nothing.
+			call('tc-5', 'eval-config', { action: 'list', workflowId: 'wf-3' }),
+			resultEvent('tc-5', { configs: [] }),
+			// Duplicate agent spawn collapses.
+			spawn('a4', { type: 'agent', id: 'agent-1', projectId: 'p1', name: 'Support' }),
+		];
+
+		const result = extractOutcomeFromEvents(events);
+
+		expect(result.artifactRefs).toEqual([
+			{ type: 'agent', id: 'agent-1' },
+			{ type: 'config-eval', id: 'wf-1' },
+		]);
+	});
+
+	it('captures no config-eval ref when the create was denied (no config in the result)', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'eval-config',
+						args: { action: 'create', workflowId: 'wf-1' },
+					},
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: { type: 'tool-result', payload: { toolCallId: 'tc-1', result: { denied: true } } },
+			},
+		];
+
+		expect(extractOutcomeFromEvents(events).artifactRefs).toEqual([]);
 	});
 
 	it('deduplicates resource IDs', () => {
@@ -631,7 +878,7 @@ describe('seededTurnCounters', () => {
 		const [counter] = seededTurnCounters([
 			seededTurn([
 				{ kind: 'agent-text', text: 'hello' },
-				{ kind: 'setup-wizard', completedNodes: [], skippedNodes: [] },
+				{ kind: 'setup-wizard', completedNodes: [], nodesStillNeedingSetup: [] },
 			]),
 		]);
 		expect(counter.toolCallCount).toBe(1); // setup-wizard is a tool call; agent-text is not

@@ -1,9 +1,9 @@
 {
-	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.go.json"],
 	"compilerOptions": {
 		"composite": true,
 		"module": "CommonJS",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"noEmit": false,
 		"rootDir": "src",
 		"outDir": "dist"

@@ -56,7 +56,7 @@ test.describe(
 		}) => {
 			const TEST_DATA_TABLE_NAME = `Data Table ${nanoid(8)}`;
 
-			await n8n.page.goto('projects/home/datatables');
+			await n8n.navigate.toDatatables('home');
 
 			await n8n.dataTable.clickAddDataTableAction();
 
@@ -140,7 +140,7 @@ test.describe(
 			const PAGE_SIZE = 10;
 
 			const { projectId } = await n8n.projectComposer.createProject(TEST_PROJECT_NAME);
-			await n8n.page.goto(`projects/${projectId}/datatables`);
+			await n8n.navigate.toDatatables(projectId);
 
 			// Create just enough data tables to require pagination
 			for (let i = 0; i < TOTAL_DATA_TABLES; i++) {

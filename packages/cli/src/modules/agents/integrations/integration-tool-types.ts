@@ -1,4 +1,8 @@
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentIntegrationConfig,
+	N8N_CHAT_INTEGRATION_TYPE,
+} from '@n8n/api-types';
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -21,6 +25,29 @@ export type IntegrationMessageTarget =
 			threadId?: string;
 	  };
 
+/**
+ * Whether the latest inbound message expects a reply. Only when 'optional'
+ * may the agent end the turn silently via the `do_not_respond` action.
+ * Each platform decides which messages are 'optional' (see
+ * `AgentChatIntegration.getReplyExpectation`).
+ */
+export type ReplyExpectation = 'required' | 'optional';
+
+export interface TelegramMessageAttachmentContext {
+	type: 'image' | 'file' | 'video' | 'audio';
+	file_id: string;
+	file_unique_id?: string;
+}
+
+/** Allow-listed platform data from the inbound message. */
+export type IntegrationPlatformMessageContext = {
+	type: 'telegram';
+	chat_id: string;
+	message_id: string;
+	message_thread_id?: string;
+	attachments: TelegramMessageAttachmentContext[];
+};
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -28,7 +55,12 @@ export interface IntegrationMessageContext {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
+	platformMessage?: IntegrationPlatformMessageContext;
 	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
+	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
+	replyTarget?: IntegrationMessageTarget;
+	replyMessageId?: string;
 	updatedAt: string;
 }
 
@@ -50,9 +82,8 @@ export interface IntegrationSubjectPerson {
 }
 
 /**
- * Source of a tool connection: a persisted credential integration, or the
- * implicit credential-less in-app chat channel (injected per-run, never
- * stored on the agent).
+ * Source of a tool connection: a configured integration, or the implicit
+ * preview chat channel injected per run.
  */
 export type IntegrationToolConnectionSource =
 	| AgentIntegrationConfig
@@ -78,8 +109,10 @@ export type IntegrationContextQuery =
 
 export type IntegrationAction =
 	| 'respond'
+	| 'do_not_respond'
 	| 'send_dm'
 	| 'send_channel_message'
+	| 'edit_message'
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
@@ -94,7 +127,13 @@ export interface IntegrationToolOperationDefinition<Name extends string = string
 export type IntegrationContextQueryDefinition =
 	IntegrationToolOperationDefinition<IntegrationContextQuery>;
 
-export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction>;
+export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction> & {
+	/**
+	 * The action reaches outside the conversation the agent was addressed in.
+	 * These are the actions a channel pre-selects when approval is turned on.
+	 */
+	sensitive?: boolean;
+};
 
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
@@ -108,6 +147,8 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	/** Actions this channel gates behind human approval. Absent = none. */
+	approval?: AgentApproval;
 }
 
 export interface IntegrationMessageContextStore {
@@ -117,27 +158,40 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
+	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	unbindSession(derivedThreadId: string): Promise<void>;
+	clearSessionBindings(originThreadId: string): Promise<void>;
+}
+
+export interface SessionBinding {
+	threadId: string;
+	resourceId: string;
+}
+
+export interface IntegrationContextQueryParams {
+	descriptor: IntegrationToolConnectionDescriptor;
+	query: IntegrationContextQuery;
+	input: Record<string, unknown>;
+	persistence?: { threadId: string; resourceId: string };
 }
 
 export interface IntegrationContextQueryExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		query: IntegrationContextQuery;
-		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
-	}): Promise<unknown>;
+	execute(params: IntegrationContextQueryParams): Promise<unknown>;
+}
+
+export interface IntegrationActionParams {
+	descriptor: IntegrationToolConnectionDescriptor;
+	action: IntegrationAction;
+	input: Record<string, unknown>;
+	awaitResponse: boolean;
+	runId?: string;
+	toolCallId?: string;
+	currentMessageContext?: IntegrationMessageContext;
 }
 
 export interface IntegrationActionExecutor {
-	execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult>;
+	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
 }
 
 export type IntegrationActionResult =

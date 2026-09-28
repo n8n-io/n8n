@@ -1,0 +1,412 @@
+# Shared 200 response body for import and import-selection endpoints (see n8n-packages.import*.yml).
+type: object
+required:
+  - package
+  - workflows
+  - removedWorkflows
+  - removedFolders
+  - folders
+  - projects
+  - bindings
+  - credentials
+  - dataTables
+  - variables
+  - tags
+properties:
+  package:
+    type: object
+    required:
+      - sourceN8nVersion
+      - sourceId
+      - exportedAt
+    properties:
+      sourceN8nVersion:
+        type: string
+      sourceId:
+        type: string
+      exportedAt:
+        type: string
+        format: date-time
+  workflows:
+    type: array
+    items:
+      type: object
+      required:
+        - sourceWorkflowId
+        - localId
+        - name
+        - projectId
+        - parentFolderId
+        - activeVersionId
+        - isArchived
+        - publishing
+        - status
+      properties:
+        sourceWorkflowId:
+          type: string
+          description: Workflow id as it appeared in the package.
+        localId:
+          type: string
+          description: >
+            Workflow id on the target instance: newly assigned for
+            `created` (fresh under `workflowIdPolicy=new`, the
+            package id under `source`), the existing workflow's id
+            for `updated`/`skipped`.
+        name:
+          type: string
+        projectId:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+        activeVersionId:
+          type: string
+          nullable: true
+          description: >
+            Published version on the target instance, if any. `null` when the
+            workflow is not published after import.
+        isArchived:
+          type: boolean
+          description: >
+            Whether the workflow is archived on the target after import. Under
+            `new-version` this follows the package's `isArchived` flag. A skipped
+            workflow keeps its own state.
+        publishing:
+          type: object
+          required:
+            - state
+          description: >
+            Outcome of applying the selected publishing policy to this workflow.
+          properties:
+            state:
+              type: string
+              enum:
+                - published
+                - unpublished
+                - unchanged
+                - blocked
+                - failed
+              description: >
+                `blocked` means the imported version could not be published
+                and no version is active (for example because the workflow
+                uses a stubbed credential, or uses a node type this instance
+                does not have). When a prior published version
+                remains active, `state` is `unchanged` with
+                `skippedPublishReason` instead. `failed` means publish or
+                unpublish was attempted but did not succeed.
+            error:
+              type: string
+              description: >
+                Present when `state` is `failed`. Explains why publish or unpublish
+                could not be applied.
+            blockedReason:
+              type: string
+              enum:
+                - stub-credential
+                - missing-node-type
+              description: >
+                Present when `state` is `blocked`: the imported version
+                could not be published and no version is active.
+            skippedPublishReason:
+              type: string
+              enum:
+                - stub-credential
+                - missing-node-type
+              description: >
+                Present when `state` is `unchanged` but the policy wanted
+                to publish the imported version: a prior published version
+                is still active (for example after an update with stubbed
+                credentials).
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - skipped
+          description: Import outcome for this package workflow.
+  removedWorkflows:
+    type: array
+    description: Workflows removed from the target during this import.
+    items:
+      type: object
+      required:
+        - workflowId
+        - name
+        - projectId
+        - parentFolderId
+        - deletion
+      properties:
+        workflowId:
+          type: string
+          description: Id of the removed workflow on this instance.
+        name:
+          type: string
+        projectId:
+          type: string
+          description: Project the workflow was reconciled against.
+        parentFolderId:
+          type: string
+          nullable: true
+          description: Folder that held the workflow, or null at the project root.
+        deletion:
+          type: string
+          enum:
+            - archived
+            - deleted
+          description: >
+            What actually happened, not what `overwriteDeletionPolicy` asked
+            for: a `hard-delete` whose row could not be dropped yet is
+            reported as `archived`.
+  removedFolders:
+    type: array
+    description: >
+      Folders the package does not define that reconciliation left empty, removed by
+      `folderConflictPolicy=overwrite`. A folder still holding anything survives, so
+      target-only content is never swept up. Empty under every other policy.
+    items:
+      type: object
+      required:
+        - folderId
+        - name
+        - projectId
+        - parentFolderId
+      properties:
+        folderId:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+          description: Folder that held it, or null at the project root.
+  folders:
+    type: array
+    description: Folder shells created or skipped in the target project.
+    items:
+      type: object
+      required:
+        - sourceFolderId
+        - localId
+        - name
+        - parentFolderId
+        - status
+      properties:
+        sourceFolderId:
+          type: string
+          description: Folder id as it appeared in the package.
+        localId:
+          type: string
+          description: Folder id on the target instance (equal to `sourceFolderId`; folder ids are reused).
+        name:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+          description: Resolved parent folder on the target, or `null` at the project root.
+        status:
+          type: string
+          enum:
+            - created
+            - skipped
+          description: Import outcome for this package folder.
+  projects:
+    type: array
+    description: >
+      Project shells created, or matched and then updated or left as-is
+      (see `projectConflictPolicy`). Present for project packages; empty
+      when importing loose workflows/folders.
+    items:
+      type: object
+      required:
+        - sourceProjectId
+        - localId
+        - name
+        - status
+      properties:
+        sourceProjectId:
+          type: string
+          description: Project id as it appeared in the package.
+        localId:
+          type: string
+          description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
+        name:
+          type: string
+          description: >
+            The project's name on the target: the package's under
+            `overwrite`, the pre-existing one under `merge`.
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - skipped
+          description: >
+            Import outcome for this package project. `skipped` means the
+            project already existed and `projectConflictPolicy=merge` left
+            its details untouched — its contents were still imported.
+  credentials:
+    type: object
+    description: >
+      Source credential ids grouped by whether they matched an
+      existing credential or were created as stubs. Full
+      source→target id mapping is in `bindings.credentials`.
+    required:
+      - matched
+      - stubbed
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+        description: >
+          Source credential ids from the package that matched
+          existing credentials on the target instance.
+      stubbed:
+        type: array
+        items:
+          type: string
+        description: >
+          Source credential ids for which empty placeholder
+          credentials were created in the target project.
+  dataTables:
+    type: object
+    required:
+      - matched
+      - created
+    properties:
+      matched:
+        type: integer
+        minimum: 0
+      created:
+        type: integer
+        minimum: 0
+  variables:
+    type: object
+    description: >
+      Resolution of the package's variable requirements. Names only —
+      values never travel in the response. For project packages these
+      arrays are package-level unions of per-destination outcomes and may
+      overlap (for example, a name may be created with a value in one project
+      and stubbed in another); classification under concurrent
+      external writes is best-effort.
+    required:
+      - matched
+      - missing
+      - created
+      - stubbed
+      - updated
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+        description: >
+          Variable names that resolved to an existing variable
+          (importing project's scope first, then global) and were
+          left untouched. A resolved variable this import rewrote is
+          listed under `updated` instead.
+      missing:
+        type: array
+        items:
+          type: string
+        description: >
+          Variable names still unresolved after import. Under
+          `variableMissingMode=do-nothing` these are warnings — the import
+          still succeeds and nothing is created. A successful `create-stub`
+          or `create-with-value` import normally leaves this empty.
+      created:
+        type: array
+        items:
+          type: string
+        description: >
+          Variable names created with a package value under
+          `variableMissingMode=create-with-value`. Empty stubs are listed
+          under `stubbed`.
+      stubbed:
+        type: array
+        items:
+          type: string
+        description: >
+          Variable names created with an empty value by this import under
+          `variableMissingMode=create-stub`, or because `create-with-value`
+          had no exported value. Empty for other outcomes.
+      updated:
+        type: array
+        items:
+          type: string
+        description: >
+          Variable names whose existing value this import replaced with
+          the package value under `variableConflictPolicy=overwrite`.
+          Empty for other policies.
+  tags:
+    type: object
+    description: >
+      Resolution of the tags referenced by the imported workflows,
+      matched by source id. Tag names only.
+    required:
+      - matched
+      - created
+      - renamed
+      - reconciled
+      - skipped
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+        description: >
+          Tags that resolved to an existing tag with the same id and
+          name; attached as-is.
+      created:
+        type: array
+        items:
+          type: string
+        description: >
+          Tags created by this import with their package (source) id
+          and name, under `tagMissingMode=create`.
+      renamed:
+        type: array
+        items:
+          type: string
+        description: >
+          Target tags renamed to the package name under
+          `tagConflictPolicy=rename`; listed by their new name.
+      reconciled:
+        type: array
+        items:
+          type: string
+        description: >
+          Existing target tags re-keyed to the package (source) id on
+          a name collision under `tagConflictPolicy=rename`; their
+          name, workflow and folder taggings are kept.
+      skipped:
+        type: array
+        items:
+          type: string
+        description: >
+          Tags dropped from the import — not created, not renamed, and
+          not attached to any imported workflow — under
+          `tagMissingMode=do-nothing` or `tagConflictPolicy=skip`.
+  bindings:
+    type: object
+    description: >
+      Source id → target id mappings produced during import, one map per
+      entity type. Each value maps an id as it appeared in the package to
+      the id on the target instance.
+    required:
+      - workflows
+      - credentials
+    properties:
+      workflows:
+        type: object
+        additionalProperties:
+          type: string
+      credentials:
+        type: object
+        description: >
+          Credential id from `requirements.credentials` in the package
+          manifest → matched credential id on the target instance.
+        additionalProperties:
+          type: string

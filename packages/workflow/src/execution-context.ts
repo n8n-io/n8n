@@ -60,6 +60,21 @@ export const SecureArtifactsSchema = z
  */
 export type ISecureArtifacts = z.output<typeof SecureArtifactsSchema>;
 
+/**
+ * What a run needs to keep verifying its token once the OAuth protected resource it was
+ * granted access to can no longer be looked up. Resource descriptors are derived from
+ * what routes the request, which stops existing when the trigger stops listening; a run
+ * outlives that, so it carries the facts with it.
+ *
+ * Holds no authorization *decision* — only its inputs, so every check stays live.
+ */
+export interface OAuthResourceGrant {
+	/** `aud` values a token issued for this resource may carry. */
+	audiences: string[];
+	/** Workflow the holder must keep `workflow:execute` on. Absent if none is required. */
+	executeAccessWorkflowId?: string;
+}
+
 const CredentialContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -214,14 +229,27 @@ const ExecutionContextSchemaV1 = z.object({
 	redaction: RedactionSettingSchema.optional(),
 
 	/**
-	 * The n8n user the execution ran as. Set during dynamic credential
-	 * resolution to the n8n user a private credential resolved to (covers manual
-	 * and chat-hub runs alike). Used by the redaction layer to grant that user
-	 * access to their own data. Absent when the resolved identity is not an n8n
-	 * user (external Slack/OAuth resolvers) or when no dynamic credential
-	 * resolved, so those executions stay redacted for everyone.
+	 * The n8n user the execution ran as. Stamped at context establishment by
+	 * deriving the user from the identity carrier with the same identifier that
+	 * credential resolution uses, so the redaction owner cannot drift from the
+	 * resolved user. Dynamic credential resolution re-affirms it on success. Used
+	 * by the redaction layer to grant that user access to their own data, including
+	 * a run that failed before the credential resolved. Absent when the identity is
+	 * not an n8n user (external Slack/OAuth resolvers) or cannot be validated, so
+	 * those executions stay redacted for everyone.
 	 */
 	executedByUserId: z.string().optional(),
+
+	/**
+	 * True when the workflow references a private (resolvable) credential.
+	 * Stamped at context establishment, before any node runs, so a run that
+	 * fails or stops before the credential resolves is still recognised as a
+	 * dynamic-credential execution and redacted for everyone but the executing
+	 * user — consistent with a successful run. The per-node
+	 * `usedDynamicCredentials` runData flag only appears after resolution, so it
+	 * cannot cover the failed/partial path on its own.
+	 */
+	usesDynamicCredentials: z.boolean().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
@@ -237,6 +265,36 @@ export const ExecutionContextSchema = z
  * Established at execution start and propagated to sub-workflows/error workflows
  */
 export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
+
+/**
+ * Metadata shape for the `n8n-oauth` credential-context source.
+ *
+ * `subject` (the resolved n8n user id) and `executionPath` (the execution ids the
+ * seal is valid for) turn the carrier into a verify-once "sealed" identity: when a
+ * subject is present, resolution trusts it and binds to `executionPath` instead of
+ * re-verifying the stored token. Absent `subject` = the legacy token-verify carrier;
+ * `establishedAt`/`executionPath` are optional so those legacy carriers still parse.
+ *
+ * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
+ * can re-verify its token after the protected resource stops resolving. It is listed
+ * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
+ * the identifier validates it against its own local schema.
+ */
+export const N8NOAuthMetadataSchema = z.object({
+	source: z.literal('n8n-oauth'),
+	subject: z.string().optional(),
+	resource: z.string(),
+	establishedAt: z.number().optional(),
+	executionPath: z.array(z.string()).optional(),
+	grant: z
+		.object({
+			audiences: z.array(z.string()).min(1),
+			executeAccessWorkflowId: z.string().optional(),
+		})
+		.optional(),
+});
+
+export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;
 
 /**
  * Runtime representation of execution context with decrypted credential data.

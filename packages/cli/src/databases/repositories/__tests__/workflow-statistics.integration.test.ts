@@ -6,6 +6,11 @@ import { mock, mockClear } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
+// `upsertWorkflowStatistics` is SQLite-only; on Postgres, recording goes through appendIncrement + rollup.
+const runOnSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- SQLite-only method
+const describeSqlite = runOnSqlite ? describe : describe.skip;
+
 describe('insertWorkflowStatistics', () => {
 	const entityManager = mockEntityManager(WorkflowStatistics);
 	const workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
@@ -52,7 +57,7 @@ describe('insertWorkflowStatistics', () => {
 	});
 });
 
-describe('upsertWorkflowStatistics', () => {
+describeSqlite('upsertWorkflowStatistics', () => {
 	let repository: WorkflowStatisticsRepository;
 	beforeAll(async () => {
 		Container.reset();

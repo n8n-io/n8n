@@ -47,4 +47,19 @@ export class OAuthHelpers {
 		targetUrl.searchParams.set('iss', issuer);
 		return targetUrl.toString();
 	}
+
+	/**
+	 * Set the RFC 9207 `iss` parameter on an absolute redirect URL, replacing
+	 * any pre-existing value (e.g. one baked into the client's registered
+	 * redirect URI) so the response always asserts this server's identity.
+	 * Relative URLs (internal redirects, e.g. to the consent screen) are
+	 * returned unchanged.
+	 */
+	static setIssuerParam(url: string, issuer: string): string {
+		if (!URL.canParse(url)) return url;
+
+		const targetUrl = new URL(url);
+		targetUrl.searchParams.set('iss', issuer);
+		return targetUrl.toString();
+	}
 }

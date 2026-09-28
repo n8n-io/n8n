@@ -8,23 +8,16 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
-import type {
-	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
-} from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestinationSentry } from './destinations/message-event-bus-destination-sentry.ee';
-import { MessageEventBusDestinationSyslog } from './destinations/message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
+import { createMessageEventBusDestination } from './create-message-event-bus-destination';
+import { assertUserCanUseDestinationCredentials } from './destinations/destination-credentials-access';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 @RestController('/eventbus')
@@ -34,6 +27,7 @@ export class EventBusController {
 		private readonly destinationService: LogStreamingDestinationService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -73,40 +67,12 @@ export class EventBusController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
-		const body = parseResult.data;
-		let result: MessageEventBusDestination;
+		const options = parseResult.data as MessageEventBusDestinationOptions;
 
-		switch (body.__type) {
-			case MessageEventBusDestinationTypeNames.webhook:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationWebhook(
-						this.eventBus,
-						body as MessageEventBusDestinationWebhookOptions,
-						this.outboundHttp,
-					),
-				);
-				break;
-			case MessageEventBusDestinationTypeNames.sentry:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationSentry(
-						this.eventBus,
-						body as MessageEventBusDestinationSentryOptions,
-					),
-				);
-				break;
-			case MessageEventBusDestinationTypeNames.syslog:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationSyslog(
-						this.eventBus,
-						body as MessageEventBusDestinationSyslogOptions,
-					),
-				);
-				break;
-			default:
-				throw new BadRequestError(
-					`Unknown destination type: ${(body as { __type: string }).__type}`,
-				);
-		}
+		await assertUserCanUseDestinationCredentials(this.credentialsFinderService, req.user, options);
+
+		const destination = createMessageEventBusDestination(this.eventBus, this.outboundHttp, options);
+		const result = await this.destinationService.addDestination(destination);
 
 		return result.serialize();
 	}
@@ -115,10 +81,20 @@ export class EventBusController {
 	@Get('/testmessage')
 	@GlobalScope('eventBusDestination:test')
 	async sendTestMessage(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: unknown,
 		@Query query: TestDestinationQueryDto,
 	): Promise<boolean> {
+		// Testing decrypts and sends the destination's stored credential, so the
+		// caller must have access to it — mirrors the check on create/update.
+		const [destination] = await this.destinationService.findDestination(query.id);
+		if (destination) {
+			await assertUserCanUseDestinationCredentials(
+				this.credentialsFinderService,
+				req.user,
+				destination,
+			);
+		}
 		return await this.destinationService.testDestination(query.id);
 	}
 

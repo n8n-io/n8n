@@ -18,11 +18,17 @@ vi.mock('@n8n/instance-ai', async () => {
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
 			loadSkill: vi.fn(),
 		})),
+		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 
@@ -72,6 +78,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
 			schedulerLocks: Map<string, unknown>;
+			failedInternalFollowUpStreaks: Map<string, number>;
 			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -99,6 +106,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		};
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
+		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();

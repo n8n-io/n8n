@@ -24,8 +24,56 @@ export class TestPage {
 
 		const violations = rule.analyzeProject(project, [file]);
 
-		const unscopedCall = violations.find((v) => v.message.includes('Unscoped locator'));
-		expect(unscopedCall).toBeDefined();
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
+	test('reports one violation for a chained page locator', ({ project, createFile }) => {
+		const file = createFile(
+			'/pages/TestPage.ts',
+			`
+export class TestPage {
+  get container() {
+    return this.page.getByTestId('root');
+  }
+
+  getSomething() {
+    return this.page.getByTestId('x').locator('button').first();
+  }
+}
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0].line).toBe(8);
+	});
+
+	test('reports separate unscoped locator sites', ({ project, createFile }) => {
+		const file = createFile(
+			'/pages/TestPage.ts',
+			`
+export class TestPage {
+  get container() {
+    return this.page.getByTestId('root');
+  }
+
+  getSomething() {
+    return this.page.getByTestId('x');
+  }
+
+  getSomethingElse() {
+    return this.page.getByRole('button');
+  }
+}
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(2);
+		expect(violations.map(({ line }) => line)).toEqual([8, 12]);
 	});
 
 	test('allows properly scoped locators', ({ project, createFile }) => {

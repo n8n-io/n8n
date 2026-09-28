@@ -141,12 +141,20 @@ export class ScopedMemoryTaskRunner {
 		this.emit({ type: 'started', task: this.cloneTaskInfo(info) });
 
 		let lock: ObservationLogTaskLockHandle | null = null;
+		let stopLockRenewal: (() => void) | undefined;
 		try {
 			lock = await this.acquireLock(info);
 			if (this.lockStore && !lock) {
 				const result: ScopedMemoryTaskResult<T> = { status: 'skipped', reason: 'lock-held' };
 				this.emit({ type: 'skipped', task: this.cloneTaskInfo(info), reason: 'lock-held' });
 				return result;
+			}
+
+			// A single acquire covers only `lockTtlMs`, but the task ahead (LLM call +
+			// usage callback + persistence) can run longer — renew on the same holder
+			// so the lease covers the full task instead of expiring under it.
+			if (lock) {
+				stopLockRenewal = this.startLockRenewal(info);
 			}
 
 			const value = await task();
@@ -157,9 +165,67 @@ export class ScopedMemoryTaskRunner {
 			this.emit({ type: 'failed', task: this.cloneTaskInfo(info), error });
 			return { status: 'failed', error };
 		} finally {
+			// Stop is synchronous and never waits on an in-flight renewal request:
+			// a stalled lock-store call must never hold up task cleanup, the
+			// original lock release, or the next queued task for this scope. If a
+			// stalled renewal later resolves anyway, `startLockRenewal` releases
+			// its handle itself instead of leaving it held past this point.
+			stopLockRenewal?.();
 			if (lock) await this.releaseLock(info, lock);
 			this.inFlightTasks.delete(info.id);
 		}
+	}
+
+	/**
+	 * Keep an acquired lock alive on the same holder for as long as the task
+	 * runs, by reacquiring it at half the TTL. Uses a self-rescheduling
+	 * `setTimeout` (not `setInterval`) so renewals never overlap. Returns a
+	 * synchronous stop function that only cancels the next scheduled renewal —
+	 * it never awaits one already in flight, so a stalled lock-store request
+	 * can't block task cleanup. If a renewal that started before stop later
+	 * resolves with a handle, `renew` releases it immediately instead of
+	 * leaving a lock behind for a holder that has already finished.
+	 */
+	private startLockRenewal(info: ScopedMemoryTaskInfo): () => void {
+		let stopped = false;
+		let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+		const intervalMs = Math.max(1, Math.floor(this.lockTtlMs / 2));
+
+		const renew = async (): Promise<void> => {
+			try {
+				const renewed = await this.acquireLock(info);
+				if (stopped) {
+					if (renewed) void this.releaseLock(info, renewed);
+					return;
+				}
+				if (!renewed) {
+					// Another holder may now own this scope's lock; stop renewing
+					// rather than fight over it. The task itself still runs to
+					// completion — this only affects lock-based mutual exclusion.
+					this.captureError(info, new Error('Observation log task lock renewal lost ownership'));
+					stopped = true;
+					return;
+				}
+				scheduleNext();
+			} catch (error) {
+				this.captureError(info, error);
+				if (!stopped) scheduleNext();
+			}
+		};
+
+		const scheduleNext = (): void => {
+			if (stopped) return;
+			timeoutHandle = setTimeout(() => {
+				void renew();
+			}, intervalMs);
+		};
+
+		scheduleNext();
+
+		return () => {
+			stopped = true;
+			if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+		};
 	}
 
 	private async acquireLock(

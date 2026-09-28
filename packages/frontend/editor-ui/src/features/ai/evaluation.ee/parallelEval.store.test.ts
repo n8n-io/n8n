@@ -13,7 +13,7 @@ import { DEFAULT_PARALLEL_CONCURRENCY, useParallelEvalStore } from './parallelEv
 const mockSettingsState = reactive({
 	settings: { evaluationConcurrencyLimit: -1 },
 });
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsState),
 }));
 

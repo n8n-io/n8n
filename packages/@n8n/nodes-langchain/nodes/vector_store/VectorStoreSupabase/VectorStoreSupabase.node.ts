@@ -1,11 +1,11 @@
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import { createClient } from '@supabase/supabase-js';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
+import { createSupabaseClient } from '../shared/supabase';
 
 const queryNameField: INodeProperties = {
 	displayName: 'Query Name',
@@ -72,7 +72,7 @@ export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorSto
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
-		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const client = createSupabaseClient(credentials);
 
 		return await SupabaseVectorStore.fromExistingIndex(embeddings, {
 			client,
@@ -89,7 +89,7 @@ export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorSto
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
-		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const client = createSupabaseClient(credentials);
 
 		try {
 			await SupabaseVectorStore.fromDocuments(documents, embeddings, {

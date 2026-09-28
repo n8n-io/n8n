@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
+import { CANVAS_NODE_GROUP_INPUT_HANDLE, CANVAS_NODE_GROUP_OUTPUT_HANDLE } from '../canvas.types';
 import {
 	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
@@ -14,12 +15,15 @@ import {
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
@@ -309,6 +313,22 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].type).toBe('canvas-node-group');
 	});
 
+	it('marks a sole empty-group anchor as an empty group', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['anchor'] }],
+			getNodeById: nodeStore(anchor),
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].data?.isEmptyGroup).toBe(true);
+	});
+
 	it('left edge sits at nodesRect.x - GROUP_PADDING_X (snapped to the grid), in both states', () => {
 		const collapsed = setup(true);
 		const expanded = setup(false);
@@ -355,15 +375,41 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(expanded[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
-	it('marks the title bar selectable when collapsed and editable; never connectable', () => {
+	it('keeps a non-empty title bar selectable but not connectable', () => {
 		const out = setup(true);
 		expect(out[0].selectable).toBe(true);
 		expect(out[0].connectable).toBe(false);
 	});
 
-	it("marks the title bar NOT selectable when expanded — the group's nodes are the interactive surface then", () => {
+	it('makes only a collapsed empty-group title bar connectable', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+		const allGroups = [{ id: 'g1', name: 'G', nodeIds: [anchor.id] }];
+		const getById = nodeStore(anchor);
+
+		const collapsed = mapGroupsToVueFlowNodes({
+			allGroups,
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		const expanded = mapGroupsToVueFlowNodes({
+			allGroups,
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(collapsed[0].connectable).toBe(true);
+		expect(expanded[0].connectable).toBe(false);
+	});
+
+	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
 		const out = setup(false);
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
 	});
 
 	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {
@@ -438,6 +484,88 @@ describe('mapGroupsToVueFlowNodes', () => {
 			height: 96,
 		});
 	});
+
+	it('marks the group deactivated when every member node is disabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('does not mark the group deactivated while any member node is enabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			makeNode('b', 400, 200),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
+	});
+
+	it('ignores sticky members (never disableable) for the deactivated state', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+			makeStickyNode('s', 100, 100, 240, 160),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a', 'b', 's'] }],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('never marks a sticky-only group deactivated (no vacuous every)', () => {
+		const getById = nodeStore(makeStickyNode('s', 100, 100, 240, 160));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s'] }],
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
+	});
+
+	it('stacks the expanded frame below stickies and the collapsed chip above them', () => {
+		// See the stacking contract in canvasNodeGroups.constants.ts: the
+		// expanded frame must render below sticky members (no tint), while the
+		// collapsed chip keeps interaction priority over free stickies.
+		expect(setup(false)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EXPANDED);
+		expect(setup(true)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_COLLAPSED);
+	});
+
+	it('keeps the collapsed empty-group chip above its edges', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['anchor'] }],
+			getNodeById: nodeStore(anchor),
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED);
+	});
 });
 
 describe('buildCollapsedGroupByNodeId', () => {
@@ -488,10 +616,10 @@ describe('remapCollapsedGroupConnections', () => {
 		expect(result).toHaveLength(2);
 		const incoming = result.find((c) => c.source === 'external');
 		expect(incoming?.target).toBe('group:g1');
-		expect(incoming?.targetHandle).toBe('left');
+		expect(incoming?.targetHandle).toBe(CANVAS_NODE_GROUP_INPUT_HANDLE);
 		const outgoing = result.find((c) => c.target === 'external2');
 		expect(outgoing?.source).toBe('group:g1');
-		expect(outgoing?.sourceHandle).toBe('right');
+		expect(outgoing?.sourceHandle).toBe(CANVAS_NODE_GROUP_OUTPUT_HANDLE);
 	});
 
 	it('leaves external-only connections untouched', () => {

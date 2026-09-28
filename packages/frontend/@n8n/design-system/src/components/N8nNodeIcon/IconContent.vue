@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
-import N8nNodeIcon from '.';
+import N8nNodeIcon from './NodeIcon.vue';
 import N8nIcon from '../N8nIcon';
-import type { IconName } from '../N8nIcon/icons';
-import { isSupportedIconName } from '../N8nIcon/icons';
+import { isSupportedIconName, type IconName, type NodeIconName } from '../N8nIcon/icons';
+import N8nTooltip from '../N8nTooltip';
 
 type IconType = 'file' | 'icon' | 'unknown';
 
@@ -14,7 +14,7 @@ interface IconContentProps {
 	name?: string;
 	nodeTypeName?: string;
 	size?: number;
-	badge?: { src: string; type: IconType };
+	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
 }
 
 const props = defineProps<IconContentProps>();
@@ -50,14 +50,19 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 
-const supportedIconName = computed((): IconName | undefined => {
+const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 	return isSupportedIconName(props.name) ? props.name : undefined;
 });
 </script>
 
 <template>
 	<div v-if="type !== 'unknown'" :class="$style.icon">
-		<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+		<img
+			v-if="type === 'file'"
+			:src="src"
+			referrerpolicy="no-referrer"
+			:class="$style.nodeIconImage"
+		/>
 		<N8nIcon v-else-if="supportedIconName" :icon="supportedIconName" :style="fontStyleData" />
 		<div v-else :class="$style.nodeIconPlaceholder">
 			{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
@@ -65,7 +70,18 @@ const supportedIconName = computed((): IconName | undefined => {
 
 		<!-- Badge icon, for example used for HTTP based nodes -->
 		<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
-			<N8nNodeIcon :type="badge.type" :src="badge.src" :size="badgeSize" />
+			<!-- Only render the (memory-heavy) tooltip when the badge actually has one -->
+			<N8nTooltip v-if="badge.tooltip" placement="top">
+				<template #content>{{ badge.tooltip }}</template>
+				<N8nNodeIcon :type="badge.type" :src="badge.src" :name="badge.name" :size="badgeSize" />
+			</N8nTooltip>
+			<N8nNodeIcon
+				v-else
+				:type="badge.type"
+				:src="badge.src"
+				:name="badge.name"
+				:size="badgeSize"
+			/>
 		</div>
 	</div>
 	<div v-else :class="$style.nodeIconPlaceholder">
@@ -108,5 +124,9 @@ const supportedIconName = computed((): IconName | undefined => {
 	position: absolute;
 	background: var(--node--icon--badge--color--background, var(--color--background));
 	border-radius: 50%;
+	// Drive the nested icon's color (its wrapper reads `--node--icon--color`) so an
+	// icon badge stays readable against the badge background in both themes.
+	// File/image badges are unaffected.
+	--node--icon--color: var(--color--text--shade-1);
 }
 </style>

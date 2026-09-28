@@ -1,3 +1,4 @@
+import { escapeODataValue, toODataDateTimeLiteral } from '@utils/query-escaping';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,20 +8,31 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, UserError } from 'n8n-workflow';
 
-// A mailbox is always a user, addressed as `/users/{id}`. The only valid Graph
-// identifiers are a user object ID (GUID) or a UPN (has `@`) — there is no bare
-// host/domain mailbox form, so those two shapes are exactly what we accept.
-// Validation runs BEFORE encoding — `encodeURIComponent` leaves `..` intact, so
-// shape validation (not encoding) is what keeps the value safe to interpolate into
-// a Graph URL path. A drive-style `!`-bearing id is intentionally not accepted. The
-// UPN local part is a deliberately safe subset that excludes URL-unsafe characters
-// (`/ \ : ? # %`, whitespace, control) — so `%`-encoded traversal like
-// `..%2f..%2fx@y.com` stays rejected — while allowing the common apostrophe
-// (e.g. `o'connor@contoso.com`), which is URL-path-safe.
-const MAILBOX_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const MAILBOX_UPN = /^[A-Za-z0-9._+'-]+@[A-Za-z0-9.-]+$/;
+import { validateUserTargetId, type UserTargetMessages } from '../../../GenericFunctions';
+
+// A mailbox is always a user, addressed as `/users/{id}`, so it validates via the shared
+// `validateUserTargetId` (the widened Entra UPN set — a GUID or a UPN, no bare host/domain
+// form). Only the throw-site copy is overridden to "mailbox" wording; the dots-only variant
+// gets an explicit mailbox message (previously a dots-only mailbox fell through to the
+// generic invalid copy).
+const MAILBOX_MESSAGES: UserTargetMessages = {
+	required: {
+		message: 'A mailbox is required for the Service Principal',
+		description:
+			'Set the Mailbox (a UPN or user object ID) — app-only Microsoft Graph has no personal mailbox to default to.',
+	},
+	dotsOnly: {
+		message: 'The mailbox is not valid',
+		description: 'A mailbox cannot consist only of dots.',
+	},
+	invalid: {
+		message: 'The mailbox is not valid',
+		description:
+			'Enter a user principal name (UPN) or object ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
+	},
+};
 
 export const messageFields = [
 	'bccRecipients',
@@ -271,7 +283,7 @@ export function prepareFilterString(filters: IDataObject) {
 	if (selectedFilters.foldersToInclude) {
 		const folders = (selectedFilters.foldersToInclude as string[])
 			.filter((folder) => folder !== '')
-			.map((folder) => `parentFolderId eq '${folder}'`)
+			.map((folder) => `parentFolderId eq '${escapeODataValue(folder)}'`)
 			.join(' or ');
 
 		filterString.push(`(${folders})`);
@@ -279,19 +291,31 @@ export function prepareFilterString(filters: IDataObject) {
 
 	if (selectedFilters.foldersToExclude) {
 		for (const folder of selectedFilters.foldersToExclude as string[]) {
-			filterString.push(`parentFolderId ne '${folder}'`);
+			filterString.push(`parentFolderId ne '${escapeODataValue(folder)}'`);
 		}
 	}
 
 	if (selectedFilters.sender) {
-		const sender = selectedFilters.sender as string;
+		const sender = escapeODataValue(selectedFilters.sender);
 		const byMailAddress = `from/emailAddress/address eq '${sender}'`;
 		const byName = `from/emailAddress/name eq '${sender}'`;
 		filterString.push(`(${byMailAddress} or ${byName})`);
 	}
 
 	if (selectedFilters.hasAttachments) {
-		filterString.push(`hasAttachments eq ${selectedFilters.hasAttachments}`);
+		// A `boolean` parameter is a UI control, not a runtime guarantee: an
+		// expression can resolve one to any value. The guard above took every falsy
+		// value, so only `true` and a string remain to check.
+		const raw = selectedFilters.hasAttachments;
+		const hasAttachments = typeof raw === 'string' ? raw.toLowerCase() : raw;
+
+		if (hasAttachments !== true && hasAttachments !== 'true' && hasAttachments !== 'false') {
+			throw new UserError("'Has Attachments' must be true or false", {
+				description: 'Set it to true or false, or leave the filter unset.',
+			});
+		}
+
+		filterString.push(`hasAttachments eq ${hasAttachments !== 'false'}`);
 	}
 
 	if (selectedFilters.readStatus && selectedFilters.readStatus !== 'both') {
@@ -299,11 +323,16 @@ export function prepareFilterString(filters: IDataObject) {
 	}
 
 	if (selectedFilters.receivedAfter) {
-		filterString.push(`receivedDateTime ge ${selectedFilters.receivedAfter}`);
+		const receivedAfter = toODataDateTimeLiteral('Received After', selectedFilters.receivedAfter);
+		filterString.push(`receivedDateTime ge ${receivedAfter}`);
 	}
 
 	if (selectedFilters.receivedBefore) {
-		filterString.push(`receivedDateTime le ${selectedFilters.receivedBefore}`);
+		const receivedBefore = toODataDateTimeLiteral(
+			'Received Before',
+			selectedFilters.receivedBefore,
+		);
+		filterString.push(`receivedDateTime le ${receivedBefore}`);
 	}
 
 	if (selectedFilters.custom) {
@@ -332,28 +361,14 @@ export function prepareApiError(
 }
 
 /**
- * Throws a `NodeOperationError` (fully static message, never echoing the id) unless
- * the mailbox is a valid GUID or UPN. See the `MAILBOX_*` const block above for the
- * accepted-shape and validate-before-encode rationale.
+ * Validates a mailbox (a user object ID or UPN) before it is used to compose a Graph URL.
+ * Delegates to the shared `validateUserTargetId` with "mailbox" wording (see `MAILBOX_MESSAGES`
+ * above), which throws a `NodeOperationError` with a fully static message (never echoing the id)
+ * on a bad shape — that shared validator is the single interpolation gate for user-scoped Graph
+ * targets and carries the accepted-shape / validate-before-encode logic.
  */
 export function validateMailbox(id: string, node: INode): void {
-	if (id === '') {
-		throw new NodeOperationError(node, 'A mailbox is required for the Service Principal', {
-			description:
-				'Set the Mailbox (a UPN or user object ID) — app-only Microsoft Graph has no personal mailbox to default to.',
-		});
-	}
-
-	// Only a user object ID (GUID) or a UPN (has `@`) is a valid mailbox; there is no
-	// bare host/domain form. Path-traversal tokens like `..` match neither, so they
-	// are rejected here too.
-	const valid = MAILBOX_GUID.test(id) || MAILBOX_UPN.test(id);
-	if (!valid) {
-		throw new NodeOperationError(node, 'The mailbox is not valid', {
-			description:
-				'Enter a user principal name (UPN) or object ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
-		});
-	}
+	validateUserTargetId(id, node, MAILBOX_MESSAGES);
 }
 
 export const encodeOutlookId = (id: string) => {

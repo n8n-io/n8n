@@ -1,0 +1,32 @@
+post:
+  x-eov-operation-id: testOtelTrace
+  x-required-scope: otel:manage
+  x-eov-operation-handler: v1/handlers/otel/otel.handler
+  tags:
+    - SettingsOtel
+  summary: Test the connection to an OTLP collector
+  description: >
+    Send a single test span to the given OTLP collector and report whether it was accepted. This
+    tests the supplied connection details without changing the stored configuration. Fields managed
+    declaratively via environment variables are overridden with their effective value before the
+    test is sent. Requires the `otel:manage` scope.
+  requestBody:
+    description: The connection details to test.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/otel-test-trace.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/otel-test-trace-result.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

@@ -1,5 +1,5 @@
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { ToolsAgentAction } from '@langchain/classic/agents/openai/output_parser';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
@@ -330,10 +330,12 @@ export function fixEmptyContentMessage(
  * ```
  *
  * @param steps - The agent finish or agent action steps.
+ * @param textOnly - Skip the thinking fallback: a finish without text blocks yields an empty output.
  * @returns The modified agent finish steps or the original steps.
  */
 export function handleAgentFinishOutput(
 	steps: AgentFinish | AgentAction[],
+	{ textOnly = false } = {},
 ): AgentFinish | AgentAction[] {
 	type AgentMultiOutputFinish = AgentFinish & {
 		returnValues: { output: Array<{ text: string; type: string; index: number }> };
@@ -359,6 +361,8 @@ export function handleAgentFinishOutput(
 
 			if (textOutputs) {
 				agentFinishSteps.returnValues.output = textOutputs;
+			} else if (textOnly) {
+				agentFinishSteps.returnValues.output = '';
 			} else {
 				const thinkingOutputs = multiOutputSteps
 					.filter((output) => output.type === 'thinking' && output.thinking)
@@ -424,7 +428,10 @@ export const getAgentStepsParser =
 
 		// Otherwise, if the steps contain a returnValues field, try to parse them manually.
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
-			const finalResponse = (steps as AgentFinish).returnValues;
+			// Thinking models return content-block arrays. The parser gets the text block(s) only; a
+			// thinking-only finish becomes an empty output, which the parser reports as an empty response.
+			const finalResponse = (handleAgentFinishOutput(steps, { textOnly: true }) as AgentFinish)
+				.returnValues;
 			let parserInput: string;
 
 			if (finalResponse instanceof Object) {

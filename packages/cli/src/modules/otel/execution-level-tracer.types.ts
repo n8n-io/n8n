@@ -1,9 +1,11 @@
 import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
+import type { CrashDetector } from '@/events/maps/relay.event-map';
+
 import type { TracingContext } from './tracing-context';
 
 export type CustomAttributes = Record<string, string>;
-type ProjectContext = {
+export type ProjectContext = {
 	id: string;
 	customAttributes?: CustomAttributes;
 };
@@ -17,12 +19,9 @@ type WorkflowContext = {
 
 export type StartWorkflowParams = {
 	executionId: string;
-	/** Parent context — incoming webhook traceparent or parent sub-workflow span. */
+	/** Parent context — webhook traceparent, parent sub-workflow span, or the parked span on a resume. */
 	tracingContext?: TracingContext;
-	/**
-	 * Link this workflow to a different workflow. Used by `workflowExecuteResume` when a
-	 * workflow is resumed after a pause.
-	 */
+	/** Adds a `n8n.continuation.reason` link. Set alongside `tracingContext` on a resume. */
 	linkTo?: TracingContext;
 	workflow: WorkflowContext;
 	project?: ProjectContext;
@@ -37,6 +36,21 @@ export type EndWorkflowParams = {
 	retryOf?: string;
 };
 
+export type EndCrashedWorkflowParams = {
+	executionId: string;
+	workflowId: string;
+	workflowName?: string;
+	workflowVersionId?: string;
+	mode: WorkflowExecuteMode;
+	retryOf?: string;
+	detector: CrashDetector;
+	startedAt?: Date;
+	stoppedAt: Date;
+	tracingContext?: TracingContext;
+	workflow?: { customAttributes?: CustomAttributes };
+	project?: ProjectContext;
+};
+
 type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;
 
 export type StartNodeParams = {
@@ -44,7 +58,13 @@ export type StartNodeParams = {
 	node: NodeTracingParams;
 };
 
-type EndNodeError = { message: string; constructor: { name: string }; stack?: string };
+type EndNodeError = {
+	message: string;
+	constructor: { name: string };
+	stack?: string;
+	name?: string;
+	description?: string | null;
+};
 
 export function isEndNodeError(error: unknown): error is EndNodeError {
 	if (typeof error !== 'object' || error === null) return false;

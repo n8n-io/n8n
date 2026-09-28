@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { toMb } from '@n8n/utils/number/bytes';
 import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 
 import { Telemetry } from '@/telemetry';
 
 import { DataTableValidationError } from './errors/data-table-validation.error';
-import { toMb } from './utils/size-utils';
 
 @Service()
 export class DataTableSizeValidator {

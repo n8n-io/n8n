@@ -1,0 +1,211 @@
+import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
+import { prepareVerificationRun } from '../prepare-run';
+
+function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
+	return {
+		workItemId: 'wi_1',
+		taskId: 'task_1',
+		workflowId: 'wf_1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Built',
+		...overrides,
+	};
+}
+
+const gateVerdict = {
+	nodeName: 'Email Approval',
+	verdict: 'simulate' as const,
+	reason: 'Send-and-wait gate on a loop',
+	confidence: 'high' as const,
+	source: 'deterministic' as const,
+	haltBranch: true,
+};
+
+const plainVerdict = {
+	nodeName: 'Send Message',
+	verdict: 'simulate' as const,
+	reason: 'Sends a message',
+	confidence: 'high' as const,
+	source: 'deterministic' as const,
+};
+
+const otherVerdict = { ...plainVerdict, nodeName: 'Post Update' };
+
+describe('prepareVerificationRun — halted wait gates', () => {
+	it('pins a halted gate with zero items, ignoring any stored fixture', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({
+				nodeSimulationPlan: [gateVerdict, plainVerdict],
+				simulationFixtures: {
+					'Email Approval': [{ data: { Decision: 'Approve' } }],
+					'Send Message': [{ ok: true }],
+				},
+			}),
+			{},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Email Approval']).toEqual([]);
+		expect(result.prepared.verificationPinData?.['Send Message']).toEqual([{ ok: true }]);
+		expect(result.prepared.haltedGateNames).toEqual(['Email Approval']);
+	});
+
+	it('still pins a fixture-less simulated node with one empty item', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
+			{},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Send Message']).toEqual([{}]);
+		expect(result.prepared.haltedGateNames).toEqual([]);
+	});
+
+	it('blocks fixture overrides that target a halted gate', () => {
+		const result = prepareVerificationRun(makeBuildOutcome({ nodeSimulationPlan: [gateVerdict] }), {
+			fixtureOverrides: { 'Email Approval': [{ data: { Decision: 'Request changes' } }] },
+		});
+
+		expect(result.kind).toBe('blocked');
+		if (result.kind !== 'blocked') return;
+		expect(result.result.guidance).toContain('human decision');
+		expect(result.result.remediation?.category).toBe('blocked');
+	});
+
+	it('keeps applying overrides to ordinary simulated nodes', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [gateVerdict, plainVerdict] }),
+			{ fixtureOverrides: { 'Send Message': [{ ok: false }] } },
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Send Message']).toEqual([{ ok: false }]);
+		expect(result.prepared.verificationPinData?.['Email Approval']).toEqual([]);
+	});
+});
+
+describe('prepareVerificationRun — gate scripts', () => {
+	it('exposes the script that matches a halted gate', () => {
+		const script = {
+			nodeName: 'Email Approval',
+			cutEdge: { source: 'Revise', target: 'Format' },
+			decisions: [{ label: 'approve', items: [{ data: { approved: true } }] }],
+		};
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [gateVerdict], waitGateScripts: [script] }),
+			{},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.gateScript).toEqual(script);
+	});
+
+	it('ignores scripts that do not match a halted gate', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({
+				nodeSimulationPlan: [plainVerdict],
+				waitGateScripts: [
+					{
+						nodeName: 'Some Other Node',
+						cutEdge: { source: 'A', target: 'B' },
+						decisions: [{ label: 'x', items: [{}] }],
+					},
+				],
+			}),
+			{},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.gateScript).toBeUndefined();
+	});
+});
+
+describe('prepareVerificationRun — zero-item fixture overrides', () => {
+	it('blocks an override that pins zero items on an ordinary simulated node', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
+			{ fixtureOverrides: { 'Send Message': [] } },
+		);
+
+		expect(result.kind).toBe('blocked');
+		if (result.kind !== 'blocked') return;
+		expect(result.result.guidance).toContain('pin zero items');
+		expect(result.result.guidance).toContain('allowZeroItemFixtures');
+		expect(result.result.remediation?.reason).toBe('zero_item_fixture_override');
+	});
+
+	it('allows the empty override once the caller names the node', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
+			{
+				fixtureOverrides: { 'Send Message': [] },
+				allowZeroItemFixtures: ['Send Message'],
+			},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Send Message']).toEqual([]);
+	});
+
+	it('names only the nodes that are actually empty', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict, otherVerdict] }),
+			{ fixtureOverrides: { 'Send Message': [{ ok: true }], 'Post Update': [] } },
+		);
+
+		expect(result.kind).toBe('blocked');
+		if (result.kind !== 'blocked') return;
+		expect(result.result.guidance).toContain('Post Update');
+		expect(result.result.guidance).not.toContain('Send Message');
+	});
+});
+
+describe('prepareVerificationRun — node names that collide with object properties', () => {
+	// Pinning is what keeps a destructive node from running for real, so every
+	// simulated node must get an entry of its own whatever it is called.
+	it.each(['__proto__', 'constructor', 'prototype', 'toString', 'valueOf'])(
+		'pins a simulated node named %s',
+		(nodeName) => {
+			const result = prepareVerificationRun(
+				makeBuildOutcome({
+					nodeSimulationPlan: [{ ...plainVerdict, nodeName }, otherVerdict],
+					simulationFixtures: { [nodeName]: [{ ok: true }] },
+				}),
+				{},
+			);
+
+			expect(result.kind).toBe('ready');
+			if (result.kind !== 'ready') return;
+			const pinData = result.prepared.verificationPinData ?? {};
+			// Object.entries reads own enumerable keys only — the same set that
+			// survives serialization on the way to the execution.
+			expect(Object.keys(pinData)).toContain(nodeName);
+			expect(Object.entries(pinData)).toContainEqual([nodeName, [{ ok: true }]]);
+		},
+	);
+
+	// The last gate before execution: whatever an upstream fixture map did with
+	// the name, a simulated node still leaves here pinned.
+	it.each(['__proto__', 'constructor', 'toString', 'valueOf'])(
+		'falls back to one empty item for a node named %s with no stored fixture',
+		(nodeName) => {
+			const result = prepareVerificationRun(
+				makeBuildOutcome({ nodeSimulationPlan: [{ ...plainVerdict, nodeName }] }),
+				{},
+			);
+
+			expect(result.kind).toBe('ready');
+			if (result.kind !== 'ready') return;
+			const pinData = result.prepared.verificationPinData ?? {};
+			expect(Object.entries(pinData)).toContainEqual([nodeName, [{}]]);
+		},
+	);
+});

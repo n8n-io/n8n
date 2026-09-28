@@ -345,4 +345,32 @@ describe('MessageFormatter', () => {
 			expect(text).toContain('No URL Cred (httpHeaderAuth): not connected');
 		});
 	});
+
+	describe('formatCredentialGateElicited', () => {
+		it('should ask the caller to retry and not flag an error when all were accepted', () => {
+			const result = MessageFormatter.formatCredentialGateElicited([
+				{ credentialName: 'My Slack', credentialType: 'slackOAuth2Api', action: 'accept' },
+			]);
+
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toContain('retry the request');
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			// The raw URL is never relayed as text on the elicitation path.
+			expect(result.content[0].text).not.toContain('http');
+		});
+
+		it('should flag an error and list credentials that were declined or cancelled', () => {
+			const result = MessageFormatter.formatCredentialGateElicited([
+				{ credentialName: 'My Slack', credentialType: 'slackOAuth2Api', action: 'accept' },
+				{ credentialName: 'My Notion', credentialType: 'notionOAuth2Api', action: 'decline' },
+				{ credentialName: 'My GitHub', credentialType: 'githubOAuth2Api', action: 'cancel' },
+			]);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			expect(result.content[0].text).toContain('still need to be connected');
+			expect(result.content[0].text).toContain('My Notion (notionOAuth2Api)');
+			expect(result.content[0].text).toContain('My GitHub (githubOAuth2Api)');
+		});
+	});
 });

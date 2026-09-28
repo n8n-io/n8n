@@ -62,18 +62,43 @@ describe('run debug report', () => {
 		expect(html).toContain('selectStep(');
 	});
 
+	it('renders an AI SDK instructions prompt as the system block', () => {
+		const html = generateRunDebugReport([
+			resultWithRunDebug([
+				{
+					threadId: 'thread-1',
+					runId: 'run-1',
+					startedAt: 1_700_000_000_000,
+					label: 'Build a Slack notifier',
+					steps: [
+						{
+							stepNumber: 0,
+							input: {
+								instructions: { role: 'system', content: 'Kimi system prompt' },
+								messages: [{ role: 'user', content: 'hello' }],
+							},
+						},
+					],
+					workflowCode: [],
+				},
+			]),
+		]);
+
+		expect(html).toContain('Kimi system prompt');
+	});
+
 	it('uses stable anchor ids from file slugs', () => {
 		const result = resultWithRunDebug([]);
 		expect(getTestCaseAnchorId(result, 0)).toBe('tc-slack-notifier');
 	});
 
-	it('labels a seedThread case (no authored conversation) without throwing', () => {
+	it('labels a replay-seeded case (no authored conversation) without throwing', () => {
 		const seedCase: WorkflowTestCase = {
 			complexity: 'simple',
 			tags: ['seeded'],
 			executionScenarios: [{ name: 's', description: 'd', dataSetup: '', successCriteria: 'ok' }],
 			datasets: ['seeded'],
-			seedThread: { threadId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
+			seed: { mode: 'replay' as const, threadId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
 		};
 		const html = generateRunDebugReport([
 			resultWithRunDebug(

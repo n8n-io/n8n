@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { TokenExchangeService } from '../../services/token-exchange.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
@@ -188,8 +188,8 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
-			const { TokenExchangeAuthError } = await import('../../token-exchange.errors');
-			const { TokenExchangeFailureReason } = await import('../../token-exchange.types');
+			const { TokenExchangeAuthError } = await import('../../token-exchange.errors.js');
+			const { TokenExchangeFailureReason } = await import('../../token-exchange.types.js');
 			tokenExchangeService.embedLogin.mockRejectedValue(
 				new TokenExchangeAuthError(
 					TokenExchangeFailureReason.InvalidSignature,
@@ -213,7 +213,7 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
-			const { TokenExchangeFailureReason } = await import('../../token-exchange.types');
+			const { TokenExchangeFailureReason } = await import('../../token-exchange.types.js');
 			tokenExchangeService.embedLogin.mockRejectedValue(new Error('Some unexpected error'));
 
 			await expect(controller.getLogin(req, res, query)).rejects.toThrow('Some unexpected error');

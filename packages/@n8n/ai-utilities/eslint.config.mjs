@@ -1,16 +1,20 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(nodeConfig, globalIgnores(['scripts/**']), {
-	rules: {
-		'@typescript-eslint/no-explicit-any': 'warn',
-		'@typescript-eslint/no-unsafe-assignment': 'warn',
-		'@typescript-eslint/no-unsafe-call': 'warn',
-		'@typescript-eslint/no-unsafe-member-access': 'warn',
-		'@typescript-eslint/no-unsafe-return': 'warn',
-		'no-case-declarations': 'warn',
-		'@typescript-eslint/require-await': 'warn',
-		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
+export default defineConfig(
+	backendConfig,
+	globalIgnores(['scripts/**']),
+	{
+		rules: {
+			'@typescript-eslint/no-explicit-any': 'warn',
+			'no-case-declarations': 'warn',
+		},
 	},
-});
+	{
+		// Debt: the base layer enforces kebab-case filenames and this package has
+		// 31 files that predate it. Rename them, then delete this block.
+		rules: {
+			'unicorn/filename-case': 'off',
+		},
+	},
+);

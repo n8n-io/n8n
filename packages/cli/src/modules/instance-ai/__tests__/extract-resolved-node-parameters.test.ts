@@ -1,14 +1,15 @@
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type {
-	IConnections,
-	INode,
-	INodeParameters,
-	IPinData,
-	IRunExecutionData,
-	ITaskData,
+import {
+	Expression,
+	type IConnections,
+	type INode,
+	type INodeParameters,
+	type IPinData,
+	type IRunExecutionData,
+	type ITaskData,
 } from 'n8n-workflow';
-import type { Mocked } from 'vitest';
+import type { Mocked, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -542,5 +543,42 @@ describe('extractResolvedNodeParameters', () => {
 		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
 
 		expect(parseResolved(result.resolved)).toEqual({ value: 'from-runData' });
+	});
+
+	describe('expression isolate lifecycle', () => {
+		// With N8N_EXPRESSION_ENGINE=vm, every getParameterValue call resolves in a
+		// V8 isolate that must first be acquired for the workflow's Expression
+		// instance — otherwise the VM bridge throws "No bridge acquired". Since this
+		// path builds a throwaway workflow outside the execution engine, it has to
+		// acquire/release the isolate itself. These spies pin that contract.
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
+
+		beforeEach(() => {
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		});
+
+		it('acquires and releases the isolate around parameter resolution', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.tag }}' });
+			createMockExecutionRepository(
+				makeResolutionExecution({
+					nodes: [trigger, set],
+					connections: connect('Trigger', 'Set'),
+					runData: {
+						Trigger: [makeTaskData([{ tag: 'ok' }])],
+					},
+				}),
+			);
+
+			await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+			expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				releaseSpy.mock.invocationCallOrder[0],
+			);
+		});
 	});
 });

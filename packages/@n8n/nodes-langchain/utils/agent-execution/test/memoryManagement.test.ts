@@ -16,6 +16,7 @@ import {
 	buildToolContext,
 	extractToolCallId,
 	buildMessagesFromSteps,
+	cleanupOrphanedMessages,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
@@ -214,6 +215,180 @@ describe('memoryManagement', () => {
 
 			expect(result).toEqual(chatHistory);
 			expect(trimMessages).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('cleanupOrphanedMessages', () => {
+		it('should return empty array when all messages are orphans', () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new AIMessage({
+					content: 'Call',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should remove orphaned AIMessage with tool_calls at end (missing trailing ToolMessage)', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove orphaned ToolMessages at end (no preceding AIMessage with tool_calls)', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should preserve valid tool call pair at end', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+		});
+
+		it('should handle trimming that splits mid-turn at end', () => {
+			// Simulates slice that kept AIMessage(tool_calls) but lost its ToolMessage
+			const chatHistory = [
+				new HumanMessage('Hello'),
+				new AIMessage('Response'),
+				new HumanMessage('Use tool'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[0].content).toBe('Hello');
+			expect(result[1]).toBeInstanceOf(AIMessage);
+			expect(result[2]).toBeInstanceOf(HumanMessage);
+			expect(result[2].content).toBe('Use tool');
+		});
+
+		it('should handle trimming that splits mid-turn at start', () => {
+			// Simulates slice that lost AIMessage but kept ToolMessage
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new HumanMessage('Next question'),
+				new AIMessage('Answer'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should preserve complete tool call sequences', () => {
+			const chatHistory = [
+				new HumanMessage('Hello'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' }),
+				new AIMessage('Done'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect(result[3]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should not mutate the original array', () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new HumanMessage('Question'),
+			];
+
+			const originalLength = chatHistory.length;
+			cleanupOrphanedMessages(chatHistory);
+
+			expect(chatHistory).toHaveLength(originalLength);
+		});
+
+		it('should preserve parallel tool call results at end', () => {
+			// Parallel tool calls: one AIMessage with multiple tool_calls, followed by multiple ToolMessages
+			const aiMessage = new AIMessage({
+				content: 'Calling tools',
+				tool_calls: [
+					{ id: 'call-1', name: 'tool1', args: {}, type: 'tool_call' as const },
+					{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const },
+				],
+			});
+
+			const chatHistory = [
+				new HumanMessage('Question'),
+				aiMessage,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2', name: 'tool2' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBe(aiMessage);
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect(result[3]).toBeInstanceOf(ToolMessage);
+		});
+
+		it('should remove orphaned parallel tool results when AIMessage is missing', () => {
+			// Multiple ToolMessages at end but no preceding AIMessage with tool_calls
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2', name: 'tool2' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
 		});
 	});
 

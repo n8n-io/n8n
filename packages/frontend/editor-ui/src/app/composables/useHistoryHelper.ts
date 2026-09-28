@@ -10,7 +10,7 @@ import { onMounted, onUnmounted, nextTick, computed, type Ref } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';

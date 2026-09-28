@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
 import {
+	credentialDestinationDecisionSchema,
 	domainAccessActionSchema,
+	instanceAiApprovalResumeSchema,
 	instanceGatewayResourceDecisionSchema,
+	mcpConnectResumeSchema,
 } from '../../schemas/instance-ai.schema';
 
 /**
@@ -10,14 +13,12 @@ import {
  *   - text-input confirmations (inputType='text')
  *   - plan-review feedback accompanying approve/request-changes
  *   - deferring/skipping credential or workflow setup wizards (`approved: false`)
+ *
+ * Payload fields (minus `kind`) are shared with tool `.resume()` schemas via
+ * `instanceAiApprovalResumeSchema` so wire/resume drift fails at typecheck.
  */
-const approvalConfirmSchema = z.object({
+const approvalConfirmSchema = instanceAiApprovalResumeSchema.extend({
 	kind: z.literal('approval'),
-	approved: z.boolean(),
-	userInput: z.string().optional(),
-	/** `'session'` grants the same tool/action without re-asking for the rest of the
-	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
-	scope: z.enum(['once', 'session']).optional(),
 });
 
 /** Q&A wizard submission (inputType='questions'). */
@@ -39,6 +40,19 @@ const credentialIdByTypeSchema = z.record(z.string());
 const credentialSelectionConfirmSchema = z.object({
 	kind: z.literal('credentialSelection'),
 	credentials: credentialIdByTypeSchema,
+});
+
+const credentialAutoSetupConfirmSchema = z.object({
+	kind: z.literal('credentialAutoSetup'),
+	credentialType: z.string(),
+	/** Client-generated id shared by the setup-choice telemetry events and the
+	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
+	attemptId: z.string().trim().min(1).max(64).optional(),
+});
+
+const credentialDestinationConfirmSchema = credentialDestinationDecisionSchema.extend({
+	kind: z.literal('credentialDestination'),
+	approved: z.boolean(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
@@ -75,6 +89,9 @@ const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
 	nodeParameters: nodeParametersRecord,
+	/** Nodes whose cards the user actively skipped in this panel. Without this the backend
+	 *  can only see that they're still unconfigured, which reads as "ask again". */
+	skippedNodes: z.array(z.string()).optional(),
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;
@@ -86,16 +103,23 @@ const setupWorkflowTestTriggerConfirmSchema = z.object({
 	nodeParameters: nodeParametersRecord,
 });
 
+const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
+	kind: z.literal('mcpConnect'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
+	credentialAutoSetupConfirmSchema,
+	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
+	mcpConnectConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

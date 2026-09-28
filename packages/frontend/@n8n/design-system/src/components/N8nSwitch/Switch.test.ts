@@ -5,6 +5,62 @@ import Switch from './Switch.vue';
 
 describe('components/N8nSwitch', () => {
 	describe('rendering', () => {
+		it('keeps the label the caller forwarded, rather than the generic fallback', () => {
+			const wrapper = render(Switch, { attrs: { 'aria-label': 'Team channels' } });
+
+			expect(wrapper.getByRole('switch')).toHaveAttribute('aria-label', 'Team channels');
+		});
+
+		it('falls back to a generic label only when the caller gives neither', () => {
+			const wrapper = render(Switch);
+
+			expect(wrapper.getByRole('switch')).toHaveAttribute('aria-label', 'Toggle');
+		});
+
+		it('follows a forwarded label that changes', async () => {
+			const wrapper = render(Switch, { attrs: { 'aria-label': 'Team channels' } });
+
+			await wrapper.rerender({ 'aria-label': 'Group chats' });
+
+			// `attrs` is not reactive, so a cached lookup would still say the first.
+			expect(wrapper.getByRole('switch')).toHaveAttribute('aria-label', 'Group chats');
+		});
+
+		it('prefers its own label prop over a forwarded one', () => {
+			const wrapper = render(Switch, {
+				props: { label: 'Visible label' },
+				attrs: { 'aria-label': 'Forwarded' },
+			});
+
+			// The visible label is already associated through aria-labelledby.
+			expect(wrapper.getByRole('switch')).not.toHaveAttribute('aria-label');
+		});
+
+		it('should forward attributes without Vue warnings', () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			try {
+				const wrapper = render(Switch, {
+					attrs: {
+						class: 'custom-switch',
+						'aria-describedby': 'switch-description',
+					},
+				});
+
+				const warnings = warnSpy.mock.calls.flat().join(' ');
+				expect(warnings).not.toContain(
+					'toRefs() expects a reactive object but received a plain one',
+				);
+				expect(wrapper.container.firstElementChild).toHaveClass('custom-switch');
+				expect(wrapper.getByRole('switch')).toHaveAttribute(
+					'aria-describedby',
+					'switch-description',
+				);
+			} finally {
+				warnSpy.mockRestore();
+			}
+		});
+
 		it('should render unchecked by default', () => {
 			const wrapper = render(Switch);
 			const switchEl = wrapper.container.querySelector('[role="switch"]');
@@ -245,6 +301,14 @@ describe('components/N8nSwitch', () => {
 			const label = wrapper.container.querySelector('label');
 			expect(switchEl).toHaveAttribute('id', 'test-switch');
 			expect(label).toHaveAttribute('for', 'test-switch');
+		});
+
+		it('should preserve an explicit accessible label', () => {
+			const wrapper = render(Switch, {
+				attrs: { 'aria-label': 'Pause schedule' },
+			});
+
+			expect(wrapper.getByRole('switch', { name: 'Pause schedule' })).toBeInTheDocument();
 		});
 
 		it('should be keyboard accessible with Space', async () => {

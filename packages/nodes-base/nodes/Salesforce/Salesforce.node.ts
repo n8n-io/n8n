@@ -64,7 +64,7 @@ async function searchOwners(
 			'/query',
 			{},
 			{
-				q: `SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = '${queueSobjectType}'`,
+				q: `SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = '${escapeSoqlString(queueSobjectType)}'`,
 			},
 		)) as Array<{ Queue: { Id: string; Name: string } }>;
 		const lowerFilter = (filter ?? '').toLowerCase();
@@ -345,10 +345,10 @@ export class Salesforce implements INodeType {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
 
-				resource = escapeSoqlString(resource as string);
+				const escapedResource = escapeSoqlString(resource as string);
 
 				const qs = {
-					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${resource}'`,
+					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${escapedResource}'`,
 				};
 				const types = await salesforceApiRequestAllItems.call(
 					this,
@@ -2483,8 +2483,8 @@ export class Salesforce implements INodeType {
 						if (additionalFields.subject !== undefined) {
 							body.Subject = additionalFields.subject as string;
 						}
-						if (additionalFields.parentId !== undefined) {
-							body.ParentId = additionalFields.parentId as string;
+						if (additionalFields.ParentId !== undefined) {
+							body.ParentId = additionalFields.ParentId as string;
 						}
 						if (additionalFields.priority !== undefined) {
 							body.Priority = additionalFields.priority as string;
@@ -2554,8 +2554,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.subject !== undefined) {
 							body.Subject = updateFields.subject as string;
 						}
-						if (updateFields.parentId !== undefined) {
-							body.ParentId = updateFields.parentId as string;
+						if (updateFields.ParentId !== undefined) {
+							body.ParentId = updateFields.ParentId as string;
 						}
 						if (updateFields.priority !== undefined) {
 							body.Priority = updateFields.priority as string;

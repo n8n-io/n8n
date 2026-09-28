@@ -494,5 +494,31 @@ describe('setOutputs', () => {
 			);
 			expect(result).toHaveLength(1);
 		});
+
+		it('keeps a genuine `id`/`createdAt` sheet column (only Data table bookkeeping columns are stripped)', async () => {
+			const context = mockThis({
+				evaluateExpression: vi.fn().mockImplementation((expr) => {
+					if (expr.includes('isExecuted')) return true;
+					if (expr.includes('first().json')) {
+						return {
+							row_number: 2,
+							id: 'INV-1',
+							createdAt: '2026-01-01',
+							inputField: 'inputValue',
+						};
+					}
+					return true;
+				}),
+			});
+			const result = await setOutputs.call(context);
+
+			expect(mockGoogleSheetInstance.updateRows).toHaveBeenCalledWith(
+				'Sheet1',
+				[['id', 'createdAt', 'inputField', 'result', 'score']],
+				'RAW',
+				1,
+			);
+			expect(result).toHaveLength(1);
+		});
 	});
 });

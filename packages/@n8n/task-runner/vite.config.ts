@@ -4,7 +4,6 @@ import { mergeConfig } from 'vite';
 
 export default mergeConfig(
 	createVitestConfigWithDecorators({
-		restoreMocks: true,
 		testTimeout: 10_000,
 	}),
 	{

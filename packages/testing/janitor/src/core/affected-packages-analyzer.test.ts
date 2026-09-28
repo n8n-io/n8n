@@ -3,11 +3,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { affectedPackages, findWorkspaceRoot } from './affected-packages-analyzer.js';
+import {
+	affectedPackages,
+	findWorkspaceRoot,
+	parseJsoncFile,
+	stripJsonComments,
+} from './affected-packages-analyzer.js';
 
 interface PackageSpec {
 	name: string;
 	deps?: string[];
+	/** Written to the package's `janitor.ignoreDepsForScoping` field. */
+	ignoreDeps?: unknown;
 }
 
 interface TurboTaskSpec {
@@ -19,6 +26,8 @@ function makeFixture(opts: {
 	patterns: string[];
 	packages: Record<string, PackageSpec>;
 	turboTasks?: TurboTaskSpec[];
+	/** Write turbo.json verbatim (e.g. to exercise JSONC comment handling). */
+	turboJsonRaw?: string;
 }): string {
 	const root = join(tmpdir(), `janitor-affected-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(root, { recursive: true });
@@ -35,10 +44,15 @@ function makeFixture(opts: {
 		if (spec.deps && spec.deps.length > 0) {
 			pkg.dependencies = Object.fromEntries(spec.deps.map((d) => [d, 'workspace:*']));
 		}
+		if (spec.ignoreDeps !== undefined) {
+			pkg.janitor = { ignoreDepsForScoping: spec.ignoreDeps };
+		}
 		writeFileSync(join(pkgDir, 'package.json'), JSON.stringify(pkg));
 	}
 
-	if (opts.turboTasks) {
+	if (opts.turboJsonRaw !== undefined) {
+		writeFileSync(join(root, 'turbo.json'), opts.turboJsonRaw);
+	} else if (opts.turboTasks) {
 		writeFileSync(
 			join(root, 'turbo.json'),
 			JSON.stringify({
@@ -92,6 +106,59 @@ describe('affectedPackages', () => {
 			'lib',
 			'mid',
 		]);
+	});
+
+	it('does not mark a dependent as affected through an ignored dependency', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui', 'lib'], ignoreDeps: ['ui'] },
+				'packages/lib': { name: 'lib' },
+			},
+		});
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toEqual(['ui']);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/lib/src/x.ts'] })).toEqual([
+			'app',
+			'lib',
+		]);
+	});
+
+	it('still marks a package as affected when its own files change', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: ['ui'] },
+			},
+		});
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/app/src/x.ts'] })).toEqual(['app']);
+	});
+
+	it('throws when ignoreDepsForScoping is not an array of strings', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: 'ui' },
+			},
+		});
+		expect(() => affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toThrow(
+			'janitor.ignoreDepsForScoping in package "app" must be an array of package names',
+		);
+	});
+
+	it('throws when ignoreDepsForScoping names a package that is not a workspace dep', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: ['uii'] },
+			},
+		});
+		expect(() => affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toThrow(
+			'janitor.ignoreDepsForScoping in package "app" names non-workspace-dependencies: uii',
+		);
 	});
 
 	it('expands all packages when a universal sink (workflow/core) changes', () => {
@@ -165,6 +232,33 @@ describe('affectedPackages', () => {
 		).toEqual(['n8n', 'n8n-nodes-base']);
 	});
 
+	it('parses a JSONC turbo.json (comments) for extra-inputs', () => {
+		// turbo.json is JSONC — a plain JSON.parse throws on comments, which
+		// silently emptied the affected list in CI. Ensure comments are tolerated.
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/cli': { name: 'n8n' },
+				'packages/nodes-base': { name: 'n8n-nodes-base' },
+			},
+			turboJsonRaw: `{
+				// line comment before tasks
+				"tasks": {
+					/* block comment */
+					"n8n-nodes-base#test": {
+						"inputs": ["../cli/src/public-api/v1/**/*.yml"] // trailing line comment
+					}
+				}
+			}`,
+		});
+		expect(
+			affectedPackages({
+				rootDir,
+				changedFiles: ['packages/cli/src/public-api/v1/openapi.yml'],
+			}),
+		).toEqual(['n8n', 'n8n-nodes-base']);
+	});
+
 	it('matches nested workspace patterns (frontend/**)', () => {
 		const rootDir = makeFixture({
 			patterns: ['packages/frontend/**'],
@@ -190,5 +284,103 @@ describe('findWorkspaceRoot', () => {
 
 	it('throws when no workspace root above startDir', () => {
 		expect(() => findWorkspaceRoot('/')).toThrow(/Could not locate/);
+	});
+});
+
+describe('stripJsonComments', () => {
+	// The stripped output must stay valid JSON and preserve every value; each
+	// case round-trips through JSON.parse to assert that.
+	const parse = (jsonc: string): unknown => {
+		const stripped = stripJsonComments(jsonc);
+		try {
+			return JSON.parse(stripped) as unknown;
+		} catch (error) {
+			throw new Error(`Not valid JSON after stripping: ${stripped} (${(error as Error).message})`);
+		}
+	};
+
+	it('leaves plain JSON untouched', () => {
+		const json = '{"a":1,"b":["x","y"],"c":{"d":true}}';
+		expect(stripJsonComments(json)).toBe(json);
+		expect(parse(json)).toEqual({ a: 1, b: ['x', 'y'], c: { d: true } });
+	});
+
+	it('strips a line comment', () => {
+		expect(parse('{\n  // a comment\n  "a": 1\n}')).toEqual({ a: 1 });
+	});
+
+	it('strips a trailing line comment after a value', () => {
+		expect(parse('{ "a": 1 // trailing\n}')).toEqual({ a: 1 });
+	});
+
+	it('strips a block comment', () => {
+		expect(parse('{ /* block */ "a": 1 }')).toEqual({ a: 1 });
+	});
+
+	it('strips a multi-line block comment', () => {
+		expect(parse('{\n/*\n line 1\n line 2\n*/\n"a": 1\n}')).toEqual({ a: 1 });
+	});
+
+	it('preserves // inside a string value', () => {
+		expect(parse('{ "url": "https://example.com/x" }')).toEqual({
+			url: 'https://example.com/x',
+		});
+	});
+
+	it('preserves /* */ inside a string value', () => {
+		expect(parse('{ "glob": "src/**/*.ts", "note": "/* not a comment */" }')).toEqual({
+			glob: 'src/**/*.ts',
+			note: '/* not a comment */',
+		});
+	});
+
+	it('preserves an escaped quote inside a string, then strips a following comment', () => {
+		expect(parse('{ "a": "he said \\"hi//\\"" /* c */ }')).toEqual({ a: 'he said "hi//"' });
+	});
+
+	it('preserves a string ending in a backslash-escaped backslash', () => {
+		// The closing quote must still terminate the string after `\\`.
+		expect(parse('{ "path": "C:\\\\tmp\\\\" }')).toEqual({ path: 'C:\\tmp\\' });
+	});
+
+	it('does not treat a lone slash as a comment', () => {
+		expect(parse('{ "ratio": "1/2" }')).toEqual({ ratio: '1/2' });
+	});
+
+	it('handles a realistic JSONC turbo.json', () => {
+		const turbo = `{
+			// top comment
+			"tasks": {
+				/* build task */
+				"build": { "outputs": ["dist/**"] }, // inline
+				"test": { "inputs": ["src/**/*.ts"] }
+			}
+		}`;
+		expect(parse(turbo)).toEqual({
+			tasks: {
+				build: { outputs: ['dist/**'] },
+				test: { inputs: ['src/**/*.ts'] },
+			},
+		});
+	});
+});
+
+describe('parseJsoncFile', () => {
+	function writeTmp(contents: string): string {
+		const dir = join(tmpdir(), `janitor-jsonc-${Math.random().toString(36).slice(2)}`);
+		mkdirSync(dir, { recursive: true });
+		const file = join(dir, 'turbo.json');
+		writeFileSync(file, contents);
+		return file;
+	}
+
+	it('reads and parses a JSONC file with comments', () => {
+		const file = writeTmp('{\n  // comment\n  "a": 1 /* b */\n}');
+		expect(parseJsoncFile(file)).toEqual({ a: 1 });
+	});
+
+	it('throws with the file path when the content is not valid JSON', () => {
+		const file = writeTmp('{ "a": 1, }'); // trailing comma is NOT stripped
+		expect(() => parseJsoncFile(file)).toThrow('Failed to parse');
 	});
 });

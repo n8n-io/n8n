@@ -12,7 +12,7 @@ import { setupTestServer } from '@test-integration/utils';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
@@ -246,23 +246,28 @@ describe('test vs production resources', () => {
 		const productionResourceUrl = `${webhookBaseUrl()}/${mcpEndpoint}/${webhookPath}`;
 		const testResourceUrl = testResourceUrlFor(webhookPath);
 
-		const testToken = tokenService.generateTokenPair(owner.id, clientId, testResourceUrl);
+		const testToken = tokenService.generateTokenPair(owner.id, clientId, testResourceUrl, []);
 		await tokenService.saveTokenPair(
 			testToken.accessToken,
 			testToken.refreshToken,
 			clientId,
 			owner.id,
+			[],
+			testToken.audience,
 		);
 		const productionToken = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			productionResourceUrl,
+			[],
 		);
 		await tokenService.saveTokenPair(
 			productionToken.accessToken,
 			productionToken.refreshToken,
 			clientId,
 			owner.id,
+			[],
+			productionToken.audience,
 		);
 
 		await expect(

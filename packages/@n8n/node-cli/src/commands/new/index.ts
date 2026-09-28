@@ -99,14 +99,14 @@ export default class New extends Command {
 			} else if (programmaticNodeType === 'chatModel') {
 				const chatModelType = await chatModelTypePrompt();
 				if (chatModelType === 'openaiCompatible') {
-					template = templates.programmatic.openaiChatModel as TemplateWithRun;
+					template = templates.programmatic.openaiChatModel;
 				} else if (chatModelType === 'custom') {
-					template = templates.programmatic.customChatModel as TemplateWithRun;
+					template = templates.programmatic.customChatModel;
 				} else if (chatModelType === 'customExample') {
-					template = templates.programmatic.customChatModelExample as TemplateWithRun;
+					template = templates.programmatic.customChatModelExample;
 				}
 			} else if (programmaticNodeType === 'chatMemory') {
-				template = templates.programmatic.customChatMemory as TemplateWithRun;
+				template = templates.programmatic.customChatMemory;
 			}
 		}
 

@@ -1,4 +1,5 @@
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { createPrivateKey, createSign } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
@@ -184,6 +185,22 @@ describe('eval-mock-helpers', () => {
 			expect(result.privateKey).toEqual(expect.stringContaining('END RSA PRIVATE KEY'));
 		});
 
+		it('should include a privateKey that parses and RS256-signs', () => {
+			// PEM markers alone are not enough: service-account nodes jwt.sign()
+			// with this key before any HTTP request, so it must be a real key.
+			const result = buildEvalMockCredentials([]);
+
+			const key = createPrivateKey(String(result.privateKey));
+			expect(key.asymmetricKeyType).toBe('rsa');
+			const signer = createSign('RSA-SHA256');
+			signer.update('eval-mock');
+			expect(signer.sign(key).length).toBeGreaterThan(0);
+		});
+
+		it('should reuse the same generated privateKey across calls', () => {
+			expect(buildEvalMockCredentials([]).privateKey).toBe(buildEvalMockCredentials([]).privateKey);
+		});
+
 		it('should return oauthTokenData and privateKey even with empty properties array', () => {
 			const result = buildEvalMockCredentials([]);
 
@@ -323,7 +340,17 @@ describe('eval-mock-helpers', () => {
 
 			expect(result.headers).toEqual({ 'x-custom': 'value' });
 			expect(result.statusCode).toBe(201);
-			expect(result.statusMessage).toBe('OK');
+			expect(result.statusMessage).toBe('Created');
+		});
+
+		it('should carry the standard reason phrase of the status code', () => {
+			const result = serializeMockToHttpResponse({
+				body: { error: 'not found' },
+				headers: {},
+				statusCode: 404,
+			});
+
+			expect(result.statusMessage).toBe('Not Found');
 		});
 
 		it('should pass through a Buffer body without double-encoding', () => {
@@ -477,6 +504,30 @@ describe('eval-mock-helpers', () => {
 	// normalizeLegacyRequest
 	// -----------------------------------------------------------------------
 	describe('normalizeLegacyRequest', () => {
+		it('maps the legacy `simple: false` opt-out to ignoreHttpStatusErrors', () => {
+			const fromString = normalizeLegacyRequest('https://api.example.com/data', {
+				method: 'GET',
+				simple: false,
+			});
+			const fromObject = normalizeLegacyRequest({
+				uri: 'https://api.example.com/data',
+				method: 'GET',
+				simple: false,
+				resolveWithFullResponse: true,
+			});
+
+			expect(fromString.ignoreHttpStatusErrors).toBe(true);
+			expect(fromObject.ignoreHttpStatusErrors).toBe(true);
+		});
+
+		it('leaves ignoreHttpStatusErrors unset when the legacy request did not opt out', () => {
+			const defaulted = normalizeLegacyRequest({ uri: 'https://api.example.com', method: 'GET' });
+			const explicit = normalizeLegacyRequest('https://api.example.com', { simple: true });
+
+			expect('ignoreHttpStatusErrors' in defaulted).toBe(false);
+			expect('ignoreHttpStatusErrors' in explicit).toBe(false);
+		});
+
 		it('should convert string URI + options object into IHttpRequestOptions', () => {
 			const options: IRequestOptions = {
 				method: 'POST',
@@ -545,6 +596,43 @@ describe('eval-mock-helpers', () => {
 			expect(result.body).toEqual({ update: true });
 			expect(result.qs).toEqual({ version: '2' });
 		});
+
+		it('should fold the URL-encoded `form` slot into body (object form)', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com/token',
+				method: 'POST',
+				form: { grant_type: 'refresh_token', refresh_token: 'abc' },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ grant_type: 'refresh_token', refresh_token: 'abc' });
+		});
+
+		it('should fold the multipart `formData` slot into body (string-uri form)', () => {
+			const options: IRequestOptions = {
+				method: 'POST',
+				formData: { file: 'binary-part' },
+			};
+
+			const result = normalizeLegacyRequest('https://api.example.com/upload', options);
+
+			expect(result.body).toEqual({ file: 'binary-part' });
+		});
+
+		it('should prefer body over formData and form when several slots are set', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com',
+				method: 'POST',
+				body: { fromBody: true },
+				formData: { fromFormData: true },
+				form: { fromForm: true },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ fromBody: true });
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -569,6 +657,73 @@ describe('eval-mock-helpers', () => {
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
 			expect(result).toEqual({ data: 'mocked' });
+		});
+
+		const notFoundResponse: EvalMockHttpResponse = {
+			body: { error: 'not found' },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 404,
+		};
+
+		it('hands a 404 back as a full response when a legacy request set simple:false', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			const result = await callEvalMockHandler(
+				handler,
+				normalizeLegacyRequest({
+					uri: requestOptions.url,
+					method: 'GET',
+					simple: false,
+					resolveWithFullResponse: true,
+				}),
+				node,
+				true,
+				'legacy',
+			);
+
+			expect(result).toMatchObject({
+				statusCode: 404,
+				statusMessage: 'Not Found',
+				body: { error: 'not found' },
+			});
+		});
+
+		it('hands a 404 body back when ignoreHttpStatusErrors is set without a full response', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			const result = await callEvalMockHandler(
+				handler,
+				{ ...requestOptions, ignoreHttpStatusErrors: true },
+				node,
+			);
+
+			expect(result).toEqual({ error: 'not found' });
+		});
+
+		it('honours the except list of an ignoreHttpStatusErrors config', async () => {
+			const options: IHttpRequestOptions = {
+				...requestOptions,
+				ignoreHttpStatusErrors: { ignore: true, except: [404] },
+			};
+			const notFound: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+			const serverError: EvalLlmMockHandler = vi
+				.fn()
+				.mockResolvedValue({ ...notFoundResponse, statusCode: 500 });
+
+			await expect(callEvalMockHandler(notFound, options, node)).rejects.toThrow(
+				'Request failed with status code 404',
+			);
+			await expect(callEvalMockHandler(serverError, options, node, true)).resolves.toMatchObject({
+				statusCode: 500,
+			});
+		});
+
+		it('still throws for status >= 400 when ignoreHttpStatusErrors is false', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			await expect(
+				callEvalMockHandler(handler, { ...requestOptions, ignoreHttpStatusErrors: false }, node),
+			).rejects.toThrow('Request failed with status code 404');
 		});
 
 		it('should return serialized response when returnFullResponse is true', async () => {

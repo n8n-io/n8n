@@ -1,31 +1,31 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { validateOriginHeaders } from '../origin-validator';
+import { validateSseOrigin, validateWebSocketOrigin } from '../origin-validator';
 
-describe('validateOriginHeaders', () => {
+describe('validateWebSocketOrigin', () => {
 	const host = 'example.com';
 
 	describe('basic validation', () => {
 		test('should return invalid for missing origin', () => {
-			const result = validateOriginHeaders({});
+			const result = validateWebSocketOrigin({});
 			expect(result.isValid).toBe(false);
 			expect(result.error).toBe('Origin header is missing or malformed');
 		});
 
 		test('should return invalid for empty origin', () => {
-			const result = validateOriginHeaders({ origin: '' });
+			const result = validateWebSocketOrigin({ origin: '' });
 			expect(result.isValid).toBe(false);
 			expect(result.error).toBe('Origin header is missing or malformed');
 		});
 
 		test('should return invalid for malformed origin', () => {
-			const result = validateOriginHeaders({ origin: 'invalid-origin' });
+			const result = validateWebSocketOrigin({ origin: 'invalid-origin' });
 			expect(result.isValid).toBe(false);
 			expect(result.error).toBe('Origin header is missing or malformed');
 		});
 
 		test('should validate matching hosts with host header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				host,
 			});
@@ -36,7 +36,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should validate matching hosts with x-forwarded-host header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
 			});
@@ -45,7 +45,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should reject mismatched hosts', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': 'wrong-host.com',
 			});
@@ -56,7 +56,7 @@ describe('validateOriginHeaders', () => {
 
 	describe('host normalization behavior', () => {
 		test('should normalize HTTPS default ports (443)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': `${host}:443`,
 			});
@@ -65,7 +65,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should normalize HTTP default ports (80)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `http://${host}`,
 				'x-forwarded-host': `${host}:80`,
 			});
@@ -74,7 +74,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should preserve non-default ports', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}:8080`,
 				'x-forwarded-host': `${host}:8080`,
 			});
@@ -83,7 +83,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should reject mismatched ports', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}:8080`,
 				'x-forwarded-host': `${host}:9000`,
 			});
@@ -91,7 +91,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle IPv6 addresses correctly', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'https://[::1]:443',
 				'x-forwarded-host': '[::1]:443',
 			});
@@ -100,7 +100,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle IPv6 with non-default ports', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'http://[2001:db8::1]:8080',
 				'x-forwarded-host': '[2001:db8::1]:8080',
 			});
@@ -110,7 +110,7 @@ describe('validateOriginHeaders', () => {
 
 		test('should handle complex domain names', () => {
 			const complexHost = 'sub.domain.example-site.com';
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${complexHost}:443`,
 				'x-forwarded-host': `${complexHost}:443`,
 			});
@@ -119,7 +119,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle invalid URL formats gracefully', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'https://example.com',
 				'x-forwarded-host': 'invalid[host',
 			});
@@ -130,7 +130,7 @@ describe('validateOriginHeaders', () => {
 
 	describe('origin parsing behavior', () => {
 		test('should reject non-HTTP/HTTPS protocols', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'ftp://example.com',
 				host: 'example.com',
 			});
@@ -139,7 +139,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should reject websocket protocols', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'ws://example.com',
 				host: 'example.com',
 			});
@@ -147,7 +147,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should reject chrome-extension protocols', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: 'chrome-extension://example.com',
 				host: 'example.com',
 			});
@@ -155,7 +155,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle mixed case protocols', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `HTTPS://${host}`,
 				host,
 			});
@@ -164,7 +164,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should parse HTTP origins correctly', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `http://${host}`,
 				host,
 			});
@@ -176,7 +176,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should parse HTTPS origins correctly', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				host,
 			});
@@ -188,7 +188,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should reject malformed URLs that throw during parsing', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: '://malformed',
 				host: 'example.com',
 			});
@@ -198,7 +198,7 @@ describe('validateOriginHeaders', () => {
 
 	describe('header precedence and processing', () => {
 		test('should handle Forwarded header with precedence over x-forwarded-*', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto=https;host=${host}`,
 				'x-forwarded-host': 'wrong-host.com', // Should be ignored
@@ -208,7 +208,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should parse RFC 7239 Forwarded header with quoted values', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto="https";host="${host}"`,
 			});
@@ -217,7 +217,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should parse Forwarded header with single quotes', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto='https';host='${host}'`,
 			});
@@ -226,7 +226,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle multiple Forwarded entries (use first)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto=https;host=${host}, proto=http;host=other.com`,
 			});
@@ -235,7 +235,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle Forwarded header with spaces around values', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `  proto = https ; host = ${host}  `,
 			});
@@ -244,7 +244,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should ignore unknown parameters in Forwarded header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `for=192.0.2.60;proto=https;host=${host};by=proxy.com`,
 			});
@@ -253,7 +253,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should fallback to X-Forwarded-* when Forwarded header incomplete', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: 'for=192.0.2.60', // Missing host and proto
 				'x-forwarded-host': host,
@@ -264,7 +264,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle array x-forwarded-host headers (use first)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': [host, 'other-host.com'],
 			});
@@ -273,7 +273,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle array x-forwarded-proto headers (use first)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
 				'x-forwarded-proto': ['https', 'http'],
@@ -283,7 +283,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle comma-separated x-forwarded-proto (use first)', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
 				'x-forwarded-proto': 'https, http',
@@ -293,7 +293,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should fallback to Host header when no proxy headers exist', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				host,
 			});
@@ -304,7 +304,7 @@ describe('validateOriginHeaders', () => {
 
 	describe('protocol validation behavior', () => {
 		test('should handle valid protocols in Forwarded header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto=https;host=${host}`,
 			});
@@ -313,7 +313,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should ignore invalid protocols in Forwarded header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: `proto=ftp;host=${host}`, // Invalid protocol should be ignored
 			});
@@ -322,7 +322,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should ignore invalid protocols in X-Forwarded-Proto header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
 				'x-forwarded-proto': 'websocket', // Invalid protocol
@@ -332,7 +332,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle comma-separated X-Forwarded-Proto with invalid first value', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
 				'x-forwarded-proto': 'ftp,https', // Invalid first, valid second
@@ -342,7 +342,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle protocol change via Forwarded header', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `http://${host}`,
 				forwarded: `proto=http;host=${host}:80`,
 			});
@@ -354,7 +354,7 @@ describe('validateOriginHeaders', () => {
 
 	describe('edge cases and error handling', () => {
 		test('should handle missing host header when no proxy headers exist', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				// No host, x-forwarded-host, or forwarded headers
 			});
@@ -363,7 +363,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle empty forwarded header gracefully', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: '',
 				'x-forwarded-host': host,
@@ -373,7 +373,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle invalid forwarded header format', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				forwarded: 'invalid-format',
 				'x-forwarded-host': host,
@@ -383,7 +383,7 @@ describe('validateOriginHeaders', () => {
 		});
 
 		test('should handle empty x-forwarded-host array', () => {
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${host}`,
 				'x-forwarded-host': [],
 				host,
@@ -394,7 +394,7 @@ describe('validateOriginHeaders', () => {
 
 		test('should handle numeric IP addresses correctly', () => {
 			const ipHost = '192.168.1.100:3000';
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `https://${ipHost}`,
 				'x-forwarded-host': ipHost,
 			});
@@ -404,7 +404,7 @@ describe('validateOriginHeaders', () => {
 
 		test('should handle localhost correctly', () => {
 			const localhostHost = 'localhost:8080';
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: `http://${localhostHost}`,
 				'x-forwarded-host': localhostHost,
 			});
@@ -414,7 +414,7 @@ describe('validateOriginHeaders', () => {
 
 		test('should allow origins with query parameters when host matches', () => {
 			const queryOrigin = `https://${host}?query=param#fragment`;
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: queryOrigin,
 				host,
 			});
@@ -424,12 +424,52 @@ describe('validateOriginHeaders', () => {
 
 		test('should allow origins with path components when host matches', () => {
 			const pathOrigin = `https://${host}/path/to/resource`;
-			const result = validateOriginHeaders({
+			const result = validateWebSocketOrigin({
 				origin: pathOrigin,
 				host,
 			});
 			expect(result.isValid).toBe(true);
 			expect(result.originInfo?.host).toBe(host);
 		});
+	});
+});
+
+describe('validateSseOrigin', () => {
+	const host = 'example.com';
+
+	test('should allow a missing origin for a same-origin fetch', () => {
+		const result = validateSseOrigin({ 'sec-fetch-site': 'same-origin' });
+
+		expect(result.isValid).toBe(true);
+	});
+
+	test.each([
+		{ name: 'an empty origin', headers: { origin: '' } },
+		{ name: 'an opaque origin', headers: { origin: 'null' } },
+		{ name: 'a malformed origin', headers: { origin: 'invalid-origin' } },
+		{ name: 'a missing sec-fetch-site', headers: {} },
+		{ name: 'a cross-site fetch', headers: { 'sec-fetch-site': 'cross-site' } },
+		{ name: 'a same-site fetch', headers: { 'sec-fetch-site': 'same-site' } },
+	])('should reject $name', ({ headers }) => {
+		const result = validateSseOrigin(headers);
+
+		expect(result.isValid).toBe(false);
+		expect(result.error).toBe('Origin header is missing or malformed');
+	});
+
+	test('should reject a present origin that does not match the host', () => {
+		const result = validateSseOrigin({
+			origin: `https://${host}`,
+			host: 'wrong-host.com',
+		});
+
+		expect(result.isValid).toBe(false);
+		expect(result.error).toBe('Origin header does not match expected host');
+	});
+
+	test('should allow a present origin that matches the host', () => {
+		const result = validateSseOrigin({ origin: `https://${host}`, host });
+
+		expect(result.isValid).toBe(true);
 	});
 });

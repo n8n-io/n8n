@@ -1,6 +1,6 @@
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { AIMessage, AIMessageChunk } from '@langchain/core/messages';
+import type { StreamEvent } from '@langchain/core/types/stream';
+import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { AgentResult, ToolCallRequest } from './types';
@@ -15,12 +15,15 @@ import type { AgentResult, ToolCallRequest } from './types';
  * @param ctx - The execution context
  * @param eventStream - The stream of events from the agent
  * @param itemIndex - The current item index
+ * @param finalizeOutput - Maps the complete final answer to what the user should see; any
+ *   added text is streamed as a last chunk. Not applied to turns that request tools.
  * @returns AgentResult containing output and optional tool calls/steps
  */
 export async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
+	finalizeOutput?: (output: string) => string,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
@@ -35,17 +38,7 @@ export async function processEventStream(
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							if (message?.type === 'text') {
-								chunkText += (message as MessageContentText)?.text;
-							}
-						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
-					}
+					const chunkText = chunk.text;
 					ctx.sendChunk('item', itemIndex, chunkText);
 
 					agentResult.output += chunkText;
@@ -54,8 +47,7 @@ export async function processEventStream(
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (event.data) {
-					const chatModelData = event.data;
-					const output = chatModelData.output;
+					const output = event.data.output as AIMessage | undefined;
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
@@ -69,7 +61,7 @@ export async function processEventStream(
 								toolCallId: toolCall.id || 'unknown',
 								type: toolCall.type || 'tool_call',
 								log:
-									output.content ||
+									output.text ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available
@@ -82,6 +74,13 @@ export async function processEventStream(
 			default:
 				break;
 		}
+	}
+	if (toolCalls.length === 0 && finalizeOutput) {
+		const finalOutput = finalizeOutput(agentResult.output);
+		if (finalOutput.startsWith(agentResult.output) && finalOutput !== agentResult.output) {
+			ctx.sendChunk('item', itemIndex, finalOutput.slice(agentResult.output.length));
+		}
+		agentResult.output = finalOutput;
 	}
 	ctx.sendChunk('end', itemIndex);
 

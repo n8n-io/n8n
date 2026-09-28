@@ -15,17 +15,28 @@ import {
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
+	type NodeError,
 	NodeOperationError,
 	validateNodeParameters,
 } from 'n8n-workflow';
 
-import { makeErrorFromStatus } from './error-handling';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
+import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
 	getVertexEndpoint,
 	resolveVertexLocation,
 	vertexLocationField,
 } from '../gemini-common/vertex-location';
+
+function errorDescriptionMapper(error: NodeError) {
+	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
+		return 'Google Vertex requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
+	}
+
+	return error.description ?? 'Unknown error';
+}
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -98,7 +109,8 @@ export class LmChatGoogleVertex implements INodeType {
 				default: 'gemini-2.5-flash',
 				builderHint: {
 					propertyHint:
-						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+						'Choose a stable Gemini model from the Vertex model list for the configured project and location. Do not copy Gemini API model IDs into Vertex without checking the list. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			vertexLocationField,
@@ -198,16 +210,29 @@ export class LmChatGoogleVertex implements INodeType {
 				temperature: options.temperature,
 				maxOutputTokens: options.maxOutputTokens,
 				safetySettings,
-				callbacks: [new N8nLlmTracing(this)],
+				callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 				// Handle ChatVertexAI invocation errors to provide better error messages
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					const customError = makeErrorFromStatus(Number(error?.response?.status), {
+					const status = Number(error?.response?.status);
+					const customError = makeErrorFromStatus(status, {
 						modelName,
 					});
 
 					if (customError) {
 						throw new NodeOperationError(this.getNode(), error as JsonObject, customError);
+					}
+
+					if (status === 400) {
+						// Surface Google's error detail; a bare rethrow would hide it behind a
+						// generic "Bad request" wrapper
+						throw new NodeOperationError(this.getNode(), error as JsonObject, {
+							message: 'Bad request - please check your parameters',
+							description:
+								extractGoogleErrorMessage(error as { message?: string }) ??
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								(typeof error?.message === 'string' ? (error.message as string) : undefined),
+						});
 					}
 
 					throw error;

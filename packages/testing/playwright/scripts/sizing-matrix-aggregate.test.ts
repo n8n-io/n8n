@@ -8,9 +8,9 @@ import { DEFAULT_MAPPING } from './sizing-matrix-topologies';
 import { RunReportBuilder } from '../utils/benchmark/run-report';
 import { aggregate, type HardwareInfo } from '../utils/benchmark/sizing-matrix';
 
-function makeReport(spec: string) {
+function makeReport(spec: string, dimensions: Record<string, string | number> = {}) {
 	return new RunReportBuilder(
-		{ spec, dimensions: { commitSha: 'abc123' } },
+		{ spec, dimensions: { commitSha: 'abc123', ...dimensions } },
 		{ totalMs: 60_000, wallClockMs: 60_000 },
 		{ execPerSec: 10, p50Ms: 5, p99Ms: 20 },
 	).build();
@@ -127,6 +127,34 @@ describe('extractInlineRunReports', () => {
 		writeFileSync(join(root, 'test-results.json'), '{ not valid json');
 
 		expect(extractInlineRunReports(root)).toBe(0);
+	});
+});
+
+describe('expression profile aggregation', () => {
+	it('keeps eager reports and excludes lazy comparison reports', () => {
+		const spec = 'webhook/webhook-single-instance.spec.ts';
+		const matrix = aggregate({
+			reports: [
+				{
+					path: spec,
+					report: makeReport(spec, { expression_profile: 'vm-eager' }),
+				},
+				{
+					path: 'webhook/webhook-single-instance-lazy-cache.spec.ts',
+					report: makeReport(spec, { expression_profile: 'vm-lazy-cache' }),
+				},
+			],
+			mapping: DEFAULT_MAPPING,
+			hardware: { runner: 'test', vcpu: 8, ramGb: 16 },
+			n8nVersion: 'test',
+			commitSha: 'deadbeef',
+		});
+
+		const sourceRuns = matrix.cells.flatMap((cell) =>
+			Object.values(cell.shapes).flatMap((shape) => shape?.sourceRuns ?? []),
+		);
+		expect(sourceRuns).toHaveLength(1);
+		expect(sourceRuns[0]?.spec).toBe(spec);
 	});
 });
 

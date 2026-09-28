@@ -2,18 +2,18 @@
 import { computed, ref } from 'vue';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
 import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
+import type { UsersInfoProps } from '@n8n/design-system';
 
 import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
@@ -43,7 +43,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 400,
+		width: 300,
 		value(row) {
 			return {
 				...row,
@@ -55,6 +55,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.accountType'),
 		key: 'role',
+		width: 200,
 	},
 	{
 		title: i18n.baseText('settings.users.table.header.lastActive'),
@@ -168,7 +169,9 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					:loading="props.updatingRoleUserId === item.id"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default]?.label }}</N8nText>
+				<N8nText v-else color="text-dark" :class="$style.roleName">{{
+					roles[item.role ?? ROLE.Default]?.label
+				}}</N8nText>
 			</template>
 			<template #[`item.lastActiveAt`]="{ item }">
 				<SettingsUsersLastActiveCell :data="item" />
@@ -186,3 +189,13 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		</N8nDataTableServer>
 	</div>
 </template>
+
+<style lang="scss" module>
+.roleName {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
+}
+</style>

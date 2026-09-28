@@ -1,6 +1,7 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -10,7 +11,7 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import type * as i18n from '@n8n/i18n';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return { useTelemetry: () => ({ track }) };
 });
@@ -32,7 +33,7 @@ vi.mock('../../composables/useCredentialOAuth', () => ({
 const { mockToastShowError } = vi.hoisted(() => ({
 	mockToastShowError: vi.fn(),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockToastShowError,
 	}),
@@ -96,7 +97,7 @@ const mockUsersState = vi.hoisted(() => ({
 		lastName?: string | null;
 	} | null,
 }));
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => mockUsersState,
 }));
 
@@ -122,6 +123,7 @@ describe('useQuickConnect()', () => {
 		);
 
 		settingsStore = mockedStore(useSettingsStore);
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		settingsStore.moduleSettings['quick-connect'] = undefined;
 		mockUsersState.currentUser = null;
 	});
@@ -331,6 +333,42 @@ describe('useQuickConnect()', () => {
 				expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
 					'slackOAuth2Api',
 					'n8n-nodes-base.slack',
+				);
+			});
+
+			it('omits the description from OAuth Quick Connect when disabled', async () => {
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+				mockIsOAuthCredentialType.mockReturnValue(true);
+				mockCreateAndAuthorize.mockResolvedValue(null);
+				await useQuickConnect().connect({
+					credentialTypeName: 'slackOAuth2Api',
+					nodeType: 'n8n-nodes-base.slack',
+					source: 'credential_type',
+					serviceName: 'Slack',
+					description: 'Stored description',
+				});
+				expect(mockCreateAndAuthorize).toHaveBeenCalledExactlyOnceWith(
+					'slackOAuth2Api',
+					'n8n-nodes-base.slack',
+				);
+			});
+
+			it('passes the description to OAuth Quick Connect', async () => {
+				mockIsOAuthCredentialType.mockReturnValue(true);
+				mockCreateAndAuthorize.mockResolvedValue(null);
+
+				await useQuickConnect().connect({
+					credentialTypeName: 'slackOAuth2Api',
+					nodeType: 'n8n-nodes-base.slack',
+					source: 'credential_type',
+					serviceName: 'Slack',
+					description: 'Use for production alerts',
+				});
+
+				expect(mockCreateAndAuthorize).toHaveBeenCalledExactlyOnceWith(
+					'slackOAuth2Api',
+					'n8n-nodes-base.slack',
+					{ description: 'Use for production alerts' },
 				);
 			});
 
@@ -652,6 +690,37 @@ describe('useQuickConnect()', () => {
 
 							expect(mockGetQuickConnectApiKey).toHaveBeenCalled();
 							expect(result).toEqual(mockCredential);
+						});
+
+						it('omits descriptions from API key Quick Connect when disabled', async () => {
+							mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+							await useQuickConnect().connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'credential_type',
+								serviceName: 'Firecrawl',
+								description: 'Stored description',
+							});
+							expect(mockCreateNewCredential).toHaveBeenCalledTimes(1);
+							expect(mockCreateNewCredential.mock.calls[0][0]).not.toHaveProperty('description');
+						});
+
+						it('includes the description in the created credential', async () => {
+							await useQuickConnect().connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'credential_type',
+								serviceName: 'Firecrawl',
+								description: 'Use for test crawls',
+							});
+
+							expect(mockCreateNewCredential).toHaveBeenCalledExactlyOnceWith(
+								expect.objectContaining({
+									description: 'Use for test crawls',
+									data: { apiKey: 'firecrawl-api-key', allowedHttpRequestDomains: 'none' },
+								}),
+								'project-123',
+							);
 						});
 
 						describe('user data replacement in consent text', () => {

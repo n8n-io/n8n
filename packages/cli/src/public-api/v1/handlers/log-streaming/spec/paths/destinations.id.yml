@@ -1,0 +1,108 @@
+get:
+  x-eov-operation-id: getDestination
+  x-required-scope: eventBusDestination:read
+  x-eov-operation-handler: v1/handlers/log-streaming/log-streaming.handler
+  tags:
+    - LogStreaming
+  summary: Retrieve a log streaming destination
+  description: >
+    Retrieve a single log streaming destination by id. Requires the `eventBusDestination:read`
+    scope and the Log Streaming feature to be licensed.
+  parameters:
+    - name: id
+      in: path
+      description: The id of the log streaming destination.
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/destination.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+put:
+  x-eov-operation-id: updateDestination
+  x-required-scope: eventBusDestination:update
+  x-eov-operation-handler: v1/handlers/log-streaming/log-streaming.handler
+  tags:
+    - LogStreaming
+  summary: Update a log streaming destination
+  description: >
+    Replace an existing log streaming destination. The update takes effect exactly as it would
+    from the UI, using the same validation. Requires the `eventBusDestination:update` scope and
+    the Log Streaming feature to be licensed. When destinations are managed via environment
+    variables, the write is rejected with 409 and nothing is changed; reads still return the
+    current values.
+  parameters:
+    - name: id
+      in: path
+      description: The id of the log streaming destination.
+      required: true
+      schema:
+        type: string
+  requestBody:
+    description: The destination fields to apply.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/destination.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/destination.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+delete:
+  x-eov-operation-id: deleteDestination
+  x-required-scope: eventBusDestination:delete
+  x-eov-operation-handler: v1/handlers/log-streaming/log-streaming.handler
+  tags:
+    - LogStreaming
+  summary: Delete a log streaming destination
+  description: >
+    Remove a log streaming destination. Requires the `eventBusDestination:delete` scope and the
+    Log Streaming feature to be licensed. When destinations are managed via environment
+    variables, the delete is rejected with 409 and nothing is removed; reads still return the
+    current values.
+  parameters:
+    - name: id
+      in: path
+      description: The id of the log streaming destination.
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/destination.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

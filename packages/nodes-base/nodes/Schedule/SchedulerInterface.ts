@@ -6,7 +6,7 @@ export type IRecurrenceRule =
 			activated: true;
 			index: number;
 			intervalSize: number;
-			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+			typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
 export type ScheduleInterval =
@@ -48,6 +48,21 @@ export type ScheduleInterval =
 			triggerAtMinute?: number;
 	  };
 
+export type RawScheduleInterval = Partial<{
+	field: ScheduleInterval['field'];
+	expression: CronExpression;
+	secondsInterval: number;
+	minutesInterval: number;
+	hoursInterval: number;
+	daysInterval: number;
+	weeksInterval: number;
+	monthsInterval: number;
+	triggerAtDay: number[];
+	triggerAtDayOfMonth: number;
+	triggerAtHour: number;
+	triggerAtMinute: number;
+}>;
+
 export interface Rule {
-	interval: ScheduleInterval[];
+	interval: RawScheduleInterval[];
 }

@@ -3,10 +3,8 @@
 	"compilerOptions": {
 		"sourceMap": false,
 		"declaration": false,
-		"lib": ["esnext", "dom"],
-		"types": ["node"]
+		"types": ["node", "vitest/globals"]
 	},
-	"include": ["**/*.ts"],
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
-	"references": [{ "path": "../../workflow/tsconfig.build.esm.json" }]
+	"include": ["*.ts", "services/**/*.ts", "helpers/**/*.ts", "tests/**/*.ts"],
+	"exclude": ["**/node_modules/**", "**/dist/**"]
 }

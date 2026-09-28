@@ -5,9 +5,9 @@ import {
 	type CredentialResolverConfiguration,
 	type ICredentialResolver,
 } from '@n8n/decorators';
-import { Not } from '@n8n/typeorm';
+import { Not, type UpdateResult } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, UnexpectedError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -305,6 +305,42 @@ describe('DynamicCredentialResolverService', () => {
 			expect(mockResolverImplementation.validateOptions).toHaveBeenCalledWith(newConfig);
 			expect(mockCipher.encryptV2).toHaveBeenCalledWith(newConfig);
 			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('reuses the stored secret when a redacted secret field is submitted', async () => {
+			const entity = createMockEntity({ type: 'credential-resolver.slack-1.0' });
+			const storedConfig = { signingSecret: 'REAL-STORED-SECRET', subjectClaim: 'user_id' };
+			const incomingConfig = {
+				signingSecret: CREDENTIAL_BLANKING_VALUE,
+				subjectClaim: 'user_id',
+			};
+			const mockUser = createMockUser();
+			const resolverWithSecretField = {
+				...mockResolverImplementation,
+				metadata: {
+					name: 'credential-resolver.slack-1.0',
+					description: 'Slack',
+					options: [
+						{ name: 'signingSecret', type: 'string', typeOptions: { password: true } },
+						{ name: 'subjectClaim', type: 'options' },
+					],
+				},
+			} as unknown as Mocked<ICredentialResolver>;
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithSecretField);
+			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(storedConfig));
+			mockCipher.encryptV2.mockResolvedValue('re-encrypted');
+			mockRepository.save.mockResolvedValue(entity);
+
+			await service.update('resolver-id-123', { config: incomingConfig, user: mockUser });
+
+			// The redacted placeholder must not be persisted; the stored secret is reused.
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				signingSecret: 'REAL-STORED-SECRET',
+				subjectClaim: 'user_id',
+			});
 		});
 
 		it('should throw DynamicCredentialResolverNotFoundError when resolver not found', async () => {
@@ -611,6 +647,57 @@ describe('DynamicCredentialResolverService', () => {
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('Failed to reactivate workflow'),
 				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-active-1', {
+				active: false,
+				activeVersionId: null,
+			});
+		});
+
+		it('should tear down triggers again before deactivating when reactivation fails', async () => {
+			const entity = createMockEntity();
+			const callOrder: string[] = [];
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-active-1']);
+			mockActiveWorkflowManager.remove.mockImplementation(async () => {
+				callOrder.push('remove');
+			});
+			mockActiveWorkflowManager.add.mockImplementation(async () => {
+				callOrder.push('add');
+				throw new Error('Reactivation failed');
+			});
+			mockWorkflowRepository.update.mockImplementation(async () => {
+				callOrder.push('update');
+				return {} as UpdateResult;
+			});
+
+			await expect(service.delete('resolver-id-123')).resolves.toBeUndefined();
+
+			// A failed reactivation may have partially registered triggers, in memory
+			// and as durable schedule jobs; they must be torn down before the workflow
+			// is flagged inactive, or they keep firing an inactive workflow.
+			expect(callOrder).toEqual(['remove', 'add', 'remove', 'update']);
+			expect(mockActiveWorkflowManager.remove).toHaveBeenNthCalledWith(2, 'wf-active-1');
+		});
+
+		it('should still deactivate the workflow when the rollback teardown fails', async () => {
+			const entity = createMockEntity();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-active-1']);
+			mockActiveWorkflowManager.add.mockRejectedValue(new Error('Reactivation failed'));
+			mockActiveWorkflowManager.remove
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('teardown failed'));
+
+			await expect(service.delete('resolver-id-123')).resolves.toBeUndefined();
+
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to roll back partial reactivation'),
+				expect.objectContaining({ workflowId: 'wf-active-1' }),
 			);
 			expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-active-1', {
 				active: false,

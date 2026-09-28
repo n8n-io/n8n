@@ -1,4 +1,5 @@
 name: 'Test: E2E Helm Chart'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (mode={0}, branch={1}, chart={2})', inputs.mode, inputs.branch || 'default', inputs['helm-chart-ref']) || '' }}"
 
 on:
   pull_request:
@@ -38,7 +39,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
@@ -55,6 +56,7 @@ jobs:
         with:
           build-command: 'pnpm build:docker'
           enable-docker-cache: true
+          docker-cache-key: n8n-io/n8n
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
@@ -70,7 +72,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
@@ -85,7 +87,7 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Install Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Install kubectl
         uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
@@ -94,7 +96,10 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: 'true'
         run: |
-          npx tsx packages/testing/containers/helm-start-stack.ts \
+          # tsx is a devDependency of n8n-containers, not the repo root, so it
+          # must run via that package (root `npx tsx` stopped resolving when
+          # shamefully-hoist was removed).
+          pnpm --filter n8n-containers exec tsx helm-start-stack.ts \
             --env E2E_TESTS=true --env NODE_ENV=development \
             --mode "${{ inputs.mode || 'queue' }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
@@ -159,7 +164,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false

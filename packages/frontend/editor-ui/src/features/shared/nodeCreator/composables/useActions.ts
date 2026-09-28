@@ -11,6 +11,7 @@ import type {
 	AddedNodeConnection,
 	AddedNodesAndConnections,
 	INodeCreateElement,
+	INodeUi,
 	IUpdateInformation,
 	LabelCreateElement,
 	NodeCreateElement,
@@ -21,8 +22,9 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	isNodeCreatorOpenFromConnection,
 	MANUAL_TRIGGER_NODE_TYPE,
-	NODE_CREATOR_OPEN_SOURCES,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -40,12 +42,14 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import {
 	removePreviewToken,
 	sortNodeCreateElements,
 	transformNodeType,
+	isNodeItemRestricted,
 } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -55,12 +59,8 @@ export const useActions = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const singleNodeOpenSources = [
-		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-	];
 
 	const actionsCategoryLocales = computed(() => {
 		return {
@@ -255,11 +255,10 @@ export const useActions = () => {
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 
-		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
-		// then we do not want to append the manual trigger
-		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
+		// Connection-based openings already have a source node, so do not prepend a trigger.
+		const isAddingFromConnection = isNodeCreatorOpenFromConnection(openSource);
 		return (
-			!isSingleNodeOpenSource &&
+			!isAddingFromConnection &&
 			!hasTrigger &&
 			!workflowContainsTrigger &&
 			isTriggerPanel &&
@@ -270,6 +269,7 @@ export const useActions = () => {
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
 			AGENT_NODE_TYPE,
+			MESSAGE_AN_AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -277,8 +277,8 @@ export const useActions = () => {
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
-
 		const allNodes = workflowDocumentStore.value.allNodes;
+
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -295,8 +295,26 @@ export const useActions = () => {
 		});
 	}
 
+	/**
+	 * Returns the trigger the node creator was opened from when connecting to
+	 * an existing node (e.g. dragging a connection out of a trigger's output),
+	 * or undefined if the creator wasn't opened in that context, the
+	 * last-interacted-with node isn't a trigger, or a node-replacement is in
+	 * progress (the "last interacted" node there is the one being removed).
+	 */
+	function getConnectionTriggerNode(): INodeUi | undefined {
+		if (nodeCreatorStore.openingContext === 'replacement') return undefined;
+
+		const nodeId = uiStore.lastInteractedWithNodeId;
+		const node = nodeId ? workflowDocumentStore.value.getNodeById(nodeId) : undefined;
+
+		return node && nodeTypesStore.isTriggerNode(node.type) ? node : undefined;
+	}
+
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
-		if (addedNodes.length === 0) {
+		// Every insert path ends here — click, Enter, drag, the "no results" links, actions mode —
+		// so this is where a restricted type is refused.
+		if (addedNodes.length === 0 || addedNodes.some((node) => isNodeItemRestricted(node.type))) {
 			return { nodes: [], connections: [] };
 		}
 
@@ -309,7 +327,17 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
+		// If the node creator was opened by connecting from an existing trigger,
+		// that trigger should receive the connection instead of prepending a
+		// duplicate Chat Trigger. The LLM Chain prepend still runs regardless:
+		// a language model node can't take a Main connection from the existing
+		// trigger anyway, so it always needs its own Chat Trigger + Chain wrapper.
+		const isConnectingToExistingTrigger = !!getConnectionTriggerNode();
+
+		if (
+			shouldPrependLLMChain(addedNodes) ||
+			(!isConnectingToExistingTrigger && shouldPrependChatTrigger(addedNodes))
+		) {
 			if (shouldPrependLLMChain(addedNodes)) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
 				connections.push({
@@ -407,7 +435,9 @@ export const useActions = () => {
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
 		getAddedNodesAndConnections,
+		getConnectionTriggerNode,
 		getActionData,
 		setAddedNodeActionParameters,
+		shouldPrependChatTrigger,
 	};
 };

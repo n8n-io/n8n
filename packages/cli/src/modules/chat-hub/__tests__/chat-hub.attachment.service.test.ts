@@ -40,6 +40,17 @@ describe('ChatHubAttachmentService', () => {
 			expect(() => service.validateAttachments(attachments, true, '*/*')).not.toThrow();
 		});
 
+		it.each(['*', '*/*, application/pdf'])(
+			'should allow any file when allowedFilesMimeTypes contains %s',
+			(allowedFilesMimeTypes) => {
+				const attachments = [makeAttachment('application/zip')];
+
+				expect(() =>
+					service.validateAttachments(attachments, true, allowedFilesMimeTypes),
+				).not.toThrow();
+			},
+		);
+
 		it('should allow any file when allowedFilesMimeTypes is empty', () => {
 			const attachments = [makeAttachment('image/png'), makeAttachment('audio/mp3')];
 			expect(() => service.validateAttachments(attachments, true, '')).not.toThrow();

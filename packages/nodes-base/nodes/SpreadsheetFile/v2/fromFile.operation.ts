@@ -1,8 +1,8 @@
+import type { Sheet2JSONOpts, ParsingOptions } from '@e965/xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from '@e965/xlsx';
 import { parse as createCSVParser, type Options as CSVOptions } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Sheet2JSONOpts, ParsingOptions } from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { binaryProperty, fromFileOptions } from '../description';
 

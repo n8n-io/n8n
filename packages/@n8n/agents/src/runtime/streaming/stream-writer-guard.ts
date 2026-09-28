@@ -12,6 +12,8 @@ import type { TokenUsage } from '../../types/sdk/agent';
 export class StreamWriterGuard {
 	private closed = false;
 
+	private errorWritten = false;
+
 	constructor(private readonly writer: WritableStreamDefaultWriter<StreamChunk>) {
 		writer.closed
 			.then(() => {
@@ -29,6 +31,7 @@ export class StreamWriterGuard {
 		if (this.closed) return;
 		try {
 			await this.writer.write(chunk);
+			if (chunk.type === 'error') this.errorWritten = true;
 		} catch {
 			// Downstream consumer is gone (cancelled/errored). Nothing useful to do.
 		}
@@ -46,8 +49,8 @@ export class StreamWriterGuard {
 	}
 
 	/**
-	 * Terminate the stream with an error: emit an `error` chunk and a terminal
-	 * `finish` chunk, then close. Idempotent — a no-op if already closed.
+	 * Terminate the stream with an error: ensure an `error` chunk exists, emit a
+	 * terminal `finish` chunk, then close. Idempotent — a no-op if already closed.
 	 *
 	 * `finish` enriches the terminal chunk with usage/model so an aborted run
 	 * still carries the tokens consumed before the stop.
@@ -58,7 +61,7 @@ export class StreamWriterGuard {
 		finish?: { usage?: TokenUsage; model?: string },
 	): Promise<void> {
 		if (this.closed) return;
-		await this.write({ type: 'error', error });
+		if (!this.errorWritten) await this.write({ type: 'error', error });
 		await this.write({ type: 'finish', finishReason, ...finish });
 		await this.close();
 	}

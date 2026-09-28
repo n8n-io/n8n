@@ -185,9 +185,7 @@ test.describe(
 				await expect(versionsModal).toBeVisible();
 
 				// Verify security update badge exists for the new version
-				const versionCard = n8n.versions.getVersionCard().first();
-				const securityBadge = versionCard.locator('.el-tag--danger').getByText('Security update');
-				await expect(securityBadge).toBeVisible();
+				await expect(n8n.versions.getSecurityBadge()).toBeVisible();
 			});
 
 			test('should not display security notification when theres no security issue', async ({

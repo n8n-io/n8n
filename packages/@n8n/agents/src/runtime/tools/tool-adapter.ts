@@ -7,12 +7,15 @@ import {
 	type BuiltTool,
 	type BuiltTelemetry,
 	type InterruptibleToolContext,
+	type ToolSuspendOptions,
 	type ToolExecutionContext,
 	type ToolContext,
 } from '../../types';
+import type { JSONValue } from '../../types/utils/json';
 import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
+import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
 
 type AiSdkProviderTool = AiSdkTool & {
 	type: 'provider';
@@ -27,6 +30,8 @@ const SUSPEND_BRAND = Symbol('SuspendBrand');
 export interface SuspendedToolResult {
 	readonly [SUSPEND_BRAND]: true;
 	payload: unknown;
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	continuation?: JSONValue;
 }
 
 /** Type guard: returns true when a tool's return value is a suspend signal. */
@@ -53,6 +58,7 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
 			id: t.name,
 			args: t.args,
 			inputSchema: t.inputSchema ?? z.any(),
+			isProviderExecuted: true,
 		};
 		result[t.name] = providerTool;
 	}
@@ -71,17 +77,22 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	for (const t of tools) {
 		if (t.inputSchema) {
 			const ai = loadAi();
+			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
+			// Responses otherwise normalizes omitted strict schemas and makes optional MCP fields required.
+			const strict = t.mcpTool ? false : undefined;
 			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
-					providerOptions: t.providerOptions,
+					providerOptions,
+					strict,
 				});
 			} else {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
-					providerOptions: t.providerOptions,
+					providerOptions,
+					strict,
 				});
 			}
 		}
@@ -106,35 +117,77 @@ export async function executeTool(
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
 
+	const loadSkill = anchorSkillLoader(executionContext.loadSkill, toolCallId);
 	if (builtTool.suspendSchema) {
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
-			suspend: async (payload: unknown): Promise<never> => {
-				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
-			},
+			suspend: createSuspendHandler(executionContext),
 			resumeData: isCancelled ? undefined : resumeData,
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
-			parentTelemetry,
-			toolCallId,
-			runId: executionContext.runId,
-			persistence: executionContext.persistence,
-			emitEvent: executionContext.emitEvent,
-			abortSignal: executionContext.abortSignal,
-			executionCounter: executionContext.executionCounter,
+			...createToolContext(builtTool, executionContext, parentTelemetry, toolCallId, loadSkill),
+			suspendPayload: executionContext.suspendPayload,
+			continuation: executionContext.continuation,
+			resumeSchema: executionContext.resumeSchema,
 		};
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx: ToolContext = {
+	const ctx = createToolContext(
+		builtTool,
+		executionContext,
 		parentTelemetry,
 		toolCallId,
+		loadSkill,
+	);
+	return await builtTool.handler(args, ctx);
+}
+
+function anchorSkillLoader(
+	loadSkill: ToolExecutionContext['loadSkill'],
+	toolCallId: string | undefined,
+): ToolExecutionContext['loadSkill'] {
+	if (!loadSkill) return undefined;
+	// Keep skill content on the tool result. An explicit anchor takes precedence.
+	return async (skillId, anchor) =>
+		await loadSkill(skillId, anchor ?? (toolCallId ? { toolCallId } : undefined));
+}
+
+function createToolContext(
+	builtTool: BuiltTool,
+	executionContext: ToolExecutionContext,
+	parentTelemetry: BuiltTelemetry | undefined,
+	toolCallId: string | undefined,
+	loadSkill: ToolExecutionContext['loadSkill'],
+): ToolContext {
+	return {
+		parentTelemetry,
+		toolCallId,
+		toolName: builtTool.name,
 		runId: executionContext.runId,
+		...(loadSkill ? { loadSkill } : {}),
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,
 		executionCounter: executionContext.executionCounter,
 	};
-	return await builtTool.handler(args, ctx);
+}
+
+function createSuspendHandler(
+	executionContext: ToolExecutionContext,
+): InterruptibleToolContext['suspend'] {
+	return async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
+		const resolvedOptions: ToolSuspendOptions = {
+			continuation: executionContext.continuation,
+			...options,
+			resumeSchema: options?.resumeSchema ?? executionContext.resumeSchema,
+		};
+		await executionContext.onSuspend?.(payload, resolvedOptions);
+		return await Promise.resolve({
+			[SUSPEND_BRAND]: true,
+			payload,
+			...resolvedOptions,
+		} as never);
+	};
 }
 
 /**

@@ -17,6 +17,17 @@ export class StructuredToolkit extends BaseToolkit {
 	getTools(): StructuredToolInterface[] {
 		return this.tools;
 	}
+
+	// The packaged app can materialize more than one copy of n8n-core,
+	// so `instanceof` misses toolkits built by another copy of n8n-core
+	static [Symbol.hasInstance](value: unknown): value is StructuredToolkit {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			Array.isArray((value as { tools?: unknown }).tools) &&
+			typeof (value as { getTools?: unknown }).getTools === 'function'
+		);
+	}
 }
 
 /**

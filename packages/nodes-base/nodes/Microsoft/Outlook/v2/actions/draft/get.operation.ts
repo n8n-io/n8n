@@ -107,7 +107,14 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'GET', `/messages/${draftId}`, undefined, qs);
+	responseData = await microsoftApiRequest.call(
+		this,
+		'GET',
+		`/messages/${draftId}`,
+		index,
+		undefined,
+		qs,
+	);
 
 	if (output === 'simple') {
 		responseData = simplifyOutputMessages([responseData as IDataObject]);
@@ -117,7 +124,12 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		executionData = await downloadAttachments.call(this, responseData as IDataObject, prefix);
+		executionData = await downloadAttachments.call(
+			this,
+			responseData as IDataObject,
+			prefix,
+			index,
+		);
 	} else {
 		executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData as IDataObject),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import type { FormFieldValue, IFormInput, FormFieldValueUpdate, FormValues } from '../../types';
 import type { FormEventBus } from '../../utils';
@@ -14,6 +14,7 @@ export interface FormInputsProps {
 	columnView?: boolean;
 	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
 	teleported?: boolean;
+	tagSize?: 'small' | 'medium' | 'large';
 }
 
 const props = withDefaults(defineProps<FormInputsProps>(), {
@@ -144,6 +145,12 @@ onMounted(() => {
 		props.eventBus.on('submit', onSubmit);
 	}
 });
+
+// The bus outlives this component when the parent toggles the form, so drop the
+// listener or every remount would submit once more with stale values.
+onBeforeUnmount(() => {
+	props.eventBus?.off('submit', onSubmit);
+});
 </script>
 
 <template>
@@ -170,6 +177,7 @@ onMounted(() => {
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
+						:tag-size="input.properties.tagSize ?? tagSize"
 						:model-value="values[input.name]"
 						:data-test-id="input.name"
 						:show-validation-warnings="showValidationWarnings"

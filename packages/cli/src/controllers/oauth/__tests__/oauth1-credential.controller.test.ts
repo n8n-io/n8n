@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OauthService } from '@/oauth/oauth.service';
@@ -14,6 +15,7 @@ import type { OAuthRequest } from '@/requests';
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const eventService = mockInstance(EventService);
+	const credentialsOverwrites = mockInstance(CredentialsOverwrites);
 
 	mockInstance(Logger);
 	mockInstance(ExternalHooks);
@@ -233,6 +235,8 @@ describe('OAuth1CredentialController', () => {
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -240,6 +244,8 @@ describe('OAuth1CredentialController', () => {
 				user: { id: 'user-42' },
 				credentialType: 'twitterOAuth1Api',
 				credentialId: 'cred-1',
+				supportsManagedAuth: true,
+				usesManagedAuth: false,
 			});
 		});
 

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ICredentialResolver } from '@n8n/decorators';
-import type { InstanceSettings, Cipher } from 'n8n-core';
+import type { Cipher } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,14 +25,7 @@ describe('N8nResolverSeeder', () => {
 		execute: vi.fn(),
 	};
 
-	const buildSeeder = (isLeader: boolean) =>
-		new N8nResolverSeeder(
-			repository,
-			cipher,
-			mock<InstanceSettings>({ isLeader }),
-			registry,
-			logger,
-		);
+	const buildSeeder = () => new N8nResolverSeeder(repository, cipher, registry, logger);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -44,7 +37,7 @@ describe('N8nResolverSeeder', () => {
 		registry.getResolverByTypename.mockReturnValue(mock<ICredentialResolver>());
 	});
 
-	describe('on the leader main', () => {
+	describe('seed', () => {
 		it('inserts the system resolver with the well-known id when missing', async () => {
 			insertBuilder.execute.mockResolvedValue({
 				identifiers: [{ id: SYSTEM_RESOLVER_ID }],
@@ -59,7 +52,7 @@ describe('N8nResolverSeeder', () => {
 			} as DynamicCredentialResolver;
 			repository.findOneBy.mockResolvedValue(inserted);
 
-			const result = await buildSeeder(true).seed();
+			const result = await buildSeeder().seed();
 
 			expect(cipher.encryptV2).toHaveBeenCalledWith({});
 			expect(insertBuilder.into).toHaveBeenCalledWith(DynamicCredentialResolver);
@@ -77,7 +70,7 @@ describe('N8nResolverSeeder', () => {
 		it('throws when SYSTEM_RESOLVER_TYPE is not registered (drift between constant and resolver class)', async () => {
 			registry.getResolverByTypename.mockReturnValue(undefined);
 
-			await expect(buildSeeder(true).seed()).rejects.toThrow(
+			await expect(buildSeeder().seed()).rejects.toThrow(
 				`SYSTEM_RESOLVER_TYPE "${SYSTEM_RESOLVER_TYPE}" is not registered`,
 			);
 
@@ -101,7 +94,7 @@ describe('N8nResolverSeeder', () => {
 			} as DynamicCredentialResolver;
 			repository.findOneBy.mockResolvedValue(preExisting);
 
-			const seeder = buildSeeder(true);
+			const seeder = buildSeeder();
 			const first = await seeder.seed();
 			const second = await seeder.seed();
 
@@ -110,16 +103,20 @@ describe('N8nResolverSeeder', () => {
 			expect(first).toBe(preExisting);
 			expect(second).toBe(preExisting);
 		});
-	});
 
-	describe('on a follower main', () => {
-		it('returns undefined and does not touch the repository or cipher', async () => {
-			const result = await buildSeeder(false).seed();
+		it('seeds regardless of leadership role (no leader gate)', async () => {
+			insertBuilder.execute.mockResolvedValue({
+				identifiers: [{ id: SYSTEM_RESOLVER_ID }],
+				generatedMaps: [],
+				raw: [],
+			});
+			repository.findOneBy.mockResolvedValue(mock<DynamicCredentialResolver>());
 
-			expect(repository.createQueryBuilder).not.toHaveBeenCalled();
-			expect(repository.findOneBy).not.toHaveBeenCalled();
-			expect(cipher.encryptV2).not.toHaveBeenCalled();
-			expect(result).toBeUndefined();
+			await buildSeeder().seed();
+
+			// The insert runs unconditionally — a follower promoted to leader after boot
+			// no longer leaves the row unseeded.
+			expect(insertBuilder.execute).toHaveBeenCalledTimes(1);
 		});
 	});
 });

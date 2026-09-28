@@ -204,7 +204,7 @@ describe('evaluate() integration', () => {
 	});
 
 	it('auto-resumes interruptible tool calls during eval', async () => {
-		const { createAgentWithMixedTools } = await import('./helpers');
+		const { createAgentWithMixedTools } = await import('./helpers.js');
 		const agent = createAgentWithMixedTools('anthropic');
 
 		const usedTool = new Eval('used-list-tool')

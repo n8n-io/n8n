@@ -1,0 +1,33 @@
+operationId: deleteUser
+tags:
+  - User
+summary: Delete user
+description: Delete a user from your instance.
+x-required-scope: user:delete
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the user.
+    name: userId
+    in: path
+  - schema:
+      type: string
+      description: ID of the project to transfer the deleted user's workflows and credentials to. Omit to delete those resources instead of transferring them.
+    required: false
+    name: transferId
+    in: query
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

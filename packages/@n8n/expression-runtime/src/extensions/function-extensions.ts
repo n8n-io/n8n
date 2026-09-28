@@ -1,5 +1,6 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
+import { defineField } from './utils';
 
 const min = Math.min;
 const max = Math.max;
@@ -29,7 +30,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 	}
 	const result: Record<string, unknown> = {};
 	for (let i = 0; i < keys.length; i++) {
-		result[keys[i] as string] = values[i];
+		defineField(result, keys[i] as PropertyKey, values[i]);
 	}
 	return result;
 };
@@ -41,6 +42,19 @@ const average = (...args: number[]) => {
 const not = (value: unknown): boolean => {
 	return !value;
 };
+
+function toPathSegment(input: unknown): string {
+	if (input === null || input === undefined) {
+		throw new ExpressionExtensionError('Invalid identifier: a value is required');
+	}
+
+	const value = String(input);
+	if (value === '' || value === '.' || value === '..') {
+		throw new ExpressionExtensionError(`Invalid identifier: "${value}" is not allowed`);
+	}
+
+	return encodeURIComponent(value);
+}
 
 function ifEmpty<T, V>(value: V, defaultValue: T) {
 	if (arguments.length !== 2) {
@@ -85,6 +99,7 @@ export const extendedFunctions = {
 	average,
 	numberList,
 	zip,
+	toPathSegment,
 	$min: min,
 	$max: max,
 	$average: average,

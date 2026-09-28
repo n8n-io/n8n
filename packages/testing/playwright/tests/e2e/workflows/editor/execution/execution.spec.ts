@@ -50,8 +50,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should test manual workflow', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
+		test('should test manual workflow @engine:v2', async ({ n8n }) => {
+			const { workflowId } = await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
@@ -85,6 +85,8 @@ test.describe(
 			await n8n.notifications.waitForNotificationAndClose(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeVisible();
 			await n8n.canvas.clearExecutionData();
@@ -128,7 +130,7 @@ test.describe(
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 		});
 
-		test('should test webhook workflow', async ({ n8n }) => {
+		test('should test webhook workflow', async ({ n8n, api }) => {
 			await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -151,7 +153,7 @@ test.describe(
 			await n8n.ndv.clickBackToCanvasButton();
 
 			const webhookUrl = await n8n.clipboard.readText();
-			const response = await n8n.page.request.get(webhookUrl);
+			const response = await api.webhooks.trigger(webhookUrl);
 			expect(response.status()).toBe(200);
 
 			await assertNodeExecutionStates(n8n, [

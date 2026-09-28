@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
 import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 describe('AuthService Browser ID Whitelist', () => {
 	let authService: AuthService;
@@ -48,6 +48,12 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/oauth1-credential/callback');
 			expect(skipEndpoints).toContain('/rest/oauth2-credential/callback');
+		});
+
+		it('should include the dynamic-credential authorize link in the skip browser ID check endpoints', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+
+			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
 	});
 });

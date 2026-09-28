@@ -7,6 +7,9 @@
         "appoinmentStatus": {
             "type": "string"
         },
+        "appointmentStatus": {
+            "type": "string"
+        },
         "assignedUserId": {
             "type": "string"
         },
@@ -22,6 +25,9 @@
         "isRecurring": {
             "type": "boolean"
         },
+        "locationId": {
+            "type": "string"
+        },
         "status": {
             "type": "string"
         },
@@ -32,5 +38,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -84,3 +84,45 @@ describe('WorkflowPreviewCanvas renderScale', () => {
 		expect(style).toContain('scale(1)');
 	});
 });
+
+describe('WorkflowPreviewCanvas full-canvas visualization', () => {
+	const fullCanvasWorkflow: PreviewWorkflow = {
+		nodes: [],
+		connections: [],
+		fullCanvasVisualization: { type: 'agent-builder' },
+	};
+
+	function mountFullCanvas(animating: boolean) {
+		vi.mocked(useElementSize).mockReturnValue({
+			width: ref(1600),
+			height: ref(420),
+		} as unknown as ReturnType<typeof useElementSize>);
+
+		return mount(WorkflowPreviewCanvas, {
+			props: { workflow: fullCanvasWorkflow, animating },
+			global: { stubs: { WorkflowPreviewNode: true, AgentBuilderVisualization: true } },
+		});
+	}
+
+	it('renders the full-canvas visualization component', () => {
+		const wrapper = mountFullCanvas(false);
+		const viz = wrapper.findComponent({ name: 'AgentBuilderVisualization' });
+		expect(viz.exists()).toBe(true);
+		expect(viz.props('active')).toBe(false);
+	});
+
+	it('activates the visualization when animating', async () => {
+		const wrapper = mountFullCanvas(true);
+		await wrapper.vm.$nextTick();
+		const viz = wrapper.findComponent({ name: 'AgentBuilderVisualization' });
+		expect(viz.props('active')).toBe(true);
+	});
+
+	it('stays active after the visualization completes', async () => {
+		const wrapper = mountFullCanvas(true);
+		const viz = wrapper.findComponent({ name: 'AgentBuilderVisualization' });
+		viz.vm.$emit('complete');
+		await wrapper.vm.$nextTick();
+		expect(wrapper.findComponent({ name: 'AgentBuilderVisualization' }).props('active')).toBe(true);
+	});
+});

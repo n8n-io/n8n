@@ -1,9 +1,22 @@
 import { execSync } from 'child_process';
 
+import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
+
 function globalTeardown() {
 	console.log('🧹 Starting global teardown...');
 
-	const ports = [5678, 8080];
+	// Ports this run actually used (they may differ from the defaults, e.g. the
+	// alt-port dev-server smoke runs the backend on 5699). A portless URL means
+	// 80/443, never a dev server this run started. Killing nothing beats falling
+	// back to the defaults, which are most likely the developer's own servers.
+	const ports = [
+		...new Set(
+			[getBackendUrl(), getFrontendUrl()]
+				.filter((url): url is string => !!url && URL.canParse(url))
+				.map((url) => new URL(url).port)
+				.filter(Boolean),
+		),
+	];
 
 	for (const port of ports) {
 		try {

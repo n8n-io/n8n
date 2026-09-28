@@ -1,4 +1,4 @@
-import { createWorkspaceTools } from '@n8n/agents';
+import { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from '@n8n/agents';
 
 import { IGNORED_WORKSPACE_TOOLS, REPLAYED_WORKSPACE_TOOL_ARGS } from '../harness/langsmith-seed';
 
@@ -30,6 +30,24 @@ describe('workspace tool contract (@n8n/agents drift guard)', () => {
 			for (const key of args) {
 				expect(liveKeys, `${name} no longer defines arg "${key}"`).toContain(key);
 			}
+		}
+	});
+
+	it('does not expose removed filesystem helpers via the allowlist', () => {
+		const removed = [
+			'workspace_append_file',
+			'workspace_list_files',
+			'workspace_file_stat',
+			'workspace_mkdir',
+			'workspace_rmdir',
+			'workspace_delete_file',
+			'workspace_copy_file',
+			'workspace_move_file',
+		];
+		for (const name of removed) {
+			expect(CORE_WORKSPACE_TOOL_NAMES.has(name)).toBe(false);
+			// Historical seeds may still replay these — they remain in @n8n/agents.
+			expect(liveByName.has(name), `${name} should still exist for seed replay`).toBe(true);
 		}
 	});
 });

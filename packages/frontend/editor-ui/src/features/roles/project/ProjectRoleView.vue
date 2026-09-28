@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
@@ -14,7 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
@@ -22,6 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -46,6 +47,8 @@ const {
 	showCreateButton,
 	hasUnsavedChanges,
 	displayNameValidationRules,
+	submitted,
+	validateOnSubmit,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
@@ -57,6 +60,7 @@ const {
 					[],
 			),
 		),
+	filterScopes: (scopes) => scopes.filter((s) => CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -119,6 +123,26 @@ function toggleScope(scope: string) {
 		}
 	}
 
+	// Executions: viewing follows workflow viewing and cannot be toggled on its own
+	// (its checkbox is disabled); deleting requires viewing.
+	if (scope === 'workflow:read') {
+		if (isBeingAdded && !form.value.scopes.includes('execution:read')) {
+			toggleScope('execution:read');
+		}
+		if (!isBeingAdded) {
+			if (form.value.scopes.includes('execution:read')) toggleScope('execution:read');
+			if (form.value.scopes.includes('execution:delete')) toggleScope('execution:delete');
+		}
+	}
+
+	if (
+		scope === 'execution:delete' &&
+		isBeingAdded &&
+		!form.value.scopes.includes('workflow:read')
+	) {
+		toggleScope('workflow:read');
+	}
+
 	// Dependency: workflow:publish and workflow:unpublish are coupled
 	if (scope === 'workflow:publish') {
 		if (isBeingAdded && !form.value.scopes.includes('workflow:unpublish')) {
@@ -131,6 +155,10 @@ function toggleScope(scope: string) {
 }
 
 async function createProjectRole() {
+	if (!validateOnSubmit('projectRoles.action.create.error')) {
+		return;
+	}
+
 	try {
 		const role = await rolesStore.createRole({
 			...form.value,
@@ -143,6 +171,7 @@ async function createProjectRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions: role.scopes,
 		});
 
@@ -200,6 +229,7 @@ async function updateProjectRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});
@@ -232,7 +262,9 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(toRaw(preset.scopes));
+	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
+		CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s),
+	);
 }
 
 async function deleteRole() {
@@ -313,6 +345,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 		:back-button-text="backButtonText"
 		:labels="editorLabels"
 		:display-name-validation-rules="displayNameValidationRules"
+		:show-display-name-error="submitted"
 		@back="onBackClick"
 		@save="handleSubmit"
 		@discard="resetForm(initialState)"
@@ -363,7 +396,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 										validate-on-blur
 										type="checkbox"
 										:class="$style.checkbox"
-										:disabled="isReadOnly"
+										:disabled="isReadOnly || scope === 'execution:read'"
 										@update:model-value="() => toggleScope(scope)"
 									/>
 								</N8nTooltip>

@@ -109,13 +109,105 @@ describe('MessageEventBusDestinationWebhook', () => {
 				url: 'https://example.com/webhook',
 			});
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(sentOptions).toMatchObject({
 				url: 'https://example.com/webhook',
 				method: 'POST',
 				returnFullResponse: true,
 				json: true,
 			});
+		});
+
+		it('should apply Simplified Custom Auth credentials', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'credential-id', name: 'API credential' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: { httpTemplatedCustomAuth: credentialDetails },
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			const decrypted = {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			};
+			credentialsHelper.getDecrypted.mockResolvedValue(decrypted);
+			credentialsHelper.authenticate.mockResolvedValue({
+				url: 'https://example.com/webhook',
+				headers: { Authorization: 'Bearer secret' },
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({
+				msg: createMessage(),
+				confirmCallback: vi.fn(),
+			} as any);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpTemplatedCustomAuth',
+				'internal',
+				undefined,
+				false,
+			);
+			expect(credentialsHelper.authenticate).toHaveBeenCalledWith(
+				decrypted,
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://example.com/webhook' }),
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer secret' }),
+				}),
+			);
+		});
+
+		it('should not send when Simplified Custom Auth credentials cannot be resolved', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+					credentials: {
+						httpTemplatedCustomAuth: { id: 'credential-id', name: 'API credential' },
+					},
+				},
+				outboundHttp,
+			);
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockRejectedValue(new Error('Invalid credential template'));
+			destination.credentialsHelper = credentialsHelper;
+
+			await expect(
+				destination.receiveFromEventBus({
+					msg: createMessage(),
+					confirmCallback: vi.fn(),
+				} as Parameters<MessageEventBusDestinationWebhook['receiveFromEventBus']>[0]),
+			).rejects.toThrow('Invalid credential template');
+			expect(request).not.toHaveBeenCalled();
+		});
+
+		it('should send without authentication when Simplified Custom Auth credentials are absent', async () => {
+			const { sentOptions } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpTemplatedCustomAuth',
+				credentials: {},
+			});
+
+			expect(sentOptions).not.toHaveProperty('auth');
+			expect(sentOptions.headers).not.toHaveProperty('Authorization');
 		});
 
 		it('should map the message payload to the JSON body', async () => {

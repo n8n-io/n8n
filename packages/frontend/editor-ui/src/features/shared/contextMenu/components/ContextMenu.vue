@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useContextMenu } from '../composables/useContextMenu';
 import { isFocusHandoffAction, type ContextMenuAction } from '../composables/useContextMenuItems';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { nextTick, ref, watch } from 'vue';
 import {
 	ContextMenuContent,
@@ -17,7 +17,9 @@ import { N8nIcon, N8nKeyboardShortcut } from '@n8n/design-system';
 const contextMenu = useContextMenu();
 const { position, isOpen, actions } = contextMenu;
 const trigger = ref<HTMLElement>();
-const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
+const emit = defineEmits<{
+	action: [action: ContextMenuAction, nodeIds: string[], groupId?: string];
+}>();
 const { APP_Z_INDEXES } = useStyles();
 
 watch(
@@ -48,7 +50,10 @@ let suppressRestoreFocus = false;
 
 function onActionSelect(item: ContextMenuAction) {
 	suppressRestoreFocus = isFocusHandoffAction(item);
-	emit('action', item, contextMenu.targetNodeIds.value);
+	// Read the target while the menu is guaranteed open, and hand it down as
+	// data — group actions must target the group that was right-clicked, not
+	// whatever the snapshotted member ids resolve to at dispatch time.
+	emit('action', item, contextMenu.targetNodeIds.value, contextMenu.targetGroupId.value);
 }
 
 function onCloseAutoFocus(event: Event) {
@@ -89,7 +94,13 @@ function onOpenChange(open: boolean) {
 					<template v-for="item in actions" :key="item.id">
 						<ContextMenuSeparator v-if="item.divided" :class="$style.separator" />
 						<ContextMenuItem
-							:class="[$style.item, $style.itemContainer, { [$style.disabled]: !!item.disabled }]"
+							:class="[
+								$style.item,
+								$style.itemContainer,
+								{
+									[$style.disabled]: !!item.disabled,
+								},
+							]"
 							:disabled="item.disabled"
 							:data-test-id="`context-menu-item-${item.id}`"
 							@select="onActionSelect(item.id)"

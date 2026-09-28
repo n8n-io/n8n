@@ -4,7 +4,7 @@ import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Settings @capability:proxy',
+	'Settings',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},
@@ -48,10 +48,8 @@ test.describe(
 			await memberN8n.chatHubChat.getChatInput().fill('Hello');
 			await memberN8n.chatHubChat.getSendButton().click();
 
-			await expect(memberN8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello');
-			await expect(memberN8n.chatHubChat.getChatMessages().nth(1)).toContainText(
-				'Hello! How can I help you today?',
-			);
+			await expect(memberN8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello'); // user-typed, assert exact
+			await memberN8n.chatHubChat.expectReplyAt(1); // assistant reply streamed in (content is non-deterministic)
 			await memberN8n.page.close();
 		});
 

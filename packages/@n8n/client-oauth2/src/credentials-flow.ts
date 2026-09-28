@@ -1,4 +1,5 @@
-import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from './client-assertion';
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
+
 import type { ClientOAuth2 } from './client-oauth2';
 import type { ClientOAuth2Token } from './client-oauth2-token';
 import { DEFAULT_HEADERS } from './constants';
@@ -10,6 +11,7 @@ interface CredentialsFlowBody {
 	client_secret?: string;
 	grant_type: 'client_credentials';
 	scope?: string;
+	resource?: string;
 	client_assertion_type?: string;
 	client_assertion?: string;
 }
@@ -29,10 +31,13 @@ export class CredentialsFlow {
 		const options = { ...this.client.options };
 		expects(options, 'clientId', 'accessTokenUri');
 
-		const headers: Headers = { ...DEFAULT_HEADERS };
+		// Caller-supplied headers (e.g. a partner User-Agent) first, so `Authorization`
+		// below always wins if a caller ever also set that.
+		const headers: Headers = { ...DEFAULT_HEADERS, ...options.headers };
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
 			...(options.additionalBodyProperties ?? {}),
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		if (options.scopes !== undefined) {

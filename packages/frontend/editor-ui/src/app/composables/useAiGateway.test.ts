@@ -9,6 +9,7 @@ const mockGetGatewayWallet = vi.fn();
 const mockGetGatewayConfig = vi
 	.fn()
 	.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
+const mockSaveCurrentWorkflow = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
@@ -16,7 +17,9 @@ vi.mock('@/features/ai/assistant/assistant.api', () => ({
 }));
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
-	useWorkflowSaving: vi.fn(() => ({ saveCurrentWorkflow: vi.fn() })),
+	useWorkflowSaving: vi.fn(() => ({
+		saveCurrentWorkflow: (...args: unknown[]) => mockSaveCurrentWorkflow(...args),
+	})),
 }));
 
 vi.mock('vue-router', () => ({
@@ -30,9 +33,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
+const mockIsAiGatewayCloudUbbEnabled = ref(false);
 
-vi.mock('@/app/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		isAiGatewayEnabled: mockIsAiGatewayEnabled.value,
+		isAiGatewayCloudUbbEnabled: mockIsAiGatewayCloudUbbEnabled.value,
+	})),
 }));
 
 describe('useAiGateway', () => {
@@ -40,6 +47,7 @@ describe('useAiGateway', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
+		mockIsAiGatewayCloudUbbEnabled.value = false;
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
@@ -56,7 +64,11 @@ describe('useAiGateway', () => {
 
 		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
 
 			const { fetchWallet, balance, budget } = useAiGateway();
 
@@ -76,9 +88,9 @@ describe('useAiGateway', () => {
 			await fetchWallet();
 			expect(balance.value).toBe(5);
 
-			// Second call fails
+			// Second call fails (force past the TTL cache so it actually hits the API)
 			mockGetGatewayWallet.mockRejectedValueOnce(new Error('Network error'));
-			await fetchWallet();
+			await fetchWallet({ force: true });
 
 			// Values should remain from first successful call
 			expect(balance.value).toBe(5);
@@ -97,6 +109,16 @@ describe('useAiGateway', () => {
 			// Both instances read from the same store
 			expect(instance1.balance.value).toBe(3);
 			expect(instance2.balance.value).toBe(3);
+		});
+	});
+
+	describe('saveAfterToggle()', () => {
+		it('should wait for a foreground workflow save', async () => {
+			mockSaveCurrentWorkflow.mockResolvedValue(true);
+
+			await expect(useAiGateway().saveAfterToggle()).resolves.toBe(true);
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, false);
 		});
 	});
 
@@ -144,6 +166,51 @@ describe('useAiGateway', () => {
 		it('should return false when no config is loaded', () => {
 			const { isNodePropertyHidden } = useAiGateway();
 			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+	});
+
+	describe('isNodeTypeVersionSupported()', () => {
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				minNodeTypeVersion: { 'n8n-nodes-base.browserbase': 2 },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isNodeTypeVersionSupported } = useAiGateway();
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 2)).toBe(true);
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 1)).toBe(false);
+		});
+	});
+
+	describe('isActionOptionVisible()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			parameters: {},
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				supportedActions: { 'n8n-nodes-base.browserbase': { session: ['create'] } },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
+			expect(isActionOptionVisible(managedNode, 'resource', 'other')).toBe(false);
+		});
+
+		it('should return true when no config is loaded', () => {
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
 		});
 	});
 });

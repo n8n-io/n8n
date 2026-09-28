@@ -74,6 +74,7 @@ export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		type: string;
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
@@ -146,13 +147,6 @@ export declare namespace UserRequest {
 		{},
 		{},
 		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
@@ -243,19 +237,6 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-			projectId?: string;
-			state?: 'empty';
-		}
-	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
@@ -305,6 +286,18 @@ export declare namespace ProjectRequest {
 		lastName: string;
 		role: ProjectRole | AssignableProjectRole;
 	};
+	/**
+	 * A user who reaches a project through a global role instead of a project
+	 * relation. Instance owners and admins always have full project access, so
+	 * the member list shows them even when no relation row exists.
+	 */
+	type ProjectImplicitMemberResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		globalRole: { slug: string; displayName: string };
+	};
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
@@ -312,8 +305,11 @@ export declare namespace ProjectRequest {
 		type: ProjectType;
 		description: string | null;
 		customTelemetryTags: Array<{ key: string; value: string }>;
+		creatorId: string | null;
 		relations: ProjectRelationResponse[];
+		implicitMembers: ProjectImplicitMemberResponse[];
 		scopes: Scope[];
+		rolesManaged: boolean;
 	};
 }
 

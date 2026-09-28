@@ -14,7 +14,7 @@ import type { ExecutionFilterType } from '../../executions.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -181,6 +181,8 @@ const goToUpgrade = () => {
 				:running-executions-count="executionsStore.concurrentExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:is-initial-load="!executionsStore.initialLoadComplete"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<ExecutionStopAllText :executions="props.executions" />
@@ -299,7 +301,7 @@ const goToUpgrade = () => {
 	}
 
 	// Lower first execution card so fader is not visible when not scrolled
-	& > div:first-child {
+	& > div:first-child:not(.noResultsContainer) {
 		margin-top: 3px;
 	}
 }
@@ -320,7 +322,10 @@ const goToUpgrade = () => {
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing--2xl);
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	text-align: center;
 }
 

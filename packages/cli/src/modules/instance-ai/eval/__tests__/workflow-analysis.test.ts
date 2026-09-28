@@ -14,9 +14,12 @@ import { UserError } from 'n8n-workflow';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 
@@ -46,6 +49,35 @@ function makeWorkflow(nodes: INode[], connections: IConnections = {}): IWorkflow
 		updatedAt: new Date(),
 	};
 }
+
+describe('Data Table read predicates', () => {
+	function makeDataTableNode(parameters: INodeParameters): INode {
+		return makeNode({ name: 'Table', type: 'n8n-nodes-base.dataTable', parameters });
+	}
+
+	it.each(['get', 'rowExists', 'rowNotExists'])('treats %s as a read', (operation) => {
+		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(true);
+	});
+
+	it.each(['insert', 'update', 'deleteRows'])('treats %s as a write', (operation) => {
+		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
+	});
+
+	it('only counts `get` as row-emitting', () => {
+		// rowExists/rowNotExists return `[this.getInputData()[index]]` — the input
+		// item passed through — so the table's column contract does not apply.
+		expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation: 'get' }))).toBe(true);
+		for (const operation of ['rowExists', 'rowNotExists', 'insert']) {
+			expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
+		}
+	});
+
+	it('ignores non-Data-Table nodes', () => {
+		const node = makeNode({ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' });
+		expect(isDataTableRead(node)).toBe(false);
+		expect(emitsDataTableRows(node)).toBe(false);
+	});
+});
 
 describe('identifyNodesForPinData', () => {
 	it('should identify AI root nodes as needing pin data', () => {
@@ -419,6 +451,32 @@ describe('partitionAiRoots', () => {
 				root: 'Agent',
 				subNodeType: llmType,
 				reason: 'unsupported_vendor_llm',
+			});
+		});
+
+		it.each([
+			'@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			'@n8n/n8n-nodes-langchain.embeddingsCohere',
+			'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+			'@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
+		])('auto-pins a root backed by embeddings sub-node %s', (embeddingsType) => {
+			// Embeddings speak the vendor SDK, so the HTTP mock never sees them, and
+			// no `EVAL_PROVIDER_URL_FIELD` entry rewrites their credentials. Left
+			// unpinned the root reaches the real provider on real credentials.
+			const nodes = [
+				makeNode({ name: 'Embeddings', type: embeddingsType }),
+				makeNode({ name: 'Store', type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory' }),
+			];
+			const connections: IConnections = {
+				Embeddings: { ai_embedding: [[{ node: 'Store', type: 'ai_embedding', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Store']);
+			expect(result.autoPinned[0]).toMatchObject({
+				root: 'Store',
+				subNodeType: embeddingsType,
+				reason: 'unsupported_vendor_embeddings',
 			});
 		});
 
@@ -1078,6 +1136,40 @@ describe('generateMockHints', () => {
 		]);
 	});
 
+	it('names the empty trigger content in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[0][0]).not.toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain(TRIGGER_CONTENT_CORRECTION);
+	});
+
+	it('names the failure reason in the retry prompt when the first attempt threw', async () => {
+		const generate = mockAgentResponses(
+			new Error('Unexpected end of JSON input'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[1][0]).toContain(
+			'The previous answer was unusable: Unexpected end of JSON input',
+		);
+	});
+
 	it('should return emptyResult with both warnings when every attempt fails', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
@@ -1126,6 +1218,26 @@ describe('generateMockHints', () => {
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
 	});
+
+	it.each([true, 'true'])(
+		'accepts empty triggerContent when triggerEmitsNoItems is %j, and forwards the flag',
+		async (flag) => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					globalContext: '',
+					nodeHints: { Slack: 'foo' },
+					triggerEmitsNoItems: flag,
+				}),
+			);
+
+			const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.triggerEmitsNoItems).toBe(true);
+			expect(result.warnings).toEqual([]);
+		},
+	);
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');

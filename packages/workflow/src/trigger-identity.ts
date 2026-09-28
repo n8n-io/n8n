@@ -1,8 +1,10 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPES,
 	MCP_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from './constants';
 import { toExecutionContextEstablishmentHookParameter } from './execution-context-establishment-hooks';
 import type { INodeParameters } from './interfaces';
@@ -36,6 +38,21 @@ function hasContextEstablishmentHook(parameters: INodeParameters | undefined): b
 }
 
 /**
+ * Whether a Chat Trigger's `n8nUserAuth` establishes the visitor's n8n identity: only in
+ * hosted-chat mode (embedded/webhook mode has no page to run the OAuth2 handshake on) and
+ * only when public (a non-public trigger never reaches the auth code at all). Absent
+ * `mode` counts as `hostedChat`, its default.
+ */
+function isHostedChatUserAuthTrigger(nodeType: string, parameters: INodeParameters | undefined) {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		parameters?.public === true &&
+		parameters?.authentication === 'n8nUserAuth' &&
+		(parameters?.mode ?? 'hostedChat') === 'hostedChat'
+	);
+}
+
+/**
  * Classifies a single trigger node by the identity it can establish at runtime.
  *
  * Shared by the backend publish-time validation (`WorkflowValidationService`) and
@@ -55,11 +72,28 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	if (isSubWorkflowTrigger || isChatHubTrigger || isMcpTrigger) {
+	// The Webhook node's "n8n User Auth (OAuth2)" mode injects the caller's n8n
+	// identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
+	const isOAuth2Webhook =
+		nodeType === WEBHOOK_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
+	// The form trigger establishes the submitter's identity through its OAuth2 flow,
+	// which is what `n8nUserAuth` (typeVersion >= 2.6) now always runs on.
+	const isFormTrigger =
+		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
+	if (
+		isSubWorkflowTrigger ||
+		isChatHubTrigger ||
+		isHostedChatUserAuthTrigger(nodeType, parameters) ||
+		isMcpTrigger ||
+		isFormTrigger ||
+		isOAuth2Webhook
+	) {
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
-	// Manual/chat/MCP triggers run with the n8n user identity.
+	// Manual triggers run with the executing n8n user's identity (attached from the
+	// session by the manual-run endpoint). Chat and MCP triggers must NOT match here:
+	// outside the branches above they establish no identity at runtime.
 	if (MANUAL_TRIGGER_NODE_TYPES.includes(nodeType)) {
 		return { providesN8nIdentity: true, providesExternalIdentity: false };
 	}

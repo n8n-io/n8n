@@ -3,8 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
@@ -14,7 +14,7 @@ const mockShowMessage = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,
@@ -229,7 +229,34 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(mockShowError).toHaveBeenCalledWith(error, 'Error creating role');
+				expect(mockShowError).toHaveBeenCalledWith(error, "Couldn't create role");
+			});
+		});
+
+		it('should show a validation error and not call the API when name is empty', async () => {
+			const { getByRole } = renderComponent();
+
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
+			});
+		});
+
+		it('should show a validation error and not call the API when name is shorter than 2 characters', async () => {
+			const { container, getByRole } = renderComponent();
+
+			await fillForm(container, 'A');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
 			});
 		});
 	});
@@ -496,6 +523,71 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('execution scope coupling', () => {
+		it('renders execution:read as a disabled checkbox that follows workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-execution:read')).toBeInTheDocument());
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			expect(executionReadCheckbox).toBeDisabled();
+
+			// The viewer preset in this test lacks execution:read: toggling workflow:read
+			// off and on couples it.
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+
+		it('unchecks execution:read and execution:delete when workflow:read is unchecked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			await userEvent.click(readCheckbox);
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionReadCheckbox).toBeChecked();
+			expect(executionDeleteCheckbox).toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+			expect(executionDeleteCheckbox).not.toBeChecked();
+		});
+
+		it('auto-checks workflow:read and execution:read when execution:delete is checked without workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionDeleteCheckbox).toBeChecked();
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+	});
+
 	describe('workflow:execute scope dependency', () => {
 		it('should render workflow:execute checkbox in the UI', async () => {
 			const { getByTestId } = renderComponent();
@@ -686,6 +778,52 @@ describe('ProjectRoleView', () => {
 					params: { roleSlug: 'new-role' },
 				});
 			});
+		});
+	});
+
+	describe('Non-assignable scope stripping (seed/template)', () => {
+		// Scopes that are valid but never assignable to a project role (e.g. cross-type
+		// global scopes). The editor must not forward them into a custom role, because the
+		// backend whitelist rejects them.
+		const NON_ASSIGNABLE_SCOPES = ['user:create', 'role:manage'];
+
+		beforeEach(() => {
+			rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
+				role.slug === 'project:viewer' || role.slug === 'project:editor'
+					? { ...role, scopes: [...role.scopes, ...NON_ASSIGNABLE_SCOPES] }
+					: role,
+			);
+		});
+
+		it('does not forward non-assignable scopes seeded from the default template on create', async () => {
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
+
+			const { container, getByRole } = renderComponent();
+			await fillForm(container, 'Seeded Role');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
+				expect(sentScopes).not.toContain(scope);
+			}
+			// keeps the visible scope and its auto-added list companion
+			expect(sentScopes).toEqual(expect.arrayContaining(['workflow:read', 'workflow:list']));
+		});
+
+		it('does not forward non-assignable scopes when applying an existing role as a preset', async () => {
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
+
+			const { container, getByRole } = renderComponent();
+			await userEvent.click(getByRole('button', { name: 'Editor' }));
+			await fillForm(container, 'Templated Role');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
+				expect(sentScopes).not.toContain(scope);
+			}
 		});
 	});
 });

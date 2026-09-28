@@ -25,6 +25,11 @@ export function node(id: string, type: string, overrides: Partial<INode> = {}): 
 export function createNodeTypes() {
 	const nodeTypes = mock<NodeTypes>();
 	nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+		// Mirrors the real NodeTypes, which throws for a node type that is not
+		// installed on this instance (e.g. an uninstalled community node).
+		if (type === 'unrecognized') {
+			throw new Error(`Unrecognized node type: ${type}`);
+		}
 		if (type === 'trigger') {
 			return { description: { ...description, name: 'trigger' }, trigger: vi.fn() } as never;
 		}
@@ -40,11 +45,35 @@ export function createNodeTypes() {
 				trigger: vi.fn(),
 			} as never;
 		}
+		// The pseudo triggers under their real type names: they implement `trigger()`
+		// like any in-memory trigger, but it is a no-op (fired externally by the
+		// execution engine), so classification must tell them apart by node type.
+		if (
+			type === 'n8n-nodes-base.manualTrigger' ||
+			type === 'n8n-nodes-base.executeWorkflowTrigger' ||
+			type === 'n8n-nodes-base.errorTrigger'
+		) {
+			return { description: { ...description, name: type }, trigger: vi.fn() } as never;
+		}
 		if (type === 'poll') {
 			return { description: { ...description, name: 'poll' }, poll: vi.fn() } as never;
 		}
 		if (type === 'webhook') {
 			return { description: { ...description, name: 'webhook' }, webhook: vi.fn() } as never;
+		}
+		if (type === 'poll-webhook') {
+			return {
+				description: { ...description, name: 'poll-webhook' },
+				poll: vi.fn(),
+				webhook: vi.fn(),
+			} as never;
+		}
+		if (type === 'trigger-webhook') {
+			return {
+				description: { ...description, name: 'trigger-webhook' },
+				trigger: vi.fn(),
+				webhook: vi.fn(),
+			} as never;
 		}
 
 		return { description: { ...description, name: type } } as never;

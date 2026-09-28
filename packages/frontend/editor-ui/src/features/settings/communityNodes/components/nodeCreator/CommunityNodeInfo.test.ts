@@ -1,27 +1,20 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
-import type { ExtendedPublicInstalledPackage } from '../../communityNodes.utils';
 import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { type ComputedRef, ref } from 'vue';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import type { CommunityNodeDetails } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
-
-vi.mock('./utils', () => ({
-	fetchInstalledPackageInfo: vi.fn(),
-}));
-
-// const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
-// const isUpdateCheckAvailable = ref(false);
 
 const defaultUseInstalledCommunityPackage = {
 	installedPackage: ref({
 		installedVersion: '1.0.0',
 		packageName: 'n8n-nodes-test',
-		unverifiedUpdate: false,
-	}) as ComputedRef<ExtendedPublicInstalledPackage>,
-	isUpdateCheckAvailable: ref(false),
+	}) as ComputedRef<PublicInstalledPackage>,
+	canUpdatePackage: ref(false),
+	hasUpdateAvailable: ref(false),
 	isCommunityNode: ref(true),
 	initInstalledPackage: vi.fn(),
 } as unknown as ReturnType<typeof useInstalledCommunityPackage>;
@@ -44,7 +37,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isAdmin: true,
 		isAdminOrOwner: true,
@@ -138,8 +131,7 @@ describe('CommunityNodeInfo', () => {
 			installedPackage: ref({
 				installedVersion: '1.0.0',
 				packageName: 'n8n-nodes-test',
-				unverifiedUpdate: false,
-			}) as ComputedRef<ExtendedPublicInstalledPackage>,
+			}) as ComputedRef<PublicInstalledPackage>,
 		});
 
 		const wrapper = renderComponent({ pinia });
@@ -176,13 +168,13 @@ describe('CommunityNodeInfo', () => {
 		});
 		vi.mocked(useInstalledCommunityPackage).mockReturnValue({
 			...defaultUseInstalledCommunityPackage,
-			isUpdateCheckAvailable: ref(true) as ComputedRef<boolean>,
+			canUpdatePackage: ref(true) as ComputedRef<boolean>,
+			hasUpdateAvailable: ref(true) as ComputedRef<boolean>,
 			installedPackage: ref({
 				installedVersion: '0.0.9',
 				packageName: 'n8n-nodes-test',
 				updateAvailable: '1.0.1',
-				unverifiedUpdate: false,
-			}) as ComputedRef<ExtendedPublicInstalledPackage>,
+			}) as ComputedRef<PublicInstalledPackage>,
 		});
 
 		const wrapper = renderComponent({ pinia });
@@ -200,7 +192,7 @@ describe('CommunityNodeInfo', () => {
 		).toEqual('A new node package version is available');
 	});
 
-	it('should NOT display update notice for unverified update', async () => {
+	it('should not display update notice when the user cannot update packages', async () => {
 		const { useViewStacks } = await import(
 			'@/features/shared/nodeCreator/composables/useViewStacks'
 		);
@@ -222,12 +214,12 @@ describe('CommunityNodeInfo', () => {
 		});
 		vi.mocked(useInstalledCommunityPackage).mockReturnValue({
 			...defaultUseInstalledCommunityPackage,
+			hasUpdateAvailable: ref(true) as ComputedRef<boolean>,
 			installedPackage: ref({
 				installedVersion: '0.0.9',
 				packageName: 'n8n-nodes-test',
 				updateAvailable: '1.0.1',
-				unverifiedUpdate: true,
-			}) as ComputedRef<ExtendedPublicInstalledPackage>,
+			}) as ComputedRef<PublicInstalledPackage>,
 		});
 
 		const wrapper = renderComponent({ pinia });
@@ -303,8 +295,7 @@ describe('CommunityNodeInfo', () => {
 				installedPackage: ref({
 					installedVersion: '1.0.0',
 					packageName: 'n8n-nodes-test',
-					unverifiedUpdate: false,
-				}) as ComputedRef<ExtendedPublicInstalledPackage>,
+				}) as ComputedRef<PublicInstalledPackage>,
 			});
 		});
 

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
@@ -14,6 +14,8 @@ import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { ResourceLocator } from './components/ResourceLocator';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
+
+const containsValue = (value: string) => new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -107,6 +109,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	get container() {
 		return this.page.getByTestId('ndv');
+	}
+
+	getRestrictedNodePanel(): Locator {
+		return this.container.getByTestId('node-restricted-panel');
 	}
 
 	getInputPanel() {
@@ -296,46 +302,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickByTestId('execute-previous-node');
 	}
 
-	async clickAskAiTab() {
-		await this.codeNodeEditor.clickAskAiTab();
-	}
-
-	getAskAiTabPanel() {
-		return this.codeNodeEditor.getAskAiTabPanel();
-	}
-
-	getAskAiCtaButton() {
-		return this.codeNodeEditor.getAskAiCtaButton();
-	}
-
-	getAskAiPromptInput() {
-		return this.codeNodeEditor.getAskAiPromptInput();
-	}
-
-	getAskAiPromptCounter() {
-		return this.codeNodeEditor.getAskAiPromptCounter();
-	}
-
-	getAskAiCtaTooltipNoInputData() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
-	}
-
-	getAskAiCtaTooltipNoPrompt() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
-	}
-
-	getAskAiCtaTooltipPromptTooShort() {
-		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
-	}
-
-	getCodeTabPanel() {
-		return this.codeNodeEditor.getCodeTabPanel();
-	}
-
-	getCodeTab() {
-		return this.codeNodeEditor.getCodeTab();
-	}
-
 	getCodeEditor() {
 		return this.codeNodeEditor.getCodeEditor();
 	}
@@ -350,18 +316,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getPlaceholderText(text: string) {
 		return this.page.getByText(text);
-	}
-
-	getHeyAiText() {
-		return this.codeNodeEditor.getHeyAiText();
-	}
-
-	getCodeGenerationCompletedText() {
-		return this.codeNodeEditor.getCodeGenerationCompletedText();
-	}
-
-	getErrorMessageText(message: string) {
-		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -484,6 +438,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.inlineExpressionEditor.selectPrevItem();
 	}
 
+	async moveMouseAwayFromRunData() {
+		await this.inlineExpressionEditor.moveMouseAway();
+	}
+
 	async openExpressionEditorModal(parameterName: string) {
 		await this.inlineExpressionEditor.openModal(parameterName);
 	}
@@ -520,7 +478,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPaginationPages() {
-		return this.getOutputPagination().locator('.el-pager li.number');
+		return this.getOutputPagination().getByTestId('pagination-item');
 	}
 
 	async navigateToOutputPage(pageNumber: number): Promise<void> {
@@ -596,20 +554,24 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await this.expectOutputRunSelectorValue(value);
 	}
 
-	async getInputRunSelectorValue() {
-		return await this.inputPanel.getRunSelectorInput().inputValue();
+	// Run-selector updates can land asynchronously (notably cross-panel via
+	// run-linking), so assert with a retrying matcher rather than reading once.
+	async expectInputRunSelectorValue(value: string) {
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
-	async getOutputRunSelectorValue() {
-		return await this.outputPanel.getRunSelectorInput().inputValue();
+	async expectOutputRunSelectorValue(value: string) {
+		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	getExecuteNodeButton() {
@@ -771,6 +733,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 		// Fallback for legacy behavior where clicking the wrapper would add an item.
 		await collection.click();
+	}
+
+	getNodeParameterButton(buttonName: string) {
+		return this.getNodeParameters().getByRole('button', { name: buttonName });
+	}
+
+	async clickNodeParameterButton(buttonName: string) {
+		await this.getNodeParameterButton(buttonName).click();
 	}
 
 	getFixedCollectionPropertyPicker(index?: number) {

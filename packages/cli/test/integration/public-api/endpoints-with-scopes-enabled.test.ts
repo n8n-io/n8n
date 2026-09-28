@@ -25,7 +25,11 @@ import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.t
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { JwtService } from '@/services/jwt.service';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
-import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
+import {
+	createAnnotationTags,
+	createErrorExecution,
+	createSuccessfulExecution,
+} from '@test-integration/db/executions';
 import { createTag } from '@test-integration/db/tags';
 import {
 	createAdminWithApiKey,
@@ -78,9 +82,9 @@ describe('Public API endpoints with API key scopes', () => {
 		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
 		// the auth layer in isolation without triggering the full module boot.
 		const { ScopedJwtStrategy } = await import(
-			'@/modules/token-exchange/services/scoped-jwt.strategy'
+			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 
@@ -810,6 +814,70 @@ describe('Public API endpoints with API key scopes', () => {
 					const response = await authOwnerAgent.get('/executions').query({
 						status: 'success',
 					});
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('GET /executions/:id/tags', () => {
+				test('should retrieve execution tags when API key has "executionTags:list" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['executionTags:list'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const workflow = await createWorkflow({}, owner);
+					const execution = await createSuccessfulExecution(workflow);
+
+					const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body).toEqual([]);
+				});
+
+				test('should fail to retrieve execution tags when API key doesn\'t have "executionTags:list" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['executionTags:update'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const workflow = await createWorkflow({}, owner);
+					const execution = await createSuccessfulExecution(workflow);
+
+					const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('PUT /executions/:id/tags', () => {
+				test('should update execution tags when API key has "executionTags:update" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['executionTags:update'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const workflow = await createWorkflow({}, owner);
+					const execution = await createSuccessfulExecution(workflow);
+					const [tag] = await createAnnotationTags(['dataset']);
+
+					const response = await authOwnerAgent
+						.put(`/executions/${execution.id}/tags`)
+						.send([{ id: tag.id }]);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body).toEqual([
+						{
+							id: tag.id,
+							name: 'dataset',
+							createdAt: tag.createdAt.toISOString(),
+							updatedAt: tag.updatedAt.toISOString(),
+						},
+					]);
+				});
+
+				test('should fail to update execution tags when API key doesn\'t have "executionTags:update" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['executionTags:list'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const workflow = await createWorkflow({}, owner);
+					const execution = await createSuccessfulExecution(workflow);
+
+					const response = await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([]);
 
 					expect(response.statusCode).toBe(403);
 				});
@@ -1683,7 +1751,7 @@ describe('Public API endpoints with API key scopes', () => {
 								position: [240, 300],
 							},
 							{
-								id: 'uuid-1234',
+								id: 'uuid-5678',
 								parameters: {},
 								name: 'Cron',
 								type: 'n8n-nodes-base.cron',
@@ -1764,7 +1832,7 @@ describe('Public API endpoints with API key scopes', () => {
 								position: [240, 300],
 							},
 							{
-								id: 'uuid-1234',
+								id: 'uuid-5678',
 								parameters: {},
 								name: 'Cron',
 								type: 'n8n-nodes-base.cron',
@@ -1795,7 +1863,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const member = await createMemberWithApiKey({ scopes: ['workflowTags:list'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const workflow = await createWorkflow({ tags }, member);
 
@@ -1822,7 +1890,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const workflow = await createWorkflow({ tags }, member);
 
@@ -1843,7 +1911,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
 					const workflow = await createWorkflow({}, member);
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const payload = [
 						{
@@ -1907,7 +1975,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
 					const workflow = await createWorkflow({}, member);
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const payload = [
 						{

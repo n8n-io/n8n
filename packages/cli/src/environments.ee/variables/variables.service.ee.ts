@@ -4,6 +4,7 @@ import {
 	NEW_VARIABLE_KEY_REGEX,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -181,20 +182,21 @@ export class VariablesService {
 		await this.updateCache();
 	}
 
+	async getRemainingVariableQuota(): Promise<{ limit: number; remaining: number } | null> {
+		const limit = this.licenseState.getMaxVariables();
+		if (limit === UNLIMITED_LICENSE_QUOTA) return null;
+
+		const variablesCount = (await this.getAllCached()).length;
+		return { limit, remaining: Math.max(0, limit - variablesCount) };
+	}
+
 	private async canCreateNewVariable() {
 		if (!this.licenseState.isVariablesLicensed()) {
 			throw new FeatureNotLicensedError('feat:variables');
 		}
 
-		// This defaults to -1 which is what we want if we've enabled
-		// variables via the config
-		const limit = this.licenseState.getMaxVariables();
-		if (limit === -1) {
-			return;
-		}
-
-		const variablesCount = (await this.getAllCached()).length;
-		if (limit <= variablesCount) {
+		const quota = await this.getRemainingVariableQuota();
+		if (quota && quota.remaining === 0) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 	}
