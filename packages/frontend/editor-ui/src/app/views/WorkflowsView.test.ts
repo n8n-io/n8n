@@ -16,6 +16,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -55,8 +56,18 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
+const mockShowToast = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
+	useToast: () => ({
+		showError: mockShowError,
+		showMessage: mockShowMessage,
+		showToast: mockShowToast,
+	}),
+}));
+
+const mockPrompt = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ prompt: mockPrompt }),
 }));
 
 const router = createRouter({
@@ -68,6 +79,7 @@ const router = createRouter({
 		},
 		{
 			path: '/:projectId/folders/:folderId',
+			name: VIEWS.PROJECTS_FOLDERS,
 			component: { template: '<div></div>' },
 		},
 		{
@@ -576,22 +588,71 @@ describe('Folders', () => {
 		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
 	});
 
-	it('should NOT show standalone "Create folder" button when in overview subpage', async () => {
+	it('shows folder creation on overview after folders become available', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-project',
+			type: ProjectTypes.Personal,
+			scopes: ['folder:create'],
+		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { queryByTestId } = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+		expect(getByTestId('add-folder-button')).toBeVisible();
+	});
+
+	it('creates a folder in the personal project from overview', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-project',
+			type: ProjectTypes.Personal,
+			scopes: ['folder:create'],
+		} as Project;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		mockPrompt.mockResolvedValue({ action: 'confirm', value: 'New folder' });
+		foldersStore.createFolder.mockResolvedValue({
+			resource: 'folder',
+			id: 'new-folder',
+			name: 'New folder',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			subFolderCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+		await userEvent.click(getByTestId('add-folder-button'));
+
+		await waitFor(() =>
+			expect(router.currentRoute.value).toMatchObject({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: 'personal-project', folderId: 'new-folder' },
+			}),
+		);
+		expect(foldersStore.createFolder).toHaveBeenCalledWith(
+			'New folder',
+			'personal-project',
+			undefined,
+		);
 	});
 
 	it('should NOT show standalone "Create folder" button when in shared subpage', async () => {
-		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-project',
+			type: ProjectTypes.Personal,
+			scopes: ['folder:create'],
+		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
 		const { queryByTestId } = renderComponent({

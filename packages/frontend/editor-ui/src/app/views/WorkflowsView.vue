@@ -604,6 +604,19 @@ const showRegisteredCommunityCTA = computed(
 	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
 );
 
+const isOverviewWorkflows = computed(
+	() => projectPages.isOverviewSubPage && !projectPages.isSharedSubPage,
+);
+
+const showOverviewFolderButton = computed(
+	() =>
+		isOverviewWorkflows.value &&
+		foldersEnabled.value &&
+		!!projectsStore.personalProject?.id &&
+		getResourcePermissions(projectsStore.personalProject?.scopes).folder.create &&
+		!readOnlyEnv.value,
+);
+
 const showAIStarterCollectionCallout = computed(() => {
 	return (
 		!loading.value &&
@@ -1721,7 +1734,9 @@ const createFolder = async (
 	parent: { id: string; name: string; type: 'project' | 'folder' },
 	options: { openAfterCreate: boolean } = { openAfterCreate: false },
 ) => {
-	const projectId = currentBreadcrumbsProject.value?.id;
+	const projectId = isOverviewWorkflows.value
+		? projectsStore.personalProject?.id
+		: currentBreadcrumbsProject.value?.id;
 	if (!projectId) return;
 
 	const promptResponsePromise = message.prompt(
@@ -1766,7 +1781,12 @@ const createFolder = async (
 			telemetry.track('User created folder', {
 				folder_id: newFolder.id,
 			});
-			if (options.openAfterCreate) {
+			if (isOverviewWorkflows.value) {
+				await router.push({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId, folderId: newFolder.id },
+				});
+			} else if (options.openAfterCreate) {
 				// Navigate to parent folder id option specified by the caller
 				await router.push({
 					name: VIEWS.PROJECTS_FOLDERS,
@@ -2239,7 +2259,7 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showRegisteredCommunityCTA" #add-button>
+		<template v-if="showRegisteredCommunityCTA || showOverviewFolderButton" #add-button>
 			<N8nTooltip placement="top">
 				<template #content>
 					<span>

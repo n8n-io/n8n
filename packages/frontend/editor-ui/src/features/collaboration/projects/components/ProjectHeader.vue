@@ -80,6 +80,9 @@ const headerIcon = computed((): IconOrEmoji => {
 });
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+const folderProject = computed(() =>
+	projectPages.isOverviewSubPage ? projectsStore.personalProject : homeProject.value,
+);
 
 const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 
@@ -132,7 +135,10 @@ const showSettings = computed(
 const showFolders = computed(() => {
 	return (
 		settingsStore.isFoldersFeatureEnabled &&
-		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
+		([VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS) ||
+			(projectPages.isOverviewSubPage &&
+				route.name === VIEWS.WORKFLOWS &&
+				!!projectsStore.personalProject?.id))
 	);
 });
 
@@ -278,7 +284,7 @@ const menu = computed(() => {
 			label: i18n.baseText('projects.header.create.folder'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				!getResourcePermissions(homeProject.value?.scopes).folder.create,
+				!getResourcePermissions(folderProject.value?.scopes).folder.create,
 		});
 	}
 

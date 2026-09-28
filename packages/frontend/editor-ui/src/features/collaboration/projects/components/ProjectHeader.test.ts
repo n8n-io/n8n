@@ -350,6 +350,23 @@ describe('ProjectHeader', () => {
 	});
 
 	describe('dropdown', () => {
+		it('offers folder creation on overview when the personal project allows it', () => {
+			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+				...route,
+				name: VIEWS.WORKFLOWS,
+			} as RouteLocationNormalizedLoadedGeneric);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+			settingsStore.isFoldersFeatureEnabled = true;
+			projectsStore.personalProject = createTestProject({
+				type: ProjectTypes.Personal,
+				scopes: ['folder:create'],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('menu-folder')).toBeInTheDocument();
+		});
+
 		it('should create a credential', async () => {
 			const project = createTestProject({
 				scopes: ['credential:create'],
