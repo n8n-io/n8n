@@ -9,6 +9,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionRequestDto,
 	PromotionApplyConfigPublicDto,
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
@@ -49,7 +50,6 @@ import {
 	Licensed,
 	Param,
 	Post,
-	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -589,7 +589,6 @@ export class PromotionsPublicController {
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
-	@ProjectScope('project:export')
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
 		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
@@ -620,6 +619,34 @@ export class PromotionsPublicController {
 			parsedDirection,
 			query,
 		);
+	}
+
+	// -- Selective promote ---------------------------------------------------
+
+	@Post('/projects/:projectId/promote')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary("Promote a selection of a project's workflows")
+	@ApiDescription(
+		"Promotes a chosen set of a team project's workflows to the Promote branch of the project's promotion configuration. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id the project no longer owns (its workflow is gone, or moved to another project) leaves the branch, matching the project's change list. A deletion the branch does not hold under this project rejects the whole request before any write. Requires the Promote direction to be cloned first, and a promotion connection to resolve for the project (its own connection, otherwise the instance connection). The API key also needs variable:list when the workflows reference variables.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotePackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async promoteProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: PromoteSelectionRequestDto,
+	): Promise<PromotePackageResultDto> {
+		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
+			...input,
+			// Variable values only travel when the key may list them.
+			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+		});
 	}
 
 	// -- Module access -------------------------------------------------------

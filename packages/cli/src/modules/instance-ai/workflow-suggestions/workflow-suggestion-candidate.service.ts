@@ -8,6 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
 @Service()
@@ -18,6 +19,7 @@ export class WorkflowSuggestionCandidateService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly validation: WorkflowValidationService,
 		private readonly policies: PolicyEnforcementService,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 	) {}
 
 	async prepare(
@@ -45,9 +47,13 @@ export class WorkflowSuggestionCandidateService {
 		WorkflowHelpers.addNodeIds(candidate);
 		WorkflowHelpers.resolveNodeWebhookIds(candidate, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(candidate);
+		const rules = candidate.nodeGroups?.length
+			? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+			: {};
 		WorkflowHelpers.validateWorkflowNodeGroups(
 			candidate,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			rules,
 		);
 		const restrictions = this.validation.validateCredentialNodeRestrictions(candidate.nodes);
 		if (!restrictions.isValid)

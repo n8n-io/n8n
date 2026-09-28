@@ -3,7 +3,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref, useCssModule } from 'vue';
-import type { Agent } from '@/features/agents/agent.types';
+import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { sleep } from '@n8n/utils/sleep';
@@ -29,7 +29,7 @@ const isLoading = ref(false);
 const hasFetched = ref(false);
 const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
-const agentOptions = ref<Agent[]>([]);
+const agentOptions = ref<McpAgent[]>([]);
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const showEmptyState = computed(() => {
@@ -49,7 +49,7 @@ const popperClass = computed(() =>
 		.join(' '),
 );
 
-const projectName = (agent: Agent) =>
+const projectName = (agent: McpAgent) =>
 	agent.project?.type === 'personal'
 		? i18n.baseText('projects.menu.personal')
 		: (agent.project?.name ?? '');

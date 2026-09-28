@@ -1,6 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { Author } from 'chat';
+import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
 
 import type {
 	IntegrationMessageContext,
@@ -28,6 +29,8 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	sender: Author;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;
+	forceBuffered?: boolean;
+	slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 }
 
 export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage;

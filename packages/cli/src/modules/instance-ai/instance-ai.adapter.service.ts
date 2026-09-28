@@ -1,6 +1,8 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -650,6 +652,8 @@ export class InstanceAiAdapterService {
 		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
+		/** Node attachments from either the canvas or Assistant mentions rollout. */
+		nodeContextEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
@@ -688,6 +692,8 @@ export class InstanceAiAdapterService {
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			nodeContextEnabled:
+				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -741,14 +747,17 @@ export class InstanceAiAdapterService {
 					scope,
 				});
 				if (!result.ok) return result;
-				const { id, content: saved } = result.preference;
-				return { ok: true, preference: { id, content: saved, scope } };
+				// The card names the owner, so the write returns it.
+				const { id, content: saved, userId, projectId } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope, userId, projectId } };
 			},
-			recordRejection: (reason, textLength) => {
+			recordRejection: (reason, textLength, scope) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 					surface: 'aia',
 					reason,
-					scope_type: 'user',
+					// From the tool input, so the reported scope follows the tool instead of a constant
+					// that turns wrong the day the tool offers a second scope.
+					scope_type: scope,
 					text_length: textLength,
 				});
 			},

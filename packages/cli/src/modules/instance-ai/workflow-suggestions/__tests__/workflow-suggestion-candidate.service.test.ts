@@ -9,6 +9,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -19,6 +20,7 @@ const credentials = mock<CredentialsService>();
 const nodeTypes = mock<NodeTypes>();
 const validation = mock<WorkflowValidationService>();
 const policies = mock<PolicyEnforcementService>();
+const nodeGroupRules = mock<NodeGroupRulesFlagGate>();
 const enterprise = mockInstance(EnterpriseWorkflowService);
 const user = mock<User>({ id: 'user' });
 const service = new WorkflowSuggestionCandidateService(
@@ -27,6 +29,7 @@ const service = new WorkflowSuggestionCandidateService(
 	nodeTypes,
 	validation,
 	policies,
+	nodeGroupRules,
 );
 const baseline: WorkflowSuggestionSnapshot = {
 	name: 'Original',
@@ -119,9 +122,41 @@ it('rejects inconsistent preserved node groups', async () => {
 	expect(groups).toHaveBeenCalledWith(
 		expect.objectContaining({ nodeGroups: baseline.nodeGroups }),
 		expect.any(Function),
+		{},
 	);
 	groups.mockRestore();
 });
+
+it.each([true, false])(
+	'validates a preserved trigger group with allowTriggerInGroup=%s',
+	async (allowTriggerInGroup) => {
+		nodeGroupRules.getEnabledRules.mockResolvedValue({
+			allowTriggerInGroup,
+			allowMultipleBoundaryNodes: false,
+		});
+		nodeTypes.getByNameAndVersion.mockReturnValue(
+			mock<INodeType>({ description: { group: ['trigger'], webhooks: [] } }),
+		);
+		const groupedBaseline: WorkflowSuggestionSnapshot = {
+			...baseline,
+			nodes: graph.nodes.map((node) => ({ ...node, type: 'n8n-nodes-base.manualTrigger' })),
+			nodeGroups: [{ id: 'group', name: 'Trigger group', nodeIds: ['n'] }],
+		};
+		const candidate: WorkflowSuggestionGraph = {
+			nodes: groupedBaseline.nodes.map((node) => ({ ...node, position: [100, 0] })),
+			connections: {},
+		};
+
+		const preparation = service.prepare(user, 'wf', 'project', groupedBaseline, candidate);
+
+		if (allowTriggerInGroup) {
+			await expect(preparation).resolves.toEqual(candidate);
+		} else {
+			await expect(preparation).rejects.toThrow('cannot contain trigger nodes');
+			expect(policies.enforceWorkflowSave).not.toHaveBeenCalled();
+		}
+	},
+);
 
 it('rejects an invalid graph before credential preparation', async () => {
 	await expect(

@@ -253,14 +253,23 @@ it('reverts and reapplies the suggestion schema', async () => {
 	const db = Container.get(DataSource);
 	// Template databases skip migrate(), which normally installs the DSL wrappers.
 	postgresMigrations.forEach(wrapMigration);
-	await db.undoLastMigration();
+	const migration = db.migrations.find(
+		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790254283961',
+	);
+	if (!migration) throw new Error('The workflow suggestion migration is not registered.');
+	// Test this schema directly. Newer migrations must remain applied.
 	const runner = db.createQueryRunner();
 	try {
-		const table = db.getMetadata(WorkflowSuggestionActivityEntity).tablePath;
-		expect(await runner.hasTable(table)).toBe(false);
+		await migration.down(runner);
+		try {
+			const table = db.getMetadata(WorkflowSuggestionActivityEntity).tablePath;
+			expect(await runner.hasTable(table)).toBe(false);
+			expect(await runner.hasTable(suggestions.metadata.tablePath)).toBe(false);
+		} finally {
+			await migration.up(runner);
+		}
 	} finally {
 		await runner.release();
-		await db.runMigrations();
 	}
 	expect(await suggestions.count()).toBe(0);
 });

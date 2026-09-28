@@ -152,19 +152,11 @@ describe('ScalingService', () => {
 
 		// @ts-expect-error Private method
 		ScalingService.prototype.scheduleQueueRecovery = vi.fn();
-		registerMainOrWebhookListenersSpy = vi.spyOn(
-			scalingService,
-			// @ts-expect-error Private method
-			'registerMainOrWebhookListeners',
-		);
-		// @ts-expect-error Private method
+		registerMainOrWebhookListenersSpy = vi.spyOn(scalingService, 'registerMainOrWebhookListeners');
 		registerWorkerListenersSpy = vi.spyOn(scalingService, 'registerWorkerListeners');
-		// @ts-expect-error Private method
 		scheduleQueueRecoverySpy = vi.spyOn(scalingService, 'scheduleQueueRecovery');
-		// @ts-expect-error Private method
 		stopQueueRecoverySpy = vi.spyOn(scalingService, 'stopQueueRecovery');
 
-		// @ts-expect-error Private method
 		stopQueueMetricsSpy = vi.spyOn(scalingService, 'stopQueueMetrics');
 	});
 
@@ -845,6 +837,7 @@ describe('ScalingService', () => {
 
 		it('should keep waitTill when storing a v2 job-finished result', async () => {
 			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(true);
 			scalingService = new ScalingService(
 				mockLogger(),
 				mock(),
@@ -887,6 +880,45 @@ describe('ScalingService', () => {
 			// A missing waitTill makes main treat a waiting execution as finished and
 			// delete it when the workflow does not save successful executions
 			expect(result?.waitTill).toEqual(waitTill);
+		});
+
+		it('should not store a job-finished result for an execution this process did not enqueue', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(false);
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			// Bull broadcasts progress messages to every main and webhook process
+			messageHandler('job-789', {
+				kind: 'job-finished',
+				version: 2,
+				executionId: 'exec-other-main',
+				workerId: 'worker-456',
+				success: true,
+				status: 'success',
+				startedAt: '2026-07-25T11:59:00.000Z',
+				stoppedAt: '2026-07-25T11:59:30.000Z',
+			});
+
+			expect(activeExecutions.has).toHaveBeenCalledWith('exec-other-main');
+			expect(scalingService.popJobResult('exec-other-main')).toBeUndefined();
 		});
 	});
 

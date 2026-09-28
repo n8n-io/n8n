@@ -153,4 +153,42 @@ describe('AgentIntegrationSchema', () => {
 			expect(result.success).toBe(false);
 		});
 	});
+
+	describe('Teams availability settings', () => {
+		const parse = (settings: Record<string, unknown>) =>
+			AgentIntegrationSchema.safeParse({ type: 'teams', credentialId: 'cred-123', settings });
+
+		it.each([
+			['nothing beyond the shared shape', {}],
+			['team channels', { teamChannels: true }],
+			['group chats', { groupChats: true }],
+			['a read permission with its scope', { teamChannels: true, readAllChannelMessages: true }],
+			[
+				'both reads with both scopes',
+				{
+					teamChannels: true,
+					groupChats: true,
+					readAllChannelMessages: true,
+					readAllGroupMessages: true,
+				},
+			],
+		])('accepts %s', (_label, settings) => {
+			expect(parse(settings).success).toBe(true);
+		});
+
+		it.each([
+			['reading channels without team channels', { readAllChannelMessages: true }],
+			['reading group chats without group chats', { readAllGroupMessages: true }],
+			[
+				'reading channels while team channels are off',
+				{ teamChannels: false, readAllChannelMessages: true },
+			],
+		])('rejects %s', (_label, settings) => {
+			expect(parse(settings).success).toBe(false);
+		});
+
+		it('still rejects an unknown setting', () => {
+			expect(parse({ somethingElse: true }).success).toBe(false);
+		});
+	});
 });
