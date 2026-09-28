@@ -565,8 +565,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// for the per-scenario row seeding, and the note tells the agent they exist.
 	const scenarioTableIdsByName: Record<string, string> = {};
 	let scenarioSeedTablesNote = '';
-	// Declared name → the seed table as restored, so a same-named scenario table
-	// reseeds the table the seeded workflow binds instead of a second one.
 	let restoredSeedTables = new Map<string, { id: string; name: string }>();
 	// Ids the build itself produced (the agent's workflow + any data tables it
 	// made). Tracked here so a throw AFTER the build lands — scenario-table
@@ -851,8 +849,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.dataTables.length > 0 ||
 					remapped.agents.length > 0 ||
 					remapped.folders.length > 0;
-				// Named here, not by the server, so the seeded-tables note can name a
-				// seed table that a scenario reuses.
+				// Named here, not by the server, so the note can name a reused seed table.
 				const seedDataTables = uniquifySeedTableNames(remapped.dataTables);
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
@@ -973,8 +970,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
-				// A seed table of the same name is the one the seeded workflow binds, so
-				// the scenarios reseed it and only the other tables are created here.
+				// A seed table of the same name is the one the seeded workflow binds.
 				const toCreate = scenarioSeedTables.filter((table) => !restoredSeedTables.has(table.name));
 				// `uniquifyNames: false` stays — the harness mints the suffix so it knows
 				// which name to give the agent below.
@@ -982,12 +978,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					...table,
 					rows: undefined,
 				}));
-				let dataTableIds: string[] = [];
-				if (schemasOnly.length > 0) {
-					({ dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, [], {
-						uniquifyNames: false,
-					}));
-				}
+				const { dataTableIds } =
+					schemasOnly.length > 0
+						? await client.restoreThread(threadId, [], [], schemasOnly, [], {
+								uniquifyNames: false,
+							})
+						: { dataTableIds: [] };
 				// restoreThread returns ids in input order; a length mismatch means we
 				// can't safely map names to ids, so fail rather than mis-seed.
 				if (dataTableIds.length !== toCreate.length) {
@@ -1009,7 +1005,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
 				// The agent looks up the name that exists, not the declared one.
 				scenarioSeedTablesNote = buildSeededTablesNote(noteTables);
-				const reusedCount = noteTables.length - schemasOnly.length;
+				const reusedCount = scenarioSeedTables.length - toCreate.length;
 				logger.info(
 					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${reusedCount > 0 ? `, reusing ${String(reusedCount)} seed table(s)` : ''}${config.laneTag ?? ''}`,
 				);
