@@ -40,9 +40,9 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_agents_messages_model_context | CREATE INDEX "IDX_agents_messages_model_context"<br />			ON "agents_messages" ("threadId", COALESCE("modelContextAt", "createdAt"), "id") |
 | IDX_agents_messages_resourceId_threadId | CREATE INDEX "IDX_agents_messages_resourceId_threadId" ON "agents_messages" ("resourceId", "threadId")  |
 | IDX_agents_messages_threadId_createdAt | CREATE INDEX "IDX_agents_messages_threadId_createdAt" ON "agents_messages" ("threadId", "createdAt")  |
-| IDX_agents_messages_threadId_modelContextAt_id | CREATE INDEX "IDX_agents_messages_threadId_modelContextAt_id" ON "agents_messages" ("threadId", "modelContextAt", "id")  |
 | IDX_fc7bf858660bfafd19181e8e35 | CREATE INDEX "IDX_fc7bf858660bfafd19181e8e35" ON "agents_messages" ("threadId", "createdAt")  |
 | sqlite_autoindex_agents_messages_1 | PRIMARY KEY (id) |
 

@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddAgentExecutionMessages1790590278292 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			schemaBuilder: { createTable, createIndex, column },
+			schemaBuilder: { createTable, column },
 			escape,
 			runQuery,
 		} = ctx;
@@ -11,7 +11,10 @@ export class AddAgentExecutionMessages1790590278292 implements ReversibleMigrati
 		await runQuery(
 			`UPDATE ${escape.tableName('agents_messages')} SET ${escape.columnName('modelContextAt')} = ${escape.columnName('createdAt')}`,
 		);
-		await createIndex('agents_messages', ['threadId', 'modelContextAt', 'id']);
+		await runQuery(
+			`CREATE INDEX ${escape.indexName('agents_messages_model_context')}
+			ON ${escape.tableName('agents_messages')} (${escape.columnName('threadId')}, COALESCE(${escape.columnName('modelContextAt')}, ${escape.columnName('createdAt')}), ${escape.columnName('id')})`,
+		);
 		await createTable('agent_execution_messages')
 			.withColumns(
 				column('executionId')
@@ -79,13 +82,13 @@ export class AddAgentExecutionMessages1790590278292 implements ReversibleMigrati
 	}
 
 	async down({
-		schemaBuilder: { dropTable, dropIndex, dropColumns },
+		schemaBuilder: { dropTable, dropColumns },
 		isSqlite,
 		escape,
 		runQuery,
 	}: MigrationContext) {
 		await dropTable('agent_execution_messages');
-		await dropIndex('agents_messages', ['threadId', 'modelContextAt', 'id']);
+		await runQuery(`DROP INDEX ${escape.indexName('agents_messages_model_context')}`);
 		const columns = ['author', 'origin', 'modelContent', 'modelContextAt'];
 		if (isSqlite) {
 			for (const name of columns) {

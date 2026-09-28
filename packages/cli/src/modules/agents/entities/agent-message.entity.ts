@@ -15,7 +15,8 @@ export interface AgentMessageOrigin {
 
 @Entity({ name: 'agents_messages' })
 @Index(['resourceId', 'threadId'])
-@Index(['threadId', 'modelContextAt', 'id'])
+// The migration owns this expression index because TypeORM cannot synchronize it.
+@Index('IDX_agents_messages_model_context', { synchronize: false })
 export class AgentMessageEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	threadId: string;

@@ -169,7 +169,28 @@ describe('AddAgentExecutionMessages migration', () => {
 				modelContextAt: message.createdAt,
 			});
 		}
-		for (const [table, snapshot] of snapshots) expect(await rows(table)).toEqual(snapshot);
+		for (const [table, snapshot] of snapshots) {
+			expect(new Set(await rows(table))).toEqual(new Set(snapshot));
+		}
+
+		const timestamp = `COALESCE(${context.escape.columnName('modelContextAt')}, ${context.escape.columnName('createdAt')})`;
+		const query = `SELECT * FROM ${context.escape.tableName('agents_messages')}
+			WHERE ${context.escape.columnName('threadId')} = :threadId
+			AND (${context.escape.columnName('modelContextAt')} IS NOT NULL OR ${context.escape.columnName('origin')} IS NULL)
+			AND ${timestamp} < :before
+			ORDER BY ${timestamp} DESC, ${context.escape.columnName('id')} DESC LIMIT 10`;
+		// Small fixtures need this setting to expose whether PostgreSQL can use the index.
+		if (context.isPostgres) await context.runQuery('SET enable_seqscan = off');
+		try {
+			const explain = context.isSqlite ? 'EXPLAIN QUERY PLAN' : 'EXPLAIN (COSTS OFF)';
+			const plan = await context.runQuery<Array<Record<string, string | number>>>(
+				`${explain} ${query}`,
+				{ threadId, before: new Date('2026-05-13') },
+			);
+			expect(plan.flatMap(Object.values).join('\n')).not.toMatch(/Sort|TEMP B-TREE/);
+		} finally {
+			if (context.isPostgres) await context.runQuery('RESET enable_seqscan');
+		}
 
 		const outputId = randomUUID();
 		await insert('agents_messages', {
@@ -209,7 +230,7 @@ describe('AddAgentExecutionMessages migration', () => {
 			direction: 'output',
 		});
 		await context.runQuery(
-			`DELETE FROM ${context.escape.tableName('agents_messages')} WHERE "id" = :id`,
+			`DELETE FROM ${context.escape.tableName('agents_messages')} WHERE ${context.escape.columnName('id')} = :id`,
 			{ id: outputId },
 		);
 		expect(await rows('agent_execution_messages')).toHaveLength(1);
@@ -222,7 +243,7 @@ describe('AddAgentExecutionMessages migration', () => {
 		});
 		await insert('agent_execution_messages', { ...input, executionId: nextExecutionId });
 		await context.runQuery(
-			`DELETE FROM ${context.escape.tableName('agent_execution')} WHERE "id" = :id`,
+			`DELETE FROM ${context.escape.tableName('agent_execution')} WHERE ${context.escape.columnName('id')} = :id`,
 			{ id: nextExecutionId },
 		);
 		expect(await rows('agent_execution_messages')).toHaveLength(1);
@@ -233,8 +254,10 @@ describe('AddAgentExecutionMessages migration', () => {
 		expect(
 			await context.queryRunner.hasTable(`${context.tablePrefix}agent_execution_messages`),
 		).toBe(false);
-		expect(await rows('agents_messages')).toEqual(messages);
-		for (const [table, snapshot] of snapshots) expect(await rows(table)).toEqual(snapshot);
+		expect(new Set(await rows('agents_messages'))).toEqual(new Set(messages));
+		for (const [table, snapshot] of snapshots) {
+			expect(new Set(await rows(table))).toEqual(new Set(snapshot));
+		}
 		await context.queryRunner.release();
 		await runSingleMigration(MIGRATION_NAME);
 		context = createTestMigrationContext(dataSource);

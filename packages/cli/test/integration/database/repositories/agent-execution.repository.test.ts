@@ -1587,6 +1587,36 @@ describe('AgentExecutionRepository', () => {
 		});
 	});
 
+	it('loads inputs across a large execution ID lookup', async () => {
+		const thread = await createThread();
+		const { messageRepository } = recordingServices();
+		const executionIds: string[] = [];
+		const expected = new Map<string, string>();
+		for (let position = 0; position < 2; position++) {
+			const execution = await createExecution({ threadId: thread.id });
+			const messageId = await messageRepository.createExecutionInput(
+				{
+					executionId: execution.id,
+					threadId: thread.id,
+					resourceId: 'user-1',
+					content: { role: 'user', content: [{ type: 'text', text: 'Input' }] },
+					origin: { source: 'chat' },
+				},
+				{},
+			);
+			executionIds.push(execution.id);
+			expected.set(execution.id, messageId);
+		}
+		executionIds.splice(1, 0, ...Array.from({ length: 33_000 }, () => uuid()));
+
+		const inputs = await messageRepository.findExecutionInputs(executionIds);
+
+		expect(inputs.size).toBe(2);
+		for (const [executionId, messageId] of expected) {
+			expect(inputs.get(executionId)?.map(({ id }) => id)).toEqual([messageId]);
+		}
+	});
+
 	it('keeps canonical input through enrichment, runtime persistence, mixed history, and session deletion', async () => {
 		const thread = await createThread();
 		const threadId = thread.id;

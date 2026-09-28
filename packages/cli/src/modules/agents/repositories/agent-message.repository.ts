@@ -1,6 +1,6 @@
 import { stripHydratedFileData, type AgentDbMessage, type AgentMessage } from '@n8n/agents';
 import type { AgentMessageAuthor } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -100,17 +100,18 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	}
 
 	async findExecutionInputs(executionIds: string[]): Promise<Map<string, AgentMessageEntity[]>> {
-		if (executionIds.length === 0) return new Map();
-		const links = await this.manager.find(AgentExecutionMessage, {
-			where: { executionId: In(executionIds), direction: 'input' },
-			relations: { message: true },
-			order: { position: 'ASC' },
-		});
 		const inputs = new Map<string, AgentMessageEntity[]>();
-		for (const link of links) {
-			const messages = inputs.get(link.executionId) ?? [];
-			messages.push(link.message);
-			inputs.set(link.executionId, messages);
+		for (const ids of chunkIds(executionIds)) {
+			const links = await this.manager.find(AgentExecutionMessage, {
+				where: { executionId: In(ids), direction: 'input' },
+				relations: { message: true },
+				order: { position: 'ASC' },
+			});
+			for (const link of links) {
+				const messages = inputs.get(link.executionId) ?? [];
+				messages.push(link.message);
+				inputs.set(link.executionId, messages);
+			}
 		}
 		return inputs;
 	}

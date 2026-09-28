@@ -772,11 +772,13 @@ export class AgentExecutionService {
 		if (!dto) return null;
 		dto.author = message.author ?? undefined;
 		dto.executionId = executionId;
-		for (const part of dto.content) {
-			if (part.type === 'text' && part.text !== undefined) {
-				part.text = cleanUserMessage(part.text, agentName) ?? '';
-			}
-		}
+		dto.content = dto.content.filter((part) => {
+			if (part.type !== 'text' || part.text === undefined) return true;
+			const text = cleanUserMessage(part.text, agentName);
+			if (text === null) return false;
+			part.text = text;
+			return true;
+		});
 		return dto;
 	}
 

@@ -15,6 +15,7 @@ import type {
 	AgentThreadAccess,
 } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -1300,6 +1301,49 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreadDetail', () => {
+		it('omits blank input text from history and keeps the attachment and original content', async () => {
+			const message = Object.assign(new AgentMessageEntity(), {
+				id: 'message-1',
+				createdAt: new Date('2026-05-07T10:00:00Z'),
+				content: {
+					role: 'user',
+					content: [
+						{ type: 'text', text: ' \n\t ' },
+						{
+							type: 'file',
+							mediaType: 'image/png',
+							fileRef: { id: 'attachment-1', fileName: 'image.png', sizeBytes: 3 },
+						},
+					],
+				},
+			});
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+				mock<AgentExecution>({ id: 'execution-1', storedAt: 'db' }),
+			]);
+			messageRepository.findExecutionInputs.mockResolvedValue(
+				new Map([['execution-1', [message]]]),
+			);
+
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+
+			expect(result?.executions[0].inputMessages?.[0].content).toEqual([
+				{
+					type: 'file',
+					fileId: 'attachment-1',
+					fileName: 'image.png',
+					mimeType: 'image/png',
+					sizeBytes: 3,
+				},
+			]);
+			expect(message.content).toMatchObject({
+				content: [
+					{ type: 'text', text: ' \n\t ' },
+					{ type: 'file', fileRef: { id: 'attachment-1' } },
+				],
+			});
+		});
+
 		it.each(['user', 'project'] as const)(
 			'returns readable %s thread executions',
 			async (accessScope) => {
