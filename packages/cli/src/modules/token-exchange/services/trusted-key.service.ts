@@ -5,6 +5,7 @@ import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
@@ -42,6 +43,12 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 };
 
 const STATIC_SOURCE_ID = 'static';
+
+/** The keys a source resolves to, and for a JWKS source the cache TTL its endpoint sent. */
+type ResolvedSourceKeys = {
+	keys: Array<{ kid: string; data: TrustedKeyData }>;
+	cacheTtlSeconds?: number;
+};
 
 /**
  * Manages trusted public keys for JWT signature verification.
@@ -164,6 +171,7 @@ export class TrustedKeyService {
 	/**
 	 * Force-refresh a single source. Can be called from any instance —
 	 * uses an advisory lock for distributed mutual exclusion.
+	 * @throws When the source does not exist or its keys cannot be resolved.
 	 */
 	async refreshSource(sourceId: string): Promise<void> {
 		const source = await this.trustedKeySourceRepository.findOneBy({ id: sourceId });
@@ -293,13 +301,21 @@ export class TrustedKeyService {
 	// ─── Private: refresh ──────────────────────────────────────────────
 
 	/**
-	 * Refreshes all sources unconditionally. Never throws: a failed cycle is logged.
+	 * Refreshes all sources unconditionally. Logs each failure and continues.
+	 * Never throws.
 	 */
 	private async refreshAllSources(): Promise<void> {
 		try {
 			const sources = await this.trustedKeySourceRepository.find();
 			for (const source of sources) {
-				await this.refreshSourceInternal(source);
+				try {
+					await this.refreshSourceInternal(source);
+				} catch (error) {
+					this.logger.error('Failed to refresh trusted key source', {
+						sourceId: source.id,
+						error,
+					});
+				}
 			}
 		} catch (error) {
 			this.logger.error('Failed to run trusted key refresh cycle', { error });
@@ -308,13 +324,15 @@ export class TrustedKeyService {
 
 	/**
 	 * Refreshes only the sources whose `lastRefreshedAt` is older than their
-	 * configured refresh interval. A failed source is marked as error and does
-	 * not stop the cycle. Stops before the next source once `signal` aborts.
+	 * configured refresh interval. Stops at the first source that fails, and
+	 * before the next source once `signal` aborts.
 	 * @throws When the sources cannot be loaded from the database.
+	 * @throws When a source cannot be refreshed.
 	 */
 	async refreshDueSources(signal: AbortSignal): Promise<void> {
 		this.logger.debug('Refreshing due sources');
-		const sources = await this.trustedKeySourceRepository.find();
+		// A failed source has the newest `updatedAt`, so the next run tries it last.
+		const sources = await this.trustedKeySourceRepository.find({ order: { updatedAt: 'ASC' } });
 		const now = Date.now();
 		for (const source of sources) {
 			if (signal.aborted) return;
@@ -346,38 +364,40 @@ export class TrustedKeyService {
 	/**
 	 * Per-source transactional refresh, serialized by an advisory lock.
 	 *
-	 * On success: old keys deleted, conflicts resolved, new keys inserted,
-	 * source marked healthy.
+	 * On success: old keys deleted, new keys inserted, source marked healthy.
 	 *
-	 * On error: transaction rolls back (preserving existing keys), source
-	 * marked with `status = 'error'` and `lastError` outside the transaction.
+	 * If key resolution fails, marks the source as error in the transaction.
+	 * Keeps the existing keys and `lastRefreshedAt`.
+	 * Commits the error status before throwing the failure.
+	 * @throws When the keys cannot be resolved or written.
 	 */
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
-		try {
-			await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
-				const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
-				if (!freshSource) return;
-				await this.refreshSourceWithinTransaction(freshSource, tx);
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error('Failed to refresh trusted key source', {
-				sourceId: source.id,
-				error: message,
-			});
-			await this.trustedKeySourceRepository.update(source.id, {
-				status: 'error',
-				lastError: message,
-				lastRefreshedAt: new Date(),
-			});
-		}
+		const failure = await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
+			const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
+			if (!freshSource) return undefined;
+
+			let result: ResolvedSourceKeys | undefined;
+			try {
+				result = await this.resolveKeysForSource(freshSource);
+			} catch (error) {
+				const failure = ensureError(error);
+				await tx.update(TrustedKeySourceEntity, source.id, {
+					status: 'error',
+					lastError: failure.message,
+				});
+				return failure;
+			}
+			await this.storeResolvedKeys(freshSource, result, tx);
+			return undefined;
+		});
+		if (failure) throw failure;
 	}
 
-	private async refreshSourceWithinTransaction(
+	private async storeResolvedKeys(
 		source: TrustedKeySourceEntity,
+		result: ResolvedSourceKeys | undefined,
 		tx: EntityManager,
 	): Promise<void> {
-		const result = await this.resolveKeysForSource(source);
 		if (!result) {
 			// Mark as refreshed so the source is skipped until the next interval,
 			// even though no keys were resolved (e.g. unsupported source type).
@@ -427,9 +447,7 @@ export class TrustedKeyService {
 	 */
 	private async resolveKeysForSource(
 		source: TrustedKeySourceEntity,
-	): Promise<
-		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
-	> {
+	): Promise<ResolvedSourceKeys | undefined> {
 		switch (source.type) {
 			case 'static':
 				return this.resolveKeysForStaticSource(source);
@@ -446,7 +464,7 @@ export class TrustedKeyService {
 
 	private async resolveKeysForJwksSource(
 		source: TrustedKeySourceEntity,
-	): Promise<{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds: number }> {
+	): Promise<Required<ResolvedSourceKeys>> {
 		let jwksConfig: JwksKeySource;
 		try {
 			jwksConfig = jsonParse<JwksKeySource>(source.config);
@@ -479,10 +497,7 @@ export class TrustedKeyService {
 		};
 	}
 
-	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): {
-		keys: Array<{ kid: string; data: TrustedKeyData }>;
-		cacheTtlSeconds?: number;
-	} {
+	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): ResolvedSourceKeys {
 		let rawConfig: unknown;
 		try {
 			rawConfig = JSON.parse(source.config);

@@ -57,6 +57,35 @@ function makeTrustedKeyEntity(
 	return entity;
 }
 
+function makeSource(overrides: Partial<TrustedKeySourceEntity> = {}): TrustedKeySourceEntity {
+	return Object.assign(new TrustedKeySourceEntity(), {
+		id: 'static',
+		type: 'static' as const,
+		config: JSON.stringify([]),
+		status: 'pending' as const,
+		lastError: null,
+		lastRefreshedAt: null,
+		...overrides,
+	});
+}
+
+/** A JWKS source whose fetch fails, and a static source that is due. */
+function seedFailingAndDueSources(mocks: ReturnType<typeof createMocks>) {
+	const failing = makeSource({
+		id: 'jwks-1',
+		type: 'jwks',
+		config: JSON.stringify({ type: 'jwks', url: 'https://idp.example.com/jwks' }),
+	});
+	const due = makeSource({ id: 'static' });
+	mocks.sourceRepo.find.mockResolvedValue([failing, due]);
+	mocks.tx.findOneBy.mockImplementation(async (_entity, where) => {
+		const { id } = where as { id: string };
+		return [failing, due].find((source) => source.id === id) ?? null;
+	});
+	mocks.jwksResolverService.resolveKeys.mockRejectedValue(new Error('jwks down'));
+	return { failing, due };
+}
+
 function createMocks() {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys: '',
@@ -66,10 +95,11 @@ function createMocks() {
 	const keyRepo = mock<TrustedKeyRepository>();
 	const dbLockService = mock<DbLockService>();
 	const jwksResolverService = mock<JwksResolverService>();
+	const tx = mock<EntityManager>();
 
 	dbLockService.withLock.mockImplementation(
 		async (_lockId: unknown, fn: (tx: EntityManager) => Promise<unknown>) => {
-			return await fn(mock<EntityManager>());
+			return await fn(tx);
 		},
 	);
 
@@ -84,7 +114,7 @@ function createMocks() {
 		jwksResolverService,
 	);
 
-	return { service, keyRepo, sourceRepo, dbLockService };
+	return { service, keyRepo, sourceRepo, dbLockService, jwksResolverService, tx };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -151,6 +181,52 @@ describe('TrustedKeyService', () => {
 	});
 
 	describe('onLeaderTakeover', () => {
+		it('should refresh the remaining sources and resolve when one source fails', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await mocks.service.onLeaderTakeover();
+
+			expect(mocks.dbLockService.withLock).toHaveBeenCalledTimes(2);
+			expect(mocks.tx.update).toHaveBeenCalledWith(
+				TrustedKeySourceEntity,
+				'static',
+				expect.objectContaining({ status: 'healthy' }),
+			);
+			expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['lock', 'write'] as const)(
+			'should refresh the remaining sources after a %s failure',
+			async (failureType) => {
+				const { service, sourceRepo, dbLockService, tx } = createMocks();
+				const sources = [makeSource({ id: 'first' }), makeSource({ id: 'second' })];
+				const error = new Error(`${failureType} failed`);
+				sourceRepo.find.mockResolvedValue(sources);
+				tx.findOneBy.mockImplementation(async (_entity, where) => {
+					const { id } = where as { id: string };
+					return sources.find((source) => source.id === id) ?? null;
+				});
+				if (failureType === 'lock') {
+					dbLockService.withLock.mockRejectedValueOnce(error);
+				} else {
+					tx.delete.mockRejectedValueOnce(error);
+				}
+
+				await expect(service.onLeaderTakeover()).resolves.toBeUndefined();
+
+				expect(tx.update).toHaveBeenCalledWith(
+					TrustedKeySourceEntity,
+					'second',
+					expect.objectContaining({ status: 'healthy' }),
+				);
+				expect(mockLogger.warn).toHaveBeenCalledWith('Failed to refresh trusted key source', {
+					sourceId: 'first',
+					error,
+				});
+			},
+		);
+
 		it('should refresh keys from sources when a follower is elected leader', async () => {
 			const { service, sourceRepo, dbLockService } = createMocks();
 
@@ -227,6 +303,47 @@ describe('TrustedKeyService', () => {
 			await service.refreshDueSources(new AbortController().signal);
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
+		});
+
+		it('should keep the existing keys of a source whose fetch fails', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await mocks.service.refreshDueSources(new AbortController().signal).catch(() => undefined);
+
+			expect(mocks.tx.delete).not.toHaveBeenCalledWith(TrustedKeyEntity, { sourceId: 'jwks-1' });
+		});
+
+		it('should reject with the source error and stop at the failed source', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'jwks down',
+			);
+
+			expect(mocks.dbLockService.withLock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should try the least recently updated source first', async () => {
+			const mocks = createMocks();
+
+			await mocks.service.refreshDueSources(new AbortController().signal);
+
+			expect(mocks.sourceRepo.find).toHaveBeenCalledWith({ order: { updatedAt: 'ASC' } });
+		});
+
+		it('should mark a failed source inside the lock without a refresh time', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await mocks.service.refreshDueSources(new AbortController().signal).catch(() => undefined);
+
+			expect(mocks.tx.update).toHaveBeenCalledWith(TrustedKeySourceEntity, 'jwks-1', {
+				status: 'error',
+				lastError: 'jwks down',
+			});
+			expect(mocks.sourceRepo.update).not.toHaveBeenCalled();
 		});
 
 		it('should reject when the sources cannot be loaded', async () => {

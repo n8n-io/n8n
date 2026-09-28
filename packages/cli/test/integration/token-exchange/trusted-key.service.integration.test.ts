@@ -342,7 +342,7 @@ describe('TrustedKeyService (integration)', () => {
 
 			// Corrupt config
 			await sourceRepo.update('static', { config: 'invalid-json' });
-			await service.refreshSource('static');
+			await expect(service.refreshSource('static')).rejects.toThrow('malformed JSON');
 
 			const source = await sourceRepo.findOneBy({ id: 'static' });
 			expect(source!.status).toBe('error');
@@ -402,7 +402,7 @@ describe('TrustedKeyService (integration)', () => {
 		])('should reject $name', async ({ entries }) => {
 			await insertSource({ config: JSON.stringify(entries) });
 
-			await service.refreshSource('static');
+			await expect(service.refreshSource('static')).rejects.toThrow();
 
 			const source = await sourceRepo.findOneBy({ id: 'static' });
 			expect(source!.status).toBe('error');
