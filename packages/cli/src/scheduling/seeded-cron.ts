@@ -1,3 +1,4 @@
+import { CronTime } from 'cron';
 import type { CronExpression, TriggerTime } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
@@ -12,14 +13,16 @@ function stableInt(seed: string, label: string, min: number, max: number): numbe
 }
 
 /**
- * Build a 6-field cron for a trigger time. Generated cadences get a node-seeded (not random)
- * seconds field for a stable job identity; a custom cron is used as-is, widened from 5 to
- * 6 fields when it omits seconds, so every stored expression is one shape.
+ * Build a six-field cron. Use node-seeded offsets to keep generated schedules stable.
+ * Expand legacy presets and add seconds to five-field custom expressions.
  */
 export function seededCron(item: TriggerTime, seed: string): CronExpression {
 	if (item.mode === 'custom') {
 		const trimmed = item.cronExpression.trim();
-		return (trimmed.split(/\s+/).length === 5 ? `0 ${trimmed}` : trimmed) as CronExpression;
+		const expression = trimmed.startsWith('@') ? new CronTime(trimmed).toString() : trimmed;
+		return (
+			expression.split(/\s+/).length === 5 ? `0 ${expression}` : expression
+		) as CronExpression;
 	}
 
 	const second = stableInt(seed, 'second', 0, 60);

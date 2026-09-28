@@ -257,6 +257,8 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it.each([
 			['*/5 * * * *', '0 */5 * * * *'],
 			['15 */5 * * * *', '15 */5 * * * *'],
+			['@daily', '0 0 0 * * *'],
+			['@weekdays', '0 0 0 * * 1,2,3,4,5'],
 		])('preserves custom cron timing for %s', async (expression, expected) => {
 			await register([{ mode: 'custom', cronExpression: expression as CronExpression }]);
 
