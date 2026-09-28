@@ -230,9 +230,6 @@ catalogs:
     '@chat-adapter/linear':
       specifier: 4.37.0
       version: 4.37.0
-    '@chat-adapter/shared':
-      specifier: 4.37.0
-      version: 4.37.0
     '@chat-adapter/slack':
       specifier: 4.37.0
       version: 4.37.0
@@ -4406,9 +4403,6 @@ importers:
       '@chat-adapter/linear':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
-      '@chat-adapter/shared':
-        specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
