@@ -16,6 +16,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
+		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
@@ -734,7 +735,10 @@ function stubInitialRunSurface(
 	instanceContextEnabled = false,
 ): void {
 	Object.assign(service, {
-		resolveContextAttachments: vi.fn(async () => []),
+		adapterService: {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+		},
+		resolveContextAttachments: vi.fn(() => []),
 		createProxyRunConfig: vi.fn(async () => ({})),
 		browserSessionService: { getExtensionTraceContext: vi.fn() },
 		readThreadProvenance: vi.fn(async () => ({})),
@@ -934,7 +938,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				progressiveBuildingEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
 				instanceContextEnabled,
@@ -946,7 +952,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1179,15 +1188,24 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
+	// [progressive flag, stored mode, pinned version, concise flag, expected profile]
 	it.each([
-		[false, undefined, 'default', undefined],
-		[true, undefined, 'progressive', undefined],
-		[true, 'default', 'default', undefined],
-		[false, 'progressive', 'progressive', undefined],
-		[true, 'progressive', 'default', 'default@1'],
-		[false, 'default', 'progressive', 'progressive@1'],
-		[true, 'progressive', 'default', 'retired@1'],
-	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
+		[false, undefined, undefined, false, 'default@1'],
+		[true, undefined, undefined, false, 'progressive@1'],
+		[true, 'default', undefined, false, 'default@1'],
+		[false, 'progressive', undefined, false, 'progressive@1'],
+		[true, 'progressive', 'default@1', false, 'default@1'],
+		[false, 'default', 'progressive@1', false, 'progressive@1'],
+		[true, 'progressive', 'retired@1', false, 'default@1'],
+		// The concise flag applies only in default mode, and any pin beats it.
+		[false, undefined, undefined, true, 'concise@1'],
+		[false, 'default', undefined, true, 'concise@1'],
+		[true, undefined, undefined, true, 'progressive@1'],
+		[false, 'progressive', undefined, true, 'progressive@1'],
+		[false, undefined, 'default@1', true, 'default@1'],
+	] as const)('selects profile (%s, %s, %s, %s) as %s', async (...row) => {
+		const [enabled, override, version, concise, profile] = row;
+		const expected = profile === 'progressive@1' ? 'progressive' : 'default';
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1285,7 +1303,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
+				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
 			}),
@@ -1296,7 +1316,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -1367,10 +1390,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
 		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: expected, version: `${expected}@1` }),
+			expect.objectContaining({ mode: expected, version: profile }),
 		);
 		expect(environment.orchestrationContext).toMatchObject({
-			promptConfiguration: { version: `${expected}@1` },
+			promptConfiguration: { version: profile },
 		});
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
@@ -5056,7 +5079,10 @@ describe('InstanceAiService run input gates', () => {
 			webhookBaseUrl: 'https://acme.example.com/webhook',
 			formBaseUrl: 'https://acme.example.com/form',
 			tracing: { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) },
-			resolveContextAttachments: vi.fn(async () => []),
+			adapterService: {
+				resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+			},
+			resolveContextAttachments: vi.fn(() => []),
 			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
 			createProxyRunConfig: vi.fn(async () => ({})),
 			browserSessionService: { getExtensionTraceContext: vi.fn() },
@@ -5077,6 +5103,7 @@ describe('InstanceAiService run input gates', () => {
 			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 			shouldPreserveHitlOnShutdown: vi.fn(() => true),
 			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+			telemetry: { track: vi.fn() },
 			domainAccessTrackersByThread: new Map(),
 			updateInternalFollowUpFailureStreak: vi.fn(),
 		}) as {
@@ -5190,6 +5217,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
 		browserSessionService: { getExtensionTraceContext: Mock };
+		adapterService: { resolveExperimentGates: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -5210,6 +5238,9 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		};
 		service.browserSessionService = {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
+		};
+		service.adapterService = {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
 		};
 		return service;
 	}

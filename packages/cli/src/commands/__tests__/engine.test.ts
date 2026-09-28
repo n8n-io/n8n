@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import * as CrashJournal from '@/crash-journal';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -11,9 +12,12 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
+import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
+import { RedisClientService } from '@/services/redis-client.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -28,6 +32,11 @@ loadNodesAndCredentials.init.mockResolvedValue(undefined);
 loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 const runtime = mockInstance(EngineV2Runtime);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
+const publisher = mock<RedisResponsePublisher>();
+const redisClientService = mockInstance(RedisClientService, {
+	toValidPrefix: (prefix: string) => prefix,
+	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
+});
 
 // Services the base `init()` reaches, as in worker.test.ts.
 const errorReporter = mockInstance(ErrorReporter);
@@ -164,6 +173,13 @@ describe('Engine', () => {
 			expect(taskRunnerModule.start).not.toHaveBeenCalled();
 		});
 
+		it('sends execution responses over Redis', async () => {
+			await createEngine().init();
+
+			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
+			expect(runtime.init).toHaveBeenCalledWith(expect.any(RedisExecutionResponseSender));
+		});
+
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {
 			await createEngine().init();
 
@@ -185,6 +201,10 @@ describe('Engine', () => {
 				await engine.stopProcess();
 
 				expect(runtime.shutdown).toHaveBeenCalled();
+				expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+					publisher.disconnect.mock.invocationCallOrder[0],
+				);
 				expect(exit).toHaveBeenCalledWith();
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
 					exit.mock.invocationCallOrder[0],

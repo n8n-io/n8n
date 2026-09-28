@@ -1,4 +1,4 @@
-import type { Repository } from '@n8n/typeorm';
+import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution } from './entities';
 import {
@@ -7,7 +7,7 @@ import {
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
-import type { ExecutionStatus } from '../execution/execution.types';
+import { LIVE_EXECUTION_STATUSES, type ExecutionStatus } from '../execution/execution.types';
 
 /**
  * Insert payload accepted by the repository. Derived from the method rather than
@@ -49,10 +49,42 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
+		// A waiting execution can end too: a failure elsewhere cancels its waits.
 		const result = await this.repo.update(
-			{ id, status: 'running' },
+			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
 			{ status, finishedAt: new Date() },
 		);
 		return result.affected === 1;
+	}
+
+	async refreshLiveStatus(id: string): Promise<void> {
+		// The probes read the steps before the UPDATE takes the row's lock, so a
+		// step can change in between.
+		await this.repo.query(
+			// MATERIALIZED, because `live.runnable` is read three times below.
+			`WITH live AS MATERIALIZED (
+				SELECT
+					EXISTS (
+						SELECT 1 FROM workflow_step_execution
+						WHERE execution_id = $1 AND status IN ('queued', 'running')
+					) AS runnable,
+					EXISTS (
+						SELECT 1 FROM workflow_step_execution
+						WHERE execution_id = $1 AND status = 'waiting'
+					) AS waiting
+			)
+			UPDATE workflow_execution e
+			SET status = CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END,
+				-- A raw query bypasses the UpdateDateColumn hook, so set the time here.
+				updated_at = now()
+			FROM live
+			WHERE e.id = $1
+				-- Re-checked against the row it locks, so losing to finishExecution writes nothing.
+				AND e.status IN ('running', 'waiting')
+				AND (live.runnable OR live.waiting)
+				-- Skip a write that changes nothing, so the row is not locked for it.
+				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
+			[id],
+		);
 	}
 }

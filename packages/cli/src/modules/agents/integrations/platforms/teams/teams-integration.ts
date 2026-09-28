@@ -10,7 +10,6 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
-	type ActionDecisionMessageParams,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
@@ -40,9 +39,18 @@ const TENANT_ID_DOMAIN =
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
- * This first slice targets 1:1 direct messages. Group chats and channels are not
- * blocked, but they are untested: without RSC permissions Teams only delivers an
- * @-mention there, so nothing arrives ambiently.
+ * Direct messages, team channels and group chats are all supported. Outside a
+ * DM the bot must be @-mentioned once; the mention subscribes the conversation,
+ * so later messages reach the agent without a mention. In a channel that
+ * subscription covers the one thread, because the thread id carries the root
+ * message id. In a group chat it covers the whole chat.
+ *
+ * Whether a later message arrives at all is a setup choice. The manifest
+ * carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only when
+ * `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants them
+ * when the app is added to a team or a chat, and they also make Teams deliver
+ * every message instead of mentions alone. Without them Teams delivers only the
+ * mention, and the subscription stays inert.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
@@ -59,13 +67,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly builderGuidance = {
 		capabilities: [
-			'Receive Microsoft Teams direct messages as agent triggers.',
-			'Respond in the same Microsoft Teams conversation.',
+			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
+			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
+			'Stay in the conversation after an @-mention, so later messages need no mention.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Microsoft Teams or act as a Teams bot.',
 			'The agent needs to reply to Teams users in the same conversation context.',
+			'The agent should take part in a Microsoft Teams channel or group chat.',
 		],
 		useNodeToolWhen: [
 			'Microsoft Teams is only a backend API step and the agent does not need to be connected as a Teams chat surface.',
@@ -88,10 +98,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * Teams acknowledges an Adaptive Card action by editing the card in place, so
-	 * the answered card is settled rather than deleted.
+	 * A channel or group chat card goes out as a Teams targeted message, so the
+	 * rest of the channel never sees the approval. Delivery-scoped only: nothing
+	 * verifies who clicks.
+	 *
+	 * Deleting the answered card relies on
+	 * `patches/@chat-adapter__teams@4.37.0.patch`, because the adapter mutates a
+	 * targeted activity without `?isTargetedActivity=true` and Teams answers
+	 * 400. Drop the patch once upstream sends the flag (vercel/chat#950).
 	 */
-	readonly deleteActionMessageBeforeResume = false;
+	readonly targetSuspensionCardAtActingUser = true;
 
 	readonly disableStreaming = true;
 
@@ -138,18 +154,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
-	}
-
-	formatActionDecisionMessage({
-		approved,
-		selectedLabel,
-		user,
-	}: ActionDecisionMessageParams): string {
-		const responder = user.fullName || user.userName || user.userId;
-		if (approved === undefined) {
-			return `✅ ${selectedLabel || 'Action'} selected by ${responder}`;
-		}
-		return approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
 	}
 
 	/**

@@ -19,7 +19,10 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import { InstanceReportingService } from '../instance-reporting.service';
+import {
+	InstanceReportAlreadyCreatedError,
+	InstanceReportingService,
+} from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/constants')>()),
@@ -330,11 +333,25 @@ describe('InstanceReportingService', () => {
 
 			await service.sendReport();
 
-			expect(reportRepository.createPending).toHaveBeenCalledWith([
-				{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
-				{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
-			]);
+			expect(reportRepository.createPending).toHaveBeenCalledWith(
+				[
+					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+					{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
+				],
+				new Date('2026-03-26T07:42:00.000Z'),
+			);
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
+		});
+
+		test('throws without sending when another process already created the report for today', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			reportRepository.createPending.mockResolvedValue(null);
+
+			await expect(service.sendReport()).rejects.toThrow(InstanceReportAlreadyCreatedError);
+
+			expect(http.request).not.toHaveBeenCalled();
+			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
 		test('records the failure and rethrows when the request fails', async () => {
@@ -512,43 +529,6 @@ describe('InstanceReportingService', () => {
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
 			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
-		});
-	});
-
-	describe('msUntilRetryAllowed', () => {
-		const now = new Date('2026-03-26T07:42:00.000Z');
-
-		test('allows an attempt when no report is pending', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(null);
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
-		});
-
-		test('allows the first attempt, which has nothing to wait for', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(makeReport({ lastAttemptAt: null }));
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
-		});
-
-		test('returns the remaining wait when the last attempt was recent', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:40:00.000Z') }),
-			);
-
-			// Two of the five minutes are spent, so three remain.
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(3 * 60 * 1000);
-		});
-
-		test('allows an attempt once the wait has passed', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:30:00.000Z') }),
-			);
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
 		});
 	});
 

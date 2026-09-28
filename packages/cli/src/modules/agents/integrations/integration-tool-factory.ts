@@ -105,7 +105,9 @@ export function getIntegrationToolConnectionDescriptors(
 			actionToolDefinitions,
 			contextToolGuidance: capabilities?.contextToolGuidance,
 			actionToolGuidance: capabilities?.actionToolGuidance,
-			...(integration.approval ? { approval: integration.approval } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
 		};
 	});
 }

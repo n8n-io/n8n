@@ -44,6 +44,13 @@ scope as a move. It reaches only the caller's own personal rows. A project row, 
 row or another user's row answers like a missing row, whatever the role: those rules apply to
 other people, and the settings area owns them.
 
+The chat card endpoint answers the same need from the other side. A card names the scope of
+its own last write, and a move made on the settings page or over MCP leaves that name stale.
+An edit that carries no `scope` therefore keeps the target the row holds now: the endpoint
+reads the row and repeats its scope, so `update()` sees no move. A text-only edit cannot undo
+a move made elsewhere. An edit that carries a `scope` still moves the row, and the owner rule
+below applies to it.
+
 `undoWrite(user, id, source)` removes a row only when the named surface created it for the
 caller and it is still the caller's personal row: `source`, `createdById` and `userId` must
 all match. A row the person has since moved to a project or the instance is out of reach,
@@ -70,7 +77,7 @@ OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
 | Tool | Does |
 | --- | --- |
 | `save_user_preference` | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
-| `update_user_preference` | Replaces the text of a row by id, through `updateContent`. |
+| `update_user_preference` | Changes a row by id: the text through `updateContent`, or the text and the scope together through `update`. |
 | `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
 
 On a client that declares the elicitation capability, the save follows the write with one
@@ -80,6 +87,13 @@ form: the saved text, prefilled and editable. It is the second round of the same
 shown, edited or not. Decline removes the row: every client offers that answer, and a press
 after the write means "not this one". A cancelled form keeps the row, because a client with
 no way to show the form answers cancel on its own, and silence must not delete data.
+
+The form also carries the scope, for a user who holds the global `aiPreference:create`
+right: `Just you` or `Everyone on this n8n instance`. The tool always writes `user`, as the
+chat card does, and the form is where the person moves the row. A project needs an id that
+no form can supply, so a move to a project goes through `update_user_preference` with a
+`projectId` from `search_projects`. Every move runs through `update()`, so the right to
+write the new scope is checked in one place for every surface.
 
 ## Who may read and write
 
@@ -93,6 +107,9 @@ none of its own.
 
 An update that moves a row to another scope needs the delete right on the old scope and
 the create right on the new one.
+
+An edit names its owner. A `PATCH` with scope `user` and no `userId` answers 400. Only a
+create defaults a missing `userId` to the caller, because a create has no owner to lose.
 
 ## The two caps
 
@@ -183,7 +200,11 @@ The events live in the `CONTEXT` domain of
 [`@n8n/telemetry`](../../../@n8n/telemetry/src/events/context.ts). Three cover the settings
 area. Six more cover the assistant paths: the preferences applied to a turn, an assistant
 write, the confirmation shown and answered, the scope accepted against the scope offered,
-and a refused write with its reason. The `get_user_preferences` MCP tool reports the count
+and a refused write with its reason.
+The chat card fires the scope event a second time when the user moves the row from the
+Edit modal, with the scope the row left as the offered one.
+
+The `get_user_preferences` MCP tool reports the count
 and the scopes it returned on the existing tool event.
 
 The MCP write tools fire the same events with `surface` set to `mcp`, through the shared

@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
 

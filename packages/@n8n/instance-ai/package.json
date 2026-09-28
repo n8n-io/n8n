@@ -41,6 +41,11 @@
       "require": "./dist/index.js",
       "import": "./dist/index.js"
     },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "require": "./dist/errors/index.js",
+      "import": "./dist/errors/index.js"
+    },
     "./parsers": {
       "require": "./dist/parsers/index.js",
       "import": "./dist/parsers/index.js",
@@ -55,6 +60,9 @@
   },
   "typesVersions": {
     "*": {
+      "errors": [
+        "dist/errors/index.d.ts"
+      ],
       "parsers": [
         "dist/parsers/index.d.ts"
       ],
