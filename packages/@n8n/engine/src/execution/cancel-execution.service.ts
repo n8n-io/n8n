@@ -15,7 +15,7 @@ export interface CancelExecutionResult {
  * The same mechanics a step failure uses: end the execution, then cancel every
  * step nothing has claimed. A `running` step is left to its worker, which
  * records the outcome it produces; the ended execution plans nothing behind it.
- * TODO(CAT-3990): interrupt running steps through their executor.
+ * TODO(CAT-4757): interrupt running steps through their executor.
  */
 export class CancelExecutionService {
 	constructor(
