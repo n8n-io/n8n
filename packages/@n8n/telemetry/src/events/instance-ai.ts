@@ -486,8 +486,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
 	},
-<<<<<<< HEAD
-=======
 	USER_STARTED_AI_ASSISTANT_ONBOARDING: {
 		name: 'User started AI Assistant onboarding',
 		description:
@@ -553,34 +551,4 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
-	INSTANCE_CONTEXT_TURN: {
-		name: 'Instance AI instance-context turn completed',
-		description:
-			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
-		properties: z.discriminatedUnion('block_state', [
-			instanceContextTurnSchema
-				.extend({
-					block_state: z.literal('absent'),
-					absence_reason: z
-						.enum(instanceContextAbsenceReasonSchema.options)
-						.describe('Why this turn received no block'),
-				})
-				.strict(),
-			instanceContextTurnSchema
-				.extend({
-					block_state: z.literal('injected'),
-					block_is_update: z.boolean().describe('The block adds to an earlier window'),
-					block_inventory_rows: z.number().int(),
-					block_event_rows: z.number().int(),
-					block_run_rows: z.number().int(),
-					block_chars: z.number().int().describe('Exact rendered block length'),
-					block_tokens_estimated: z
-						.number()
-						.int()
-						.describe('Block token estimate at four characters per token'),
-				})
-				.strict(),
-		]),
-	},
->>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 });

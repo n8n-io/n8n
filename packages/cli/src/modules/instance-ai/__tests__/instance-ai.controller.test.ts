@@ -140,11 +140,7 @@ describe('InstanceAiController', () => {
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
-<<<<<<< HEAD
-=======
-	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
->>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 
 	const controller = new InstanceAiController(
 		instanceAiService,

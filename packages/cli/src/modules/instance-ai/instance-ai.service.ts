@@ -2462,12 +2462,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
-<<<<<<< HEAD
-=======
 			onboardingThread,
-			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
->>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 			modelId,
 		});
 
@@ -4064,14 +4059,10 @@ export class InstanceAiService {
 					? await this.resolveAiPreferencesBlock(user.id, boundProject)
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
-<<<<<<< HEAD
 				instanceContext?.block ?? '',
-=======
-				instanceContext.state === 'injected' ? instanceContext.block : '',
 				// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
 				// and stays in the history for the later turns.
 				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
->>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
 				pastConversationsSection

@@ -1128,8 +1128,6 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
-<<<<<<< HEAD
-=======
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
 			if (parsed.data.type === 'tool-call') {
@@ -1148,13 +1146,6 @@ export function createThreadRuntime(
 			) {
 				hooks.onOnboardingLeft?.(threadId, 'run_failed');
 			}
-			if (parsed.data.type === 'preferences-applied') {
-				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
-				// turn at a time and each turn publishes one of these, so arrival order is turn
-				// order. A seq guard would freeze the menu after a backend sequence restart.
-				appliedPreferences.value = parsed.data.payload;
-			}
->>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
 				if (ids && ids.length > 0) {
