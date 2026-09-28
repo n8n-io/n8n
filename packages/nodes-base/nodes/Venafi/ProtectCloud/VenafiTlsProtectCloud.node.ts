@@ -123,7 +123,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'certificateRequest') {
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_create
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_create
 					if (operation === 'create') {
 						const applicationId = this.getNodeParameter('applicationId', i) as string;
 						const certificateIssuingTemplateId = this.getNodeParameter(
@@ -228,7 +228,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = responseData.certificateRequests;
 					}
 
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_getbyid
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_getbyid
 					if (operation === 'get') {
 						const certificateId = this.getNodeParameter('certificateRequestId', i) as string;
 
@@ -241,7 +241,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						);
 					}
 
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_getall
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificaterequests_getall
 					if (operation === 'getMany') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -270,7 +270,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 				}
 
 				if (resource === 'certificate') {
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificateretirement_deletecertificates
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificateretirement_deletecertificates
 					if (operation === 'delete') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 
@@ -284,7 +284,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = responseData.certificates;
 					}
 
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificates_getcontentsbyid
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificates_getcontentsbyid
 					if (operation === 'download') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
@@ -366,7 +366,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						};
 					}
 
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificates_getbyid
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificates_getbyid
 					if (operation === 'get') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 
@@ -379,7 +379,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						);
 					}
 
-					// https://developer.venafi.com/tlsprotectcloud/reference/certificates_getall
+					//https://developer.venafi.com/tlsprotectcloud/reference/certificates_getall
 					if (operation === 'getMany') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
