@@ -164,7 +164,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			async (transactionManager, ctx) => {
 				const result = await this.checkRelations(
 					transactionManager,
-					credentials,
+					admitted.map(({ credential }) => credential),
 					project.id,
 					flags,
 				);

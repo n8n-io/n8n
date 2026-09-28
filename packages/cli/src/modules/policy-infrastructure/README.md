@@ -105,8 +105,13 @@ wedged policy store there pins worker slots instead of failing one request.
 
 A one-off CLI command registers no check unless it calls
 `BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
-`execute` and `execute-batch` call it. `import:entities` does not: it restores
-the policy tables in the same run.
+`execute` and `execute-batch` call it.
+
+Known gaps: `import:entities`, `publish:workflow` and `update:workflow` run no
+check. `import:entities` restores the policy tables in the same run, so a check
+against the stored rules would judge the content by the wrong policy. The
+`workflowStart` check still refuses to run a blocked workflow that one of these
+commands wrote.
 
 ## Contexts
 

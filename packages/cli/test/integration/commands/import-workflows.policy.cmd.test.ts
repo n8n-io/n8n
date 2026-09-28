@@ -2,6 +2,7 @@
  * One command run per file: the policy module registers its implementation once per process,
  * so a second `init()` in the same file would throw.
  */
+import { Logger } from '@n8n/backend-common';
 import { getAllWorkflows, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES, type BooleanLicenseFeature } from '@n8n/constants';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
@@ -90,6 +91,7 @@ test('import:workflow skips a workflow with a blocked node and imports the rest'
 		inputPath,
 		JSON.stringify([workflowWith('with-code', BLOCKED), workflowWith('with-set', ALLOWED)]),
 	);
+	const warn = vi.spyOn(Container.get(Logger), 'warn');
 
 	try {
 		await command.run([`--input=${inputPath}`]);
@@ -105,4 +107,8 @@ test('import:workflow skips a workflow with a blocked node and imports the rest'
 
 	const workflows = await getAllWorkflows();
 	expect(workflows.map(({ id }) => id)).toEqual(['with-set']);
+	expect(warn).toHaveBeenCalledWith(
+		expect.stringContaining('Skipped workflow "with-code"'),
+		expect.anything(),
+	);
 });

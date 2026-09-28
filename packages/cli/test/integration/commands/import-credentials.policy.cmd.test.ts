@@ -2,6 +2,7 @@
  * One command run per file: the policy module registers its implementation once per process,
  * so a second `init()` in the same file would throw.
  */
+import { Logger } from '@n8n/backend-common';
 import { getPersonalProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES, type BooleanLicenseFeature } from '@n8n/constants';
 import { PolicyCheckMetadata } from '@n8n/decorators';
@@ -19,7 +20,7 @@ import { TypeAvailabilityPolicyService } from '@/modules/type-availability-polic
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createCredentials, getAllCredentials } from '../shared/db/credentials';
-import { createOwner } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users';
 
 const BLOCKED = 'githubApi';
 const ALLOWED = 'httpBasicAuth';
@@ -45,12 +46,18 @@ afterAll(async () => {
 	]);
 });
 
-test('import:credentials skips a blocked new credential and imports the rest', async () => {
+test('import:credentials skips blocked credentials and imports the rest', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
+	const otherProject = await getPersonalProject(await createMember());
 	await createCredentials(
 		{ id: 'stored-github', name: 'old', type: BLOCKED, data: '' },
 		ownerProject,
+	);
+	// Owned elsewhere: judging it before the ownership check would abort the whole import.
+	await createCredentials(
+		{ id: 'stored-basic', name: 'old-basic', type: ALLOWED, data: '' },
+		otherProject,
 	);
 	await Container.get(TypeAvailabilityPolicyService).setEffectivePolicy(
 		CREDENTIAL_TYPES_KIND,
@@ -70,12 +77,15 @@ test('import:credentials skips a blocked new credential and imports the rest', a
 		JSON.stringify([
 			{ id: 'new-github', name: 'new-github', type: BLOCKED, data: { accessToken: 'x' } },
 			{ id: 'stored-github', name: 'renamed', type: BLOCKED, data: { accessToken: 'x' } },
+			{ id: 'stored-basic', name: 'retyped', type: BLOCKED, data: { accessToken: 'x' } },
 			{ id: 'new-basic', name: 'new-basic', type: ALLOWED, data: { user: 'u', password: 'p' } },
+			{ name: 'no-id', type: ALLOWED, data: { user: 'u', password: 'p' } },
 		]),
 	);
+	const warn = vi.spyOn(Container.get(Logger), 'warn');
 
 	try {
-		await command.run([`--input=${inputPath}`]);
+		await command.run([`--input=${inputPath}`, `--projectId=${ownerProject.id}`]);
 	} finally {
 		fs.rmSync(directory, { recursive: true, force: true });
 	}
@@ -88,10 +98,22 @@ test('import:credentials skips a blocked new credential and imports the rest', a
 
 	const credentials = await getAllCredentials();
 	expect(
-		credentials.map(({ id, name }) => ({ id, name })).sort((a, b) => a.id.localeCompare(b.id)),
+		credentials
+			.map(({ name, type }) => ({ name, type }))
+			.sort((a, b) => a.name.localeCompare(b.name)),
 	).toEqual([
-		{ id: 'new-basic', name: 'new-basic' },
+		{ name: 'new-basic', type: ALLOWED },
+		{ name: 'no-id', type: ALLOWED },
+		{ name: 'old-basic', type: ALLOWED },
 		// An unchanged type is grandfathered, as in an edit on the server.
-		{ id: 'stored-github', name: 'renamed' },
+		{ name: 'renamed', type: BLOCKED },
+	]);
+
+	const skipped = warn.mock.calls
+		.map(([message]) => message)
+		.filter((message) => message.startsWith('Skipped credential'));
+	expect(skipped).toEqual([
+		expect.stringContaining('"new-github"'),
+		expect.stringContaining('"retyped"'),
 	]);
 });
