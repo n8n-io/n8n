@@ -1,6 +1,6 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
-import { BinaryDataConfig } from 'n8n-core';
+import { BinaryDataConfig, isInMemoryModeConfigured } from 'n8n-core';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -32,7 +32,7 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if (this.config.mode !== 'default') {
+		if (!isInMemoryModeConfigured()) {
 			return {
 				isAffected: false,
 				instanceIssues: [],

@@ -14,7 +14,6 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/app/constants';
@@ -39,7 +38,6 @@ const ITEM_ID = {
 	ADD_TAG: 'add-tag',
 	DUPLICATE_WORKFLOW: 'duplicate-workflow',
 	DOWNLOAD_WORKFLOW: 'download-workflow',
-	IMPORT_WORKFLOW_FROM_URL: 'import-workflow-from-url',
 	IMPORT_WORKFLOW_FROM_FILE: 'import-workflow-from-file',
 	ARCHIVE_WORKFLOW: 'archive-workflow',
 	UNARCHIVE_WORKFLOW: 'unarchive-workflow',
@@ -388,20 +386,6 @@ export function useWorkflowCommands(): CommandGroup {
 		}
 
 		return [
-			{
-				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,
-				title: i18n.baseText('commandBar.workflow.importFromURL'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'link',
-					},
-				},
-				handler: () => {
-					uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
-				},
-			},
 			{
 				id: ITEM_ID.IMPORT_WORKFLOW_FROM_FILE,
 				title: i18n.baseText('commandBar.workflow.importFromFile'),

@@ -55,7 +55,7 @@ describe('intercepted request rendering', () => {
 										// (broken routing); the report must tolerate it.
 										url: undefined as unknown as string,
 										method: 'GET',
-										nodeType: 'n8n-nodes-base.openAi',
+										nodeType: '@n8n/n8n-nodes-langchain.openAi',
 									},
 								],
 							},

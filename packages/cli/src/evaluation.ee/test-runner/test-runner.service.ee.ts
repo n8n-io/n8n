@@ -373,11 +373,7 @@ export class TestRunnerService {
 			},
 		};
 
-		const offloadingManualExecutionsInQueueMode =
-			this.executionsConfig.mode === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-
-		if (offloadingManualExecutionsInQueueMode) {
+		if (this.executionsConfig.mode === 'queue') {
 			// Offloading to workers fails if executionData.executionData is present,
 			// so drop just that nested field (keep startData/manualData).
 			// @ts-expect-error - Removing nested executionData property for queue mode

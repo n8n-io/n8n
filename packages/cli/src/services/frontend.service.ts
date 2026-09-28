@@ -296,7 +296,6 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
 			workflowsGroupsWithManyBoundariesEnabled:
@@ -376,9 +375,6 @@ export class FrontendService {
 			},
 			banners: {
 				dismissed: [],
-			},
-			askAi: {
-				enabled: false,
 			},
 			aiBuilder: {
 				enabled: false,
@@ -509,7 +505,6 @@ export class FrontendService {
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
-		const isAskAiEnabled = this.license.isAskAiEnabled();
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -585,10 +580,6 @@ export class FrontendService {
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 			this.settings.aiAssistant.cloudUbbEnabled =
 				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
-		}
-
-		if (isAskAiEnabled) {
-			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		if (isAiCreditsEnabled) {

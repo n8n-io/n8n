@@ -45,7 +45,6 @@ provide(
 		readOnly: true,
 		aiAssistant: false,
 		aiBuilder: false,
-		askAi: false,
 		executionSuccessToasts: false,
 		executionErrorToasts: false,
 		// Keep groups collapsed but surface the ones that contain a failed node.

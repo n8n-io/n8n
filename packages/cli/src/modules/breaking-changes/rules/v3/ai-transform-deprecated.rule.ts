@@ -20,9 +20,9 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v3',
-			title: 'AI Transform node is deprecated',
+			title: 'AI Transform node removed',
 			description:
-				'The AI Transform node is deprecated. Its generated code runs as a Code node instead.',
+				'The AI Transform node is no longer supported. Migrate it to a Code node, which runs its generated code unchanged.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 		};
@@ -36,7 +36,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace AI Transform with a Code node',
 				description:
-					'The AI Transform node runs its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep it working.',
+					'The AI Transform node ran its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep that code running.',
 			},
 		];
 	}
@@ -49,10 +49,10 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		const affectedNodes = nodesGroupedByType.get(AI_TRANSFORM_NODE_TYPE) ?? [];
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
-			title: `Node '${node.name}' uses the deprecated AI Transform node`,
+			title: `AI Transform node '${node.name}' is no longer supported`,
 			description:
-				'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
-			level: 'warning',
+				'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
+			level: 'error',
 		}));
 	}
 }

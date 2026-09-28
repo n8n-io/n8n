@@ -15,7 +15,6 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_SUBCATEGORY,
-	AI_TRANSFORM_NODE_TYPE,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -162,9 +161,9 @@ function getEvaluationNode(
 			...evaluationNode,
 			properties: {
 				...evaluationNode.properties,
+				iconColor: 'neutral',
 				defaults: {
 					name: 'Evaluation',
-					color: '#c3c9d5',
 				},
 			},
 		},
@@ -391,9 +390,9 @@ export function TriggerView() {
 					displayName: 'When running evaluation',
 					description: 'Run a dataset through your workflow to test performance',
 					icon: 'fa:check-double',
+					iconColor: 'neutral',
 					defaults: {
 						name: 'Evaluation',
-						color: '#c3c9d5',
 					},
 				},
 			}
@@ -509,7 +508,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		CODE_NODE_TYPE,
 		DATA_TABLE_NODE_TYPE,
 		DATETIME_NODE_TYPE,
-		AI_TRANSFORM_NODE_TYPE,
 	];
 
 	const view: NodeView = {

@@ -35,7 +35,6 @@ describe('FrontendService', () => {
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
-		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		expressionEngine: { frontendEngine: 'legacy' },
@@ -108,8 +107,8 @@ describe('FrontendService', () => {
 	});
 
 	const binaryDataConfig = mock<BinaryDataConfig>({
-		mode: 'default',
-		availableModes: ['default'],
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
 	});
 
 	const credentialTypes = mock<CredentialTypes>({
@@ -141,7 +140,6 @@ describe('FrontendService', () => {
 		getTeamProjectLimit: vi.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: vi.fn().mockReturnValue(false),
 		isAiAssistantEnabled: vi.fn().mockReturnValue(false),
-		isAskAiEnabled: vi.fn().mockReturnValue(false),
 		isAiCreditsEnabled: vi.fn().mockReturnValue(false),
 		getAiCredits: vi.fn().mockReturnValue(0),
 		isFoldersEnabled: vi.fn().mockReturnValue(false),

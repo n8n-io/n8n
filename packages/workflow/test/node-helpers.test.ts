@@ -6605,7 +6605,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6625,7 +6624,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6645,7 +6643,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6665,7 +6662,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -7335,7 +7331,7 @@ describe('NodeHelpers', () => {
 		// identity, not by the generic "contains trigger" heuristic.
 		test.each([
 			'n8n-nodes-base.webhook',
-			'n8n-nodes-base.cron',
+			'n8n-nodes-base.scheduleTrigger',
 			'n8n-nodes-base.emailReadImap',
 			'n8n-nodes-base.telegramBot',
 			'n8n-nodes-base.start',

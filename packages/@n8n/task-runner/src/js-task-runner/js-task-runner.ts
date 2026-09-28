@@ -508,7 +508,10 @@ export class JsTaskRunner extends TaskRunner {
 			// We assign the available built-ins to the execution context, which
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
-		).getDataProxy({ throwOnMissingExecutionData: false });
+		).getDataProxy({
+			throwOnMissingExecutionData: false,
+			throwOnEvaluateExpression: true,
+		});
 	}
 
 	private extractJsonData(result: INodeExecutionData) {

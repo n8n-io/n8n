@@ -2,7 +2,7 @@ import { NONCE_PLACEHOLDER } from '@n8n/constants';
 import { z } from 'zod';
 
 /**
- * The [Level 3](https://web.dev/articles/strict-csp) policy n8n reports on by default.
+ * The [Level 3](https://web.dev/articles/strict-csp) policy n8n enforces by default.
  *
  * {@link NONCE_PLACEHOLDER} takes the response's nonce when n8n serves the header.
  */

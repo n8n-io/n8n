@@ -81,33 +81,32 @@ export class SecurityConfig {
 	 * Write `<nonce>` where the per-request nonce should go to keep n8n's own scripts working,
 	 * e.g. `script-src <nonce> 'strict-dynamic'`.
 	 *
-	 * Set to `default` to enforce n8n's own policy without transcribing it.
-	 *
-	 * Empty by default: n8n enforces nothing until a policy is set here. See
-	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` for the policy it reports on.
+	 * Defaults to n8n's Level 3 policy, which the instance enforces. Set it to `default` for
+	 * that policy explicitly, or to `{}` to enforce nothing. See
+	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` to try a policy out before enforcing it.
 	 *
 	 * Parsed on read, so this holds the policy to send, or `undefined` to send no header.
-	 * A value that cannot be read warns and leaves this `undefined`: a policy n8n cannot
-	 * parse must not be enforced.
+	 * A value that cannot be read warns and leaves the default policy in place: a policy n8n
+	 * cannot parse must not be enforced.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY', contentSecurityPolicySchema)
-	contentSecurityPolicy: ContentSecurityPolicySetting = undefined;
+	contentSecurityPolicy: ContentSecurityPolicySetting = DEFAULT_CONTENT_SECURITY_POLICY;
 
 	/**
 	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
 	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so use it to try a
 	 * policy out first. Both headers report violations, but only the enforced one blocks.
 	 *
-	 * Defaults to n8n's Level 3 policy. Set it to `default` for that policy explicitly, or to
-	 * `{}` to send no report-only header.
+	 * Empty by default: n8n enforces its own policy instead, and an enforced header already
+	 * reports what it blocks. Set this to `default` for n8n's policy, or to the policy you
+	 * want to try out before you enforce it.
 	 *
 	 * Parsed on read, as `N8N_CONTENT_SECURITY_POLICY` is. The variable held a boolean until
 	 * it took a policy, so a boolean parses to `{ legacyBoolean }` for the caller to honor
 	 * with a deprecation warning.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY', contentSecurityPolicyReportOnlySchema)
-	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting =
-		DEFAULT_CONTENT_SECURITY_POLICY;
+	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting = undefined;
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
@@ -120,8 +119,8 @@ export class SecurityConfig {
 	 * Whether to disable the `sandbox` directive in the CSP header for webhooks.
 	 * The sandboxing mechanism uses CSP headers now, but the name is kept for backwards compatibility.
 	 *
-	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
-	 * `N8N_CONTENT_SECURITY_POLICY`.
+	 * To disable the entire CSP, set `N8N_CONTENT_SECURITY_POLICY` to `{}`. To change it, set
+	 * that variable to your own policy.
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
@@ -134,8 +133,8 @@ export class SecurityConfig {
 	 * The correct way to prevent this is to configure forms to be served from a different
 	 * (sub)domain instead of disabling the sandbox.
 	 *
-	 * To disable the entire CSP, use `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` or override the policy with
-	 * `N8N_CONTENT_SECURITY_POLICY`.
+	 * To disable the entire CSP, set `N8N_CONTENT_SECURITY_POLICY` to `{}`. To change it, set
+	 * that variable to your own policy.
 	 */
 	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
 	disableFormHtmlSandboxing: boolean = false;

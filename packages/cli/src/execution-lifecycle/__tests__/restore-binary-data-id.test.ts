@@ -293,10 +293,8 @@ for (const mode of ['filesystem', 's3'] as const) {
 	});
 }
 
-describe('on default mode', () => {
+describe('on non-webhook execution mode', () => {
 	it('should do nothing', async () => {
-		Container.get(BinaryDataConfig).mode = 'default';
-
 		const executionId = '999';
 
 		const run = toIRun({

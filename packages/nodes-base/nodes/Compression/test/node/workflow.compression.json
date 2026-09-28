@@ -23,13 +23,28 @@
 		},
 		{
 			"parameters": {
-				"filePath": "/home/me/Desktop/lorem.txt"
+				"fileSelector": "/home/me/Desktop/lorem.txt",
+				"options": {}
 			},
 			"id": "2fdbf11d-e1ae-4091-b15f-e0eed69e87c3",
 			"name": "Read Binary File",
-			"type": "n8n-nodes-base.readBinaryFile",
+			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [600, 400]
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{}",
+				"options": {
+					"includeBinary": true
+				}
+			},
+			"id": "11c4e7ea-0538-4200-9f74-a4f4d2b8f573",
+			"name": "Clear File Metadata",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [700, 400]
 		},
 		{
 			"parameters": {},
@@ -54,6 +69,17 @@
 			]
 		},
 		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Clear File Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clear File Metadata": {
 			"main": [
 				[
 					{

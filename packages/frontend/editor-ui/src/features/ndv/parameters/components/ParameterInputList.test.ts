@@ -121,7 +121,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
-	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
+	checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -151,7 +151,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
-		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+		workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -740,33 +740,10 @@ describe('ParameterInputList', () => {
 
 	/**
 	 * Tests rendering of all parameter types to ensure each type works correctly.
-	 * Covers: button, collection, resourceMapper, filter, assignmentCollection,
+	 * Covers: collection, resourceMapper, filter, assignmentCollection,
 	 * curlImport, and multipleValues parameters.
 	 */
 	describe('Different Parameter Types', () => {
-		it('should render button parameter', async () => {
-			const buttonParameters: INodeProperties[] = [
-				{
-					displayName: 'Test Button',
-					name: 'testButton',
-					type: 'button',
-					default: '',
-				},
-			];
-
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { container, findByText } = renderComponent({
-				props: {
-					parameters: buttonParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('.parameter-item')).toBeInTheDocument();
-			expect(await findByText('Test Button')).toBeInTheDocument();
-		});
-
 		it('should render collection parameter', async () => {
 			const collectionParameters: INodeProperties[] = [
 				{
@@ -1284,7 +1261,7 @@ describe('ParameterInputList', () => {
 
 		it('should keep the auto option visible but disabled when no chat trigger is connected', async () => {
 			ndvStore.activeNode = agentNode(3.1);
-			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+			workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(false);
 
 			const { findByText, getByTestId } = renderComponent({
 				props: {
@@ -1312,7 +1289,7 @@ describe('ParameterInputList', () => {
 
 		it('should keep the auto option when a chat trigger is connected', async () => {
 			ndvStore.activeNode = agentNode(3.1);
-			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+			workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(true);
 
 			const { findByText, getByTestId } = renderComponent({
 				props: {
@@ -1339,7 +1316,7 @@ describe('ParameterInputList', () => {
 			vi.useFakeTimers();
 			try {
 				const hasChatParent = ref(false);
-				workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockImplementation(
+				workflowDocumentStoreMock.checkIfNodeHasChatParent.mockImplementation(
 					() => hasChatParent.value,
 				);
 
@@ -1542,12 +1519,6 @@ describe('ParameterInputList', () => {
 					default: {},
 					options: [],
 				},
-				{
-					displayName: 'Button',
-					name: 'buttonParam',
-					type: 'button',
-					default: '',
-				},
 			];
 
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
@@ -1563,7 +1534,6 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('[path="stringParam"]')).toBeInTheDocument();
 			expect(await findByText('Notice')).toBeInTheDocument();
 			expect(await findByText('Fixed Collection')).toBeInTheDocument();
-			expect(await findByText('Button')).toBeInTheDocument();
 		});
 
 		it('should handle nested paths correctly', () => {

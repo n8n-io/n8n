@@ -742,7 +742,7 @@ describe('graph validation', () => {
 				)
 				.to(
 					node({
-						type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						type: 'n8n-nodes-base.httpRequestTool',
 						version: 1.1,
 						config: {
 							name: 'HTTP Tool',
@@ -1160,7 +1160,7 @@ describe('graph validation', () => {
 				)
 				.to(
 					node({
-						type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						type: 'n8n-nodes-base.httpRequestTool',
 						version: 1.1,
 						config: {
 							name: 'HTTP Tool',
@@ -1189,7 +1189,7 @@ describe('graph validation', () => {
 				)
 				.to(
 					node({
-						type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						type: 'n8n-nodes-base.httpRequestTool',
 						version: 1.1,
 						config: {
 							name: 'HTTP Tool',

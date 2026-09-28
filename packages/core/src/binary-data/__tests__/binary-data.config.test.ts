@@ -66,6 +66,17 @@ describe('BinaryDataConfig', () => {
 		);
 	});
 
+	it('should fallback to filesystem for removed in-memory `default` mode', () => {
+		process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'default';
+
+		const config = Container.get(BinaryDataConfig);
+
+		expect(config.mode).toEqual('filesystem');
+		expect(console.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Invalid value for N8N_DEFAULT_BINARY_DATA_MODE'),
+		);
+	});
+
 	describe('dbMaxFileSize', () => {
 		it('should coerce string env variable to number', () => {
 			process.env.N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE = '1024';

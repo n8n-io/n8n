@@ -5,7 +5,8 @@ import { Config, Env } from '../decorators';
 
 /**
  * Default blocked IP ranges applied when N8N_SSRF_BLOCKED_IP_RANGES is 'default'.
- * Covers RFC 1918, loopback, link-local, IPv6 unique local, and reserved/special ranges.
+ * Covers RFC 1918, loopback, link-local, IPv6 unique local, shared address space,
+ * 6to4 and NAT64 prefixes, and reserved/special ranges.
  */
 export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	// RFC 1918 private ranges
@@ -21,8 +22,14 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	// IPv6 unique local
 	'fc00::/7',
 	'fd00::/8',
+	// Shared address space (RFC 6598)
+	'100.64.0.0/10',
+	// 6to4 and NAT64
+	'2002::/16',
+	'64:ff9b::/96',
 	// Reserved/special purpose
 	'0.0.0.0/8',
+	'::/128',
 	'192.0.0.0/24',
 	'192.0.2.0/24',
 	'198.18.0.0/15',
@@ -96,8 +103,9 @@ export class SsrfProtectionConfig {
 	 * allowed to reach. Comma-separated.
 	 *
 	 * The keyword `default` expands to n8n's built-in list of private, loopback,
-	 * link-local (including cloud metadata endpoints) and reserved ranges. Keep
-	 * it and append your own to block more, for example: `default,100.64.0.0/10`.
+	 * link-local (including cloud metadata endpoints), shared address space, IPv6
+	 * transition and reserved ranges. Keep it and append your own to block more,
+	 * for example: `default,192.88.99.0/24`.
 	 */
 	@Env('N8N_SSRF_BLOCKED_IP_RANGES', blockedIpRangesSchema)
 	blockedIpRanges: string[] = [...SSRF_DEFAULT_BLOCKED_IP_RANGES];

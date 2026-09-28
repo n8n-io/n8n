@@ -65,7 +65,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
+	useSettingsStore: vi.fn(() => ({ settings: {} })),
 }));
 
 vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
@@ -1157,7 +1157,6 @@ describe('NodeCreator - utils', () => {
 			versionSupported = true,
 		} = {}) => {
 			vi.mocked(useSettingsStore).mockReturnValue({
-				isAskAiEnabled: true,
 				isAiGatewayEnabled: gatewayEnabled,
 			} as unknown as ReturnType<typeof useSettingsStore>);
 			vi.mocked(useAiGatewayStore).mockReturnValue({
@@ -1285,7 +1284,6 @@ describe('NodeCreator - utils', () => {
 
 		beforeEach(() => {
 			vi.mocked(useSettingsStore).mockReturnValue({
-				isAskAiEnabled: true,
 				isAiGatewayEnabled: false,
 			} as unknown as ReturnType<typeof useSettingsStore>);
 		});
