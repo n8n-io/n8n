@@ -559,13 +559,12 @@ describe('Microsoft Teams streaming', () => {
 		}
 	});
 
-	it('still delivers the reply when the last edit is rejected', async () => {
+	it('still delivers the reply when every edit is rejected', async () => {
 		const ctx = await createTeamsReplayContext({
 			stream: threeDeltas,
 			streamGapMs: 40,
-			// The SDK guards its interval edits but not the final one, so a reply
-			// that only lands there would otherwise be lost behind the placeholder.
-			failEditsAfter: 0,
+			// Nothing reaches the placeholder, so the reply would be lost behind it.
+			succeedingEdits: 0,
 		});
 		try {
 			await expect(ctx.sendWebhook(dmMessage)).resolves.toMatchObject({ status: 200 });
@@ -575,6 +574,37 @@ describe('Microsoft Teams streaming', () => {
 				.map((call) => call.body.text)
 				.filter((text): text is string => typeof text === 'string');
 			expect(texts).toContain('Looking into it now');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	/**
+	 * The known cost of that recovery. The SDK guards its interval edits but not
+	 * its last one, and it reports one promise for all of them, so a turn whose
+	 * earlier edits landed cannot be told apart from one where nothing did. The
+	 * reply is repeated rather than lost, which is the better of the two.
+	 */
+	it('repeats a reply whose earlier edits landed before one was rejected', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: threeDeltas,
+			streamGapMs: 40,
+			succeedingEdits: 1,
+		});
+		try {
+			await ctx.sendWebhook(dmMessage);
+
+			// The edit that landed left part of the reply in the placeholder.
+			const edits = ctx.edits().map((call) => String(call.body.text));
+			expect(edits[0]).not.toBe('');
+			expect('Looking into it now'.startsWith(edits[0])).toBe(true);
+
+			// The whole reply then arrives again, as its own message.
+			const messages = ctx
+				.activities()
+				.filter((call) => call.body.type === 'message' && call.body.text !== '…');
+			expect(messages).toHaveLength(1);
+			expect(messages[0].body.text).toBe('Looking into it now');
 		} finally {
 			await ctx.shutdown();
 		}

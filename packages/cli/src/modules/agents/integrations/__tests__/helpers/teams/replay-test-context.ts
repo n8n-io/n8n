@@ -104,7 +104,7 @@ export function streamInfo(body: Record<string, unknown>): Record<string, unknow
 		| undefined;
 }
 
-function installTeamsApiStub(jwks: object, accessToken: string, failEditsAfter?: number) {
+function installTeamsApiStub(jwks: object, accessToken: string, succeedingEdits?: number) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
 
@@ -154,7 +154,7 @@ function installTeamsApiStub(jwks: object, accessToken: string, failEditsAfter?:
 				method: 'updateActivity',
 				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
 			});
-			if (failEditsAfter !== undefined && editCount++ >= failEditsAfter) {
+			if (succeedingEdits !== undefined && editCount++ >= succeedingEdits) {
 				return [429, { error: { message: 'Too many requests' } }];
 			}
 			return [200, { id: 'message-edited' }];
@@ -164,10 +164,15 @@ function installTeamsApiStub(jwks: object, accessToken: string, failEditsAfter?:
 }
 
 export async function createTeamsReplayContext(
-	options: { stream?: StreamChunk[]; streamGapMs?: number; failEditsAfter?: number } = {},
+	options: {
+		stream?: StreamChunk[];
+		streamGapMs?: number;
+		/** Reject every edit past this many, so a rejection can be provoked. */
+		succeedingEdits?: number;
+	} = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
-	const stub = installTeamsApiStub(signer.jwks, signer.accessToken(), options.failEditsAfter);
+	const stub = installTeamsApiStub(signer.jwks, signer.accessToken(), options.succeedingEdits);
 
 	// Dynamic imports — the chat packages are ESM-only. Production routes through
 	// esm-loader to dodge the CJS transform; vitest loads ESM natively.
