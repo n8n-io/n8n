@@ -129,7 +129,7 @@ export class AgentIntegrationsController {
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		return {
-			verifyToken: deriveWhatsAppVerifyToken(this.instanceSettings.encryptionKey, agentId),
+			verifyToken: deriveWhatsAppVerifyToken(this.instanceSettings.hmacSignatureSecret, agentId),
 		};
 	}
 

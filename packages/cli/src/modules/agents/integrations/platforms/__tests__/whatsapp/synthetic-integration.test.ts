@@ -287,10 +287,10 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 	});
 
 	describe('handleUnauthenticatedWebhook', () => {
-		// createWhatsAppIntegration() wires a fixed 'test-encryption-key', so the
-		// expected token for 'agent-1' is derivable the same way the real
+		// createWhatsAppIntegration() wires a fixed 'test-hmac-signature-secret', so
+		// the expected token for 'agent-1' is derivable the same way the real
 		// verify-token endpoint derives it.
-		const expectedToken = deriveWhatsAppVerifyToken('test-encryption-key', 'agent-1');
+		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
 
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
 			const integration = createWhatsAppIntegration();

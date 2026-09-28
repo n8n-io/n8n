@@ -318,7 +318,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	}
 
 	private deriveVerifyToken(agentId: string): string {
-		return deriveWhatsAppVerifyToken(this.instanceSettings.encryptionKey, agentId);
+		return deriveWhatsAppVerifyToken(this.instanceSettings.hmacSignatureSecret, agentId);
 	}
 
 	private requireCredentialField(

@@ -108,7 +108,10 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
 		mock<AgentRepository>(),
-		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+		mock<InstanceSettings>({
+			encryptionKey: 'test-encryption-key',
+			hmacSignatureSecret: 'test-hmac-signature-secret',
+		}),
 	);
 }
 
