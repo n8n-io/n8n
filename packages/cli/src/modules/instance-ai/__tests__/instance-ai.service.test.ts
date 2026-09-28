@@ -3816,7 +3816,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
 			},
 		});
@@ -3844,7 +3844,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				outputs: expect.objectContaining({
 					message: 'Set up the slack channel',
 					pendingToolCallId: 'tool-call-1',
-					toolName: 'ask-user',
+					toolName: 'ask_user',
 					requestId: 'req-1',
 				}),
 			}),
@@ -3868,7 +3868,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		payload: {
 			requestId: 'req-1',
 			toolCallId: 'tool-call-1',
-			toolName: 'ask-user',
+			toolName: 'ask_user',
 			args: {},
 			severity: 'info',
 			message: 'Set up the slack channel',
@@ -3884,7 +3884,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
 			},
 			confirmationEvent: CARD_EVENT,
@@ -4139,7 +4139,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-2',
 				requestId: 'req-2',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				suspendPayload: { message: 'Confirm the next step' },
 			},
 		});
@@ -6050,7 +6050,7 @@ function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
 	return service;
 }
 
-describe('InstanceAiService — cross-main task-control routing', () => {
+describe('InstanceAiService — cross-main task_control routing', () => {
 	describe('routeCorrectionToTask', () => {
 		it('broadcasts when the task is not local and multi-main', async () => {
 			const service = buildTaskControlService(true);
@@ -6208,7 +6208,7 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 				service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' }),
 			).resolves.toBeUndefined();
 			expect(service.logger.error).toHaveBeenCalledWith(
-				'Failed to apply relayed Instance AI task-control',
+				'Failed to apply relayed Instance AI task_control',
 				expect.objectContaining({ threadId: 'thread-a', action: 'clear-thread' }),
 			);
 		});

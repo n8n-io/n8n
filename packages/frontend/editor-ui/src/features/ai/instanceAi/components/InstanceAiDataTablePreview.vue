@@ -28,7 +28,7 @@ const fetchError = ref<string | null>(null);
 
 // === Editing lock ===
 // The grid is editable only while the AI is not running, so user edits can't
-// race agent mutations (each successful data-tables tool call re-fetches and
+// race agent mutations (each successful data_tables tool call re-fetches and
 // remounts the grid, which would discard an in-progress cell edit).
 const isAgentWorking = useIsAgentWorking();
 

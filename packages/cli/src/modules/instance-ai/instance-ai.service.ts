@@ -327,7 +327,7 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 	const prose = [
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
-		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
+		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n_docs` with `intent: "credential-setup"`.',
 		placeholderTitles.length
 			? `Because the form is pre-filled, give step-by-step guidance on where to obtain the listed value(s) on the provider side${credential.docsUrl ? ' — direct the user to the provider page above rather than re-researching' : ' (research the provider if needed)'} — and do NOT suggest editing the auth template, test URL, or any other credential field.`
 			: '',
@@ -1638,7 +1638,7 @@ export class InstanceAiService {
 		}
 	}
 
-	// ── Cross-main task-control routing ───────────────────────────────────────
+	// ── Cross-main task_control routing ───────────────────────────────────────
 	// User actions (correct/cancel/clear) can land on a different main than the
 	// one running the task/run. Each `route*` method applies the action locally
 	// and, when the target isn't local (or is thread-wide), broadcasts so the
@@ -1654,7 +1654,7 @@ export class InstanceAiService {
 		void this.publisher
 			.publishCommand({ command: 'relay-instance-ai-task-control', payload })
 			.catch((error: unknown) =>
-				this.logger.error('Failed to relay Instance AI task-control to sibling mains', {
+				this.logger.error('Failed to relay Instance AI task_control to sibling mains', {
 					threadId: payload.threadId,
 					action: payload.action,
 					error,
@@ -1662,7 +1662,7 @@ export class InstanceAiService {
 			);
 	}
 
-	/** Apply a task-control action to this main's local slice of the thread.
+	/** Apply a task_control action to this main's local slice of the thread.
 	 *  Returns whether the action's target was found locally: task-scoped
 	 *  actions report a local hit to gate re-broadcast, thread-wide actions
 	 *  always report a miss so they fan out to every main. */
@@ -1738,7 +1738,7 @@ export class InstanceAiService {
 		});
 	}
 
-	/** Apply a task-control action relayed from another main to this main's local
+	/** Apply a task_control action relayed from another main to this main's local
 	 *  slice of the thread. Never re-broadcasts. Not self-sent, so this never
 	 *  fires on the originating main. */
 	@OnPubSubEvent('relay-instance-ai-task-control', { instanceType: 'main' })
@@ -1751,7 +1751,7 @@ export class InstanceAiService {
 		try {
 			await this.applyTaskControlLocally(payload);
 		} catch (error) {
-			this.logger.error('Failed to apply relayed Instance AI task-control', {
+			this.logger.error('Failed to apply relayed Instance AI task_control', {
 				threadId: payload.threadId,
 				taskId: payload.taskId,
 				action: payload.action,
@@ -1992,8 +1992,8 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			// Runs holding an inline HITL confirmation (`create-tasks`,
-			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
+			// Runs holding an inline HITL confirmation (`create_plan`,
+			// sub-agent `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2559,7 +2559,7 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
-		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// The frontend writes the exit to thread metadata when the agent calls `leave_onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
 		const thread = await memory.getThread(threadId);
 		const onboardingThread =
@@ -2917,7 +2917,7 @@ export class InstanceAiService {
 	/**
 	 * Hydrate the thread-persisted preview-session reference (if any) and wire
 	 * the on-demand transcript resolver. Must run before createInstanceAgent so
-	 * createOrchestrationTools can register get-session on follow-up turns.
+	 * createOrchestrationTools can register get_session on follow-up turns.
 	 */
 	private async bindAgentPreviewSession(
 		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
@@ -3781,7 +3781,7 @@ export class InstanceAiService {
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): Promise<void> {
 		// Split the message's attachments by kind once, here at the agent
-		// boundary: files feed the parse-file / content-block path, workflow
+		// boundary: files feed the parse_file / content-block path, workflow
 		// references feed a context block the agent resolves with its tools.
 		// Downstream logic stays single-kind.
 		const fileAttachments = (attachments ?? []).filter(
@@ -4030,7 +4030,7 @@ export class InstanceAiService {
 				};
 			}
 
-			// Thread file attachments into the domain context so parse-file can access them
+			// Thread file attachments into the domain context so parse_file can access them
 			if (fileAttachments.length > 0) {
 				context.currentUserAttachments = fileAttachments;
 			}
@@ -4203,7 +4203,7 @@ export class InstanceAiService {
 
 			const messageBody =
 				!message && hasParseableAttachment
-					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${attachmentManifest}`
+					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse_file and provide a concise summary.\n\n${attachmentManifest}`
 					: attachmentManifest
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
@@ -4868,7 +4868,7 @@ export class InstanceAiService {
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
-			//      complete-checkpoint, mark the task failed so the scheduler
+			//      complete_checkpoint, mark the task failed so the scheduler
 			//      can transition to awaiting_replan. Runs even on a stop: the
 			//      cancelled run's context is the only thing that knows about
 			//      this follow-up, so skipping it strands the task at `running`.
@@ -4924,7 +4924,7 @@ export class InstanceAiService {
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then
-				// call `complete-checkpoint`.
+				// call `complete_checkpoint`.
 				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
 					threadId,
 					checkpointTaskId,

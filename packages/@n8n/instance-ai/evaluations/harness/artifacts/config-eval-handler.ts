@@ -12,7 +12,7 @@ export const configEvalHandler: ArtifactHandler<ConfigEvalArtifact> = {
 	type: 'config-eval',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		// Refs are captured from the `eval-config` create tool call; ref.id is the owning
+		// Refs are captured from the `eval_config` create tool call; ref.id is the owning
 		// workflow id from its args (config-evals are fetched per-workflow).
 		return ctx.artifactRefs.filter((ref) => ref.type === 'config-eval');
 	},

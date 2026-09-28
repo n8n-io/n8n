@@ -1,5 +1,5 @@
 // Mock the barrel import so importing the adapter module doesn't pull the full
-// @n8n/instance-ai runtime; these tests exercise only the local eval-config mappers.
+// @n8n/instance-ai runtime; these tests exercise only the local eval_config mappers.
 vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData: (content: string) => content,
 	builderTemplatesOptionsFromEnv: () => ({}),

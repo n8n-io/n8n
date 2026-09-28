@@ -11,6 +11,7 @@ import type {
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
+import { INSTANCE_AI_LEGACY_TOOL_NAMES } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -49,7 +50,7 @@ import { streamAgentChunks } from '../utils/agent-stream';
 
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
- * only ever streams for Instance AI's build-agent tool, so every field the
+ * only ever streams for Instance AI's build_agent tool, so every field the
  * host has already resolved (model, billing identity, telemetry) is required
  * rather than falling back to the builder's own settings/tracing chains.
  */
@@ -267,6 +268,8 @@ export class AgentsBuilderService {
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			// Builder sessions saved before the snake_case rename still call `agent-context`.
+			.toolNameAliases(INSTANCE_AI_LEGACY_TOOL_NAMES)
 			.configuration({ maxIterations: 100 });
 		const promptCaching = resolveAIAPromptCaching(modelConfig);
 		if (promptCaching) {

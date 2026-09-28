@@ -92,7 +92,7 @@ type PendingAgentTargetMetadata = {
  * optional fields provided by the new call win; fields it omits are preserved
  * from the existing entry. Callers are responsible for resolving `name` using
  * the existing entry as a fallback so partial updates (e.g. a patch
- * `build-workflow` call that carries only a `workflowId`) don't regress a
+ * `build_workflow` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
 function recordProduced(
@@ -146,14 +146,14 @@ function entryFromListItem(
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set([
-	'build-workflow',
+	'build_workflow',
 	'build-workflow-with-agent',
-	'build-agent',
+	'build_agent',
 	'submit-workflow',
-	'apply-workflow-credentials',
+	'apply_workflow_credentials',
 	'workflows',
 	'credentials',
-	'data-tables',
+	'data_tables',
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -176,7 +176,7 @@ function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	const action = optionalString(tc.args?.action);
 	if (!action) return 'built';
 	if (tc.toolName === 'workflows' && WORKFLOW_READ_ACTIONS.has(action)) return 'fetched';
-	if (tc.toolName === 'data-tables' && DATA_TABLE_READ_ACTIONS.has(action)) return 'fetched';
+	if (tc.toolName === 'data_tables' && DATA_TABLE_READ_ACTIONS.has(action)) return 'fetched';
 	return 'built';
 }
 function entryFromAgentBuilderTarget(
@@ -212,7 +212,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
+	// build_workflow / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {
@@ -267,12 +267,12 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// build-agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// build_agent: { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
 	if (
-		tc.toolName === 'build-agent' &&
+		tc.toolName === 'build_agent' &&
 		typeof result.agentId === 'string' &&
 		(result.agentChange === 'created' ||
 			result.agentChange === 'updated' ||
@@ -310,7 +310,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Singular data table (e.g. data-tables action=create) — produced.
+	// Singular data table (e.g. data_tables action=create) — produced.
 	if (result.table && typeof result.table === 'object') {
 		const obj = result.table as Record<string, unknown>;
 		if (typeof obj.id === 'string') {
@@ -339,7 +339,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			result.dataTableId;
 		const dataTableAction = optionalString(tc.args?.action);
 		const isReadOnlyLookup =
-			tc.toolName === 'data-tables' &&
+			tc.toolName === 'data_tables' &&
 			dataTableAction !== undefined &&
 			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
 		recordProduced(
@@ -358,7 +358,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 /**
  * Register the agent's `targetResource` as a produced artifact when it carries
  * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first build-workflow
+ * workflow). Surfacing this at spawn time — before the first build_workflow
  * tool result arrives — lets the artifacts panel show the workflow as soon as
  * the sub-agent starts, instead of waiting for the first edit.
  */
@@ -371,7 +371,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
 		// New events report the target before the result is known. Only the
-		// build-agent result can confirm that this Agent changed.
+		// build_agent result can confirm that this Agent changed.
 		if (node.activity !== undefined && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);

@@ -88,11 +88,11 @@ function hasSetupRequestCredential(event: TraceEvent, credentialType: string): b
 }
 
 function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummary {
-	const buildCalls = getToolCalls(events, 'build-workflow');
+	const buildCalls = getToolCalls(events, 'build_workflow');
 	const firstSuccessfulBuildEventIndex = events.findIndex(
 		(event) =>
 			event.kind === 'tool-call' &&
-			event.toolName === 'build-workflow' &&
+			event.toolName === 'build_workflow' &&
 			event.output?.success === true &&
 			typeof event.output.workflowId === 'string',
 	);
@@ -112,7 +112,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 		const remediation = event.output?.remediation as Record<string, unknown> | undefined;
 		return (
 			event.kind === 'tool-call' &&
-			event.toolName === 'verify-built-workflow' &&
+			event.toolName === 'verify_built_workflow' &&
 			event.output?.success === false &&
 			remediation?.category === 'needs_setup' &&
 			remediation.shouldEdit === false &&
@@ -122,7 +122,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 	const terminalSetupReportIndex = events.findIndex((event) => {
 		return (
 			event.kind === 'tool-call' &&
-			event.toolName === 'report-verification-verdict' &&
+			event.toolName === 'report_verification_verdict' &&
 			event.input?.verdict === 'needs_user_input' &&
 			(includesMockedSlackSetup(event.input.diagnosis) ||
 				includesMockedSlackSetup(event.input.summary) ||
@@ -138,7 +138,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			| undefined;
 		return (
 			event.kind === 'tool-call' &&
-			event.toolName === 'build-workflow' &&
+			event.toolName === 'build_workflow' &&
 			event.output?.success === true &&
 			(eventSetupRequirement?.status === 'required' ||
 				eventVerificationReadiness?.status === 'needs_setup')
@@ -172,7 +172,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 	const firstCompleteCheckpointIndex = events.findIndex(
 		(event) =>
 			(event.kind === 'tool-call' || event.kind === 'tool-suspend') &&
-			event.toolName === 'complete-checkpoint',
+			event.toolName === 'complete_checkpoint',
 	);
 	const remediation =
 		terminalSetupVerifyIndex >= 0
@@ -182,7 +182,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 		terminalSetupIndex >= 0
 			? events
 					.slice(terminalSetupIndex + 1)
-					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build-workflow')
+					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build_workflow')
 					.length
 			: 0;
 	return {
@@ -247,7 +247,7 @@ test.describe(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'Use the workflow-builder skill and save it with build-workflow. ' +
+						'Use the workflow-builder skill and save it with build_workflow. ' +
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
 
@@ -259,7 +259,7 @@ test.describe(
 
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
-				const buildCalls = getToolCalls(events, 'build-workflow');
+				const buildCalls = getToolCalls(events, 'build_workflow');
 				const setupCalls = getToolEvents(events, 'workflows').filter(
 					(event) =>
 						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,

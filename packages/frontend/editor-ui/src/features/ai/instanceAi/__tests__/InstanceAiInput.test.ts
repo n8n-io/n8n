@@ -126,7 +126,7 @@ const CustomCycleSuggestionsComponent = defineComponent({
 					disabled: props.disabled,
 					onClick: () => {
 						emit('cycle-suggestions', {
-							visibleSuggestionIds: ['build-agent', 'find-automation-ideas'],
+							visibleSuggestionIds: ['build_agent', 'find-automation-ideas'],
 							cycleCount: 1,
 						});
 					},
@@ -273,8 +273,8 @@ describe('InstanceAiInput', () => {
 	it('uses the shared suggestions fixture with the expected top-level contract', () => {
 		expect(suggestions.map((suggestion) => ({ id: suggestion.id, type: suggestion.type }))).toEqual(
 			[
-				{ id: 'build-workflow', type: 'prompt' },
-				{ id: 'build-agent', type: 'prompt' },
+				{ id: 'build_workflow', type: 'prompt' },
+				{ id: 'build_agent', type: 'prompt' },
 				{ id: 'find-automation-ideas', type: 'prompt' },
 				{ id: 'quick-examples', type: 'menu' },
 			],
@@ -521,7 +521,7 @@ describe('InstanceAiInput', () => {
 			{
 				kind: 'prefill',
 				prefillType: 'v1_opener',
-				prefillId: 'build-agent',
+				prefillId: 'build_agent',
 				promptModified: false,
 			},
 			expect.any(Number),
@@ -1328,7 +1328,7 @@ describe('InstanceAiInput', () => {
 
 		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestions cycled', {
 			suggestion_catalog_version: 'v2',
-			visible_suggestion_ids: ['build-agent', 'find-automation-ideas'],
+			visible_suggestion_ids: ['build_agent', 'find-automation-ideas'],
 			cycle_count: 1,
 		});
 		expect(telemetryTrack.mock.calls[0]?.[1]).not.toHaveProperty('thread_id');
@@ -1451,7 +1451,7 @@ describe('InstanceAiInput', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
 			thread_id: 'thread-1',
 			suggestion_catalog_version: 'v1',
-			suggestion_id: 'build-workflow',
+			suggestion_id: 'build_workflow',
 			suggestion_kind: 'prompt',
 			position: 1,
 		});

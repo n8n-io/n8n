@@ -107,7 +107,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			const result = runExpectedToolsInvokedCheck(
 				slackOauthScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'research' }, { toolName: 'ask-user' }],
+					toolCalls: [{ toolName: 'research' }, { toolName: 'ask_user' }],
 				}),
 			);
 
@@ -193,22 +193,22 @@ describe('runExpectedToolsInvokedCheck', () => {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['create-tasks'],
-				noneOfToolCalls: [{ toolName: 'ask-user', argsContainAny: ['credential'] }],
+				anyOf: ['create_plan'],
+				noneOfToolCalls: [{ toolName: 'ask_user', argsContainAny: ['credential'] }],
 			},
 		};
 
-		it('passes when ask-user is available to a spawned agent but is not called', () => {
+		it('passes when ask_user is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
 				planningScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'create-tasks' }],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
+					toolCalls: [{ toolName: 'create_plan' }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('ask-user');
+			expect(result.invokedTools).toContain('ask_user');
 		});
 
 		it('fails when the forbidden tool call happens with matching args', () => {
@@ -216,13 +216,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'create-tasks' },
+						{ toolName: 'create_plan' },
 						{
-							toolName: 'ask-user',
+							toolName: 'ask_user',
 							args: { question: 'Which Google Calendar credential should I use?' },
 						},
 					],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
 				}),
 			);
 
@@ -236,10 +236,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'create-tasks' },
-						{ toolName: 'ask-user', args: { question: 'Which failure branch should run?' } },
+						{ toolName: 'create_plan' },
+						{ toolName: 'ask_user', args: { question: 'Which failure branch should run?' } },
 					],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
 				}),
 			);
 
@@ -302,7 +302,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			expectedToolInvocations: {
 				allOfToolCalls: [
 					{ toolName: 'load_skill', argsContainAny: ['data-table-manager'] },
-					{ toolName: 'data-tables', argsContainAny: ['list'] },
+					{ toolName: 'data_tables', argsContainAny: ['list'] },
 				],
 			},
 		};
@@ -313,7 +313,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
-						{ toolName: 'data-tables', args: { action: 'list' } },
+						{ toolName: 'data_tables', args: { action: 'list' } },
 					],
 				}),
 			);
@@ -326,13 +326,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 				dataTableScenario,
 				makeOutcome({
 					toolCalls: [{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } }],
-					agents: [{ role: 'workflow-builder', tools: ['data-tables'] }],
+					agents: [{ role: 'workflow-builder', tools: ['data_tables'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('Expected actual tool call matching');
-			expect(result.comment).toContain('data-tables');
+			expect(result.comment).toContain('data_tables');
 		});
 
 		it('fails when the tool call args do not match the expectation', () => {
@@ -341,7 +341,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
-						{ toolName: 'data-tables', args: { action: 'schema' } },
+						{ toolName: 'data_tables', args: { action: 'schema' } },
 					],
 				}),
 			);
@@ -357,7 +357,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			userMessage: 'Search my Notion.',
 			expectedToolInvocations: {
 				anyOfToolCalls: [
-					{ toolName: 'mcp-servers', args: { action: 'connect', serverSlugs: ['notion'] } },
+					{ toolName: 'mcp_servers', args: { action: 'connect', serverSlugs: ['notion'] } },
 				],
 			},
 		};
@@ -368,7 +368,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{
-							toolName: 'mcp-servers',
+							toolName: 'mcp_servers',
 							args: { action: 'connect', serverSlugs: ['notion'], reason: 'unlocks search' },
 						},
 					],
@@ -384,7 +384,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{
-							toolName: 'mcp-servers',
+							toolName: 'mcp_servers',
 							args: { action: 'connect', serverSlugs: ['linear', 'notion'] },
 						},
 					],
@@ -400,7 +400,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{
-							toolName: 'mcp-servers',
+							toolName: 'mcp_servers',
 							args: {
 								action: 'connect',
 								serverSlugs: ['linear'],
@@ -418,7 +418,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			const result = runExpectedToolsInvokedCheck(
 				connectNotion,
 				makeOutcome({
-					toolCalls: [{ toolName: 'mcp-servers', args: { action: 'search', queries: ['notion'] } }],
+					toolCalls: [{ toolName: 'mcp_servers', args: { action: 'search', queries: ['notion'] } }],
 				}),
 			);
 

@@ -229,16 +229,16 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('ask-user routing', () => {
+	describe('ask_user routing', () => {
 		const questions = [
 			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
 		];
 
-		it('renders ask-user from confirmation-request and skips the tool-call twin', () => {
+		it('renders ask_user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', { payload: { toolName: 'ask_user', args: { questions } } }),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -268,7 +268,7 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', { payload: { toolName: 'ask_user', args: { questions } } }),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -286,7 +286,7 @@ describe('buildTranscriptFromEvents', () => {
 					RUN_START,
 					evt('tool-call', {
 						payload: {
-							toolName: 'create-tasks',
+							toolName: 'create_plan',
 							args: { tasks: [{ title: 'Fetch posts', description: 'GET /posts' }] },
 						},
 					}),
@@ -392,14 +392,14 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', toolName: 'create-tasks' },
+						payload: { requestId: 'r1', toolName: 'create_plan' },
 					}),
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
 			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
-				toolName: 'create-tasks',
+				toolName: 'create_plan',
 				resumeReason: 'approval',
 				approved: false,
 			});

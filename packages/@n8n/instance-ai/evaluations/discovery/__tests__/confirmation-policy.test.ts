@@ -13,7 +13,7 @@ function scenario(overrides: Partial<DiscoveryTestCase> = {}): DiscoveryTestCase
 	return {
 		id: 'test',
 		userMessage: 'do the thing',
-		expectedToolInvocations: { anyOf: ['mcp-servers'] },
+		expectedToolInvocations: { anyOf: ['mcp_servers'] },
 		...overrides,
 	};
 }
@@ -44,14 +44,14 @@ describe('buildConfirmationPolicy', () => {
 	});
 
 	it('normalizes a bare decision into an answer', () => {
-		const policy = buildConfirmationPolicy(scenario({ confirmations: { 'mcp-servers': 'deny' } }));
-		expect(policy.get('mcp-servers')).toEqual({ decision: 'deny' });
+		const policy = buildConfirmationPolicy(scenario({ confirmations: { mcp_servers: 'deny' } }));
+		expect(policy.get('mcp_servers')).toEqual({ decision: 'deny' });
 	});
 
 	it('keeps an answer object as declared', () => {
 		const answer = { decision: 'approve' as const, resumeWith: { connectedSlugs: ['notion'] } };
-		const policy = buildConfirmationPolicy(scenario({ confirmations: { 'mcp-servers': answer } }));
-		expect(policy.get('mcp-servers')).toEqual(answer);
+		const policy = buildConfirmationPolicy(scenario({ confirmations: { mcp_servers: answer } }));
+		expect(policy.get('mcp_servers')).toEqual(answer);
 	});
 });
 
@@ -67,10 +67,10 @@ describe('resolveConfirmation', () => {
 	});
 
 	it('denies when the scenario says so', async () => {
-		const policy = buildConfirmationPolicy(scenario({ confirmations: { 'mcp-servers': 'deny' } }));
+		const policy = buildConfirmationPolicy(scenario({ confirmations: { mcp_servers: 'deny' } }));
 		const { responders, registry } = mcpResponders();
 		expect(
-			resolveConfirmation(suspension('mcp-servers', connectPayload), policy, responders),
+			resolveConfirmation(suspension('mcp_servers', connectPayload), policy, responders),
 		).toEqual({ approved: false });
 		await expect(registry.service.listConnections()).resolves.toEqual([]);
 	});
@@ -103,7 +103,7 @@ describe('resolveConfirmation', () => {
 	it('takes the first responder that recognises the payload', () => {
 		const { responders } = mcpResponders();
 		const all = [credentialAutoSetupResponder, ...responders];
-		expect(resolveConfirmation(suspension('mcp-servers', connectPayload), empty, all)).toEqual({
+		expect(resolveConfirmation(suspension('mcp_servers', connectPayload), empty, all)).toEqual({
 			approved: true,
 			connectedSlugs: ['notion', 'linear'],
 		});
@@ -118,12 +118,12 @@ describe('resolveConfirmation', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
 				confirmations: {
-					'mcp-servers': { decision: 'approve', resumeWith: { connectedSlugs: ['notion'] } },
+					mcp_servers: { decision: 'approve', resumeWith: { connectedSlugs: ['notion'] } },
 				},
 			}),
 		);
 		expect(
-			resolveConfirmation(suspension('mcp-servers', connectPayload), policy, responders),
+			resolveConfirmation(suspension('mcp_servers', connectPayload), policy, responders),
 		).toEqual({ approved: true, connectedSlugs: ['notion'] });
 		await expect(registry.service.listConnections()).resolves.toEqual([
 			{ slug: 'notion' },
@@ -134,31 +134,31 @@ describe('resolveConfirmation', () => {
 	it('keeps a deny denied even when resumeWith claims approval', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'mcp-servers': { decision: 'deny', resumeWith: { approved: true } } },
+				confirmations: { mcp_servers: { decision: 'deny', resumeWith: { approved: true } } },
 			}),
 		);
 		const { responders } = mcpResponders();
 		expect(
-			resolveConfirmation(suspension('mcp-servers', connectPayload), policy, responders),
+			resolveConfirmation(suspension('mcp_servers', connectPayload), policy, responders),
 		).toEqual({ approved: false });
 	});
 
 	it('keeps an approve approved even when resumeWith claims refusal', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { approved: false } } },
+				confirmations: { ask_user: { decision: 'approve', resumeWith: { approved: false } } },
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({ approved: true });
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({ approved: true });
 	});
 
 	it('carries resumeWith when no responder recognises the payload', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { answer: 'yes' } } },
+				confirmations: { ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } } },
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
 			approved: true,
 			answer: 'yes',
 		});
@@ -186,7 +186,7 @@ describe('unmatchedConfirmations', () => {
 
 	it('exempts a bare approve, which only asks for the default', () => {
 		const approveOnly = buildConfirmationPolicy(
-			scenario({ confirmations: { 'ask-user': 'approve' } }),
+			scenario({ confirmations: { ask_user: 'approve' } }),
 		);
 		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
 	});
@@ -243,25 +243,25 @@ describe('discoveryTestCaseSchema', () => {
 	const base = { id: 'x', userMessage: 'y', expectedToolInvocations: { anyOf: ['a'] } };
 
 	it.each([
-		['a bare decision', { 'mcp-servers': 'deny' }],
-		['an answer object', { 'mcp-servers': { decision: 'approve' } }],
+		['a bare decision', { mcp_servers: 'deny' }],
+		['an answer object', { mcp_servers: { decision: 'approve' } }],
 		['an answer with resume data', { credentials: { decision: 'approve', resumeWith: { a: 1 } } }],
 	])('accepts %s', (_label, confirmations) => {
 		expect(discoveryTestCaseSchema.safeParse({ ...base, confirmations }).success).toBe(true);
 	});
 
 	it.each([
-		['an unknown decision', { confirmations: { 'mcp-servers': 'maybe' } }],
+		['an unknown decision', { confirmations: { mcp_servers: 'maybe' } }],
 		['an empty map', { confirmations: {} }],
-		['a missing decision', { confirmations: { 'mcp-servers': { resumeWith: { a: 1 } } } }],
+		['a missing decision', { confirmations: { mcp_servers: { resumeWith: { a: 1 } } } }],
 		[
 			'an empty resumeWith',
-			{ confirmations: { 'mcp-servers': { decision: 'approve', resumeWith: {} } } },
+			{ confirmations: { mcp_servers: { decision: 'approve', resumeWith: {} } } },
 		],
-		['a misspelled key', { confirmation: { 'mcp-servers': 'deny' } }],
+		['a misspelled key', { confirmation: { mcp_servers: 'deny' } }],
 		[
 			'a resumeWith setting the reserved `approved` field',
-			{ confirmations: { 'mcp-servers': { decision: 'deny', resumeWith: { approved: true } } } },
+			{ confirmations: { mcp_servers: { decision: 'deny', resumeWith: { approved: true } } } },
 		],
 	])('rejects %s', (_label, invalid) => {
 		expect(discoveryTestCaseSchema.safeParse({ ...base, ...invalid }).success).toBe(false);

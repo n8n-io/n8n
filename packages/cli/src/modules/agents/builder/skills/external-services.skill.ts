@@ -14,14 +14,14 @@ export function externalServicesSkill(): RuntimeSkill {
 		description:
 			'Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.',
 		recommendedTools: [
-			'agent-context',
+			'agent_context',
 			'configure_channel',
 			'ask_credential',
 			'verify_mcp_server',
 			'patch_config',
 		],
 		allowedTools: [
-			'agent-context',
+			'agent_context',
 			'configure_channel',
 			'ask_credential',
 			'verify_mcp_server',
@@ -88,7 +88,7 @@ Examples:
   workflow and only needs to search/create/update Linear tickets via MCP or node
   tools.
 
-If \`agent-context({ type: "integrations" })\` does not return the requested conversation
+If \`agent_context({ type: "integrations" })\` does not return the requested conversation
 platform, do not substitute a platform messaging node as an Agent tool. The
 Agent needs an external channel-bridge workflow instead:
 
@@ -104,7 +104,7 @@ Agent needs an external channel-bridge workflow instead:
 4. If the reporting tool is unavailable, state the same workflow requirement
    clearly in the final reply so the calling surface can create it.
 
-For callable (non-chat) services, call \`agent-context\` with
+For callable (non-chat) services, call \`agent_context\` with
 \`type: "integrations"\` and \`queries\` separately per service. Read \`kind\`
 from its \`context\` data: \`"mcp"\` -> MCP Servers section
 below, \`"node"\` -> load \`agent-builder-node-tools\`.
@@ -123,7 +123,7 @@ actions such as \`send_dm\` are available without inbound message context.
 The \`integrations\` array controls how the target agent is triggered.
 
 - These are configured external chat platforms, not built-in Preview chat.
-- Call \`agent-context({ type: "integrations" })\` first.
+- Call \`agent_context({ type: "integrations" })\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`type\` and pass it to \`configure_channel\` as
@@ -133,7 +133,7 @@ The \`integrations\` array controls how the target agent is triggered.
   agent; do not follow up with \`patch_config\`/\`write_config\` to write the
   credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
-  \`agent-context({ type: "integrations" })\` returns the matching type, \`agent-context({ type: "config" })\` then
+  \`agent_context({ type: "integrations" })\` returns the matching type, \`agent_context({ type: "config" })\` then
   \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
   to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
   telegram) so the channel appears in the agent panel as needing setup. Pass
@@ -143,7 +143,7 @@ The \`integrations\` array controls how the target agent is triggered.
   skipped, list it in the closing setup checklist pointing at the channel
   chip in the agent panel.
 - Preserve existing chat integrations unless the user asked to remove them.
-- To remove an existing chat integration, call \`agent-context({ type: "config" })\` and inspect
+- To remove an existing chat integration, call \`agent_context({ type: "config" })\` and inspect
   \`config.integrations\`.
 - If exactly one existing integration matches the requested platform, remove
   that entry with \`patch_config\` by index (or replace \`/integrations\` with a
@@ -155,7 +155,7 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ### Gotchas
 
-- Chat integration types must come from \`agent-context({ type: "integrations" })\`. A channel
+- Chat integration types must come from \`agent_context({ type: "integrations" })\`. A channel
   absent from its result is unsupported for agents — never invent a type, never
   draft or configure it, and never substitute a workflow node (e.g. a
   WhatsApp/Twilio node) to fake an unsupported chat channel. Instead, explain
@@ -163,7 +163,7 @@ The \`integrations\` array controls how the target agent is triggered.
   returned with their \`capabilities\`, and ask which to use (or whether the
   user wants a workflow path after the limitation is stated).
 - Do not add a chat integration just because the agent needs CRUD or notifications
-  for that product. Resolve the callable capability through \`agent-context\`
+  for that product. Resolve the callable capability through \`agent_context\`
   unless the product itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (\`create_tasks\`) for the
   cadence. Keep a requested chat integration, and use its generated action
@@ -176,14 +176,14 @@ The \`integrations\` array controls how the target agent is triggered.
 
 MCP servers expose external tool catalogs to the target agent over HTTP. They
 live on the top-level \`mcpServers\` array, and each entry maps 1:1 to a
-connected MCP server. Use this section when \`agent-context\` returned
+connected MCP server. Use this section when \`agent_context\` returned
 \`kind: "mcp"\`, the user explicitly asks to add or edit an MCP server, or the
 user provides or asks to configure a custom MCP server.
 
 ### Discovery and setup
 
 For a generic external-service request, search integrations before MCP setup.
-If no result is available yet, call \`agent-context\` with
+If no result is available yet, call \`agent_context\` with
 \`type: "integrations"\` and queries matching the requested service.
 Resolve one requested service per call; use \`queries\` only for alternative
 search terms for that service.
@@ -221,20 +221,20 @@ Follow these steps for the selected MCP result:
    \`credentialId\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
-4. Write config: call \`agent-context({ type: "config" })\`, then \`patch_config\` to add the entry to
+4. Write config: call \`agent_context({ type: "config" })\`, then \`patch_config\` to add the entry to
    \`mcpServers[]\` using the patch pattern below. When the entry already
    exists and verify returned \`credentialApplied: true\`, skip this step — the
    credential is already persisted.
 
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
-assumption (above), then \`agent-context({ type: "config" })\` and \`patch_config\` a draft
+assumption (above), then \`agent_context({ type: "config" })\` and \`patch_config\` a draft
 \`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
 \`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
 \`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
 authenticate yet. Include the credential in the trailing \`finish_setup\` call;
 verify with the returned credential id — on success the tool writes the
 credential into the matching entry itself (\`credentialApplied: true\`); no
-\`agent-context({ type: "config" })\`/\`patch_config\` follow-up for the credential. Existing-agent
+\`agent_context({ type: "config" })\`/\`patch_config\` follow-up for the credential. Existing-agent
 additions keep the immediate ask + verify flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
@@ -278,9 +278,9 @@ credential id from \`ask_credential\`.
 - Success returns \`{ ok: true, tools: [{ name, description }] }\`, and when a
   matching \`mcpServers\` entry exists, also \`credentialApplied: true,
   configMutated: true, agentId\` — the credential is written automatically; do
-  not follow with \`agent-context({ type: "config" })\`/\`patch_config\` for the credential.
+  not follow with \`agent_context({ type: "config" })\`/\`patch_config\` for the credential.
 - When verify succeeds but \`credentialApplied: false\` and the entry already
-  exists, fall back to \`agent-context({ type: "config" })\` then \`patch_config\` for the credential.
+  exists, fall back to \`agent_context({ type: "config" })\` then \`patch_config\` for the credential.
 - For an explicitly requested filter or selected approval list, copy exact names
   from the returned tool list following Tool exposure and approval above.
 - Failure returns \`{ ok: false, error: "..." }\`.
@@ -298,7 +298,7 @@ setup later:
   only the \`credential\` field.
 - URL skipped: persist \`url: ""\`.
 - Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
-  connect to), then \`agent-context({ type: "config" })\` and \`patch_config\` the entry, preserving
+  connect to), then \`agent_context({ type: "config" })\` and \`patch_config\` the entry, preserving
   every other known field — \`name\`, \`transport\`, \`authentication\`, an
   already-selected credential, and registry \`metadata\`.
 
@@ -340,11 +340,11 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
   initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
   config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
-  callable capability through \`agent-context\` and use MCP, node, or
+  callable capability through \`agent_context\` and use MCP, node, or
   workflow tools.
 - No node, MCP, or workflow tool duplicates an action listed by a configured
   chat integration, including for proactive scheduled tasks.
-- Generic non-chat external services were routed through \`agent-context\`
+- Generic non-chat external services were routed through \`agent_context\`
   before MCP or node setup.
 - The final \`integrations\` array keeps unrelated integrations intact and
   removes only the requested channel entries.`,

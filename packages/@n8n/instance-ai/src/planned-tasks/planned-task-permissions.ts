@@ -25,7 +25,7 @@ export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 	},
 	// Checkpoint tasks run inside an orchestrator follow-up run. Plan approval
 	// authorizes the verification step, so the orchestrator can call
-	// verify-built-workflow / executions(action="run") without a second prompt.
+	// verify_built_workflow / executions(action="run") without a second prompt.
 	checkpoint: {
 		runWorkflow: 'always_allow',
 	},

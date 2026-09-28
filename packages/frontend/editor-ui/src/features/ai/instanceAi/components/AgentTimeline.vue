@@ -164,7 +164,7 @@ function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 	if (localStatus === 'denied') return 'denied';
 	// `confirmationStatus === 'denied'` covers re-renders where the local action
 	// was lost (e.g. page reload): default to changes-requested since
-	// create-tasks emits a revised plan card on top of the old one in that flow.
+	// create_plan emits a revised plan card on top of the old one in that flow.
 	if (localStatus === 'changes-requested' || tc.confirmationStatus === 'denied') {
 		return 'changes-requested';
 	}
@@ -180,7 +180,7 @@ function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. Without the resolvedConfirmationIds
- *  check, a freshly-loading create-tasks call could briefly re-enable the old
+ *  check, a freshly-loading create_plan call could briefly re-enable the old
  *  card's footer (toolCall.isLoading flips back to true on tool-call-start
  *  before the previous card's read-only catches up). */
 function isCardReadOnly(tc: InstanceAiToolCallState): boolean {

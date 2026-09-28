@@ -24,7 +24,7 @@ import { isComputerUseTool } from './tool-set';
 
 const DEFAULT_MAX_REPEATED_CALL = 3;
 const DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX = 'browser';
-const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = ['ask-user', 'pause-for-user'];
+const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = ['ask_user', 'pause-for-user'];
 const DEFAULT_MUST_REACH_URL_PREFIX = 'browser';
 const URL_LIKE_ARG_FIELDS: readonly string[] = ['url', 'to', 'href', 'target', 'link'];
 // `finalText` is the concatenation of every text-delta event in the run, so

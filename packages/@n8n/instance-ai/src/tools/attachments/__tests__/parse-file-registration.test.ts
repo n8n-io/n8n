@@ -22,7 +22,7 @@ function wouldRegisterParseTool(attachments?: InstanceAiFileAttachment[]): boole
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('parse-file tool registration logic', () => {
+describe('parse_file tool registration logic', () => {
 	it('does NOT register when no attachments are present', () => {
 		expect(wouldRegisterParseTool(undefined)).toBe(false);
 	});

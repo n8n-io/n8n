@@ -41,7 +41,7 @@ test.describe(
 					testInfo,
 					baseUrl: backendUrl,
 					metrics: services.observability.metrics,
-					dimensions: { scenario: 'data-tables', rounds: ROUNDS },
+					dimensions: { scenario: 'data_tables', rounds: ROUNDS },
 					heapOptions,
 					captureSnapshots: true,
 					dryRun: false,

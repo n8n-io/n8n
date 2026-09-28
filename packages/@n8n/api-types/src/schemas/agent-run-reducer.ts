@@ -19,6 +19,7 @@
  * parse yields a state whose index and tree no longer share objects.
  */
 
+import { normalizeInstanceAiToolName } from '../constants/instance-ai-tool-names';
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
@@ -258,10 +259,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: normalizeInstanceAiToolName(event.payload.toolName),
 					args: {},
 					isLoading: true,
-					renderHint: getRenderHint(event.payload.toolName),
+					renderHint: getRenderHint(normalizeInstanceAiToolName(event.payload.toolName)),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
@@ -353,10 +354,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: normalizeInstanceAiToolName(event.payload.toolName),
 					args: event.payload.args,
 					isLoading: true,
-					renderHint: getRenderHint(event.payload.toolName),
+					renderHint: getRenderHint(normalizeInstanceAiToolName(event.payload.toolName)),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;

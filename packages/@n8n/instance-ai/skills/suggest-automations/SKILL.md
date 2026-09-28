@@ -8,8 +8,8 @@ description: >-
   Use it on other threads when the user asks what they could automate or
   wants ideas for a first workflow.
 recommended_tools:
-  - ask-user
-  - build-workflow
+  - ask_user
+  - build_workflow
 ---
 
 # Suggest automations
@@ -33,10 +33,10 @@ questions again. Two openings:
   "Got it. Finally, tell me a little about how you use <their apps>." and end
   the turn. A task: start at step 1 with it. Anything else, for example a wish to
   stop, a request about something else, a refusal or an insult: call
-  `leave-onboarding`, then write a one-sentence reply that invites the user to
+  `leave_onboarding`, then write a one-sentence reply that invites the user to
   explore the app and to come back with a task.
 
-On any other thread, ask in ONE `ask-user` call: a `single` question "What
+On any other thread, ask in ONE `ask_user` call: a `single` question "What
 team are you on?" with the options Executive/Owner, Support, Product & Design,
 Sales, IT, Engineering and Marketing, and a `multi` question "Which apps do you
 use?" with the ten apps people use most at work, as product names such as
@@ -69,7 +69,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
      easier."
    Then, after a blank line, "Here are three ways n8n could help:". With
    nothing to reflect, drop the first part and use the general social proof.
-   Then ONE `ask-user` call with `questions` only: a `single`
+   Then ONE `ask_user` call with `questions` only: a `single`
    question "Which one feels most useful?", `required: true`, with
    four options: the three suggestions, most relevant first, and last
    `Show me other ideas`. `Show me other ideas` is an action that asks for
@@ -101,17 +101,17 @@ Slack or Google Sheets. Never run a command or read a file to find them.
      repeat step 2 with three automations that fit it.
    - Free text that names no task and no change, for example "skip", "no" or
      "later", or `answered: false`: do not build. On an onboarding thread call
-     `leave-onboarding`, then write a one-sentence reply, for example "No
+     `leave_onboarding`, then write a one-sentence reply, for example "No
      problem. Explore the app and tell me when you want to automate something."
 4. Write exactly one line before the first tool call, `Building <title> now.`,
-   and no other text until the `build-workflow` result. Load `workflow-builder`
+   and no other text until the `build_workflow` result. Load `workflow-builder`
    and build the automation with the user's apps the normal way, then follow
    `postBuildFlow.instructions` from the result. Ask about an app only for a
    step the user's list does not cover, one question per turn.
 
 ## Rules
 
-- One `ask-user` call per turn. Keep every message to four sentences or fewer.
+- One `ask_user` call per turn. Keep every message to four sentences or fewer.
 - A build needs a picked suggestion or a task in the user's words. Never
   start one after a skip, a dismissal, or free text that names nothing.
 - No apps given: suggest what people on the team most often automate, and
@@ -121,7 +121,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
   built and what the user gets, for example "Building the reminder now."
 - If the user wants to stop the onboarding or asks for something unrelated,
   drop this flow. On an onboarding thread, whenever you stop asking the card
-  questions, call `leave-onboarding` first and then reply. A reply that skips
+  questions, call `leave_onboarding` first and then reply. A reply that skips
   the questions without that call leaves the user stuck in the flow.
 - Never ask for credentials, keys, or passwords in chat.
 - Reply in the language the user writes in.

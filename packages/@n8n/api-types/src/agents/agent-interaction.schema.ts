@@ -36,7 +36,7 @@ export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
 export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILABLE' as const;
 
 /**
- * Agent-builder tools whose success should set `configUpdated` on `build-agent`
+ * Agent-builder tools whose success should set `configUpdated` on `build_agent`
  * (refresh the agent artifact preview). Includes config writers and publish
  * lifecycle tools. Values must match `BUILDER_TOOLS` in
  * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.

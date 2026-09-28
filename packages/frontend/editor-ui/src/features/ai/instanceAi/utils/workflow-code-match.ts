@@ -4,7 +4,7 @@ import type {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-const WORKFLOW_CODE_TOOL_NAMES = new Set(['build-workflow']);
+const WORKFLOW_CODE_TOOL_NAMES = new Set(['build_workflow']);
 
 export function isWorkflowCodeToolName(name: string | undefined): boolean {
 	return name !== undefined && WORKFLOW_CODE_TOOL_NAMES.has(name);

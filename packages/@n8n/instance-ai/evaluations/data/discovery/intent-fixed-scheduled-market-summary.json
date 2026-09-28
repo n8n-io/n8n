@@ -8,12 +8,12 @@
 				"argsContainAny": ["workflow-builder"]
 			},
 			{
-				"toolName": "build-workflow"
+				"toolName": "build_workflow"
 			}
 		],
 		"noneOfToolCalls": [
 			{
-				"toolName": "build-agent"
+				"toolName": "build_agent"
 			},
 			{
 				"toolName": "load_skill",

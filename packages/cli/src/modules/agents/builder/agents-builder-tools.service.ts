@@ -98,7 +98,7 @@ import { getAgentConfigHash } from '../utils/agent-config-hash';
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
-		'Agent config changed. Call agent-context with type "config", then retry with its config and configHash.',
+		'Agent config changed. Call agent_context with type "config", then retry with its config and configHash.',
 };
 
 const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
@@ -111,7 +111,7 @@ const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 
 const STALE_SKILL_ERROR_MESSAGE =
-	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
+	'Skill changed. Call agent_context with type "skill", then retry with its skill and skillHash.';
 
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -163,7 +163,7 @@ const updateSkillInputSchema = z
 			.string()
 			.min(1)
 			.describe(
-				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
+				'skillHash from the immediately preceding agent_context with type "skill" result for this skill.',
 			),
 		updates: updateSkillFieldsSchema.describe(
 			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
@@ -761,13 +761,13 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding agent-context with type "config" result — never from a prior ' +
+					'Requires baseConfigHash from the immediately preceding agent_context with type "config" result — never from a prior ' +
 					'write_config/patch_config success or from a stale response. ' +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'agent-context with type "config" again before any later inspection or mutation — or ' +
+					'agent_context with type "config" again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call agent-context with type "config" and retry ' +
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call agent_context with type "config" and retry ' +
 					'once using its fresh config and configHash. On stage: "locked", stop and tell the user to close ' +
 					'their editing session in the n8n builder.',
 			)
@@ -778,7 +778,7 @@ export class AgentsBuilderToolsService {
 						.string()
 						.nullable()
 						.describe(
-							'configHash from the immediately preceding agent-context with type "config" result; null only if no config exists',
+							'configHash from the immediately preceding agent_context with type "config" result; null only if no config exists',
 						),
 				}),
 			)
@@ -796,12 +796,12 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding agent-context with type "config" result — never from a prior ' +
+					'Requires baseConfigHash from the immediately preceding agent_context with type "config" result — never from a prior ' +
 					'write_config/patch_config success or from a stale response. ' +
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'agent-context with type "config" again before any later inspection or mutation — or ' +
+					'agent_context with type "config" again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
-					'On stage: "stale", call agent-context with type "config" and retry once using its fresh config and configHash.',
+					'On stage: "stale", call agent_context with type "config" and retry once using its fresh config and configHash.',
 			)
 			.input(
 				z.object({
@@ -810,7 +810,7 @@ export class AgentsBuilderToolsService {
 						.string()
 						.nullable()
 						.describe(
-							'configHash from the immediately preceding agent-context with type "config" result; null only if no config exists',
+							'configHash from the immediately preceding agent_context with type "config" result; null only if no config exists',
 						),
 				}),
 			)
@@ -984,11 +984,11 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_SKILL)
 			.description(
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
-					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
+					'agent config reference. Requires baseSkillHash from the immediately preceding agent_context with type "skill" ' +
 					'result. Pass null for allowedTools to remove the tool restriction, or null ' +
 					'for references to remove all references; empty arrays are invalid. Returns ' +
 					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. On a stale ' +
-					'skill error, call agent-context with type "skill" and retry once with its fresh skillHash.',
+					'skill error, call agent_context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
@@ -1035,7 +1035,7 @@ export class AgentsBuilderToolsService {
 					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
 					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
 					'duplicate-named skill rejects every skill in the call. This does NOT attach the skills to the ' +
-					'agent config; follow up with agent-context with type "config" and patch_config (or write_config) to add a ' +
+					'agent config; follow up with agent_context with type "config" and patch_config (or write_config) to add a ' +
 					'`{ type: "skill", id }` entry per skill to `skills`. Returns { ok: true, skills: [{ id, name }, ' +
 					'...] } (same order as input, bodies are not echoed back) or { ok: false, errors }.',
 			)

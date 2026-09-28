@@ -53,7 +53,7 @@ const RESERVED_COLUMN_NAMES = new Set(['id', 'created_at', 'updated_at']);
 
 export type ParseableFormat = 'csv' | 'tsv' | 'json';
 
-/** Tabular formats produce row+column output via parse-file. */
+/** Tabular formats produce row+column output via parse_file. */
 export type TabularFormat = ParseableFormat | 'xlsx';
 
 /** Text-like formats produce a single text/markdown body (extracted from rich source). */
@@ -556,7 +556,7 @@ export function buildAttachmentManifest(classified: ClassifiedAttachment[]): str
 
 	for (const att of shown) {
 		const status = att.parseable
-			? `parseable via parse-file (format: ${att.format})`
+			? `parseable via parse_file (format: ${att.format})`
 			: att.unavailableReason
 				? `not parseable: ${att.unavailableReason}`
 				: 'not a supported structured format';
@@ -578,7 +578,7 @@ export function buildAttachmentManifest(classified: ClassifiedAttachment[]): str
 
 /**
  * Returns true if the attachment is a tabular format (csv/tsv/json/xlsx)
- * that produces row+column output via parse-file.
+ * that produces row+column output via parse_file.
  */
 export function isStructuredAttachment(att: AttachmentInfo): boolean {
 	const format = detectFormat(att.fileName, att.mimeType);
@@ -587,7 +587,7 @@ export function isStructuredAttachment(att: AttachmentInfo): boolean {
 
 /**
  * Returns true if we have a parser that can extract content for this attachment
- * (tabular OR text-like). Used to decide whether to register the parse-file tool
+ * (tabular OR text-like). Used to decide whether to register the parse_file tool
  * and to route the attachment through extraction instead of raw multimodal content.
  */
 export function isParseableAttachment(att: AttachmentInfo): boolean {

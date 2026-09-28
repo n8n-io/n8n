@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-// Canonical shapes for conversation-history results. The service types in
+// Canonical shapes for conversation_history results. The service types in
 // `../types` are inferred from these schemas, and the tool's output schemas
 // extend them — one definition, so the tool contract and the host service
 // interface cannot drift.
 
-/** Where a conversation-history search hit matched. */
+/** Where a conversation_history search hit matched. */
 export const conversationHistoryMatchSourceSchema = z.enum(['title', 'messages', 'user-answers']);
 
 export const conversationHistoryExcerptSchema = z.object({
@@ -35,7 +35,7 @@ export const conversationHistoryMessageSchema = z.object({
 	createdAt: z.string(),
 	/** Text blocks of the message, truncated. */
 	text: z.string(),
-	/** Resolved ask-user Q&A pairs carried by this (assistant) message, if any. */
+	/** Resolved ask_user Q&A pairs carried by this (assistant) message, if any. */
 	userAnswers: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
 });
 

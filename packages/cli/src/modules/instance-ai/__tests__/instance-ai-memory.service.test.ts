@@ -1169,7 +1169,7 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'build_workflow',
 						state: 'resolved',
 						input: { code: '…' },
 						output: { success: true, workflowId: 'wf-1' },

@@ -647,7 +647,7 @@ describe('buildVendorLlmRouting', () => {
 		expect(routing.rootToSubNode.get('Agent')?.name).toBe('OpenAI');
 	});
 
-	it('also self-maps the root in subNodeToRoot so agent-context credential lookups resolve', () => {
+	it('also self-maps the root in subNodeToRoot so agent_context credential lookups resolve', () => {
 		// LangChain's Agent invokes the LLM sub-node's `supplyData` with a
 		// context whose `executeData.node` is the Agent itself (observed
 		// empirically). The credential helper looks up `subNodeToRoot` by
@@ -719,7 +719,7 @@ describe('buildVendorLlmRouting', () => {
 
 		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
 
-		// `Agent` is also present in subNodeToRoot via the agent-context
+		// `Agent` is also present in subNodeToRoot via the agent_context
 		// self-map (see test above) — assert by lookup so the test isn't
 		// sensitive to insertion order.
 		expect(routing.subNodeToRoot.get('OpenAI')).toBe('Agent');

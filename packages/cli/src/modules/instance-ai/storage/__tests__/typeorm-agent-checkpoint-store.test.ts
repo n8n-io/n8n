@@ -192,7 +192,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 					},
 					'tc-suspended': {
 						toolCallId: 'tc-suspended',
-						toolName: 'ask-user',
+						toolName: 'ask_user',
 						input: {},
 						suspended: true,
 						suspendPayload: {},

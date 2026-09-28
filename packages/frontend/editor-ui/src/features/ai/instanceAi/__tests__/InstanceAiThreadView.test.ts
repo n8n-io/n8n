@@ -367,7 +367,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'create-tasks',
+				toolName: 'create_plan',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -1714,7 +1714,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'ask-user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1878,7 +1878,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'build-agent',
+						toolName: 'build_agent',
 						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: false,
 						result: { ok: true, builderReply: 'Created the agent.' },
@@ -2074,7 +2074,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2187,7 +2187,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-build-agent',
-						toolName: 'build-agent',
+						toolName: 'build_agent',
 						args: { message: 'Build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: true,
 					},
@@ -2355,7 +2355,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
+							toolName: 'build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },

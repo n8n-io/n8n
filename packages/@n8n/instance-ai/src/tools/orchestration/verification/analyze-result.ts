@@ -371,7 +371,7 @@ function buildCoverageNote(
 	const triggerScopeNote = triggerNodeName
 		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
 			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
-			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'verify_built_workflow again with `triggerNodeName` set to each remaining trigger and ' +
 			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
 			'workflow to reach them.'
 		: '';

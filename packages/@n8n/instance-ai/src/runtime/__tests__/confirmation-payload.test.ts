@@ -60,7 +60,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	 *  (approve, deny, approve-with-comment, always-allow) can target them. */
 	const approvalEnvelopeSchemas: Array<[string, ZodType]> = [
 		[
-			'shared approval envelope (build-workflow, data-tables, workspace, executions)',
+			'shared approval envelope (build_workflow, data_tables, workspace, executions)',
 			instanceAiApprovalResumeSchema,
 		],
 		['plan', planResumeSchema],
@@ -71,10 +71,10 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['ask-user', askUserResumeSchema],
+		['ask_user', askUserResumeSchema],
 		['filesystem gateway', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
-		['mcp-servers', mcpConnectResumeSchema],
+		['mcp_servers', mcpConnectResumeSchema],
 	];
 
 	const rows: Array<{
@@ -112,7 +112,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['ask-user', askUserResumeSchema]],
+			targets: [['ask_user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',
@@ -171,7 +171,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		{
 			label: 'mcp server connection',
 			request: { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] },
-			targets: [['mcp-servers', mcpConnectResumeSchema]],
+			targets: [['mcp_servers', mcpConnectResumeSchema]],
 		},
 	];
 

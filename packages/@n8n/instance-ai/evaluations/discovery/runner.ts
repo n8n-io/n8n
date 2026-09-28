@@ -144,7 +144,7 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// `create_plan` and runtime skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -339,7 +339,7 @@ function createStubOrchestrationContext(
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Registers the `workspace_*` file tools for build-workflow
+		// Registers the `workspace_*` file tools for build_workflow
 		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
 		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.

@@ -230,7 +230,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of ask-user / setup-card. Used (with the absence of
+ *  suspend and resume halves of ask_user / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
@@ -470,7 +470,7 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 			emittedToolCallIds.add(toolCallId);
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
-			const isDataTable = tool.name.startsWith('data-tables');
+			const isDataTable = tool.name.startsWith('data_tables');
 			content.push({
 				type: 'tool-call',
 				toolCallId,
@@ -553,7 +553,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
  *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
- *  Post-#32545 the builder builds from a workspace file (`build-workflow {filePath}`,
+ *  Post-#32545 the builder builds from a workspace file (`build_workflow {filePath}`,
  *  no inline code), so the source is that file replayed from the workspace ops; inline
  *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
  *  workflows. */

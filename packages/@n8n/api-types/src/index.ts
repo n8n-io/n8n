@@ -890,6 +890,10 @@ export {
 	isMoonshotaiKimiK3ModelId,
 } from './constants/instance-ai-models';
 export {
+	INSTANCE_AI_LEGACY_TOOL_NAMES,
+	normalizeInstanceAiToolName,
+} from './constants/instance-ai-tool-names';
+export {
 	BLOCK_ACCESS_ASSIGNMENT,
 	SSO_ERROR_ACCESS_DENIED,
 	SSO_ERROR_QUERY_PARAM,

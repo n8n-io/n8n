@@ -563,7 +563,7 @@ describe('withPastConversations', () => {
 	});
 
 	// A leak here shows internal text as if the user had typed it — and, because the
-	// same strip feeds the conversation-history tool, makes every future search
+	// same strip feeds the conversation_history tool, makes every future search
 	// match on the injected titles.
 	it('is stripped from the stored message before display', () => {
 		const stored = withPastConversations('Build me a digest', section);

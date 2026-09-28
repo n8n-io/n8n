@@ -31,5 +31,5 @@ When creating an error workflow to attach to another workflow:
    unless the user explicitly asks.
 4. Patch the original target workflow's source and set
    `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
-   `build-workflow` for the original workflow. This assigns the error workflow
+   `build_workflow` for the original workflow. This assigns the error workflow
    only to that target workflow.

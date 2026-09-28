@@ -286,7 +286,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			const toolNames = [...tools.json, ...tools.shared].map((tool) => tool.name);
 
-			expect(toolNames.filter((name) => name === 'agent-context')).toHaveLength(1);
+			expect(toolNames.filter((name) => name === 'agent_context')).toHaveLength(1);
 			for (const duplicate of [
 				'read_config',
 				'read_skill',

@@ -130,7 +130,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 	} as OrchestrationContext;
 }
 
-describe('verify-built-workflow tool — remediation guard', () => {
+describe('verify_built_workflow tool — remediation guard', () => {
 	it('routes mocked-credential verification failures to setup and records terminal verdict', async () => {
 		const context = createContext();
 		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
@@ -302,11 +302,11 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalled();
 		expect(trackTelemetry).toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to persist terminal verdict',
+			'verify_built_workflow: failed to persist terminal verdict',
 			expect.objectContaining({ error: 'storage unavailable' }),
 		);
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: failed to emit remediation telemetry',
+			'verify_built_workflow: failed to emit remediation telemetry',
 			expect.objectContaining({ error: 'telemetry unavailable' }),
 		);
 	});
@@ -677,7 +677,7 @@ async function runTool(
 	return await executeTool<VerifyBuiltWorkflowOutput>(tool, input);
 }
 
-describe('verify-built-workflow tool', () => {
+describe('verify_built_workflow tool', () => {
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',
@@ -1082,7 +1082,7 @@ describe('verify-built-workflow tool', () => {
 	});
 });
 
-describe('verify-built-workflow tool — node simulation plan', () => {
+describe('verify_built_workflow tool — node simulation plan', () => {
 	const simulateVerdict = (nodeName: string, reason = 'Sends a message') => ({
 		nodeName,
 		verdict: 'simulate' as const,
@@ -1600,7 +1600,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 	});
 });
 
-describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+describe('verify_built_workflow tool — stale mocked-credential plan', () => {
 	const mockedCredentialVerdict = {
 		nodeName: 'Notion',
 		verdict: 'simulate' as const,
@@ -1694,13 +1694,13 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run).not.toHaveBeenCalled();
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
-			'verify-built-workflow: could not reconcile mocked-credential plan',
+			'verify_built_workflow: could not reconcile mocked-credential plan',
 			expect.objectContaining({ workItemId: 'wi-1' }),
 		);
 	});
 });
 
-describe('verify-built-workflow tool — trigger selection', () => {
+describe('verify_built_workflow tool — trigger selection', () => {
 	type TriggerInput = { workItemId: string; workflowId: string; triggerNodeName?: string };
 
 	const triggerNodes = [
@@ -1971,7 +1971,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	});
 });
 
-describe('verify-built-workflow tool — attached tools', () => {
+describe('verify_built_workflow tool — attached tools', () => {
 	const verdict = (nodeName: string, simulated = false) => ({
 		nodeName,
 		verdict: simulated ? ('simulate' as const) : ('execute' as const),
@@ -2263,7 +2263,7 @@ describe('verify-built-workflow tool — attached tools', () => {
 	});
 });
 
-describe('verify-built-workflow tool — publish state', () => {
+describe('verify_built_workflow tool — publish state', () => {
 	it('warns that the fix is not live when the published version is an older one', async () => {
 		const { ctx, getOutcome } = makeContext(
 			makeBuildOutcome(),

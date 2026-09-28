@@ -378,8 +378,8 @@ function buildInteractivity(
 	toolCalls: ToolCallTrace[],
 ): BuildInteractivity {
 	return {
-		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask-user').length,
-		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create-tasks').length,
+		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask_user').length,
+		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create_plan').length,
 		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
 		mockedCredentialTypes: [],
 	};

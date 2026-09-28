@@ -130,7 +130,7 @@ export function createAgentContextTool(options: AgentContextToolOptions) {
 				return {
 					type: input.type,
 					...(agentId ? { agentId } : {}),
-					context: wrapUntrustedData(contextText, 'agent-context', input.type),
+					context: wrapUntrustedData(contextText, 'agent_context', input.type),
 				};
 			} catch (error) {
 				return {
@@ -140,7 +140,7 @@ export function createAgentContextTool(options: AgentContextToolOptions) {
 						options.logger,
 						error,
 						'Failed to read Agent context.',
-						'agent-context tool call failed',
+						'agent_context tool call failed',
 					),
 				};
 			}

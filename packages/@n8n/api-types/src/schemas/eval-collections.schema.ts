@@ -34,7 +34,7 @@ export const ONE_TO_FIVE_METRIC_KEYS = ['correctness', 'helpfulness'] as const;
  */
 export type MetricScale = 'unit' | 'oneToFive' | 'boolean';
 
-/** Resolve a metric's {@link MetricScale} from its eval-config definition. */
+/** Resolve a metric's {@link MetricScale} from its eval_config definition. */
 export function metricScaleFromConfig(metric: EvaluationMetric): MetricScale {
 	// A judge always scores 1–5 on its preset rubric — the compiler forwards only
 	// the preset and ignores outputType, so a boolean outputType here is

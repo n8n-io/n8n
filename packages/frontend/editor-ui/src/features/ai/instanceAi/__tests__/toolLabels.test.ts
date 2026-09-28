@@ -8,11 +8,11 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
-				'instanceAi.tools.build-agent': 'Working with agent',
-				'instanceAi.tools.build-agent.exploring': 'Exploring agent',
-				'instanceAi.tools.agent-context': 'Exploring agent context',
-				'instanceAi.tools.agent-context.config': 'Reading agent config',
-				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
+				'instanceAi.tools.build_agent': 'Working with agent',
+				'instanceAi.tools.build_agent.exploring': 'Exploring agent',
+				'instanceAi.tools.agent_context': 'Exploring agent context',
+				'instanceAi.tools.agent_context.config': 'Reading agent config',
+				'instanceAi.tools.agent_context.sessions': 'Checking agent sessions',
 				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
@@ -20,15 +20,15 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
 				'instanceAi.tools.activity.list': 'Checking recent activity',
-				'instanceAi.tools.conversation-history': 'Past conversations',
-				'instanceAi.tools.conversation-history.search': 'Searching past conversations',
+				'instanceAi.tools.conversation_history': 'Past conversations',
+				'instanceAi.tools.conversation_history.search': 'Searching past conversations',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
-				'instanceAi.tools.n8n-docs': 'Reading n8n docs',
-				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
-				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
-				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
+				'instanceAi.tools.n8n_docs': 'Reading n8n docs',
+				'instanceAi.tools.n8n_docs.lookup': 'Reading n8n docs',
+				'instanceAi.tools.n8n_docs.search': 'Searching n8n docs',
+				'instanceAi.tools.n8n_docs.read': 'Opening n8n docs',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -63,8 +63,8 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for complete-checkpoint', () => {
-		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
+	test('returns circle-check for complete_checkpoint', () => {
+		expect(getToolIcon('complete_checkpoint')).toBe('circle-check');
 	});
 
 	test('returns default icon for removed delegate tool', () => {
@@ -80,7 +80,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns table for data-table tools', () => {
-		expect(getToolIcon('data-tables')).toBe('table');
+		expect(getToolIcon('data_tables')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -91,7 +91,7 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('search_nodes')).toBe('workflow');
 		expect(getToolIcon('get_node_types')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
-		expect(getToolIcon('materialize-node-type')).toBe('workflow');
+		expect(getToolIcon('materialize_node_type')).toBe('workflow');
 	});
 
 	test('returns search for research tools', () => {
@@ -100,7 +100,7 @@ describe('getToolIcon', () => {
 
 	test('returns brain for memory/task-control tools', () => {
 		expect(getToolIcon('updateWorkingMemory')).toBe('brain');
-		expect(getToolIcon('task-control')).toBe('brain');
+		expect(getToolIcon('task_control')).toBe('brain');
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
@@ -130,15 +130,15 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns book-open for n8n docs tool', () => {
-		expect(getToolIcon('n8n-docs')).toBe('book-open');
+		expect(getToolIcon('n8n_docs')).toBe('book-open');
 	});
 
 	test('returns history for the activity tool', () => {
 		expect(getToolIcon('activity')).toBe('history');
 	});
 
-	test('returns message-square for the conversation-history tool', () => {
-		expect(getToolIcon('conversation-history')).toBe('message-square');
+	test('returns message-square for the conversation_history tool', () => {
+		expect(getToolIcon('conversation_history')).toBe('message-square');
 	});
 
 	test('returns wrench as default', () => {
@@ -151,9 +151,9 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('read_config')).toBe('Reading agent config');
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
-		expect(getToolLabel('build-agent')).toBe('Working with agent');
-		expect(getToolLabel('build-agent', { operation: 'exploring' })).toBe('Exploring agent');
-		expect(getToolLabel('build-agent', { operation: 'creating' })).toBe('Working with agent');
+		expect(getToolLabel('build_agent')).toBe('Working with agent');
+		expect(getToolLabel('build_agent', { operation: 'exploring' })).toBe('Exploring agent');
+		expect(getToolLabel('build_agent', { operation: 'creating' })).toBe('Working with agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
@@ -182,12 +182,12 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
 	});
 
-	test('getToolLabel uses the agent-context lookup label when available', () => {
+	test('getToolLabel uses the agent_context lookup label when available', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('agent-context', { type: 'config' })).toBe('Reading agent config');
-		expect(getToolLabel('agent-context', { type: 'sessions' })).toBe('Checking agent sessions');
-		expect(getToolLabel('agent-context', { type: 'unknown' })).toBe('Exploring agent context');
-		expect(getToolLabel('agent-context')).toBe('Exploring agent context');
+		expect(getToolLabel('agent_context', { type: 'config' })).toBe('Reading agent config');
+		expect(getToolLabel('agent_context', { type: 'sessions' })).toBe('Checking agent sessions');
+		expect(getToolLabel('agent_context', { type: 'unknown' })).toBe('Exploring agent context');
+		expect(getToolLabel('agent_context')).toBe('Exploring agent context');
 	});
 
 	test('getToolLabel shows skill script commands cleanly', () => {
@@ -211,18 +211,18 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('n8n-docs')).toBe('Reading n8n docs');
-		expect(getToolLabel('n8n-docs', { action: 'lookup' })).toBe('Reading n8n docs');
-		expect(getToolLabel('n8n-docs', { action: 'search' })).toBe('Searching n8n docs');
-		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
+		expect(getToolLabel('n8n_docs')).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n_docs', { action: 'lookup' })).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n_docs', { action: 'search' })).toBe('Searching n8n docs');
+		expect(getToolLabel('n8n_docs', { action: 'read' })).toBe('Opening n8n docs');
 	});
 
-	test('getToolLabel returns action-specific activity and conversation-history labels', () => {
+	test('getToolLabel returns action-specific activity and conversation_history labels', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('activity')).toBe('Activity');
 		expect(getToolLabel('activity', { action: 'list' })).toBe('Checking recent activity');
-		expect(getToolLabel('conversation-history')).toBe('Past conversations');
-		expect(getToolLabel('conversation-history', { action: 'search' })).toBe(
+		expect(getToolLabel('conversation_history')).toBe('Past conversations');
+		expect(getToolLabel('conversation_history', { action: 'search' })).toBe(
 			'Searching past conversations',
 		);
 	});
@@ -240,7 +240,7 @@ describe('useToolLabel', () => {
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBeUndefined();
-		expect(getToggleLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+		expect(getToggleLabel(makeToolCall({ toolName: 'task_control' }))).toBeUndefined();
 	});
 
 	test('getToggleLabel treats removed plan tool as an ordinary unknown tool', () => {
@@ -260,7 +260,7 @@ describe('useToolLabel', () => {
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+		expect(getHideLabel(makeToolCall({ toolName: 'task_control' }))).toBeUndefined();
 	});
 
 	test('getHideLabel treats removed plan tool as an ordinary unknown tool', () => {

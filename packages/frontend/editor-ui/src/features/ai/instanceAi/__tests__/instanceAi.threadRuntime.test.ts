@@ -2331,7 +2331,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 							textContent: '',
 							reasoning: '',
 							toolCalls: [
-								{ toolCallId: 'tc-child', toolName: 'build-workflow', args: {}, isLoading: true },
+								{ toolCallId: 'tc-child', toolName: 'build_workflow', args: {}, isLoading: true },
 							],
 							children: [],
 							timeline: [],
@@ -2585,7 +2585,7 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'mcp-servers',
+							toolName: 'mcp_servers',
 							args: { action: 'connect' },
 							isLoading: true,
 							confirmation,
@@ -2822,12 +2822,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve target-agent approvals even when the outer tool key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-agent', {});
+		runtime.addAlwaysAllowKey('build_agent', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-target-approval',
 			requestId: 'req-target-approval',
-			toolName: 'build-agent',
+			toolName: 'build_agent',
 			targetApproval: {
 				toolName: 'delete_record',
 				args: { id: 'record-1' },
@@ -2886,7 +2886,7 @@ describe('createThreadRuntime - session always-allow', () => {
 	it('scopes workflow update grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflows', { action: 'update', workflowId: 'wf-1' });
-		runtime.addAlwaysAllowKey('build-workflow', { workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('build_workflow', { workflowId: 'wf-1' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update-1',
@@ -2901,7 +2901,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-build-1',
 			requestId: 'req-build-1',
-			toolName: 'build-workflow',
+			toolName: 'build_workflow',
 			args: { workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2918,15 +2918,15 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-update-2')).toBe(false);
 	});
 
-	it('scopes bound build-workflow grants from confirmation.workflowId when args omit it', async () => {
+	it('scopes bound build_workflow grants from confirmation.workflowId when args omit it', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		// Bound saves often omit args.workflowId; the suspend payload carries it.
-		runtime.addAlwaysAllowKey('build-workflow', {}, 'wf-1');
+		runtime.addAlwaysAllowKey('build_workflow', {}, 'wf-1');
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-1',
 			requestId: 'req-bound-1',
-			toolName: 'build-workflow',
+			toolName: 'build_workflow',
 			args: { filePath: 'src/workflows/main.workflow.ts' },
 			workflowId: 'wf-1',
 		});
@@ -2937,7 +2937,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-2',
 			requestId: 'req-bound-2',
-			toolName: 'build-workflow',
+			toolName: 'build_workflow',
 			args: { filePath: 'src/workflows/other.workflow.ts' },
 			workflowId: 'wf-2',
 		});
@@ -2945,19 +2945,19 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-bound-2')).toBe(false);
 	});
 
-	it('does not store a blanket build-workflow always-allow key without a workflow id', () => {
+	it('does not store a blanket build_workflow always-allow key without a workflow id', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-workflow', { filePath: 'src/workflows/main.workflow.ts' });
+		runtime.addAlwaysAllowKey('build_workflow', { filePath: 'src/workflows/main.workflow.ts' });
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
 	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		expect(
-			runtime.canAlwaysAllow('build-workflow', { filePath: 'src/workflows/main.workflow.ts' }),
+			runtime.canAlwaysAllow('build_workflow', { filePath: 'src/workflows/main.workflow.ts' }),
 		).toBe(false);
 		expect(runtime.canAlwaysAllow('workflows', { action: 'update' })).toBe(false);
-		expect(runtime.canAlwaysAllow('build-workflow', {}, 'wf-1')).toBe(true);
+		expect(runtime.canAlwaysAllow('build_workflow', {}, 'wf-1')).toBe(true);
 		expect(runtime.canAlwaysAllow('workflows', { action: 'update', workflowId: 'wf-1' })).toBe(
 			true,
 		);
@@ -3021,7 +3021,7 @@ describe('createThreadRuntime - session always-allow', () => {
 describe('createThreadRuntime - "User viewed new builder workflow" telemetry', () => {
 	let registry: RuntimeRegistry;
 
-	/** A run-sync snapshot whose agent tree contains one successful build-workflow tool call. */
+	/** A run-sync snapshot whose agent tree contains one successful build_workflow tool call. */
 	function runSyncWithBuild(opts: {
 		runId: string;
 		messageGroupId: string;
@@ -3041,7 +3041,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				toolCalls: [
 					{
 						toolCallId: opts.toolCallId,
-						toolName: 'build-workflow',
+						toolName: 'build_workflow',
 						args: {},
 						isLoading: false,
 						result: { success: true, workflowId: opts.workflowId },
@@ -3176,7 +3176,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 						toolCalls: [
 							{
 								toolCallId: 'tc-hist',
-								toolName: 'build-workflow',
+								toolName: 'build_workflow',
 								args: {},
 								isLoading: false,
 								result: { success: true, workflowId: 'wf-hist' },
@@ -3425,7 +3425,7 @@ describe('createThreadRuntime - pending plan review', () => {
 	});
 
 	/**
-	 * Seed one assistant message whose root agent holds the given create-tasks
+	 * Seed one assistant message whose root agent holds the given create_plan
 	 * calls, optionally followed by later messages from a newer turn.
 	 */
 	function seedPlanCards(
@@ -3462,7 +3462,7 @@ describe('createThreadRuntime - pending plan review', () => {
 		const { confirmation, ...rest } = overrides;
 		return {
 			toolCallId: 'tc-plan',
-			toolName: 'create-tasks',
+			toolName: 'create_plan',
 			args: { tasks: [{ id: 't1', title: 'Ingest orders', kind: '', spec: '', deps: [] }] },
 			isLoading: true,
 			confirmation: {
@@ -3489,7 +3489,7 @@ describe('createThreadRuntime - pending plan review', () => {
 		});
 	});
 
-	// planItems is never populated by the create-tasks suspend payload, so the
+	// planItems is never populated by the create_plan suspend payload, so the
 	// count has to come off args.tasks or `num_tasks` telemetry reports zero.
 	it('counts tasks from args.tasks when planItems is absent', () => {
 		const runtime = seedPlanCards([
@@ -3736,13 +3736,13 @@ describe('createThreadRuntime - onboarding exit', () => {
 		runtime.closeSSE();
 	});
 
-	test('a leave-onboarding call ends the onboarding with the reason the agent gave', () => {
+	test('a leave_onboarding call ends the onboarding with the reason the agent gave', () => {
 		sse({ type: 'tool-call', payload: { toolCallId: 'tc-1', toolName: 'search', args: {} } });
 		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
 
 		sse({
 			type: 'tool-call',
-			payload: { toolCallId: 'tc-2', toolName: 'leave-onboarding', args: { reason: 'stop' } },
+			payload: { toolCallId: 'tc-2', toolName: 'leave_onboarding', args: { reason: 'stop' } },
 		});
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'left', 'stop');

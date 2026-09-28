@@ -35,13 +35,13 @@ test.describe(
 						await driver.runParallel([WARMUP_PROMPT]);
 						await driver.cleanup();
 					},
-					captureTargetAfterPhase: 'build-workflow',
+					captureTargetAfterPhase: 'build_workflow',
 					maxLeakMB: 50,
 					maxRssGrowthMB: 300,
 				},
 				[
 					{
-						name: 'build-workflow',
+						name: 'build_workflow',
 						action: async () => {
 							await driver.runParallel([BENCHMARK_PROMPTS[0]]);
 						},

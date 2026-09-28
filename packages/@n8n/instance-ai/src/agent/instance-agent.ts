@@ -3,7 +3,9 @@ import {
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
 	Memory,
+	supportsNativeToolSearch,
 } from '@n8n/agents';
+import { INSTANCE_AI_LEGACY_TOOL_NAMES } from '@n8n/api-types';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -22,7 +24,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import { CHECKPOINT_FOLLOW_UP_TOOL_NAMES, getAlwaysLoadedToolNames } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -60,14 +62,15 @@ function resolveModalSessionModelId(
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
+	options: { isCheckpointFollowUp?: boolean; nativeToolSearch: boolean },
 ) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
+	const alwaysLoaded = getAlwaysLoadedToolNames({ nativeToolSearch: options.nativeToolSearch });
 
 	for (const [name, tool] of tools) {
 		if (
-			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			alwaysLoaded.has(name) ||
 			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
@@ -96,7 +99,7 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// Thread the trace handle in so domain tools (e.g. build_workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = {
@@ -193,8 +196,11 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
+	// With provider-side search a deferred tool is cheap, so fewer tools stay loaded.
+	const nativeToolSearch = !options.disableDeferredTools && supportsNativeToolSearch(modelId);
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
+		nativeToolSearch,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
@@ -207,6 +213,7 @@ export async function createInstanceAgent(
 			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
+			nativeToolSearch: hasDeferrableTools && nativeToolSearch,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
 			projectId: context.projectId,
@@ -241,6 +248,8 @@ export async function createInstanceAgent(
 			},
 		})
 		.tool(toolRegistryValues(runtimeTools))
+		// Threads saved before the snake_case rename still name tools the old way.
+		.toolNameAliases(INSTANCE_AI_LEGACY_TOOL_NAMES)
 		.checkpoint(options.checkpointStore ?? 'memory');
 	if (mcpConnectionFailures.length > 0) {
 		agent.mcpConnectionFailures(mcpConnectionFailures);
@@ -311,7 +320,9 @@ export async function createInstanceAgent(
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
-			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			inputProcessors: hasDeferrableTools
+				? [nativeToolSearch ? 'ProviderToolSearch' : 'NativeToolSearch']
+				: undefined,
 			runtimeSkills: runtimeSkills?.registry,
 		}),
 	);

@@ -61,9 +61,9 @@ describe('resolveAgentPreviewHandoff', () => {
 		expect(result.block.endsWith(AGENT_PREVIEW_CONTEXT_CLOSE_TAG)).toBe(true);
 		expect(result.block).toContain('"source":"agent-preview"');
 		expect(result.block).toContain('"agentId":"agent-1"');
-		// The orchestrator must read the transcript on demand via get-session.
-		expect(result.block).toContain('`get-session`');
-		// Review/analysis must not auto-route to build-agent.
+		// The orchestrator must read the transcript on demand via get_session.
+		expect(result.block).toContain('`get_session`');
+		// Review/analysis must not auto-route to build_agent.
 		expect(result.block).toContain('do NOT modify the agent');
 		// The transcript itself is NOT injected upfront.
 		expect(result.block).not.toContain('User: Hello agent');

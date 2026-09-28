@@ -10,7 +10,7 @@ then use IDs and narrow filters.
 - **Explain a table**: `list` if needed -> `schema` -> optional small `query`.
 - **Create from requirements**: `list` -> design schema -> `create`.
 - **Seed rows**: `list` -> `schema` -> `insert-rows` in batches of 100.
-- **Import attachment**: `parse-file` preview -> `list` -> create/schema ->
+- **Import attachment**: `parse_file` preview -> `list` -> create/schema ->
   `insert-rows` batches.
 - **Rename a column**: `list` -> `schema` -> `rename-column` with `columnId`.
 - **Change rows**: `list` -> `schema` -> `query` count/sample ->
@@ -125,26 +125,26 @@ Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10
 Create a designed table:
 
 ```text
-1. data-tables list
-2. data-tables create { name, projectId?, columns }
+1. data_tables list
+2. data_tables create { name, projectId?, columns }
 ```
 
 Import a CSV into a new table:
 
 ```text
-1. parse-file { attachmentIndex: 0, maxRows: 20 }
-2. data-tables list
-3. data-tables create with chosen column names/types
-4. data-tables insert-rows, max 100 rows
-5. parse-file next page with startRow=nextStartRow; repeat up to safety limit
+1. parse_file { attachmentIndex: 0, maxRows: 20 }
+2. data_tables list
+3. data_tables create with chosen column names/types
+4. data_tables insert-rows, max 100 rows
+5. parse_file next page with startRow=nextStartRow; repeat up to safety limit
 ```
 
 Import into an existing table:
 
 ```text
-1. data-tables list
-2. data-tables schema with dataTableId; projectId is optional when dataTableId is present
-3. parse-file preview
+1. data_tables list
+2. data_tables schema with dataTableId; projectId is optional when dataTableId is present
+3. parse_file preview
 4. Map source columns to existing schema names
 5. insert-rows in batches of 100
 ```
@@ -152,17 +152,17 @@ Import into an existing table:
 Update rows:
 
 ```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables update-rows with the same filter and data
+1. data_tables schema
+2. data_tables query with precise filter and small limit
+3. If matches are right, data_tables update-rows with the same filter and data
 ```
 
 Delete rows:
 
 ```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables delete-rows with the same filter
+1. data_tables schema
+2. data_tables query with precise filter and small limit
+3. If matches are right, data_tables delete-rows with the same filter
 ```
 
 ## Recovery And Edge Cases

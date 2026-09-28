@@ -66,7 +66,7 @@ const THREAD_NOT_FOUND = 'Conversation not found';
 /**
  * Conversations named in the first-turn hint. Three is enough to prove there is
  * history worth searching; more would spend the turn's tokens on a directory
- * listing the `conversation-history` tool can produce on demand.
+ * listing the `conversation_history` tool can produce on demand.
  */
 const PAST_CONVERSATIONS_HINT_LIMIT = 3;
 
@@ -102,7 +102,7 @@ export interface ScopedConversationHistory extends InstanceAiConversationHistory
 	getPastConversationsSection(): Promise<string | undefined>;
 }
 
-/** A resolved ask-user question with its answer rendered for reading. */
+/** A resolved ask_user question with its answer rendered for reading. */
 interface QuestionAndAnswer {
 	question: string;
 	answer: string;
@@ -229,7 +229,7 @@ function formatConversationAge(updatedAt: Date, nowMs: number): string {
 
 /**
  * Read-only recall over a user's past conversations, backing the
- * `conversation-history` tool. Scoped per run by {@link forContext}: the tool
+ * `conversation_history` tool. Scoped per run by {@link forContext}: the tool
  * never supplies the user or project, and the current thread is excluded from
  * search (the agent already has it in context).
  */
@@ -365,7 +365,7 @@ export class InstanceAiConversationHistoryService {
 		}
 
 		if (dropped > 0) {
-			this.logger.debug('Dropped conversation-history hits with no verified match', { dropped });
+			this.logger.debug('Dropped conversation_history hits with no verified match', { dropped });
 		}
 		return verified.slice(0, pageLimit);
 	}
@@ -532,7 +532,7 @@ function buildHit(
 }
 
 /**
- * A stored row as the agent reads it: user messages, ask-user answers, and each
+ * A stored row as the agent reads it: user messages, ask_user answers, and each
  * turn's final text-only reply. Dropped: unreadable content, internal
  * auto-follow-ups, rows with nothing to read, and mid-turn assistant rows (the
  * loop only continues on tool calls, so a row carrying them is narration, not

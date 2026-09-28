@@ -769,10 +769,10 @@ describe('instance-ai launch schema', () => {
 	});
 });
 
-describe('data-tables session grant keys', () => {
+describe('data_tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
-		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
-		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+		expect(buildDataTablesSessionGrantKey('create')).toBe('data_tables:create');
+		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data_tables:insert-rows');
 	});
 });
 

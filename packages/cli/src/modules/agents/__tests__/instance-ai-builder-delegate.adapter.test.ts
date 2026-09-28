@@ -101,7 +101,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const chunks: StreamChunk[] = [
 				{ type: 'text-delta', id: '1', delta: 'Hello ' },
-				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'agent-context', input: {} },
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'agent_context', input: {} },
 				{ type: 'text-delta', id: '2', delta: 'world' },
 			];
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator(chunks));
@@ -416,7 +416,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				checkpointWith({
 					'call-1': {
 						toolCallId: 'call-1',
-						toolName: 'agent-context',
+						toolName: 'agent_context',
 						input: {},
 						suspended: false,
 					},
@@ -486,7 +486,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(agentConfig.getConfig).toHaveBeenCalledWith('agent-1', 'project-1');
 			expect(agentSkills.listSkills).toHaveBeenCalledWith('agent-1', 'project-1');
-			// The same value agent-context hands the model, so a consumer can dedupe on it.
+			// The same value agent_context hands the model, so a consumer can dedupe on it.
 			expect(result).toEqual({ config: CONFIG, skills, configHash: getAgentConfigHash(CONFIG) });
 		});
 

@@ -6,7 +6,7 @@ description: >-
   set up, troubleshoot, or understand n8n behavior, especially credential setup
   questions — including which OAuth scopes or permissions a provider app needs.
 recommended_tools:
-  - n8n-docs
+  - n8n_docs
   - credentials
   - nodes
 ---
@@ -18,7 +18,7 @@ understand n8n behavior and the answer should come from current n8n docs.
 
 ## Default Procedure
 
-1. Call `n8n-docs(action="lookup")` first for credential setup and direct n8n
+1. Call `n8n_docs(action="lookup")` first for credential setup and direct n8n
    docs questions. Use `search` then `read` only when you need tighter control
    over candidate pages.
 2. For credential setup, pass `intent: "credential-setup"` and all available
@@ -28,7 +28,7 @@ understand n8n behavior and the answer should come from current n8n docs.
    returned, prefer credential-specific pages over general credential UI pages.
 4. End the final answer with `Source: [Page title](page URL)` when one docs
    page was used, or `Sources:` when multiple docs pages were used. Use only
-   pages returned by `n8n-docs`.
+   pages returned by `n8n_docs`.
 
 ## Credential Setup
 

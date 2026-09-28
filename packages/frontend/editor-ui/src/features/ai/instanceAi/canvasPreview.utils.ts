@@ -60,7 +60,7 @@ type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
+ * and toolCallId from the latest successful build_workflow / submit-workflow tool result.
  */
 export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
@@ -70,7 +70,7 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
+			(tc.toolName === 'build_workflow' || tc.toolName === 'submit-workflow') &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -94,7 +94,7 @@ function isBuilderNode(node: InstanceAiAgentNode): boolean {
  * and workflowId of the latest workflow-builder sub-agent that was spawned
  * with a concrete `targetResource.id` — i.e. an edit-mode builder that
  * already knows which existing workflow it is modifying. Used to open the
- * canvas preview at spawn time, before the first build-workflow tool call
+ * canvas preview at spawn time, before the first build_workflow tool call
  * returns a result.
  */
 export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget | undefined {
@@ -124,7 +124,7 @@ export interface AgentBuilderTarget {
  * Walks an agent tree depth-first (most recent last) and returns the agentId
  * (node id) and targetAgentId of the latest agent-builder sub-agent that was
  * spawned with a concrete `targetResource.id`. Used to open the canvas
- * preview at spawn time, before the first build-agent tool call returns a
+ * preview at spawn time, before the first build_agent tool call returns a
  * result — mirrors getLatestBuilderTarget for workflows.
  */
 export function getLatestAgentBuilderTarget(
@@ -149,12 +149,12 @@ export function getLatestAgentBuilderTarget(
 	return undefined;
 }
 
-const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
+const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply_workflow_credentials']);
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * (from args) and toolCallId from the latest successful setup-workflow /
- * apply-workflow-credentials tool result. These tools modify the workflow
+ * apply_workflow_credentials tool result. These tools modify the workflow
  * (credentials, parameters) but don't return workflowId in the result.
  */
 export function getLatestWorkflowSetupResult(
@@ -192,7 +192,7 @@ const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']
  * invisible to getLatestBuildResult — and don't reliably return the workflowId in
  * the result, so it is read from the call args. `setup` is the current path for
  * credential/parameter configuration (the inline setup card); the legacy
- * setup-workflow / apply-workflow-credentials tools are handled by
+ * setup-workflow / apply_workflow_credentials tools are handled by
  * getLatestWorkflowSetupResult.
  */
 export function getLatestWorkflowUpdateResult(
@@ -223,11 +223,11 @@ export function getLatestWorkflowUpdateResult(
 }
 
 const WORKFLOW_LOCKING_TOOLS = new Set([
-	'build-workflow',
+	'build_workflow',
 	'build-workflow-with-agent',
-	'apply-workflow-credentials',
+	'apply_workflow_credentials',
 	'setup-workflow',
-	'verify-built-workflow',
+	'verify_built_workflow',
 ]);
 
 /**
@@ -255,7 +255,7 @@ export function isAgentEditingWorkflow(
 		node.toolCalls.some(
 			(call) =>
 				call.isLoading &&
-				call.toolName === 'build-workflow' &&
+				call.toolName === 'build_workflow' &&
 				!call.args?.workflowId &&
 				announcement.agentId === node.agentId &&
 				call.startedAt &&
@@ -392,7 +392,7 @@ export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string |
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
 		if (
-			tc.toolName === 'data-tables' &&
+			tc.toolName === 'data_tables' &&
 			args?.action === 'delete' &&
 			!tc.isLoading &&
 			tc.result &&
@@ -417,7 +417,7 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		const args = tc.args as Record<string, unknown> | undefined;
 		const action = typeof args?.action === 'string' ? args.action : '';
 		if (
-			tc.toolName === 'data-tables' &&
+			tc.toolName === 'data_tables' &&
 			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&
@@ -500,7 +500,7 @@ function matchAgentArtifactToolCall(
 	callTarget: AgentArtifactTarget | undefined,
 ): AgentArtifactResult | undefined {
 	if (tc.isLoading || !tc.result || typeof tc.result !== 'object' || !callTarget) return undefined;
-	if (tc.toolName !== 'build-agent') return undefined;
+	if (tc.toolName !== 'build_agent') return undefined;
 
 	const result = tc.result as Record<string, unknown>;
 	if (result.agentChange === 'created') {
@@ -578,7 +578,7 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 	for (const tc of node.toolCalls) {
 		const tcArgs = tc.args as Record<string, unknown> | undefined;
 		const isExecutionRun = tc.toolName === 'executions' && tcArgs?.action === 'run';
-		const isVerificationRun = tc.toolName === 'verify-built-workflow';
+		const isVerificationRun = tc.toolName === 'verify_built_workflow';
 		if ((!isExecutionRun && !isVerificationRun) || tc.isLoading) continue;
 		const result = tc.result;
 		const args = tc.args;
@@ -610,7 +610,7 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 	}
 }
 
-/** Simulated node names from a verify-built-workflow result (`simulatedNodes: [{nodeName, reason}]`). */
+/** Simulated node names from a verify_built_workflow result (`simulatedNodes: [{nodeName, reason}]`). */
 function getSimulatedNodeNames(result: object): string[] {
 	if (!('simulatedNodes' in result) || !Array.isArray(result.simulatedNodes)) return [];
 	return result.simulatedNodes

@@ -10,7 +10,7 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before ask-user.
+  chosen. An explicit Agent request routes to agent-builder before ask_user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
 ---
@@ -31,7 +31,7 @@ show up inside that flow.
 If the user asked to build, route on the result: workflow-builder for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
-agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
+agent-anchored (a tool-use loop), `ask_user` for needs-clarification, or answer
 directly for out-of-scope.
 
 ## Inputs
@@ -89,7 +89,7 @@ Two orthogonal decisions per request, or per part for compound requests:
   just the vehicle. Classify it by shape (bounded data already in hand,
   imperative ask, no trigger/schedule/reuse vocabulary) — users rarely say
   "one-off" explicitly. Load the `one-off-operations` skill before building
-  and pass `executionIntent: "one-off"` to `build-workflow`; the completion
+  and pass `executionIntent: "one-off"` to `build_workflow`; the completion
   criterion is then a live run with read-back instead of simulated
   verification.
 
@@ -119,7 +119,7 @@ be a direct agent tool or a workflow tool:
 - Use a **workflow tool** only when one agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow
   reusable, manually callable, or usable outside the agent. Build the workflow
-  first, pass it to `build-agent` via `workflowContext`, and set
+  first, pass it to `build_agent` via `workflowContext`, and set
   `embeds_other: true`.
 
 Count the nodes required inside one tool invocation, not the total number of
@@ -128,7 +128,7 @@ two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
 
 After choosing an agent-anchored design, load `agent-builder` before calling
-`build-agent`. It owns prerequisite creation and the handoff to the delegated
+`build_agent`. It owns prerequisite creation and the handoff to the delegated
 builder.
 
 ## Decision Steps
@@ -142,7 +142,7 @@ builder.
    even when it could implement the same behavior. You may explain a simpler
    workflow alternative, but switch only after the user chooses it. Route
    missing setup and implementation choices to Agent Builder. The immediate
-   next routing action is to load `agent-builder`. Do not call `ask-user`
+   next routing action is to load `agent-builder`. Do not call `ask_user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
    details. Agent Builder owns those questions. An explicit
@@ -266,7 +266,7 @@ user did not build in this conversation but opened in the editor. When the
 editor/canvas context shows an existing agent and the user asks to change,
 add, or remove its configuration or capabilities (instructions, model,
 tools, skills, tasks, channels, memory, sub-agents), classify
-**agent-anchored** and route to `build-agent` targeting that agent. Do not
+**agent-anchored** and route to `build_agent` targeting that agent. Do not
 route to `workflow-builder`, and do not treat the request as a workflow
 change even when a workflow is also in context, unless the user explicitly
 names the workflow as the target. A capability the agent cannot have is
@@ -281,7 +281,7 @@ continuity for that primitive.
 
 **Unsupported capabilities**: when the user names a specific channel or
 capability for an agent (e.g. "WhatsApp", "Teams"), call
-`agent-context` with `type: "capabilities"` before classifying. If the named channel is
+`agent_context` with `type: "capabilities"` before classifying. If the named channel is
 absent, it is unsupported for agents — do not classify the request as a
 workflow substitute, do not improvise workflow nodes to fake the channel,
 and do not claim it can be configured. Explain that it is unavailable for
@@ -396,7 +396,7 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   actions or whether an investigator must choose and adapt them.
 - "Build me an agent my team can @mention on WhatsApp to triage customer
   messages." -> **agent-anchored** (explicit agent artifact + chat
-  interaction), but call `agent-context` with `type: "capabilities"` first: WhatsApp is absent,
+  interaction), but call `agent_context` with `type: "capabilities"` first: WhatsApp is absent,
   so do not build. Explain WhatsApp is unsupported for agents, offer the
   supported chat channels the tool returned, with their
   `capabilities`, and ask which to use — or whether the user wants a
@@ -404,7 +404,7 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open
-  agent is the target; route to `build-agent` targeting that agent to add the
+  agent is the target; route to `build_agent` targeting that agent to add the
   capability. Do not start a workflow build, even though a workflow could
   also file a ticket — the user asked to change the agent.
 - (Both an agent and a workflow are open.) "Add a daily summary of new
@@ -438,7 +438,7 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   workflow-anchored pipeline. A Chat Trigger workflow is correct only when
   chat is merely the manual trigger for a fixed graph.
 - Never improvise a workflow substitute for an unsupported agent channel or
-  capability. When the user names a channel not returned by `agent-context`,
+  capability. When the user names a channel not returned by `agent_context`,
   explain the limitation and offer supported alternatives — do not add
   workflow nodes that fake the channel or silently translate the request
   into a workflow change.

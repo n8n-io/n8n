@@ -67,7 +67,7 @@ function makeContext(
 	return context;
 }
 
-describe('conversation-history tool', () => {
+describe('conversation_history tool', () => {
 	describe('search', () => {
 		it('passes the query through with no limit, leaving the default to the service', async () => {
 			const service = makeService();

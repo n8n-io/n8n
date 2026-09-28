@@ -214,7 +214,7 @@ export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
 
 /**
  * Structured verification evidence the builder captures when it runs
- * `verify-built-workflow`. Downstream checkpoint runs read this and skip
+ * `verify_built_workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
  */
 export const workflowVerificationEvidenceSchema = z.object({
@@ -384,7 +384,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	/**
 	 * Enabled trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
-	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
+	 * to pick a `verify_built_workflow` `inputData` shape for direct builds.
 	 */
 	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
 	needsUserInput: z.boolean(),
@@ -406,7 +406,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
 	 * in the schema so build outcomes stored before the change still parse and
-	 * verify (verify-built-workflow merges it under the new pin data).
+	 * verify (verify_built_workflow merges it under the new pin data).
 	 */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** @deprecated See `verificationPinData`. No longer written. */
@@ -459,12 +459,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	/** Node-group result of this build; absent on outcomes stored before the field existed. */
 	grouping: groupingOutcomeSchema.optional(),
-	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
+	/** Count of verify_built_workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
 	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
 	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
-	 * Structured verification record from the most recent `verify-built-workflow`
+	 * Structured verification record from the most recent `verify_built_workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may
 	 * reuse a successful record instead of re-running verification.
 	 */

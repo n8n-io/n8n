@@ -61,7 +61,7 @@ of the current task.
 
 ### Tier 3: Plan Storage
 
-The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
+The `create_plan` tool stores execution plans in thread-scoped storage. Plans
 are structured task graphs that persist across reconnects within a conversation.
 See the [tools](./tools.md) documentation for the task graph schema.
 

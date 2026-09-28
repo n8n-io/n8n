@@ -28,7 +28,7 @@ const plannedTasksWithVerifyStep: PlannedTaskArg[] = [
 		id: 'verify-workflow',
 		title: "Verify 'Lead routing' workflow runs without errors",
 		kind: 'checkpoint',
-		spec: 'Call verify-built-workflow with the work item ID from the build outcome.',
+		spec: 'Call verify_built_workflow with the work item ID from the build outcome.',
 		deps: ['workflow'],
 	},
 ];
@@ -66,7 +66,7 @@ describe('PlanReviewPanel', () => {
 
 		expect(getByText(/Route qualified leads to the sales team\./)).toBeInTheDocument();
 		expect(
-			queryByText(/Call verify-built-workflow with the work item ID from the build outcome\./),
+			queryByText(/Call verify_built_workflow with the work item ID from the build outcome\./),
 		).not.toBeInTheDocument();
 
 		await userEvent.click(
@@ -74,7 +74,7 @@ describe('PlanReviewPanel', () => {
 		);
 
 		expect(
-			getByText(/Call verify-built-workflow with the work item ID from the build outcome\./),
+			getByText(/Call verify_built_workflow with the work item ID from the build outcome\./),
 		).toBeInTheDocument();
 	});
 

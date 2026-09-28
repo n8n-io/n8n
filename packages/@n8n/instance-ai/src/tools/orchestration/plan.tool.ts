@@ -24,12 +24,12 @@ const plannedTaskSchema = z.object({
 	workflowId: z
 		.string()
 		.optional()
-		.describe('Existing workflow ID to modify (build-workflow tasks only)'),
+		.describe('Existing workflow ID to modify (build_workflow tasks only)'),
 	isSupportingWorkflow: z
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only when this build-workflow task is complete after saving a supporting sub-workflow. Do not set for helper sub-workflows created inside a larger main-workflow task.',
+			'Set true only when this build_workflow task is complete after saving a supporting sub-workflow. Do not set for helper sub-workflows created inside a larger main-workflow task.',
 		),
 });
 
@@ -109,10 +109,10 @@ function validatePlanningContext(
 			source: 'missing',
 		});
 		return (
-			'Error: `create-tasks` requires `planningContext`. For initial plan-worthy work, load the ' +
-			'`planning` skill first, perform discovery with normal tools, load `create-tasks` via ' +
-			'`load_tool`, then call `create-tasks` with `planningContext.source: "planning-skill"`. ' +
-			'For planned-task replan follow-ups, load `create-tasks` if needed, then use ' +
+			'Error: `create_plan` requires `planningContext`. For initial plan-worthy work, load the ' +
+			'`planning` skill first, perform discovery with normal tools, find `create_plan` with ' +
+			'tool search, then call `create_plan` with `planningContext.source: "planning-skill"`. ' +
+			'For planned-task replan follow-ups, find `create_plan` with tool search if needed, then use ' +
 			'`planningContext.source: "replan"`.'
 		);
 	}
@@ -124,8 +124,8 @@ function validatePlanningContext(
 				source: planningContext.source,
 			});
 			return (
-				'Error: `<planned-task-follow-up type="replan">` turns must load `create-tasks` via ' +
-				'`load_tool` if needed, then call `create-tasks` with `planningContext.source: "replan"` ' +
+				'Error: `<planned-task-follow-up type="replan">` turns must find `create_plan` ' +
+				'with tool search if needed, then call `create_plan` with `planningContext.source: "replan"` ' +
 				'when scheduling multiple dependent tasks.'
 			);
 		}
@@ -140,7 +140,7 @@ function validatePlanningContext(
 		return (
 			'Error: `planningContext.source: "replan"` is only valid in planned-task replan follow-up turns. ' +
 			'For initial plan-worthy work, load the `planning` skill, perform discovery with normal tools, ' +
-			'load `create-tasks` via `load_tool`, then call `create-tasks` with ' +
+			'find `create_plan` with tool search, then call `create_plan` with ' +
 			'`planningContext.source: "planning-skill"`.'
 		);
 	}
@@ -149,15 +149,15 @@ function validatePlanningContext(
 }
 
 export function createPlanTool(context: OrchestrationContext) {
-	return new Tool('create-tasks')
+	return new Tool('create_plan')
 		.description(
 			'Submit a dependency-aware task graph for detached multi-step execution. ' +
-				'Load via `load_tool` before calling (search "create tasks" if not visible). ' +
+				'If it is not visible, find it with tool search (search "create plan"). ' +
 				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
 				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
 				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
 				'The task list is shown to the user for approval before execution starts. ' +
-				'After calling create-tasks, do not write visible text; the approval card is the user-visible surface.',
+				'After calling create_plan, do not write visible text; the approval card is the user-visible surface.',
 		)
 		.input(planInputSchema)
 		.output(planOutputSchema)
@@ -192,13 +192,13 @@ export function createPlanTool(context: OrchestrationContext) {
 					existing?.status === 'cancelled' &&
 					existing.messageGroupId === context.messageGroupId
 				) {
-					context.logger.info('create-tasks blocked: user denied a plan earlier in this turn', {
+					context.logger.info('create_plan blocked: user denied a plan earlier in this turn', {
 						threadId: context.threadId,
 						messageGroupId: context.messageGroupId,
 					});
 					return {
 						result:
-							'The user denied a plan earlier in this turn. Do not invoke create-tasks again — acknowledge briefly and wait for the next user message.',
+							'The user denied a plan earlier in this turn. Do not invoke create_plan again — acknowledge briefly and wait for the next user message.',
 						taskCount: 0,
 					};
 				}
@@ -207,7 +207,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (isFirstCall) {
 				const contextError = validatePlanningContext(input, context);
 				if (contextError) {
-					context.logger.warn('create-tasks called with invalid planning context — rejecting', {
+					context.logger.warn('create_plan called with invalid planning context — rejecting', {
 						threadId: context.threadId,
 						taskCount: input.tasks.length,
 						planningSource: input.planningContext?.source,
@@ -238,7 +238,7 @@ export function createPlanTool(context: OrchestrationContext) {
 					if (!(error instanceof PlanValidationError)) {
 						throw error;
 					}
-					context.logger.warn('create-tasks rejected by planned task validator', {
+					context.logger.warn('create_plan rejected by planned task validator', {
 						threadId: context.threadId,
 						taskCount: input.tasks.length,
 						error: error.message,
@@ -305,7 +305,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			});
 
 			// User denied the plan outright. Cancel the graph so the next
-			// `create-tasks` call goes through the fresh-plan path instead of
+			// `create_plan` call goes through the fresh-plan path instead of
 			// being treated as a revision, and tell the LLM to stop.
 			if (resumeData.denied) {
 				await context.plannedTaskService.denyPlan(context.threadId);
@@ -316,17 +316,17 @@ export function createPlanTool(context: OrchestrationContext) {
 				});
 				return {
 					result:
-						'User denied the plan. Do not revise or call create-tasks again — acknowledge and wait for new instructions.',
+						'User denied the plan. Do not revise or call create_plan again — acknowledge and wait for new instructions.',
 					taskCount: 0,
 				};
 			}
 
 			// User requested changes. Keep the persisted graph in
 			// `awaiting_approval`: the scheduler ignores it, so the rejected
-			// graph cannot dispatch, and the next `create-tasks` call overwrites
+			// graph cannot dispatch, and the next `create_plan` call overwrites
 			// it with the revised graph.
 			return {
-				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks, load create-tasks via load_tool if needed, and call create-tasks again.`,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks, find create_plan with tool search if needed, and call create_plan again.`,
 				taskCount: 0,
 			};
 		})

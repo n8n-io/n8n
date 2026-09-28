@@ -289,8 +289,8 @@ Because these are plain outcome expectations, scoring, the gate, the PR comment,
 
 Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
 
-- **agent** — the build-agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build-agent` tool result carries no id.)
-- **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
+- **agent** — the build_agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build_agent` tool result carries no id.)
+- **config-eval** — the `eval_config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 
@@ -561,7 +561,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data-tables(action="list")`, and verify there are no planning,
+and `data_tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
@@ -648,7 +648,7 @@ step via `scripts/upload-pairwise-to-langsmith.ts`.
 Build failures are tracked separately from judge scores:
 
 - **`build_timeout`** — exceeded `--timeout-ms`
-- **`no_workflow_built`** — agent finished without invoking `build-workflow` (no captured workflow)
+- **`no_workflow_built`** — agent finished without invoking `build_workflow` (no captured workflow)
 - **`agent_error`** — stream errored or the agent threw
 
 A failure produces a row with `workflow: null`, empty `feedback`, and the
@@ -659,9 +659,9 @@ error class — it counts as a primary fail in the comparison report.
 The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
-- `askUserCount` — `ask-user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `create-tasks` was invoked (single-prompt dataset shouldn't trigger planning)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data-tables` create); auto-approved
+- `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
+- `planToolCount` — `create_plan` was invoked (single-prompt dataset shouldn't trigger planning)
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report
@@ -687,7 +687,7 @@ expanded.
 Judge non-determinism + agent retry behavior mean a single run is not a
 reliable signal. Two specific things to know:
 
-- The agent will sometimes retry `build-workflow` after a parser rejection
+- The agent will sometimes retry `build_workflow` after a parser rejection
   (e.g., security violation) and sometimes give up. Whether a prompt
   "fails to build" is non-deterministic across runs.
 - If you're comparing two builders to claim a regression or improvement,
@@ -926,7 +926,7 @@ For a **synthetic, sanitized** seed you want pinned in git (never a real user's 
 }
 ```
 
-Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables`, `agents`, `folders` and `projects` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
+Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables`, `agents`, `folders` and `projects` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build_workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
 
 **Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
 
@@ -1046,7 +1046,7 @@ an invalid attachment before the run starts.
 
 An Agent attachment supplies identity only. It does not copy the Agent configuration into
 the orchestrator prompt. To inspect or change the attached Agent, the assistant must pass
-the remapped id to `build-agent`. Agent Builder then reads the current configuration. An
+the remapped id to `build_agent`. Agent Builder then reads the current configuration. An
 Agent-content case must use process and outcome expectations that verify this delegation
 and the resulting repair. The attachment checks only that the eval reproduces the editor
 handoff.

@@ -119,10 +119,10 @@ describe('PlannedTaskCoordinator', () => {
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must depend on at least one build-workflow task');
+			).rejects.toThrow('must depend on at least one build_workflow task');
 		});
 
-		it('accepts a checkpoint task that depends on a build-workflow task', async () => {
+		it('accepts a checkpoint task that depends on a build_workflow task', async () => {
 			const tasks = [
 				makeTask({ id: 'wf-1' }),
 				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['wf-1'] }),
@@ -138,7 +138,7 @@ describe('PlannedTaskCoordinator', () => {
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must depend on at least one build-workflow task');
+			).rejects.toThrow('must depend on at least one build_workflow task');
 		});
 	});
 
@@ -616,7 +616,7 @@ describe('PlannedTaskCoordinator', () => {
 	});
 
 	describe('tick', () => {
-		it('orchestrates the first ready build-workflow task when deps are satisfied', async () => {
+		it('orchestrates the first ready build_workflow task when deps are satisfied', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [

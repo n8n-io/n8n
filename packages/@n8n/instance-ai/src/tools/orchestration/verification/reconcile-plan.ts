@@ -8,7 +8,7 @@ import { buildCredentialMap } from '../../workflows/resolve-credentials';
 /**
  * Refresh the build outcome's mocked-credential plan against the live
  * workflow before a verification run. Credentials assigned after the build
- * (setup flow, apply-workflow-credentials, manual selection in the editor)
+ * (setup flow, apply_workflow_credentials, manual selection in the editor)
  * never trigger a rebuild, so without this step every verify replays the
  * build-time mock. Best-effort: on any failure the stored plan is used as-is.
  */
@@ -51,7 +51,7 @@ export async function reconcileStaleCredentialPlan(args: {
 
 		await workflowTaskService.updateBuildOutcome(buildOutcome.workItemId, patch);
 		logger.info(
-			'verify-built-workflow: refreshed stale mocked-credential plan from the live workflow',
+			'verify_built_workflow: refreshed stale mocked-credential plan from the live workflow',
 			{
 				workItemId: buildOutcome.workItemId,
 				workflowId,
@@ -60,7 +60,7 @@ export async function reconcileStaleCredentialPlan(args: {
 		);
 		return { ...buildOutcome, ...patch };
 	} catch (error) {
-		logger.warn('verify-built-workflow: could not reconcile mocked-credential plan', {
+		logger.warn('verify_built_workflow: could not reconcile mocked-credential plan', {
 			workItemId: buildOutcome.workItemId,
 			workflowId,
 			error: error instanceof Error ? error.message : String(error),

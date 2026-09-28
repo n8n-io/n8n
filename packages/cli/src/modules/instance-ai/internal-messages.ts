@@ -126,7 +126,7 @@ function trailingBlockRegex(tag: string): RegExp {
  * Trailing blocks from older stored messages. New turns wrap these inside a
  * leading `<thread-context>` instead. Registering here is what makes a block
  * invisible to BOTH readers of a stored message: the UI, and the
- * conversation-history tool's text extraction — so injected context never
+ * conversation_history tool's text extraction — so injected context never
  * pollutes a later history search.
  */
 const TRAILING_CONTEXT_BLOCKS = [
@@ -220,7 +220,7 @@ export function withProjectContext(message: string, projectSection: string): str
 
 /**
  * Tell the agent the project has searchable past conversations. First turn of a
- * thread only — it exists to make the agent reach for the `conversation-history`
+ * thread only — it exists to make the agent reach for the `conversation_history`
  * tool, which it otherwise has no reason to believe has anything in it.
  * Kept for older stored messages and tests that rebuild that shape.
  */
@@ -569,7 +569,7 @@ export function buildThreadArtifactsBlock(
 	const pendingAgentGuidance = resourceAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build_agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
 
 	const currentGuidance = activeId

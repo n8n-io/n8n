@@ -132,8 +132,8 @@ const MAX_DEBUG_EVENTS = 1000;
 export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
-	['leave-onboarding', 'left'],
-	['build-workflow', 'build'],
+	['leave_onboarding', 'left'],
+	['build_workflow', 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -174,7 +174,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave_onboarding` or `build_workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -939,7 +939,7 @@ export function createThreadRuntime(
 	// runtime is disposed and recreated. Prefer shared builders from
 	// `@n8n/api-types` so UI keys match persisted thread grants:
 	// `executions:run:<id>`, `executions:run-step:<id>:<node>`,
-	// `workflows:update:<id>`, `data-tables:<action>`.
+	// `workflows:update:<id>`, `data_tables:<action>`.
 	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
@@ -960,7 +960,7 @@ export function createThreadRuntime(
 
 	/**
 	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 * generic `build_workflow:` key would auto-approve later foreign edits.
 	 */
 	function buildAlwaysAllowKey(
 		toolName: string,
@@ -986,15 +986,15 @@ export function createThreadRuntime(
 			if (!workflowId || !nodeName) return null;
 			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// Editing a workflow (build_workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound build_workflow
 		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
 		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'build_workflow') {
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
-		if (toolName === 'data-tables') {
+		if (toolName === 'data_tables') {
 			return buildDataTablesSessionGrantKey(action);
 		}
 		// Executing a node grants "always allow" per node type + resource + operation,

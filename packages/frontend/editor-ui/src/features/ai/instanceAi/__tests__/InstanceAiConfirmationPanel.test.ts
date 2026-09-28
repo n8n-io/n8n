@@ -38,10 +38,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.workflows.unpublish.imperativeWithResource': 'unpublish',
 				'instanceAi.tools.workflows.unarchive.imperativeWithResource': 'restore',
 				'instanceAi.tools.workflows.delete.imperativeWithResource': 'archive',
-				'instanceAi.tools.build-workflow.imperative': 'edit workflow',
-				'instanceAi.tools.build-workflow.imperativeWithResource': 'edit',
-				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
-				'instanceAi.tools.data-tables.add-column.imperativeWithResource': 'add a column to',
+				'instanceAi.tools.build_workflow.imperative': 'edit workflow',
+				'instanceAi.tools.build_workflow.imperativeWithResource': 'edit',
+				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
+				'instanceAi.tools.data_tables.add-column.imperativeWithResource': 'add a column to',
 				'instanceAi.tools.nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
@@ -210,7 +210,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 						message,
 					},
 					{ filePath: 'src/workflows/orders.workflow.ts', workflowId: 'wf-1' },
-					'build-workflow',
+					'build_workflow',
 				);
 				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 				const { getByText, getByTestId } = renderComponent({ props: { kind: 'floating' } });
@@ -236,7 +236,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'CRM Lead enrichment',
 				},
 				{ filePath: 'src/workflows/crm.workflow.ts', workflowId: 'wf-1' },
-				'build-workflow',
+				'build_workflow',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -258,7 +258,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -276,7 +276,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'delete', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByRole } = renderComponent({ props: { kind: 'floating' } });
 			expect(getByRole('region', { name: 'Approval details' }).textContent).toBe(
@@ -290,7 +290,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				thread,
 				{ requestId: 'long-summary', severity: 'warning', message, resourceName: 'Contacts' },
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByRole, getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			const description = getByRole('region', {
@@ -350,7 +350,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					message: 'Edit Target workflow (ID: wf-1)?',
 				},
 				{ filePath: 'src/workflows/orders.workflow.ts', workflowId: 'wf-1' },
-				'build-workflow',
+				'build_workflow',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -597,7 +597,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(mockTelemetryTrack).not.toHaveBeenCalled();
 		});
 
-		it('scopes always-allow for build-workflow to confirmation.workflowId', async () => {
+		it('scopes always-allow for build_workflow to confirmation.workflowId', async () => {
 			injectPendingConfirmation(
 				thread,
 				{
@@ -607,7 +607,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					workflowId: 'wf-1',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'build_workflow',
 			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
@@ -621,13 +621,13 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				scope: 'session',
 			});
 			expect(addKeySpy).toHaveBeenCalledWith(
-				'build-workflow',
+				'build_workflow',
 				{ filePath: 'src/workflows/main.workflow.ts' },
 				'wf-1',
 			);
 		});
 
-		it('hides always-allow for unscoped build-workflow edits', () => {
+		it('hides always-allow for unscoped build_workflow edits', () => {
 			injectPendingConfirmation(
 				thread,
 				{
@@ -636,7 +636,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					message: 'Edit workflow?',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'build_workflow',
 			);
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
@@ -656,7 +656,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					workflowId: 'wf-1',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'build_workflow',
 			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');

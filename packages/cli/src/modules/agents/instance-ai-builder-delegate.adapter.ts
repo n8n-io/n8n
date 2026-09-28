@@ -36,7 +36,7 @@ When you mention the agent editor, say Sessions tab for history and Preview for 
 
 You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
 
-Use \`agent-context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
+Use \`agent_context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
 
 The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
 
@@ -82,7 +82,7 @@ function toBuilderTurnStream(
 
 /**
  * Host implementation of the instance-ai builder-delegate port. Wraps
- * `AgentsBuilderService` for use as a sub-agent by instance AI's build-agent
+ * `AgentsBuilderService` for use as a sub-agent by instance AI's build_agent
  * tool: one builder conversational turn per `streamBuild`/`resumeBuild` call,
  * with builder sessions keyed to an instance-AI-scoped thread id
  * (`session.threadId`) so nothing surfaces in the agents-module builder UI.
@@ -239,7 +239,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 				return {
 					config,
 					skills: await this.agentSkills.listSkills(agentId, projectId),
-					// The same hash `agent-context` hands the model, so consumers can dedupe.
+					// The same hash `agent_context` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
 				};
 			},

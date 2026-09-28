@@ -17,7 +17,7 @@ function makeTool(
 	});
 }
 
-describe('agent-context tool', () => {
+describe('agent_context tool', () => {
 	it('uses the selected Agent for an Agent-scoped lookup', async () => {
 		const reader = { lookup: vi.fn().mockResolvedValue({ configState: 'current-draft' }) };
 		const output = await executeTool<{ agentId?: string; context?: string }>(makeTool(reader), {
@@ -73,7 +73,7 @@ describe('agent-context tool', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(output.context).toMatch(/^<untrusted_data source="agent-context" label="session">/);
+		expect(output.context).toMatch(/^<untrusted_data source="agent_context" label="session">/);
 		expect(output.context).toContain('&lt;/untrusted_data');
 		expect(output.context?.match(/<\/untrusted_data>/g)).toHaveLength(1);
 	});

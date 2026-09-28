@@ -700,10 +700,10 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 			return trunc(str(a.path));
 		case 'submit-workflow':
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);
-		case 'verify-built-workflow':
+		case 'verify_built_workflow':
 			return trunc(str(a.workflowId) || str(a.workItemId));
 		case 'credentials':
-		case 'data-tables':
+		case 'data_tables':
 		case 'nodes':
 		case 'workflows':
 			return trunc(str(a.action));

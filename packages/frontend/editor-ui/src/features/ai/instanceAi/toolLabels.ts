@@ -3,7 +3,16 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
+const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task_control']);
+/** Tool discovery: the runtime's search pair and the provider-side search tools. */
+const TOOL_SEARCH_TOOLS = new Set([
+	'search_tools',
+	'load_tool',
+	'anthropic.tool_search_bm25_20251119',
+	'anthropic.tool_search_regex_20251119',
+	'openai.tool_search',
+]);
+
 const SKILL_TOOLS = new Set([
 	'create_skills',
 	'list_skills',
@@ -105,27 +114,27 @@ function extractSkillScriptPath(command: string): string | undefined {
 function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
 	switch (operation) {
 		case 'editing':
-			return 'instanceAi.tools.build-agent.editing';
+			return 'instanceAi.tools.build_agent.editing';
 		case 'exploring':
-			return 'instanceAi.tools.build-agent.exploring';
+			return 'instanceAi.tools.build_agent.exploring';
 		case 'testing':
-			return 'instanceAi.tools.build-agent.testing';
+			return 'instanceAi.tools.build_agent.testing';
 		case 'publishing':
-			return 'instanceAi.tools.build-agent.publishing';
+			return 'instanceAi.tools.build_agent.publishing';
 		default:
 			return undefined;
 	}
 }
 
 export function getToolIcon(toolName: string): IconName {
-	if (toolName === 'complete-checkpoint') return 'circle-check';
+	if (toolName === 'complete_checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
-	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === 'data-tables') return 'table';
+	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n_docs') return 'book-open';
+	if (toolName === 'data_tables') return 'table';
 	if (toolName === 'activity') return 'history';
-	if (toolName === 'conversation-history') return 'message-square';
-	if (toolName === 'mcp-servers') return 'plug';
+	if (toolName === 'conversation_history') return 'message-square';
+	if (toolName === 'mcp_servers') return 'plug';
 	if (
 		toolName === 'workflows' ||
 		toolName === 'executions' ||
@@ -137,14 +146,14 @@ export function getToolIcon(toolName: string): IconName {
 		return 'workflow';
 	if (toolName === 'research') return 'search';
 	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
+	if (toolName === 'task_control' || toolName === 'updateWorkingMemory') return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';
 	if (
 		toolName.includes('workflow') ||
 		toolName === 'submit-workflow' ||
-		toolName === 'materialize-node-type'
+		toolName === 'materialize_node_type'
 	) {
 		return 'workflow';
 	}
@@ -161,12 +170,13 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
-		if (toolName === 'build-agent') {
+		if (TOOL_SEARCH_TOOLS.has(toolName)) return i18n.baseText('instanceAi.tools.toolSearch');
+		if (toolName === 'build_agent') {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
 		}
-		if (toolName === 'agent-context' && typeof args?.type === 'string') {
-			const lookupKey = `instanceAi.tools.agent-context.${args.type}` as BaseTextKey;
+		if (toolName === 'agent_context' && typeof args?.type === 'string') {
+			const lookupKey = `instanceAi.tools.agent_context.${args.type}` as BaseTextKey;
 			const lookupLabel = i18n.baseText(lookupKey);
 			if (lookupLabel !== lookupKey) return lookupLabel;
 		}

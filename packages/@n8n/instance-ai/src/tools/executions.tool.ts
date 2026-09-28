@@ -87,7 +87,7 @@ const runAction = z.object({
 			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from build-workflow's `triggerNodes` or " +
+				"Trigger names come from build_workflow's `triggerNodes` or " +
 				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
 				'workflow to reach a branch — use this instead.',
 		),
@@ -580,7 +580,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
 				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
 				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'To verify a workflow you built, use verify_built_workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
 				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
 				'"Execute step" button. Use it to see what one node really returns — when ' +

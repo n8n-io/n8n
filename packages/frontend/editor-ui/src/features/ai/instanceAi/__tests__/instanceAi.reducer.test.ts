@@ -389,11 +389,11 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task_control'));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('task-control');
+			expect(tc.toolName).toBe('task_control');
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 		});
@@ -765,7 +765,7 @@ describe('instanceAi.reducer', () => {
 		test('tool-call with unsafe toolCallId is ignored', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'task-control'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'task_control'));
 
 			expect(state.messages[0].agentTree?.toolCalls).toHaveLength(0);
 			expectReducerMapsNotPolluted(state);
@@ -862,8 +862,8 @@ describe('instanceAi.reducer', () => {
 	});
 
 	describe('getRenderHint', () => {
-		test('returns tasks for "task-control"', () => {
-			expect(getRenderHint('task-control')).toBe('tasks');
+		test('returns tasks for "task_control"', () => {
+			expect(getRenderHint('task_control')).toBe('tasks');
 		});
 
 		test('returns default for removed delegate tool', () => {
@@ -875,15 +875,15 @@ describe('instanceAi.reducer', () => {
 		});
 
 		test('returns default for direct data-table tool', () => {
-			expect(getRenderHint('data-tables')).toBe('default');
+			expect(getRenderHint('data_tables')).toBe('default');
 		});
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
 		});
 
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
+		test('returns planner render hint for create_plan', () => {
+			expect(getRenderHint('create_plan')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(

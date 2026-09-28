@@ -94,7 +94,7 @@ function stubFetchWithMap(responses: Record<string, string>) {
 	return fetchMock;
 }
 
-describe('n8n-docs tool', () => {
+describe('n8n_docs tool', () => {
 	beforeEach(() => {
 		resetN8nDocsRegistryCacheForTests();
 		vi.unstubAllGlobals();

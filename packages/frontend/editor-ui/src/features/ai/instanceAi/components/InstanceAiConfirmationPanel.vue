@@ -145,29 +145,29 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.executions.run.imperative',
 			'instanceAi.tools.executions.run.imperativeWithResource',
 			'instanceAi.tools.credentials.delete.imperative',
-			'instanceAi.tools.data-tables.create.imperative',
-			'instanceAi.tools.data-tables.create.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete.imperative',
-			'instanceAi.tools.data-tables.delete.imperativeWithResource',
-			'instanceAi.tools.data-tables.add-column.imperative',
-			'instanceAi.tools.data-tables.add-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete-column.imperative',
-			'instanceAi.tools.data-tables.delete-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.rename-column.imperative',
-			'instanceAi.tools.data-tables.rename-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.insert-rows.imperative',
-			'instanceAi.tools.data-tables.insert-rows.imperativeWithResource',
-			'instanceAi.tools.data-tables.update-rows.imperative',
-			'instanceAi.tools.data-tables.update-rows.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete-rows.imperative',
-			'instanceAi.tools.data-tables.delete-rows.imperativeWithResource',
+			'instanceAi.tools.data_tables.create.imperative',
+			'instanceAi.tools.data_tables.create.imperativeWithResource',
+			'instanceAi.tools.data_tables.delete.imperative',
+			'instanceAi.tools.data_tables.delete.imperativeWithResource',
+			'instanceAi.tools.data_tables.add-column.imperative',
+			'instanceAi.tools.data_tables.add-column.imperativeWithResource',
+			'instanceAi.tools.data_tables.delete-column.imperative',
+			'instanceAi.tools.data_tables.delete-column.imperativeWithResource',
+			'instanceAi.tools.data_tables.rename-column.imperative',
+			'instanceAi.tools.data_tables.rename-column.imperativeWithResource',
+			'instanceAi.tools.data_tables.insert-rows.imperative',
+			'instanceAi.tools.data_tables.insert-rows.imperativeWithResource',
+			'instanceAi.tools.data_tables.update-rows.imperative',
+			'instanceAi.tools.data_tables.update-rows.imperativeWithResource',
+			'instanceAi.tools.data_tables.delete-rows.imperative',
+			'instanceAi.tools.data_tables.delete-rows.imperativeWithResource',
 			'instanceAi.tools.workspace.tag-workflow.imperative',
 			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
 			'instanceAi.tools.workspace.create-folder.imperative',
 			'instanceAi.tools.workspace.delete-folder.imperative',
 			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
-			'instanceAi.tools.build-workflow.imperative',
-			'instanceAi.tools.build-workflow.imperativeWithResource',
+			'instanceAi.tools.build_workflow.imperative',
+			'instanceAi.tools.build_workflow.imperativeWithResource',
 			'instanceAi.tools.build-workflow-with-agent.imperative',
 		] satisfies BaseTextKey[]
 	).map((key) => [key, key]),
@@ -542,7 +542,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
-				<!-- Text input (ask-user) -->
+				<!-- Text input (ask_user) -->
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"

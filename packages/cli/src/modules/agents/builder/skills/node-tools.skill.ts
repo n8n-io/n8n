@@ -10,14 +10,14 @@ export function nodeToolsSkill(): RuntimeSkill {
 		description:
 			'Use whenever adding, removing, or updating an n8n node-backed tool, including search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
 		recommendedTools: [
-			'agent-context',
+			'agent_context',
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
 			'patch_config',
 		],
 		allowedTools: [
-			'agent-context',
+			'agent_context',
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
@@ -58,7 +58,7 @@ conventions. Never add an incomplete tool or use a placeholder URL.
 
 ## Workflow
 
-- For a generic external-service request, call \`agent-context\` with
+- For a generic external-service request, call \`agent_context\` with
   \`type: "integrations"\` and \`queries\` before node discovery unless an
   integration search result is already available.
 - If it returns \`kind: "mcp"\`, load \`agent-builder-external-services\`,
@@ -80,10 +80,10 @@ conventions. Never add an incomplete tool or use a placeholder URL.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- Gateway credits cover many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed \`Gateway credits\` credential (\`{ id: null, name: "Gateway credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then \`agent-context({ type: "config" })\`.
-- Exception — when the user explicitly asks to run a tool on Gateway credits, write \`{ "id": null, "name": "Gateway credits", "__aiGatewayManaged": true }\` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check \`agent-context({ type: "config" })\` after the write and resolve a real credential if it was removed.
-- The \`Gateway credits\` managed credential IS the real, working credential — the tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT a placeholder and NOT "invalid for the service", even for a community node. For a slot \`agent-context({ type: "config" })\` shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call \`ask_credential\` for it; do NOT include it in \`finish_setup\`; NEVER clear, remove, or replace it via \`patch_config\`; and NEVER seek a "real" API key to swap in for it. Report the tool as ready, running on Gateway credits — exactly like a managed model. Never tell the user the credential is "not connected"/"not set up" or that the tool "won't run until a credential is added".
-- Only for a required slot that \`agent-context({ type: "config" })\` shows still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} After the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
+- Gateway credits cover many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed \`Gateway credits\` credential (\`{ id: null, name: "Gateway credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then \`agent_context({ type: "config" })\`.
+- Exception — when the user explicitly asks to run a tool on Gateway credits, write \`{ "id": null, "name": "Gateway credits", "__aiGatewayManaged": true }\` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check \`agent_context({ type: "config" })\` after the write and resolve a real credential if it was removed.
+- The \`Gateway credits\` managed credential IS the real, working credential — the tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT a placeholder and NOT "invalid for the service", even for a community node. For a slot \`agent_context({ type: "config" })\` shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call \`ask_credential\` for it; do NOT include it in \`finish_setup\`; NEVER clear, remove, or replace it via \`patch_config\`; and NEVER seek a "real" API key to swap in for it. Report the tool as ready, running on Gateway credits — exactly like a managed model. Never tell the user the credential is "not connected"/"not set up" or that the tool "won't run until a credential is added".
+- Only for a required slot that \`agent_context({ type: "config" })\` shows still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} After the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
 - When the agent already has a chat channel configured and the tool needs the same
   credential type, \`ask_credential\` reuses the channel's credential automatically —
   do not ask the user to pick a different one.
@@ -123,7 +123,7 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 
 ## Verify
 
-- Generic external-service requests were routed through \`agent-context\`
+- Generic external-service requests were routed through \`agent_context\`
   before node setup.
 - Node tools use discovered tool node ids and valid node parameters.
 - HTTP Request Tools use a fixed URL supplied by the user.`,

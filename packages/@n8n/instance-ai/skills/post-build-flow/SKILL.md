@@ -1,21 +1,21 @@
 ---
 name: post-build-flow
 description: >-
-  Handles workflow verification and setup after build-workflow succeeds, or when
+  Handles workflow verification and setup after build_workflow succeeds, or when
   the message contains workflow-verification-follow-up or workflow-setup-required.
   Load after direct builds, when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
 recommended_tools:
-  - ask-user
-  - verify-built-workflow
+  - ask_user
+  - verify_built_workflow
   - workflows
-  - build-workflow
+  - build_workflow
   - executions
 ---
 
 # Post-Build Flow
 
-Use this skill after `build-workflow` succeeds on a direct orchestrator build,
+Use this skill after `build_workflow` succeeds on a direct orchestrator build,
 especially when the build result contains `postBuildFlow.required: true`, or when
 the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
@@ -50,7 +50,7 @@ setup returns `announced: true`, or the current user input contains
   while chat stays available. Do not wait, poll, or open a trigger-test card.
 - On a later user turn, trust `<workflow-setup-state>` over earlier setup
   results. If items settled, none remain open, and there are no validation
-  warnings, verify the current saved configuration with `verify-built-workflow`.
+  warnings, verify the current saved configuration with `verify_built_workflow`.
   It refreshes the credential plan.
   Report remaining simulations or connection failures. Do not claim live
   success from the earlier build result.
@@ -84,7 +84,7 @@ flow. Its result is not a panel announcement unless it has `announced: true`.
 
 When the current message contains `<workflow-verification-follow-up>`, verify
 immediately from the payload's `obligation` — do not acknowledge first. If the
-obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
+obligation is `ready_to_verify` or `verifying`, call `verify_built_workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
@@ -238,7 +238,7 @@ re-offering, the user already asked.
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and
-`verify-built-workflow` inject `inputData` as the trigger's output — the
+`verify_built_workflow` inject `inputData` as the trigger's output — the
 workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
@@ -276,14 +276,14 @@ when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
 was used. You may offer publishing after that confirmation.
 
-For post-build verification of workflows produced by `build-workflow`, **always verify with
-`verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
+For post-build verification of workflows produced by `build_workflow`, **always verify with
+`verify_built_workflow`, never with raw `executions(action="run")`.** It reuses
 the build outcome simulation plan, mocked credentials, and temporary pin data, so
 destructive nodes are pinned and it is safe to call repeatedly. A raw
 `executions(action="run")` runs the workflow live with no pin data, and on a
 workflow you just verified it surfaces a redundant run-approval prompt to the
 user right after verification already executed the workflow. For follow-up
-requests like "verify again", call `verify-built-workflow` with `workflowId` even
+requests like "verify again", call `verify_built_workflow` with `workflowId` even
 if the original `workItemId` is not in context. For alternate deterministic
 scenarios, pass `fixtureOverrides` keyed by simulated node name instead of trying
 to force data through the trigger.
@@ -293,7 +293,7 @@ tool.** It runs one node and tells you what that node returns. It says nothing
 about the rest of the chain, so it never settles a verification obligation and
 never turns "partial coverage" into "verified". Use it to inspect one node —
 most often with `reuseExecutionId` on a node that failed a real run — and keep
-verifying with `verify-built-workflow`. A step run with `mockInput` proves even
+verifying with `verify_built_workflow`. A step run with `mockInput` proves even
 less: the result names the nodes whose output it invented in
 `mockedNodeNames`, and you must repeat that limitation in what you tell the
 user.
@@ -301,7 +301,7 @@ user.
 **Reserve `executions(action="run")` for runs the user explicitly asked for**
 (e.g. "run it now", "execute it against my real data"). Never call it on your own
 to re-test, expand coverage, or "prove the full chain" of a workflow you just
-built or verified: re-run `verify-built-workflow` instead — with
+built or verified: re-run `verify_built_workflow` instead — with
 `triggerNodeName` to reach another trigger's branch, or `fixtureOverrides` to
 reach another branch within one trigger's run — or report the partial coverage
 and let the user decide whether to run it.
@@ -322,7 +322,7 @@ user keeps, and the copy is left behind whenever the cleanup delete fails.
 For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 **verify once per trigger**:
 
-- Pass `triggerNodeName` to `verify-built-workflow` and call it once for each
+- Pass `triggerNodeName` to `verify_built_workflow` and call it once for each
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
@@ -351,7 +351,7 @@ For a repair on a published workflow:
 - Telling the user the fix is not live yet is not an offer to publish. Say it.
 - Do NOT report the workflow as fixed, live, running, or working in production
   while the published version is the older one. Say the fix is in the draft.
-- `verify-built-workflow` returns `claim.liveState`. `live-stale` means the
+- `verify_built_workflow` returns `claim.liveState`. `live-stale` means the
   published version is older than the draft you just verified. The result also
   carries `liveStateNote`. Relay it.
 - Without a claim, call `workflows(action="get", workflowId)` and compare
@@ -363,7 +363,7 @@ For a repair on a published workflow:
   "Send another email to test it" is wrong when the fix is still a draft — the
   test would run the broken version and look like the fix failed.
 
-## After build-workflow succeeds
+## After build_workflow succeeds
 
 1. Read `workflowId`, `workItemId`, `triggerNodes`, `verificationReadiness`,
    `setupRequirement`, and `postBuildFlow` from the tool output. If the output
@@ -375,7 +375,7 @@ For a repair on a published workflow:
      prove the saved workflow is good.
    - If the persisted workflow is missing the requested outcome, has an obvious
      dead-end draft shape, or the verification evidence is weak, load the
-     `workflow-builder` skill and patch the same workflow with `build-workflow`
+     `workflow-builder` skill and patch the same workflow with `build_workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
    - If `verificationReadiness.status === "already_verified"`, do not repeat
@@ -384,11 +384,11 @@ For a repair on a published workflow:
      obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
-  `verify-built-workflow` with the `workflowId`, the `workItemId` when you
+  `verify_built_workflow` with the `workflowId`, the `workItemId` when you
   have it, and the trigger-appropriate `inputData` shape. When `triggerNodes`
   has more than one entry, call it once per trigger with `triggerNodeName`.
 - If `verificationReadiness.status === "needs_setup"` and the persistent setup
-  panel is enabled, first try `verify-built-workflow` when verification has not
+  panel is enabled, first try `verify_built_workflow` when verification has not
   run. It can verify simulated paths or report that a simulation plan is
   unavailable. Then announce setup with `workflows(action="setup")`. Do not use
   a live execution to work around a blocker.
@@ -400,14 +400,14 @@ For a repair on a published workflow:
   clear warning or manual-test note. This is a warning completion state, not
   a verified state and not an infinite blocker.
 
-2. Judge coverage, not just status. A `verify-built-workflow` result with
+2. Judge coverage, not just status. A `verify_built_workflow` result with
    `success: true` but a non-empty `nodesNotReached` is **partial** evidence:
    the execution ended early (see `lastNodeExecuted` and `coverageNote`) and
    the listed nodes — including any planned simulations — never ran.
    - Most common cause: a lookup/query node returned zero items (n8n stops
      downstream nodes on empty item lists). If the dead-end is a Data Table
-     lookup, insert a matching test row with `data-tables(action="insert-rows")`,
-     re-run `verify-built-workflow`, and delete the test row afterwards. The same
+     lookup, insert a matching test row with `data_tables(action="insert-rows")`,
+     re-run `verify_built_workflow`, and delete the test row afterwards. The same
      holds for data you seed anywhere else to unblock a run — it is yours to
      remove once the run is done (see "Cleaning up after a live test").
    - If you cannot seed the data source, report honestly: name which nodes
@@ -421,7 +421,7 @@ For a repair on a published workflow:
      nondeterministic upstream node, and alternate-branch verification is part
      of this turn's goal, first try one source-file repair: add representative
      `output` fixtures to that upstream node, rebuild the same workflow, and
-     re-run `verify-built-workflow` with `fixtureOverrides`. Only fall back to a
+     re-run `verify_built_workflow` with `fixtureOverrides`. Only fall back to a
      manual-test note when you cannot safely patch the source or the repair
      budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
@@ -471,7 +471,7 @@ For a repair on a published workflow:
    user's silence. If a later run failed, that says nothing about records an
    earlier successful run left behind; they are still there.
 8. If testing has not already been offered or completed, ask whether the user
-   wants to test the workflow. Skip this if `verify-built-workflow` already
+   wants to test the workflow. Skip this if `verify_built_workflow` already
    proved it works end-to-end with full coverage.
 9. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically or proactively offer publishing before
@@ -495,7 +495,7 @@ then publish and assign only after the user approves.
 
 After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
-Use `ask-user` with a yes/no choice or a concise visible question. Do **not**
+Use `ask_user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow
@@ -530,7 +530,7 @@ If the user says yes:
    `workflows(action="get-as-code", workflowId)` for the original workflow,
    write the returned code to a `.workflow.ts` file, add
    `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
-   `build-workflow` for the original workflow. The workflow edit approval card
+   `build_workflow` for the original workflow. The workflow edit approval card
    is the HITL surface for this assignment.
 5. Summarize the result with explicit per-workflow language: this error
    workflow was assigned only to the named target workflow. Mention that n8n has
@@ -611,7 +611,7 @@ A `verified` claim requires every trigger to pass and real coverage for every pl
 Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
 outside the claim describes only the current trigger's branch.
 
-`verify-built-workflow` returns a `claim`, and its `level` decides what you may
+`verify_built_workflow` returns a `claim`, and its `level` decides what you may
 say:
 
 - `verified` — you may call the workflow verified, tested, or working.
@@ -641,7 +641,7 @@ Without a claim, do not tell the user a workflow is "fixed", "verified",
 `executions(action="run")` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
-successful `build-workflow`/save, a static `workflows(action="validate")`, or
+successful `build_workflow`/save, a static `workflows(action="validate")`, or
 your own narration are NOT execution evidence. For a produced artifact (a file,
 generated document, or Code-node output), read the real output before calling it
 complete; do not infer correctness from the fact that a node ran. The same
@@ -667,7 +667,7 @@ default path. Workflow verification is automatic from the build outcome; the
 orchestrator handles workflow setup after verification when the saved workflow
 still has mocked credentials or placeholders.
 
-**Trust the build outcome over your own source file.** When `build-workflow`
+**Trust the build outcome over your own source file.** When `build_workflow`
 returns `resolvedCredentialsByNode` (or `setupRequirement.status ===
 "not_required"`), the saved workflow is already connected to existing
 credentials — even if your source used an unresolved `newCredential()` call.
@@ -679,7 +679,7 @@ reports mocked credentials or `setupRequirement.status === "required"`.
 **Ask once when a service has multiple credentials of the same type.** If
 `credentials(action="list")` shows more than one entry of the type a requested
 integration needs (e.g. two `openAiApi` accounts, three Google Calendar
-accounts), use `ask-user` with a single-select to let the user pick one before
+accounts), use `ask_user` with a single-select to let the user pick one before
 building, and use the chosen credential name in the workflow code. Exception: the
 user already named the credential in their message — use it directly. With a
 single candidate, auto-apply and do not ask.
@@ -688,7 +688,7 @@ single candidate, auto-apply and do not ask.
 new credential of a type, never pick an existing one for them and never ask them
 to choose among existing ones — not even when exactly one exists (the build would
 otherwise attach it silently and skip setup entirely). Pass the credential type in
-`preferNewCredentials` on both `build-workflow` and `workflows(action="setup")`
+`preferNewCredentials` on both `build_workflow` and `workflows(action="setup")`
 (or `preferNew: true` on the `credentials(action="setup")` entry). Setup then
 opens on credential creation while still listing the existing credentials, so the
 user can change their mind — say so in one short sentence rather than
@@ -701,7 +701,7 @@ re-litigating the choice. If they had skipped that card earlier, pass
 — the user cannot switch auth types from there. So when
 `credentials(action="search-types")` returns more than one auth option for a
 service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
-`slackOAuth2Api`), use `ask-user` with a single-select to let the user pick the
+`slackOAuth2Api`), use `ask_user` with a single-select to let the user pick the
 auth type before calling `credentials(action="setup")`. List OAuth2 first and
 present it as the recommended option. Exception: the user has clearly indicated
 an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching

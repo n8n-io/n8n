@@ -1,7 +1,7 @@
 /**
  * Thread-persisted agent-preview session binding. Mirrors agent-builder target
  * binding: the preview handoff injects a reference (not the transcript), and
- * follow-up turns must still resolve that reference so `get-session` stays
+ * follow-up turns must still resolve that reference so `get_session` stays
  * available after the first message.
  */
 import { z } from 'zod';

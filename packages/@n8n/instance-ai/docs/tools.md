@@ -28,7 +28,7 @@ unchanged. Add locale translations for these keys; missing translations fall bac
 to English. The backend retains `message` for older clients and saved approvals
 that have no structured details.
 
-`build-workflow`, `workflows(action="publish")`,
+`build_workflow`, `workflows(action="publish")`,
 and `executions(action="run")` accept `approvalSummary`. The agent supplies one
 line in the user’s language that describes the concrete change or effect of the
 call, for example `Add a Slack notification after the payment check`. Live execution summaries
@@ -49,36 +49,36 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `workflows` | 12 |
-| `data-tables` | 11 |
+| `data_tables` | 11 |
 | `workspace` | 8 |
 | `executions` | 8 |
 | `credentials` | 6 |
 | `nodes` | 7 |
-| `mcp-servers` | 4 |
-| `conversation-history` | 2 |
-| `task-control` | 3 |
+| `mcp_servers` | 4 |
+| `conversation_history` | 2 |
+| `task_control` | 3 |
 | `research` | 2 |
-| `eval-config` | 6 |
-| `n8n-docs` | 3 |
-| `agent-context` | 13 lookup types |
-| `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
+| `eval_config` | 6 |
+| `n8n_docs` | 3 |
+| `agent_context` | 13 lookup types |
+| `build_workflow`, `ask_user`, `parse_file`, `search_models` | single-purpose |
 
 ## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `create-tasks`
+### `create_plan`
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
-calls `create-tasks` with
+discovery with normal domain tools, then calls `create_plan`, which the skill
+loads through `dependencies.tools`, with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+use `workflow-builder`, workspace file tools, and `build_workflow` directly.
 The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
@@ -110,20 +110,20 @@ The plan is shown to the user for approval before execution starts.
 - On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
-- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
+- `build_workflow` → orchestrator follow-up run using the workflow-builder skill
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data-tables` / `parse-file` tools. Single
+`data-table-manager` skill and the `data_tables` / `parse_file` tools. Single
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
 
-### `task-control`
+### `task_control`
 
 Progress tracking and background-task control. One tool, three actions.
 
-#### `task-control(action="update-checklist")`
+#### `task_control(action="update-checklist")`
 
 Update a visible task checklist for the user. Lightweight progress tracking
 during synchronous work.
@@ -136,7 +136,7 @@ during synchronous work.
 
 **Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
 
-#### `task-control(action="cancel-task")`
+#### `task_control(action="cancel-task")`
 
 Cancel a running background task by its ID.
 
@@ -149,13 +149,13 @@ Cancel a running background task by its ID.
 **Cancellation flow** (three surfaces converge):
 ```
 User clicks stop button  -> POST /chat/:threadId/tasks/:taskId/cancel ---+
-User says "stop that"    -> orchestrator calls task-control -------------+
+User says "stop that"    -> orchestrator calls task_control -------------+
 cancelRun (global stop)  -> cancelBackgroundTasks(threadId) -------------+
                                                                         v
                                             service.cancelBackgroundTask()
 ```
 
-#### `task-control(action="correct-task")`
+#### `task_control(action="correct-task")`
 
 Send a course correction to a running background task.
 
@@ -168,7 +168,7 @@ Send a course correction to a running background task.
 sent, the task already completed, the task was not found, or delivery is not
 available.
 
-### `complete-checkpoint`
+### `complete_checkpoint`
 
 Close out a `checkpoint` planned task with its verdict. The tool is registered
 for the orchestrator and is intended only for checkpoint follow-up turns. The
@@ -184,7 +184,7 @@ task must exist, have kind `checkpoint`, and be in the `running` state.
 
 **Returns**: `{ result: string, ok: boolean }`
 
-### `get-session` *(conditional)*
+### `get_session` *(conditional)*
 
 Read a resolved Agent preview session — title, session number and transcript.
 Registered only when the host provides both `agentPreviewSession` and
@@ -196,7 +196,7 @@ Registered only when the host provides both `agentPreviewSession` and
 
 **Returns**: `{ ok, title?, sessionNumber?, transcript?, error? }`
 
-### `verify-built-workflow` *(conditional)*
+### `verify_built_workflow` *(conditional)*
 
 Run a built workflow with per-execution pin data for verification (never
 persisted to the workflow). Destructive and user-action nodes — write
@@ -265,7 +265,7 @@ The reasons are `parameter-values-disabled`, `replay-failed`, and
 `execution-unavailable`. Skipped checks expose no parameter values or replay
 error details. Their dynamic fields remain unverified.
 
-### `report-verification-verdict` *(conditional)*
+### `report_verification_verdict` *(conditional)*
 
 Feed verification results into the deterministic workflow loop state machine.
 
@@ -280,7 +280,7 @@ Feed verification results into the deterministic workflow loop state machine.
 
 **Returns**: `{ guidance: string }` — next action based on loop state machine.
 
-### `apply-workflow-credentials` *(conditional)*
+### `apply_workflow_credentials` *(conditional)*
 
 Atomically apply real credentials to previously-mocked workflow nodes.
 
@@ -295,7 +295,7 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 The domain surface has up to twelve actions. Version actions are registered only
 when their backend methods are available. Use `get` to inspect a workflow. Use
-`get-as-code`, workspace edits, and `build-workflow` to change a workflow.
+`get-as-code`, workspace edits, and `build_workflow` to change a workflow.
 The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
 remain available to compiler, setup, validation, credential, and verification
 flows. They are not model-facing actions.
@@ -371,7 +371,7 @@ or a structured not-found response.
 Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
 existing workflow when no workspace source file is already available. Existing
 workflow modifications should write the returned code to a workspace source file
-and call `build-workflow` with both `filePath` and the real n8n `workflowId`
+and call `build_workflow` with both `filePath` and the real n8n `workflowId`
 once; subsequent repairs can reuse only `filePath`.
 
 | Field | Type | Required | Description |
@@ -381,7 +381,7 @@ once; subsequent repairs can reuse only `filePath`.
 
 **Returns**: `{ workflowId, name, code, error? }`.
 
-### `build-workflow`
+### `build_workflow`
 
 Compile, validate, and save a workspace workflow source file. Inline source and
 string patches are not accepted; edit the workspace file first and then call
@@ -430,7 +430,7 @@ had no main outputs. Changes to its inputs or rules leave that finding
 informational, including connecting an existing parked Switch. New or re-enabled
 Switches and removal of existing output branches remain blocking. These checks
 do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
-so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+so `build_workflow` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 
 ### `workflows(action="delete")`
@@ -611,7 +611,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
 
-**Live test evidence**: `verify-built-workflow` always simulates destructive
+**Live test evidence**: `verify_built_workflow` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches
 every planned node of the latest build, with no saved pins and no injected
 trigger input, the run is recorded as a `verified` claim on the build outcome.
@@ -1122,13 +1122,12 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `searchModels`
+## `search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The `model-selection`
 skill activates this deferred tool when model-bearing node definitions are
-inspected. It can also be discovered with `search_tools` and loaded with
-`load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
+inspected. It can also be found with tool search. Activation does not call the catalog. If a provider credential or Gateway credits is
 available, use `nodes(action="explore-resources")` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
@@ -1162,7 +1161,7 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data-tables` (11 actions)
+## `data_tables` (11 actions)
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
 `updatedAt`) are reserved and auto-managed.
@@ -1251,7 +1250,7 @@ plain text / markdown → passthrough.
 
 ## Evaluation Tools
 
-### `eval-config` (6 actions, conditional)
+### `eval_config` (6 actions, conditional)
 
 Manage config-based evaluations without adding evaluation nodes to the canvas.
 The tool is registered only when `evaluationConfigService` is available. A
@@ -1274,7 +1273,7 @@ The config fields are `name`, `startNodeName`, `endNodeName`, `dataTableId`, and
 
 ---
 
-## `n8n-docs` (3 actions)
+## `n8n_docs` (3 actions)
 
 Search the current n8n documentation registry and read registered Markdown
 pages. This tool is always loaded when registered.
@@ -1293,7 +1292,7 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse_file` *(conditional)*
 
 Parse an attachment from the current user message. The registry adds this tool
 only when the current turn contains a parseable attachment.
@@ -1312,7 +1311,7 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `ask-user`
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
@@ -1398,7 +1397,7 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Agent Builder Tool
 
-### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+### `build_agent` *(orchestration tool — requires the `agents` backend module)*
 
 Delegates agent building to the agents-module builder chat
 (`AgentsBuilderService`) running as an embedded sub-agent: one conversational
@@ -1409,7 +1408,7 @@ and tools drive the build, including its interactive tools (`ask_questions`,
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
-activate/make-live intents to `build-agent`; never tell the user to open the
+activate/make-live intents to `build_agent`; never tell the user to open the
 agent editor and click Publish. The builder also inherits the orchestrator's
 validated, approval-wrapped MCP connector tools so it can use the same external
 context while designing the agent; connector tools that conflict with a native
@@ -1421,7 +1420,7 @@ appears in the agents-module builder UI.
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
 | `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build_agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated, agentId,
@@ -1469,7 +1468,7 @@ cannot clobber the existing binding), and `agentId` wins when both are
 given. Prefer switching by the `agentId` returned from earlier calls; the
 name lookup is the fallback when the id is unknown.
 
-### `agent-context` *(domain tool — requires the `agents` backend module)*
+### `agent_context` *(domain tool — requires the `agents` backend module)*
 
 Read-only access to Agent context in the conversation's bound project. The host
 registers the tool only when the user has `agent:read` scope. Both the Assistant
@@ -1488,7 +1487,7 @@ data before it returns it to the model.
 
 ## MCP Registry Tool
 
-### `mcp-servers` *(domain tool — conditional)*
+### `mcp_servers` *(domain tool — conditional)*
 
 Tool to interact with connected and available MCP servers, and to let the user connect one from the chat.
 
@@ -1515,7 +1514,7 @@ are the ones the server confirms on resume, not the ones the client claimed.
 
 ## Conversation History Tool
 
-### `conversation-history` *(domain tool — conditional, orchestrator only)*
+### `conversation_history` *(domain tool — conditional, orchestrator only)*
 
 Read-only recall over the user's past conversations in the current project.
 Scoped to the current user and project, with the current thread excluded from
@@ -1535,7 +1534,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1557,14 +1556,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, ask-user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); ask-user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, ask-user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
@@ -1572,6 +1571,54 @@ invisible rows, never under-report.
 
 Both actions return `{ ..., error: '...' }` with empty/default fields — never a
 thrown tool error — when the service is unavailable or a lookup fails.
+
+## Tool Naming
+
+Every tool name is snake_case: `build_workflow`, `data_tables`, `ask_user`.
+This matches the tools the model sees from other sources: the `@n8n/agents`
+runtime (`load_skill`, `workspace_*`), the computer-use gateway (`browser_*`),
+the agent builder, and the providers' own server tools. The `action` values
+inside a tool keep their kebab-case form (`insert-rows`, `get-as-code`).
+
+Tool names must be unique across the orchestrator and the agent builder,
+because the builder's tool calls render in the same timeline. For this reason
+the orchestrator's `create-tasks` became `create_plan`: the agent builder
+already has a `create_tasks` tool. Planned-task kinds and follow-up types (for
+example `build-workflow`) are stored data, not tool names, and keep their form.
+
+Stored threads, saved approvals, and recorded traces keep the name that a tool
+had when it ran. `INSTANCE_AI_LEGACY_TOOL_NAMES` in `@n8n/api-types` maps each
+old name to the current one:
+
+- The orchestrator and the agent builder pass the map to
+  `Agent.toolNameAliases()`. The runtime renames old tool calls in the loaded
+  history before each model call, and a suspended call with an old name still
+  resumes.
+- The frontend reducer normalizes every tool name it receives, so the labels,
+  icons, and previews of old threads keep working.
+
+## Deferred Loading
+
+The orchestrator sends the tools in `ALWAYS_LOADED_TOOL_NAMES` to the model.
+The other tools are deferred. How the model reaches a deferred tool depends on
+the provider:
+
+| Provider | Mode | Cost of a deferred tool |
+|----------|------|-------------------------|
+| Anthropic, Claude on Vertex | Provider tool search (`tool_search_tool_bm25`) | One search inside the same response |
+| OpenAI Responses API, GPT-5.4 and later | Provider tool search (`tool_search`) | One search inside the same response |
+| All others, including OpenRouter | `search_tools` + `load_tool` | Two extra model calls |
+
+With provider tool search, the definitions of deferred tools stay out of the
+model's context until a search finds them. A found tool does not change the
+cached prompt prefix. Because a deferred tool is cheap in this mode,
+`getAlwaysLoadedToolNames({ nativeToolSearch: true })` defers more tools. It
+defers only tools that a skill loads through `dependencies.tools`. Tools that
+the model must use proactively stay loaded in both modes.
+
+OpenRouter supports tool search only on its Responses and Messages APIs. The
+OpenRouter provider in the AI SDK uses Chat Completions, so OpenRouter models
+use `search_tools` + `load_tool`.
 
 ## Tool Distribution
 
@@ -1582,7 +1629,7 @@ External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
-through `build-agent`. It does not receive the Instance AI domain registry. It
+through `build_agent`. It does not receive the Instance AI domain registry. It
 inherits the orchestrator's safe MCP connector tools.
 
 ---
@@ -1612,15 +1659,19 @@ existing domain.
 3. Export a factory that takes the service context and returns an `@n8n/agents` tool
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
-5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Tools in
+5. Name it in snake_case (see [Tool Naming](#tool-naming)). When you rename a
+   tool, add the old name to `INSTANCE_AI_LEGACY_TOOL_NAMES` in `@n8n/api-types`
+6. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
+   that set is deferred behind tool search (see
+   [Deferred Loading](#deferred-loading)). Tools in
    `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint
    follow-ups. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
-   searching for it
-6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
+   searching for it. A tool that a skill needs goes in that skill's
+   `dependencies.tools`, so it loads with the skill
+7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically
-7. Tool handlers are wrapped at registry registration time so Stop races
+8. Tool handlers are wrapped at registry registration time so Stop races
    `ctx.abortSignal`. For network/sandbox I/O, also forward `ctx.abortSignal`
    into the underlying request so work stops cooperatively (see `research` and
-   `n8n-docs`)
+   `n8n_docs`)

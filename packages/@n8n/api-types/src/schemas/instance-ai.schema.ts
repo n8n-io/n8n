@@ -125,12 +125,12 @@ export function buildCredentialDestinationGrantKey(workflowId: string, origin: s
 }
 
 /**
- * Builds the thread-level "always allow" grant key for a data-tables action
+ * Builds the thread-level "always allow" grant key for a data_tables action
  * (e.g. `create`, `insert-rows`). Must match the frontend key
  * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
  */
 export function buildDataTablesSessionGrantKey(action: string): string {
-	return `data-tables:${action}`;
+	return `data_tables:${action}`;
 }
 
 // --- Workflow-setup skips ---
@@ -835,7 +835,7 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
-/** One question of the ask-user card (`inputType=questions`). */
+/** One question of the ask_user card (`inputType=questions`). */
 export const instanceAiQuestionSchema = z.object({
 	id: z.string(),
 	question: z.string(),
@@ -933,7 +933,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+			'Workflow ID for setup cards and per-workflow edit approvals (build_workflow / workflows update)',
 		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
@@ -2050,7 +2050,7 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
-	/** Full planned task details — updated by create-tasks via tasks-update. */
+	/** Full planned task details — updated by create_plan via tasks-update. */
 	planItems?: PlannedTaskArg[];
 	/**
 	 * Latest setup-panel snapshot per workflow — updated by setup-items events
@@ -2695,10 +2695,10 @@ export type InstanceAiMcpConnectionToolsResponse =
 	  };
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'task_control') return 'tasks';
+	if (toolName === 'build_workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'create-tasks') return 'planner';
+	if (toolName === 'create_plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (
 		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
@@ -2789,7 +2789,7 @@ export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 /** Enables workflow, node, and canvas group mentions in the n8n Assistant */
 export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 
-/** Enables the conversation-history tool and the past-conversations first-turn hint */
+/** Enables the conversation_history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';

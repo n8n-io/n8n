@@ -226,7 +226,7 @@ async function handleRead(
 export function createN8nDocsTool(context: N8nDocsToolContext) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Always available — call it directly, no \`load_tool\` step. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. Always available — call it directly, no tool search step. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input, ctx) => {

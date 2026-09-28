@@ -8,12 +8,12 @@
 				"argsContainAny": ["agent-builder"]
 			},
 			{
-				"toolName": "build-agent"
+				"toolName": "build_agent"
 			}
 		],
 		"noneOfToolCalls": [
 			{
-				"toolName": "build-workflow"
+				"toolName": "build_workflow"
 			}
 		]
 	},

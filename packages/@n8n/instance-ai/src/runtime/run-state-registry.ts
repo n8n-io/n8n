@@ -50,7 +50,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	 *  Preserved across suspend/resume so the resumed run's finalizer can
 	 *  run the deadlock fallback and reschedule. */
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
-	/** Set when the suspended run was a planned build-workflow follow-up. */
+	/** Set when the suspended run was a planned build_workflow follow-up. */
 	plannedBuild?: {
 		isPlannedBuildFollowUp: true;
 		buildTaskId: string;

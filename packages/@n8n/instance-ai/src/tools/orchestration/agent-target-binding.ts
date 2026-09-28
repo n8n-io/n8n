@@ -180,7 +180,7 @@ function idOf(message: Record<string, unknown>): string {
 
 /**
  * Binding metadata for a seeded thread, reconstructed from the seeded history
- * rather than invented. The model authored the refs its own `build-agent` calls
+ * rather than invented. The model authored the refs its own `build_agent` calls
  * carry, and the LAST such call is what "most recently targeted" meant — array
  * order in the seed is an authoring artifact, not conversation order. An agent
  * the history never targeted keeps its display name as the ref and sorts first,
@@ -206,7 +206,7 @@ export function seedAgentBuilderTargetMetadata(
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
 			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
-			// `targetIdentity` stamps the resolved identity on every build-agent
+			// `targetIdentity` stamps the resolved identity on every build_agent
 			// output, so the output is authoritative over the call's own input.
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId !== 'string') continue;

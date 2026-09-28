@@ -1546,7 +1546,7 @@ describe('createInstanceAiTraceContext', () => {
 					name: 'data-table-manager',
 					description: 'Manage n8n Data Tables directly.',
 					category: 'data',
-					recommendedTools: ['data-tables'],
+					recommendedTools: ['data_tables'],
 					instructions: 'Full skill instructions must stay out of trace inputs.',
 				},
 			]),
@@ -1681,13 +1681,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -1966,13 +1966,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {

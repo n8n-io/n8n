@@ -75,6 +75,9 @@ const agentsSdkMocks = vi.hoisted(() => {
 		checkpoint() {
 			return this;
 		}
+		toolNameAliases() {
+			return this;
+		}
 		configuration(config: { maxIterations?: number }) {
 			configurationCalls.push(config);
 			return this;
@@ -381,7 +384,7 @@ describe('AgentsBuilderService session isolation', () => {
 	it('registers all standard tools returned by the tools service', async () => {
 		const { service, user, credentialProvider, credentialService } = setup({
 			json: [fakeTool('resolve_llm')],
-			shared: [fakeTool('agent-context'), fakeTool('ask_credential')],
+			shared: [fakeTool('agent_context'), fakeTool('ask_credential')],
 		});
 
 		await drain(
@@ -397,7 +400,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['resolve_llm', 'agent-context', 'ask_credential']),
+			expect.arrayContaining(['resolve_llm', 'agent_context', 'ask_credential']),
 		);
 	});
 
@@ -449,8 +452,8 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('does not let an MCP tool replace a native builder tool', async () => {
-		const nativeAgentContext = fakeTool('agent-context');
-		const mcpAgentContext = fakeTool('agent-context');
+		const nativeAgentContext = fakeTool('agent_context');
+		const mcpAgentContext = fakeTool('agent_context');
 		const { service, logger, user, credentialProvider, credentialService } = setup({
 			json: [],
 			shared: [nativeAgentContext],
@@ -471,12 +474,12 @@ describe('AgentsBuilderService session isolation', () => {
 			),
 		);
 
-		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent-context')).toEqual([
-			'agent-context',
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent_context')).toEqual([
+			'agent_context',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped MCP tool that conflicts with an agent builder tool',
-			{ toolName: 'agent-context', agentId: 'agent-1' },
+			{ toolName: 'agent_context', agentId: 'agent-1' },
 		);
 	});
 

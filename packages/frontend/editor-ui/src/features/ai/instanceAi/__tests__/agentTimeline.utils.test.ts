@@ -124,7 +124,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					args: { name: '' },
 					result: { workflowId: 'wf-1', workflowName: '' },
 				}),
@@ -137,7 +137,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					result: { tableId: 'dt-1', name: '  ' },
 				}),
 			],
@@ -152,11 +152,11 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)).toEqual([]);
 	});
 
-	test('returns workflow artifact from build-workflow tool call', () => {
+	test('returns workflow artifact from build_workflow tool call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
@@ -189,7 +189,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					args: { name: 'Name From Args' },
 					result: { workflowId: 'wf-4' },
 				}),
@@ -202,7 +202,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: { workflowId: 'wf-5' },
 				}),
 			],
@@ -262,7 +262,7 @@ describe('extractArtifacts', () => {
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
 				}),
 			],
@@ -277,7 +277,7 @@ describe('extractArtifacts', () => {
 			agentId: 'child-1',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: { workflowId: 'wf-child', workflowName: 'Child WF' },
 				}),
 			],
@@ -286,7 +286,7 @@ describe('extractArtifacts', () => {
 			children: [child],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: { workflowId: 'wf-parent', workflowName: 'Parent WF' },
 				}),
 			],
@@ -301,7 +301,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'build_workflow',
 					result: undefined,
 				}),
 			],
@@ -355,7 +355,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					confirmation: {
 						requestId: 'req-1',
 						severity: 'info',
@@ -389,7 +389,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					args: { action: 'connect' },
 					isLoading: true,
 				}),
@@ -405,7 +405,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					args: { action: 'connect' },
 					isLoading: false,
 				}),
@@ -425,14 +425,14 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
 	});
 
-	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+	test('the reply before a leave_onboarding call stays user-facing and the call is hidden', () => {
 		const blocks = blocksOf(
 			[
 				reasoning('r1'),
 				text('Explore the app and come back with a task.', 'r1'),
 				toolEntry('tc-leave', 'r1'),
 			],
-			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave_onboarding' })],
 		);
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
@@ -618,11 +618,11 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
-	test('in-thread build-workflow renders as a trace row; agent-delegated builds stay hidden', () => {
+	test('in-thread build_workflow renders as a trace row; agent-delegated builds stay hidden', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
 			[
-				makeToolCall({ toolCallId: 'tc-build', toolName: 'build-workflow', renderHint: 'builder' }),
+				makeToolCall({ toolCallId: 'tc-build', toolName: 'build_workflow', renderHint: 'builder' }),
 				makeToolCall({
 					toolCallId: 'tc-delegated',
 					toolName: 'build-workflow-with-agent',
@@ -637,7 +637,7 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
-	test('hides build-agent trace when a builder child exists in the same response', () => {
+	test('hides build_agent trace when a builder child exists in the same response', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',
 			agentId,
@@ -654,7 +654,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'build_agent',
 				}),
 			],
 			'completed',
@@ -664,13 +664,13 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks).toEqual([{ type: 'child', key: 'child-1', child: builderChild }]);
 	});
 
-	test('keeps build-agent trace when no builder child exists', () => {
+	test('keeps build_agent trace when no builder child exists', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build-agent', 'r1')],
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'build_agent',
 				}),
 			],
 		);
@@ -694,7 +694,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build-agent',
+					toolName: 'build_agent',
 				}),
 			],
 			'completed',

@@ -10,7 +10,7 @@
 	"confirmations": { "mcp_notion_notion-search": "deny" },
 	"expectedToolInvocations": {
 		"allOfToolCalls": [{ "toolName": "mcp_notion_notion-search", "declined": true }],
-		"noneOfToolCalls": [{ "toolName": "mcp-servers", "args": { "action": "connect" } }]
+		"noneOfToolCalls": [{ "toolName": "mcp_servers", "args": { "action": "connect" } }]
 	},
 	"rationale": "A refused tool call is the user withholding permission, not a broken connection: the agent must report back rather than reconnect a server that is already connected.",
 	"maxSteps": 12

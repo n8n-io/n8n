@@ -156,7 +156,7 @@ export interface EventOutcome {
 	executionIds: string[];
 	dataTableIds: string[];
 	/** Non-workflow artifact references (agent, config-eval) captured from the tool-result
-	 *  stream — `create_agent`'s agentId and `eval-config` create's owning workflow id. */
+	 *  stream — `create_agent`'s agentId and `eval_config` create's owning workflow id. */
 	artifactRefs: ArtifactRef[];
 	finalText: string;
 	toolCalls: CapturedToolCall[];

@@ -85,13 +85,13 @@ function isCodeTool(): boolean {
 
 function isTableTool(): boolean {
 	return (
-		isAction('data-tables', 'query') ||
+		isAction('data_tables', 'query') ||
 		isAction('workflows', 'list') ||
 		isAction('executions', 'list') ||
 		isAction('credentials', 'list') ||
 		isAction('nodes', 'search') ||
 		isAction('nodes', 'list') ||
-		isAction('data-tables', 'list')
+		isAction('data_tables', 'list')
 	);
 }
 

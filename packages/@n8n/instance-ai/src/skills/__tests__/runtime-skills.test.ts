@@ -25,7 +25,7 @@ describe('Instance AI runtime skills', () => {
 	// `load_tool` only resolves DEFERRED tools, so a gate that names an always-loaded
 	// tool can only answer `not_found`. The model then falls back to `search_tools`,
 	// which costs 2 to 4 full-context round trips (INS-1394). This caught the
-	// `n8n-docs` gates that went stale when INS-749 made the tool always-loaded.
+	// `n8n_docs` gates that went stale when INS-749 made the tool always-loaded.
 	it('never tells the model to load an always-loaded tool', () => {
 		const gatePatterns = [
 			/load\s+`?([\w.-]+)`?\s+via\s+`?load_tool/gi,
@@ -136,10 +136,10 @@ describe('Instance AI runtime skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: ['data-tables', 'parse-file'],
+			recommendedTools: ['data_tables', 'parse_file'],
 		});
 		expect(dataTableManager?.description).toContain(
-			'Load before calling data-tables or parse-file',
+			'Load before calling data_tables or parse_file',
 		);
 		expect(dataTableManager?.description).toContain('what data tables do I have?');
 		expect(dataTableManager?.description).toContain(
@@ -175,7 +175,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('For workflow builds that create or write Data Tables');
 		expect(loaded?.instructions).toContain('`workflow-builder`');
-		expect(loaded?.instructions).toContain('before `build-workflow`');
+		expect(loaded?.instructions).toContain('before `build_workflow`');
 	});
 
 	it('loads the bundled config-evals skill and its linked files', async () => {
@@ -185,7 +185,7 @@ describe('Instance AI runtime skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: ['eval-config', 'data-tables'],
+			recommendedTools: ['eval_config', 'data_tables'],
 		});
 		expect(configEvals?.linkedFiles.references).toEqual([
 			expect.objectContaining({ path: 'references/config-eval-playbook.md' }),
@@ -289,7 +289,7 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.name).toBe('credential-setup-with-computer-use');
 		for (const tool of [
 			'research',
-			'ask-user',
+			'ask_user',
 			'browser_connect',
 			'browser_snapshot',
 			'browser_capture_secret',
@@ -317,9 +317,9 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
+			recommendedTools: ['n8n_docs', 'credentials', 'nodes'],
 		});
-		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
+		// `n8n_docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
 			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
@@ -328,13 +328,13 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
 		expect(loaded?.instructions).not.toContain('load_tool');
-		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
+		expect(loaded?.instructions).toContain('n8n_docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
 		expect(loaded?.instructions).toContain('never ask them to paste secrets into chat');
 		expect(loaded?.instructions).toContain('Source: [Page title](page URL)');
 		expect(loaded?.instructions).toContain('Sources:');
-		expect(loaded?.instructions).toContain('pages returned by `n8n-docs`');
+		expect(loaded?.instructions).toContain('pages returned by `n8n_docs`');
 	});
 
 	it('loads the bundled workflow-builder skill', async () => {
@@ -348,23 +348,23 @@ describe('Instance AI runtime skills', () => {
 			'write_file',
 			'edit_file',
 			'execute_command',
-			'build-workflow',
+			'build_workflow',
 			'workflows',
 			'nodes',
-			'data-tables',
+			'data_tables',
 			'credentials',
-			'verify-built-workflow',
+			'verify_built_workflow',
 			'executions',
 		]);
-		expect(skill?.description).toContain('Load before calling build-workflow');
+		expect(skill?.description).toContain('Load before calling build_workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
-		expect(skill?.description).toContain('Do not load planning or create-tasks first');
+		expect(skill?.description).toContain('Do not load planning or create_plan first');
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('## Routing');
-		expect(loaded?.instructions).toContain('build-workflow');
+		expect(loaded?.instructions).toContain('build_workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
 		expect(loaded?.instructions).toContain(
@@ -378,7 +378,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
 		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
-		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
+		expect(loaded?.instructions).toContain('Do not call\n    `verify_built_workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('references/error-workflows.md');
@@ -397,14 +397,14 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
-		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
+		expect(loaded?.instructions).toContain('never stop before the first\n`build_workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
-		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
+		expect(loaded?.instructions).toContain('`planning` or call `create_plan` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain(
@@ -419,26 +419,24 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.name).toBe('planning');
 		expect(skill?.recommendedTools).toEqual([
-			'create-tasks',
+			'create_plan',
 			'workflows',
 			'nodes',
 			'credentials',
-			'data-tables',
-			'parse-file',
+			'data_tables',
+			'parse_file',
 			'research',
-			'ask-user',
+			'ask_user',
 		]);
-		expect(skill?.description).toContain('Load create-tasks via load_tool before calling it');
+		expect(skill?.description).toContain('create_plan loads with this skill');
 		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
 		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
 		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
-		expect(loaded?.instructions).toContain(
-			'Before calling `create-tasks`, load it via `load_tool`',
-		);
-		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
+		expect(loaded?.instructions).toContain('`create_plan` loads with this skill');
+		expect(loaded?.instructions).toContain('Do not call `create_plan` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
 		expect(loaded?.instructions).toContain('Do not spawn another agent');
 		expect(loaded?.instructions).toContain('`Required effects`');
@@ -552,9 +550,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planned-task-runtime');
 		expect(loaded?.instructions).toContain(
-			'Before calling `create-tasks`, load it via `load_tool`',
+			'If `create_plan` is not visible, find it with tool search',
 		);
-		expect(loaded?.instructions).toContain('load `create-tasks` via `load_tool` if needed');
+		expect(loaded?.instructions).toContain('find it with tool search if it is');
 		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
 		expect(loaded?.instructions).toContain('awaiting_replan');
 		expect(loaded?.instructions).toMatch(/Do NOT reply with an\s+acknowledgement/);
@@ -562,7 +560,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('<planned-task-follow-up type="checkpoint">');
 		expect(loaded?.instructions).toContain('Always require structured verification evidence');
 		expect(loaded?.instructions).toContain('never trust builder prose');
-		expect(loaded?.instructions).toContain('before `complete-checkpoint`');
+		expect(loaded?.instructions).toContain('before `complete_checkpoint`');
 		expect(loaded?.instructions).toContain('patch in place');
 		expect(loaded?.instructions).toContain('within two rounds');
 		expect(loaded?.instructions).toContain('<background-task-completed>');

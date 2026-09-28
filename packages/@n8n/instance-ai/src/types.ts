@@ -745,7 +745,7 @@ export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
 	/** The type's own n8n docs page, so a scope/setup answer can be grounded in one
-	 *  `n8n-docs` lookup instead of recalled. Absent when the class won't load. */
+	 *  `n8n_docs` lookup instead of recalled. Absent when the class won't load. */
 	documentationUrl?: string;
 }
 
@@ -1192,7 +1192,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data-tables tool). */
+ *  Table the caller already created (via the data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1563,7 +1563,7 @@ export interface InstanceAiContext {
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
-	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * context. Lets domain tools (e.g. build_workflow) emit explicit child runs
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
@@ -1576,7 +1576,7 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
-	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave_onboarding`. */
 	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
@@ -1593,12 +1593,12 @@ export interface InstanceAiContext {
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** Optional — present when the host allows MCP registry discovery for this
-	 *  user. Presence gates the `mcp-servers` tool. */
+	 *  user. Presence gates the `mcp_servers` tool. */
 	mcpService?: InstanceAiMcpService;
 	/** Optional — presence gates the `execute` action on the `nodes` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
-	 *  gates the `conversation-history` tool (orchestrator only). */
+	 *  gates the `conversation_history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present when the user can read Agents in the bound project. */
 	agentContextService?: InstanceAiAgentContextReader;
@@ -1607,18 +1607,18 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
-	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	/** Per-run inventory behind `mcp_servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
 	connectedMcpServices?: ConnectedMcpService[];
-	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
+	/** The target n8n Agent being built/edited via the build_agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
-	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
+	/** Narrow builder delegate for the build_agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends
 	 * a preview session to Instance AI (and rehydrated from thread metadata on
-	 * follow-up turns). Presence gates the `get-session` tool.
+	 * follow-up turns). Presence gates the `get_session` tool.
 	 */
 	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
 
@@ -1701,7 +1701,7 @@ export interface InstanceAiContext {
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
-	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * build_workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
 	 * the same thread uses the persisted `workflows:update:<id>` session grant
 	 * written at create time — this in-memory set alone does not survive a new run.
@@ -1710,7 +1710,7 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. Used to register `parse_file` and supply data to the parser.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
@@ -1739,7 +1739,7 @@ export interface InstanceAiContext {
 	 *  the model's API knowledge. */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
-	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * Runtime-only workflow build loop context. The direct `build_workflow` tool
 	 * reports build outcomes here so planned build follow-ups and verification
 	 * tools can share the same work item without a detached builder sub-agent.
 	 */
@@ -1815,10 +1815,10 @@ export interface PlannedTask {
 	kind: PlannedTaskKind;
 	spec: string;
 	deps: string[];
-	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
+	/** Existing workflow ID for build_workflow tasks that modify an existing workflow. */
 	workflowId?: string;
 	/**
-	 * True when the build-workflow task's final deliverable is intentionally a
+	 * True when the build_workflow task's final deliverable is intentionally a
 	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
 	 * larger main-workflow task should not set this.
 	 */
@@ -1924,7 +1924,7 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	/** Rewind a running build-workflow task after a scheduling race prevented
+	/** Rewind a running build_workflow task after a scheduling race prevented
 	 *  its orchestrator follow-up from starting. */
 	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
@@ -2256,11 +2256,11 @@ export interface OrchestrationContext {
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the create-tasks guard
+	 *  background task. Set by the host, not by user text — the create_plan guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
 	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
+	 *  The orchestrator should run the checkpoint's spec and call complete_checkpoint. */
 	isCheckpointFollowUp?: boolean;
 	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
 	 *  Used by the post-run deadlock fallback in the service. */

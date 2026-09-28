@@ -63,13 +63,13 @@ export interface ConversationWindow<T> {
 	hasMoreAfter: boolean;
 }
 
-/** Reads backing the `conversation-history` tool, over threads and messages. */
+/** Reads backing the `conversation_history` tool, over threads and messages. */
 @Service()
 export class InstanceAiConversationHistoryRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
 	/**
-	 * Threads of one user in one project whose title, user messages, or ask-user
+	 * Threads of one user in one project whose title, user messages, or ask_user
 	 * answers match the query, most recently updated first. No total: the caller
 	 * verifies these rows and drops the false positives, so any count taken here
 	 * would be wrong by the time it is read.

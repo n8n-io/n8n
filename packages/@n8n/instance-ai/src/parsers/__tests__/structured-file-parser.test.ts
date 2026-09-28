@@ -507,7 +507,7 @@ describe('buildAttachmentManifest', () => {
 
 		expect(manifest).toContain('[ATTACHMENTS]');
 		expect(manifest).toContain('data.csv');
-		expect(manifest).toContain('parseable via parse-file');
+		expect(manifest).toContain('parseable via parse_file');
 		expect(manifest).toContain('photo.png');
 		expect(manifest).toContain('not a supported structured format');
 		expect(manifest).toContain('[/ATTACHMENTS]');

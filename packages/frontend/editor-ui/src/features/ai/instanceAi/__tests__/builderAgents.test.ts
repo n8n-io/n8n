@@ -29,7 +29,7 @@ function makeMessage(agentTree: InstanceAiAgentNode): InstanceAiMessage {
 }
 
 describe('messageHasVisibleContent', () => {
-	test('hides the assistant shell when the only content is a build-agent row from the same response as an active builder child', () => {
+	test('hides the assistant shell when the only content is a build_agent row from the same response as an active builder child', () => {
 		const builderChild = makeAgentNode({
 			agentId: 'builder-1',
 			role: 'agent-builder',
@@ -43,7 +43,7 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'tool-call', toolCallId: 'tc-build', responseId: 'r1' },
 					{ type: 'child', agentId: 'builder-1', responseId: 'r1' },
 				],
-				toolCalls: [{ toolCallId: 'tc-build', toolName: 'build-agent', args: {}, isLoading: true }],
+				toolCalls: [{ toolCallId: 'tc-build', toolName: 'build_agent', args: {}, isLoading: true }],
 				children: [builderChild],
 			}),
 		);
@@ -51,7 +51,7 @@ describe('messageHasVisibleContent', () => {
 		expect(messageHasVisibleContent(message)).toBe(false);
 	});
 
-	test('keeps an earlier build-agent row visible when a later response spawns the active builder child', () => {
+	test('keeps an earlier build_agent row visible when a later response spawns the active builder child', () => {
 		const builderChild = makeAgentNode({
 			agentId: 'builder-1',
 			role: 'agent-builder',
@@ -66,7 +66,7 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'child', agentId: 'builder-1', responseId: 'r2' },
 				],
 				toolCalls: [
-					{ toolCallId: 'tc-build-old', toolName: 'build-agent', args: {}, isLoading: false },
+					{ toolCallId: 'tc-build-old', toolName: 'build_agent', args: {}, isLoading: false },
 				],
 				children: [builderChild],
 			}),

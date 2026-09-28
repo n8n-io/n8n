@@ -129,7 +129,7 @@ are sent. The frontend should handle the absence gracefully.
 ### `tool-input-start`
 
 A tool call's arguments have started streaming from the model. Sent before
-`tool-call` — for tools with large arguments (e.g. `build-workflow` streaming
+`tool-call` — for tools with large arguments (e.g. `build_workflow` streaming
 generated workflow code) this can precede the full `tool-call` event by a
 long time, so the frontend can surface the pending call immediately.
 
@@ -140,7 +140,7 @@ long time, so the frontend can surface the pending call immediately.
   "agentId": "agent-001",
   "payload": {
     "toolCallId": "tc_abc123",
-    "toolName": "build-workflow"
+    "toolName": "build_workflow"
   }
 }
 ```
@@ -333,7 +333,7 @@ latest snapshot per `workflowId` onto the ROOT agent node regardless of the
 emitting agent, so it survives refresh via `GET /messages`.
 
 Emitted only while the setup panel flag is on, through the host-wired
-`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+`setupItemsEmitter` on the domain context. `build_workflow` replaces the
 snapshot on every successful save (open credential slots fanned out to their
 nodes, slots already bound to a stored credential, and nodes with unresolved
 parameters); `workflows(action="setup")` publishes the same whole-workflow
@@ -503,7 +503,7 @@ The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "build-agent", args: {name: "Support agent", message: "Add a support task"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "build_agent", args: {name: "Support agent", message: "Add a support task"}}}
 ← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "agent-builder", tools: [], kind: "agent-builder"}}
 ← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", toolName: "read_config", args: {}}}
 ← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", result: {...}}}
@@ -621,8 +621,8 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 credentials → [slack-bot, weather-api]
-├── 📋 create-tasks: build → verify
-├── 🔧 build-agent → agent-123
+├── 📋 create_plan: build → verify
+├── 🔧 build_agent → agent-123
 │
 ├── 🤖 Agent Builder
 │   ├── 🔧 read_config → agent-123

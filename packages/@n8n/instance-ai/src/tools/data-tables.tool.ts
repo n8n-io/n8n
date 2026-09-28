@@ -1,5 +1,5 @@
 /**
- * Consolidated data-tables tool — list, schema, query, create, delete,
+ * Consolidated data_tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import {
@@ -459,7 +459,7 @@ async function handleQuery(
 	}
 	if (remaining > 0) {
 		hints.push(
-			`${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
+			`${remaining} more rows available. Use additional paginated data_tables queries for bulk operations.`,
 		);
 	}
 
@@ -516,7 +516,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data_tables(action="list") to find it and data_tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -850,7 +850,7 @@ export function createDataTablesTool(context: InstanceAiContext) {
 				'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
 				'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
 				'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-				'`workflow-builder` before `build-workflow`. Use list, create, and schema before ' +
+				'`workflow-builder` before `build_workflow`. Use list, create, and schema before ' +
 				'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
 				'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
 				'query only retry strictly narrower.',

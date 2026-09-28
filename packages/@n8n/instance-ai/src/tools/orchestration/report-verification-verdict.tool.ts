@@ -67,7 +67,7 @@ export const reportVerificationVerdictInputSchema = z.object({
 			attemptCount: z.number().int().min(0).optional(),
 		})
 		.optional()
-		.describe('Remediation metadata returned by verify-built-workflow, if available'),
+		.describe('Remediation metadata returned by verify_built_workflow, if available'),
 	summary: z.string().describe('One-sentence summary of the verification result'),
 });
 
@@ -105,7 +105,7 @@ function defaultRemediationForVerdict(
 }
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
-	return new Tool('report-verification-verdict')
+	return new Tool('report_verification_verdict')
 		.description(
 			'Report the result of verifying a workflow after building it. Only call in checkpoint follow-up turns. ' +
 				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +

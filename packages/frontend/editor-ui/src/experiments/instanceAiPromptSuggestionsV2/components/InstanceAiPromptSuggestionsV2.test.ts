@@ -16,13 +16,13 @@ interface TestPromptSuggestion {
 
 const suggestions = [
 	{
-		id: 'build-workflow',
+		id: 'build_workflow',
 		icon: 'workflow',
 		labelKey: 'instanceAi.emptyState.suggestions.buildWorkflow.label',
 		promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
 	},
 	{
-		id: 'build-agent',
+		id: 'build_agent',
 		icon: 'bot',
 		labelKey: 'instanceAi.emptyState.suggestions.buildAgent.label',
 		promptKey: 'instanceAi.emptyState.suggestions.buildAgent.prompt',
@@ -178,8 +178,8 @@ describe('InstanceAiPromptSuggestionsV2', () => {
 			[
 				{
 					visibleSuggestionIds: [
-						'build-workflow',
-						'build-agent',
+						'build_workflow',
+						'build_agent',
 						'find-automation-ideas',
 						'monitor-competitors',
 					],

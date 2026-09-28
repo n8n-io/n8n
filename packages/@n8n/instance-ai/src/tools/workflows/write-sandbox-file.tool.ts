@@ -21,7 +21,7 @@ export const writeSandboxFileInputSchema = z.object({
 });
 
 export function createWriteSandboxFileTool(workspace: SandboxWorkspace) {
-	return new Tool('write-file')
+	return new Tool('write_sandbox_file')
 		.description(
 			'Write content to a file in the sandbox workspace. Creates parent directories automatically. ' +
 				'Use this to write workflow code to ~/workspace/src/workflow.ts.',

@@ -51,7 +51,7 @@ function noSuspendCtx() {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('data-tables tool', () => {
+describe('data_tables tool', () => {
 	it.each([true, false])(
 		'resumes a saved row deletion without display names when approved=%s',
 		async (approved) => {
@@ -423,7 +423,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '50 more rows available. Use additional paginated data_tables queries for bulk operations.',
 			});
 		});
 
@@ -442,7 +442,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '70 more rows available. Use additional paginated data_tables queries for bulk operations.',
 			});
 		});
 
@@ -724,7 +724,7 @@ describe('data-tables tool', () => {
 			const result = await executeTool(tool, createInput as never, resumeCtx(true, 'session'));
 
 			expect(result).toEqual({ table });
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('data-tables:create');
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('data_tables:create');
 		});
 
 		it('should not persist a session grant when resume has no scope', async () => {
@@ -743,7 +743,7 @@ describe('data-tables tool', () => {
 			const table = { id: 'dt-new', name: 'Contacts' };
 			const context = createMockContext({
 				permissions: {},
-				sessionApprovedToolKeys: new Set(['data-tables:create']),
+				sessionApprovedToolKeys: new Set(['data_tables:create']),
 			});
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 			const suspendFn = vi.fn();

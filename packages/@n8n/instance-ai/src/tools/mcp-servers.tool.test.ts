@@ -146,7 +146,7 @@ function toolDescription(): string {
 	return createMcpServersTool(makeContext(makeService([]))).description;
 }
 
-describe('mcp-servers tool', () => {
+describe('mcp_servers tool', () => {
 	describe('input schema', () => {
 		it('is a top-level object rather than a bare union', () => {
 			const schema = inputJsonSchema();
@@ -504,7 +504,7 @@ describe('mcp-servers tool', () => {
 			);
 
 			expect(output.connectedSlugs).toEqual(['notion']);
-			expect(output.message).toContain('search_tools');
+			expect(output.message).toContain('tool search');
 			expect(output.message).toContain('available now');
 		});
 

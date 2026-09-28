@@ -76,12 +76,12 @@ describe('createPlanTool — planning context guard', () => {
 		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
-		expect(out.result).toContain('`create-tasks` requires `planningContext`');
+		expect(out.result).toContain('`create_plan` requires `planningContext`');
 		expect(out.result).toContain('load the `planning` skill');
 		expect(out.result).not.toContain('`plan`');
 		expect(out.result).not.toContain('skipPlannerDiscovery');
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks called with invalid planning context — rejecting',
+			'create_plan called with invalid planning context — rejecting',
 			expect.objectContaining({ threadId: 'test-thread', taskCount: 1 }),
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain(
-			'must load `create-tasks` via `load_tool` if needed, then call `create-tasks`',
+			'must find `create_plan` with tool search if needed, then call `create_plan`',
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});
@@ -437,7 +437,7 @@ describe('createPlanTool — approval and revision flow', () => {
 describe('createPlanTool — createPlan validation failures', () => {
 	it('returns a PlanValidationError as a tool result instead of throwing', async () => {
 		const validatorError = new PlanValidationError(
-			'Checkpoint task "chk-1" must depend on at least one build-workflow task',
+			'Checkpoint task "chk-1" must depend on at least one build_workflow task',
 		);
 		const context = createMockContext({
 			currentUserMessage: 'plan after discovery',
@@ -455,7 +455,7 @@ describe('createPlanTool — createPlan validation failures', () => {
 		expect(out.result).toContain('Revise the task graph and call this tool again');
 		expect(suspend).not.toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks rejected by planned task validator',
+			'create_plan rejected by planned task validator',
 			expect.objectContaining({ threadId: 'test-thread', error: validatorError.message }),
 		);
 	});

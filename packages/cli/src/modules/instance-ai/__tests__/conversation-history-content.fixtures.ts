@@ -1,5 +1,5 @@
 /**
- * Stored-row content builders shared by the conversation-history unit and
+ * Stored-row content builders shared by the conversation_history unit and
  * integration tests. The persisted message shape — the thing both the SQL
  * markers and the JSON parsers depend on — is encoded here once, so the two
  * suites cannot drift apart.
@@ -39,7 +39,7 @@ export function askUserContent(
 			{
 				type: 'tool-call',
 				toolCallId: 'call-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				state: options.state ?? 'resolved',
 				output: { answered: true, answers },
 			},

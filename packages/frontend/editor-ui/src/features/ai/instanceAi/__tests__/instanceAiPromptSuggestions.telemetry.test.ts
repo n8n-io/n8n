@@ -157,7 +157,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		helper.trackSuggestionSelected({
 			threadId: 'thread-abc',
-			suggestionId: 'build-workflow',
+			suggestionId: 'build_workflow',
 			suggestionKind: 'prompt',
 			position: 1,
 		});
@@ -165,7 +165,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
 			thread_id: 'thread-abc',
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-			suggestion_id: 'build-workflow',
+			suggestion_id: 'build_workflow',
 			suggestion_kind: 'prompt',
 			position: 1,
 		});

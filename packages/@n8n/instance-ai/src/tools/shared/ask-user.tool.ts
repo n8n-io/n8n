@@ -72,7 +72,7 @@ export function createAskUserTool(context?: InstanceAiContext) {
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
 				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
+				'Before the first build_workflow call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
 				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +

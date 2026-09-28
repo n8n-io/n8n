@@ -116,8 +116,8 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all three packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
+workspace and `build_workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `build_workflow`;
 there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across

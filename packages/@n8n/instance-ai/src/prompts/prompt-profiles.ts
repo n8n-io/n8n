@@ -28,7 +28,7 @@ const progressiveBuilding: SkillVariant = {
 		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
 	],
 	disabledSkills: ['planning'],
-	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
+	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_PLAN],
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */

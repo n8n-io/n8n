@@ -6,11 +6,11 @@
 	},
 	"expectedToolInvocations": {
 		"allOfToolCalls": [
-			{ "toolName": "mcp-servers", "args": { "action": "search" } },
-			{ "toolName": "mcp-servers", "args": { "action": "connect", "serverSlugs": ["notion"] } }
+			{ "toolName": "mcp_servers", "args": { "action": "search" } },
+			{ "toolName": "mcp_servers", "args": { "action": "connect", "serverSlugs": ["notion"] } }
 		],
 		"noneOfToolCalls": [
-			{ "toolName": "mcp-servers", "args": { "action": "connect", "serverSlugs": ["linear"] } }
+			{ "toolName": "mcp_servers", "args": { "action": "connect", "serverSlugs": ["linear"] } }
 		]
 	},
 	"rationale": "Nothing is connected: the agent must find Notion in the registry and offer it, not declare it unreachable or recite manual setup steps. Linear is a decoy.",

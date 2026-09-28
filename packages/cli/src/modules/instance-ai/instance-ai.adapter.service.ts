@@ -481,10 +481,10 @@ export class InstanceAiAdapterService {
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the build-agent tool. */
+			 *  assistant can create one via the build_agent tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
-			 *  eval-config service/tool not wired. */
+			 *  eval_config service/tool not wired. */
 			configEvalsEnabled?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
@@ -495,13 +495,13 @@ export class InstanceAiAdapterService {
 			/** Instance activity gate. False disables the activity tool. */
 			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
-			 *  thread by the caller. Absent → conversation-history tool not wired. */
+			 *  thread by the caller. Absent → conversation_history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
 			/** Per-user folder-exploration gate (via `resolveExperimentGates`).
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
-			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			/** True while the thread runs the onboarding flow. Gates the `leave_onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
@@ -640,7 +640,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * (and the build_agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
@@ -4410,7 +4410,7 @@ export function evaluationConfigToDetail(config: EvaluationConfig): EvaluationCo
  * Look up a data table by the orchestrator-supplied identifier. Tries `id`
  * first; if that misses, tries `name`. The name fallback exists because the
  * orchestrator occasionally passes the human-readable table name it saw in a
- * `data-tables list` response instead of the numeric id.
+ * `data_tables list` response instead of the numeric id.
  *
  * When the caller provides an `accessFilter`, candidates the user cannot
  * access are filtered out BEFORE the ambiguity check — so a collision across
@@ -4451,7 +4451,7 @@ export async function resolveDataTableByIdOrName(
 	if (filtered.length > 1) return { kind: 'ambiguous', candidates: filtered };
 
 	const hit = filtered[0];
-	logger.warn('data-tables tool called with table name instead of id — resolved by name fallback', {
+	logger.warn('data_tables tool called with table name instead of id — resolved by name fallback', {
 		passedValue: idOrName,
 		resolvedId: hit.id,
 		projectId: hit.projectId,

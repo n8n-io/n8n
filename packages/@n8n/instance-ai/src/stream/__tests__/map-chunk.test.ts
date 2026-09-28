@@ -296,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -362,7 +362,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -482,7 +482,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
+				toolName: 'build_agent',
 				input: { agentRef: 'support-agent' },
 				suspendPayload: {
 					type: 'approval',
@@ -500,7 +500,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'approval-1',
 				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
+				toolName: 'build_agent',
 				args: { agentRef: 'support-agent' },
 				severity: 'warning',
 				message: 'Confirmation required',
@@ -605,7 +605,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'mcp-servers',
+				toolName: 'mcp_servers',
 				input: { action: 'connect', serverSlugs: ['brave'] },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -632,7 +632,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'mcp-servers',
+				toolName: 'mcp_servers',
 				args: { action: 'connect', serverSlugs: ['brave'] },
 				severity: 'info',
 				message: 'To search the web',
@@ -656,7 +656,7 @@ describe('mapAgentChunkToEvent', () => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'mcp-servers',
+			toolName: 'mcp_servers',
 			suspendPayload: {
 				requestId: 'request-1',
 				severity: 'info',

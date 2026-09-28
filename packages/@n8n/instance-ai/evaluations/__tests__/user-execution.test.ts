@@ -24,7 +24,7 @@ function saved(workflowId: string, success = true): CapturedEvent {
 		data: {
 			payload: {
 				toolCallId: workflowId,
-				toolName: 'build-workflow',
+				toolName: 'build_workflow',
 				result: { workflowId, success },
 			},
 		},

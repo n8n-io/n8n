@@ -364,7 +364,7 @@ const searchTypesAction = z.object({
 	action: z
 		.literal('search-types')
 		.describe(
-			"Search available credential types by keyword. Each result carries the type's `documentationUrl` — pass it to `n8n-docs` to ground an auth answer (scopes, permissions, setup steps) instead of recalling it.",
+			"Search available credential types by keyword. Each result carries the type's `documentationUrl` — pass it to `n8n_docs` to ground an auth answer (scopes, permissions, setup steps) instead of recalling it.",
 		),
 	query: z
 		.string()
@@ -417,7 +417,7 @@ const setupAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The workflow these credentials are for, when one exists (e.g. the id returned by build-workflow). Lets the setup panel list them against that workflow.',
+			'The workflow these credentials are for, when one exists (e.g. the id returned by build_workflow). Lets the setup panel list them against that workflow.',
 		),
 	requireUserSelection: z
 		.boolean()

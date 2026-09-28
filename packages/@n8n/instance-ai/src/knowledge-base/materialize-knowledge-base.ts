@@ -142,7 +142,7 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'trigger-input-data-shapes',
 		description:
-			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
+			'Per-trigger inputData shapes for verify_built_workflow and executions(action="run")',
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{

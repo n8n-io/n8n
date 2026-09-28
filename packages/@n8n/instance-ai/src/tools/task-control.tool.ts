@@ -1,5 +1,5 @@
 /**
- * Consolidated task-control tool — update-checklist + cancel-task + correct-task.
+ * Consolidated task_control tool — update-checklist + cancel-task + correct-task.
  */
 import { Tool } from '@n8n/agents';
 import { taskItemSchema } from '@n8n/api-types';
@@ -28,7 +28,7 @@ const updateChecklistAction = z.object({
 	action: z
 		.literal('update-checklist')
 		.describe(
-			'Write or update a lightweight visible checklist for multi-step work that does not need scheduler-driven execution. For coordinated background tasks, use create-tasks instead.',
+			'Write or update a lightweight visible checklist for multi-step work that does not need scheduler-driven execution. For coordinated background tasks, use create_plan instead.',
 		),
 	tasks: z.array(checklistItemSchema).describe('Ordered list of tasks'),
 });
@@ -108,9 +108,9 @@ async function handleCorrectTask(
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createTaskControlTool(context: OrchestrationContext) {
-	return new Tool('task-control')
+	return new Tool('task_control')
 		.description(
-			'Manage tasks and background work. Use action="update-checklist" only for lightweight visible checklists that do not need scheduler-driven execution; for coordinated background tasks use create-tasks instead.',
+			'Manage tasks and background work. Use action="update-checklist" only for lightweight visible checklists that do not need scheduler-driven execution; for coordinated background tasks use create_plan instead.',
 		)
 		.input(inputSchema)
 		.handler(async (input: Input) => {

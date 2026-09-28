@@ -54,7 +54,7 @@ export function createMaterializeNodeTypeTool(
 	context: InstanceAiContext,
 	workspace: SandboxWorkspace,
 ) {
-	return new Tool('materialize-node-type')
+	return new Tool('materialize_node_type')
 		.description(
 			'Get TypeScript type definitions for nodes. Returns the full definition content ' +
 				'AND writes the files to the sandbox so tsc can reference them. ' +

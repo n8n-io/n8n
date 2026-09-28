@@ -6,7 +6,7 @@ description: >-
   replacing, or judging a model. Preserve working or explicitly requested IDs.
   An unfamiliar name or generic 404 does not establish that a model is invalid.
   Do not claim otherwise or suggest a replacement without provider evidence.
-  Prefer credential-specific resource lookup when available. Use searchModels
+  Prefer credential-specific resource lookup when available. Use search_models
   only to choose an unspecified model without a relevant credential or suitable
   named recommendation, never to validate a supplied ID or diagnose an existing
   failure. For a new choice, do not narrow discovery to a remembered model ID.
@@ -15,11 +15,11 @@ description: >-
   node.
 dependencies:
   tools:
-    - searchModels
+    - search_models
 recommended_tools:
   - nodes
   - credentials
-  - searchModels
+  - search_models
   - research
 ---
 
@@ -32,7 +32,7 @@ When choosing an unspecified model, use an older one only when verified access
 constraints require it.
 
 First check whether the user supplied a model or the workflow already has one.
-**Preserve that ID without calling `searchModels` to validate it.** A model in a
+**Preserve that ID without calling `search_models` to validate it.** A model in a
 revised design is still a user choice, even if its name is unfamiliar.
 Do not question its validity or suggest a replacement solely because you do not
 recognize it.
@@ -41,7 +41,7 @@ Only when YOU must choose an unspecified model, obtain a credential model list,
 an explicit named recommendation in the node's `@builderHint`, or current catalog
 evidence. A node's `@default` and generic advice to "prefer stable models" are not
 recommendations. **Unspecified model plus no credential and no named hint means
-call `searchModels` before writing the workflow.** Do not substitute a remembered ID.
+call `search_models` before writing the workflow.** Do not substitute a remembered ID.
 
 ## Choose the source
 
@@ -58,7 +58,7 @@ call `searchModels` before writing the workflow.** Do not substitute a remembere
    node's `@builderHint` when it fits the task and serving provider. Generic
    advice such as "prefer stable models" does not name a candidate. Do not treat
    `@default` as a builder-hint recommendation.
-4. If there is no suitable explicit hint, call `searchModels` with the serving
+4. If there is no suitable explicit hint, call `search_models` with the serving
    provider before choosing an ID. Choosing a model while building a workflow
    is preliminary selection too. Reuse relevant results already retrieved for
    this task; do not repeat discovery for every node.
@@ -68,7 +68,7 @@ maker or family. Do not search for a remembered model ID and treat its presence
 as proof that it is current. Compare current candidates before choosing one.
 
 Keep the requested serving provider and model maker. For Claude through OpenRouter,
-call `searchModels({ provider: "openrouter", query: "claude" })`. For OpenAI through
+call `search_models({ provider: "openrouter", query: "claude" })`. For OpenAI through
 OpenRouter, use `query: "openai"`. The query filters model IDs and names before
 selecting the ten most recent matches, so other makers do not fill the results.
 Use an exact returned ID in the `anthropic/` or `openai/` namespace. Do not construct
@@ -87,7 +87,7 @@ a paid credential to get a newer model.
 
 ## Diagnose availability
 
-Do not call `searchModels` to diagnose an existing model error. Catalog recency
+Do not call `search_models` to diagnose an existing model error. Catalog recency
 and catalog absence do not justify a repair. Keep the model unchanged while
 collecting the actual failure evidence; a failed lookup is not permission to guess.
 

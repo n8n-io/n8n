@@ -22,7 +22,7 @@ const OTHER_USER_ID = 'user-2';
 describe('InstanceAiConversationHistoryRepository', () => {
 	let repository: InstanceAiConversationHistoryRepository;
 	// Entity repositories are fixture setup only — the reads under test all
-	// belong to the conversation-history repository.
+	// belong to the conversation_history repository.
 	let messageRepository: InstanceAiMessageRepository;
 	let threadRepository: InstanceAiThreadRepository;
 	let project: Project;
@@ -175,7 +175,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(rows).toEqual([expect.objectContaining({ id: threadId })]);
 		});
 
-		it('matches ask-user answers but not plain assistant text', async () => {
+		it('matches ask_user answers but not plain assistant text', async () => {
 			const answered = await createThread({ title: 'Timezone setup' });
 			await createMessage({
 				threadId: answered,
@@ -651,7 +651,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(window.hasMoreBefore).toBe(true);
 		});
 
-		it('keeps ask-user rows visible in windows', async () => {
+		it('keeps ask_user rows visible in windows', async () => {
 			const askUserId = await createMessage({
 				threadId,
 				role: 'assistant',
