@@ -40,8 +40,8 @@ There are three constraints for the design:
 
 The four binary data modes differ.
 
-1.  `default` keeps the bytes as base64 inside the items, so on v2 they are inside the step outputs
-   and are deleted with the step rows. Their size is the subject of CAT-4006, CAT-4247 and CAT-3042.
+1.  `default` keeps the bytes inline in the items. It is deprecated and will be removed, so it is
+   out of scope here.
 2.  `filesystem` needs the writer and the deleter to see the same disk. CAT-4721 already states this
    for the reader.
 3.  `s3` and `azure` need the same bucket and credentials on both sides to read a file. Deletion is
@@ -71,9 +71,8 @@ The four binary data modes differ.
    filesystem byte store removes the directory with `force`, so a missing directory is not an error.
    This is stricter than v1, which logs a failed hard delete and does not retry the files, because
    v2 has no CP row to retry from.
-5.  **Per mode.** `default` needs no call, and the host can return early when the configured mode is
-   `default`. `filesystem` runs the same call as v1 and deletes the directory of the run. `s3` and
-   `azure` run the same call, but it deletes nothing today, so those modes depend on bucket
+5.  **Per mode.** `filesystem` runs the same call as v1 and deletes the directory of the run. `s3`
+   and `azure` run the same call, but it deletes nothing today, so those modes depend on bucket
    lifecycle rules as in v1. `database` deletes the rows of the run through the database manager.
    The `database` mode is supported in integrated mode only. An out-of-process DP in `database` mode
    waits for the decision on binary data access from an out-of-process DP.
@@ -129,9 +128,11 @@ sequenceDiagram
    out-of-process DP.
 4.  Files written by v2 runs before the callback exists are not deleted. This is accepted for the
    internal release.
-5.  Files written before an execution exists, for example by a webhook or a trigger that accepts an
-   upload, are addressed under a temporary execution id in v1 and renamed when the row exists. That
-   flow is not covered here and belongs to the ticket that accepts files on v2.
+5.  A webhook or trigger node runs before the execution id exists. In v1 the file it stores is
+   written under a temporary execution id and renamed after the run. On v2 the execution id is
+   created before the node runs and set on `additionalData`, so the file is written under its
+   final path from the start and no rename is needed. That change is not covered here and belongs
+   to the follow-up ticket that accepts files on v2.
 6.  The retention note in ADR-20260904 ("Retention is unsolved") stays open for the workflow
    snapshot. This decision covers binary files only.
 
