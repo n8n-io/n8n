@@ -697,13 +697,14 @@ export function useCanvasOperations() {
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
 		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
-		const wasEmptyGroup = group?.nodeIds.length === 1 && isEmptyGroupAnchor(node);
+		const emptyGroupAnchor = group ? getEmptyGroupAnchor(group, [node]) : undefined;
+		const wasEmptyGroup = emptyGroupAnchor?.id === node.id;
 		const shouldRestoreEmptyGroupAnchor =
 			emptyCanvasGroupsEnabled.value &&
 			preserveEmptyGroupAnchor &&
 			group?.nodeIds.length === 1 &&
 			node.type !== STICKY_NODE_TYPE &&
-			!isEmptyGroupAnchor(node);
+			!emptyGroupAnchor;
 
 		if (shouldRestoreEmptyGroupAnchor) {
 			const anchorNodeType = requireNodeTypeDescription(NO_OP_NODE_TYPE);
@@ -2456,6 +2457,8 @@ export function useCanvasOperations() {
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[0], mappedConnection[1])) {
 			return;
 		}
+
+		if (workflowDocumentStore.value.hasConnection({ connection: mappedConnection })) return;
 
 		// Own a bulk so a group auto-extend bundles with the connection into one undo step.
 		const ownsBulk = trackHistory && validateNodeGroups && historyStore.currentBulkAction === null;

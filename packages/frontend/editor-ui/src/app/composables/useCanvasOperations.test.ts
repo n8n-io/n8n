@@ -3119,6 +3119,41 @@ describe('useCanvasOperations', () => {
 			);
 		});
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('does not track telemetry for an already existing connection', () => {
+			const telemetry = useTelemetry();
+			const anchorA = createTestNode({
+				id: 'anchor-a',
+				name: 'Empty Group Anchor A',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const anchorB = createTestNode({
+				id: 'anchor-b',
+				name: 'Empty Group Anchor B',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const groupA = { id: 'group-a', nodeIds: [anchorA.id], name: 'Group A' };
+			const groupB = { id: 'group-b', nodeIds: [anchorB.id], name: 'Group B' };
+			const existingConnection = workflowConnection(anchorA, anchorB);
+			setupGroupedCanvas({
+				nodes: [anchorA, anchorB],
+				groups: [groupA, groupB],
+				connections: createConnectionsBySource(existingConnection),
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'hasConnection').mockReturnValue(true);
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchorA, anchorB), { validateNodeGroups: false });
+
+			expect(workflowDocumentStoreInstance.addConnection).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.anything(),
+			);
+		});
+
 		it('does not track internal connection rewiring', () => {
 			const telemetry = useTelemetry();
 			const anchor = createTestNode({
