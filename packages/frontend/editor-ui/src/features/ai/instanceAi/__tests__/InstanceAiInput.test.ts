@@ -6,6 +6,7 @@ import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import type { ContextChip } from '../instanceAi.contextChip';
 import {
@@ -525,6 +526,7 @@ describe('InstanceAiInput', () => {
 			},
 			expect.any(Number),
 			expect.any(Function),
+			EMPTY_ASSISTANT_MENTION_COUNTS,
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -838,6 +840,7 @@ describe('InstanceAiInput', () => {
 				{ kind: 'user_typed' },
 				expect.any(Number),
 				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1035,6 +1038,7 @@ describe('InstanceAiInput', () => {
 				{ kind: 'user_typed' },
 				expect.any(Number),
 				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
 			],
 		]);
 	});
@@ -1078,6 +1082,7 @@ describe('InstanceAiInput', () => {
 				{ kind: 'user_typed' },
 				expect.any(Number),
 				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
 			],
 		]);
 	});

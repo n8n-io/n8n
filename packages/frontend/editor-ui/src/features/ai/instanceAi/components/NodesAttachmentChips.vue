@@ -396,6 +396,7 @@ const totalNodeCount = computed(() =>
 
 .chipAnchor {
 	display: inline-flex;
+	max-width: min(var(--spacing--5xl), 100%);
 }
 
 .panel {

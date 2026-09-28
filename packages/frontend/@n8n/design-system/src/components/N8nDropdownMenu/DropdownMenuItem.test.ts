@@ -132,7 +132,7 @@ describe('N8nDropdownMenuItem', () => {
 				highlighted: true,
 			});
 
-			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('aria-selected', 'true');
+			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('data-virtual-highlighted');
 		});
 
 		it('should show title attribute when label is 20+ characters', async () => {
@@ -513,6 +513,21 @@ describe('N8nDropdownMenuItem', () => {
 			await waitFor(() => {
 				const customTrailing = document.querySelector('[data-test-id="custom-trailing"]');
 				expect(customTrailing).toBeInTheDocument();
+			});
+		});
+
+		it('should render custom item-trailing slot on a sub-menu parent', async () => {
+			renderMenuItem(
+				{ id: 'parent', label: 'Parent', children: [{ id: 'child', label: 'Child' }] },
+				{
+					slots: {
+						'item-trailing': '<span data-test-id="submenu-trailing">2</span>',
+					},
+				},
+			);
+
+			await waitFor(() => {
+				expect(document.querySelector('[data-test-id="submenu-trailing"]')).toHaveTextContent('2');
 			});
 		});
 	});

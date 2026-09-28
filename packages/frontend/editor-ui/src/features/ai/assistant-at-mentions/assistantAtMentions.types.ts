@@ -5,6 +5,8 @@ export type AssistantMentionKind = 'workflow' | 'node' | 'group';
 
 export type AssistantMentionSourceId = 'artifacts' | 'workflows';
 
+export type AssistantMentionTriggerSource = 'typed' | 'button';
+
 export interface AssistantMentionItem {
 	key: string;
 	kind: AssistantMentionKind;
@@ -16,6 +18,9 @@ export interface AssistantMentionItem {
 	workflowName: string;
 	groupId?: string;
 	groupName?: string;
+	nodeTypeName?: string;
+	nodeTypeVersion?: number;
+	nodeCount?: number;
 	description?: string;
 	hasChildren?: boolean;
 	children?: AssistantMentionItem[];
@@ -75,7 +80,26 @@ export interface AssistantMentionSelection {
 	item: AssistantMentionItem;
 	attachment: InstanceAiResourceAttachment;
 	truncated: boolean;
+	telemetry?: {
+		mode: 'browse' | 'search';
+		resultPosition: number;
+		queryLength: number;
+	};
 }
+
+export interface AssistantMentionCounts {
+	mentionCount: number;
+	workflowMentionCount: number;
+	nodeMentionCount: number;
+	groupMentionCount: number;
+}
+
+export const EMPTY_ASSISTANT_MENTION_COUNTS: AssistantMentionCounts = {
+	mentionCount: 0,
+	workflowMentionCount: 0,
+	nodeMentionCount: 0,
+	groupMentionCount: 0,
+};
 
 export interface AssistantMentionArtifactReference {
 	referenceId: string;

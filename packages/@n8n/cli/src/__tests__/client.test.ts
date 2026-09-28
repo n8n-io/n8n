@@ -395,6 +395,77 @@ describe('N8nClient packages', () => {
 		});
 	});
 
+	describe('importPackageSelection', () => {
+		it('sends the package, JSON ID arrays, and policies in a multipart request', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+			const buffer = Buffer.from([0, 1, 127, 128, 255]);
+
+			await client.importPackageSelection(
+				{ buffer, filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: ['workflow-1', 'workflow-2'],
+					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
+					workflowConflictPolicy: 'skip',
+					workflowIdPolicy: 'new',
+				},
+			);
+
+			expect(fetchMock).toHaveBeenCalledOnce();
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/import-selection');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBeInstanceOf(FormData);
+
+			const form = init.body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('["workflow-1","workflow-2"]');
+			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
+			expect(form.get('workflowConflictPolicy')).toBe('skip');
+			expect(form.get('workflowIdPolicy')).toBe('new');
+
+			const pkg = form.get('package') as File;
+			expect(pkg).toBeInstanceOf(Blob);
+			expect(pkg.name).toBe('project.n8np');
+			expect(Buffer.from(await pkg.arrayBuffer())).toEqual(buffer);
+			// Let fetch set the multipart content type and boundary.
+			expect((init.headers as Headers).get('content-type')).toBeNull();
+		});
+
+		it('sends an empty selection and omits unspecified optional fields', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{ selectedProjectId: 'project-1', selectedWorkflowIds: [] },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.has('deletedWorkflowIds')).toBe(false);
+			expect(form.has('workflowConflictPolicy')).toBe(false);
+			expect(form.has('workflowIdPolicy')).toBe(false);
+		});
+
+		it('preserves an explicit empty deletion list', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: [],
+					deletedWorkflowIds: [],
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.get('deletedWorkflowIds')).toBe('[]');
+		});
+	});
+
 	describe('importPackage', () => {
 		it('sends a multipart body with the file and non-empty fields', async () => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [], bindings: {} }));

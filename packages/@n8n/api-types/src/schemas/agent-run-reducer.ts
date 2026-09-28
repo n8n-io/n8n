@@ -415,6 +415,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// unnamed replay.
 			const existingNode = state.agentsById[event.agentId];
 			if (existingNode) {
+				existingNode.activity = event.payload.activity ?? existingNode.activity;
+				existingNode.title = event.payload.title ?? existingNode.title;
 				const incoming = event.payload.targetResource;
 				if (incoming && incoming.id === existingNode.targetResource?.id) {
 					existingNode.targetResource = {
@@ -431,6 +433,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
 					kind: event.payload.kind,
+					activity: event.payload.activity,
 					title: event.payload.title,
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
@@ -457,6 +460,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.status ?? (event.payload.error ? 'error' : 'completed');
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
+				agent.agentChange = event.payload.agentChange;
 				// A completed/errored agent can't have tool calls still in-flight.
 				// Clear isLoading so folded history trees don't show stale confirmations.
 				for (const tc of agent.toolCalls) {

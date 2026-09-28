@@ -17,11 +17,15 @@ import { useToast } from '@n8n/composables/useToast';
 import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
 import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
 import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAttachments';
+import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
+import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
 	AssistantMentionArtifactReference,
+	AssistantMentionCounts,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
@@ -142,6 +146,7 @@ const emit = defineEmits<{
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
 		acceptDraft: () => void,
+		mentionCounts: AssistantMentionCounts,
 	];
 	stop: [];
 	'dismiss-context-chip': [];
@@ -159,6 +164,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
+const mentionTelemetry = useAssistantAtMentionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
@@ -274,17 +280,20 @@ const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(
 	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
 );
-const excludedMentionKeys = computed(() => {
+const excludedMentionContext = computed(() => {
 	const keys = new Set<string>();
+	const workflowIds = new Set<string>();
 	if (props.contextChip?.type === 'workflow-artifact') {
 		keys.add(
 			buildMentionKey('workflow', props.contextChip.workflowId, props.contextChip.workflowId),
 		);
+		workflowIds.add(props.contextChip.workflowId);
 	}
 
 	for (const attachment of attachedResources.value) {
 		if (attachment.type === 'workflow') {
 			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
+			workflowIds.add(attachment.id);
 			continue;
 		}
 		if (attachment.type !== 'nodes') continue;
@@ -300,7 +309,7 @@ const excludedMentionKeys = computed(() => {
 		}
 	}
 
-	return [...keys];
+	return { keys: [...keys], workflowIds: [...workflowIds] };
 });
 // Fed to the composer so its size guard can account for what is already staged.
 // Summed per file after encoding — base64 pads each file individually, so encoding
@@ -317,17 +326,30 @@ const isGatedBySetup = computed(
 const shouldShowMentions = computed(
 	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
 );
+const mentionAvailability = useAssistantMentionAvailability({
+	enabled: shouldShowMentions,
+	projectId: () => props.mentionProjectId,
+	artifacts: () => props.mentionArtifacts,
+});
 const canUseMentions = computed(
-	() => shouldShowMentions.value && !isBusy.value && !isGatedBySetup.value,
+	() =>
+		shouldShowMentions.value &&
+		mentionAvailability.isAvailable.value &&
+		!isBusy.value &&
+		!isGatedBySetup.value,
 );
 const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
 const mentions = useAssistantAtMentions({
 	text: inputText,
 	enabled: canUseMentions,
 	getInputElement: () => inputElement.value ?? undefined,
+	onOpened: mentionTelemetry.trackPickerOpened,
 });
 const mentionMenuOpen = mentions.menuOpen;
 const mentionQuery = mentions.query;
+watch(canUseMentions, (enabled, wasEnabled) => {
+	if (enabled && !wasEnabled) void mentions.handleTextChange(inputText.value);
+});
 
 const mentionAttachments = useAssistantMentionAttachments({
 	files: attachedFiles,
@@ -336,10 +358,14 @@ const mentionAttachments = useAssistantMentionAttachments({
 	reservedAttachmentCount: () => props.reservedAttachmentCount,
 	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
 	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
+	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
 	onCleared: mentions.close,
 });
 
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+	const alreadyArtifact = props.mentionArtifacts.some(
+		(artifact) => artifact.id === selection.item.workflowId,
+	);
 	const result = mentionAttachments.select(selection);
 	if (result.status === 'limit') {
 		toast.showError(
@@ -348,6 +374,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 		);
 		return;
 	}
+	if (result.status === 'added') mentionTelemetry.trackMentionSelected(selection, alreadyArtifact);
 
 	if (result.truncated) {
 		toast.showError(
@@ -445,6 +472,7 @@ function emitSubmittedMessage(
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
 	acceptDraft: () => void,
+	mentionCounts: AssistantMentionCounts,
 ) {
 	previewPrompt.value = null;
 	emit(
@@ -455,6 +483,7 @@ function emitSubmittedMessage(
 		authorship,
 		responseStartedAtEpochMs,
 		acceptDraft,
+		mentionCounts,
 	);
 }
 
@@ -547,6 +576,7 @@ function submitComposerMessage(
 		files: File[];
 		resources: InstanceAiResourceAttachment[];
 		mentionReferenceIds: readonly string[];
+		mentionCounts: AssistantMentionCounts;
 	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
@@ -568,6 +598,7 @@ function submitComposerMessage(
 			USER_TYPED_MESSAGE,
 			responseStartedAtEpochMs,
 			() => {},
+			EMPTY_ASSISTANT_MENTION_COUNTS,
 		);
 		resetDraftComposer({ keepAttachments: true });
 		return;
@@ -577,6 +608,7 @@ function submitComposerMessage(
 
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
 	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
+	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
 	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
 	emitSubmittedMessage(
 		message,
@@ -589,6 +621,7 @@ function submitComposerMessage(
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
 		mentionSubmission.accept,
+		mentionCounts,
 	);
 	resetDraftComposer();
 }
@@ -629,6 +662,7 @@ async function handleSubmit() {
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
 	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	const mentionCounts = mentionAttachments.snapshotCounts();
 	isPreparingSubmission.value = true;
 	let fileAttachments: InstanceAiAttachment[];
 	try {
@@ -650,7 +684,7 @@ async function handleSubmit() {
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
-		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds },
+		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds, mentionCounts },
 	);
 }
 
@@ -827,6 +861,7 @@ const resizable = computed(() => {
 	<div
 		ref="composerRef"
 		:class="$style.composer"
+		data-test-id="instance-ai-composer"
 		@keydown.capture="handleComposerKeydown"
 		@pointerdown.capture="mentions.saveSelection"
 		@click.capture="mentions.handleCaretMove"
@@ -901,10 +936,11 @@ const resizable = computed(() => {
 					:project-id="props.mentionProjectId"
 					:artifacts="props.mentionArtifacts"
 					:active-workflow-id="props.mentionActiveWorkflowId"
-					:excluded-keys="excludedMentionKeys"
+					:excluded-keys="excludedMentionContext.keys"
+					:excluded-workflow-ids="excludedMentionContext.workflowIds"
 					:input-element="inputElement"
 					:reference="composerRef"
-					:disabled="isBusy || isGatedBySetup"
+					:disabled="!canUseMentions"
 					@update:model-value="mentions.handleMenuOpenChange"
 					@select="handleMentionSelection"
 				/>

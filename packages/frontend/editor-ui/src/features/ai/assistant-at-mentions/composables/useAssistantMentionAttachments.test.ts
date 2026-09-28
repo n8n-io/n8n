@@ -51,6 +51,7 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 	const projectId = ref('project-1');
 	const onReferenceAdded = vi.fn();
 	const onReferenceRemoved = vi.fn();
+	const onMentionRemoved = vi.fn();
 	const onCleared = vi.fn();
 	let mentions!: ReturnType<typeof useAssistantMentionAttachments>;
 	scope.run(() => {
@@ -61,6 +62,7 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 			reservedAttachmentCount: options.reservedAttachmentCount ?? 0,
 			onReferenceAdded,
 			onReferenceRemoved,
+			onMentionRemoved,
 			onCleared,
 		});
 	});
@@ -71,6 +73,7 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 		projectId,
 		onReferenceAdded,
 		onReferenceRemoved,
+		onMentionRemoved,
 		onCleared,
 		mentions,
 	};
@@ -100,7 +103,7 @@ describe('useAssistantMentionAttachments', () => {
 	});
 
 	it('keeps child context when the workflow attachment is removed', () => {
-		const { mentions, resources, onReferenceRemoved, scope } = setup();
+		const { mentions, resources, onReferenceRemoved, onMentionRemoved, scope } = setup();
 		mentions.select(workflowSelection());
 		mentions.select(nodeSelection());
 
@@ -108,6 +111,21 @@ describe('useAssistantMentionAttachments', () => {
 
 		expect(resources.value).toEqual([nodeSelection().attachment]);
 		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
+		expect(onMentionRemoved).toHaveBeenCalledExactlyOnceWith('workflow');
+		scope.stop();
+	});
+
+	it('snapshots counts before merged attachments are submitted', () => {
+		const { mentions, scope } = setup();
+		mentions.select(workflowSelection());
+		mentions.select(nodeSelection());
+
+		expect(mentions.snapshotCounts()).toEqual({
+			mentionCount: 2,
+			workflowMentionCount: 1,
+			nodeMentionCount: 1,
+			groupMentionCount: 0,
+		});
 		scope.stop();
 	});
 
@@ -139,7 +157,15 @@ describe('useAssistantMentionAttachments', () => {
 	});
 
 	it('clears mention context when the project changes', async () => {
-		const { mentions, resources, projectId, onReferenceRemoved, onCleared, scope } = setup();
+		const {
+			mentions,
+			resources,
+			projectId,
+			onReferenceRemoved,
+			onMentionRemoved,
+			onCleared,
+			scope,
+		} = setup();
 		mentions.select(workflowSelection());
 		projectId.value = 'project-2';
 		await nextTick();
@@ -147,6 +173,7 @@ describe('useAssistantMentionAttachments', () => {
 		expect(resources.value).toEqual([]);
 		expect(onReferenceRemoved).toHaveBeenCalledOnce();
 		expect(onCleared).toHaveBeenCalledOnce();
+		expect(onMentionRemoved).not.toHaveBeenCalled();
 		scope.stop();
 	});
 

@@ -78,6 +78,9 @@ paths:
   /workflows/{workflowId}/test-runs/{runId}/test-cases:
     get:
       $ref: ./handlers/workflows/spec/paths/getTestCases.generated.yml
+  /workflows/{workflowId}/test-runs/{runId}/cancel:
+    post:
+      $ref: ./handlers/workflows/spec/paths/cancelTestRun.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
