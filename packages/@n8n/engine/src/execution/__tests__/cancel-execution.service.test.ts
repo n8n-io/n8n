@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import type { ExecutionResponseSender } from '../../response-channel';
 import { CancelExecutionService } from '../cancel-execution.service';
 import {
 	ExecutionNotFoundError,
@@ -42,14 +43,18 @@ function makeStepStore(): StepStore {
 function makeService(executionStore: ExecutionStore) {
 	const stepStore = makeStepStore();
 	const publisher: LifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
-	const service = new CancelExecutionService(executionStore, stepStore, publisher);
-	return { service, stepStore, publisher };
+	const responseSender: ExecutionResponseSender = {
+		send: vi.fn(),
+		stop: vi.fn(),
+	};
+	const service = new CancelExecutionService(executionStore, stepStore, publisher, responseSender);
+	return { service, stepStore, publisher, responseSender };
 }
 
 describe('CancelExecutionService', () => {
 	it('ends the execution, sweeps its pending steps, and announces the end once', async () => {
 		const executionStore = makeExecutionStore();
-		const { service, stepStore, publisher } = makeService(executionStore);
+		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
 
 		const result = await service.cancel('exec-1');
 
@@ -62,6 +67,13 @@ describe('CancelExecutionService', () => {
 			workflowId: 'wf-1',
 			at: expect.any(String),
 		});
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
+		});
 	});
 
 	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
@@ -71,13 +83,14 @@ describe('CancelExecutionService', () => {
 				cancelExecution: vi.fn().mockResolvedValue(false),
 				loadExecution: vi.fn().mockResolvedValue({ ...execution, status }),
 			});
-			const { service, stepStore, publisher } = makeService(executionStore);
+			const { service, stepStore, publisher, responseSender } = makeService(executionStore);
 
 			const result = await service.cancel('exec-1');
 
 			expect(result).toEqual({ status });
 			expect(stepStore.cancelPendingSteps).not.toHaveBeenCalled();
 			expect(publisher.publish).not.toHaveBeenCalled();
+			expect(responseSender.send).not.toHaveBeenCalled();
 		},
 	);
 

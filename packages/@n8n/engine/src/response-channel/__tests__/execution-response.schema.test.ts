@@ -19,6 +19,12 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts a cancelled run, which no step settled', () => {
+		const response = ended({ status: 'cancelled', lastStep: null });
+
+		expect(executionResponseSchema.parse(response)).toEqual(response);
+	});
+
 	it('accepts an undeliverable response', () => {
 		expect(
 			executionResponseSchema.parse({
@@ -78,6 +84,9 @@ describe('executionResponseSchema', () => {
 		['an unknown type', { ...ended(), type: 'started' }],
 		['a missing execution id', ended({ executionId: '' })],
 		['a run status no caller can act on', ended({ status: 'running' })],
+		['a settled run without its last step', ended({ lastStep: null })],
+		['a failed run without its last step', ended({ status: 'failed', lastStep: null })],
+		['a cancelled run that names a last step', ended({ status: 'cancelled' })],
 		[
 			'a step status the engine does not use',
 			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'paused', outputs: null } }),

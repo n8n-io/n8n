@@ -22,7 +22,7 @@ import {
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
-import { noopExecutionResponseSender } from '../../response-channel';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -219,6 +219,7 @@ let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
 let lifecycleEventPublisher: LifecycleEventPublisher;
+let responseSender: ExecutionResponseSender;
 let url: string;
 let stop: () => Promise<void>;
 
@@ -234,10 +235,16 @@ beforeAll(async () => {
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
+	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
-		cancelExecution: new CancelExecutionService(executionStore, stepStore, lifecycleEventPublisher),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
@@ -735,6 +742,13 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			executionId,
 			workflowId: 'wf-1',
 			at: expect.any(String),
+		});
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId,
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
 		});
 	});
 
