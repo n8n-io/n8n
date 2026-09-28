@@ -91,6 +91,10 @@ const isOpen = computed({
 
 const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
+// If there is a connection ID in the modal data, the modal is being opened
+// for a particular connection, not from a list, so we don't show the back button
+const isDirectConnectionOpen = computed(() => !!readConnectionIdPayload(modalState.value?.data));
+
 const detailItem = computed<ToolConnectionItem | null>(() => {
 	if (!activeItemId.value) return null;
 	const item = items.value.find((candidate) => candidate.id === activeItemId.value) ?? null;
@@ -426,7 +430,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:search-placeholder="i18n.baseText('instanceAi.connections.modal.searchPlaceholder')"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
-		:hide-back-button="true"
+		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
