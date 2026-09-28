@@ -1730,6 +1730,23 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/rows', () => {
 		});
 	});
 
+	test('should return a validation error for an unknown sort column', async () => {
+		// ADO-5779: The internal rows endpoint must return a client error for unknown columns.
+		const dataTable = await createDataTable(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'bogusCol:asc' });
+
+		expect({ statusCode: response.statusCode, message: response.body.message }).toEqual({
+			statusCode: 400,
+			message: "Validation error with data table request: unknown column name 'bogusCol'",
+		});
+	});
+
 	test("should parse 'eq' filters correctly", async () => {
 		const dataTable = await createDataTable(memberProject, {
 			columns: [
