@@ -21,6 +21,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentMessageRepository } from '../repositories/agent-message.repository';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
@@ -80,9 +81,13 @@ describe('AgentExecutionService', () => {
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
 	const txRunner = mock<TransactionRunner>();
 	const queueRepository = mock<AgentMessageQueueRepository>();
+	const messageRepository = mock<AgentMessageRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		messageRepository.createExecutionInput.mockResolvedValue('message-1');
+		messageRepository.findExecutionInputs.mockResolvedValue(new Map());
+		messageRepository.copyExecutionInputs.mockResolvedValue([]);
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionRepository.findRunningByThread.mockResolvedValue([]);
@@ -119,6 +124,7 @@ describe('AgentExecutionService', () => {
 			checkpointStorage,
 			txRunner,
 			queueRepository,
+			messageRepository,
 		);
 	});
 
@@ -127,8 +133,8 @@ describe('AgentExecutionService', () => {
 		access: AgentThreadAccess = previewAccess,
 	): Promise<string> {
 		const { record, ...startParams } = params;
-		const executionId = await service.startExecutionRecording(
-			{ ...startParams, access },
+		const { executionId } = await service.startExecutionRecording(
+			{ ...startParams, access, resourceId: 'user-1' },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -154,6 +160,7 @@ describe('AgentExecutionService', () => {
 			];
 			const params = {
 				access: previewAccess,
+				resourceId: 'user-1',
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -171,7 +178,7 @@ describe('AgentExecutionService', () => {
 					}),
 				);
 			});
-			const id = await service.startExecutionRecording(params, new Date(100));
+			const { executionId: id } = await service.startExecutionRecording(params, new Date(100));
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 			await service.finalizeExecution(id, {
 				...params,
@@ -207,6 +214,7 @@ describe('AgentExecutionService', () => {
 				const recording = service.startExecutionRecording(
 					{
 						access: previewAccess,
+						resourceId: 'user-1',
 						threadId: 'thread-1',
 						agentId: 'agent-1',
 						agentName: 'Agent',
@@ -215,7 +223,7 @@ describe('AgentExecutionService', () => {
 					},
 					new Date(),
 				);
-				const executionId = await recording;
+				const { executionId } = await recording;
 				expect(memoryBackend.getThread).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
@@ -261,6 +269,7 @@ describe('AgentExecutionService', () => {
 		);
 		const params = {
 			access: previewAccess,
+			resourceId: 'user-1',
 			threadId: 'thread-1',
 			agentId: 'agent-1',
 			agentName: 'Agent',
@@ -517,6 +526,7 @@ describe('AgentExecutionService', () => {
 				checkpointStorage,
 				txRunner,
 				queueRepository,
+				messageRepository,
 			);
 
 			const record = makeMessageRecord({
@@ -609,6 +619,7 @@ describe('AgentExecutionService', () => {
 					checkpointStorage,
 					txRunner,
 					queueRepository,
+					messageRepository,
 				);
 
 				const record = makeMessageRecord({
@@ -1075,6 +1086,7 @@ describe('AgentExecutionService', () => {
 				checkpointStorage,
 				txRunner,
 				queueRepository,
+				messageRepository,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

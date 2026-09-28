@@ -50,9 +50,14 @@ describe('AgentMessageQueueConsumer', () => {
 					: { kind: 'preview', message: 'input', userId: 'user', resourceId: 'draft-chat:user' },
 			}),
 			thread: mock<AgentExecutionThread>({ id: threadId, agentId: 'agent', projectId: 'project' }),
-			admission: { executionId: `execution-${threadId}`, startedAt: new Date() },
+			admission: {
+				executionId: `execution-${threadId}`,
+				startedAt: new Date(),
+				inputMessageIds: ['message-1'],
+			},
 			recording: {
 				threadId,
+				resourceId: 'draft-chat:user',
 				agentId: 'agent',
 				agentName: 'Agent',
 				projectId: 'project',
@@ -123,6 +128,7 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(queue.settle).not.toHaveBeenCalledWith('first', first.admission.executionId);
 			expect(sender.send).toHaveBeenCalledWith({
 				type: 'execution-started',
+				inputMessageIds: ['message-1'],
 				executionId: first.admission.executionId,
 				sessionId: 'first',
 				message: 'edited first message',

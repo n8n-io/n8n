@@ -146,6 +146,7 @@ export class AgentMessageQueueConsumer {
 					type: 'execution-started',
 					executionId: admission.executionId,
 					sessionId: thread.id,
+					inputMessageIds: admission.inputMessageIds,
 					message: item.payload.message,
 				});
 				await this.chatExecutionService.settle(

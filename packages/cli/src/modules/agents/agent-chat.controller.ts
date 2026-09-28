@@ -87,9 +87,9 @@ export class AgentChatController {
 		return {
 			send: delivery.send,
 			abortSignal: requestController.signal,
-			onExecutionStarted: (id: string, sessionId: string) => {
+			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
 				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.send({ type: 'execution-started', executionId: id, sessionId });
+				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
 			close: () => {

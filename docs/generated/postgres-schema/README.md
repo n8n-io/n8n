@@ -20,6 +20,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
+| [public.agent_execution_messages](public.agent_execution_messages.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
@@ -33,7 +34,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
-| [public.agents_messages](public.agents_messages.md) | 8 |  | BASE TABLE |
+| [public.agents_messages](public.agents_messages.md) | 12 |  | BASE TABLE |
 | [public.agents_observation_cursors](public.agents_observation_cursors.md) | 6 |  | BASE TABLE |
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
@@ -193,6 +194,8 @@ erDiagram
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_execution_messages" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
+"public.agent_execution_messages" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -546,6 +549,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text userMessage
 }
+"public.agent_execution_messages" {
+  timestamp_3__with_time_zone createdAt
+  varchar_6_ direction
+  varchar_36_ executionId FK
+  varchar_36_ messageId FK
+  integer position
+}
 "public.agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -701,9 +711,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_messages" {
+  json author
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json modelContent
+  timestamp_3__with_time_zone modelContextAt
+  json origin
   varchar_255_ resourceId
   varchar_36_ role
   varchar_255_ threadId FK

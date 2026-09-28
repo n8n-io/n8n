@@ -546,7 +546,7 @@ describe('AgentChatController SSE done payload', () => {
 		let receivedSignal: AbortSignal | undefined;
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			yield { type: 'finish', finishReason: 'stop' };
 			finalizationStarted.resolve();
 			await finalization.promise;
@@ -568,6 +568,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(events[0]).toEqual({
 			type: 'execution-started',
+			inputMessageIds: ['message-1'],
 			executionId: 'exec-99',
 			sessionId: 'thread-1',
 		});
@@ -617,7 +618,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
-			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1');
+			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			markStarted();
 			await runBlocked;
 			yield { type: 'finish', finishReason: 'stop' };
@@ -645,7 +646,7 @@ describe('AgentChatController SSE done payload', () => {
 		const lifecycle: string[] = [];
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			try {
 				yield { type: 'text-delta', id: 'text-1', delta: 'first' };
 				lifecycle.push('continued');
