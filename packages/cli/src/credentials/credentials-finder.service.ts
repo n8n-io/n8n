@@ -33,7 +33,10 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isGlobal: true, usageScope: 'project' },
+			where: this.credentialsRepository.excludePendingAuthorization({
+				isGlobal: true,
+				usageScope: 'project',
+			}),
 			relations: { shared: true },
 		});
 	}
@@ -172,7 +175,7 @@ export class CredentialsFinderService {
 		}
 
 		const credentials = await this.credentialsRepository.find({
-			where,
+			where: this.credentialsRepository.excludePendingAuthorization(where),
 			relations: { shared: true },
 		});
 
