@@ -10,6 +10,24 @@ export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
 export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
 
 /**
+ * Triage state of one migration finding (one workflow x one rule x one target version).
+ *
+ * - `open`: the scan found the issue and nobody acted on it yet.
+ * - `notified`: the owner received a notification about the finding.
+ * - `fixed`: the scan no longer detects the issue in the published version.
+ * - `fixed_unpublished`: the scan no longer detects the issue in the draft, but the fix is not published.
+ * - `wont_fix`: a user dismissed the finding.
+ */
+export const migrationFindingStatusSchema = z.enum([
+	'open',
+	'notified',
+	'fixed',
+	'fixed_unpublished',
+	'wont_fix',
+]);
+export type MigrationFindingStatus = z.infer<typeof migrationFindingStatusSchema>;
+
+/**
  * The target n8n major version for the migration/breaking-changes report.
  *
  * Set this to a version (e.g. 'v2') to enable the migration report on both
