@@ -16,7 +16,6 @@ test.describe(
 		test.describe.configure({ mode: 'serial' });
 
 		test.beforeEach(async ({ n8n }) => {
-			await n8n.goHome();
 			// Enable features required for project workflows and moving resources
 			await n8n.api.enableFeature('sharing');
 			await n8n.api.enableFeature('folders');

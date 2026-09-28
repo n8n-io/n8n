@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
+import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 
 // Resolves to the empty component that stands in for `.svg` imports (see below).
@@ -40,9 +41,10 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// every frontend package inherits it instead of rediscovering the failure.
 			passWithNoTests: true,
 			setupFiles: ['./src/__tests__/setup.ts'],
-			// Inline so vitest maps the `vitest` import inside it to the running instance.
-			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
-			server: { deps: { inline: ['vitest-mock-extended'] } },
+			// Inline so vitest maps the `vitest` import inside them to the running instance.
+			// Externalized, pnpm can link them to a second vitest copy. Vitest 5 bundles
+			// `expect` into `vitest`, so a second copy breaks snapshots and `.rejects`.
+			server: { deps: { inline: ['vitest-mock-extended', '@testing-library/jest-dom'] } },
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {
@@ -68,6 +70,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			coverage.include = ['src/**/*.{ts,vue}'];
 			coverage.reporter = ['lcov'];
 		}
+		// With a CHANGED_FILES signal (PR runs), measure only the changed files.
+		Object.assign(coverage, changedFileCoverage());
 	}
 
 	return vitestConfig;

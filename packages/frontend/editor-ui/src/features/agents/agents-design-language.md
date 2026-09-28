@@ -1,8 +1,7 @@
 # Agent design language
 
-This document is the source of truth for Agent-only interface patterns in this
-module. It starts with modal patterns. Add other reusable Agent patterns as the
-interface develops.
+This document defines reusable Agent interface patterns in this module. Add
+patterns as the interface develops.
 
 ## Scope
 
@@ -11,6 +10,12 @@ interface develops.
 - Do not add or change a global Design System primitive for an Agent-only need.
 - Put all user-facing text in i18n.
 - Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Breadcrumbs
+
+Show the project icon before the project name in Agent builder and session
+timeline breadcrumbs. Use the same icon as the owning project. Show the user
+icon for a personal project.
 
 ## Modal patterns
 
@@ -164,3 +169,23 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Preview composer queue
+
+Use one action on the right. Show Stop when a turn can be stopped and the
+composer has no text or attachments. Otherwise, show Send. Keep file and voice
+input available during a turn.
+Stack the background task card above the composer. Attach pending messages to
+the top of the composer. Use a subtle background and dividers between messages.
+Use muted gray for queue text and icons. Use the same gray for all queue icons.
+Give text more contrast than icons. Keep text contrast at least 4.5:1.
+Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
+Keep the first two messages visible.
+Put the third and later messages in a collapsed activity group. Show the number
+of additional pending messages in its header. Keep messages in queue order when
+expanded.
+Keep pending messages out of the conversation until processing starts. Give each
+message a Remove action. Hide an empty queue section. Removal discards the
+message. It does not restore the composer draft.
+
+Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
