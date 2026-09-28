@@ -197,6 +197,55 @@ describe('useTabDragReorder', () => {
 		expect(ctx.onReorder).toHaveBeenCalledWith('wide', 2);
 	});
 
+	describe('when the tabs change during a drag', () => {
+		it('drops next to the passed tab when a tab opens before it', () => {
+			const ctx = setup([
+				['a', 100],
+				['b', 100],
+				['c', 100],
+			]);
+			ctx.press('a', 50);
+			ctx.move(160);
+
+			// The agent opens a tab at the start while the pointer is down.
+			const [opened] = createTabs([['new', 100]]);
+			ctx.elements.unshift(opened);
+			ctx.release();
+
+			// "a" passed "b", so it lands after "b": index 2 in [new, a, b, c].
+			expect(ctx.onReorder).toHaveBeenCalledWith('a', 2);
+		});
+
+		it('does not reorder when the passed tab closes', () => {
+			const ctx = setup([
+				['a', 100],
+				['b', 100],
+				['c', 100],
+			]);
+			ctx.press('a', 50);
+			ctx.move(160);
+
+			ctx.elements.splice(1, 1);
+			ctx.release();
+
+			expect(ctx.onReorder).not.toHaveBeenCalled();
+		});
+
+		it('does not reorder when the dragged tab closes', () => {
+			const ctx = setup([
+				['a', 100],
+				['b', 100],
+			]);
+			ctx.press('a', 50);
+			ctx.move(160);
+
+			ctx.elements.splice(0, 1);
+			ctx.release();
+
+			expect(ctx.onReorder).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not reorder when the tab is dropped in its own place', () => {
 		const ctx = setup([
 			['a', 100],

@@ -142,8 +142,19 @@ export function useTabDragReorder({
 			element.style.willChange = '';
 		});
 		if (commit && wasDragging && finished && finished.targetIndex !== finished.fromIndex) {
-			onReorder(finished.tabId, finished.targetIndex);
+			commitDrop(finished);
 		}
+	}
+
+	// The tabs can change while the pointer is down, for example when the agent
+	// opens an artifact. So drop next to the tab the pointer passed, found in the
+	// current tabs, instead of at a position from the start of the drag.
+	function commitDrop({ tabId, boxes, targetIndex }: DragState) {
+		const currentIds = getTabElements().map((element) => element.dataset.tabItemId);
+		const toIndex = currentIds.indexOf(boxes[targetIndex].id);
+		const fromIndex = currentIds.indexOf(tabId);
+		if (toIndex === -1 || fromIndex === -1 || toIndex === fromIndex) return;
+		onReorder(tabId, toIndex);
 	}
 
 	function onPointerUp(event: PointerEvent) {
