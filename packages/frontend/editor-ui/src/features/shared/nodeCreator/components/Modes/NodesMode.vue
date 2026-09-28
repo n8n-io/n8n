@@ -19,6 +19,7 @@ import {
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	AI_CATEGORY_MCP_NODES,
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	REQUEST_NODE_FORM_URL,
 } from '@/app/constants';
 
@@ -29,6 +30,7 @@ import { TriggerView, RegularView, AIView, AINodesView } from '../../views/views
 import {
 	flattenCreateElements,
 	filterAndSearchNodes,
+	getNodeCreatorSearchItems,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
@@ -62,6 +64,7 @@ export interface Props {
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	emptyGroupSelected: [];
 }>();
 
 const i18n = useI18n();
@@ -243,6 +246,13 @@ function onSelected(item: INodeCreateElement) {
 		});
 	}
 
+	if (item.type === 'command') {
+		if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM) {
+			emit('emptyGroupSelected');
+		}
+		return;
+	}
+
 	if (item.type === 'view') {
 		const views = {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
@@ -268,8 +278,8 @@ function onSelected(item: INodeCreateElement) {
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
 			mode: 'nodes',
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
 		});
 	}
 
@@ -351,7 +361,8 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
+	condition: (type) =>
+		['subcategory', 'node', 'link', 'view', 'openTemplate', 'command'].includes(type),
 	handler: onKeySelect,
 });
 
