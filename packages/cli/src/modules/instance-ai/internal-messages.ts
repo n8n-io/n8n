@@ -264,10 +264,6 @@ export function sanitisePromptText(value: string, maxLength = PROMPT_TEXT_MAX_LE
 		.slice(0, maxLength);
 }
 
-/** The fact, and only the fact. The rule that follows from it ("writes are locked to
- *  this project", "check it before you build") lives in the system prompt, which is
- *  CACHED — restating it here would pay for the same sentence in uncached tokens on
- *  every turn of every conversation. Measured: the fact alone is enough. */
 /**
  * The onboarding skill's SKILL.md body, one section of the opening turn's thread-context block, so
  * the flow runs without a `load_skill` call.
@@ -323,8 +319,16 @@ function formatOnboardingAnswer({ selectedOptions, customText }: OnboardingAnswe
 	return values.length > 0 ? values.join(', ') : '(not answered)';
 }
 
-export function getProjectContextSection(project: { name: string; type: string }): string {
-	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
+/** The fact, and only the fact. The rule that follows from it ("writes are locked to
+ *  this project", "check it before you build") lives in the system prompt, which is
+ *  CACHED — restating it here would pay for the same sentence in uncached tokens on
+ *  every turn of every conversation. Measured: the fact alone is enough. */
+export function getProjectContextSection(project: {
+	id: string;
+	name: string;
+	type: string;
+}): string {
+	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}, id: \`${sanitisePromptText(project.id)}\`).`;
 }
 
 /**
