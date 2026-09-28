@@ -181,14 +181,18 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not apply the same reportId twice (idempotent)', async () => {
+		it('re-applies a sequentially replayed reportId (no process-local dedup)', async () => {
+			// The SDK calls `onSideCallUsage` once per model call with a fresh
+			// `reportId`, so a sequential replay is not expected. The in-flight
+			// map only coalesces concurrent deliveries; once it clears, a later
+			// delivery with the same id re-applies.
 			const report = { task: 'observer', model: 'openai/gpt-4o', cost: 0.0007, reportId: 'dup-1' };
 
 			await service.recordSideCallUsage('execution-1', 'thread-1', report);
 			await service.recordSideCallUsage('execution-1', 'thread-1', report);
 
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
-			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
 		});
 
 		it('coalesces concurrent deliveries of the same reportId onto one transaction', async () => {
@@ -297,6 +301,8 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
+				undefined,
+				expect.any(Object),
 			);
 		});
 
@@ -613,6 +619,8 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
+			undefined,
+			expect.any(Object),
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -684,6 +692,8 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				undefined,
+				expect.any(Object),
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -776,6 +786,8 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
+					undefined,
+					expect.any(Object),
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -1170,6 +1182,8 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
+				undefined,
+				expect.any(Object),
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
@@ -1181,6 +1195,9 @@ describe('AgentExecutionService', () => {
 			// not be overwritten by `cost = record.totalCost`. The terminal write
 			// therefore omits `cost` from `updateIfRunning` and adds the main-loop
 			// cost through the same additive `incrementCost` path the side calls use.
+			// Both run inside one transaction so a cost-increment failure rolls back
+			// the terminal status too (leaving the row `running` and the
+			// finalization retryable) instead of losing the cost on a terminal row.
 			const record = makeMessageRecord({ totalCost: 0.05 });
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
@@ -1195,7 +1212,14 @@ describe('AgentExecutionService', () => {
 
 			const [, terminalPayload] = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
 			expect(terminalPayload).not.toHaveProperty('cost');
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith('execution-1', 0.05);
+			// The cost increment runs inside the same transaction as the terminal
+			// write, so it receives the transaction context.
+			const terminalTxCtx = txRunner.run.mock.calls.at(-1)![0];
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
+				'execution-1',
+				0.05,
+				terminalTxCtx,
+			);
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
 				agentExecutionRepository.incrementCost.mock.invocationCallOrder[0],
 			);
@@ -1215,6 +1239,49 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the terminal write when the main-loop cost increment fails so a retry can re-finalize', async () => {
+			// The terminal status write and the main-loop cost increment run in
+			// one transaction. If the cost increment fails, the whole
+			// transaction rolls back: the row stays `running` and
+			// `finalizeExecution` throws, so the caller can retry instead of
+			// losing the main-loop cost on an already-terminal row.
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('cost db down'));
+
+			await expect(
+				service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				}),
+			).rejects.toThrow('cost db down');
+
+			// The failed attempt ran the terminal write and the cost increment,
+			// but the broadcast never ran because finalization threw before it.
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
+
+			// A retry succeeds: `updateIfRunning` returns true again (the row
+			// is still `running` after the rollback) and the cost increment
+			// now applies, so the main-loop cost is not lost.
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(2);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 		});
 
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
