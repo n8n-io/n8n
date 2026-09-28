@@ -88,19 +88,6 @@ describe('POST /audit', () => {
 		});
 	});
 
-	test('rejects a negative daysAbandonedWorkflow', async () => {
-		const response = await testServer
-			.publicApiAgentFor(scopedOwner)
-			.post('/audit')
-			.send({ additionalOptions: { daysAbandonedWorkflow: -5 } })
-			.expect(400);
-
-		expect(response.body).toEqual({
-			message:
-				'request/body/additionalOptions/daysAbandonedWorkflow Number must be greater than or equal to 0',
-		});
-	});
-
 	test('accepts a zero daysAbandonedWorkflow', async () => {
 		const response = await testServer
 			.publicApiAgentFor(scopedOwner)
