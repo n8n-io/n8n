@@ -47,6 +47,10 @@ const projectId = computed(() => {
 	return typeof value === 'string' ? value : undefined;
 });
 
+const filtersKey = computed(() => `project:${projectId.value ?? 'overview'}`);
+// Restore before the filter component is set up, so it shows the same filters.
+executionsStore.restoreFilters(filtersKey.value);
+
 const workflowCount = computed(() => workflowsListStore.allWorkflows.length);
 const hasFetchedWorkflowsForProject = computed(() =>
 	workflowsListStore.hasFetchedAllWorkflows(projectId.value),
@@ -127,6 +131,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.saveFilters(filtersKey.value);
 	await executionsStore.initialize();
 }
 

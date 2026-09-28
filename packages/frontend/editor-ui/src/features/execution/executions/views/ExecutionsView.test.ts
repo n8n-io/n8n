@@ -29,9 +29,14 @@ const renderComponent = createComponentRenderer(ExecutionsView, {
 		stubs: {
 			ProjectHeader: { template: '<div data-test-id="project-header-stub" />' },
 			GlobalExecutionsList: {
-				emits: ['execution:stop'],
-				template:
-					'<div data-test-id="global-executions-list-stub"><button data-test-id="stop-stub" @click="$emit(\'execution:stop\')" /><slot /></div>',
+				props: ['filters'],
+				emits: ['execution:stop', 'update:filters'],
+				template: `<div data-test-id="global-executions-list-stub">
+					<button data-test-id="stop-stub" @click="$emit('execution:stop')" />
+					<button data-test-id="filter-error-stub" @click="$emit('update:filters', { ...filters, status: 'error' })" />
+					<span data-test-id="filter-status-stub">{{ filters.status }}</span>
+					<slot />
+				</div>`,
 			},
 			InsightsSummary: true,
 		},
@@ -142,5 +147,49 @@ describe('ExecutionsView', () => {
 		expect(workflowsListStore.fetchAllWorkflows).toHaveBeenCalledWith('project-1');
 		expect(workflowsListStore.hasFetchedAllWorkflows).toHaveBeenCalledWith('project-1');
 		expect(getByTestId('empty-resources-list')).toBeInTheDocument();
+	});
+
+	describe('filters', () => {
+		beforeEach(() => {
+			// Use the real store actions, so the filters go through reset, save, and restore.
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			workflowsListStore = mockedStore(useWorkflowsListStore);
+			workflowsListStore.allWorkflows = [{ id: 'w1' } as IWorkflowDb];
+			workflowsListStore.fetchAllWorkflows.mockResolvedValue([]);
+			workflowsListStore.hasFetchedAllWorkflows.mockReturnValue(true);
+			mockedStore(useExecutionsStore).initialize.mockResolvedValue();
+		});
+
+		async function renderAndSelectError() {
+			const { getByTestId, unmount } = renderComponent();
+			await waitAllPromises();
+			await fireEvent.click(getByTestId('filter-error-stub'));
+			unmount();
+		}
+
+		it('keeps the filters after navigating away and back', async () => {
+			await renderAndSelectError();
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('filter-status-stub')).toHaveTextContent('error');
+		});
+
+		it('keeps separate filters for each project', async () => {
+			route.params.projectId = 'project-1';
+			await renderAndSelectError();
+
+			route.params.projectId = 'project-2';
+			const otherProject = renderComponent();
+			await waitAllPromises();
+			expect(otherProject.getByTestId('filter-status-stub')).toHaveTextContent('all');
+			otherProject.unmount();
+
+			route.params.projectId = 'project-1';
+			const sameProject = renderComponent();
+			await waitAllPromises();
+			expect(sameProject.getByTestId('filter-status-stub')).toHaveTextContent('error');
+		});
 	});
 });
