@@ -911,6 +911,27 @@ describe('content-import policy', () => {
 
 		expect(await getAllCredentials()).toEqual([]);
 	});
+
+	// The check reads policy scopes through its own pool connection. Inside the lock transaction
+	// that read would wait on the transaction's connection with a single-connection pool.
+	test('runs the policy check before the lock transaction opens', async () => {
+		await createOwner();
+		const withLock = vi.spyOn(DbLockService.prototype, 'withLock');
+		const inputPath = writeInput([
+			{ id: 'clean', name: 'Clean', type: 'aws', data: { region: 'eu-west-1' } },
+		]);
+
+		try {
+			await command.run([`--input=${inputPath}`]);
+
+			expect(enforceContentImport).toHaveBeenCalledTimes(1);
+			expect(enforceContentImport.mock.invocationCallOrder[0]).toBeLessThan(
+				withLock.mock.invocationCallOrder[0],
+			);
+		} finally {
+			withLock.mockRestore();
+		}
+	});
 });
 
 afterEach(() => {
