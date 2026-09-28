@@ -11,7 +11,13 @@ import {
 describe('resolvePreferenceCard', () => {
 	const saved = {
 		ok: true,
-		preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		preference: {
+			id: 'pref-1',
+			content: 'Keep replies short.',
+			scope: 'user',
+			userId: 'user-1',
+			projectId: null,
+		},
 	};
 	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
 		toolCallId: 'tc-1',
@@ -22,11 +28,27 @@ describe('resolvePreferenceCard', () => {
 		...overrides,
 	});
 
-	it('resolves the save tool result to a saved card', () => {
+	it('resolves the save tool result to a saved card with its scope and owner', () => {
 		expect(resolvePreferenceCard(toolCall({}))).toEqual({
 			state: 'saved',
 			preferenceId: 'pref-1',
 			content: 'Keep replies short.',
+			scope: 'user',
+			projectId: null,
+			userId: 'user-1',
+		});
+	});
+
+	it('accepts a result from before the owner travelled with it', () => {
+		const result = {
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		};
+		expect(resolvePreferenceCard(toolCall({ result }))).toMatchObject({
+			state: 'saved',
+			scope: 'user',
+			projectId: null,
+			userId: null,
 		});
 	});
 
@@ -34,24 +56,59 @@ describe('resolvePreferenceCard', () => {
 		expect(resolvePreferenceCard(toolCall({ toolName: 'workflows' }))).toBeNull();
 	});
 
-	it('ignores a refusal and a call that is still running', () => {
+	it('ignores a refusal, a call that is still running, and a scope outside the enum', () => {
 		expect(
 			resolvePreferenceCard(toolCall({ result: { ok: false, reason: 'too_long' } })),
 		).toBeNull();
 		expect(resolvePreferenceCard(toolCall({ result: undefined, isLoading: true }))).toBeNull();
-	});
-
-	it('lets a later fact override the state and the text', () => {
 		expect(
 			resolvePreferenceCard(
-				toolCall({ preferenceCard: { state: 'edited', content: 'Keep replies brief.' } }),
+				toolCall({
+					result: { ok: true, preference: { id: 'pref-1', content: 'x', scope: 'team' } },
+				}),
 			),
-		).toEqual({ state: 'edited', preferenceId: 'pref-1', content: 'Keep replies brief.' });
+		).toBeNull();
+	});
+
+	it('lets a later fact override the state, the text and the scope', () => {
+		expect(
+			resolvePreferenceCard(
+				toolCall({
+					preferenceCard: {
+						state: 'edited',
+						content: 'Keep replies brief.',
+						scope: 'project',
+						projectId: 'p-1',
+					},
+				}),
+			),
+		).toEqual({
+			state: 'edited',
+			preferenceId: 'pref-1',
+			content: 'Keep replies brief.',
+			scope: 'project',
+			projectId: 'p-1',
+			userId: 'user-1',
+		});
 		expect(resolvePreferenceCard(toolCall({ preferenceCard: { state: 'undone' } }))).toEqual({
 			state: 'undone',
 			preferenceId: 'pref-1',
 			content: 'Keep replies short.',
+			scope: 'user',
+			projectId: null,
+			userId: 'user-1',
 		});
+	});
+
+	it('drops the project when a fact moves the row back to the user', () => {
+		const moved = toolCall({
+			result: {
+				ok: true,
+				preference: { id: 'pref-1', content: 'x', scope: 'project', projectId: 'p-1' },
+			},
+			preferenceCard: { state: 'edited', content: 'x', scope: 'user', projectId: null },
+		});
+		expect(resolvePreferenceCard(moved)).toMatchObject({ scope: 'user', projectId: null });
 	});
 });
 

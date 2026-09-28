@@ -44,6 +44,7 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
@@ -466,6 +467,39 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
 	},
+	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
+		name: 'User opened AI Assistant mention picker',
+		description:
+			'The user opened the n8n Assistant mention picker by typing an at sign or selecting the composer button.',
+		properties: z.object({
+			source: z.enum(['typed', 'button']),
+		}),
+	},
+	USER_SELECTED_AI_ASSISTANT_MENTION: {
+		name: 'User selected AI Assistant mention',
+		description:
+			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. The event contains interaction metadata but no resource names or IDs.',
+		properties: z.object({
+			kind: assistantMentionKind,
+			mode: z.enum(['browse', 'search']),
+			source: z.enum(['artifacts', 'workflows']),
+			result_position: z
+				.number()
+				.int()
+				.positive()
+				.describe('One-based position in the current search list, browse section, or submenu'),
+			query_length: z.number().int().nonnegative(),
+			already_artifact: z.boolean(),
+		}),
+	},
+	USER_REMOVED_AI_ASSISTANT_MENTION: {
+		name: 'User removed AI Assistant mention',
+		description:
+			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
+		properties: z.object({
+			kind: assistantMentionKind,
+		}),
+	},
 	USER_SENT_BUILDER_MESSAGE: {
 		name: 'User sent builder message',
 		description:
@@ -500,6 +534,11 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
+			mention_count: z.number().int().nonnegative(),
+			workflow_mention_count: z.number().int().nonnegative(),
+			node_mention_count: z.number().int().nonnegative(),
+			group_mention_count: z.number().int().nonnegative(),
+			attachment_count: z.number().int().nonnegative(),
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
@@ -109,6 +109,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	get container() {
 		return this.page.getByTestId('ndv');
+	}
+
+	getRestrictedNodePanel(): Locator {
+		return this.container.getByTestId('node-restricted-panel');
 	}
 
 	getInputPanel() {

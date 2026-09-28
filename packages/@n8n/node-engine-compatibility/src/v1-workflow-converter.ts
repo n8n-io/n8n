@@ -23,7 +23,7 @@ import { isRecord } from './guards';
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /**
- * Converts a v1 workflow (node-based JSON) into the Engine 2.0 `WorkflowGraph`.
+ * Converts a v1 workflow (node-based JSON) into the Engine v2 `WorkflowGraph`.
  *
  * A pure, deterministic topology translation: it maps nodes and connections to
  * graph nodes and edges and never executes anything. Supported surface is kept

@@ -166,7 +166,7 @@ export class n8nPage {
 	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
 		// The fallback helper carries no options, so it applies no stack workflow
-		// settings and its engine 2.0 routing check stays quiet. Pass a helper, or
+		// settings and its engine v2 routing check stays quiet. Pass a helper, or
 		// use `start.newTab()`, for a page that creates or runs workflows.
 		this.api = api ?? new ApiHelpers(page.context().request);
 

@@ -236,6 +236,30 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
+	it('spaces selected-workflow IDs like the other settings (LIGO-866)', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		workflowDocumentStore.setSettings({ callerPolicy: 'workflowsFromAList' });
+		const { getByTestId } = createComponent({ pinia });
+
+		await flushPromises();
+
+		const settings = getByTestId('workflow-settings-dialog');
+		const timezoneRow = getByTestId('workflow-settings-timezone').closest('.el-row');
+		const callerPolicyRow = getByTestId('workflow-caller-policy-select').closest('.el-row');
+		const callerIdsRow = getByTestId('workflow-caller-policy-workflow-ids').closest('.el-row');
+
+		// LIGO-866: The dialog's vertical gap only applies to direct children.
+		expect(timezoneRow?.parentElement).toBe(settings);
+		expect(
+			callerIdsRow?.parentElement === settings,
+			'workflow IDs must receive the dialog gap',
+		).toBe(true);
+		expect(
+			callerPolicyRow?.parentElement === settings,
+			'caller policy must receive the dialog gap',
+		).toBe(true);
+	});
+
 	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
