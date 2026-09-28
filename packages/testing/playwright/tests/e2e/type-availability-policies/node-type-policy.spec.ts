@@ -2,12 +2,16 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
-	executionErrorOf,
+	availabilityInProjects,
+	findAvailability,
+	manualRunOutcome,
+	prepareTypePolicyInstance,
+	publishOutcome,
+	saveMovedNodes,
 	loadPostgresColumns,
 	NO_OP,
 	POSTGRES,
 	postgresWorkflow,
-	SCHEDULE_TRIGGER_NAME,
 	scheduleToNoOpWorkflow,
 	SET,
 	setNode,
@@ -29,9 +33,18 @@ test.use({
 });
 
 async function findType(api: ApiHelpers, projectId: string, nodeType: string) {
-	const types = await api.nodeTypePolicies.getAvailability(projectId);
-	return types.find((entry) => entry.name === nodeType);
+	return await findAvailability(
+		async (id) => await api.nodeTypePolicies.getAvailability(id),
+		projectId,
+		nodeType,
+	);
 }
+
+const BLOCKED_NO_OP = {
+	kind: 'node-type-unavailable',
+	subject: NO_OP.type,
+	scope: 'instance',
+} as const;
 
 test.describe(
 	'Node type policies @licensed',
@@ -41,16 +54,7 @@ test.describe(
 		test.describe.configure({ mode: 'default' });
 
 		test.beforeEach(async ({ api }) => {
-			expect(
-				await api.getActiveModules(),
-				'the type-availability-policies module is not active: the instance needs a license granting feat:typeAvailabilityPolicies at startup',
-			).toContain('type-availability-policies');
-
-			// The check reads the license on every decision, not only at startup.
-			await api.enableFeature('typeAvailabilityPolicies');
-			await api.enableProjectFeatures();
-			await api.setMaxTeamProjectsQuota(-1);
-			await api.nodeTypePolicies.resetInstancePolicy();
+			await prepareTypePolicyInstance(api);
 		});
 
 		test.describe('an instance block on an existing workflow', () => {
@@ -70,17 +74,7 @@ test.describe(
 			test('should still save the workflow with the blocked type it already stores', async ({
 				api,
 			}) => {
-				const movedNodes = workflow.nodes.map((node) => ({
-					...node,
-					position: [node.position[0], node.position[1] + 100] as [number, number],
-				}));
-
-				const response = await api.workflows.updateRaw(workflow.id, workflow.versionId!, {
-					nodes: movedNodes,
-					connections: workflow.connections,
-				});
-
-				expect(response.status()).toBe(200);
+				expect(await saveMovedNodes(api, workflow)).toBe(200);
 			});
 
 			test('should refuse a save that adds a different blocked type', async ({ api }) => {
@@ -103,32 +97,19 @@ test.describe(
 			});
 
 			test('should refuse to publish the workflow', async ({ api }) => {
-				const response = await api.workflows.activateRaw(workflow.id, workflow.versionId!);
-
-				expect(response.status()).toBe(403);
-				expect(await violationsOf(response)).toEqual([
-					expect.objectContaining({
-						kind: 'node-type-unavailable',
-						subject: NO_OP.type,
-						scope: 'instance',
-					}),
-				]);
+				expect(await publishOutcome(api, workflow)).toEqual({
+					status: 403,
+					violations: [expect.objectContaining(BLOCKED_NO_OP)],
+				});
 			});
 
 			test('should fail a run of the workflow with the violation on the execution', async ({
 				api,
 			}) => {
-				const { executionId } = await api.workflows.runManually(workflow.id, SCHEDULE_TRIGGER_NAME);
-				const execution = await api.workflows.waitForExecutionById(executionId);
-
-				expect(execution.status).toBe('error');
-				expect(executionErrorOf(execution).violations).toEqual([
-					expect.objectContaining({
-						kind: 'node-type-unavailable',
-						subject: NO_OP.type,
-						scope: 'instance',
-					}),
-				]);
+				expect(await manualRunOutcome(api, workflow)).toEqual({
+					status: 'error',
+					violations: [expect.objectContaining(BLOCKED_NO_OP)],
+				});
 			});
 
 			test('should show the blocked node as restricted and keep the workflow editable', async ({
@@ -164,12 +145,15 @@ test.describe(
 			});
 
 			test('should report the type unavailable in that project only', async ({ api }) => {
-				expect(await findType(api, narrowedProjectId, NO_OP.type)).toMatchObject({
-					available: false,
-					scope: 'project',
-				});
-				expect(await findType(api, otherProjectId, NO_OP.type)).toMatchObject({
-					available: true,
+				expect(
+					await availabilityInProjects(
+						async (projectId) => await api.nodeTypePolicies.getAvailability(projectId),
+						NO_OP.type,
+						{ narrowedProjectId, otherProjectId },
+					),
+				).toEqual({
+					narrowed: expect.objectContaining({ available: false, scope: 'project' }),
+					other: expect.objectContaining({ available: true }),
 				});
 			});
 
