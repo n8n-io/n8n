@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMigration {
+export class CreateWorkflowSuggestionTables1790591897577 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, column, createIndex },
