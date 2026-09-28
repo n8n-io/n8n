@@ -20,7 +20,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { ConflictError, ForbiddenError } from '@n8n/backend-services';
+import { ConflictError, ForbiddenError, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -60,7 +60,6 @@ import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 

@@ -1,6 +1,7 @@
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import * as permissions from '@n8n/permissions';
@@ -15,7 +16,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@/services/url.service';
 
 import { Container } from '@n8n/di';
 

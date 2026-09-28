@@ -24,6 +24,8 @@
   ],
   "dependencies": {
     "@n8n/api-types": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
@@ -35,7 +37,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

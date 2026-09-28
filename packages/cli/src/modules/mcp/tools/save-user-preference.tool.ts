@@ -1,6 +1,7 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -10,7 +11,6 @@ import z from 'zod';
 
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 
 import {

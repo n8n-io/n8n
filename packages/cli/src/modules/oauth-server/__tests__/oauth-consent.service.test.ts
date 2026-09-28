@@ -1,4 +1,4 @@
-import { ForbiddenError } from '@n8n/backend-services';
+import { ForbiddenError, UrlService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
@@ -15,7 +15,6 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 import type { User } from '@n8n/db';
 
 const issuer = 'https://n8n.example.com';

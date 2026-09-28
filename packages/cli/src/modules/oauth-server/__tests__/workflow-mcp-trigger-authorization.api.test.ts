@@ -1,3 +1,4 @@
+import { UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	setActiveVersion,
@@ -17,7 +18,6 @@ import { setupTestServer } from '@test-integration/utils';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
 import { JwtService } from '@/services/jwt.service';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';

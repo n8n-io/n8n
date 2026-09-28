@@ -1,5 +1,6 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
@@ -12,7 +13,6 @@ import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } 
 import path from 'path';
 
 import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';

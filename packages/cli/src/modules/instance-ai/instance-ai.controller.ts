@@ -39,6 +39,7 @@ import {
 	ConflictError,
 	ForbiddenError,
 	NotFoundError,
+	UrlService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -94,7 +95,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -17,7 +18,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';

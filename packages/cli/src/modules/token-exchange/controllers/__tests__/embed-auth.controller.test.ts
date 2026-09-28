@@ -1,4 +1,5 @@
 import { EmbedLoginBodyDto, EmbedLoginQueryDto } from '@n8n/api-types';
+import type { UrlService } from '@n8n/backend-services';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -6,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
 
 import type { TokenExchangeService } from '../../services/token-exchange.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';

@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { ForbiddenError } from '@n8n/backend-services';
+import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
@@ -11,7 +12,6 @@ import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
 
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 

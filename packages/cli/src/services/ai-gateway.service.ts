@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
@@ -20,7 +20,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 
 interface GatewayTokenResponse {
 	token: string;

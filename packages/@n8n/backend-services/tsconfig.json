@@ -18,6 +18,8 @@
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.cjs.json" },
-		{ "path": "../api-types/tsconfig.build.json" }
+		{ "path": "../api-types/tsconfig.build.json" },
+		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../di/tsconfig.build.json" }
 	]
 }

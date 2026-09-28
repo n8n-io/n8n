@@ -1,9 +1,7 @@
 import type { AgentTeamsIntegrationSettings, TeamsAgentSetupState } from '@n8n/api-types';
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, NotFoundError, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { UrlService } from '@/services/url.service';
 
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';

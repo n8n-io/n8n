@@ -1,3 +1,4 @@
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -13,7 +14,6 @@ import type {
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { NodeTypes } from '@/node-types';
-import { UrlService } from '@/services/url.service';
 
 import { ExecutionContextService } from 'n8n-core';
 import { AuthorizeIntentService } from './authorize-intent.service';

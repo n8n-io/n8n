@@ -30,8 +30,9 @@ and infrastructure services that need the persistence layer or that only
 | Export | Purpose |
 | --- | --- |
 | `ResponseError` and its subclasses (`BadRequestError`, `NotFoundError`, `ForbiddenError`, ...) | Errors that map to an HTTP status code in a REST response |
+| `UrlService` | Base, webhook and JWKS URLs of this instance, derived from the global config |
 
-The next PRs move `UrlService`, `CacheService`, `RedisClientService`,
+The next PRs move `CacheService`, `RedisClientService`,
 `ProtectedResourceRegistry`, `EventService`, `RoleService`, the finder services
 and the scope checks here, one area at a time.
 

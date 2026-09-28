@@ -6,7 +6,7 @@ import {
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
-import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import { ForbiddenError, NotFoundError, UrlService } from '@n8n/backend-services';
 import type { PublicUser } from '@n8n/db';
 import {
 	User,
@@ -33,7 +33,6 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { UserRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')

@@ -1,5 +1,6 @@
 import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
@@ -13,7 +14,6 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import {

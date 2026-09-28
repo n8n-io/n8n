@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -7,7 +8,6 @@ import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 
 /**
  * Resolved lazily. A static import would close the cycle

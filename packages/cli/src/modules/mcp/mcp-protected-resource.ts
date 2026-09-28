@@ -4,13 +4,13 @@ import {
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 import { PostHogClient } from '@/posthog';
 
 import {

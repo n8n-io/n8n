@@ -1,12 +1,11 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
-import { ConflictError, NotFoundError } from '@n8n/backend-services';
+import { ConflictError, NotFoundError, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

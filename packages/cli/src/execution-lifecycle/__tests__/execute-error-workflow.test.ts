@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -9,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { executeErrorWorkflow } from '../execute-error-workflow';

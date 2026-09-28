@@ -4,6 +4,7 @@ import {
 	ForbiddenError,
 	NotFoundError,
 } from '@n8n/backend-services';
+import type { UrlService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import { z } from 'zod';
 
@@ -82,7 +83,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
