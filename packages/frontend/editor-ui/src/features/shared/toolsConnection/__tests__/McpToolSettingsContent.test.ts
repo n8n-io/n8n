@@ -1,6 +1,5 @@
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, screen } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { defineComponent } from 'vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { McpServerConnectionItem } from '../types';
@@ -15,15 +14,8 @@ vi.mock('@/app/composables/useMessage', () => ({
 const renderComponent = createComponentRenderer(McpToolSettingsContent);
 
 async function selectPermission(select: HTMLElement, label: string) {
-	const input = select.querySelector('input');
-	expect(input).not.toBeNull();
-	const listboxId = input?.getAttribute('aria-controls');
-	expect(listboxId).not.toBeNull();
-	const option = Array.from(
-		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
-	).find((element) => element.textContent === label);
-	expect(option).toBeDefined();
-	await fireEvent.click(option!);
+	await fireEvent.click(select);
+	await fireEvent.click(screen.getByRole('menuitem', { name: label }));
 }
 
 function item(overrides: Partial<McpServerConnectionItem> = {}): McpServerConnectionItem {
@@ -65,28 +57,12 @@ describe('McpToolSettingsContent', () => {
 	});
 
 	it('shows Custom in the category selector without adding a dropdown option', async () => {
-		const { getByTestId, queryByRole } = renderComponent({
-			props: { item: item() },
-			global: {
-				stubs: {
-					Select: defineComponent({
-						props: ['modelValue'],
-						template:
-							'<div><span data-test-id="select-value">{{ modelValue }}</span><slot /></div>',
-					}),
-					Option: defineComponent({
-						props: ['label'],
-						template: '<div role="option">{{ label }}</div>',
-					}),
-				},
-			},
-		});
+		const { getByTestId, queryByRole } = renderComponent({ props: { item: item() } });
 
-		expect(
-			within(getByTestId('tools-connection-permission-read')).getByTestId('select-value'),
-		).toHaveTextContent('Custom');
+		expect(getByTestId('tools-connection-permission-read')).toHaveTextContent('Custom');
+		await fireEvent.click(getByTestId('tools-connection-permission-read'));
 
-		expect(queryByRole('option', { name: 'Custom' })).not.toBeInTheDocument();
+		expect(queryByRole('menuitem', { name: 'Custom' })).not.toBeInTheDocument();
 	});
 
 	it('shows the tool count as a badge beside the group title', () => {
@@ -107,7 +83,7 @@ describe('McpToolSettingsContent', () => {
 
 		expect(getByTestId('tools-connection-count-read')).toBeVisible();
 		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('0');
-		expect(getByTestId('tools-connection-permission-write').querySelector('input')).toBeDisabled();
+		expect(getByTestId('tools-connection-permission-write')).toBeDisabled();
 		expect(getByLabelText('Write and delete tools')).toBeDisabled();
 	});
 
@@ -230,7 +206,7 @@ describe('McpToolSettingsContent', () => {
 		expect(getByLabelText('Read-only tools')).toBeDisabled();
 		expect(getByTestId('tools-connection-count-read')).toHaveTextContent('—');
 		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('—');
-		expect(getByTestId('tools-connection-permission-read').querySelector('input')).toBeDisabled();
+		expect(getByTestId('tools-connection-permission-read')).toBeDisabled();
 		expect(getByTestId('tools-connection-settings-save')).toBeDisabled();
 
 		await fireEvent.click(getByTestId('tools-connection-recovery'));
