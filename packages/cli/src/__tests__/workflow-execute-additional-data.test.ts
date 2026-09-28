@@ -448,7 +448,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 
-			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+			// Two reasons the user has to survive this boundary. It is what lets the
+			// acting-user route pass a credential the person legitimately reaches, one
+			// level down as at the top. And an empty user sent any inline sub-workflow
+			// nested inside a stored one to the project check, which an inline
+			// sub-workflow has no project for — skipping the user check entirely.
+			it('carries the acting user into a database sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
@@ -458,8 +463,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 					}),
 				);
 
+				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					'user-1',
+				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
-				expect(integratedAdditionalData.userId).toBeUndefined();
+				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 		});
 

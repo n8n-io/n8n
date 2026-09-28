@@ -27,6 +27,7 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -35,6 +36,7 @@ vi.useFakeTimers({ shouldAdvanceTime: true });
 describe('WaitTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
@@ -74,6 +76,7 @@ describe('WaitTracker', () => {
 			executionRepository,
 			executionPersistence,
 			ownershipService,
+			workflowPublisherService,
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
@@ -198,10 +201,27 @@ describe('WaitTracker', () => {
 					workflowData: execution.workflowData,
 					projectId: project.id,
 					pushRef: execution.data.pushRef,
+					userId: undefined,
 				},
 				false,
 				false,
 				{ executionId: execution.id, expectedStatus: 'waiting' },
+			);
+		});
+
+		// The acting user is not a stored field, so a resume has to derive it again.
+		// Without it the run comes back unattributed and a credential only its
+		// publisher may use is refused halfway through.
+		it('restores the identity the run acts as', async () => {
+			workflowPublisherService.findActingUserIdForRestart.mockResolvedValueOnce('the-publisher');
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'the-publisher' }),
+				false,
+				false,
+				expect.anything(),
 			);
 		});
 
@@ -1126,6 +1146,7 @@ describe('WaitTracker', () => {
 				executionRepository,
 				executionPersistence,
 				ownershipService,
+				workflowPublisherService,
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
