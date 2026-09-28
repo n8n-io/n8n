@@ -38,6 +38,7 @@ export type AgentRegistryMcpDraft = Pick<
 export interface AgentRegistryMcpModalData {
 	kind: 'registryMcpServer';
 	mcpServer: AgentRegistryMcpDraft;
+	projectId: string;
 	existingToolNames?: string[];
 	isNew?: boolean;
 	supportsToolApproval?: boolean;
@@ -80,9 +81,10 @@ export function useAgentRegistryMcpConfig(
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const { createCredentialAdapter, discoverRegistry, fetchCatalog, preloadCredentials } =
-		useAgentMcpDiscovery();
+		useAgentMcpDiscovery(() => data.value!.projectId);
 	const catalogServer = ref<McpRegistryServerResponse | null>(null);
 	const draftServer = ref<AgentRegistryMcpDraft | null>(null);
+	const persistedServer = ref<AgentRegistryMcpDraft | null>(null);
 	const discovery = ref<McpRegistryDiscoveryResponse | { status: 'connecting' } | null>(null);
 	let requestId = 0;
 	const title = computed(() => draftServer.value?.name ?? data.value?.mcpServer.name ?? '');
@@ -99,14 +101,13 @@ export function useAgentRegistryMcpConfig(
 		const server = catalogServer.value;
 		const draft = draftServer.value;
 		if (!server || !draft) return null;
-		const liveTools =
-			discovery.value?.status === 'connected' ? discovery.value.tools : server.tools;
 		const settings: McpToolSettings = {
 			...(draft.toolPermissions ?? {
 				categories: { read: 'always_allow', write: 'always_allow' },
 			}),
 			connectionTimeoutMs: draft.connectionTimeoutMs ?? DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
 		};
+		const liveTools = discovery.value?.status === 'connected' ? discovery.value.tools : [];
 		const status =
 			discovery.value?.status === 'connecting'
 				? 'connecting'
@@ -168,6 +169,7 @@ export function useAgentRegistryMcpConfig(
 	async function initialize(modalData: AgentRegistryMcpModalData) {
 		const currentRequestId = ++requestId;
 		draftServer.value = { ...modalData.mcpServer };
+		persistedServer.value = modalData.isNew ? null : { ...modalData.mcpServer };
 		discovery.value = { status: 'connecting' };
 		const [catalog] = await Promise.all([fetchCatalog(), preloadCredentials()]);
 		if (currentRequestId !== requestId) return;
@@ -188,6 +190,7 @@ export function useAgentRegistryMcpConfig(
 			requestId++;
 			catalogServer.value = null;
 			draftServer.value = null;
+			persistedServer.value = null;
 			discovery.value = null;
 		},
 		{ immediate: true },
@@ -244,7 +247,18 @@ export function useAgentRegistryMcpConfig(
 		listenForCredentialChanges({
 			store: credentialsStore,
 			onCredentialDeleted: (credentialId) => {
+				const persisted = persistedServer.value;
+				if (persisted?.credential === credentialId) {
+					data.value?.onRemove?.();
+					onCredentialDeleted();
+					return;
+				}
 				if (draftServer.value?.credential !== credentialId) return;
+				if (persisted?.credential) {
+					draftServer.value.credential = persisted.credential;
+					void discover(persisted.credential);
+					return;
+				}
 				data.value?.onRemove?.();
 				onCredentialDeleted();
 			},

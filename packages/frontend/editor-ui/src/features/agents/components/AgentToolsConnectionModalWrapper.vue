@@ -125,7 +125,7 @@ const props = defineProps<{
 		mode: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
-		projectId?: string;
+		projectId: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
 		onConfirm: (payload: {
@@ -154,7 +154,9 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery();
+const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
+	() => props.data.projectId,
+);
 const {
 	availableToolTypes,
 	availableWorkflows,
@@ -668,6 +670,7 @@ function openConfigForRegistryEntry(entry: WorkingMcpServerEntry) {
 	openConfigModal({
 		kind: 'registryMcpServer',
 		mcpServer: entry.server,
+		projectId: props.data.projectId,
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
@@ -728,7 +731,6 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		const registryServer = mcpCatalog.value.find(
 			(server) => server.nodeTypeName === registryNodeTypeName,
 		);
-		if (!registryServer) return null;
 
 		const status = entry.server.credential ? 'connected' : 'disconnected';
 		const item: McpServerConnectionItem = {
@@ -736,30 +738,40 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 			kind: 'mcp-server',
 			category: 'mcp',
 			title: entry.server.name,
-			description: registryServer.tagline,
-			longDescription: registryServer.description,
+			description: registryServer?.tagline ?? entry.server.description,
+			longDescription: registryServer?.description ?? entry.server.description,
 			status,
 			...(status === 'disconnected'
 				? {
 						connectionFailureReason: 'authentication' as const,
 					}
 				: {}),
-			iconSource: iconForMcpRegistryServer(registryServer.icons, uiStore.appliedTheme),
-			credentials: registryServer.credentials.map(({ credentialType, name }) => ({
-				authType: credentialType,
-				displayName: name,
-				credentialId:
-					entry.server.authentication === credentialType ? entry.server.credential : undefined,
-				required: true,
-			})),
-			availableTools: registryServer.tools.map(toMcpServerTool),
-			isOfficial: registryServer.isOfficial,
+			iconSource: registryServer
+				? iconForMcpRegistryServer(registryServer.icons, uiStore.appliedTheme)
+				: { type: 'icon', name: 'mcp' },
+			credentials: registryServer
+				? registryServer.credentials.map(({ credentialType, name }) => ({
+						authType: credentialType,
+						displayName: name,
+						credentialId:
+							entry.server.authentication === credentialType ? entry.server.credential : undefined,
+						required: true,
+					}))
+				: [
+						{
+							authType: entry.server.authentication,
+							credentialId: entry.server.credential,
+							required: true,
+						},
+					],
+			availableTools: registryServer?.tools.map(toMcpServerTool) ?? [],
+			isOfficial: registryServer?.isOfficial,
 			settings: entry.server.toolPermissions,
 			publisher:
-				registryServer.isOfficial || registryServer.websiteUrl
+				registryServer && (registryServer.isOfficial || registryServer.websiteUrl)
 					? { name: registryServer.title, url: registryServer.websiteUrl }
 					: undefined,
-			version: registryServer.version,
+			version: registryServer?.version,
 		};
 		return item;
 	}
@@ -880,6 +892,7 @@ function connectRegistryItem(
 	openConfigModal({
 		kind: 'registryMcpServer',
 		mcpServer: draft,
+		projectId: props.data.projectId,
 		isNew: true,
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),

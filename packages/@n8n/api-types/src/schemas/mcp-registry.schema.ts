@@ -39,6 +39,7 @@ export interface McpRegistryServerResponse {
 	websiteUrl?: string;
 	credentials: McpRegistryCredentialOption[];
 	tools: McpRegistryServerToolResponse[];
+	isTemplated: boolean;
 	isOfficial: boolean;
 	status: McpRegistryServerStatus;
 	tags?: string[];

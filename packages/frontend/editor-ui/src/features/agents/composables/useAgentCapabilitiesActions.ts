@@ -228,6 +228,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				data: {
 					kind: 'registryMcpServer',
 					mcpServer,
+					projectId: projectId.value,
 					supportsToolApproval,
 					existingToolNames: mcpServers
 						.filter((_, index) => index !== mcpServerIndex)

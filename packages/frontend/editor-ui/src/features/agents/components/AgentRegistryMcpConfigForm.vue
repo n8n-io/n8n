@@ -168,7 +168,7 @@ defineExpose({
 				:available-tools="item.availableTools"
 				:server-title="title"
 				:status="item.status"
-				:supports-approval="data.supportsToolApproval !== false"
+				:exclude-permissions="data.supportsToolApproval === false ? ['require_approval'] : []"
 			/>
 			<div :class="$style.timeoutSection">
 				<N8nText tag="label" for="agent-mcp-connection-timeout" size="medium" bold>

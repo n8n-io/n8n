@@ -299,6 +299,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue([]);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		mockedStore(useProjectsStore).myProjects = [
@@ -352,7 +353,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		tools: AgentJsonToolRef[] = [],
 		onConfirm = vi.fn(),
 		mcpServers: AgentJsonMcpServerConfig[] = [],
-		projectId?: string,
+		projectId = PROJECT_ID,
 		mode: ToolPickerMode = 'tools',
 	) {
 		return renderComponent({
@@ -402,7 +403,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { mode: 'tools', tools: [], onConfirm: vi.fn() },
+				data: { mode: 'tools', tools: [], projectId: PROJECT_ID, onConfirm: vi.fn() },
 			},
 			attrs: { open: true, active: true, mode: '', activeId: '' },
 		});

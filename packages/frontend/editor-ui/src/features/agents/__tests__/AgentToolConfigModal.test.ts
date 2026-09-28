@@ -336,6 +336,7 @@ describe('AgentToolConfigModal', () => {
 				modalName: MODAL_NAME,
 				data: {
 					kind: 'registryMcpServer',
+					projectId: 'project-1',
 					mcpServer: {
 						name: 'github',
 						authentication: 'githubMcpOAuth2Api',

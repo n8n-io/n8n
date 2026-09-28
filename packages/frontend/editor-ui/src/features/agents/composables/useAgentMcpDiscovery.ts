@@ -1,4 +1,4 @@
-import { effectScope } from 'vue';
+import { effectScope, toValue, type MaybeRefOrGetter } from 'vue';
 import type { McpRegistryDiscoveryResponse, McpRegistryServerResponse } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -25,7 +25,7 @@ interface CredentialCreatedContext {
 	item: McpServerConnectionItem;
 }
 
-export function useAgentMcpDiscovery() {
+export function useAgentMcpDiscovery(projectId: MaybeRefOrGetter<string>) {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
@@ -46,9 +46,10 @@ export function useAgentMcpDiscovery() {
 	}
 
 	async function preloadCredentials() {
+		const resolvedProjectId = toValue(projectId);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchUsableCredentials({ projectId: resolvedProjectId }),
 		]);
 	}
 
@@ -69,34 +70,37 @@ export function useAgentMcpDiscovery() {
 	): ToolConnectionCredentialAdapter {
 		return {
 			getCredentialsByType: (authType) =>
-				credentialsStore.getCredentialsByType(authType).map((credential) => ({
+				credentialsStore.getUsableCredentialByType(authType).map((credential) => ({
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
 				})),
 			openExistingCredential: (credentialId) => uiStore.openExistingCredential(credentialId),
 			openNewCredential: (authType, item, credentialTypes) => {
+				const resolvedProjectId = toValue(projectId);
 				if (item.kind !== 'mcp-server') {
-					uiStore.openNewCredential(authType);
+					uiStore.openNewCredential(authType, false, false, resolvedProjectId);
 					return;
 				}
 				const server = resolveServer(item);
 				if (!server) {
-					uiStore.openNewCredential(authType);
+					uiStore.openNewCredential(authType, false, false, resolvedProjectId);
 					return;
 				}
 
 				const acceptedTypes = credentialTypes ?? [authType];
 				if (acceptedTypes.length === 1 && canOAuthCredentialQuickConnect(authType)) {
-					void createAndAuthorize(authType).then((credential) => {
-						if (credential) {
-							onCredentialCreated({
-								authType: credential.type,
-								credentialId: credential.id,
-								item,
-							});
-						}
-					});
+					void createAndAuthorize(authType, undefined, { projectId: resolvedProjectId }).then(
+						(credential) => {
+							if (credential) {
+								onCredentialCreated({
+									authType: credential.type,
+									credentialId: credential.id,
+									item,
+								});
+							}
+						},
+					);
 					return;
 				}
 
@@ -129,9 +133,17 @@ export function useAgentMcpDiscovery() {
 				try {
 					if (acceptedTypes.length > 1) {
 						const node = registryContextNode(server);
-						uiStore.openNewCredential(authType, true, false, undefined, undefined, node.name, node);
+						uiStore.openNewCredential(
+							authType,
+							true,
+							false,
+							resolvedProjectId,
+							undefined,
+							node.name,
+							node,
+						);
 					} else {
-						uiStore.openNewCredential(authType);
+						uiStore.openNewCredential(authType, false, false, resolvedProjectId);
 					}
 				} catch (error) {
 					listeners.stop();

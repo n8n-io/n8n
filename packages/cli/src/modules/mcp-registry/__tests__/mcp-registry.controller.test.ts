@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
+import type { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
 import { McpRegistryController } from '../mcp-registry.controller';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
 import {
@@ -10,7 +11,8 @@ import {
 
 describe('McpRegistryController', () => {
 	const service = mock<McpRegistryService>();
-	const controller = new McpRegistryController(service);
+	const discoveryService = mock<McpConnectionDiscoveryService>();
+	const controller = new McpRegistryController(service, discoveryService);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -39,14 +41,14 @@ describe('McpRegistryController', () => {
 			expect(notion).not.toHaveProperty('origin');
 		});
 
-		it('drops a server whose URL is a template', async () => {
-			// Instance AI fills its connection picker from here and cannot resolve a
-			// template, so offering the row would end at a refused connection.
+		it('marks a server whose URL is a template', async () => {
 			service.getAll.mockResolvedValue([notionMockServer, databricksGenieTemplatedMockServer]);
 
 			const result = await controller.listServers();
 
-			expect(result.map((s) => s.slug)).toEqual(['notion']);
+			expect(result.map((s) => s.slug)).toEqual(['notion', 'databricks-genie']);
+			expect(result.find((server) => server.slug === 'notion')?.isTemplated).toBe(false);
+			expect(result.find((server) => server.slug === 'databricks-genie')?.isTemplated).toBe(true);
 		});
 
 		it('returns an empty array when the registry has no servers', async () => {

@@ -13,6 +13,24 @@ import {
 } from './useAgentRegistryMcpConfig';
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
 
+const credentialChangeListeners = vi.hoisted(() => ({
+	onDeleted: undefined as ((credentialId: string) => void) | undefined,
+}));
+
+vi.mock('@/features/credentials/credentials.store', async (importOriginal) => {
+	const original =
+		await importOriginal<typeof import('@/features/credentials/credentials.store')>();
+	return {
+		...original,
+		listenForCredentialChanges: ({
+			onCredentialDeleted,
+		}: {
+			onCredentialDeleted?: (credentialId: string) => void;
+		}) => {
+			credentialChangeListeners.onDeleted = onCredentialDeleted;
+		},
+	};
+});
 vi.mock('./useAgentMcpDiscovery');
 
 const discoverRegistry = vi.fn();
@@ -35,6 +53,7 @@ const catalogServer: McpRegistryServerResponse = {
 		},
 	],
 	tools: [{ name: 'list_repositories' }],
+	isTemplated: false,
 	isOfficial: true,
 	status: 'active',
 };
@@ -54,6 +73,7 @@ const discovery: McpRegistryDiscoveryResponse = {
 describe('useAgentRegistryMcpConfig', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		credentialChangeListeners.onDeleted = undefined;
 		createTestingPinia({ stubActions: false });
 		vi.mocked(useAgentMcpDiscovery).mockReturnValue({
 			createCredentialAdapter: vi.fn().mockReturnValue({}),
@@ -67,6 +87,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		const onConfirm = vi.fn();
 		const modalData: AgentRegistryMcpModalData = {
 			kind: 'registryMcpServer',
+			projectId: 'project-1',
 			mcpServer: {
 				name: 'github',
 				authentication: 'githubMcpOAuth2Api',
@@ -104,6 +125,7 @@ describe('useAgentRegistryMcpConfig', () => {
 	it('rediscovers after the credential modal closes', async () => {
 		const modalData: AgentRegistryMcpModalData = {
 			kind: 'registryMcpServer',
+			projectId: 'project-1',
 			mcpServer: {
 				name: 'github',
 				authentication: 'githubMcpOAuth2Api',
@@ -130,6 +152,75 @@ describe('useAgentRegistryMcpConfig', () => {
 
 		expect(discoverRegistry).toHaveBeenCalledOnce();
 		expect(discoverRegistry).toHaveBeenCalledWith('github', 'credential-1');
+		scope.stop();
+	});
+
+	it('reverts to the persisted credential when an unsaved draft credential is deleted', async () => {
+		const onRemove = vi.fn();
+		const onCredentialDeleted = vi.fn();
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+			onRemove,
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				onCredentialDeleted,
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
+		await config.selectCredential('githubMcpOAuth2Api', 'credential-2');
+		discoverRegistry.mockClear();
+		credentialChangeListeners.onDeleted?.('credential-2');
+		await flushPromises();
+
+		expect(discoverRegistry).toHaveBeenCalledWith('github', 'credential-1');
+		expect(onRemove).not.toHaveBeenCalled();
+		expect(onCredentialDeleted).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
+	it('removes the connection when its persisted credential is deleted', async () => {
+		const onRemove = vi.fn();
+		const onCredentialDeleted = vi.fn();
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+			onRemove,
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				onCredentialDeleted,
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
+		await config.selectCredential('githubMcpOAuth2Api', 'credential-2');
+		credentialChangeListeners.onDeleted?.('credential-1');
+
+		expect(onRemove).toHaveBeenCalledOnce();
+		expect(onCredentialDeleted).toHaveBeenCalledOnce();
 		scope.stop();
 	});
 });

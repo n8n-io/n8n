@@ -92,6 +92,25 @@ function classifyResponseFailure(
 	return current;
 }
 
+async function listToolsWithinDeadline(
+	client: McpClient,
+	timeoutMs: number,
+): Promise<Awaited<ReturnType<McpClient['listTools']>>> {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(
+			() => reject(new Error(`MCP discovery timed out after ${timeoutMs}ms`)),
+			timeoutMs,
+		);
+	});
+
+	try {
+		return await Promise.race([client.listTools(), timeout]);
+	} finally {
+		if (timeoutId !== undefined) clearTimeout(timeoutId);
+	}
+}
+
 @Service()
 export class McpConnectionDiscoveryService {
 	private readonly logger: Logger;
@@ -143,7 +162,7 @@ export class McpConnectionDiscoveryService {
 		]);
 
 		try {
-			const tools = (await client.listTools()).map((tool) =>
+			const tools = (await listToolsWithinDeadline(client, discoveryTimeoutMs)).map((tool) =>
 				toTool(tool, prepared.clientConfig.name, prepared.registryServer),
 			);
 			if (client.getConnectionFailures().length > 0) return disconnected(failureReason);
@@ -153,6 +172,7 @@ export class McpConnectionDiscoveryService {
 				tools,
 			};
 		} catch (error) {
+			if (failureReason === 'unknown') failureReason = 'server_unavailable';
 			this.logger.warn('MCP discovery connection failed', {
 				errorType: ensureError(error).name,
 			});

@@ -54,10 +54,12 @@ vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
 	fetchAllMcpConnectionTools: (...args: unknown[]) => mockFetchAllMcpConnectionTools(...args),
 	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
-	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),
+}));
+vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
+	fetchMcpRegistryCatalog: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 }));
 
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
@@ -81,7 +83,7 @@ const makeConnection = (
 
 const readTool = (name: string) => ({ name, category: 'read' as const });
 
-const makeServer = (slug: string): McpRegistryServerResponse => ({
+const makeServer = (slug: string, isTemplated = false): McpRegistryServerResponse => ({
 	slug,
 	nodeTypeName: `@n8n/mcp-registry.${slug}`,
 	name: `com.test/${slug}`,
@@ -93,6 +95,7 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	icons: [],
 	credentials: [{ credentialType: `${slug}McpOAuth2Api`, name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
+	isTemplated,
 	isOfficial: true,
 	status: 'active',
 });
@@ -260,6 +263,17 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
 			expect(store.catalog).toHaveLength(1);
+		});
+
+		it('filters templated servers from the Instance AI catalog', async () => {
+			mockFetchMcpRegistryServers.mockResolvedValue([
+				makeServer('linear'),
+				makeServer('databricks', true),
+			]);
+
+			await store.fetchCatalogLazy();
+
+			expect(store.catalog?.map((server) => server.slug)).toEqual(['linear']);
 		});
 
 		it('fetches once for concurrent callers', async () => {

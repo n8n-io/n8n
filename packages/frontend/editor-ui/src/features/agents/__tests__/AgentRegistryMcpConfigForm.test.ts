@@ -103,6 +103,7 @@ function mountForm({
 
 	const data: AgentRegistryMcpModalData = {
 		kind: 'registryMcpServer',
+		projectId: 'project-1',
 		mcpServer: {
 			name: 'github',
 			authentication: 'githubMcpOAuth2Api',
