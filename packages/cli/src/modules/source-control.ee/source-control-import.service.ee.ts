@@ -1122,7 +1122,7 @@ export class SourceControlImportService {
 				} catch (error) {
 					if (!(error instanceof PolicyViolationError)) throw error;
 
-					this.logger.warn(`Skipping credential ${id}: blocked by the content-import policy`);
+					this.logger.warn(`Skipping credential ${id}: blocked by policy`);
 
 					return {
 						id,

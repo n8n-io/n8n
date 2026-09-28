@@ -175,7 +175,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		if (skipped.length === 0) return;
 
 		this.logger.warn(
-			`Skipped ${skipped.length} ${skipped.length === 1 ? 'credential' : 'credentials'} blocked by the content-import policy:`,
+			`Skipped ${skipped.length} ${skipped.length === 1 ? 'credential' : 'credentials'} blocked by policy:`,
 		);
 		for (const { id, name, violations } of skipped) {
 			this.logger.warn(`  - ${name ?? id ?? 'unknown'}: ${violations.join(', ')}`);
@@ -253,7 +253,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			if (!(error instanceof PolicyViolationError)) throw error;
 
 			this.logger.warn(
-				`Skipping credential ${credential.id ?? credential.name ?? 'unknown'}: blocked by the content-import policy`,
+				`Skipping credential ${credential.id ?? credential.name ?? 'unknown'}: blocked by policy`,
 			);
 
 			return {

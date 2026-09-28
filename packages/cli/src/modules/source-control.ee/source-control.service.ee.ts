@@ -600,7 +600,7 @@ export class SourceControlService {
 
 			if (contentImportPolicy.violations.length) {
 				this.logger.warn(
-					`Skipped credential ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					`Skipped credential ${id}: ${contentImportPolicy.violations.length} policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
 				);
 			}
