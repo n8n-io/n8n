@@ -32,6 +32,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import MoveToFolderModal from './MoveToFolderModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowListEventMap } from '../folders.types';
+import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
+
+vi.mock('@/app/api/workflow-dependencies');
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -172,6 +175,8 @@ describe('MoveToFolderModal', () => {
 			parentFolderId: TEST_WORKFLOW_RESOURCE.parentFolderId,
 			usedCredentials: [],
 		});
+
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({});
 
 		foldersStore = mockedStore(useFoldersStore);
 		foldersStore.fetchFolderUsedCredentials = vi.fn().mockResolvedValue([]);
@@ -738,6 +743,80 @@ describe('MoveToFolderModal', () => {
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
 		expect(screen.getByText(`Move workflow ${TEST_WORKFLOW_RESOURCE.name}`)).toBeInTheDocument();
 		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(TEST_WORKFLOW_RESOURCE.id);
+	});
+
+	describe('data table dependency warning', () => {
+		const mockDataTableDependencies = () => {
+			vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+				[TEST_WORKFLOW_RESOURCE.id]: {
+					dependencies: [
+						{ type: 'dataTableId', id: 'dt-1', name: 'Customers', projectId: personalProject.id },
+						{ type: 'dataTableId', id: 'dt-2', name: 'Orders', projectId: personalProject.id },
+					],
+					inaccessibleCount: 0,
+				},
+			});
+		};
+
+		const renderWorkflowModal = () =>
+			renderComponent({
+				props: {
+					data: {
+						resource: TEST_WORKFLOW_RESOURCE,
+						resourceType: 'workflow',
+						workflowListEventBus: mockEventBus,
+					},
+				},
+			});
+
+		const selectTeamProject = async (projectSelect: HTMLElement) => {
+			await userEvent.click(projectSelect);
+			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+			const teamProject = [...projectSelectDropdownItems].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			await userEvent.click(teamProject as Element);
+		};
+
+		it('should warn when transferring a workflow that uses data tables, without blocking the move', async () => {
+			settingsStore.settings = enableSharing;
+			mockDataTableDependencies();
+
+			const { getByTestId, getByText } = renderWorkflowModal();
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+			await selectTeamProject(getByTestId('project-sharing-select'));
+
+			await waitFor(() =>
+				expect(getByTestId('move-modal-data-tables-warning')).toBeInTheDocument(),
+			);
+			expect(getByText('2 data tables')).toBeInTheDocument();
+
+			const submitButton = getByTestId('confirm-move-folder-button');
+			await waitFor(() => expect(submitButton).toBeEnabled());
+		});
+
+		it('should not warn when moving a workflow within the same project', async () => {
+			settingsStore.settings = enableSharing;
+			mockDataTableDependencies();
+
+			const { getByTestId, queryByTestId } = renderWorkflowModal();
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
+		});
+
+		it('should not warn when the workflow has no data table dependencies', async () => {
+			settingsStore.settings = enableSharing;
+
+			const { getByTestId, queryByTestId } = renderWorkflowModal();
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+			await selectTeamProject(getByTestId('project-sharing-select'));
+
+			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should move selected workflow on submit', async () => {

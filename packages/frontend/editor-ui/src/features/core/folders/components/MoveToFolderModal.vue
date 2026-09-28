@@ -8,6 +8,7 @@ import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -73,6 +74,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const { fetchDependencies, getDependencies } = useDependencies();
 const toast = useToast();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
@@ -121,6 +123,14 @@ const unShareableCredentials = computed(() =>
 		},
 		[] as Array<IUsedCredential | ICredentialsResponse>,
 	),
+);
+
+const usedDataTables = computed(() =>
+	isTransferringOwnership.value
+		? (getDependencies(props.data.resource.id, 'workflow')?.dependencies.filter(
+				(dep) => dep.type === 'dataTableId',
+			) ?? [])
+		: [],
 );
 
 const searchFn = useAvailableProjectSearch();
@@ -395,6 +405,7 @@ onMounted(async () => {
 		const [workflow, credentials] = await Promise.all([
 			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
+			fetchDependencies([props.data.resource.id], 'workflow'),
 		]);
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
@@ -552,6 +563,32 @@ onMounted(async () => {
 					</template>
 				</I18nT>
 			</div>
+			<N8nCallout
+				v-if="usedDataTables.length"
+				theme="warning"
+				:class="$style.dataTablesCallout"
+				data-test-id="move-modal-data-tables-warning"
+			>
+				<I18nT keypath="projects.move.resource.modal.message.usedDataTables.note" scope="global">
+					<template #dataTables>
+						<N8nTooltip placement="top">
+							<span :class="$style.tooltipText">{{
+								i18n.baseText('projects.move.resource.modal.message.usedDataTables.count', {
+									adjustToNumber: usedDataTables.length,
+									interpolate: { count: usedDataTables.length },
+								})
+							}}</span>
+							<template #content>
+								<ul :class="$style.dataTablesList">
+									<li v-for="dataTable in usedDataTables" :key="dataTable.id">
+										{{ dataTable.name }}
+									</li>
+								</ul>
+							</template>
+						</N8nTooltip>
+					</template>
+				</I18nT>
+			</N8nCallout>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
@@ -610,5 +647,15 @@ onMounted(async () => {
 
 .credentialsCallout {
 	margin-top: var(--spacing--sm);
+}
+
+.dataTablesCallout {
+	margin-top: var(--spacing--sm);
+}
+
+.dataTablesList {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
 }
 </style>
