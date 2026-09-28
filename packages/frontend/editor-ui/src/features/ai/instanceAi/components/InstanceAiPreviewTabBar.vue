@@ -185,9 +185,12 @@ const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 	{ immediate: false },
 );
 
+let isPointerOnTab = false;
+
 function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
 	const target = { tabId: tab.id, reference: event.currentTarget };
+	isPointerOnTab = true;
 	stopCloseTimer();
 
 	if (hoveredTab.value) {
@@ -195,6 +198,11 @@ function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
 	} else {
 		startOpenTimer(target);
 	}
+}
+
+function handleTabMouseLeave() {
+	isPointerOnTab = false;
+	scheduleHideTabHoverCard();
 }
 
 function scheduleHideTabHoverCard() {
@@ -213,8 +221,12 @@ watch(hoveredTab, (tab) => {
 	if (!tab && hoverTarget.value) hideTabHoverCard();
 });
 
+// The card reports open when the pointer enters it, so it stays open while the
+// pointer is on it. It reports closed when the pointer leaves its grace area,
+// which can happen after the pointer is already on a tab.
 function handleHoverCardOpenChange(open: boolean) {
-	if (!open) hideTabHoverCard();
+	if (open) stopCloseTimer();
+	else if (!isPointerOnTab) scheduleHideTabHoverCard();
 }
 
 async function handleCopyLink(tab: ArtifactTab) {
@@ -251,7 +263,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 						:data-tab-id="tab.id"
 						:class="$style.tab"
 						@mouseenter="showTabHoverCard(tab, $event)"
-						@mouseleave="scheduleHideTabHoverCard"
+						@mouseleave="handleTabMouseLeave"
 						@contextmenu="hideTabHoverCard"
 					>
 						<N8nIcon
