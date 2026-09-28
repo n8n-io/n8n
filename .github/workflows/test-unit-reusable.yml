@@ -273,8 +273,10 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # One package runs on this runner, so use every CPU. The CI default
+      # (half the CPUs) is for jobs that run many suites at once.
       - name: Test Nodes
-        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
