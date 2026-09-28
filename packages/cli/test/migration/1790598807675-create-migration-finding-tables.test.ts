@@ -54,6 +54,42 @@ describe('CreateMigrationFindingTables migration', () => {
 		});
 	}
 
+	async function insertWorkflow(workflowId: string): Promise<void> {
+		await withContext(async (context) => {
+			const table = context.escape.tableName('workflow_entity');
+			await context.runQuery(
+				`INSERT INTO ${table} ("id", "name", "active", "nodes", "connections", "versionId", "createdAt", "updatedAt")
+				 VALUES (:id, :name, false, '[]', '{}', :versionId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+				{ id: workflowId, name: `wf ${workflowId}`, versionId: `version-${workflowId}` },
+			);
+		});
+	}
+
+	async function insertFinding(
+		workflowId: string,
+		{ ruleId = 'rule-a', status = 'open' }: { ruleId?: string; status?: string } = {},
+	): Promise<void> {
+		await withContext(async (context) => {
+			const table = context.escape.tableName('migration_finding');
+			await context.runQuery(
+				`INSERT INTO ${table} ("targetVersion", "ruleId", "workflowId", "status", "statusChangedAt")
+				 VALUES ('v3', :ruleId, :workflowId, :status, CURRENT_TIMESTAMP)`,
+				{ ruleId, workflowId, status },
+			);
+		});
+	}
+
+	async function countFindings(workflowId: string): Promise<number> {
+		return await withContext(async (context) => {
+			const table = context.escape.tableName('migration_finding');
+			const rows = await context.runQuery<Array<{ count: number | string }>>(
+				`SELECT COUNT(*) AS count FROM ${table} WHERE "workflowId" = :workflowId`,
+				{ workflowId },
+			);
+			return Number(rows[0].count);
+		});
+	}
+
 	it('creates both tables, removes them on revert, and creates them again', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 		for (const table of TABLES) expect(await hasTable(table)).toBe(true);
@@ -72,5 +108,40 @@ describe('CreateMigrationFindingTables migration', () => {
 		await insertSyncRecord('v3');
 
 		await expect(insertSyncRecord('v9')).rejects.toThrow();
+	});
+
+	it('rejects a second finding for the same target version, rule and workflow', async () => {
+		await runSingleMigration(MIGRATION_NAME);
+		await insertWorkflow('wf-1');
+		await insertFinding('wf-1');
+
+		await expect(insertFinding('wf-1')).rejects.toThrow();
+		// A different rule for the same workflow is still allowed.
+		await insertFinding('wf-1', { ruleId: 'rule-b' });
+		expect(await countFindings('wf-1')).toBe(2);
+	});
+
+	it('deletes the findings of a deleted workflow', async () => {
+		await runSingleMigration(MIGRATION_NAME);
+		await insertWorkflow('wf-1');
+		await insertWorkflow('wf-2');
+		await insertFinding('wf-1');
+		await insertFinding('wf-2');
+
+		await withContext(async (context) => {
+			const table = context.escape.tableName('workflow_entity');
+			await context.runQuery(`DELETE FROM ${table} WHERE "id" = :id`, { id: 'wf-1' });
+		});
+
+		expect(await countFindings('wf-1')).toBe(0);
+		expect(await countFindings('wf-2')).toBe(1);
+	});
+
+	it('limits status to the known values', async () => {
+		await runSingleMigration(MIGRATION_NAME);
+		await insertWorkflow('wf-1');
+		await insertFinding('wf-1', { status: 'wont_fix' });
+
+		await expect(insertFinding('wf-1', { ruleId: 'rule-b', status: 'bogus' })).rejects.toThrow();
 	});
 });
