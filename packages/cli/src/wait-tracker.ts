@@ -10,6 +10,7 @@ import {
 	UnexpectedError,
 	UserError,
 	type IRun,
+	type IWorkflowBase,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
 } from 'n8n-workflow';
@@ -180,6 +181,7 @@ export class WaitTracker {
 				parentExecution,
 				this.activeExecutions.getPostExecutePromise(executionId),
 				{ executionId, workflowId },
+				fullExecutionData.workflowData,
 			);
 		}
 	}
@@ -198,6 +200,7 @@ export class WaitTracker {
 		parentExecution: RelatedExecution,
 		executePromise: Promise<IRun | undefined>,
 		childExecution?: RelatedExecution,
+		childWorkflowData?: IWorkflowBase,
 	): Promise<void> {
 		try {
 			const subworkflowResults = await executePromise;
@@ -208,6 +211,7 @@ export class WaitTracker {
 				parentExecution.executionId,
 				subworkflowResults,
 				childExecution,
+				childWorkflowData,
 			);
 
 			// An unpatched parent has nothing of this child's to resume on: it is parked on a
@@ -235,6 +239,7 @@ export class WaitTracker {
 		parentExecutionId: string,
 		subworkflowResults: IRun,
 		childExecution?: RelatedExecution,
+		childWorkflowData?: IWorkflowBase,
 	): Promise<boolean> {
 		let patched = false;
 
@@ -244,6 +249,7 @@ export class WaitTracker {
 					parentExecutionId,
 					subworkflowResults,
 					childExecution,
+					childWorkflowData,
 				);
 			},
 			MAX_PARENT_RESUME_ATTEMPTS,
@@ -370,7 +376,7 @@ export class WaitTracker {
 		// A crashed or cancelled child is terminal but often carries neither an error nor node
 		// output. Resuming on it would re-run the parent's node disabled, passing the parent's
 		// own input off as the sub-workflow's result, so leave the parent parked instead.
-		if (!(await this.patchParent(parentId, childRun, childExecution))) {
+		if (!(await this.patchParent(parentId, childRun, childExecution, child.workflowData))) {
 			this.logger.warn('Parent not patched with the sub-execution result, leaving it parked', {
 				parentExecutionId: parentId,
 				childExecutionId: child.id,

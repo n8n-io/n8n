@@ -43,6 +43,8 @@ import {
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
+	collectSubWorkflowOutput,
+	getSubWorkflowOutputPolicy,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
@@ -322,6 +324,13 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+
+	if (runData.executionData) {
+		runData.executionData.subWorkflowOutput ??= getSubWorkflowOutputPolicy(
+			workflowData.nodes,
+			options.returnLastRunOnly ?? false,
+		);
+	}
 
 	try {
 		await Container.get(WorkflowPreExecute).run(
@@ -722,7 +731,9 @@ async function startExecution(
 
 		return {
 			executionId,
-			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
+			data: data.data.subWorkflowOutput
+				? await collectSubWorkflowOutput(data, workflow, data.data.subWorkflowOutput)
+				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
 			...summarizeDynamicCredentialsUsage(data.data),

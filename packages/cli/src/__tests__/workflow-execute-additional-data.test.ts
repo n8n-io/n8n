@@ -21,6 +21,7 @@ import type {
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
 	IRunExecutionData,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -65,6 +66,7 @@ const LAST_NODE_EXECUTED = 'Last node executed';
 const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionData[] | null> }) =>
 	mock<IRun>({
 		data: {
+			subWorkflowOutput: undefined,
 			resultData: {
 				runData: {
 					[LAST_NODE_EXECUTED]: [
@@ -207,6 +209,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('blocked');
 
 			expect(activeExecutions.add).not.toHaveBeenCalled();
+		});
+
+		it.each([false, true])(
+			'persists caller lastRunOnly=%s before the child starts',
+			async (returnLastRunOnly) => {
+				const workflowData = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Start',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.3,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+				activeExecutions.add.mockImplementationOnce(async (runData) => {
+					expect(runData.executionData?.subWorkflowOutput).toEqual({
+						lastRunOnly: returnLastRunOnly,
+					});
+					throw new Error('Stop after persistence check');
+				});
+				await expect(
+					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+						...mock<ExecuteWorkflowOptions>(),
+						loadedWorkflowData: workflowData,
+						loadedRunData: undefined,
+						returnLastRunOnly,
+					}),
+				).rejects.toThrow('Stop after persistence check');
+			},
+		);
+
+		it('keeps the saved output policy when supplied run data is reused', async () => {
+			const executionData = createRunExecutionData({ subWorkflowOutput: { lastRunOnly: true } });
+			activeExecutions.add.mockImplementationOnce(async (runData) => {
+				expect(runData.executionData?.subWorkflowOutput).toEqual({ lastRunOnly: true });
+				throw new Error('Stop after persistence check');
+			});
+			await expect(
+				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+					...mock<ExecuteWorkflowOptions>(),
+					loadedWorkflowData: undefined,
+					loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
+					returnLastRunOnly: false,
+				}),
+			).rejects.toThrow('Stop after persistence check');
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
@@ -467,6 +518,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const getMockRunWithCredentialFlags = (task: Partial<ITaskData>, executedByUserId?: string) =>
 				mock<IRun>({
 					data: {
+						subWorkflowOutput: undefined,
 						resultData: {
 							runData: {
 								[LAST_NODE_EXECUTED]: [
@@ -573,6 +625,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				) =>
 					mock<IRun>({
 						data: {
+							subWorkflowOutput: undefined,
 							resultData: {
 								runData: {
 									[LAST_NODE_EXECUTED]: [{ startTime: 100, ...task }],
@@ -2023,6 +2076,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			return {
 				mode: overrides.mode ?? 'manual',
 				data: {
+					subWorkflowOutput: undefined,
 					resultData: {
 						runData: overrides.runData ?? twoRunsOnTerminalNode,
 						pinData: overrides.pinData,
