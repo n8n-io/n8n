@@ -18,7 +18,7 @@ import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
-import { JOB_TYPE_NAME } from './constants';
+import { JOB_TYPE_NAME, JOB_WAIT_RECHECK_INTERVAL_MS } from './constants';
 import { JobProcessor } from './job-processor';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
@@ -43,6 +43,13 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 /** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
+type PendingJobWait = {
+	jobId: string;
+	resolve: () => void;
+	reject: (error: Error) => void;
+	recheckTimer: NodeJS.Timeout;
+};
+
 @Service()
 export class ScalingService {
 	/** Bull queues keyed by queue name. Pool queues are created lazily. */
@@ -53,6 +60,12 @@ export class ScalingService {
 	private createBullQueue?: (name: string) => JobQueue;
 
 	private jobResults = new Map<string, JobFinishedProps>();
+
+	/** Mains waiting for a queued job to end, keyed by execution ID. */
+	private pendingJobWaits = new Map<string, PendingJobWait>();
+
+	/** Execution ID for each job a main is waiting for, for Bull events keyed by job ID. */
+	private executionIdByJobId = new Map<string, string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -241,6 +254,7 @@ export class ScalingService {
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
+		for (const executionId of this.pendingJobWaits.keys()) this.clearJobWait(executionId);
 	}
 
 	private async stopWorker() {
@@ -341,6 +355,72 @@ export class ScalingService {
 		return result;
 	}
 
+	/**
+	 * Wait until the worker reports the job as finished, or Bull reports it as
+	 * failed. Rejects with the failure reason, like Bull's `job.finished()`.
+	 *
+	 * Bull's `job.finished()` is not used because it never settles when the
+	 * completion event is missed: `removeOnComplete` deletes the job before
+	 * Bull's poll can see it, so the poll, its listeners and the caller's
+	 * closure stay alive until restart. Here a missed event is covered by a
+	 * slow recheck of the execution status in the DB.
+	 */
+	async waitForJob(job: Job): Promise<void> {
+		const { executionId } = job.data;
+
+		// The worker may have reported the result before this wait was registered.
+		if (this.jobResults.has(executionId)) return;
+
+		await new Promise<void>((resolve, reject) => {
+			const jobId = job.id.toString();
+			// ponytail: one status query per minute per in-flight execution; move to
+			// a single batched query if thousands of executions are in flight at once
+			const recheckTimer = setInterval(() => {
+				void this.recheckJobWait(executionId);
+			}, JOB_WAIT_RECHECK_INTERVAL_MS);
+			this.pendingJobWaits.set(executionId, { jobId, resolve, reject, recheckTimer });
+			this.executionIdByJobId.set(jobId, executionId);
+		});
+	}
+
+	private settleJobWait(executionId: string, error?: Error) {
+		const wait = this.clearJobWait(executionId);
+		if (!wait) return;
+
+		if (error) wait.reject(error);
+		else wait.resolve();
+	}
+
+	private settleJobWaitByJobId(jobId: JobId, error?: Error) {
+		const executionId = this.executionIdByJobId.get(jobId.toString());
+		if (executionId) this.settleJobWait(executionId, error);
+	}
+
+	/** Drop the wait without settling it, e.g. when the caller cancelled the execution. */
+	private clearJobWait(executionId: string) {
+		const wait = this.pendingJobWaits.get(executionId);
+		if (!wait) return undefined;
+
+		clearInterval(wait.recheckTimer);
+		this.pendingJobWaits.delete(executionId);
+		this.executionIdByJobId.delete(wait.jobId);
+		return wait;
+	}
+
+	/** Settle a wait whose completion event was missed, once the DB shows the execution ended. */
+	private async recheckJobWait(executionId: string) {
+		if (!this.pendingJobWaits.has(executionId)) return;
+
+		const execution = await this.executionRepository.findSingleExecution(executionId);
+		if (!execution || execution.status === 'new' || execution.status === 'running') return;
+
+		this.logger.warn(
+			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
+			{ executionId, status: execution.status },
+		);
+		this.settleJobWait(executionId);
+	}
+
 	async getPendingJobCounts() {
 		let active = 0;
 		let waiting = 0;
@@ -408,6 +488,9 @@ export class ScalingService {
 
 	async stopJob(job: Job) {
 		const props = { jobId: job.id, executionId: job.data.executionId };
+
+		// A removed job emits no completion event, and the caller handles the cancellation
+		this.clearJobWait(job.data.executionId);
 
 		try {
 			if (await job.isActive()) {
@@ -549,6 +632,8 @@ export class ScalingService {
 						jobId,
 						success: msg.success,
 					});
+
+					this.settleJobWait(msg.executionId);
 					break;
 				case 'job-failed':
 					this.logger.error(
@@ -563,6 +648,8 @@ export class ScalingService {
 							jobId,
 						},
 					);
+
+					this.settleJobWait(msg.executionId, new Error(msg.errorMsg));
 					break;
 				case 'abort-job':
 					break; // only for worker
@@ -581,6 +668,12 @@ export class ScalingService {
 					assertNever(msg);
 			}
 		});
+
+		// Failures such as a stall are reported only by Bull, not by the worker
+		queue.on('global:failed', (jobId: JobId, failedReason: string) => {
+			this.settleJobWaitByJobId(jobId, new Error(failedReason));
+		});
+		queue.on('global:completed', (jobId: JobId) => this.settleJobWaitByJobId(jobId));
 
 		if (this.isQueueMetricsEnabled) {
 			queue.on('global:completed', () => this.jobCounters.completed++);

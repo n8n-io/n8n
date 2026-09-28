@@ -821,7 +821,7 @@ export class WorkflowRunner {
 				});
 
 				try {
-					await job.finished();
+					await this.scalingService.waitForJob(job);
 				} catch (error) {
 					if (
 						error instanceof Error &&
