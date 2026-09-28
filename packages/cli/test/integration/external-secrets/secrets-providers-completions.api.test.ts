@@ -41,6 +41,7 @@ Container.set(LicenseState, licenseMock);
 
 mockInstance(ExternalSecretsConfig, {
 	externalSecretsForProjects: true,
+	configFilePath: '',
 });
 
 mockInstance(Cipher, mockCipher());

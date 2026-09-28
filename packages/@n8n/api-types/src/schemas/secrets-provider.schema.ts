@@ -35,6 +35,11 @@ export type SecretsProviderConnectionTestState = z.infer<
 	typeof secretsProviderConnectionTestStateSchema
 >;
 
+export const secretsProviderConnectionManagedBySchema = z.enum(['api', 'config-file']);
+export type SecretsProviderConnectionManagedBy = z.infer<
+	typeof secretsProviderConnectionManagedBySchema
+>;
+
 // ==========
 // #endregion
 
@@ -82,6 +87,7 @@ export const secretProviderConnectionSchema = z.object({
 	type: secretsProviderTypeSchema,
 	state: secretsProviderStateSchema,
 	isEnabled: z.boolean(),
+	managedBy: secretsProviderConnectionManagedBySchema,
 	projects: z.array(connectionProjectSummarySchema),
 	settings: z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>,
 	secretsCount: z.number(),

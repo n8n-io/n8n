@@ -4,10 +4,12 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| configSourcedFields | text |  | true |  |  | Comma-joined names of settings fields whose value came from the config file's fromEnv/fromFile indirection. Redacted unconditionally in API responses, regardless of the provider's own typeOptions.password flag. NULL for api-managed connections. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | encryptedSettings | text |  | false |  |  |  |
 | id | integer |  | false | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) |  |  |
 | isEnabled | boolean | false | false |  |  |  |
+| managedBy | varchar(20) | 'api'::character varying | false |  |  | Whether this connection is managed through the internal REST API/UI (api) or provisioned declaratively from the external secrets config file (config-file). |
 | providerKey | varchar(128) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  | Type of secrets provider. Possible values: awsSecretsManager, gcpSecretsManager, vault, azureKeyVault, infisical |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -16,11 +18,13 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_secrets_provider_connection_managedBy | CHECK | CHECK ((("managedBy")::text = ANY ((ARRAY['api'::character varying, 'config-file'::character varying])::text[]))) |
 | PK_4350ae85e76f9ba7df1370acb5d | PRIMARY KEY | PRIMARY KEY (id) |
 | secrets_provider_connection_createdAt_not_null | n | NOT NULL "createdAt" |
 | secrets_provider_connection_encryptedSettings_not_null | n | NOT NULL "encryptedSettings" |
 | secrets_provider_connection_id_not_null | n | NOT NULL id |
 | secrets_provider_connection_isEnabled_not_null | n | NOT NULL "isEnabled" |
+| secrets_provider_connection_managedBy_not_null | n | NOT NULL "managedBy" |
 | secrets_provider_connection_providerKey_not_null | n | NOT NULL "providerKey" |
 | secrets_provider_connection_type_not_null | n | NOT NULL type |
 | secrets_provider_connection_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -40,10 +44,12 @@ erDiagram
 "public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
 
 "public.secrets_provider_connection" {
+  text configSourcedFields
   timestamp_3__with_time_zone createdAt
   text encryptedSettings
   integer id
   boolean isEnabled
+  varchar_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt

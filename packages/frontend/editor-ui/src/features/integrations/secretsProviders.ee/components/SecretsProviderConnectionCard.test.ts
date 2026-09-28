@@ -6,6 +6,7 @@ import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/
 import { DateTime } from 'luxon';
 import { createTestingPinia } from '@pinia/testing';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{
@@ -47,6 +48,7 @@ describe('SecretsProviderConnectionCard', () => {
 		name: 'aws-production',
 		type: 'awsSecretsManager',
 		isEnabled: true,
+		managedBy: 'api',
 		state: 'connected',
 		projects: [],
 		secretsCount: 5,
@@ -351,5 +353,84 @@ describe('SecretsProviderConnectionCard', () => {
 		});
 
 		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
+	it('disables edit and delete, but keeps reload enabled, when managed by config file', async () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:delete', 'externalSecretsProvider:sync'];
+
+		const configFileManagedProvider: SecretProviderConnection = {
+			...mockProvider,
+			managedBy: 'config-file',
+			state: 'connected',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find(
+			(t) => t.type === configFileManagedProvider.type,
+		);
+
+		renderComponent({
+			pinia,
+			props: { provider: configFileManagedProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		await openActionsMenu();
+
+		expect(await screen.findByTestId('action-edit')).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByTestId('action-delete')).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByTestId('action-reload')).not.toHaveAttribute('aria-disabled');
+	});
+
+	it('disables activate and share when managed by config file', async () => {
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'external-secrets': {
+				multipleConnections: true,
+				forProjects: true,
+				roleBasedAccess: false,
+				systemRolesEnabled: false,
+			},
+		};
+
+		const configFileManagedProvider: SecretProviderConnection = {
+			...mockProvider,
+			managedBy: 'config-file',
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find(
+			(t) => t.type === configFileManagedProvider.type,
+		);
+
+		renderComponent({
+			pinia,
+			props: { provider: configFileManagedProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		await openActionsMenu();
+
+		expect(await screen.findByTestId('action-activate')).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByTestId('action-share')).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('shows a managed-by-config-file badge only when managed by config file', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		const { unmount } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+		expect(screen.queryByTestId('managed-by-config-file-badge')).not.toBeInTheDocument();
+		unmount();
+
+		renderComponent({
+			pinia,
+			props: {
+				provider: { ...mockProvider, managedBy: 'config-file' },
+				providerTypeInfo,
+				canUpdate: true,
+			},
+		});
+		expect(screen.getByTestId('managed-by-config-file-badge')).toHaveTextContent(
+			'Managed by config file',
+		);
 	});
 });

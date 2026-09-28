@@ -57,10 +57,12 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.secrets_provider_connection" {
+  text configSourcedFields
   timestamp_3__with_time_zone createdAt
   text encryptedSettings
   integer id
   boolean isEnabled
+  varchar_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt

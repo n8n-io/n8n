@@ -52,4 +52,23 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 */
 	@Column({ default: false })
 	isEnabled: boolean;
+
+	/**
+	 * Whether this connection is managed through the internal REST API/UI ('api')
+	 * or provisioned declaratively from the external secrets config file ('config-file').
+	 * Config-file-managed connections reject update/delete through the API/UI —
+	 * the file is the only way to change them.
+	 */
+	@Column({ default: 'api' })
+	managedBy: 'api' | 'config-file';
+
+	/**
+	 * Names of settings fields whose value came from the config file's `fromEnv`/`fromFile`
+	 * indirection, stored comma-joined. These are redacted unconditionally in API responses,
+	 * regardless of the provider's own `typeOptions.password` flag — a config-sourced value is
+	 * treated as sensitive even when the provider itself doesn't flag it (e.g. AWS `accessKeyId`).
+	 * `null` for api-managed connections, which have no such indirection to track.
+	 */
+	@Column({ type: 'simple-array', nullable: true })
+	configSourcedFields: string[] | null;
 }

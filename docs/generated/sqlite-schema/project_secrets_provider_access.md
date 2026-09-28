@@ -65,10 +65,12 @@ erDiagram
   datetime_3_ updatedAt
 }
 "secrets_provider_connection" {
+  TEXT configSourcedFields
   datetime_3_ createdAt
   TEXT encryptedSettings
   INTEGER id
   boolean isEnabled
+  varchar_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   datetime_3_ updatedAt

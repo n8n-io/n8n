@@ -165,6 +165,49 @@ describe('RedactionService', () => {
 			expect(result).toEqual({});
 		});
 
+		it('should redact fields named in additionalFieldNames even without typeOptions.password', () => {
+			const data = {
+				accessKeyId: 'AKIAEXAMPLE',
+				region: 'us-east-1',
+			};
+
+			const properties = [createProperty('accessKeyId'), createProperty('region')];
+
+			const result = service.redact(data, properties, ['accessKeyId']);
+
+			expect(result).toEqual({
+				accessKeyId: CREDENTIAL_BLANKING_VALUE,
+				region: 'us-east-1',
+			});
+		});
+
+		it('should redact a field in additionalFieldNames that also happens to be password-flagged, without double effect', () => {
+			const data = { secretAccessKey: 'shh' };
+			const properties = [createProperty('secretAccessKey', true)];
+
+			const result = service.redact(data, properties, ['secretAccessKey']);
+
+			expect(result).toEqual({ secretAccessKey: CREDENTIAL_BLANKING_VALUE });
+		});
+
+		it('should ignore additionalFieldNames entries not present in data', () => {
+			const data = { region: 'us-east-1' };
+			const properties = [createProperty('region')];
+
+			const result = service.redact(data, properties, ['accessKeyId']);
+
+			expect(result).toEqual({ region: 'us-east-1' });
+		});
+
+		it('should default additionalFieldNames to none when omitted', () => {
+			const data = { accessKeyId: 'AKIAEXAMPLE' };
+			const properties = [createProperty('accessKeyId')];
+
+			const result = service.redact(data, properties);
+
+			expect(result).toEqual({ accessKeyId: 'AKIAEXAMPLE' });
+		});
+
 		it('should always redact oauthTokenData field', () => {
 			const data = {
 				oauthTokenData: { token: 'secret' },

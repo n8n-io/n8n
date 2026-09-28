@@ -32,6 +32,7 @@ Container.set(LicenseState, licenseMock);
 
 mockInstance(ExternalSecretsConfig, {
 	externalSecretsForProjects: true,
+	configFilePath: '',
 });
 
 describe('Project deletion with external secrets', () => {
@@ -268,5 +269,49 @@ describe('Project deletion with external secrets', () => {
 		expect(remainingOwnerConnection).not.toBeNull();
 		expect(remainingOwnerAccess).not.toBeNull();
 		expect(remainingUserAccess).not.toBeNull();
+	});
+
+	test('rejects deletion of a project referenced by a config-file-managed connection', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Config File Project', owner);
+
+		const connection = await connectionRepository.save(
+			connectionRepository.create({
+				providerKey: 'configFileScoped',
+				type: 'awsSecretsManager',
+				encryptedSettings: '{}',
+				isEnabled: true,
+				managedBy: 'config-file',
+			}),
+		);
+		await projectAccessRepository.save(
+			projectAccessRepository.create({
+				secretsProviderConnectionId: connection.id,
+				projectId: project.id,
+				role: 'secretsProviderConnection:user',
+			}),
+		);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.delete(`/projects/${project.id}`)
+			.expect(400);
+
+		expect(response.body.message).toContain('Config File Project');
+		expect(response.body.message).toContain('configFileScoped');
+		expect(response.body.message).toContain('config file');
+
+		const [remainingProject, remainingConnection, remainingAccess] = await Promise.all([
+			projectRepository.findOneBy({ id: project.id }),
+			connectionRepository.findOneBy({ providerKey: 'configFileScoped' }),
+			projectAccessRepository.findOneBy({
+				projectId: project.id,
+				secretsProviderConnectionId: connection.id,
+			}),
+		]);
+
+		expect(remainingProject).not.toBeNull();
+		expect(remainingConnection?.isEnabled).toBe(true);
+		expect(remainingAccess).not.toBeNull();
 	});
 });

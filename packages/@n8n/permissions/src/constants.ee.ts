@@ -128,6 +128,7 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
+	externalSecretsProvider: ['list', 'read', 'update', 'sync'] as const,
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,

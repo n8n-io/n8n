@@ -33,4 +33,8 @@ export class ExternalSecretsConfig {
 	/** Whether to enable role based access control to manage secret providers */
 	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_ROLE_BASED_ACCESS')
 	externalSecretsRoleBasedAccess: boolean = true;
+
+	/** Path to a JSON file declaring external secrets connections to provision at boot. Empty disables config-as-code entirely. */
+	@Env('N8N_EXTERNAL_SECRETS_CONFIG_FILE')
+	configFilePath: string = '';
 }

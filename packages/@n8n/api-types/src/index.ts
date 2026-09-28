@@ -166,6 +166,7 @@ export {
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionProviderIdParamSchema,
+	providerKeyParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,
@@ -344,6 +345,7 @@ export type {
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
 	SecretsProviderAccessRole,
+	SecretsProviderConnectionManagedBy,
 	ConnectionProjectSummary,
 	SecretProviderConnectionListItem,
 	SecretProviderConnection,
@@ -356,6 +358,9 @@ export type {
 export {
 	SECRETS_PROVIDER_KEY_PATTERN,
 	SECRETS_PROVIDER_KEY_REGEX,
+	secretsProviderTypeSchema,
+	secretProviderConnectionSchema,
+	secretsProviderConnectionManagedBySchema,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
