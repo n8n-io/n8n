@@ -30,11 +30,13 @@ export class CancelExecutionService {
 		const cancelled = await this.executionStore.cancelExecution(executionId);
 		// Loaded after the compare-and-set, so a lost race reports the status that won.
 		const execution = await this.executionStore.loadExecution(executionId);
-		if (!cancelled) return { status: execution.status };
+		if (!cancelled && execution.status !== 'cancelled') return { status: execution.status };
 
 		// After the execution ended, like the failure sweep, so a step planned or
-		// claimed in between finds the execution ended and refuses.
+		// claimed in between finds the execution ended and refuses. Repeated on a
+		// repeated cancel, so a retry heals a sweep that failed the first time.
 		await this.stepStore.cancelPendingSteps(executionId);
+		if (!cancelled) return { status: 'cancelled' };
 
 		// Only the request whose write won announces the end.
 		this.lifecycleEventPublisher.publish({
