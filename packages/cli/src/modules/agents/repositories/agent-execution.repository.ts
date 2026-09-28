@@ -1,7 +1,7 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
+import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -19,7 +19,7 @@ type AgentExecutionFinalizationValues = Pick<
 	Partial<
 		Pick<
 			AgentExecution,
-			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'hitlStatus'
 		>
 	>;
 
@@ -88,16 +88,29 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		values: AgentExecutionFinalizationValues,
 		staleBefore?: Date,
 		ctx: OperationContext = {},
+		costIncrement?: number,
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(
-			AgentExecution,
-			{
-				id: executionId,
-				status: 'running',
-				...(staleBefore ? { updatedAt: LessThanOrEqual(staleBefore) } : {}),
-			},
-			values as QueryDeepPartialEntity<AgentExecution>,
-		);
+		// Build the SET values once. `cost` is never set as a literal here —
+		// the only way to move cost is the additive `costIncrement` fragment
+		// below, which preserves any in-flight side-call `incrementCost` calls
+		// (`COALESCE(cost, 0) + :costIncrement` instead of `cost = :value`).
+		const setValues = { ...values } as QueryDeepPartialEntity<AgentExecution>;
+		const params: Record<string, unknown> = { executionId, status: 'running' };
+		if (costIncrement !== undefined && costIncrement > 0) {
+			setValues.cost = () => 'COALESCE(cost, 0) + :costIncrement';
+			params.costIncrement = costIncrement;
+		}
+		const qb = this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentExecution)
+			.set(setValues)
+			.where('id = :executionId', { executionId })
+			.andWhere('status = :status', { status: 'running' });
+		if (staleBefore) {
+			qb.andWhere('updatedAt <= :staleBefore', { staleBefore });
+			params.staleBefore = staleBefore;
+		}
+		const result = await qb.setParameters(params).execute();
 		return result.affected === 1;
 	}
 

@@ -774,47 +774,67 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
-		// The terminal status write and the main-loop cost increment run in one
-		// transaction so they commit or roll back together. Cost is applied
-		// additively (`COALESCE(cost, 0) + :cost`) rather than assigned, so a
-		// side-call `incrementCost` that lands before this terminal write is not
-		// overwritten. `record.totalCost` is the main-loop cost only; side calls
-		// price themselves onto the same column. If the cost increment fails, the
-		// whole transaction rolls back and the row stays `running`, so a retry
-		// of `finalizeExecution` can re-run `updateIfRunning` (it returns `true`
-		// again) instead of losing the cost on an already-terminal row.
-		await this.txRunner.run({}, async (ctx) => {
-			const finalized = await this.agentExecutionRepository.updateIfRunning(
-				executionId,
-				{
-					status,
-					stoppedAt,
-					duration: record.duration,
-					model: record.model,
-					promptTokens: record.usage?.promptTokens ?? null,
-					completionTokens: record.usage?.completionTokens ?? null,
-					totalTokens: record.usage?.totalTokens ?? null,
-					timeline: record.timeline.length > 0 ? record.timeline : null,
-					storedAt: 'db',
-					error: record.error,
-					failureSummary,
-					hitlStatus: hitlStatus ?? null,
-				},
-				undefined,
-				ctx,
-			);
-			if (!finalized) {
-				throw new OperationalError('Agent execution is no longer running', {
-					extra: { executionId },
-				});
+		// The terminal status write and the main-loop cost increment run as one
+		// atomic UPDATE (`status = ... , cost = COALESCE(cost, 0) + :costIncrement`),
+		// so they commit or roll back together. Cost is applied additively rather
+		// than assigned, so a side-call `incrementCost` that lands before this
+		// terminal write is not overwritten. `record.totalCost` is the main-loop
+		// cost only; side calls price themselves onto the same column.
+		//
+		// A transient failure (DB blip, deadlock) leaves the row `running`. The
+		// heartbeat is already stopped at this point, so without a retry the row
+		// would stay `running` until the sweeper marks it `interrupted` and the
+		// main-loop cost would be lost. Retry a bounded number of times with linear
+		// backoff; the total worst-case wait stays under the sweeper's 2-min grace
+		// so a finalized row is never prematurely reaped. The one error that is
+		// definitive — `OperationalError('Agent execution is no longer running')`
+		// — means another path already finalized the row, so it is not retried.
+		const terminalValues = {
+			status,
+			stoppedAt,
+			duration: record.duration,
+			model: record.model,
+			promptTokens: record.usage?.promptTokens ?? null,
+			completionTokens: record.usage?.completionTokens ?? null,
+			totalTokens: record.usage?.totalTokens ?? null,
+			timeline: record.timeline.length > 0 ? record.timeline : null,
+			storedAt: 'db' as const,
+			error: record.error,
+			failureSummary,
+			hitlStatus: hitlStatus ?? null,
+		};
+		const maxAttempts = 3;
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const finalized = await this.agentExecutionRepository.updateIfRunning(
+					executionId,
+					terminalValues,
+					undefined,
+					{},
+					record.totalCost ?? undefined,
+				);
+				if (!finalized) {
+					throw new OperationalError('Agent execution is no longer running', {
+						extra: { executionId },
+					});
+				}
+				return;
+			} catch (error) {
+				if (
+					error instanceof OperationalError &&
+					error.message === 'Agent execution is no longer running'
+				) {
+					throw error;
+				}
+				lastError = error;
+				if (attempt < maxAttempts) {
+					const delay = 100 * attempt;
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
 			}
-			// Add the main-loop cost onto whatever side-call increments already
-			// settled. `incrementCost` no-ops for zero/null and is not gated on
-			// `status = 'running'`, so this also covers the finalized row.
-			if (record.totalCost) {
-				await this.agentExecutionRepository.incrementCost(executionId, record.totalCost, ctx);
-			}
-		});
+		}
+		throw lastError;
 	}
 
 	private async moveFinalTimelineToBlob(

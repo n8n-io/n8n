@@ -303,6 +303,7 @@ describe('AgentExecutionService', () => {
 				expect.objectContaining({ timeline: initialTimeline }),
 				undefined,
 				expect.any(Object),
+				undefined,
 			);
 		});
 
@@ -575,7 +576,10 @@ describe('AgentExecutionService', () => {
 					.catch((error: unknown) => error);
 				expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
 				if (snapshotState === 'in flight') snapshot.reject(new Error('snapshot unavailable'));
-				await vi.advanceTimersByTimeAsync(1_000);
+				// The snapshot retry timer fires at 1s; `writeTerminalExecution`
+				// then runs its bounded retry (100ms + 200ms backoff) before
+				// rethrowing `cause`, so advance past all of it.
+				await vi.advanceTimersByTimeAsync(2_000);
 				expect(await finished).toBe(cause);
 				service.recordTimelineSnapshot(update);
 				await vi.advanceTimersByTimeAsync(180_000);
@@ -621,6 +625,7 @@ describe('AgentExecutionService', () => {
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
 			undefined,
 			expect.any(Object),
+			undefined,
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -694,6 +699,7 @@ describe('AgentExecutionService', () => {
 				}),
 				undefined,
 				expect.any(Object),
+				undefined,
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -788,6 +794,7 @@ describe('AgentExecutionService', () => {
 					}),
 					undefined,
 					expect.any(Object),
+					undefined,
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -1184,6 +1191,7 @@ describe('AgentExecutionService', () => {
 				}),
 				undefined,
 				expect.any(Object),
+				undefined,
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
@@ -1193,11 +1201,10 @@ describe('AgentExecutionService', () => {
 		it('applies the terminal main-loop cost additively so in-flight side-call increments survive', async () => {
 			// A side-call `incrementCost` that lands before the terminal write must
 			// not be overwritten by `cost = record.totalCost`. The terminal write
-			// therefore omits `cost` from `updateIfRunning` and adds the main-loop
-			// cost through the same additive `incrementCost` path the side calls use.
-			// Both run inside one transaction so a cost-increment failure rolls back
-			// the terminal status too (leaving the row `running` and the
-			// finalization retryable) instead of losing the cost on a terminal row.
+			// therefore folds the main-loop cost into `updateIfRunning` as an
+			// additive `costIncrement` (`COALESCE(cost, 0) + :costIncrement`) on the
+			// same column the side calls increment, so the two never race and a
+			// failure leaves nothing half-applied.
 			const record = makeMessageRecord({ totalCost: 0.05 });
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
@@ -1210,19 +1217,13 @@ describe('AgentExecutionService', () => {
 				record,
 			});
 
-			const [, terminalPayload] = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, terminalPayload, , , costIncrement] = lastCall;
 			expect(terminalPayload).not.toHaveProperty('cost');
-			// The cost increment runs inside the same transaction as the terminal
-			// write, so it receives the transaction context.
-			const terminalTxCtx = txRunner.run.mock.calls.at(-1)![0];
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
-				'execution-1',
-				0.05,
-				terminalTxCtx,
-			);
-			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionRepository.incrementCost.mock.invocationCallOrder[0],
-			);
+			expect(costIncrement).toBe(0.05);
+			// The cost is folded into the terminal UPDATE, so no separate
+			// `incrementCost` call is issued for the main loop.
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
 		});
 
 		it('does not issue a cost increment when the terminal run has no priced usage', async () => {
@@ -1238,50 +1239,61 @@ describe('AgentExecutionService', () => {
 				record,
 			});
 
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, , , , costIncrement] = lastCall;
+			expect(costIncrement).toBeUndefined();
 			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
 		});
 
-		it('rolls back the terminal write when the main-loop cost increment fails so a retry can re-finalize', async () => {
-			// The terminal status write and the main-loop cost increment run in
-			// one transaction. If the cost increment fails, the whole
-			// transaction rolls back: the row stays `running` and
-			// `finalizeExecution` throws, so the caller can retry instead of
-			// losing the main-loop cost on an already-terminal row.
-			const record = makeMessageRecord({ totalCost: 0.05 });
-			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
-			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('cost db down'));
+		it('retries the terminal write when it fails transiently so the row is finalized with cost', async () => {
+			// The terminal status write and the main-loop cost increment run as one
+			// atomic UPDATE. A transient failure (DB blip, deadlock) leaves the row
+			// `running` because nothing committed. The heartbeat is already stopped,
+			// so without a retry the row would stay `running` until the sweeper
+			// marks it `interrupted` and the main-loop cost would be lost.
+			// `writeTerminalExecution` retries a bounded number of times with linear
+			// backoff; the row is only terminal once a retry succeeds.
+			vi.useFakeTimers();
+			try {
+				const rows = new Map<string, { status: string; cost: number }>([
+					['execution-1', { status: 'running', cost: 0 }],
+				]);
+				agentExecutionRepository.updateIfRunning.mockImplementation(
+					async (id, values, _staleBefore, _ctx, costIncrement) => {
+						const row = rows.get(id);
+						if (row?.status !== 'running') return false;
+						row.status = values.status;
+						if (typeof costIncrement === 'number' && costIncrement > 0) {
+							row.cost += costIncrement;
+						}
+						return true;
+					},
+				);
+				// First attempt fails before mutating any state; the retry succeeds.
+				agentExecutionRepository.updateIfRunning.mockRejectedValueOnce(new Error('db down'));
 
-			await expect(
-				service.finalizeExecution('execution-1', {
+				const record = makeMessageRecord({ totalCost: 0.05 });
+				const finalize = service.finalizeExecution('execution-1', {
 					threadId: 'thread-1',
 					agentId: 'agent-1',
 					agentName: 'Agent',
 					projectId: 'project-1',
 					userMessage: 'Run',
 					record,
-				}),
-			).rejects.toThrow('cost db down');
+				});
+				await vi.advanceTimersByTimeAsync(1000);
+				await finalize;
 
-			// The failed attempt ran the terminal write and the cost increment,
-			// but the broadcast never ran because finalization threw before it.
-			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(1);
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
-			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
-
-			// A retry succeeds: `updateIfRunning` returns true again (the row
-			// is still `running` after the rollback) and the cost increment
-			// now applies, so the main-loop cost is not lost.
-			await service.finalizeExecution('execution-1', {
-				threadId: 'thread-1',
-				agentId: 'agent-1',
-				agentName: 'Agent',
-				projectId: 'project-1',
-				userMessage: 'Run',
-				record,
-			});
-			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(2);
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
-			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+				// After the failed attempt the row is still `running` with no cost
+				// (the throw happened before any state mutation). After the retry
+				// the row is `success` with the main-loop cost applied.
+				expect(rows.get('execution-1')).toEqual({ status: 'success', cost: 0.05 });
+				expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(2);
+				expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
