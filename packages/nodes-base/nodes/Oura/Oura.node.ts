@@ -74,7 +74,7 @@ export class Oura implements INodeType {
 					//                             profile
 					// *********************************************************************
 
-					// https://cloud.ouraring.com/docs/personal-info
+					// https://cloud.ouraring.com/v2/docs
 
 					if (operation === 'get') {
 						// ----------------------------------
@@ -88,7 +88,7 @@ export class Oura implements INodeType {
 					//                             summary
 					// *********************************************************************
 
-					// https://cloud.ouraring.com/docs/daily-summaries
+					// https://cloud.ouraring.com/v2/docs
 
 					const qs: IDataObject = {};
 
