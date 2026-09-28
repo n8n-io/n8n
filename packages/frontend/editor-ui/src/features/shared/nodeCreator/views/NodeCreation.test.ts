@@ -5,7 +5,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodeCreation from './NodeCreation.vue';
-import type { AddedNodesAndConnections, XYPosition } from '@/Interface';
+import type { AddedNodesAndConnections } from '@/Interface';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
 import { useNodeCreatorStore } from '../nodeCreator.store';
 
@@ -120,15 +120,13 @@ describe('NodeCreation', () => {
 		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
 	});
 
-	it('emits the anchor position when Group is selected in the node creator', async () => {
+	it('uses regular node placement when Group is selected in the node creator', async () => {
 		const { getByTestId, emitted } = renderComponent({ pinia });
 
 		getByTestId('node-creator-stub-group').click();
 
 		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
-		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
-		expect(addEmptyGroupEvents[0][0]).toEqual([expect.any(Number), expect.any(Number)]);
-		expect(addEmptyGroupEvents[0][1]).toBe(false);
+		expect(emitted('addEmptyGroup')).toEqual([[false]]);
 		expect(emitted('toggleNodeCreator')).toEqual([
 			[{ createNodeActive: false, hasAddedNodes: true }],
 		]);
@@ -142,8 +140,7 @@ describe('NodeCreation', () => {
 		getByTestId('node-creator-stub-group').click();
 
 		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
-		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
-		expect(addEmptyGroupEvents[0][1]).toBe(true);
+		expect(emitted('addEmptyGroup')).toEqual([[true]]);
 	});
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };

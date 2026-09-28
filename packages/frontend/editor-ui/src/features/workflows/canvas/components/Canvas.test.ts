@@ -25,7 +25,7 @@ import {
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
@@ -1008,6 +1008,39 @@ describe('Canvas', () => {
 			return { group, groupNode, ...rendered };
 		};
 
+		it('selects an expanded empty group when its anchor is selected', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({
+					id: 'anchor',
+					type: NO_OP_NODE_TYPE,
+					parameters: { emptyGroupAnchor: true },
+				}),
+			]);
+			const group = workflowDocumentStore.createGroup(['anchor'], 'Empty group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['anchor'],
+				isCollapsed: false,
+			});
+			groupNode.data!.isEmptyGroup = true;
+			const rendered = renderComponent({
+				props: {
+					nodes: [groupNode, createCanvasNodeElement({ id: 'anchor', position: { x: 40, y: 40 } })],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			const vueFlow = useVueFlow(canvasId);
+
+			await waitFor(() => expect(vueFlow.findNode('anchor')).toBeDefined());
+			vueFlow.addSelectedNodes([vueFlow.findNode('anchor')!]);
+
+			await waitFor(() => expect(getSelectionRing(rendered.container)).toBeInTheDocument());
+		});
+
 		it('hides the selection toolbar when the selection is exactly one group', async () => {
 			const { groupNode, queryByTestId } = await setupExpandedGroupWithLooseNodes();
 			const vueFlow = useVueFlow(canvasId);
@@ -1631,7 +1664,59 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], true]);
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], [group.id]]);
+		});
+
+		it('only suppresses anchor preservation for explicitly selected groups', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a1', name: 'Node A1' }),
+				createTestNode({ id: 'a2', name: 'Node A2' }),
+				createTestNode({ id: 'b1', name: 'Node B1' }),
+			]);
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['a1', 'a2'] },
+				{ id: 'g2', name: 'Group 2', nodeIds: ['b1'] },
+			]);
+
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasGroupElement({ id: 'g1', nodeIds: ['a1', 'a2'] }),
+						createCanvasGroupElement({ id: 'g2', nodeIds: ['b1'], position: { x: 400, y: 0 } }),
+						createCanvasNodeElement({ id: 'a1', label: 'Node A1' }),
+						createCanvasNodeElement({ id: 'a2', label: 'Node A2' }),
+						createCanvasNodeElement({ id: 'b1', label: 'Node B1', position: { x: 400, y: 120 } }),
+					],
+				},
+				global: {
+					provide: {
+						[NodeGroupViewKey as symbol]: createNodeGroupViewMock(false),
+					},
+				},
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(5),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!, vueFlow.findNode('b1')!]);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
+					expect.arrayContaining(['group:g1', 'a1', 'a2', 'b1']),
+				),
+			);
+
+			await fireEvent.keyDown(document, { key: 'Backspace' });
+			await fireEvent.keyUp(document, { key: 'Backspace' });
+
+			const deleteEvent = rendered.emitted()['delete:nodes']?.at(-1) as
+				| [string[], string[]?]
+				| undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
+			expect(ids).toEqual(expect.arrayContaining(['a1', 'a2', 'b1']));
+			expect(deleteWholeGroupIds).toEqual(['g1']);
 		});
 	});
 
@@ -1843,6 +1928,24 @@ describe('Canvas', () => {
 			expect(useContextMenu().target.value?.source).toBe('canvas');
 			// The whole selection is targeted: the loose node plus the group members
 			expect([...useContextMenu().targetNodeIds.value].sort()).toEqual(['a', 'b', 'node-3']);
+		});
+
+		it('only deletes explicitly selected groups from a mixed context-menu selection', async () => {
+			const { group, groupNode, looseNode, getByTestId, emitted } = await renderWithGroup();
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() => expect(useContextMenu().isOpen.value).toBe(true));
+			await waitFor(() => expect(getByTestId('context-menu-item-delete')).toBeInTheDocument());
+			await fireEvent.click(getByTestId('context-menu-item-delete'));
+
+			const deleteEvent = emitted()['delete:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
+			expect(ids).toEqual(expect.arrayContaining(['a', 'b', 'node-3']));
+			expect(deleteWholeGroupIds).toEqual([group.id]);
 		});
 
 		it('copies the group members through the copy action', async () => {

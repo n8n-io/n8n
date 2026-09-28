@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
 import { computed, defineAsyncComponent, nextTick } from 'vue';
-import { DEFAULT_NODE_SIZE, getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
+import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
+	isNodeCreatorOpenFromConnection,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
@@ -16,7 +17,6 @@ import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
-	XYPosition,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
 import { useNodeCreatorStore } from '../nodeCreator.store';
@@ -56,7 +56,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
-	addEmptyGroup: [position: XYPosition, connectToLastInteractedNode: boolean];
+	addEmptyGroup: [connectToLastInteractedNode: boolean];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
@@ -71,12 +71,6 @@ const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
 const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
-
-const connectionOpenSources = new Set([
-	NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-]);
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -114,12 +108,7 @@ function addEmptyGroup() {
 		(document.activeElement as HTMLElement).blur();
 	}
 
-	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
-	const position = getMidCanvasPosition(props.nodeViewScale, offset);
-	position[0] -= DEFAULT_NODE_SIZE[0] / 2;
-	position[1] -= DEFAULT_NODE_SIZE[1] / 2;
-
-	emit('addEmptyGroup', position, connectionOpenSources.has(nodeCreatorStore.openSource));
+	emit('addEmptyGroup', isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource));
 }
 
 function closeNodeCreator(hasAddedNodes = false) {

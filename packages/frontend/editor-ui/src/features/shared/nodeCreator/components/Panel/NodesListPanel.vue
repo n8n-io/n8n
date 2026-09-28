@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_EVALUATION,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isNodeCreatorOpenFromConnection,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
@@ -39,6 +41,8 @@ import CommunityNodeDocsLink from '@/features/settings/communityNodes/components
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
@@ -48,8 +52,21 @@ const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
+const uiStore = useUIStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const { isAdminOrOwner } = useUsersStore();
+
+const isAddingInsideGroup = computed(() => {
+	// Currently the only way to add an item inside group is from connection inside group
+	if (!isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource)) return false;
+
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	return (
+		sourceNodeId !== undefined &&
+		workflowDocumentStore.value.getGroupForNode(sourceNodeId) !== undefined
+	);
+});
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -216,17 +233,21 @@ watch(
 			return;
 		}
 		const view = matchedView(mergedNodes);
+		const viewItems = isAddingInsideGroup.value
+			? // Forbid adding groups inside groups (nesting not supported)
+				view.items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)
+			: view.items;
 		const viewStack: ViewStack = {
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
-			items: view.items as INodeCreateElement[],
+			items: viewItems as INodeCreateElement[],
 			nodeIcon: view.nodeIcon,
 			info: view.info,
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
 			// Root search should include all nodes and command items.
-			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
+			searchItems: getNodeCreatorSearchItems(mergedNodes, viewItems),
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);

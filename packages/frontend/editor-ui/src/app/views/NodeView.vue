@@ -68,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -76,6 +77,7 @@ import {
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
+	getEmptyGroupAnchor,
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -107,7 +109,7 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -528,8 +530,8 @@ function onDeleteNode(id: string) {
 	}
 }
 
-function onDeleteNodes(ids: string[], deleteWholeGroups = false) {
-	deleteNodes(ids, { preserveEmptyGroupAnchor: !deleteWholeGroups });
+function onDeleteNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+	deleteNodes(ids, { deleteWholeGroupIds });
 }
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
@@ -995,6 +997,23 @@ function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
 }
 
+function getOutputPlusEmptyGroupAnchorId(): string | undefined {
+	const isExplicitOutputAdd =
+		nodeCreatorStore.isCreateNodeActive &&
+		isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource);
+	if (!isExplicitOutputAdd || !uiStore.lastInteractedWithNodeId) return undefined;
+
+	const { type, mode } = parseCanvasConnectionHandleString(uiStore.lastInteractedWithNodeHandle);
+	if (type !== NodeConnectionTypes.Main || mode !== CanvasConnectionMode.Output) return undefined;
+
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	const group = workflowDocumentStore.value.getGroupForNode(sourceNodeId);
+	if (!group) return undefined;
+
+	const anchor = getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes);
+	return anchor?.id === sourceNodeId ? anchor.id : undefined;
+}
+
 async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
 	dragAndDrop = false,
@@ -1003,8 +1022,9 @@ async function onAddNodesAndConnections(
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
+	const replaceNodeId = nodeCreatorReplaceTargetId.value ?? getOutputPlusEmptyGroupAnchorId();
 
-	if (nodeCreatorReplaceTargetId.value !== undefined) {
+	if (replaceNodeId !== undefined) {
 		uiStore.resetLastInteractedWith();
 
 		nodes = nodes.map((x) => ({
@@ -1018,7 +1038,7 @@ async function onAddNodesAndConnections(
 		position,
 		viewport: viewportBoundaries.value,
 		telemetry: true,
-		replaceNodeId: nodeCreatorReplaceTargetId.value,
+		replaceNodeId,
 	});
 
 	if (addedNodes.length > 0) {
@@ -1027,23 +1047,48 @@ async function onAddNodesAndConnections(
 	}
 }
 
-async function onAddEmptyGroup(position: XYPosition, connectToLastInteractedNode = false) {
+async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
 	isAddingEmptyGroup.value = true;
+	// Seed generic placement at the viewport center while retaining collision handling for later groups.
+	if (
+		workflowDocumentStore.value.allNodes.length === 0 &&
+		viewportDimensions.value.width > 0 &&
+		viewportDimensions.value.height > 0
+	) {
+		const { xMin, xMax, yMin, yMax } = viewportBoundaries.value;
+		lastClickPosition.value = [
+			(xMin + xMax - DEFAULT_NODE_SIZE[0]) / 2,
+			(yMin + yMax - DEFAULT_NODE_SIZE[1]) / 2,
+		];
+	}
 
 	const ownsUndoBulk = historyStore.currentBulkAction === null;
 	if (ownsUndoBulk) historyStore.startRecordingUndo();
 
 	try {
+		const selectedGroup = canvasStore.selectedGroupId
+			? workflowDocumentStore.value.getGroupById(canvasStore.selectedGroupId)
+			: undefined;
+		const selectedEmptyGroupAnchor = selectedGroup
+			? getEmptyGroupAnchor(selectedGroup, workflowDocumentStore.value.allNodes)
+			: undefined;
+
+		// A selected empty group uses its hidden anchor as the normal add-node connection source.
+		if (!connectToLastInteractedNode && selectedEmptyGroupAnchor) {
+			uiStore.resetLastInteractedWith();
+			uiStore.lastInteractedWithNodeId = selectedEmptyGroupAnchor.id;
+		}
+		const shouldConnect = connectToLastInteractedNode || selectedEmptyGroupAnchor !== undefined;
+
 		const { addedNodes } = await addNodesAndConnections(
 			[
 				{
 					type: NO_OP_NODE_TYPE,
 					name: 'No Operation, do nothing',
-					position,
 					parameters: { emptyGroupAnchor: true },
 					placeholder: true,
-					isAutoAdd: !connectToLastInteractedNode,
+					isAutoAdd: !shouldConnect,
 					openDetail: false,
 				},
 			],
