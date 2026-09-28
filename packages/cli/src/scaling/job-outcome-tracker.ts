@@ -56,13 +56,15 @@ export class JobOutcomeTracker {
 	}
 
 	/**
-	 * Record a result the worker reported. Bull broadcasts it to every main and
-	 * webhook process, but only the process that enqueued the job ever pops it.
+	 * Record that the worker reported the job as finished, with the result when
+	 * the worker sent one. Bull broadcasts the message to every main and webhook
+	 * process, but only the process that enqueued the job ever pops the result.
 	 */
-	recordFinished(executionId: string, result: JobFinishedProps) {
-		if (!this.activeExecutions.has(executionId)) return;
+	recordFinished(executionId: string, result?: JobFinishedProps) {
+		if (result && this.activeExecutions.has(executionId)) {
+			this.results.set(executionId, result);
+		}
 
-		this.results.set(executionId, result);
 		this.settle(executionId);
 	}
 

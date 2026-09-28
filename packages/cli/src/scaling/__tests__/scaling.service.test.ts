@@ -878,6 +878,17 @@ describe('ScalingService', () => {
 				);
 			});
 
+			it('should record a v1 job-finished message without a result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith('exec-123', undefined);
+			});
+
 			it('should record a job-failed report as a handled error', () => {
 				getHandler('global:progress')('job-789', {
 					kind: 'job-failed',

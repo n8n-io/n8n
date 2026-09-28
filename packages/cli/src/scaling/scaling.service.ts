@@ -530,25 +530,28 @@ export class ScalingService {
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
 					 *
-					 * Bull broadcasts this message to every main and webhook process,
-					 * but only the process that enqueued the job ever pops the result.
+					 * A v1 message from an older worker carries no result, but it
+					 * still ends the wait for the job.
 					 */
-					if (msg.version === 2) {
-						this.jobOutcomeTracker.recordFinished(msg.executionId, {
-							success: msg.success,
-							error: msg.error,
-							status: msg.status,
-							lastNodeExecuted: msg.lastNodeExecuted,
-							usedDynamicCredentials: msg.usedDynamicCredentials,
-							metadata: msg.metadata,
-							startedAt: new Date(msg.startedAt),
-							stoppedAt: new Date(msg.stoppedAt),
-							// Dropping `waitTill` here makes main mistake a waiting execution
-							// for a finished one and delete it when the workflow does not
-							// save successful executions
-							waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
-						});
-					}
+					this.jobOutcomeTracker.recordFinished(
+						msg.executionId,
+						msg.version === 2
+							? {
+									success: msg.success,
+									error: msg.error,
+									status: msg.status,
+									lastNodeExecuted: msg.lastNodeExecuted,
+									usedDynamicCredentials: msg.usedDynamicCredentials,
+									metadata: msg.metadata,
+									startedAt: new Date(msg.startedAt),
+									stoppedAt: new Date(msg.stoppedAt),
+									// Dropping `waitTill` here makes main mistake a waiting execution
+									// for a finished one and delete it when the workflow does not
+									// save successful executions
+									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+								}
+							: undefined,
+					);
 
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,

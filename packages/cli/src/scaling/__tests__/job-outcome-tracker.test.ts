@@ -55,6 +55,15 @@ describe('JobOutcomeTracker', () => {
 			expect(tracker.pop('exec-1')).toBe(result);
 		});
 
+		it('should resolve when an older worker reports the job as finished without a result', async () => {
+			const wait = tracker.waitFor(job);
+
+			tracker.recordFinished('exec-1');
+
+			await expect(wait).resolves.toBeUndefined();
+			expect(tracker.pop('exec-1')).toBeUndefined();
+		});
+
 		it('should resolve at once when the result arrived before the wait started', async () => {
 			tracker.recordFinished('exec-1', result);
 
