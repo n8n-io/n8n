@@ -269,7 +269,7 @@ export interface BuildResult {
 	createdFolderIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
-	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
+	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
@@ -307,7 +307,7 @@ export interface BuildResult {
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
-	 *  outage never lands in the builder's baseline (TRUST-374). */
+	 *  outage never lands in the builder's baseline. */
 	providerOutage?: string;
 	/** Ledger from the credential-setup lane, when one ran. Absent for every
 	 *  ordinary case; present even on a failed build, so the deterministic checks
@@ -319,7 +319,7 @@ export interface BuildResult {
  * True when the build failed for a reason the agent doesn't own — seeding,
  * transport or the model provider. Everything downstream that has to attribute
  * a failure (the scenario row, the ungraded expectations) reads this one
- * predicate so the three answers can't drift apart (TRUST-375).
+ * predicate so the three answers can't drift apart.
  */
 export function buildFailedOnInfra(build: BuildResult): boolean {
 	if (build.success) return false;
@@ -481,7 +481,7 @@ export interface BuildWorkflowConfig {
 	 *  also supplies the live turn). */
 	seed?: CaseSeed;
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
-	 *  after a successful build, before any scenario runs (TRUST-311). */
+	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
@@ -560,7 +560,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const seededProjectIds: string[] = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
-	// TRUST-311 follow-up: scenario seed tables are created empty before the build
+	// Scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
 	const scenarioTableIdsByName: Record<string, string> = {};
@@ -951,7 +951,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 		}
 
-		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
+		// Create the case's execution-scenario data tables EMPTY
 		// BEFORE the build turn, so the agent discovers the real table (Data Table
 		// list/schema) and binds its real id — the production-faithful flow where the
 		// user's table pre-exists. Rows are reset+seeded per scenario

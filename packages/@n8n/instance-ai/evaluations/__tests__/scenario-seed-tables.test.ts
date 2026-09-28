@@ -14,7 +14,7 @@ import {
 } from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
 
-// TRUST-311 follow-up: scenario data tables are created EMPTY before the build
+// Scenario data tables are created EMPTY before the build
 // turn (so the agent discovers the real table and binds its real id), then row-
 // seeded per scenario just before that scenario executes (so build-time row
 // mutations don't leak across scenarios, and scenarios can carry different rows).
