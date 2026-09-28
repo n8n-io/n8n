@@ -1,8 +1,47 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import * as a from 'assert/strict';
 import { type AiAgentRequest, type INode, NodeConnectionTypes } from 'n8n-workflow';
 
 import { type DirectedGraph } from './directed-graph';
+
+/**
+ * The node that runs `tool` — the one the Tool Executor stands in for.
+ *
+ * A tool reaches its root through non-main connections only, so the walk keeps
+ * to those: following main connections as well would leave the root behind and
+ * land on a node *downstream* of it, whose main parents are the nodes the run
+ * is supposed to skip.
+ *
+ * The walk stops at the first node that has main parents, because those are the
+ * connections the Tool Executor inherits. A node without them cannot supply
+ * them — an Agent Tool between the tool and the top Agent, for one — so the walk
+ * carries on past it. When no node on the way has main parents, the farthest one
+ * is the root and the Tool Executor starts the run on its own.
+ */
+function findRootNode(graph: DirectedGraph, tool: INode): INode | undefined {
+	const seen = new Set<INode>([tool]);
+	const queue = [tool];
+	let farthest: INode | undefined;
+
+	while (queue.length > 0) {
+		const current = queue.shift() as INode;
+
+		for (const connection of graph.getDirectChildConnections(current)) {
+			if (connection.type === NodeConnectionTypes.Main) continue;
+			if (seen.has(connection.to)) continue;
+			seen.add(connection.to);
+
+			const hasMainParents = graph
+				.getDirectParentConnections(connection.to)
+				.some((cn) => cn.type === NodeConnectionTypes.Main);
+			if (hasMainParents) return connection.to;
+
+			farthest = connection.to;
+			queue.push(connection.to);
+		}
+	}
+
+	return farthest;
+}
 
 export function rewireGraph(
 	tool: INode,
@@ -10,15 +49,12 @@ export function rewireGraph(
 	agentRequest?: AiAgentRequest,
 ): DirectedGraph {
 	const modifiedGraph = graph.clone();
-	const children = modifiedGraph.getChildren(tool);
+	const rootNode = findRootNode(modifiedGraph, tool);
 
-	if (children.size === 0) {
+	// Nothing runs this tool, so there is no node to stand in for.
+	if (!rootNode) {
 		return graph;
 	}
-
-	const rootNode = [...children][children.size - 1];
-
-	a.ok(rootNode);
 
 	const allIncomingConnection = modifiedGraph
 		.getDirectParentConnections(rootNode)

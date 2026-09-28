@@ -1,8 +1,9 @@
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
-export type AgentBackgroundJobKind = 'subagent' | 'workflow';
-export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
+export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 
 /**
  * Durable registry of background jobs dispatched by top-level agents: detached

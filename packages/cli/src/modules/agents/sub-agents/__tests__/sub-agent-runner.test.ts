@@ -19,6 +19,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentMessageQueueService } from '../../agent-message-queue.service';
+import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
@@ -131,13 +133,19 @@ describe('SubAgentRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
-			new AgentTurnExecutionService(logger, agentExecutionService),
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+				mock<AgentMessageQueueService>(),
+			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,

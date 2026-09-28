@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_TEST: {
@@ -8,9 +9,40 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user started a manual workflow test from the AI Assistant setup panel. This event does not report execution success.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string().optional(),
+			test_request_id: z.string().optional(),
+		}),
+	},
+	SETUP_TEST_FINISHED: {
+		name: 'AI Assistant setup test finished',
+		description:
+			'The setup panel observed a terminal test result or a failed run request. A failed request does not prove that execution did not start. Leaving setup before the result can omit this event.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			source: z.literal('instance_ai_setup_panel'),
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			test_request_id: z.string(),
+			execution_id: z.string().optional(),
+			status: z.enum(['success', 'error', 'crashed', 'canceled', 'request_failed']),
+		}),
+	},
+	SETUP_SAVED: {
+		name: 'AI Assistant workflow setup saved',
+		description:
+			'A setup surface observed saved requirements after applying changes. Completion covers the observed setup requirements, not credential validity or edits made while setup is closed.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			instance_id: z.string(),
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			source: z.enum(['instance_ai_setup_wizard', 'instance_ai_setup_panel']),
+			request_id: z.string().optional(),
+			items: z.array(z.object({ ...setupItemProperties, completed: z.boolean() })),
+			setup_complete: z.boolean(),
 		}),
 	},
 	MULTIPLE_NODES_SELECTED: {

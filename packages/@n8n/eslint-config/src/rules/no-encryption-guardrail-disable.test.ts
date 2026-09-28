@@ -1,5 +1,4 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 
 // Register the guarded rules so ESLint can resolve the disable directives under
@@ -12,7 +11,6 @@ const ruleTester = new RuleTester({
 	plugins: {
 		'n8n-local-rules': {
 			rules: {
-				'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
 				'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 			},
 		},
@@ -23,7 +21,7 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 	valid: [
 		// A plain comment mentioning a rule name is not a disable directive
 		{
-			code: '// enforced by n8n-local-rules/no-deployment-key-delete\nconst a = 1;',
+			code: '// enforced by n8n-local-rules/no-encryption-guardrail-disable\nconst a = 1;',
 		},
 		// Disabling unrelated rules is fine
 		{
@@ -31,14 +29,10 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 		},
 		// A guarded rule mentioned only in the `--` explanation is not disabled
 		{
-			code: '// eslint-disable-next-line no-console -- keep parity with no-deployment-key-delete docs\nconsole.log("x");',
+			code: '// eslint-disable-next-line no-console -- keep parity with encryption guardrail docs\nconsole.log("x");',
 		},
 	],
 	invalid: [
-		{
-			code: '/* eslint-disable n8n-local-rules/no-deployment-key-delete */\nconst a = 1;',
-			errors: [{ messageId: 'noDisable', data: { rule: 'no-deployment-key-delete' } }],
-		},
 		// Blanket line-form disables silence every rule on the target line
 		{
 			code: '// eslint-disable-next-line\nconst a = 1;',

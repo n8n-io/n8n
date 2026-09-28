@@ -89,7 +89,6 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
-			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 

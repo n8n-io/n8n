@@ -26,7 +26,7 @@ vi.mock('../../../v2/transport', async () => {
 	};
 });
 
-describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
+describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 
@@ -58,71 +58,31 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		);
 	};
 
+	// One case per resource: the router throws before it reads `operation`, so every operation
+	// of a hidden resource takes the same path. The `description` is pinned too, so a swapped
+	// entry in the router's guard map fails here.
 	it.each([
-		['create', 'create'],
-		['get', 'get'],
-		['getAll', 'getAll'],
-	])('chatMessage:%s throws a static error and issues no request under SP', async (_label, op) => {
-		selectSp({
-			resource: 'chatMessage',
-			operation: op,
-			chatId: 'chatID',
-			returnAll: true,
-			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
-			'mentions.mention': [
-				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
-			],
-		});
-
-		await expect(node.execute.call(ctx)).rejects.toThrow(
+		[
+			'chat',
+			'Chats are not available with the Service Principal credential',
+			'App-only Microsoft Graph has no signed-in user to read or create chats for. Use an OAuth2 credential for chat actions.',
+		],
+		[
+			'chatMember',
+			'Chat members are not available with the Service Principal credential',
+			'The chat picker cannot list chats app-only. Use an OAuth2 credential for chat actions.',
+		],
+		[
+			'chatMessage',
 			'Chat messages are not available with the Service Principal credential',
-		);
-		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
-	});
+			'App-only Microsoft Graph has no signed-in user. Use an OAuth2 credential for chat actions.',
+		],
+	])(
+		'%s throws a static error and issues no request under SP',
+		async (resource, message, description) => {
+			selectSp({ resource, operation: 'create' });
 
-	it.each(['create', 'get', 'getAll'])(
-		'chat:%s throws a static error and issues no request under SP',
-		async (operation) => {
-			selectSp({
-				resource: 'chat',
-				operation,
-				chatId: 'chatID',
-				returnAll: true,
-				chatType: 'oneOnOne',
-				// a participant row, so moving the guard below the row loop fires a GET /v1.0/users/...
-				'members.member': [
-					{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
-				],
-				'members.member[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
-			});
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'Chats are not available with the Service Principal credential',
-			);
-			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
-			// the guard reads only the `authentication` parameter, never the credential itself
-			expect(ctx.getCredentials).not.toHaveBeenCalled();
-		},
-	);
-
-	it.each(['add', 'getAll', 'remove'])(
-		'chatMember:%s throws a static error and issues no request under SP',
-		async (operation) => {
-			selectSp({
-				resource: 'chatMember',
-				operation,
-				chatId: 'chatID',
-				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
-				membershipId: 'MCMjMiMj',
-				returnAll: true,
-				options: {},
-			});
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'Chat members are not available with the Service Principal credential',
-			);
+			await expect(node.execute.call(ctx)).rejects.toMatchObject({ message, description });
 			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 			// the guard reads only the `authentication` parameter, never the credential itself
@@ -434,25 +394,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				1,
 			);
 		});
-	});
-
-	describe('chatMessage delete actions under SP', () => {
-		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
-			'chatMessage:%s throws a static error and issues no request under SP',
-			async (operation) => {
-				selectSp({
-					resource: 'chatMessage',
-					operation,
-					chatId: 'chatID',
-					messageId: '1698378560692',
-				});
-
-				await expect(node.execute.call(ctx)).rejects.toThrow(
-					'Chat messages are not available with the Service Principal credential',
-				);
-				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-			},
-		);
 	});
 
 	describe('channelMessage delete actions under SP', () => {

@@ -2,9 +2,6 @@ import type { CreateSlackAgentAppResponse, SlackAgentAppManifestResponse } from 
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
-import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -14,7 +11,12 @@ import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';
-import { childRecord, type SlackAppSetupSession, slackSetupCacheKey } from './slack-setup.types';
+import {
+	childRecord,
+	parseSlackAppSetupResponse,
+	type SlackAppSetupSession,
+	slackSetupCacheKey,
+} from './slack-setup.types';
 import { stringProperty } from '../../integration-helpers';
 
 export interface CreateSlackAppOptions {
@@ -36,27 +38,12 @@ export interface CompleteSlackAppInstallOptions {
 	state: string;
 }
 
-function hasSessionShape(value: unknown): value is SlackAppSetupSession {
-	const keys: Array<keyof SlackAppSetupSession> = [
-		'projectId',
-		'agentId',
-		'userId',
-		'appId',
-		'clientId',
-		'clientSecret',
-		'signingSecret',
-		'redirectUrl',
-	];
-	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
-}
-
 @Service()
 export class SlackManualSetupService {
 	constructor(
 		private readonly methods: SlackMethodsService,
 		private readonly userRepository: UserRepository,
 		private readonly cacheService: CacheService,
-		private readonly cipher: Cipher,
 		private readonly projectService: ProjectService,
 	) {}
 
@@ -79,15 +66,51 @@ export class SlackManualSetupService {
 			throw this.methods.slackError('create the Slack app', response);
 		}
 
-		const credentials = childRecord(response, 'credentials');
-		const appId = stringProperty(response, 'app_id');
-		const clientId = stringProperty(credentials, 'client_id');
-		const clientSecret = stringProperty(credentials, 'client_secret');
-		const signingSecret = stringProperty(credentials, 'signing_secret');
-		const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
-		if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
-			throw new BadRequestError('Slack returned an incomplete app setup response');
+		return await this.createInstallSession(options, redirectUrl, response);
+	}
+
+	async getManifest(options: GetSlackAppManifestOptions): Promise<SlackAgentAppManifestResponse> {
+		const agent = await this.methods.getAgent(options.agentId, options.projectId);
+		return {
+			manifest: this.methods.buildManifest(agent.name, options.projectId, options.agentId),
+		};
+	}
+
+	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
+		const session = await this.consumeSession(options.state);
+		if (session.projectId !== options.projectId || session.agentId !== options.agentId) {
+			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
+
+		const user = await this.getInstallUser(session);
+
+		const agent = await this.methods.getAgent(session.agentId, session.projectId);
+		const { accessToken, teamName } = await this.exchangeInstallCode(session, options.code);
+		await this.methods.connectBotCredential(agent, user, accessToken, {
+			...session,
+			...(teamName ? { teamName } : {}),
+		});
+	}
+
+	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
+		const cached = await this.cacheService.take<unknown>(slackSetupCacheKey(state));
+		if (typeof cached !== 'string') {
+			throw new BadRequestError('Slack app setup state has expired or is invalid');
+		}
+
+		const session = await this.methods.decodeSession(cached);
+		if (session) return session;
+
+		throw new BadRequestError('Slack app setup state has expired or is invalid');
+	}
+
+	private async createInstallSession(
+		options: CreateSlackAppOptions,
+		redirectUrl: string,
+		response: Record<string, unknown>,
+	): Promise<CreateSlackAgentAppResponse> {
+		const { appId, clientId, clientSecret, signingSecret, oauthAuthorizeUrl } =
+			parseSlackAppSetupResponse(response);
 
 		const state = randomBytes(32).toString('hex');
 		const setupSession = {
@@ -108,19 +131,7 @@ export class SlackManualSetupService {
 		};
 	}
 
-	async getManifest(options: GetSlackAppManifestOptions): Promise<SlackAgentAppManifestResponse> {
-		const agent = await this.methods.getAgent(options.agentId, options.projectId);
-		return {
-			manifest: this.methods.buildManifest(agent.name, options.projectId, options.agentId),
-		};
-	}
-
-	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
-		const session = await this.consumeSession(options.state);
-		if (session.projectId !== options.projectId || session.agentId !== options.agentId) {
-			throw new BadRequestError('Slack app setup state does not match this agent');
-		}
-
+	private async getInstallUser(session: SlackAppSetupSession): Promise<User> {
 		const user = await this.userRepository.findOne({
 			where: { id: session.userId },
 			relations: ['role'],
@@ -133,12 +144,14 @@ export class SlackManualSetupService {
 		if (!project) {
 			throw new ForbiddenError('You do not have permission to complete Slack app setup');
 		}
+		return user;
+	}
 
-		const agent = await this.methods.getAgent(session.agentId, session.projectId);
+	private async exchangeInstallCode(session: SlackAppSetupSession, code: string) {
 		const tokenResponse = await this.methods.callSlackApi(
 			'oauth.v2.access',
 			{
-				code: options.code,
+				code,
 				redirect_uri: session.redirectUrl,
 			},
 			{
@@ -158,26 +171,6 @@ export class SlackManualSetupService {
 
 		const team = childRecord(tokenResponse, 'team');
 		const teamName = stringProperty(team, 'name');
-		await this.methods.connectBotCredential(agent, user, accessToken, {
-			...session,
-			...(teamName ? { teamName } : {}),
-		});
-	}
-
-	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
-		const cached = await this.cacheService.take<unknown>(slackSetupCacheKey(state));
-		if (typeof cached !== 'string') {
-			throw new BadRequestError('Slack app setup state has expired or is invalid');
-		}
-
-		try {
-			const decrypted = await this.cipher.decryptV2(cached);
-			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
-			if (hasSessionShape(session)) return session;
-		} catch {
-			// Invalid encrypted state falls through to the shared callback error.
-		}
-
-		throw new BadRequestError('Slack app setup state has expired or is invalid');
+		return { accessToken, teamName };
 	}
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent } from 'vue';
+import { defineComponent, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
@@ -24,6 +24,7 @@ import type { IWorkflowDb } from '@/Interface';
 
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
+import type { AgentToolConfigModalData } from '../components/AgentToolConfigForm.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
@@ -128,12 +129,80 @@ const MCP_TOOL: INodeTypeDescription = {
 };
 
 let modalAttrs: Record<string, unknown> = {};
+let multiStepAttrs: Record<string, unknown> = {};
+let configFormData: AgentToolConfigModalData | null = null;
+let configuredResult: AgentJsonToolRef | AgentJsonMcpServerConfig | null = null;
+
+const AgentModalMultiStepStub = defineComponent({
+	name: 'AgentModalMultiStep',
+	inheritAttrs: false,
+	props: {
+		open: Boolean,
+		step: String,
+		title: String,
+		showBack: Boolean,
+		showFooter: Boolean,
+	},
+	emits: ['update:open', 'update:title', 'back', 'interactOutside'],
+	setup(props, { attrs }) {
+		watchEffect(() => {
+			multiStepAttrs = { ...attrs, ...props };
+		});
+		return {};
+	},
+	template: `
+		<section v-if="open" data-test-id="agent-modal-multi-step" :data-step="step">
+			<header>
+				<button v-if="showBack" data-test-id="agent-modal-back" @click="$emit('back')" />
+				<span>{{ title }}</span>
+			</header>
+			<slot />
+			<footer v-if="showFooter">
+				<slot name="footerLeft" />
+				<slot name="footerActions" />
+				<slot name="footer" />
+			</footer>
+		</section>
+	`,
+});
+
+const AgentToolConfigFormStub = defineComponent({
+	name: 'AgentToolConfigForm',
+	props: ['data'],
+	setup(props, { expose }) {
+		watchEffect(() => {
+			configFormData = props.data as AgentToolConfigModalData;
+		});
+		expose({
+			confirm: () => {
+				const data = props.data as AgentToolConfigModalData;
+				const result =
+					configuredResult ?? (data.kind === 'mcpServer' ? data.mcpServer : data.toolRef);
+				if (data.kind === 'mcpServer') {
+					data.onConfirm(result as AgentJsonMcpServerConfig);
+				} else {
+					data.onConfirm(result as AgentJsonToolRef);
+				}
+				return true;
+			},
+			remove: () => (props.data as AgentToolConfigModalData).onRemove?.(),
+			changeTitle: vi.fn(),
+		});
+		return {};
+	},
+	template: '<div data-test-id="agent-tool-config-form-stub" />',
+});
 
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	setup(_, { attrs }) {
-		modalAttrs = attrs;
+	props: {
+		persistentScrollbar: Boolean,
+	},
+	setup(props, { attrs }) {
+		watchEffect(() => {
+			modalAttrs = { ...attrs, ...props };
+		});
 		return {};
 	},
 	template:
@@ -169,8 +238,8 @@ function emitSearch(query: string) {
 }
 
 function emitCreateWorkflow() {
-	const listener = modalAttrs.onCreateWorkflow;
-	if (typeof listener !== 'function') throw new Error('Missing onCreateWorkflow');
+	const listener = modalAttrs.onCreate;
+	if (typeof listener !== 'function') throw new Error('Missing onCreate');
 	(listener as () => void)();
 }
 
@@ -180,6 +249,8 @@ const PROJECT_ID = 'project-1';
 const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper, {
 	global: {
 		stubs: {
+			AgentModalMultiStep: AgentModalMultiStepStub,
+			AgentToolConfigForm: AgentToolConfigFormStub,
 			ToolsConnectionModal: ToolsConnectionModalStub,
 			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
@@ -199,6 +270,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		vi.clearAllMocks();
 		uuidMockState.counter = 0;
 		modalAttrs = {};
+		multiStepAttrs = {};
+		configFormData = null;
+		configuredResult = null;
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -278,18 +352,41 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
+	function getConfigData(): AgentToolConfigModalData {
+		if (!configFormData) throw new Error('The configure step is not open');
+		return configFormData;
+	}
+
+	async function saveConfiguration(
+		result?: AgentJsonToolRef | AgentJsonMcpServerConfig,
+	): Promise<void> {
+		configuredResult = result ?? null;
+		const button = document.querySelector('[data-testid="agent-tool-config-save"]');
+		if (!(button instanceof HTMLButtonElement)) throw new Error('Missing Save button');
+		button.click();
+		await flushPromises();
+	}
+
+	async function removeConfiguration(): Promise<void> {
+		const button = document.querySelector('[data-testid="agent-tool-config-remove"]');
+		if (!(button instanceof HTMLButtonElement)) throw new Error('Missing Remove button');
+		button.click();
+		await flushPromises();
+	}
+
 	it('configures the suggestion footer copy', () => {
 		const { getByText } = render();
 
 		expect(getByText('Need another capability?')).toBeInTheDocument();
 		expect(getByText('Suggest a tool')).toBeInTheDocument();
+		expect(modalAttrs.persistentScrollbar ?? modalAttrs['persistent-scrollbar']).toBe(true);
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
 	// declared props. If those fall through onto ToolsConnectionModal the
 	// inherited `open` is always true while mounted and would pin the dialog
 	// open, so mount the way the loader does and drive it from the store.
-	it('drives the dialog from the store, not the inherited loader attrs', async () => {
+	it('does not forward inherited loader attributes to the picker', async () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
@@ -299,26 +396,30 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
-
-		uiStore.modalStateById[MODAL_NAME].open = false;
-		await flushPromises();
-		expect(modalAttrs.open).toBe(false);
+		expect(modalAttrs.active).toBeUndefined();
+		expect(modalAttrs.mode).toBeUndefined();
 	});
 
-	// The two dialogs are sequential, not stacked: this one steps aside for the
-	// config modal, then comes back when it closes, so cancelling returns to the
-	// list rather than dead-ending.
-	it('steps aside while the tool config modal is up, then returns', async () => {
+	it('opens configuration as the next step and returns with Back', async () => {
 		render();
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
-		uiStore.modalStateById.agentToolConfigModal.open = true;
+		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+		emitConnect(slack!);
 		await flushPromises();
-		expect(modalAttrs.open).toBe(false);
 
-		uiStore.modalStateById.agentToolConfigModal.open = false;
+		expect(multiStepAttrs.step).toBe('configure');
+		expect(getConfigData()).toMatchObject({
+			toolRef: { type: 'node', node: { nodeType: SLACK.name } },
+		});
+
+		const back = document.querySelector('[data-test-id="agent-modal-back"]');
+		if (!(back instanceof HTMLButtonElement)) throw new Error('Missing Back button');
+		back.click();
 		await flushPromises();
+
+		expect(multiStepAttrs.step).toBe('select');
 		expect(modalAttrs.open).toBe(true);
 	});
 
@@ -366,9 +467,14 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(workflow?.category).toBe('workflows');
 		expect(getItems().every((item) => item.category === 'workflows')).toBe(true);
 		expect(modalAttrs.categories).toEqual(['workflows']);
-		expect(modalAttrs.title).toBe('Workflows');
-		expect(modalAttrs.searchPlaceholder).toBe('Search workflows');
-		expect(modalAttrs.allowWorkflowCreation).toBe(true);
+		expect(modalAttrs.title).toBe('Add workflow');
+		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
+			'Search workflows',
+		);
+		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+			category: 'workflows',
+			label: 'Create workflow',
+		});
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
@@ -406,6 +512,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				nodeType: 'n8n-nodes-firecrawl-preview.firecrawl',
 			}),
 		);
+
+		expect(getConfigData()).toMatchObject({
+			toolRef: { type: 'node', node: { nodeType: COMMUNITY_INSTALLED.name } },
+		});
+		await saveConfiguration();
 
 		// The tool that gets added is the installed type, not the preview.
 		const [{ tools }] = onConfirm.mock.calls[0];
@@ -480,7 +591,35 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(availableSlack).toHaveLength(1);
 	});
 
-	it('opens the config modal when Connect is clicked on a node that needs setup', async () => {
+	it('excludes workflow refs from tool mode and preserves them when a node tool is added', async () => {
+		const workflowRef: AgentJsonToolRef = {
+			type: 'workflow',
+			workflowId: 'workflow-1',
+			workflow: 'Daily sales digest',
+			name: 'Daily sales digest',
+			description: 'Build the daily sales digest',
+			allOutputs: false,
+		};
+		const onConfirm = vi.fn();
+		render([workflowRef], onConfirm);
+		await flushPromises();
+
+		expect(getItems().some((item) => item.kind === 'workflow')).toBe(false);
+
+		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+		emitConnect(slack!);
+		await flushPromises();
+
+		const configuredRef = toolRef(SLACK.name);
+		await saveConfiguration(configuredRef);
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			tools: [workflowRef, configuredRef],
+			mcpServers: [],
+		});
+	});
+
+	it('opens the inline configure step when Add is clicked', async () => {
 		const onConfirm = vi.fn();
 		render([], onConfirm);
 		await flushPromises();
@@ -488,18 +627,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
 		expect(slack).toBeDefined();
 		emitConnect(slack!);
+		await flushPromises();
 
 		expect(onConfirm).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
-		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		expect(payload.name).toBe('agentToolConfigModal');
-		expect(payload.data.toolRef).toMatchObject({
-			type: 'node',
-			node: { nodeType: SLACK.name },
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(multiStepAttrs.step).toBe('configure');
+		expect(getConfigData()).toMatchObject({
+			toolRef: { type: 'node', node: { nodeType: SLACK.name } },
 		});
 	});
 
-	it('adds setup-less tools directly and commits them via onConfirm', async () => {
+	it('uses the configure step for setup-less tools and commits on Save', async () => {
 		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
 			[NodeConnectionTypes.AiTool]: [WIKIPEDIA.name],
 		};
@@ -510,8 +648,15 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
 		expect(wikipedia).toBeDefined();
 		emitConnect(wikipedia!);
+		await flushPromises();
 
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getConfigData()).toMatchObject({
+			toolRef: { type: 'node', name: 'Wikipedia' },
+		});
+		await saveConfiguration();
+
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools).toEqual([
@@ -537,15 +682,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
-		// Activating a connected node-tool row opens the config modal for a NEW
+		// Activating a connected node-tool row opens configuration for a new
 		// instance (fresh ref, empty parameters) — not an edit of the existing one.
-		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		expect(payload.name).toBe('agentToolConfigModal');
-		expect(payload.data.toolRef).toMatchObject({
-			type: 'node',
-			node: { nodeType: SLACK.name, nodeParameters: {} },
+		await flushPromises();
+		const data = getConfigData();
+		expect(data).toMatchObject({
+			toolRef: {
+				type: 'node',
+				node: { nodeType: SLACK.name, nodeParameters: {} },
+			},
 		});
-		expect(payload.data.existingToolNames).toContain(existing.name);
+		expect(data.existingToolNames).toContain(existing.name);
 
 		const configuredRef: AgentJsonToolRef = {
 			type: 'node',
@@ -557,7 +704,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				credentials: { slackApi: { id: 'c-2', name: 'Other Slack' } },
 			},
 		};
-		payload.data.onConfirm(configuredRef);
+		await saveConfiguration(configuredRef);
 
 		expect(onConfirm).toHaveBeenCalledWith({
 			tools: [existing, configuredRef],
@@ -576,21 +723,21 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		emitConnect(connected!);
 
 		// The connected row now opens config for a new instance; there is no
-		// remove callback on that flow (removal happens via the capabilities chips).
-		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		expect(payload.data.onRemove).toBeUndefined();
+		// Remove callback on that flow. Removal happens through the capability pills.
+		await flushPromises();
+		expect(getConfigData().onRemove).toBeUndefined();
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
-	it('appends a configured tool once the config modal saves', async () => {
+	it('appends a configured tool once the configure step saves', async () => {
 		const onConfirm = vi.fn();
 		render([], onConfirm);
 		await flushPromises();
 
 		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
 		emitConnect(slack!);
+		await flushPromises();
 
-		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
 		const configuredRef: AgentJsonToolRef = {
 			type: 'node',
 			name: 'Slack',
@@ -601,7 +748,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				credentials: { slackApi: { id: 'c-1', name: 'Prod Slack' } },
 			},
 		};
-		payload.data.onConfirm(configuredRef);
+		await saveConfiguration(configuredRef);
 
 		expect(onConfirm).toHaveBeenCalledWith({
 			tools: [configuredRef],
@@ -624,6 +771,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		emitConnect(getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`)!);
+		await flushPromises();
+
+		expect(getConfigData()).toMatchObject({
+			toolRef: { type: 'node', name: 'Wikipedia (1)' },
+		});
+		await saveConfiguration();
 
 		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools.map((tool: Extract<AgentJsonToolRef, { type: 'node' }>) => tool.name)).toEqual([
@@ -727,27 +880,27 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			);
 			expect(onConfirm).not.toHaveBeenCalled();
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			expect(payload).toMatchObject({
-				name: 'agentToolConfigModal',
-				data: {
-					projectId: PROJECT_ID,
-					toolRef: {
-						type: 'workflow',
-						workflowId: 'new-workflow-id',
-						workflow: 'My workflow 1',
-						name: 'My workflow 1',
-						description: '',
-						allOutputs: false,
-					},
+			const data = getConfigData();
+			expect(data).toMatchObject({
+				projectId: PROJECT_ID,
+				toolRef: {
+					type: 'workflow',
+					workflowId: 'new-workflow-id',
+					workflow: 'My workflow 1',
+					name: 'My workflow 1',
+					description: '',
+					allOutputs: false,
 				},
 			});
+			if (data.kind === 'mcpServer' || data.toolRef.type !== 'workflow') {
+				throw new Error('Expected a workflow tool');
+			}
 
 			const configuredRef: AgentJsonToolRef = {
-				...payload.data.toolRef,
+				...data.toolRef,
 				description: 'Create the daily sales digest',
 			};
-			payload.data.onConfirm(configuredRef);
+			await saveConfiguration(configuredRef);
 
 			expect(onConfirm).toHaveBeenCalledWith({
 				tools: [existingTool, configuredRef],
@@ -882,24 +1035,24 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			};
 		});
 
-		it('commits an added MCP server to the host once its config modal saves', async () => {
+		it('commits an added MCP server to the host once its configure step saves', async () => {
 			const onConfirm = vi.fn();
 			render([], onConfirm);
 			await flushPromises();
 
 			emitConnect(getItems().find((item) => item.id === `nodeType:${MCP_TOOL.name}`)!);
+			await flushPromises();
 
 			expect(onConfirm).not.toHaveBeenCalled();
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			expect(payload.data.kind).toBe('mcpServer');
+			expect(getConfigData().kind).toBe('mcpServer');
 
-			payload.data.onConfirm(SERVER);
+			await saveConfiguration(SERVER);
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [SERVER] });
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		});
 
-		it('removes a connected MCP server when its config modal asks to', async () => {
+		it('removes a connected MCP server from its configure step', async () => {
 			const onConfirm = vi.fn();
 			render([], onConfirm, [SERVER]);
 			await flushPromises();
@@ -908,8 +1061,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(connected?.title).toBe(SERVER.name);
 
 			emitConnect(connected!);
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			payload.data.onRemove();
+			await flushPromises();
+			expect(getConfigData().onRemove).toBeTypeOf('function');
+			await removeConfiguration();
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
 		});
@@ -964,36 +1118,39 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(modalAttrs.categories as string[]).not.toContain('n8n-connect');
 		});
 
-		it('opens the config modal with the managed credential pre-selected', async () => {
+		it('opens the configure step with the managed credential pre-selected', async () => {
 			const onConfirm = vi.fn();
 			render([], onConfirm);
 			await flushPromises();
 
 			const gateway = getItems().find((item) => item.id === `n8n-connect:${SLACK.name}`);
 			emitConnect(gateway!);
+			await flushPromises();
 
-			// Behaves like any other node tool — the config modal opens so the user
+			// Behaves like any other node tool. The configure step opens so the user
 			// can pick the operation — only the credential is handled for them.
 			expect(onConfirm).not.toHaveBeenCalled();
-			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			expect(payload.name).toBe('agentToolConfigModal');
-			expect(payload.data.toolRef.node.credentials).toEqual({
+			const data = getConfigData();
+			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+				throw new Error('Expected a node tool');
+			}
+			expect(data.toolRef.node.credentials).toEqual({
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 		});
 
-		it('commits the gateway tool once its config modal saves', async () => {
+		it('commits the gateway tool once its configure step saves', async () => {
 			const onConfirm = vi.fn();
 			render([], onConfirm);
 			await flushPromises();
 
 			const gateway = getItems().find((item) => item.id === `n8n-connect:${SLACK.name}`);
 			emitConnect(gateway!);
+			await flushPromises();
 
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			payload.data.onConfirm(payload.data.toolRef);
+			await saveConfiguration();
 
 			expect(onConfirm).toHaveBeenCalledTimes(1);
 			const [{ tools }] = onConfirm.mock.calls[0];
@@ -1020,15 +1177,18 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			const connected = getItems().find((item) => item.status === 'connected');
 			emitConnect(connected!);
+			await flushPromises();
 
 			// Activating a connected managed tool routes through the managed add
 			// path, so the new instance keeps the __aiGatewayManaged credential.
-			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-			expect(payload.name).toBe('agentToolConfigModal');
-			expect(payload.data.toolRef.node.credentials).toEqual({
+			const data = getConfigData();
+			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+				throw new Error('Expected a node tool');
+			}
+			expect(data.toolRef.node.credentials).toEqual({
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
-			expect(payload.data.existingToolNames).toContain(existing.name);
+			expect(data.existingToolNames).toContain(existing.name);
 		});
 	});
 });

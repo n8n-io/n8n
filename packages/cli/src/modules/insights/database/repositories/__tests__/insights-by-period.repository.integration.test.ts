@@ -9,7 +9,7 @@ import {
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { DbConnectionOptions, DbLockService, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, QueryRunner } from '@n8n/typeorm';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
@@ -22,7 +22,7 @@ import {
 	createMetadata,
 	createRawInsightsEvent,
 } from '../../entities/__tests__/db-utils';
-import type { InsightsByPeriod } from '../../entities/insights-by-period';
+import { InsightsByPeriod } from '../../entities/insights-by-period';
 import { TypeToNumber } from '../../entities/insights-shared';
 import type { InsightsAccessFilter } from '../insights-by-period.repository';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
@@ -382,6 +382,145 @@ describe('InsightsByPeriodRepository', () => {
 				const hourly = await runners[0].find();
 				expect(hourly).toHaveLength(1);
 				expect(hourly[0].value).toBe(3);
+			},
+		);
+	});
+
+	describe('concurrent pruning across processes', () => {
+		let repository: InsightsByPeriodRepository;
+		let otherInstance: DataSource;
+		let table: string;
+
+		beforeAll(async () => {
+			if (!isPostgres) return;
+			repository = Container.get(InsightsByPeriodRepository);
+			const { schema, tableName } = repository.metadata;
+			const esc = (name: string): string => repository.manager.connection.driver.escape(name);
+			table = schema ? `${esc(schema)}.${esc(tableName)}` : esc(tableName);
+			otherInstance = new DataSource(Container.get(DbConnectionOptions).getOptions());
+			await otherInstance.initialize();
+		});
+
+		afterAll(async () => {
+			if (otherInstance?.isInitialized) await otherInstance.destroy();
+			// Later blocks query a recent window and do not truncate, so leave none of these rows.
+			if (isPostgres) {
+				await truncateInsights();
+			}
+		});
+
+		async function truncateInsights(): Promise<void> {
+			await testDb.truncate([
+				'InsightsRaw',
+				'InsightsByPeriod',
+				'InsightsMetadata',
+				'WorkflowEntity',
+				'Project',
+			]);
+		}
+
+		async function seedRows(): Promise<{ old: number; fresh: number }> {
+			await truncateInsights();
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({ nodes: [] }, project);
+			const { metaId } = await createMetadata(workflow);
+			const now = DateTime.utc();
+			const row = (periodStart: DateTime): InsightsByPeriod => {
+				const event = new InsightsByPeriod();
+				event.metaId = metaId;
+				event.type = 'success';
+				event.value = 1;
+				event.periodUnit = 'hour';
+				event.periodStart = periodStart.startOf('hour').toJSDate();
+				return event;
+			};
+			const old = Array.from({ length: 200 }, (_, hour) =>
+				row(now.minus({ days: 11, hours: hour })),
+			);
+			const fresh = Array.from({ length: 24 }, (_, hour) =>
+				row(now.minus({ days: 1, hours: hour })),
+			);
+			await repository.save([...old, ...fresh]);
+			return { old: old.length, fresh: fresh.length };
+		}
+
+		async function holdTransaction(sql: string): Promise<QueryRunner> {
+			const holder = otherInstance.createQueryRunner();
+			await holder.connect();
+			await holder.startTransaction();
+			try {
+				await holder.query(sql);
+			} catch (error) {
+				await releaseHolder(holder);
+				throw error;
+			}
+			return holder;
+		}
+
+		/** `release()` alone returns an open transaction to the pool, whose locks outlive the test. */
+		async function releaseHolder(holder: QueryRunner): Promise<void> {
+			try {
+				if (holder.isTransactionActive) {
+					await holder.rollbackTransaction();
+				}
+			} finally {
+				await holder.release();
+			}
+		}
+
+		test.skipIf(!isPostgres)(
+			'waits for the rows another transaction is deleting and then finds nothing left',
+			async () => {
+				// ARRANGE
+				const seeded = await seedRows();
+				const holder = await holdTransaction(
+					`DELETE FROM ${table} WHERE "periodStart" <= now() - interval '10 days'`,
+				);
+
+				// ACT
+				let affected: number | null | undefined;
+				try {
+					const pending = repository.pruneOldData(10);
+					const outcome = await Promise.race([
+						pending.then(() => 'finished'),
+						sleep(300).then(() => 'blocked'),
+					]);
+					expect(outcome).toBe('blocked');
+					await holder.commitTransaction();
+					({ affected } = await pending);
+				} finally {
+					await releaseHolder(holder);
+				}
+
+				// ASSERT
+				expect(affected).toBe(0);
+				await expect(repository.count()).resolves.toBe(seeded.fresh);
+			},
+		);
+
+		test.skipIf(!isPostgres)(
+			'deletes only the old rows the other transaction left behind',
+			async () => {
+				// ARRANGE
+				const seeded = await seedRows();
+				const holder = await holdTransaction(
+					`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} WHERE "periodStart" <= now() - interval '10 days' LIMIT 100)`,
+				);
+
+				// ACT
+				let affected: number | null | undefined;
+				try {
+					const pending = repository.pruneOldData(10);
+					await sleep(300);
+					await holder.commitTransaction();
+					({ affected } = await pending);
+				} finally {
+					await releaseHolder(holder);
+				}
+
+				// ASSERT
+				expect(affected).toBe(seeded.old - 100);
+				await expect(repository.count()).resolves.toBe(seeded.fresh);
 			},
 		);
 	});

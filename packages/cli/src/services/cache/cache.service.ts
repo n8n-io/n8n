@@ -212,6 +212,21 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		return fallbackValue;
 	}
 
+	/**
+	 * Retrieve primitive values under many keys in one round-trip. The result
+	 * is positional: `result[i]` is the value for `keys[i]`, or `undefined`
+	 * when the key is missing.
+	 */
+	async getMany<T = unknown>(keys: string[]): Promise<Array<T | undefined>> {
+		if (!this.cache) await this.init();
+
+		if (keys.length === 0) return [];
+
+		// The store's `mget` is untyped (`unknown[]`); `get<T>` makes the same
+		// caller-asserted promise through the store's generic.
+		return (await this.cache.store.mget(...keys)) as Array<T | undefined>;
+	}
+
 	/** Atomically retrieve and delete a primitive value. */
 	async take<T = unknown>(key: string): Promise<T | undefined> {
 		if (!this.cache) await this.init();

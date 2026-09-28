@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
-import { screen } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
 
@@ -13,9 +13,9 @@ const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 	global: {
 		stubs: {
 			ContactInstanceAdminModal: {
-				props: ['open', 'description'],
+				props: ['open', 'nodeTypeName'],
 				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ description }}</div>',
+					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
 			},
 		},
 	},
@@ -24,6 +24,18 @@ const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 const renderPopover = (props: Record<string, unknown>) => renderComponent({ props });
 
 describe('RestrictedNodePopover', () => {
+	/** The list row the popover anchors to. It lives outside the rendered component. */
+	let anchor: HTMLDivElement;
+
+	beforeEach(() => {
+		anchor = document.createElement('div');
+		document.body.appendChild(anchor);
+	});
+
+	afterEach(() => {
+		anchor.remove();
+	});
+
 	it('renders only the lock while the row is neither hovered nor active', () => {
 		renderPopover({ active: false });
 
@@ -53,8 +65,6 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('opens when the anchor row is hovered and stays open while the pointer is on the popover', async () => {
-		const anchor = document.createElement('div');
-		document.body.appendChild(anchor);
 		renderPopover({ anchor });
 
 		await userEvent.hover(anchor);
@@ -63,7 +73,6 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.unhover(anchor);
 
 		expect(screen.getByTestId('node-restricted-popover')).toBeInTheDocument();
-		anchor.remove();
 	});
 
 	it('opens the contact-admin dialog for this node type', async () => {
@@ -71,6 +80,21 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
 
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
+
+		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+	});
+
+	it('keeps the dialog open after the pointer leaves the row and the popover', async () => {
+		renderPopover({ anchor });
+
+		await userEvent.hover(anchor);
+		const popover = await screen.findByTestId('node-restricted-popover');
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+		await userEvent.unhover(popover);
+		await userEvent.unhover(anchor);
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
 
 		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
 	});

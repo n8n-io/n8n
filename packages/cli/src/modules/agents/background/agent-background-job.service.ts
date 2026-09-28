@@ -194,14 +194,12 @@ export class AgentBackgroundJobService {
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
 		try {
 			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
-			if (settled) {
-				const job = await this.findJob(jobId);
-				if (job) {
-					this.notifyJobUpdate(job);
-					await this.requestWakeSafely(job.parentThreadId);
-				}
-			}
-			return settled;
+			if (!settled) return false;
+			const job = await this.findJob(jobId);
+			if (!job) return true;
+			this.notifyJobUpdate(job);
+			await this.requestWakeSafely(job.parentThreadId);
+			return true;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
 			// shield the still-running row from orphan reconciliation forever.
@@ -416,33 +414,7 @@ export class AgentBackgroundJobService {
 	private async cancelWorkflowJob(
 		job: AgentBackgroundJob,
 	): Promise<'cancelled' | 'already-settled'> {
-		if (job.childExecutionId !== null && job.workflowId !== null) {
-			// Lazy: ExecutionService is a heavy dependency this service otherwise
-			// never needs — workers load this class for the settle path alone.
-			const { ExecutionService } = await import('@/executions/execution.service.js');
-			const { MissingExecutionStopError } = await import(
-				'@/errors/missing-execution-stop.error.js'
-			);
-			try {
-				await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
-			} catch (error) {
-				if (error instanceof MissingExecutionStopError || error instanceof WorkflowOperationError) {
-					this.logger.debug('Workflow job execution was already beyond stopping', {
-						jobId: job.id,
-						executionId: job.childExecutionId,
-					});
-					return 'already-settled';
-				}
-
-				this.logger.error('Failed to stop a workflow job execution — it may still be running', {
-					jobId: job.id,
-					executionId: job.childExecutionId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-
-				throw error;
-			}
-		}
+		if (!(await this.stopWorkflowJobExecution(job))) return 'already-settled';
 
 		// The stopped execution's settle hook may have written `cancelled` first;
 		// either way the job is cancelled.
@@ -497,34 +469,9 @@ export class AgentBackgroundJobService {
 
 		let settledAny = false;
 		for (const job of candidates) {
-			const executionId = job.childExecutionId;
-			const executionStatus = statuses.get(executionId);
-
-			try {
-				if (executionStatus === undefined) {
-					settledAny =
-						(await this.settle(job.id, {
-							status: 'failed',
-							error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
-						})) || settledAny;
-					continue;
-				}
-				if (!isTerminalExecutionStatus(executionStatus)) continue;
-
-				const status = settlementStatusForExecution(executionStatus);
-				settledAny =
-					(await this.settle(job.id, {
-						status,
-						result: status === 'completed' ? await this.loadExecutionResult(executionId) : null,
-						error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
-					})) || settledAny;
-			} catch (error) {
-				this.logger.error('Failed to reconcile workflow background job', {
-					jobId: job.id,
-					executionId,
-					error,
-				});
-			}
+			settledAny =
+				(await this.settleFinishedWorkflowJob(job, statuses.get(job.childExecutionId))) ||
+				settledAny;
 		}
 
 		return settledAny;
@@ -613,5 +560,62 @@ export class AgentBackgroundJobService {
 			settledAny ||= settled;
 		}
 		return settledAny;
+	}
+
+	private async stopWorkflowJobExecution(job: AgentBackgroundJob): Promise<boolean> {
+		if (job.childExecutionId === null || job.workflowId === null) return true;
+		// Lazy: ExecutionService is a heavy dependency this service otherwise
+		// never needs — workers load this class for the settle path alone.
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		const { MissingExecutionStopError } = await import('@/errors/missing-execution-stop.error.js');
+		try {
+			await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
+		} catch (error) {
+			if (error instanceof MissingExecutionStopError || error instanceof WorkflowOperationError) {
+				this.logger.debug('Workflow job execution was already beyond stopping', {
+					jobId: job.id,
+					executionId: job.childExecutionId,
+				});
+				return false;
+			}
+
+			this.logger.error('Failed to stop a workflow job execution — it may still be running', {
+				jobId: job.id,
+				executionId: job.childExecutionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw error;
+		}
+		return true;
+	}
+
+	private async settleFinishedWorkflowJob(
+		job: AgentBackgroundJob & { childExecutionId: string },
+		executionStatus: ExecutionStatus | undefined,
+	): Promise<boolean> {
+		const executionId = job.childExecutionId;
+		try {
+			if (executionStatus === undefined) {
+				return await this.settle(job.id, {
+					status: 'failed',
+					error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
+				});
+			}
+			if (!isTerminalExecutionStatus(executionStatus)) return false;
+			const status = settlementStatusForExecution(executionStatus);
+			return await this.settle(job.id, {
+				status,
+				result: status === 'completed' ? await this.loadExecutionResult(executionId) : null,
+				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
+			});
+		} catch (error) {
+			this.logger.error('Failed to reconcile workflow background job', {
+				jobId: job.id,
+				executionId,
+				error,
+			});
+			return false;
+		}
 	}
 }

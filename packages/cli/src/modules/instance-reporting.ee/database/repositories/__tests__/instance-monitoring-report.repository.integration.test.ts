@@ -42,45 +42,52 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 	});
 
-	describe('findTodaysPending', () => {
+	describe('findPending', () => {
+		async function createdOn(date: string) {
+			const report = await repository.createPending(DATA_POINTS);
+			await repository.update({ id: report.id }, { createdAt: new Date(date) });
+
+			return report;
+		}
+
 		test('returns nothing when no report was generated yet', async () => {
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
+			await expect(repository.findPending()).resolves.toBeNull();
 		});
 
-		test("returns today's undelivered report with the numbers it measured", async () => {
+		test('returns the pending report with the numbers it measured', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 
-			const pending = await repository.findTodaysPending(new Date());
+			const pending = await repository.findPending();
 
 			expect(pending?.id).toBe(created.id);
+			expect(pending?.status).toBe('pending');
 			expect(pending?.dataPoints).toEqual(DATA_POINTS);
 		});
 
-		test("returns nothing once today's report was delivered", async () => {
+		test('returns nothing once the newest report is delivered', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 			await repository.markDelivered(created.id, new Date());
 
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
+			await expect(repository.findPending()).resolves.toBeNull();
 		});
 
-		test("ignores an earlier day's undelivered report, leaving it untouched", async () => {
-			const stale = await repository.createPending(DATA_POINTS);
+		test('returns nothing when an older pending row sits under a newer delivered one', async () => {
+			// Earlier versions left a failed report pending for good. The newer report
+			// already covers that orphan's days, so a resend would report them two
+			// times. Filtering on `status` in the query would return the orphan here.
+			await createdOn('2026-03-20T07:42:00.000Z');
+			const newer = await createdOn('2026-03-25T07:42:00.000Z');
+			await repository.markDelivered(newer.id, new Date());
 
-			const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-			await expect(repository.findTodaysPending(tomorrow)).resolves.toBeNull();
-			// The stale report keeps the numbers it measured; only backfill may touch it.
-			await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
-				dataPoints: DATA_POINTS,
-				deliveredAt: null,
-			});
+			await expect(repository.findPending()).resolves.toBeNull();
 		});
 
-		test('returns nothing once the report ran out of attempts, so it is not resent', async () => {
-			const created = await repository.createPending(DATA_POINTS);
-			await repository.markSkipped(created.id);
+		test('returns the newest row when it is pending, ignoring an older delivered one', async () => {
+			const older = await createdOn('2026-03-20T07:42:00.000Z');
+			await repository.markDelivered(older.id, new Date());
+			const newer = await createdOn('2026-03-25T07:42:00.000Z');
 
-			await expect(repository.findTodaysPending(new Date())).resolves.toBeNull();
+			await expect(repository.findPending()).resolves.toMatchObject({ id: newer.id });
 		});
 
 		test('carries the last attempt time, so the wait between attempts survives a restart', async () => {
@@ -88,7 +95,7 @@ describe('InstanceMonitoringReportRepository', () => {
 			const failedAt = new Date('2026-03-26T07:42:00.000Z');
 			await repository.recordFailure(created.id, 'Network error', failedAt);
 
-			const pending = await repository.findTodaysPending(new Date());
+			const pending = await repository.findPending();
 
 			expect(pending?.lastAttemptAt?.toISOString()).toBe(failedAt.toISOString());
 		});

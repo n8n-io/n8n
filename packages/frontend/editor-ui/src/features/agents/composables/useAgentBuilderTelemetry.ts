@@ -46,9 +46,13 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
+		// Settings and approval ride along so a config seed does not blank what the
+		// status endpoint reported. The edit modal saves from that cache.
 		entries.push({
 			type: integration.type,
 			credentialId: integration.credentialId,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+			...(integration.approval ? { approval: integration.approval } : {}),
 			status: isPublished ? 'starting' : 'configured',
 		});
 	}

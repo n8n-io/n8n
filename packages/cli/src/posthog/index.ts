@@ -1,10 +1,13 @@
 import {
 	AGENT_EVALS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
@@ -183,7 +186,17 @@ export class PostHogClient {
 		} catch {
 			// Apply local overrides when PostHog is not available.
 		}
-		return this.applyEnvOverrides(data);
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const credentialDescriptionsEnabled =
+			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		return {
+			...overridden,
+			featureFlags: {
+				...overridden.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+			},
+		};
 	}
 
 	private async fetchFlagsFromPostHog({
@@ -195,7 +208,9 @@ export class PostHogClient {
 		distinctId: string;
 		options: AllFlagsOptions;
 	}): Promise<FeatureFlagData> {
-		if (!this.postHog) return { featureFlags: {}, featureFlagPayloads: {} };
+		if (!this.postHog) {
+			return { featureFlags: {}, featureFlagPayloads: {} };
+		}
 
 		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
@@ -203,6 +218,7 @@ export class PostHogClient {
 		}
 
 		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
+
 		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
 		if (Object.keys(data.featureFlags).length > 0) {
@@ -262,6 +278,14 @@ export class PostHogClient {
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
+		}
+
+		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
+			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithManyBoundariesEnabled) {
+			overrides[GROUPS_WITH_MANY_BOUNDARIES_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

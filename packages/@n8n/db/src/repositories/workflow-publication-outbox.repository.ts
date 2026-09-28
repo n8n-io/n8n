@@ -1,27 +1,32 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
-	type WorkflowPublicationReason,
+	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
 const SQLITE_ENQUEUE_CHUNK_SIZE = 998;
 
 @Service()
-export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
+export class WorkflowPublicationOutboxRepository extends BaseRepository<WorkflowPublicationOutbox> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowPublicationOutbox, dataSource.manager);
+		super(WorkflowPublicationOutbox, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -46,6 +51,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * record per workflow without an explicit transaction. Callers only need to
 	 * know the enqueue succeeded, so no row is returned.
 	 *
+	 * An explicit user publication also clears retry suppression in the same
+	 * transaction. Automatic reconciliation enqueues leave suppression intact.
+	 *
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
 	 *
@@ -58,17 +66,26 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		reason: WorkflowPublicationReason,
 		trx?: EntityManager,
 	): Promise<void> {
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueWithPostgresUpsert(
-				workflowId,
-				publishedVersionId,
-				reason,
-				trx ?? this.manager,
-			);
+		const enqueueWithManager = async (manager: EntityManager) => {
+			if (this.globalConfig.database.type === 'postgresdb') {
+				await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, reason, manager);
+				return;
+			}
+
+			await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, manager);
+		};
+
+		if (reason === WorkflowPublicationReason.Publish) {
+			const enqueuePublish = async (manager: EntityManager) => {
+				await manager.delete(WorkflowPublicationRetryState, { workflowId });
+				await enqueueWithManager(manager);
+			};
+			if (trx) await enqueuePublish(trx);
+			else await this.manager.transaction(enqueuePublish);
 			return;
 		}
 
-		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, trx ?? this.manager);
+		await enqueueWithManager(trx ?? this.manager);
 	}
 
 	private async enqueueWithPostgresUpsert(
@@ -482,8 +499,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * `errorMessage` for a record that completed with a non-fatal side effect
 	 * (e.g. an abandoned external webhook deregistration).
 	 */
-	async markCompleted(id: number, trx?: EntityManager, warningMessage?: string): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markCompleted(
+		id: number,
+		ctx: OperationContext = {},
+		warningMessage?: string,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
@@ -493,8 +514,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
-	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markFailed(id: number, errorMessage: string, ctx: OperationContext = {}): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
@@ -509,8 +530,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * carries per-node detail for diagnostics. The workflow stays published. Pass
 	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markPartialSuccess(
+		id: number,
+		errorMessage: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },

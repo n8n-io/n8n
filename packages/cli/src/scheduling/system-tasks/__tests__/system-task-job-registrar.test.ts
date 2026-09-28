@@ -28,7 +28,7 @@ const task = (over: Partial<SystemTask> = {}): SystemTask => ({
 	name: 'prune-executions',
 	schedule: { kind: 'interval', intervalSeconds: 60 },
 	effects: 'idempotent',
-	durable: true,
+	placement: { scope: 'cluster', durable: true },
 	run: async () => {},
 	...over,
 });

@@ -12,6 +12,11 @@ import {
 
 import { Agent } from '../entities/agent.entity';
 
+export interface AgentListResult {
+	count: number;
+	data: Agent[];
+}
+
 export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
@@ -86,7 +91,7 @@ export class AgentRepository extends Repository<Agent> {
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
@@ -208,6 +213,15 @@ export class AgentRepository extends Repository<Agent> {
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
 		return await this.exists({ where: { id, projectId } });
+	}
+
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id },
+		});
+		return result?.projectId ?? null;
 	}
 
 	async findByIdsAndProjectId(
@@ -336,6 +350,31 @@ export class AgentRepository extends Repository<Agent> {
 			select: ['id'],
 		});
 		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching the
+	 * given `type` + `credentialId`, anywhere on the instance, excluding
+	 * `excludeAgentId`.
+	 *
+	 * Instance-wide, unlike `findByIntegrationCredential`: a vendor app such as an
+	 * Entra or Slack registration is bound to one bot at the vendor, so an agent
+	 * in another project breaks a setup just as surely as one in this project.
+	 *
+	 * Reads only the columns the predicate and the caller need, so an instance
+	 * with large agent configurations does not transfer and parse all of them.
+	 */
+	async findByIntegrationCredentialAnyProject(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({ select: ['id', 'name', 'integrations'] });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
 	}
 
 	/**

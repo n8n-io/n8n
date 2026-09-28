@@ -7,10 +7,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-		});
-
 		test.describe('Schema View', () => {
 			const schemaKeys = [
 				'id',
@@ -167,40 +163,41 @@ test.describe(
 
 				await n8n.ndv.ensureOutputRunLinking(true);
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 			});
 		});
 
 		test.describe('Schema & Data Views', () => {
 			test('should show data from the correct output in schema view', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_workflow_multiple_outputs.json', 'Multiple outputs');
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
@@ -228,6 +225,7 @@ test.describe(
 
 		test.describe('Search Functionality - Advanced', () => {
 			test('should not show items count when searching in schema view', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 				await n8n.canvas.openNode('Edit Fields');
 				await expect(n8n.ndv.outputPanel.get()).toBeVisible();
@@ -242,6 +240,7 @@ test.describe(
 			test('should show additional tooltip when searching in schema view if no matches', async ({
 				n8n,
 			}) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 
 				await n8n.canvas.openNode('Edit Fields');

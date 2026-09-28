@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -72,6 +72,8 @@ const InstanceAiViewHeaderStub = defineComponent({
 // — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
+const setPrefillMock = vi.hoisted(() => vi.fn());
+const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
@@ -80,9 +82,12 @@ const InstanceAiConversationStub = defineComponent({
 	methods: {
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
+		setPrefill: setPrefillMock,
+		submitSuggestion: submitSuggestionMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
+		<slot name="empty" />
 	</div>`,
 });
 
@@ -102,6 +107,7 @@ function mountPanel(props: {
 	subject: InstanceAiEmbedSubject;
 	launch: typeof launch;
 	threadId?: string;
+	beforeSend?: () => Promise<void>;
 }) {
 	return mount(InstanceAiChatPanel, { props, global: { stubs: panelStubs } });
 }
@@ -135,6 +141,8 @@ describe('InstanceAiChatPanel', () => {
 		showMessage.mockClear();
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
+		setPrefillMock.mockClear();
+		submitSuggestionMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
 	});
@@ -210,6 +218,54 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
 
 		pending.resolve(true);
+	});
+
+	it('renders the host empty slot inside the conversation', async () => {
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+			slots: { empty: '<div data-test-id="host-empty" />' },
+		});
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('host-empty')).toBeInTheDocument();
+	});
+
+	it('forwards setPrefill to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.setPrefill({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+
+		expect(setPrefillMock).toHaveBeenCalledWith({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+	});
+
+	it('forwards submitSuggestion to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.submitSuggestion({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+
+		expect(submitSuggestionMock).toHaveBeenCalledWith({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
 	});
 
 	it('resumes the most recent thread for the subject instead of minting one', async () => {
@@ -405,6 +461,39 @@ describe('InstanceAiChatPanel', () => {
 		buildingIds.value = new Set(['agent-1']);
 		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
 		expect(useAgentMutationRefreshMock).toHaveBeenCalled();
+	});
+
+	it('reports processing from send preparation through the Assistant run', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		store.getRuntime.mockReturnValue(runtime);
+		const preparation = Promise.withResolvers<void>();
+		const wrapper = mountPanel({
+			subject,
+			launch,
+			threadId: 't-match',
+			beforeSend: () => preparation.promise,
+		});
+		await flushPromises();
+		const prepareSend = wrapper
+			.findComponent({ name: 'InstanceAiConversation' })
+			.props('beforeSend') as () => Promise<void>;
+
+		const send = prepareSend();
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+
+		runtime.isSendingMessage = true;
+		preparation.resolve();
+		await send;
+		runtime.isStreaming = true;
+		runtime.isSendingMessage = false;
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+
+		runtime.isStreaming = false;
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([false]);
 	});
 
 	it('emits update:building false on unmount so a host closing the panel mid-build unlocks', async () => {

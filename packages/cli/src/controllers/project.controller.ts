@@ -139,12 +139,13 @@ export class ProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, icon, type, description, customTelemetryTags }, relations, rolesManaged] =
-			await Promise.all([
-				this.projectsService.getProject(projectId),
-				this.projectsService.getProjectRelations(projectId),
-				this.provisioningService.isProjectRoleManaged(),
-			]);
+		const project = await this.projectsService.getProject(projectId);
+		const { id, name, icon, type, description, customTelemetryTags } = project;
+		const [relations, rolesManaged, implicitMembers] = await Promise.all([
+			this.projectsService.getProjectRelations(projectId),
+			this.provisioningService.isProjectRoleManaged(),
+			this.projectsService.getImplicitProjectMembers(project),
+		]);
 		const myRelation = relations.find((r) => r.userId === req.user.id);
 
 		return {
@@ -154,12 +155,20 @@ export class ProjectController {
 			type,
 			description,
 			customTelemetryTags,
+			creatorId: project.creatorId ?? null,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,
 				firstName: r.user.firstName,
 				lastName: r.user.lastName,
 				role: r.role.slug,
+			})),
+			implicitMembers: implicitMembers.map((user) => ({
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				globalRole: { slug: user.role.slug, displayName: user.role.displayName },
 			})),
 			scopes: [
 				...combineScopes({

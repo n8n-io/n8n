@@ -1,5 +1,6 @@
 import {
 	createDelegateSubAgentTool,
+	type CreateDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
@@ -18,7 +19,7 @@ import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext {
 	runner: SubAgentRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents?: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;

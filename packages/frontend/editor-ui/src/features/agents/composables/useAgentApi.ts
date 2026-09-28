@@ -1,7 +1,10 @@
 import type {
+	AgentApproval,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentChatQueueResponse,
+	AgentChatQueueUpdateDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -221,6 +224,8 @@ export const warmAgentKnowledgeSandbox = async (
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 }
 
 export const connectIntegration = async (
@@ -241,6 +246,7 @@ export const connectIntegration = async (
 			credentialId,
 			...(settings ? { settings } : {}),
 			...(options?.replaces ? { replaces: options.replaces } : {}),
+			...(options?.approval ? { approval: options.approval } : {}),
 		},
 	);
 };
@@ -541,6 +547,49 @@ export const getAgentBackgroundJobs = async (
 	);
 };
 
+export const getAgentChatQueue = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentChatQueueResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue`,
+	);
+};
+
+export const updateAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueUpdateDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		payload,
+	);
+};
+
+export const removeAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+): Promise<{ removed: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+	);
+};
+
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -591,6 +640,20 @@ export const cancelAgentChatRun = async (
 	);
 };
 
+export const cancelAgentChatExecution = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+): Promise<{ cancelRequested: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -625,5 +688,17 @@ export const listAgentIntegrations = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/integrations`,
+	);
+};
+
+export const getAgentWriteLock = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ clientId: string; userId: string } | null> => {
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };

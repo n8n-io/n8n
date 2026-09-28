@@ -21,13 +21,13 @@ export type EngineV2ActiveTriggerEmit = {
 };
 
 /**
- * The active-trigger surface's seam to engine 2.0.
+ * The active-trigger surface's seam to engine v2.
  *
  * The trigger node itself still runs control-plane-side, so only the start call
  * changes for a v2 workflow. This decides whether a run takes that path, and
  * rejects the parts of the surface the path does not serve yet.
  *
- * A workflow that opted into engine 2.0 never falls back to v1, so each case
+ * A workflow that opted into engine v2 never falls back to v1, so each case
  * fails with the reason instead. These checks live here rather than in
  * {@link EngineV2Dispatcher} because they need the emit's promises, which never
  * reach the dispatcher.
@@ -39,7 +39,7 @@ export class EngineV2ActiveTriggers {
 		private readonly payloadGuard: EngineV2PayloadGuard,
 	) {}
 
-	/** Whether this trigger run starts on the engine 2.0 data plane. */
+	/** Whether this trigger run starts on the engine v2 data plane. */
 	handles(workflowData: IWorkflowBase, mode: WorkflowExecuteMode): boolean {
 		return this.dispatcher.handlesWorkflow(workflowData, mode);
 	}
@@ -57,7 +57,7 @@ export class EngineV2ActiveTriggers {
 		if (responsePromise === undefined && donePromise === undefined) return;
 
 		throw new UserError(
-			'Engine 2.0 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
+			'Engine v2 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
 		);
 	}
 
@@ -73,6 +73,6 @@ export class EngineV2ActiveTriggers {
 	 * staged cursor.
 	 */
 	assertPayloadSupported(slots: Array<INodeExecutionData[] | null>): void {
-		this.payloadGuard.assertNoFiles(slots, 'Engine 2.0 cannot receive files from a trigger yet.');
+		this.payloadGuard.assertNoFiles(slots, 'Engine v2 cannot receive files from a trigger yet.');
 	}
 }

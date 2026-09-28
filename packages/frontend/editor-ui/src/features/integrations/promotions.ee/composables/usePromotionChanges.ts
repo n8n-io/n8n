@@ -11,6 +11,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 	const isLoading = ref(false);
 	const error = ref<Error | null>(null);
 	const searchQuery = ref('');
+	const lastRefreshedAt = ref<string | null>(null);
 
 	const selectedIds = ref<Set<string>>(new Set());
 
@@ -49,6 +50,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 			changes.value = result.changes;
 			commitSha.value = result.commitSha;
 			reconcileSelection();
+			lastRefreshedAt.value = new Date().toISOString();
 		} catch (e) {
 			error.value = e instanceof Error ? e : new Error(String(e));
 		} finally {
@@ -84,6 +86,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 		isLoading,
 		error,
 		searchQuery,
+		lastRefreshedAt,
 		selectedIds,
 		selectedCount,
 		allSelected,

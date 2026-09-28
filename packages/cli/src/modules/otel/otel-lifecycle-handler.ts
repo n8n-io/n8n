@@ -10,6 +10,9 @@ import type {
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
@@ -46,12 +49,19 @@ export class OtelLifecycleHandler {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly licenseState: LicenseState,
+		private readonly eventService: EventService,
 	) {}
+
+	init() {
+		this.eventService.on(
+			'execution-crashed',
+			async (event) => await this.onExecutionCrashed(event),
+		);
+	}
 
 	@OnPubSubEvent('reload-otel-config')
 	async onReloadOtelConfig(): Promise<void> {
 		await this.otelService.restart();
-		this.tracer.refreshTracer();
 	}
 
 	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {
@@ -100,7 +110,9 @@ export class OtelLifecycleHandler {
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
-				customAttributes: this.buildWorkflowCustomAttributes(ctx),
+				customAttributes: this.buildWorkflowCustomAttributes(
+					ctx.workflow.settings?.customTelemetryTags,
+				),
 			},
 		});
 
@@ -143,7 +155,9 @@ export class OtelLifecycleHandler {
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
-				customAttributes: this.buildWorkflowCustomAttributes(ctx),
+				customAttributes: this.buildWorkflowCustomAttributes(
+					ctx.workflow.settings?.customTelemetryTags,
+				),
 			},
 		});
 
@@ -160,6 +174,31 @@ export class OtelLifecycleHandler {
 			error: ctx.runData.data.resultData.error,
 			isRetry: ctx.runData.mode === 'retry',
 			retryOf: ctx.retryOf,
+		});
+	}
+
+	async onExecutionCrashed(event: RelayEventMap['execution-crashed']): Promise<void> {
+		if (!this.shouldTrace({ type: 'executionCrashed', mode: event.mode })) return;
+		this.tracer.endCrashedWorkflow({
+			executionId: event.executionId,
+			workflowId: event.workflowId,
+			workflowName: event.workflowName,
+			workflowVersionId: event.workflowVersionId,
+			mode: event.mode,
+			retryOf: event.retryOf,
+			detector: event.detector,
+			startedAt: event.startedAt,
+			stoppedAt: event.stoppedAt,
+			tracingContext: event.tracingContext,
+			workflow: {
+				customAttributes: this.buildWorkflowCustomAttributes(event.workflowCustomTelemetryTags),
+			},
+			project: event.project
+				? {
+						id: event.project.id,
+						customAttributes: this.buildProjectCustomAttributes(event.project.customTelemetryTags),
+					}
+				: undefined,
 		});
 	}
 
@@ -198,9 +237,9 @@ export class OtelLifecycleHandler {
 	}
 
 	private buildWorkflowCustomAttributes(
-		ctx: WorkflowExecuteBeforeContext | WorkflowExecuteResumeContext,
+		customTelemetryTags: unknown,
 	): CustomAttributes | undefined {
-		const tags = getCustomTelemetryTags(ctx.workflow.settings?.customTelemetryTags);
+		const tags = getCustomTelemetryTags(customTelemetryTags);
 		if (!tags?.length) return;
 		if (!this.areCustomSpanAttributesLicensed()) return;
 

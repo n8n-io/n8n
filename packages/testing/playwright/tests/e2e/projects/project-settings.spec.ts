@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 
+import { INSTANCE_ADMIN_CREDENTIALS, INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
 import { test, expect } from '../../../fixtures/base';
 
 test.describe(
@@ -31,8 +32,14 @@ test.describe(
 			// Verify members table is visible when there are members
 			await n8n.projectSettings.expectTableIsVisible();
 
-			// Initially should have only the owner (current user)
-			await n8n.projectSettings.expectTableHasMemberCount(1);
+			// The creator is the only real member. Instance owners and admins are
+			// listed on top of that, because their access is permanent.
+			await expect(
+				n8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email),
+			).toHaveCount(1);
+			await expect(
+				n8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
+			).toHaveCount(1);
 
 			// Verify save/cancel buttons are disabled initially (no changes)
 			await expect(n8n.projectSettings.getSaveButton()).toBeDisabled();
@@ -84,11 +91,10 @@ test.describe(
 			await expect(n8n.projectSettings.getMembersTableHeader('Role')).toBeVisible();
 
 			// Verify the owner is displayed in the table
-			const memberRows = n8n.projectSettings.getMemberRows();
-			await expect(memberRows).toHaveCount(1);
+			const ownerRow = n8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email);
+			await expect(ownerRow).toHaveCount(1);
 
 			// Verify owner cannot change their own role
-			const ownerRow = memberRows.first();
 			await expect(n8n.projectSettings.getMemberRoleDropdownForRow(ownerRow)).toHaveCount(0);
 		});
 
@@ -103,14 +109,16 @@ test.describe(
 			await n8n.navigate.toProjectSettings(projectId);
 			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
 
-			// Current user (owner) should not have a role dropdown
-			const currentUserRow = n8n.projectSettings.getMemberRows().first();
-			await expect(n8n.projectSettings.getMemberRoleDropdownForRow(currentUserRow)).toHaveCount(0);
+			// Current user (instance owner) should not have a role dropdown. Their row
+			// shows an access label, because that access cannot be changed here.
+			const currentUserRow = n8n.projectSettings.getMemberRowByEmail(
+				INSTANCE_OWNER_CREDENTIALS.email,
+			);
+			await n8n.projectSettings.expectRowAlwaysHasAccess(currentUserRow);
 
-			// The role should be displayed as static text for the current user
-			await expect(
-				n8n.projectSettings.getMemberRoleTextForRow(currentUserRow, 'Admin'),
-			).toBeVisible();
+			// The instance admin is listed too, with the same treatment.
+			const adminRow = n8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email);
+			await n8n.projectSettings.expectRowAlwaysHasAccess(adminRow);
 		});
 
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
@@ -196,13 +204,13 @@ test.describe(
 			const { projectId } = await n8n.projectComposer.createProject(projectName);
 
 			await n8n.navigate.toProjectSettings(projectId);
-			await n8n.projectSettings.expectTableHasMemberCount(1);
+			await expect(n8n.projectSettings.getMemberRowByEmail(member.email)).toHaveCount(0);
 
 			await n8n.projectSettings.searchForMember('Invited');
 			await n8n.projectSettings.getVisiblePopoverOption(member.email).click();
 
 			await expect(n8n.projectSettings.getMembersTable()).toContainText(member.email);
-			await n8n.projectSettings.expectTableHasMemberCount(2);
+			await expect(n8n.projectSettings.getMemberRowByEmail(member.email)).toHaveCount(1);
 			await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		});
 
@@ -234,6 +242,77 @@ test.describe(
 			await expect(adminN8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		});
 
+		test('should show instance owners and admins as permanent members @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			const projectAdmin = await api.publicApi.createUser({
+				email: `perm-admin-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'Permanent',
+				lastName: 'Admin',
+			});
+
+			const project = await api.projects.createProject(`Permanent Access ${nanoid(8)}`);
+			await api.projects.addUserToProject(project.id, projectAdmin.id, 'project:admin');
+
+			const adminN8n = await n8n.start.withUser(projectAdmin);
+			await adminN8n.navigate.toProjectSettings(project.id);
+
+			// A project admin sees who really has access, and cannot change it.
+			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
+				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email),
+			);
+			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
+				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
+			);
+
+			// Their own row is a real relation, so it keeps the project role.
+			const ownRow = adminN8n.projectSettings.getMemberRowByEmail(projectAdmin.email);
+			await expect(adminN8n.projectSettings.getAccessLabelForRow(ownRow)).toHaveCount(0);
+
+			// They cannot be offered as members, because the list gives no way to
+			// undo the add.
+			await adminN8n.projectSettings.searchForMember(INSTANCE_ADMIN_CREDENTIALS.email);
+			await expect(
+				adminN8n.projectSettings.getVisiblePopoverOption(INSTANCE_ADMIN_CREDENTIALS.email),
+			).toHaveCount(0);
+		});
+
+		test('should show a non-member instance admin their own permanent row @auth:owner', async ({
+			n8n,
+		}) => {
+			const { projectId } = await n8n.projectComposer.createProject(`Admin Own Row ${nanoid(8)}`);
+
+			// The instance admin holds no relation to this project.
+			const adminN8n = await n8n.start.withUser(INSTANCE_ADMIN_CREDENTIALS);
+			await adminN8n.navigate.toProjectSettings(projectId);
+
+			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
+				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
+			);
+		});
+
+		test('should list the project creator first and the current user second @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			const projectAdmin = await api.publicApi.createUser({
+				email: `order-admin-${nanoid()}@test.com`.toLowerCase(),
+				firstName: 'Zed',
+				lastName: 'Admin',
+			});
+
+			const project = await api.projects.createProject(`Member Order ${nanoid(8)}`);
+			await api.projects.addUserToProject(project.id, projectAdmin.id, 'project:admin');
+
+			const adminN8n = await n8n.start.withUser(projectAdmin);
+			await adminN8n.navigate.toProjectSettings(project.id);
+
+			const rows = adminN8n.projectSettings.getMemberRows();
+			await expect(rows.nth(0)).toContainText(INSTANCE_OWNER_CREDENTIALS.email);
+			await expect(rows.nth(1)).toContainText(projectAdmin.email);
+		});
+
 		test('should persist settings after page reload @auth:owner', async ({ n8n }) => {
 			// Create a new project
 			const projectName = `Persistence ${nanoid(8)}`;
@@ -263,7 +342,9 @@ test.describe(
 			await n8n.projectSettings.expectProjectDescriptionValue(projectDescription);
 
 			// Verify table still shows the owner
-			await n8n.projectSettings.expectTableHasMemberCount(1);
+			await expect(
+				n8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email),
+			).toHaveCount(1);
 		});
 	},
 );

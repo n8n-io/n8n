@@ -152,6 +152,7 @@ const i18n = useI18n();
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
@@ -428,6 +429,7 @@ const i18n = useI18n();
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
+	align-items: center;
 	width: 100%;
 }
 

@@ -21,6 +21,8 @@ const ORGANIZER_HINT = "Check that the 'Organizer' parameter is a user in the te
 
 const GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 
+export const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
+
 function isServicePrincipal(this: IExecuteFunctions): boolean {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 }
@@ -90,24 +92,6 @@ export async function meetingsPath(
 		? ['/v1.0/users/', { id: await resolveOrganizer.call(this, i) }, '/onlineMeetings']
 		: ['/v1.0/me/onlineMeetings'];
 	return buildTeamsPath.call(this, [...root, ...segments]);
-}
-
-export function optionalText(this: IExecuteFunctions, value: unknown, label: string) {
-	const text = value instanceof DateTime || value instanceof Date ? value.toJSON() : value;
-	if (typeof text === 'object' && text !== null) {
-		throw new NodeOperationError(this.getNode(), `The ${label} must be text`, {
-			description: `Check that the '${label}' expression resolves to text`,
-		});
-	}
-	return String(text ?? '').trim();
-}
-
-export function requiredText(this: IExecuteFunctions, name: string, i: number, label: string) {
-	const value = optionalText.call(this, this.getNodeParameter(name, i), label);
-	if (value) return value;
-	throw new NodeOperationError(this.getNode(), `The ${label} must not be empty`, {
-		description: `Check that the '${label}' parameter is correctly set`,
-	});
 }
 
 export function toGraphUtc(this: IExecuteFunctions, value: unknown, label: string) {

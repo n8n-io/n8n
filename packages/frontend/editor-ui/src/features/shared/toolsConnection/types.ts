@@ -127,9 +127,8 @@ export type ToolConnectionItem =
 	| ServiceConnectionItem;
 
 /**
- * One tab in the modal. Consumers declare the subset they support; `agents` and
- * `data` have no supplier yet and are reserved for folding the sub-agent and
- * vector-store pickers in later.
+ * One tab in the modal. Consumers declare the subset they support. `data` has
+ * no supplier yet and is reserved for folding the vector-store picker in later.
  */
 export type ToolCategoryKey =
 	| 'all'

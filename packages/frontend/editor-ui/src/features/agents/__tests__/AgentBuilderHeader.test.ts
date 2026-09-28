@@ -47,8 +47,8 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
-		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot><span v-if="label">{{ label }}</span></slot></component>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href', 'label'],
 		emits: ['click'],
 	},
 	N8nToggle: {
@@ -72,7 +72,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -121,6 +122,11 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
+	ProjectIcon: {
+		name: 'ProjectIcon',
+		template: '<span data-testid="stub-project-icon" />',
+		props: ['icon', 'size', 'borderLess'],
+	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -141,12 +147,11 @@ function mountHeader(
 	overrides: Partial<{
 		agent: AgentResource | null;
 		projectName: string | null;
+		projectIcon: { type: 'icon' | 'emoji'; value: string };
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
 		isPreviewOpen: boolean;
-		instanceAiAvailable: boolean;
-		isAiPanelOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -159,12 +164,11 @@ function mountHeader(
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
+			projectIcon: overrides.projectIcon ?? { type: 'icon', value: 'user' },
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
 			isPreviewOpen: overrides.isPreviewOpen,
-			instanceAiAvailable: overrides.instanceAiAvailable,
-			isAiPanelOpen: overrides.isAiPanelOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -181,53 +185,6 @@ describe('AgentBuilderHeader', () => {
 		routerResolve.mockClear();
 		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
-	});
-
-	it('shows the Instance AI toggle when available', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: false });
-		const button = wrapper.get('[data-testid="agent-builder-instance-ai-btn"]');
-
-		expect(button.attributes('aria-label')).toBe('agents.builder.header.editWithAi');
-		expect(button.attributes('aria-pressed')).toBe('false');
-	});
-
-	it('reflects isAiPanelOpen as aria-pressed', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: true });
-
-		expect(
-			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('aria-pressed'),
-		).toBe('true');
-	});
-
-	it('emits toggle-instance-ai on click', async () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true });
-
-		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
-
-		expect(wrapper.emitted('toggle-instance-ai')).toEqual([[]]);
-	});
-
-	it.each([
-		{ label: 'Instance AI is unavailable', instanceAiAvailable: false },
-		{ label: 'artifact mode is active', instanceAiAvailable: true, artifactMode: true },
-	])('hides the Instance AI toggle when $label', (overrides) => {
-		const wrapper = mountHeader(overrides);
-
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-	});
-
-	it('stays visible while the preview is open (both docks can coexist)', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isPreviewOpen: true });
-
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
-	});
-
-	it('disables the Instance AI toggle when no agent is loaded', () => {
-		const wrapper = mountHeader({ agent: null, instanceAiAvailable: true });
-
-		expect(
-			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('disabled'),
-		).toBeDefined();
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {
@@ -280,6 +237,14 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const projectIcon = { type: 'emoji' as const, value: '🚀' };
+		const wrapper = mountHeader({ projectIcon });
+
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('icon')).toEqual(projectIcon);
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('size')).toBe('mini');
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {
@@ -373,9 +338,8 @@ describe('AgentBuilderHeader', () => {
 		async ({ isPreviewOpen, event, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('play');
-			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
-			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
 			expect(wrapper.emitted(event)).toEqual([[]]);

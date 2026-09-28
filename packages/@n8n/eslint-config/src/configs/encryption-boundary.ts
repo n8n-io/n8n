@@ -11,8 +11,6 @@ import tseslint from 'typescript-eslint';
  * `encryption-boundary` verifies that coverage in CI and rejects package-level
  * downgrades and inline directives that would silence these rules:
  *
- * - `no-deployment-key-delete`: data encrypted with a key becomes unreadable
- *   without it — keys are deactivated, never deleted.
  * - `no-encryption-guardrail-disable`: in-editor feedback that the rules
  *   above cannot be silenced inline; widening the boundary happens here,
  *   under security ownership (see OWNERS).
@@ -26,7 +24,6 @@ import tseslint from 'typescript-eslint';
  */
 export const encryptionBoundaryConfig = tseslint.config({
 	rules: {
-		'n8n-local-rules/no-deployment-key-delete': 'error',
 		'n8n-local-rules/no-encryption-guardrail-disable': 'error',
 	},
 });

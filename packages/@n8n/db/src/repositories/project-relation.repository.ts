@@ -100,4 +100,28 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			relations: { role: true },
 		});
 	}
+
+	/**
+	 * The project ids each of `userIds` belongs to, in any role, as a map from
+	 * user id to their project ids. One query for every user, instead of one
+	 * query per user.
+	 */
+	async findProjectIdsByUserIds(userIds: string[]): Promise<Map<string, string[]>> {
+		const result = new Map<string, string[]>();
+		if (userIds.length === 0) return result;
+
+		for (const chunk of chunkIds([...new Set(userIds)])) {
+			const rows = await this.find({
+				select: ['userId', 'projectId'],
+				where: { userId: In(chunk) },
+			});
+			for (const { userId, projectId } of rows) {
+				const projectIds = result.get(userId);
+				if (projectIds) projectIds.push(projectId);
+				else result.set(userId, [projectId]);
+			}
+		}
+
+		return result;
+	}
 }

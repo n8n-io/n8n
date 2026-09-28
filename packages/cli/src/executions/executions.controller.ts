@@ -151,7 +151,7 @@ export class ExecutionsController {
 
 		// The data plane stores no annotations.
 		if (isExecutionIdV2(req.params.id)) {
-			throw new NotImplementedError('Annotating engine 2.0 executions is not supported yet');
+			throw new NotImplementedError('Annotating engine v2 executions is not supported yet');
 		}
 
 		const { body: payload } = req;

@@ -17,8 +17,7 @@ describe('InstanceRegistryReconciliationTask', () => {
 		expect(task.name).toBe('instance-registry-reconciliation');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
 	});
 
 	describe('run', () => {

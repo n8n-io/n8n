@@ -2,12 +2,19 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import { projectIconSchema } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+// Report package values unchanged. The create API validates them when used.
+export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
+	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
+	description: z.string().optional(),
+	customTelemetryTags: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+});
 const workflowSchema = z.object({ id: sourceId, name: z.string() });
 
 export const promotionBindingConsumerSchema = z.object({
@@ -135,6 +142,12 @@ export const promotionBindingWarningSchema = z.object({
  * Callers must enforce the permissions for their endpoint.
  */
 export const promotionBindingPreflightResultSchema = z.object({
+	missingProjects: z.array(promotionMissingProjectSchema).openapi({
+		description:
+			'Projects in the package that do not exist on this instance. ' +
+			'Preflight preserves their metadata without checking project creation rules. ' +
+			'The project creation API can reject invalid values.',
+	}),
 	missingBindings: z.array(
 		z.discriminatedUnion('kind', [
 			promotionMissingCredentialBindingSchema,

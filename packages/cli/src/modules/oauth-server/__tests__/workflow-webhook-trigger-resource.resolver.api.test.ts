@@ -41,16 +41,20 @@ const webhookNode = ({
 	authentication = 'n8nOAuth2',
 	disabled = false,
 	requireExecuteAccess,
+	options,
+	typeVersion = 2.1,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	options?: { oauthClient?: string };
+	typeVersion?: number;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
 	type: WEBHOOK_NODE_TYPE,
-	typeVersion: 2.1,
+	typeVersion,
 	position: [0, 0],
 	disabled,
 	parameters: {
@@ -58,6 +62,7 @@ const webhookNode = ({
 		httpMethod: 'POST',
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(options === undefined ? {} : { options }),
 	},
 });
 
@@ -243,20 +248,49 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should resolve as a non-first-party resource (arbitrary OAuth clients)', async () => {
+	// Only a GET can ever be redirected through the browser flow (a redirect carries a
+	// URL and nothing else), so only a GET-resolved trigger may act as its own virtual
+	// client. A POST trigger keeps its prior shape: arbitrary OAuth clients (DCR) still
+	// work, but the trigger URL itself imposes no redirect-URI restriction.
+	test('should resolve a POST trigger as non-first-party (arbitrary OAuth clients)', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode());
 
 		const resource = await resolveResource(webhookPath);
 
-		// Unlike the form trigger, a webhook is called by external clients, so it is
-		// not first-party and imposes no redirect-URI restriction of its own.
 		expect(resource?.isFirstParty).toBeUndefined();
 		expect(resource?.getAllowedRedirectUris).toBeUndefined();
 		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
 		expect(resource?.getAudiences()).toEqual([resourceUrlFor(webhookPath)]);
 		expect(resource?.getResourceUrl()).toContain('?method=POST');
 	});
+
+	// Only a GET can ever be redirected through the browser flow, so only a GET-resolved
+	// trigger may act as its own virtual client. An unset `oauthClient` defaults to auto
+	// from typeVersion 2.2 on; bearer-only opts out. Either way it stays a resource, so a
+	// DCR client keeps working against it, and it never restricts redirect URIs itself.
+	test.each([
+		['unset on a pre-2.2 node → not first-party', 2.1, undefined, undefined],
+		['unset on a 2.2+ node → first-party', 2.2, undefined, true],
+		['auto → first-party', 2.1, 'auto', true],
+		['bearer → not first-party', 2.1, 'bearer', undefined],
+	])(
+		'should resolve a GET trigger with oauthClient %s',
+		async (_label, typeVersion, oauthClient, isFirstParty) => {
+			const webhookPath = randomUUID();
+			await createPublishedWebhookWorkflow(
+				webhookPath,
+				webhookNode({ typeVersion, options: oauthClient ? { oauthClient } : undefined }),
+				{ methods: ['GET'] },
+			);
+
+			const resource = await resolveResource(webhookPath, 'GET');
+
+			expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath, 'GET'));
+			expect(resource?.isFirstParty).toBe(isFirstParty);
+			expect(resource?.getAllowedRedirectUris).toBeUndefined();
+		},
+	);
 
 	test('should expose the workflow name for the consent screen', async () => {
 		const webhookPath = randomUUID();
