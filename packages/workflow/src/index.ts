@@ -43,6 +43,7 @@ export * from './trigger-credential-gate';
 export * from './trigger-identity';
 export * from './url';
 export * from './n8n-oauth2-auth';
+export * from './n8n-browser-oauth2-flow';
 export * from './auth-redaction';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';

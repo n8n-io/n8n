@@ -8,7 +8,6 @@ import type {
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -41,7 +40,7 @@ import { WorkflowApiHelper } from './workflow-api-helper';
 export interface ApiHelpersOptions {
 	/**
 	 * Settings merged over every workflow this helper creates. Set per stack, so
-	 * a project that runs engine 2.0 routes every workflow to it.
+	 * a project that runs engine v2 routes every workflow to it.
 	 */
 	workflowSettings?: Partial<IWorkflowSettings>;
 }
@@ -212,12 +211,12 @@ export class ApiHelpers {
 			},
 		});
 
+		// The endpoint responds only after the reset and the user seeding complete,
+		// so no extra wait is necessary.
 		if (!response.ok()) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {

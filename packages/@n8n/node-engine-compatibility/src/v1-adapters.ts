@@ -262,6 +262,28 @@ function tolerantNodeTypes(nodeTypes: INodeTypes): INodeTypes {
 	};
 }
 
+/**
+ * The v1 context of a step. `putExecutionToWait` records the wait the node asks
+ * for, and the executor turns the record into a wait declaration.
+ *
+ * Do not call super. Core sleeps in the process for a short deadline-only wait
+ * and calls the host status hook. The engine owns the wait, and the host does
+ * not know this run.
+ */
+export class DurableWaitExecuteContext extends ExecuteContext {
+	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
+	acceptsResumeRequest = true;
+
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		this.acceptsResumeRequest = options?.acceptsResumeRequest ?? true;
+		this.runExecutionData.waitTill = waitTill;
+		return await Promise.resolve();
+	}
+}
+
 export function toV1ExecuteContext({
 	node,
 	workflow,
@@ -270,7 +292,7 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
-}: CreateExecuteContextParams): ExecuteContext {
+}: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -296,7 +318,7 @@ export function toV1ExecuteContext({
 	};
 	const mode = toV1ExecuteMode(stepContext);
 
-	return new ExecuteContext(
+	return new DurableWaitExecuteContext(
 		workflow,
 		node,
 		additionalData,

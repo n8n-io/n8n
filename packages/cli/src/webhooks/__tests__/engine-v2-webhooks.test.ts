@@ -1,5 +1,7 @@
 import type { StepSlots } from '@n8n/engine';
-import { WorkflowOperationError } from 'n8n-workflow';
+import type { EngineConfig } from '@n8n/config';
+import type { INode, WebhookResponseMode } from 'n8n-workflow';
+import { UserError, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -11,7 +13,47 @@ const engineV2Webhooks = new EngineV2Webhooks(
 	mock<EngineV2Dispatcher>(),
 	mock<EngineV2PayloadGuard>(),
 	mock<EngineDataPlaneProxyService>(),
+	mock<EngineConfig>(),
 );
+
+describe('EngineV2Webhooks.assertSupported', () => {
+	const assertSupported = (mode: EngineConfig['mode'], responseMode: WebhookResponseMode) => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(true);
+		const webhooks = new EngineV2Webhooks(
+			mock<EngineV2Dispatcher>(),
+			mock<EngineV2PayloadGuard>(),
+			proxy,
+			mock<EngineConfig>({ mode }),
+		);
+
+		webhooks.assertSupported({
+			workflowStartNode: mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: {},
+			}),
+			responseMode,
+			executionId: undefined,
+		});
+	};
+
+	it.each(['lastNode', 'responseNode'] as const)(
+		'rejects %s responses with a remote data plane',
+		(responseMode) => {
+			expect(() => assertSupported('remote', responseMode)).toThrow(UserError);
+			expect(() => assertSupported('remote', responseMode)).toThrow('remote data plane');
+		},
+	);
+
+	it('allows onReceived with a remote data plane', () => {
+		expect(() => assertSupported('remote', 'onReceived')).not.toThrow();
+	});
+
+	it.each(['lastNode', 'responseNode'] as const)('allows %s in-process', (responseMode) => {
+		expect(() => assertSupported('in-process', responseMode)).not.toThrow();
+	});
+});
 
 describe('EngineV2Webhooks.toRun', () => {
 	it('converts a completed outcome with outputs', async () => {

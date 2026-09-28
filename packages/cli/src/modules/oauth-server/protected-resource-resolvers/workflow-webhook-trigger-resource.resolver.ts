@@ -19,6 +19,7 @@ import {
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
@@ -173,6 +174,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,

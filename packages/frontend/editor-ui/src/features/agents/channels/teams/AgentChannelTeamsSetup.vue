@@ -17,6 +17,7 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability, {
 	type TeamsAvailability,
 } from './AgentChannelTeamsAvailability.vue';
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
 const credentialId = defineModel<string>({ default: '' });
@@ -58,6 +59,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const agentTelemetry = useAgentTelemetry();
 
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
@@ -113,9 +115,11 @@ const checking = ref(false);
  * Both requests answer for the credential that was selected when they were
  * sent. Without this, switching credentials quickly lets an earlier answer
  * land last and describe the wrong one -- as a verified credential, or as a
- * deployment link for the credential no longer selected.
+ * deployment link for the credential no longer selected. Each request has its
+ * own counter, so reloading one does not discard an answer for the other.
  */
-let latestRequest = 0;
+let latestCheck = 0;
+let latestSetupState = 0;
 
 /**
  * Tracked per field, so an edit to one does not stop the others adopting
@@ -148,30 +152,44 @@ const credentialProblem = computed(() =>
 	credentialCheck.value?.status === 'failed' ? credentialCheck.value.reason : null,
 );
 
-async function runCredentialCheck(request = ++latestRequest) {
+async function runCredentialCheck(trigger: 'auto' | 'recheck') {
+	const request = ++latestCheck;
 	const id = credentialId.value;
 	// A result for the credential just replaced says nothing about this one, so
 	// it goes before the new answer arrives rather than after.
 	credentialCheck.value = null;
+	checking.value = false;
 	// Only the setup step reads the result, and the check costs a token request
 	// to Microsoft, so the settings view does not pay for it.
 	if (props.mode !== 'setup' || !id) return;
 
 	checking.value = true;
+	let result: TeamsCredentialCheck;
+	// Shown to the user as unreachable, but kept apart in telemetry: a failed
+	// n8n request says nothing about whether Microsoft accepts the credential.
+	let requestFailed = false;
 	try {
-		const result = await checkTeamsCredential(
+		result = await checkTeamsCredential(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 			id,
 		);
-		if (request === latestRequest) credentialCheck.value = result;
 	} catch {
-		if (request === latestRequest)
-			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
-	} finally {
-		if (request === latestRequest) checking.value = false;
+		result = { status: 'failed', reason: 'unreachable' };
+		requestFailed = true;
 	}
+	if (request !== latestCheck) return;
+	credentialCheck.value = result;
+	checking.value = false;
+	agentTelemetry.trackCheckedTeamsCredential({
+		agentId: props.agentId,
+		trigger,
+		status: result.status,
+		...(result.status === 'failed'
+			? { reason: requestFailed ? 'request_failed' : result.reason }
+			: {}),
+	});
 }
 
 async function downloadPackage() {
@@ -186,14 +204,17 @@ async function downloadPackage() {
 			currentSettings.value,
 		);
 		saveAs(blob, 'n8n-agent-teams-app.zip');
+		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
 	} catch {
 		downloadError.value = i18n.baseText('agents.channels.teams.setup.install.downloadFailed');
+		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'error' });
 	} finally {
 		downloading.value = false;
 	}
 }
 
-async function loadSetupState(request = ++latestRequest) {
+async function loadSetupState() {
+	const request = ++latestSetupState;
 	if (!props.projectId || !props.agentId) return;
 	try {
 		const state = await getTeamsSetupState(
@@ -202,9 +223,9 @@ async function loadSetupState(request = ++latestRequest) {
 			props.agentId,
 			credentialId.value || undefined,
 		);
-		if (request === latestRequest) setupState.value = state;
+		if (request === latestSetupState) setupState.value = state;
 	} catch {
-		if (request === latestRequest) setupState.value = null;
+		if (request === latestSetupState) setupState.value = null;
 	}
 }
 
@@ -216,8 +237,7 @@ watch(
 watch(
 	credentialId,
 	async () => {
-		const request = ++latestRequest;
-		await Promise.all([runCredentialCheck(request), loadSetupState(request)]);
+		await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
 	},
 	{ immediate: true },
 );
@@ -351,6 +371,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							variant="subtle"
 							size="medium"
 							data-testid="teams-deploy-to-azure"
+							@click="agentTelemetry.trackClickedDeployToAzure({ agentId })"
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
 						</N8nButton>
@@ -454,7 +475,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 									variant="ghost"
 									size="small"
 									data-testid="teams-credential-recheck"
-									@click="runCredentialCheck()"
+									@click="runCredentialCheck('recheck')"
 								>
 									{{ i18n.baseText('agents.channels.teams.setup.install.recheck') }}
 								</N8nButton>

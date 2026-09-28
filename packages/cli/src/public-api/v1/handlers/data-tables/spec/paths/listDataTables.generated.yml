@@ -1,0 +1,129 @@
+operationId: listDataTables
+tags:
+  - DataTable
+summary: List all data tables
+description: Retrieve a list of all data tables with optional filtering, sorting, and pagination. Each table includes `sizeBytes`, the value the `size` sort option orders by.
+x-required-scope: dataTable:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      format: jsonString
+    required: false
+    description: JSON string of filter conditions
+    example: '{"name":"my-table"}'
+    name: filter
+    in: query
+  - schema:
+      type: string
+      enum:
+        - name:asc
+        - name:desc
+        - createdAt:asc
+        - createdAt:desc
+        - updatedAt:asc
+        - updatedAt:desc
+        - size:asc
+        - size:desc
+    required: false
+    description: 'Sort format: field:asc or field:desc'
+    example: name:asc
+    name: sortBy
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the data table
+                  name:
+                    type: string
+                    description: Name of the data table
+                  columns:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Column ID
+                        name:
+                          type: string
+                          description: Column name
+                        type:
+                          type: string
+                          description: Column data type
+                          enum:
+                            - string
+                            - number
+                            - boolean
+                            - date
+                        index:
+                          type: integer
+                          description: Column position
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Timestamp when the column was created
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          description: Timestamp when the column was last updated
+                      required:
+                        - id
+                        - name
+                        - type
+                        - index
+                        - createdAt
+                        - updatedAt
+                    description: Column definitions
+                  projectId:
+                    type: string
+                    description: ID of the project this table belongs to
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: Timestamp when the table was created
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: Timestamp when the table was last updated
+                  sizeBytes:
+                    type: integer
+                    description: Physical storage in bytes, including indexes and internal overhead. Not reduced immediately by row deletion, and may be a few seconds stale.
+                required:
+                  - id
+                  - name
+                  - columns
+                  - projectId
+                  - createdAt
+                  - updatedAt
+                  - sizeBytes
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through data tables by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+              example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

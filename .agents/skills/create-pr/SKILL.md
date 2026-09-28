@@ -34,7 +34,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 - `benchmark` - Benchmark CLI changes
 - `core` - Core/backend/private API
 - `editor` - Editor UI changes
-- `engine` - New workflow execution engine v2 (@n8n/engine package)
+- `engine` - New workflow execution engine v2 (@n8n/engine package & engine-v2 module in cli)
 - `* Node` - Specific node (e.g., `Slack Node`, `GitHub Node`)
 
 ### Summary Rules
