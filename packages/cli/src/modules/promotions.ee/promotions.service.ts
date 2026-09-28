@@ -569,6 +569,10 @@ export class PromotionsService {
 				expectedSource.branchName !== branchName ||
 				expectedSource.commitSha !== commitSha)
 		) {
+			this.logger.info('Apply stopped because the source changed', {
+				status: 'source-changed',
+				...identity,
+			});
 			return { status: 'source-changed', ...identity };
 		}
 
@@ -592,8 +596,25 @@ export class PromotionsService {
 			preflight.accessRequirements.length > 0 ||
 			preflight.conflicts.length > 0
 		) {
+			this.logger.info('Apply blocked by unresolved bindings', {
+				status: 'blocked',
+				...identity,
+				bindingCounts: {
+					missingBindings: preflight.missingBindings.length,
+					accessRequirements: preflight.accessRequirements.length,
+					conflicts: preflight.conflicts.length,
+					warnings: preflight.warnings.length,
+				},
+			});
 			return { status: 'blocked', ...identity, preflight };
 		}
+
+		this.logger.info('Importing a package selection', {
+			...identity,
+			projectId,
+			selectedCount: selection.selectedWorkflowIds.length,
+			deletedCount: selection.deletedWorkflowIds.length,
+		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
 			{ user: actor },
