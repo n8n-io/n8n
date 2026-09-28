@@ -262,7 +262,7 @@ watch(
 
 .popoverArrow {
 	fill: var(--background--surface);
-	stroke: var(--border-color);
+	stroke: var(--shadow-color--outline);
 	stroke-width: 1px;
 	// Overlap the card by 1px so its outline shadow doesn't cut the arrow off.
 	transform: translateY(-1px);
