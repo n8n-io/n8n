@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "providerKey" varchar(128) NOT NULL, "type" varchar(36) NOT NULL, "encryptedSettings" text NOT NULL, "isEnabled" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" VARCHAR(20) NOT NULL DEFAULT 'api')
+CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "providerKey" varchar(128) NOT NULL, "type" varchar(36) NOT NULL, "encryptedSettings" text NOT NULL, "isEnabled" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" varchar(20) NOT NULL DEFAULT ('api'), "configSourcedFields" text, CONSTRAINT "CHK_secrets_provider_connection_managedBy" CHECK ("managedBy" IN ('api', 'config-file')))
 ```
 
 </details>
@@ -15,11 +15,12 @@ CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| configSourcedFields | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | encryptedSettings | TEXT |  | false |  |  |  |
 | id | INTEGER |  | false | [project_secrets_provider_access](project_secrets_provider_access.md) |  |  |
 | isEnabled | boolean | false | false |  |  |  |
-| managedBy | VARCHAR(20) | 'api' | false |  |  |  |
+| managedBy | varchar(20) | 'api' | false |  |  |  |
 | providerKey | varchar(128) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -28,6 +29,7 @@ CREATE TABLE "secrets_provider_connection" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("managedBy" IN ('api', 'config-file')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -44,11 +46,12 @@ erDiagram
 "project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "secrets_provider_connection" {
+  TEXT configSourcedFields
   datetime_3_ createdAt
   TEXT encryptedSettings
   INTEGER id
   boolean isEnabled
-  VARCHAR_20_ managedBy
+  varchar_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   datetime_3_ updatedAt

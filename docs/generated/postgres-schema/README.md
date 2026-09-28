@@ -115,7 +115,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_job](public.scheduled_job.md) | 24 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
-| [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
+| [public.secrets_provider_connection](public.secrets_provider_connection.md) | 9 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
@@ -1466,10 +1466,12 @@ erDiagram
   varchar_128_ slug
 }
 "public.secrets_provider_connection" {
+  text configSourcedFields
   timestamp_3__with_time_zone createdAt
   text encryptedSettings
   integer id
   boolean isEnabled
+  varchar_20_ managedBy
   varchar_128_ providerKey
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
