@@ -154,7 +154,7 @@ export class JobOutcomeTracker {
 		if (!this.pendingWaits.has(executionId)) return;
 
 		const status = await this.readStatus(executionId);
-		if (status === undefined || IN_FLIGHT_STATUSES.has(status)) return;
+		if (status === 'unreadable' || IN_FLIGHT_STATUSES.has(status)) return;
 
 		this.logger.warn(
 			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
@@ -164,10 +164,10 @@ export class JobOutcomeTracker {
 	}
 
 	/**
-	 * @returns the execution status, `deleted` when the row is gone, or `undefined`
-	 * when the read failed and the next recheck should try again.
+	 * @returns the execution status, `deleted` when the row is gone, or `unreadable`
+	 * when the read failed. The recheck interval is the retry.
 	 */
-	private async readStatus(executionId: string): Promise<RecheckedStatus | undefined> {
+	private async readStatus(executionId: string): Promise<RecheckedStatus | 'unreadable'> {
 		try {
 			const execution = await this.executionRepository.findSingleExecution(executionId);
 
@@ -175,11 +175,11 @@ export class JobOutcomeTracker {
 			// e.g. a manual execution with saving disabled. Nothing is left to wait for.
 			return execution?.status ?? 'deleted';
 		} catch (error) {
-			this.logger.warn(`Failed to recheck the status of execution ${executionId}, will retry`, {
-				executionId,
-				error,
-			});
-			return undefined;
+			this.logger.warn(
+				`Failed to read the status of execution ${executionId}, next recheck in ${JOB_WAIT_RECHECK_INTERVAL_MS / 1000}s`,
+				{ executionId, error },
+			);
+			return 'unreadable';
 		}
 	}
 }
