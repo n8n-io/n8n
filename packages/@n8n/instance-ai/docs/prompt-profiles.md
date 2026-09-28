@@ -23,6 +23,9 @@ sentences longer than 20 words down from 18% to 15%. That case grades whichever
 profile the lane runs, so set `N8N_EVAL_PROMPT_VERSION=concise@1` to measure
 this arm.
 
+The PostHog flag `124_instance_ai_concise_style` assigns `concise@1` to a user.
+The flag is off by default. Its enabled arm is `variant`.
+
 ## Selection and recovery
 
 Selection reads a version and a mode, and **any version beats any mode**.
@@ -32,6 +35,12 @@ version already selected for the thread (both share one slot, so a request pin
 replaces the thread's), then the instance-wide operator pin
 `N8N_INSTANCE_AI_PROMPT_VERSION`. Only when all three are empty does the mode
 decide: the thread's stored build mode, else the backend experiment assignment.
+
+The concise style flag sits below all three pins. It selects `concise@1` only
+when the mode resolves to `default`. A thread that started in progressive mode,
+or a user in the progressive arm, keeps the progressive profile. Like the
+experiment assignment, the flag is read again on each user turn, and
+checkpoints do not store it.
 
 Because a version outranks a mode, pinning a `default`-mode profile such as
 `concise@1` also overrides a progressive building assignment. The operator pin

@@ -49,6 +49,7 @@ import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
+	CONCISE_PROMPT_VERSION,
 	MAX_STEPS,
 	assertInstanceAiPromptVersion,
 	createInstanceAgent,
@@ -2523,6 +2524,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
+			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
@@ -2537,15 +2539,19 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
+		const mode =
+			this.runState.getBuildMode(threadId) ??
+			(progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
 		// so evals and in-flight conversations keep the profile they started on.
+		// The concise experiment applies only in default mode, so a progressive
+		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
 			version:
 				this.runState.getPromptVersion(threadId) ??
-				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion),
-			mode:
-				this.runState.getBuildMode(threadId) ??
-				(progressiveBuildingEnabled ? 'progressive' : 'default'),
+				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
+				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
+			mode,
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
