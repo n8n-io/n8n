@@ -4,16 +4,14 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 const permissionSchema = z.enum(['always_allow', 'require_approval', 'blocked']);
 const toolNamesSchema = z.array(z.string().min(1));
-const legacyApprovalSchema = z
-	.discriminatedUnion('mode', [
-		z.object({ mode: z.literal('global') }).strict(),
-		z.object({ mode: z.literal('selected'), tools: toolNamesSchema }).strict(),
-	]);
-const legacyFilterSchema = z
-	.discriminatedUnion('mode', [
-		z.object({ mode: z.literal('allow'), tools: toolNamesSchema }).strict(),
-		z.object({ mode: z.literal('exclude'), tools: toolNamesSchema }).strict(),
-	]);
+const legacyApprovalSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('global') }).strict(),
+	z.object({ mode: z.literal('selected'), tools: toolNamesSchema }).strict(),
+]);
+const legacyFilterSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('allow'), tools: toolNamesSchema }).strict(),
+	z.object({ mode: z.literal('exclude'), tools: toolNamesSchema }).strict(),
+]);
 
 type Permission = z.infer<typeof permissionSchema>;
 type LegacyApproval = z.infer<typeof legacyApprovalSchema>;
@@ -135,7 +133,7 @@ function migrateConfig(value: unknown): MigrationResult {
 		: { status: 'unchanged' };
 }
 
-export class MigrateAgentMcpToolPermissions1790261671925 implements IrreversibleMigration {
+export class MigrateAgentMcpToolPermissions1790585122744 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		for (const table of tables) {
 			await this.migrateTable(context, table.name, table.idColumn);
