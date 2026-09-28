@@ -3411,3 +3411,53 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
 	});
 });
+
+describe('createThreadRuntime - onboarding exit', () => {
+	const hooks = {
+		onTitleUpdated: vi.fn(),
+		onRunFinish: vi.fn(),
+		onOnboardingLeft: vi.fn(),
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+	let runtime: ThreadRuntime;
+
+	const sse = (event: Record<string, unknown>) =>
+		capturedOnMessage!(makeSSEEvent({ runId: 'run-1', agentId: 'agent-root', ...event }));
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		runtime = createThreadRuntime('thread-onboarding', hooks);
+		runtime.connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		sse(validRunStartEvent('run-1', 'agent-root'));
+	});
+
+	afterEach(() => {
+		runtime.closeSSE();
+	});
+
+	test('a leave-onboarding call ends the onboarding with the reason the agent gave', () => {
+		sse({ type: 'tool-call', payload: { toolCallId: 'tc-1', toolName: 'search', args: {} } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse({
+			type: 'tool-call',
+			payload: { toolCallId: 'tc-2', toolName: 'leave-onboarding', args: { reason: 'stop' } },
+		});
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'left', 'stop');
+	});
+
+	test('a failed run ends the onboarding; a completed one does not', () => {
+		sse({ type: 'run-finish', payload: { status: 'completed' } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse(validRunStartEvent('run-2', 'agent-root'));
+		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
+	});
+});

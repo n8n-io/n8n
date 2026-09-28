@@ -811,7 +811,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1145,7 +1148,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};

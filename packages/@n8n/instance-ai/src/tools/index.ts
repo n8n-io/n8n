@@ -76,6 +76,10 @@ const loadResearchTool = lazyMod(
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
 );
+const loadLeaveOnboardingTool = lazyMod(
+	() =>
+		require('./shared/leave-onboarding.tool') as typeof import('./shared/leave-onboarding.tool'),
+);
 const loadTaskControlTool = lazyMod(
 	() => require('./task-control.tool') as typeof import('./task-control.tool'),
 );
@@ -115,6 +119,15 @@ function getOrchestratorDomainToolFactories(
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
 		],
 	];
+
+	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
+	// the chat chrome when it sees the call.
+	if (context.onboardingThread) {
+		tools.push([
+			DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
+			() => loadLeaveOnboardingTool().createLeaveOnboardingTool(),
+		]);
+	}
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.

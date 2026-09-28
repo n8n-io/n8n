@@ -12,6 +12,7 @@ export const DOMAIN_TOOL_IDS = {
 	NODES: 'nodes',
 	SEARCH_MODELS: 'searchModels',
 	ASK_USER: 'ask-user',
+	LEAVE_ONBOARDING: 'leave-onboarding',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
@@ -56,6 +57,9 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
+	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
+	// Deferring it would price the user's "let me out" at search_tools + load_tool.
+	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
 	DOMAIN_TOOL_IDS.CREDENTIALS,
 	DOMAIN_TOOL_IDS.WORKFLOWS,
 	DOMAIN_TOOL_IDS.EXECUTIONS,
