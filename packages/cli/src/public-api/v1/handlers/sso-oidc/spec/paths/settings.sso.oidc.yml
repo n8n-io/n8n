@@ -1,25 +1,3 @@
-get:
-  x-eov-operation-id: getOidcConfiguration
-  x-required-scope: oidc:manage
-  x-eov-operation-handler: v1/handlers/sso-oidc/sso-oidc.handler
-  tags:
-    - SettingsSsoOidc
-  summary: Retrieve the OIDC SSO configuration
-  description: >
-    Retrieve the current OIDC SSO configuration, including every field exposed in the UI.
-    The client secret is redacted on read and is never echoed back in plaintext. Requires the
-    `oidc:manage` scope and the OIDC feature to be licensed.
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/oidc-configuration.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '403':
-      $ref: '../../../../shared/spec/responses/forbidden.yml'
 put:
   x-eov-operation-id: setOidcConfiguration
   x-required-scope: oidc:manage

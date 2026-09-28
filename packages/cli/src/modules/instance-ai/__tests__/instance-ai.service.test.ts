@@ -16,6 +16,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
+		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
@@ -951,7 +952,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1184,15 +1188,24 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
+	// [progressive flag, stored mode, pinned version, concise flag, expected profile]
 	it.each([
-		[false, undefined, 'default', undefined],
-		[true, undefined, 'progressive', undefined],
-		[true, 'default', 'default', undefined],
-		[false, 'progressive', 'progressive', undefined],
-		[true, 'progressive', 'default', 'default@1'],
-		[false, 'default', 'progressive', 'progressive@1'],
-		[true, 'progressive', 'default', 'retired@1'],
-	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
+		[false, undefined, undefined, false, 'default@1'],
+		[true, undefined, undefined, false, 'progressive@1'],
+		[true, 'default', undefined, false, 'default@1'],
+		[false, 'progressive', undefined, false, 'progressive@1'],
+		[true, 'progressive', 'default@1', false, 'default@1'],
+		[false, 'default', 'progressive@1', false, 'progressive@1'],
+		[true, 'progressive', 'retired@1', false, 'default@1'],
+		// The concise flag applies only in default mode, and any pin beats it.
+		[false, undefined, undefined, true, 'concise@1'],
+		[false, 'default', undefined, true, 'concise@1'],
+		[true, undefined, undefined, true, 'progressive@1'],
+		[false, 'progressive', undefined, true, 'progressive@1'],
+		[false, undefined, 'default@1', true, 'default@1'],
+	] as const)('selects profile (%s, %s, %s, %s) as %s', async (...row) => {
+		const [enabled, override, version, concise, profile] = row;
+		const expected = profile === 'progressive@1' ? 'progressive' : 'default';
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1290,6 +1303,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
+				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
@@ -1302,7 +1316,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -1373,10 +1390,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
 		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: expected, version: `${expected}@1` }),
+			expect.objectContaining({ mode: expected, version: profile }),
 		);
 		expect(environment.orchestrationContext).toMatchObject({
-			promptConfiguration: { version: `${expected}@1` },
+			promptConfiguration: { version: profile },
 		});
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),

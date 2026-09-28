@@ -39,6 +39,7 @@ const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	closeNodeCreator: [];
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	emptyGroupSelected: [];
 }>();
 const uiStore = useUIStore();
 const bannersStore = useBannersStore();
@@ -195,7 +196,10 @@ onClickOutside(
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 			>
-				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
+				<NodesListPanel
+					@node-type-selected="onNodeTypeSelected"
+					@empty-group-selected="emit('emptyGroupSelected')"
+				/>
 			</div>
 		</SlideTransition>
 	</div>
