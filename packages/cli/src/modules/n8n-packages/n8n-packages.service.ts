@@ -84,11 +84,11 @@ type DirectoryProjectPackage =
 	| { status: 'empty'; result: ImportResult }
 	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
 
-/** Merge preserves workflows omitted from the selection. Skip preserves existing shared tags. */
+/** A cherry-pick import acts only on its selection, so its policies are fixed here, not caller-chosen. */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	overwriteDeletionPolicy: 'archive',
+	overwriteDeletionPolicy: 'hard-delete',
 	workflowPublishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',

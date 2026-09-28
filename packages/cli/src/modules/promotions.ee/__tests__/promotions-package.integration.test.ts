@@ -1152,7 +1152,7 @@ describe('Apply a project selection', () => {
 		);
 	});
 
-	it('archives a selected workflow absent from the branch and keeps its sibling', async () => {
+	it('deletes a selected workflow absent from the branch and keeps its sibling', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
@@ -1173,20 +1173,19 @@ describe('Apply a project selection', () => {
 			workflowIds: [removed.id],
 		});
 
-		// The cherry-pick apply profile removes with `overwriteDeletionPolicy: 'archive'`, so a
-		// branch-absent selection is archived in place instead of being hard-deleted.
+		// The cherry-pick apply profile removes with `overwriteDeletionPolicy: 'hard-delete'`: an
+		// archived-in-place workflow would stay on the target and read as a `deleted` diff row forever,
+		// so a branch-absent selection is removed to make the diff converge.
 		expect(result).toMatchObject({
 			status: 'applied',
 			counts: {
-				workflows: { created: 0, updated: 0, archived: 1, deleted: 0 },
+				workflows: { created: 0, updated: 0, archived: 0, deleted: 1 },
 				projects: { deleted: 0 },
 			},
 		});
-		expect(await repository.findOneByOrFail({ id: removed.id })).toMatchObject({
-			isArchived: true,
-		});
+		expect(await repository.findOneBy({ id: removed.id })).toBeNull();
 		expect(await repository.findOneByOrFail({ id: workflows[0].id })).toEqual(siblingBefore);
-		expect(await repository.count()).toBe(2);
+		expect(await repository.count()).toBe(1);
 		expect(await projectRepository.findOneBy({ id: project.id })).not.toBeNull();
 	});
 

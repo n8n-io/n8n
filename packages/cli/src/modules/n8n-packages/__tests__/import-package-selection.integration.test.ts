@@ -524,9 +524,9 @@ describe('importPackageSelectionFromDirectory', () => {
 				expect.objectContaining({ sourceWorkflowId: 'WFA', status: 'updated' }),
 			]);
 			expect(result.removedWorkflows).toEqual([
-				expect.objectContaining({ workflowId: 'WFB', deletion: 'archived' }),
+				expect.objectContaining({ workflowId: 'WFB', deletion: 'deleted' }),
 			]);
-			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			expect(await findWorkflow('WFB')).toBeNull();
 			expect(subWorkflowRefOf((await findWorkflow('WFA'))!)).toBe('WFB');
 		});
 
@@ -537,7 +537,7 @@ describe('importPackageSelectionFromDirectory', () => {
 			});
 		}
 
-		it('archives a workflow named for deletion, even under the additive merge profile', async () => {
+		it('deletes a workflow named for deletion, even under the additive merge profile', async () => {
 			await seedBothWorkflows();
 			expect((await findWorkflow('WFB'))?.isArchived).toBe(false);
 
@@ -553,14 +553,14 @@ describe('importPackageSelectionFromDirectory', () => {
 					name: 'wfb',
 					projectId: 'P1',
 					parentFolderId: null,
-					deletion: 'archived',
+					deletion: 'deleted',
 				},
 			]);
-			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			expect(await findWorkflow('WFB')).toBeNull();
 			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
 		});
 
-		it('tolerates deleting an already-archived or absent workflow as a no-op', async () => {
+		it('tolerates deleting an already-removed or absent workflow as a no-op', async () => {
 			await seedBothWorkflows();
 
 			await importSelection(await packageDir(twoWorkflowPackage), {
@@ -568,7 +568,7 @@ describe('importPackageSelectionFromDirectory', () => {
 				selectedWorkflowIds: ['WFA'],
 				deletedWorkflowIds: ['WFB'],
 			});
-			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			expect(await findWorkflow('WFB')).toBeNull();
 
 			const result = await importSelection(await packageDir(twoWorkflowPackage), {
 				selectedProjectId: 'P1',
@@ -577,7 +577,7 @@ describe('importPackageSelectionFromDirectory', () => {
 			});
 
 			expect(result.removedWorkflows).toEqual([]);
-			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			expect(await findWorkflow('WFB')).toBeNull();
 		});
 
 		it('confines deletes to the scoped project, never removing a bystander project workflow', async () => {
