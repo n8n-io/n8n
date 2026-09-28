@@ -293,6 +293,83 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
+		it.each([
+			['0 0 9 * * *', '0 0 9 * * *', '0 0 9 * * *'],
+			['0 9 * * *', '0 9 * * *', '0 0 9 * * *'],
+			['@daily', '@daily', '0 0 0 * * *'],
+			['0 0 9 * * *', ' 0 0 9 * * * ', '0 0 9 * * *'],
+		])(
+			'registers repeated custom expression %s only once',
+			async (expression, repeated, expected) => {
+				const request = await register([
+					{ mode: 'custom', cronExpression: expression as CronExpression },
+					{ mode: 'custom', cronExpression: repeated as CronExpression },
+				]);
+
+				expect(request.desired).toHaveLength(1);
+				expect(request.desired[0].schedule).toEqual({
+					kind: 'cron',
+					cronExpression: expected,
+					timezone: null,
+				});
+			},
+		);
+
+		it.each([
+			['0 9 * * *', '0 0 9 * * *'],
+			['@daily', '0 0 0 * * *'],
+			['@daily', '@DAILY'],
+		])('keeps distinct custom expressions %s and %s', async (first, second) => {
+			const rules: TriggerTime[] = [first, second].map((expression) => ({
+				mode: 'custom',
+				cronExpression: expression as CronExpression,
+			}));
+			const request = await register([...rules, ...rules]);
+
+			expect(request.desired).toHaveLength(2);
+			expect(request.desired[0].schedule).toEqual(request.desired[1].schedule);
+			expect(request.desired[0].name).not.toBe(request.desired[1].name);
+		});
+
+		it('registers the same custom expression independently for each Cron node', async () => {
+			const session = makeRegistrar().createSession();
+			const otherNode = mock<INode>({ id: 'node-2', type: CRON_NODE_TYPE });
+			const cron: Cron = {
+				expression: '0 0 9 * * *',
+				triggerTime: { mode: 'custom', cronExpression: '0 0 9 * * *' },
+			};
+
+			for (const targetNode of [cronNode, otherNode]) {
+				const collector = session.createCollector(workflow, targetNode);
+				collector.registerCron(cron, vi.fn());
+				collector.registerCron(cron, vi.fn());
+				await session.commit(WORKFLOW_ID, targetNode.id);
+
+				expect(lastDesired()).toHaveLength(1);
+				expect(lastRequest().owner).toEqual(ownerOf(WORKFLOW_ID, targetNode.id));
+			}
+		});
+
+		it('registers the same custom expression independently in overlapping activation sessions', async () => {
+			const registrar = makeRegistrar();
+			const sessions = [registrar.createSession(), registrar.createSession()];
+			const cron: Cron = {
+				expression: '0 0 9 * * *',
+				triggerTime: { mode: 'custom', cronExpression: '0 0 9 * * *' },
+			};
+
+			for (const session of sessions) {
+				const collector = session.createCollector(workflow, cronNode);
+				collector.registerCron(cron, vi.fn());
+				collector.registerCron(cron, vi.fn());
+			}
+
+			for (const session of sessions) {
+				await session.commit(WORKFLOW_ID, NODE_ID);
+				expect(lastDesired()).toHaveLength(1);
+			}
+		});
+
 		it('reconciles an empty rule list', async () => {
 			await register([]);
 

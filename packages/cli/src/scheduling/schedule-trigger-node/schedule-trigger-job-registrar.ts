@@ -173,6 +173,7 @@ export class ScheduleTriggerJobRegistrar {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
 				const timezone = explicitTimezone(workflow);
 				const collected: CollectedSchedule[] = [];
+				const customCronExpressions = new Set<Cron['expression']>();
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
 					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
@@ -181,6 +182,12 @@ export class ScheduleTriggerJobRegistrar {
 
 				return {
 					registerCron: ({ expression, recurrence, source, triggerTime }: Cron) => {
+						const isCustomCron = node.type === CRON_NODE_TYPE && triggerTime?.mode === 'custom';
+						// The legacy engine compares expressions before presets and five-field crons are normalized.
+						if (isCustomCron && customCronExpressions.has(expression)) {
+							return;
+						}
+
 						const cronExpression =
 							node.type === CRON_NODE_TYPE && triggerTime
 								? seededCron(triggerTime, `${workflow.id}:${node.id}`)
@@ -218,6 +225,9 @@ export class ScheduleTriggerJobRegistrar {
 							);
 
 							collected.push({ schedule, firstRunAt: computed });
+						}
+						if (isCustomCron) {
+							customCronExpressions.add(expression);
 						}
 					},
 				};
