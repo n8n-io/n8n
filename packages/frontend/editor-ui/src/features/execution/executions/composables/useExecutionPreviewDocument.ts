@@ -196,7 +196,6 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		isLoading.value = true;
 		loadError.value = null;
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
-		// The previewed execution changes. The error path re-triggers below.
 		dismissWorkflowErrorNudge();
 		// EOF Experiment cleanup
 
