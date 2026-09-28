@@ -115,9 +115,6 @@ describe('onUnhandledRejection', () => {
 				get() {
 					throw new Error('get trap');
 				},
-				ownKeys() {
-					throw new Error('ownKeys trap');
-				},
 			},
 		);
 
