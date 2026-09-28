@@ -597,7 +597,18 @@ export function resolveStickyGeometry(
 		});
 	};
 
-	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	// Nodes are obstacles too: a note that lands on one is hidden behind it, because
+	// the canvas always draws sticky notes below nodes. Anchored and author-placed
+	// notes are exempt — they are meant to sit where they are.
+	const nodeBoxes = [...nodes.keys()]
+		.filter((name) => nodes.get(name)?.instance.type !== STICKY_NODE_TYPE)
+		.map(boxOfNode)
+		.filter((box): box is BoundingBox => box !== undefined);
+
+	const placed = [
+		...nodeBoxes,
+		...resolved.filter((sticky) => sticky.pinned).map(({ box }) => box),
+	];
 	for (const { name, box, sizedByAnchors, pinned } of resolved) {
 		if (pinned) {
 			record(name, box, sizedByAnchors);

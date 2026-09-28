@@ -12,6 +12,7 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
   Example: \`parameters: { url: placeholder('Your API URL (e.g. https://api.example.com/v1)') }\`
 
 - \`sticky('content', nodes?, config?)\` — creates a sticky note instance. Like every other node, the sticky must be passed to \`workflow(...)\` (or \`.add(...)\`) to appear on the canvas. The optional \`nodes\` array is **only used to size and anchor the sticky around those nodes** — it does **not** add them to the workflow; you must still add each wrapped node yourself.
+  **Always pass the \`nodes\` the note describes, and never set \`position\` on a sticky.** Layout runs after your code, so it knows where the nodes landed and you do not: an anchored note is sized and placed around them, while a hand-placed note lands on top of nodes and is hidden behind them.
   Example:
   \`\`\`ts
   const httpNode = node({ ... });

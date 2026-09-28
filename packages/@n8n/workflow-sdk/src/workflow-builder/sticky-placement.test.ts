@@ -129,6 +129,30 @@ describe('sticky note placement with tidyUp', () => {
 		}
 	});
 
+	it('keeps an unanchored sticky clear of the nodes', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+
+		const json = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute).to(post).to(record))
+			.add(sticky('## Ingest', { name: 'One' }))
+			.add(sticky('## Deliver', { name: 'Two' }))
+			.toJSON({ tidyUp: true });
+
+		const nodeNames = [
+			'Every Friday',
+			'Active teams',
+			'Compute week',
+			'DM pre-brief',
+			'Record run',
+		];
+		for (const stickyName of ['One', 'Two']) {
+			const box = stickyBox(json, stickyName);
+			for (const nodeName of nodeNames) {
+				expect(overlaps(box, nodeBox(json, nodeName))).toBe(false);
+			}
+		}
+	});
+
 	it('keeps an explicit position and size the caller passed', () => {
 		const { start, fetch } = buildChain();
 		const note = sticky('## Pinned', [start, fetch], {
