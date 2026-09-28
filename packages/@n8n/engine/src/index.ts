@@ -68,6 +68,8 @@ export type {
 } from './graph';
 
 export type {
+	ExecutionFilesDeleter,
+	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
 	StepExecutionContext,

@@ -39,3 +39,4 @@ export {
 	DEFAULT_WAIT_SWEEP_BATCH_SIZE,
 	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 } from './wait-sweeper';
+export { ExecutionFileCleanup } from './execution-file-cleanup';
