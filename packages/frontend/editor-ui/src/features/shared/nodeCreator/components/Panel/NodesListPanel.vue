@@ -184,7 +184,9 @@ function flushPendingSearchOnNavigation(event: KeyboardEvent) {
 }
 
 function onTransitionEnd() {
-	cleanupopeningContext();
+	if (viewStacks.value.length === 0) {
+		cleanupopeningContext();
+	}
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
