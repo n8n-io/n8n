@@ -12,15 +12,16 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 import type { IWorkflowDb } from '@/Interface';
 
 const push = vi.fn();
+const replace = vi.fn();
 const route = vi.hoisted(() => ({
 	params: {} as Record<string, string>,
-	query: {},
+	query: {} as Record<string, string>,
 	name: '',
 }));
 
 vi.mock('vue-router', () => ({
 	useRoute: () => route,
-	useRouter: () => ({ push }),
+	useRouter: () => ({ push, replace }),
 	RouterLink: { template: '<a><slot /></a>' },
 }));
 
@@ -29,9 +30,10 @@ const renderComponent = createComponentRenderer(ExecutionsView, {
 		stubs: {
 			ProjectHeader: { template: '<div data-test-id="project-header-stub" />' },
 			GlobalExecutionsList: {
-				emits: ['execution:stop'],
+				props: ['filters'],
+				emits: ['execution:stop', 'update:filters'],
 				template:
-					'<div data-test-id="global-executions-list-stub"><button data-test-id="stop-stub" @click="$emit(\'execution:stop\')" /><slot /></div>',
+					'<div data-test-id="global-executions-list-stub"><button data-test-id="stop-stub" @click="$emit(\'execution:stop\')" /><button data-test-id="filter-error-stub" @click="$emit(\'update:filters\', { ...filters, status: \'error\' })" /><slot /></div>',
 			},
 			InsightsSummary: true,
 		},
@@ -45,6 +47,7 @@ describe('ExecutionsView', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		push.mockClear();
+		replace.mockReset();
 		route.params = {};
 		route.query = {};
 		route.name = '';
@@ -142,5 +145,36 @@ describe('ExecutionsView', () => {
 		expect(workflowsListStore.fetchAllWorkflows).toHaveBeenCalledWith('project-1');
 		expect(workflowsListStore.hasFetchedAllWorkflows).toHaveBeenCalledWith('project-1');
 		expect(getByTestId('empty-resources-list')).toBeInTheDocument();
+	});
+
+	it('keeps an execution status filter after leaving and returning to the executions view (LIGO-803)', async () => {
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		const listStore = useWorkflowsListStore();
+		listStore.workflowsById = { w1: { id: 'w1', name: 'Workflow' } as IWorkflowDb };
+		vi.spyOn(listStore, 'fetchAllWorkflows').mockResolvedValue([]);
+		vi.spyOn(listStore, 'hasFetchedAllWorkflows').mockReturnValue(true);
+		vi.spyOn(executionsStore, 'initialize').mockResolvedValue();
+		replace.mockImplementation(async ({ query }: { query: Record<string, string> }) => {
+			route.query = query;
+		});
+
+		const view = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(view.getByTestId('global-executions-list-stub')).toBeInTheDocument();
+		expect(executionsStore.filters.status).toBe('all');
+
+		await fireEvent.click(view.getByTestId('filter-error-stub'));
+		await waitAllPromises();
+		expect(executionsStore.filters.status).toBe('error');
+
+		view.unmount();
+		const returnedView = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(returnedView.getByTestId('global-executions-list-stub')).toBeInTheDocument();
+		expect(executionsStore.filters.status).toBe('error');
+		expect(Object.values(route.query).join(' ')).toContain('error');
 	});
 });
