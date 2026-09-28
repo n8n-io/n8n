@@ -372,13 +372,28 @@ describe('CredentialTypePolicyCheck', () => {
 				throw new Error('not installed');
 			});
 
-			const result = await saveNew([credentialOnly(VIRUS_TOTAL_API)]);
+			// The parameter names the type too, but resolving it needs the missing description.
+			const result = await saveNew([
+				{
+					...credentialOnly(VIRUS_TOTAL_API),
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: VIRUS_TOTAL_API,
+					},
+				},
+			]);
 
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith(HTTP_REQUEST, 1);
 			expect(result.violations).toHaveLength(1);
 			expect(result.violations[0]).toMatchObject({
 				subject: VIRUS_TOTAL_API,
 				subjectType: 'credentialType',
 			});
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API],
+			);
 		});
 
 		it('reports one violation when the extended type is also named by parameter and selected', async () => {

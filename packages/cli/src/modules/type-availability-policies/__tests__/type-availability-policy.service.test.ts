@@ -379,6 +379,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
 				'Package rule names a package that is not installed: n8n-creds-base',
 			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
 		});
 	});
 
