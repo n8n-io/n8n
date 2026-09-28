@@ -166,7 +166,7 @@ describe('AddAgentExecutionMessages migration', () => {
 				author: null,
 				origin: null,
 				modelContent: null,
-				modelContextAt: message.createdAt,
+				modelContextAt: null,
 			});
 		}
 		for (const [table, snapshot] of snapshots) {
@@ -179,6 +179,11 @@ describe('AddAgentExecutionMessages migration', () => {
 			AND (${context.escape.columnName('modelContextAt')} IS NOT NULL OR ${context.escape.columnName('origin')} IS NULL)
 			AND ${timestamp} < :before
 			ORDER BY ${timestamp} DESC, ${context.escape.columnName('id')} DESC LIMIT 10`;
+		const history = await context.runQuery<Array<{ id: string }>>(query, {
+			threadId,
+			before: new Date('2026-05-13'),
+		});
+		expect(history.map(({ id }) => id)).toEqual([messageId]);
 		if (context.isPostgres) {
 			// Older transactions can temporarily prevent the planner from using this new index.
 			const [index] = await context.runQuery<Array<{ definition: string }>>(

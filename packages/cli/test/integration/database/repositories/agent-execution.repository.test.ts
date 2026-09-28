@@ -1813,14 +1813,24 @@ describe('AgentExecutionRepository', () => {
 		};
 		// Output messages can have the user role. Reserved IDs identify the input.
 		const output = { ...input, id: uuid(), content: [{ type: 'text' as const, text: 'Output' }] };
-		const later = { ...output, id: uuid(), content: [{ type: 'text' as const, text: 'Later' }] };
+		// ID order must not change output order.
+		const later = {
+			...output,
+			id: '00000000-0000-4000-8000-000000000002',
+			content: [{ type: 'text' as const, text: 'Later' }],
+		};
+		const latest = {
+			...output,
+			id: '00000000-0000-4000-8000-000000000001',
+			content: [{ type: 'text' as const, text: 'Latest' }],
+		};
 		const scope = {
 			threadId,
 			resourceId,
 			hostMetadata: { [EXECUTION_METADATA_KEY]: admission.executionId },
 		};
 		await memory.saveMessages({ ...scope, messages: [input, output] });
-		await memory.saveMessages({ ...scope, messages: [later, output, input] });
+		await memory.saveMessages({ ...scope, messages: [later, latest, output, input] });
 		expect((await messageRepository.findOneByOrFail({ id: inputId })).modelContent).toBeNull();
 		const links = await repository.manager.find(AgentExecutionMessageLink, {
 			where: { executionId: admission.executionId },
@@ -1832,6 +1842,7 @@ describe('AgentExecutionRepository', () => {
 			{ messageId: inputId, direction: 'input', position: 0 },
 			{ messageId: output.id, direction: 'output', position: 0 },
 			{ messageId: later.id, direction: 'output', position: 1 },
+			{ messageId: latest.id, direction: 'output', position: 2 },
 		]);
 		const detail = await executionService.getThreadDetail(threadId, projectId, agentId, viewerId);
 		expect(detail?.executions[0]).toMatchObject({

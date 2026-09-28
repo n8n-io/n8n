@@ -9,9 +9,6 @@ export class AddAgentExecutionMessages1790590278292 implements ReversibleMigrati
 		} = ctx;
 		await this.addMessageColumns(ctx);
 		await runQuery(
-			`UPDATE ${escape.tableName('agents_messages')} SET ${escape.columnName('modelContextAt')} = ${escape.columnName('createdAt')}`,
-		);
-		await runQuery(
 			`CREATE INDEX ${escape.indexName('agents_messages_model_context')}
 			ON ${escape.tableName('agents_messages')} (${escape.columnName('threadId')}, COALESCE(${escape.columnName('modelContextAt')}, ${escape.columnName('createdAt')}), ${escape.columnName('id')})`,
 		);

@@ -3,6 +3,7 @@ import type { AgentMessageAuthor } from '@n8n/api-types';
 import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -156,7 +157,12 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 					now,
 				),
 			);
-			await manager.save(messages);
+			// TypeORM's partial type does not accept open JSON metadata.
+			await manager.upsert(
+				AgentMessageEntity,
+				messages as Array<QueryDeepPartialEntity<AgentMessageEntity>>,
+				['id'],
+			);
 			if (!params.executionId) return;
 			const executionLinks = await manager.find(AgentExecutionMessageLink, {
 				where: { executionId: params.executionId },
@@ -170,7 +176,8 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			const links: Array<
 				Pick<AgentExecutionMessageLink, 'executionId' | 'messageId' | 'direction' | 'position'>
 			> = [];
-			for (const { id } of messages) {
+			// SQLite upserts can reorder IDs on the entity objects.
+			for (const id of ids) {
 				if (inputIds.has(id) || outputIds.has(id)) continue;
 				links.push({
 					executionId: params.executionId,
