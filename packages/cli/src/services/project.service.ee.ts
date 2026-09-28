@@ -561,11 +561,13 @@ export class ProjectService {
 		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}
 
+	/**
+	 * The user's project relations with project, role and role scopes. This runs on
+	 * most editor requests (scope resolution for lists and single resources), so the
+	 * repository keeps the row count proportional to the number of relations.
+	 */
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
-		return await this.projectRelationRepository.find({
-			where: { userId: user.id },
-			relations: ['project', 'role'],
-		});
+		return await this.projectRelationRepository.findAllByUser(user.id, { withProject: true });
 	}
 
 	async syncProjectRelations(
