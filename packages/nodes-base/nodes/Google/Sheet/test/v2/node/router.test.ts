@@ -134,4 +134,39 @@ describe('Google Sheets router', () => {
 			'document-1',
 		]);
 	});
+
+	it('preserves input order when resource resolution fails with continueOnFail', async () => {
+		const inputItems = [items[0], { json: { document: 'document-2' } }, items[1]];
+		const executeFunctions = createExecuteFunctions(4.8, inputItems);
+		executeFunctions.continueOnFail.mockReturnValue(true);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(
+				parameterName: string,
+				itemIndex: number,
+				_fallbackValue?: unknown,
+				options?: IGetNodeParameterOptions,
+			) => {
+				const item = inputItems[itemIndex].json;
+				if (parameterName === 'sheetName' && options?.extractValue) {
+					if (item.sheet === undefined) throw new Error('Missing sheet');
+					return item.sheet;
+				}
+				const parameters: Record<string, unknown> = {
+					resource: 'sheet',
+					operation: 'read',
+					documentId: { mode: 'id', value: item.document },
+					sheetName: { mode: 'name', value: item.sheet },
+					options: {},
+					'filtersUI.values': [],
+					combineFilters: 'AND',
+				};
+				return parameters[parameterName] as object | NodeParameterValueType;
+			},
+		);
+
+		const [result] = await router.call(executeFunctions);
+
+		expect(result.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }, { item: 2 }]);
+		expect(result[1].error).toBeInstanceOf(Error);
+	});
 });

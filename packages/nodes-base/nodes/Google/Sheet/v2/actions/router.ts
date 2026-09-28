@@ -23,6 +23,11 @@ interface SheetTargetResolutionError {
 	error: INodeExecutionData['error'];
 }
 
+interface OperationResultGroup {
+	itemIndex: number;
+	results: INodeExecutionData[];
+}
+
 function getSheetTarget(
 	context: IExecuteFunctions,
 	itemIndex: number,
@@ -117,15 +122,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operationResult.push(
 			...errors.map(({ itemIndex, error }) => ({ json: items[itemIndex].json, error })),
 		);
-	} else {
-		operationResult.push(
-			...errors.map(({ itemIndex, error }) => ({
-				json: items[itemIndex].json,
-				error,
-				pairedItem: { item: itemIndex },
-			})),
-		);
 	}
+	const resultGroups: OperationResultGroup[] = errors.map(({ itemIndex, error }) => ({
+		itemIndex,
+		results: [{ json: items[itemIndex].json, error, pairedItem: { item: itemIndex } }],
+	}));
 	for (const target of targets) {
 		try {
 			const googleSheet = new GoogleSheet(target.spreadsheetId, this);
@@ -164,7 +165,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				sheetId,
 				target.itemIndexes,
 			);
-			operationResult = operationResult.concat(results);
+			if (target.itemIndexes === undefined) {
+				operationResult = operationResult.concat(results);
+			} else {
+				resultGroups.push({ itemIndex: target.itemIndexes[0], results });
+			}
 		} catch (error) {
 			if (!this.continueOnFail()) throw error;
 
@@ -173,14 +178,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push({ json: items[0].json, error });
 				continue;
 			}
-			operationResult.push(
-				...itemIndexes.map((itemIndex) => ({
-					json: items[itemIndex].json,
-					error,
-					pairedItem: { item: itemIndex },
-				})),
-			);
+			const results = itemIndexes.map((itemIndex) => ({
+				json: items[itemIndex].json,
+				error,
+				pairedItem: { item: itemIndex },
+			}));
+			resultGroups.push({ itemIndex: itemIndexes[0], results });
 		}
+	}
+	if (this.getNode().typeVersion >= 4.8) {
+		resultGroups.sort((a, b) => a.itemIndex - b.itemIndex);
+		operationResult = resultGroups.flatMap(({ results }) => results);
 	}
 
 	return [operationResult];

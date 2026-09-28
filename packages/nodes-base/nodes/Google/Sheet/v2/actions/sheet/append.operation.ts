@@ -279,8 +279,28 @@ export async function execute(
 	if (dataMode === 'autoMapInputData') {
 		// Pass pre-fetched column names to skip a duplicate API call inside autoMapInputData.
 		// Only pass when truthy so that callers without a pre-fetch behave identically.
-		if (headerRow) {
+		if (headerRow && selectedItemIndexes !== undefined) {
+			inputData = await autoMapInputData.call(
+				this,
+				range,
+				sheet,
+				items,
+				options,
+				headerRow,
+				itemIndexes,
+			);
+		} else if (headerRow) {
 			inputData = await autoMapInputData.call(this, range, sheet, items, options, headerRow);
+		} else if (selectedItemIndexes !== undefined) {
+			inputData = await autoMapInputData.call(
+				this,
+				range,
+				sheet,
+				items,
+				options,
+				undefined,
+				itemIndexes,
+			);
 		} else {
 			inputData = await autoMapInputData.call(this, range, sheet, items, options);
 		}
