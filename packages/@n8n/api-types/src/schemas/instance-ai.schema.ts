@@ -2797,6 +2797,14 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
 
+/**
+ * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
+ * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
+ * instance and takes precedence over this flag.
+ */
+export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
+export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
+
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
