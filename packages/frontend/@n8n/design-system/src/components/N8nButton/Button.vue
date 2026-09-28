@@ -146,7 +146,6 @@ const handleClick = (event: MouseEvent) => {
 	height: var(--button--height);
 	padding: var(--button--padding);
 	border-radius: var(--radius--full);
-	// border-radius: var(--button--radius);
 	font-size: var(--button--font-size);
 
 	--button--color--background: transparent;
@@ -428,28 +427,11 @@ const handleClick = (event: MouseEvent) => {
 	@include motion.spin;
 }
 
-/* TODO: Move to global animations css library */
-:global(.n8n-button-fade-enter-active),
-:global(.n8n-button-fade-leave-active) {
-	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
-	transition:
-		opacity 0.2s var(--easing--ease-out),
-		transform 0.2s var(--easing--ease-out);
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: opacity 0.1s;
-	}
+:global(.n8n-button-fade-enter-active) {
+	@include motion.fade-in-up;
 }
 
-:global(.n8n-button-fade-enter-from),
-:global(.n8n-button-fade-leave-to) {
-	opacity: 0;
-	transform: translateY(4px);
-	filter: blur(2px);
-
-	@media (prefers-reduced-motion: reduce) {
-		transform: none;
-		filter: none;
-	}
+:global(.n8n-button-fade-leave-active) {
+	@include motion.fade-out-down;
 }
 </style>
