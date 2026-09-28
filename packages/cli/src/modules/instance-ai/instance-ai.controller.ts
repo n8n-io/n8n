@@ -83,7 +83,7 @@ import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.s
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
-import { InstanceAiOnboardingService } from './onboarding';
+import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -594,7 +594,11 @@ export class InstanceAiController {
 
 		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
 		// question as a finished synthetic run. The user's next chat message starts the first turn.
-		// Free text in the card starts that turn now, with the answers as the message.
+		// Free text in the card starts that turn now, with the answers as the message, so the model
+		// check of `chat` applies; it runs before the card is consumed.
+		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
+			await this.requireModelConfigured();
+		}
 		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
 		if (card) {
 			const runId =

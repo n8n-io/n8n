@@ -248,7 +248,7 @@ const PROMPT_TEXT_MAX_LENGTH = 128;
  * or start a new line. Angle brackets are escaped rather than dropped, so a
  * name that legitimately contains one still reads as itself.
  */
-export function sanitisePromptText(value: string): string {
+export function sanitisePromptText(value: string, maxLength = PROMPT_TEXT_MAX_LENGTH): string {
 	const printable = Array.from(value)
 		.map((character) => {
 			const code = character.codePointAt(0) ?? 0;
@@ -261,7 +261,7 @@ export function sanitisePromptText(value: string): string {
 		.replace(/>/g, '&gt;')
 		.replace(/\s+/g, ' ')
 		.trim()
-		.slice(0, PROMPT_TEXT_MAX_LENGTH);
+		.slice(0, maxLength);
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to
@@ -309,10 +309,17 @@ export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): strin
 	].join('\n');
 }
 
-/** The selected options, then the free text as `typed "…"`; `(not answered)` when the card had neither. */
+/**
+ * The selected options, then the free text as `typed "…"`; `(not answered)` when the card had
+ * neither. Both come from the client, so they are escaped like every other value the host puts in
+ * a prompt block; the free text is the user's whole first message, so it keeps its length.
+ */
 function formatOnboardingAnswer({ selectedOptions, customText }: OnboardingAnswer): string {
-	const text = customText?.trim();
-	const values = [...selectedOptions, ...(text ? [`typed "${text}"`] : [])];
+	const text = customText && sanitisePromptText(customText, Infinity);
+	const values = [
+		...selectedOptions.map((option) => sanitisePromptText(option)),
+		...(text ? [`typed "${text}"`] : []),
+	];
 	return values.length > 0 ? values.join(', ') : '(not answered)';
 }
 

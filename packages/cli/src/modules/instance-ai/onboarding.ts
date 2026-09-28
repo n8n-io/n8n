@@ -11,7 +11,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	orchestratorAgentId,
 } from '@n8n/instance-ai';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -50,7 +50,7 @@ type Answer = GivenAnswer & { question: string };
  * the cloud stores them in the account `information` (`GET /rest/cloud/proxy/user/me`). Other
  * keys are dropped. The card skips a step the survey answers; the answer still reaches the agent.
  */
-const surveySchema = z.object({ what_team_are_you_on: z.string().optional() });
+const surveySchema = z.object({ what_team_are_you_on: z.string().max(100).optional() });
 type Survey = z.infer<typeof surveySchema>;
 /** Where the survey came from: the n8n Cloud account, or the `?team=` query of a test run. */
 const surveySourceSchema = z.enum(['cloud', 'url']);
@@ -64,6 +64,21 @@ const launchContextSchema = z.object({
 const SURVEY_KEY_BY_QUESTION: Partial<Record<string, keyof Survey>> = {
 	team: 'what_team_are_you_on',
 };
+
+/** True when the answer holds free text: the card answer then starts the first model turn. */
+function hasFreeText(request: InstanceAiConfirmRequest): boolean {
+	return (
+		request.kind === 'questions' && request.answers.some((answer) => answer.customText?.trim())
+	);
+}
+
+/** True when `requestId` is the onboarding card and answering it with `request` starts a model run. */
+export function startsOnboardingFirstTurn(
+	requestId: string,
+	request: InstanceAiConfirmRequest,
+): boolean {
+	return requestId.startsWith(CARD_REQUEST_ID_PREFIX) && hasFreeText(request);
+}
 
 function surveyOf(sourceContext: unknown): { survey: Survey; surveySource: SurveySource } {
 	const parsed = launchContextSchema.safeParse(sourceContext ?? {});
@@ -173,19 +188,26 @@ export class InstanceAiOnboardingService {
 			'{{firstName}}',
 			user.firstName?.trim() || 'there',
 		);
-		// The LLM history needs the greeting as an assistant turn; the card lives in the event log.
-		const { userMessageId } = await this.memoryService.seedOpeningMessages(
-			threadId,
-			user.id,
-			greeting,
-		);
-		await this.seedTurn({
-			threadId,
-			userId: user.id,
-			messageId: userMessageId,
-			text: greeting,
-			card: { title: ONBOARDING_OPENING.title, questions: shown },
-		});
+		try {
+			// The LLM history needs the greeting as an assistant turn; the card lives in the event log.
+			const { userMessageId } = await this.memoryService.seedOpeningMessages(
+				threadId,
+				user.id,
+				greeting,
+			);
+			await this.seedTurn({
+				threadId,
+				userId: user.id,
+				messageId: userMessageId,
+				text: greeting,
+				card: { title: ONBOARDING_OPENING.title, questions: shown },
+			});
+		} catch (error) {
+			// A thread without its greeting and card would open empty and never get them: remove it,
+			// so the next visit creates a whole one.
+			await this.memoryService.deleteThread(threadId);
+			throw error;
+		}
 		const team = survey.what_team_are_you_on?.trim() || null;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_AI_ASSISTANT_ONBOARDING, {
 			user_id: user.id,
@@ -212,13 +234,17 @@ export class InstanceAiOnboardingService {
 		{ threadId: string; runId: string } | { threadId: string; firstMessage: string } | undefined
 	> {
 		if (!requestId.startsWith(CARD_REQUEST_ID_PREFIX)) return undefined;
+		// Before the claim: a refused request must leave the card open.
+		if (request.kind !== 'questions') {
+			throw new BadRequestError('The onboarding card takes answers of kind "questions"');
+		}
 		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
 		if (!row?.toolCallId) return undefined;
 
 		const metadata = await this.memoryService.getThreadMetadata(userId, row.threadId);
 		const { survey, surveySource } = surveyOf(metadata?.sourceContext);
 		const { questions, shown, answered } = applySurvey(ONBOARDING_OPENING.questions, survey);
-		const given = request.kind === 'questions' ? request.answers : [];
+		const given = request.answers;
 		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
 		const answerFor = (question: Question): Answer => ({
 			...(given.find((answer) => answer.questionId === question.id) ?? {
@@ -255,10 +281,12 @@ export class InstanceAiOnboardingService {
 			team_source: teamSource,
 			apps: picked('apps'),
 			custom_text:
-				given
-					.map((answer) => answer.customText?.trim())
-					.filter(Boolean)
-					.join('\n') || null,
+				redactTelemetryText(
+					given
+						.map((answer) => answer.customText?.trim())
+						.filter(Boolean)
+						.join('\n'),
+				) || null,
 		});
 		// The card showed only what the survey left open; the agent gets every line, in opening order.
 		const lines = questions.map((question) => {
@@ -270,7 +298,7 @@ export class InstanceAiOnboardingService {
 		const answerMessage = buildOnboardingAnswerMessage(lines);
 		// Free text is the user's own words: a tool the list lacks, a task, or a wish to stop. The
 		// caller starts the first turn with the answers, and the host posts no follow-up.
-		if (given.some((answer) => answer.customText?.trim())) {
+		if (hasFreeText(request)) {
 			return { threadId: row.threadId, firstMessage: answerMessage };
 		}
 		// The LLM history reads the answers as the hidden user turn under the follow-up, so the
@@ -353,9 +381,9 @@ export class InstanceAiOnboardingService {
 		// Finished, so the interrupted-run sweeper leaves it alone. A completed run keeps an
 		// unanswered card actionable (shared reducer, `run-finish`).
 		events.push({ type: 'run-finish', runId, agentId, payload: { status: 'completed' } });
-		for (const event of events) this.eventBus.publish(threadId, event);
 		if (card) {
-			// No expiry: nothing could revive the card after a timeout.
+			// Saved before the events go out: a client that answers the card as soon as it shows
+			// must find the row. No expiry: nothing could revive the card after a timeout.
 			// ponytail: kind 'inline' (no checkpoint) because the column CHECK allows only 'inline' and
 			// 'suspended'; a 'seeded' kind needs a migration. The prefix above is the real marker.
 			await this.pendingConfirmationRepo.save(
@@ -371,6 +399,7 @@ export class InstanceAiOnboardingService {
 				}),
 			);
 		}
+		for (const event of events) this.eventBus.publish(threadId, event);
 		// The client reads the messages right after the response; the fold reads committed rows.
 		await this.eventLog.flush(threadId);
 		return runId;
