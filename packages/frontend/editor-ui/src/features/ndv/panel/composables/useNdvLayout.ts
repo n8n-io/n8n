@@ -93,9 +93,21 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		const total = newPanelWidth.left + newPanelWidth.main + newPanelWidth.right;
 		const sides = newPanelWidth.left + newPanelWidth.right;
 
-		// Panels must always span the container: distribute any difference across the
-		// side panels, otherwise a short total leaves the canvas showing through.
-		if (total !== 100 && sides > 0) {
+		// Reduce each side by its available space before shrinking the main panel.
+		if (total > 100) {
+			const leftRoom = newPanelWidth.left - minLeft;
+			const rightRoom = newPanelWidth.right - minRight;
+			const sideRoom = leftRoom + rightRoom;
+			const excess = total - 100;
+			const sideReduction = Math.min(excess, sideRoom);
+
+			if (sideRoom > 0) {
+				newPanelWidth.left -= (sideReduction * leftRoom) / sideRoom;
+				newPanelWidth.right -= (sideReduction * rightRoom) / sideRoom;
+			}
+			newPanelWidth.main -= excess - sideReduction;
+		} else if (total < 100 && sides > 0) {
+			// Fill any gap so the canvas does not show through the panels.
 			const diff = 100 - total;
 			const leftShare = newPanelWidth.left / sides;
 
