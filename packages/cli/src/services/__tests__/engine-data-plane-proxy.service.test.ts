@@ -87,4 +87,17 @@ describe('EngineDataPlaneProxyService', () => {
 
 		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
 	});
+
+	it('reports no execution to cancel without a provider', async () => {
+		await expect(proxy.cancelExecution(executionId)).resolves.toBeUndefined();
+	});
+
+	it('forwards a cancel to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		provider.cancelExecution.mockResolvedValue({ cancelled: true });
+		proxy.registerProvider(provider);
+
+		await expect(proxy.cancelExecution(executionId)).resolves.toEqual({ cancelled: true });
+		expect(provider.cancelExecution).toHaveBeenCalledWith(executionId);
+	});
 });
