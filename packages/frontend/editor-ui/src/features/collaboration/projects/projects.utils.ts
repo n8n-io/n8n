@@ -1,5 +1,6 @@
 import { truncate } from '@n8n/utils/string/truncate';
-import type { ProjectListItem } from './projects.types';
+import type { Project, ProjectListItem, ProjectSharingData } from './projects.types';
+import { ProjectTypes } from './projects.types';
 import { useProjectsStore } from './projects.store';
 
 export const DEFAULT_PROJECT_SEARCH_PAGE_SIZE = 50;
@@ -79,3 +80,11 @@ export const enum ResourceType {
 	Workflow = 'workflow',
 	DataTable = 'dataTable',
 }
+
+// A resource is "owned by the viewer" when its home project is the viewer's
+// own personal project, not merely a team project the viewer belongs to.
+export const isOwnedByPersonalProject = (
+	homeProject: ProjectSharingData | null | undefined,
+	personalProject: Project | null | undefined,
+): boolean =>
+	homeProject?.type === ProjectTypes.Personal && homeProject?.id === personalProject?.id;

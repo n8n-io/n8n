@@ -22,6 +22,7 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
+import CredentialOwnershipInfo from './CredentialOwnershipInfo.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import { useMessage } from '@/app/composables/useMessage';
@@ -47,6 +48,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
@@ -101,6 +103,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const externalSecretsStore = useExternalSecretsStore();
+const { check: envFeatureFlag } = useEnvFeatureFlag();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const nodeHelpers = useNodeHelpers();
@@ -240,6 +243,15 @@ const workflowContextNode = computed(() => {
 
 const overrideProjectId = computed(() => {
 	return modalOptions.value?.projectId;
+});
+
+const workingProjectId = computed<string | undefined>(() => {
+	if (modalOptions.value?.destination) return undefined;
+	return (
+		modalOptions.value?.projectId ??
+		projectsStore.currentProjectId ??
+		projectsStore.personalProject?.id
+	);
 });
 
 const form = useCredentialForm({
@@ -410,6 +422,14 @@ const showHeaderSaveButton = computed(
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+const showOwnershipInfo = computed(
+	() =>
+		envFeatureFlag.value('CRED_SHARING') &&
+		props.mode === 'edit' &&
+		!!currentCredential.value &&
+		!modalOptions.value?.destination,
+);
+
 const showAiGatewayErrorNudge = computed(() => {
 	const node = workflowContextNode.value;
 	const type = credentialTypeName.value;
@@ -470,9 +490,7 @@ onMounted(async () => {
 
 		const projectId = modalOptions.value?.destination
 			? homeProject.value?.id
-			: (modalOptions.value?.projectId ??
-				projectsStore.currentProjectId ??
-				projectsStore.personalProject?.id);
+			: workingProjectId.value;
 		if (projectId) {
 			try {
 				await externalSecretsStore.fetchSecretsForProject(projectId);
@@ -1697,6 +1715,13 @@ const { width } = useElementSize(credNameRef);
 							/>
 						</div>
 					</N8nDialogHeader>
+					<CredentialOwnershipInfo
+						v-if="showOwnershipInfo"
+						:home-project="currentCredential?.homeProject"
+						:shared-with-projects="currentCredential?.sharedWithProjects"
+						:is-global="currentCredential?.isGlobal"
+						:working-project-id="workingProjectId"
+					/>
 					<div :class="$style.container" data-test-id="credential-edit-dialog">
 						<div
 							v-if="credentialDescriptionsEnabled || !isEditingManagedCredential"

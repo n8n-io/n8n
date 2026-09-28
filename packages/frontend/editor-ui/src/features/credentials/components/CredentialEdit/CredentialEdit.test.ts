@@ -28,11 +28,14 @@ import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
-const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
-	confirmMock: vi.fn(),
-	routerCurrentRouteMock: { value: { query: {} } },
-	routerReplaceMock: vi.fn(),
-}));
+const { confirmMock, routerCurrentRouteMock, routerReplaceMock, checkEnvFeatureFlag } = vi.hoisted(
+	() => ({
+		confirmMock: vi.fn(),
+		routerCurrentRouteMock: { value: { query: {} } },
+		routerReplaceMock: vi.fn(),
+		checkEnvFeatureFlag: vi.fn().mockReturnValue(false),
+	}),
+);
 const {
 	aiGatewayBalance,
 	aiGatewayEnabled,
@@ -87,6 +90,10 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
+}));
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
 }));
 
 vi.mock('@/features/resolvers/composables/usePrivateCredentials', async () => {
@@ -362,6 +369,7 @@ describe('CredentialEdit', () => {
 		routerCurrentRouteMock.value = { query: {} };
 		aiGatewayBalance.value = 1;
 		aiGatewayEnabled.value = false;
+		checkEnvFeatureFlag.mockReturnValue(false);
 		fetchGatewayConfigMock.mockResolvedValue(undefined);
 		fetchGatewayWalletMock.mockResolvedValue(undefined);
 		saveAfterGatewayToggleMock.mockResolvedValue(true);
@@ -2589,6 +2597,103 @@ describe('CredentialEdit', () => {
 				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
 				expect(queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
 			});
+		});
+	});
+
+	// Placed last: each test here creates and activates its own testing pinia
+	// (via createTestingPinia), which would otherwise leak forward as the active
+	// pinia for any later test that relies on the module-level default instance.
+	describe('ownership info', () => {
+		const personalProjectState = {
+			id: 'personal-project',
+			name: 'Mona Pfeffer <mona@example.com>',
+			type: 'personal' as const,
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+			relations: [],
+			scopes: [],
+			rolesManaged: false,
+		};
+
+		const setupOwnershipStores = () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalStateById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: personalProjectState,
+					},
+				},
+			});
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				data: {},
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				id: 'cred-owner-1',
+				name: 'Test API account',
+				type: 'testApi',
+				isManaged: false,
+				homeProject: personalProjectState,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+			});
+			credentialsStore.state.credentialTypes = {
+				testApi: { name: 'testApi', displayName: 'Test API', properties: [] } as ICredentialType,
+			};
+
+			return { pinia, credentialsStore };
+		};
+
+		test('renders ownership info in edit mode when the CRED_SHARING flag is enabled', async () => {
+			checkEnvFeatureFlag.mockReturnValue(true);
+			const { pinia, credentialsStore } = setupOwnershipStores();
+
+			const { getByTestId } = renderComponent({
+				props: { activeId: 'cred-owner-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(getByTestId('credential-ownership-info')).toBeInTheDocument());
+		});
+
+		test('hides ownership info when the CRED_SHARING flag is disabled', async () => {
+			checkEnvFeatureFlag.mockReturnValue(false);
+			const { pinia, credentialsStore } = setupOwnershipStores();
+
+			const { queryByTestId } = renderComponent({
+				props: { activeId: 'cred-owner-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			expect(queryByTestId('credential-ownership-info')).not.toBeInTheDocument();
+		});
+
+		test('hides ownership info for a new (unsaved) credential even when the flag is enabled', async () => {
+			checkEnvFeatureFlag.mockReturnValue(true);
+			const { pinia, credentialsStore } = setupOwnershipStores();
+			credentialsStore.getNewCredentialName.mockResolvedValue('Test API account');
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+
+			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+			expect(queryByTestId('credential-ownership-info')).not.toBeInTheDocument();
 		});
 	});
 });

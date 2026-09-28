@@ -1,10 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import {
+	isOwnedByPersonalProject,
 	splitName,
 	useRemoteProjectSearch,
 	DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 } from './projects.utils';
 import { useProjectsStore } from './projects.store';
+import type { Project, ProjectSharingData } from './projects.types';
 
 describe('splitName', () => {
 	test.each([
@@ -80,6 +82,32 @@ describe('splitName', () => {
 		],
 	])('should split a name in the format "First Last <email@domain.com>"', (input, result) => {
 		expect(splitName(input)).toEqual(result);
+	});
+});
+
+describe('isOwnedByPersonalProject', () => {
+	const personalProject = { id: 'p1' } as Project;
+
+	it("is true when the home project is the viewer's own personal project", () => {
+		const homeProject = { id: 'p1', type: 'personal' } as ProjectSharingData;
+		expect(isOwnedByPersonalProject(homeProject, personalProject)).toBe(true);
+	});
+
+	it("is false when the home project belongs to someone else's personal project", () => {
+		const homeProject = { id: 'p2', type: 'personal' } as ProjectSharingData;
+		expect(isOwnedByPersonalProject(homeProject, personalProject)).toBe(false);
+	});
+
+	it('is false for a team project even if the id happens to match', () => {
+		const homeProject = { id: 'p1', type: 'team' } as ProjectSharingData;
+		expect(isOwnedByPersonalProject(homeProject, personalProject)).toBe(false);
+	});
+
+	it('is false when either project is missing', () => {
+		expect(isOwnedByPersonalProject(undefined, personalProject)).toBe(false);
+		expect(
+			isOwnedByPersonalProject({ id: 'p1', type: 'personal' } as ProjectSharingData, undefined),
+		).toBe(false);
 	});
 });
 

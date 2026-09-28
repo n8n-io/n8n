@@ -16,6 +16,7 @@ import type {
 } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import {
+	isOwnedByPersonalProject,
 	splitName,
 	useRemoteProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
@@ -87,8 +88,7 @@ const homeProject = computed<ProjectSharingData | undefined>(
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
 const isPersonalSpaceRestricted = computed(
 	() =>
-		homeProject.value?.type === ProjectTypes.Personal &&
-		homeProject.value?.id === projectsStore.personalProject?.id &&
+		isOwnedByPersonalProject(homeProject.value, projectsStore.personalProject) &&
 		!props.credentialPermissions.share,
 );
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
