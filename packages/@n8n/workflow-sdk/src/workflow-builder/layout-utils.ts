@@ -497,10 +497,18 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 	};
 }
 
-/** Push a box down until it clears every box already placed. */
+/**
+ * Push a box down until it clears every box already placed.
+ *
+ * Each step drops the box below one collider, which also clears every box that
+ * ends at or above that collider. One step per obstacle is therefore always
+ * enough, and the walk still carries a hard bound so a pathological graph
+ * cannot spin.
+ */
 function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 	let separated = box;
-	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+	const maxSteps = Math.max(MAX_STICKY_SEPARATION_STEPS, placed.length + 1);
+	for (let step = 0; step < maxSteps; step++) {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {

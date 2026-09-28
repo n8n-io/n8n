@@ -223,6 +223,46 @@ describe('sticky note placement with tidyUp', () => {
 		expect(contains(box, nodeBox(json, 'Active teams'))).toBe(true);
 	});
 
+	it('separates many unanchored stickies without running out of steps', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+
+		// One separation step is needed per obstacle, so a long run of notes must not
+		// hit a fixed ceiling and leave the tail stacked.
+		const count = 60;
+		let wf = workflow('wf', 'Test').add(start.to(fetch).to(compute).to(post).to(record));
+		for (let i = 0; i < count; i++) {
+			wf = wf.add(sticky(`## Note ${i}`, { name: `note-${i}` }));
+		}
+		const json = wf.toJSON({ tidyUp: true });
+
+		const boxes = Array.from({ length: count }, (_, i) => stickyBox(json, `note-${i}`));
+		for (const [i, a] of boxes.entries()) {
+			for (const b of boxes.slice(i + 1)) {
+				expect(overlaps(a, b)).toBe(false);
+			}
+		}
+	});
+
+	it('keeps a hand-placed sticky where it is when a saved workflow is laid out again', () => {
+		const { start, fetch } = buildChain();
+		// Deliberately overlapping the nodes: re-layout must not "rescue" it, or every
+		// edit would shuffle the canvas the user arranged.
+		const pinned = sticky('## Placed by hand', {
+			name: 'Hand placed',
+			position: [180, -40],
+			width: 500,
+			height: 300,
+		});
+
+		let json = workflow('wf', 'Test').add(start.to(fetch)).add(pinned).toJSON({ tidyUp: true });
+		const first = stickyBox(json, 'Hand placed');
+
+		for (let i = 0; i < 3; i++) {
+			json = workflow.fromJSON(json).toJSON({ tidyUp: true });
+			expect(stickyBox(json, 'Hand placed')).toEqual(first);
+		}
+	});
+
 	it('emits every sticky as a sticky note node', () => {
 		const { start, fetch } = buildChain();
 
