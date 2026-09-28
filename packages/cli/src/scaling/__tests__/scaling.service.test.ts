@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig, WorkerPoolConfig } from '@n8n/config';
-import type { ExecutionRepository, IExecutionBase } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { ENCODED_BUFFER_KEY, InstanceSettings } from 'n8n-core';
 import type { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,7 +14,8 @@ import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { JOB_TYPE_NAME, JOB_WAIT_RECHECK_INTERVAL_MS } from '../constants';
+import { JOB_TYPE_NAME } from '../constants';
+import type { JobOutcomeTracker } from '../job-outcome-tracker';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
@@ -103,6 +104,7 @@ describe('ScalingService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const executionCrashService = mockInstance(ExecutionCrashService);
+	const jobOutcomeTracker = mock<JobOutcomeTracker>();
 	const webhookResponseRelay = mock<WebhookResponseRelay>();
 
 	let scalingService: ScalingService;
@@ -147,6 +149,7 @@ describe('ScalingService', () => {
 			mock(),
 			webhookResponseRelay,
 			executionCrashService,
+			jobOutcomeTracker,
 		);
 
 		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
@@ -740,6 +743,7 @@ describe('ScalingService', () => {
 				mock(),
 				webhookResponseRelay,
 				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -779,6 +783,7 @@ describe('ScalingService', () => {
 				mock(),
 				webhookResponseRelay,
 				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -813,6 +818,7 @@ describe('ScalingService', () => {
 				mock(),
 				webhookResponseRelay,
 				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -835,280 +841,74 @@ describe('ScalingService', () => {
 				statusCode: 500,
 			});
 		});
+		describe('job outcome wiring', () => {
+			const getHandler = (event: string) =>
+				queue.on.mock.calls.find(([name]) => (name as string) === event)?.[1] as (
+					...args: unknown[]
+				) => void;
 
-		it('should keep waitTill when storing a v2 job-finished result', async () => {
-			const activeExecutions = mock<ActiveExecutions>();
-			activeExecutions.has.mockReturnValue(true);
-			scalingService = new ScalingService(
-				mockLogger(),
-				mock(),
-				activeExecutions,
-				jobProcessor,
-				globalConfig,
-				mock(),
-				mock(),
-				instanceSettings,
-				mock(),
-				webhookResponseRelay,
-				executionCrashService,
-			);
-
-			await scalingService.setupQueue();
-
-			const messageHandler = queue.on.mock.calls.find(
-				([event]) => (event as string) === 'global:progress',
-			)?.[1] as (jobId: JobId, msg: unknown) => void;
-
-			const waitTill = new Date('2026-07-25T12:00:00.000Z');
-			// Bull delivers progress messages JSON-serialized, so dates arrive as ISO strings
-			const jobFinishedMessage = {
-				kind: 'job-finished',
-				version: 2,
-				executionId: 'exec-123',
-				workerId: 'worker-456',
-				success: true,
-				status: 'waiting',
-				startedAt: '2026-07-25T11:59:00.000Z',
-				stoppedAt: '2026-07-25T11:59:30.000Z',
-				waitTill: waitTill.toISOString(),
-			};
-
-			messageHandler('job-789', jobFinishedMessage);
-
-			const result = scalingService.popJobResult('exec-123');
-
-			expect(result?.status).toBe('waiting');
-			// A missing waitTill makes main treat a waiting execution as finished and
-			// delete it when the workflow does not save successful executions
-			expect(result?.waitTill).toEqual(waitTill);
-		});
-
-		it('should not store a job-finished result for an execution this process did not enqueue', async () => {
-			const activeExecutions = mock<ActiveExecutions>();
-			activeExecutions.has.mockReturnValue(false);
-			scalingService = new ScalingService(
-				mockLogger(),
-				mock(),
-				activeExecutions,
-				jobProcessor,
-				globalConfig,
-				mock(),
-				mock(),
-				instanceSettings,
-				mock(),
-				webhookResponseRelay,
-				executionCrashService,
-			);
-
-			await scalingService.setupQueue();
-
-			const messageHandler = queue.on.mock.calls.find(
-				([event]) => (event as string) === 'global:progress',
-			)?.[1] as (jobId: JobId, msg: unknown) => void;
-
-			// Bull broadcasts progress messages to every main and webhook process
-			messageHandler('job-789', {
-				kind: 'job-finished',
-				version: 2,
-				executionId: 'exec-other-main',
-				workerId: 'worker-456',
-				success: true,
-				status: 'success',
-				startedAt: '2026-07-25T11:59:00.000Z',
-				stoppedAt: '2026-07-25T11:59:30.000Z',
+			beforeEach(async () => {
+				await scalingService.setupQueue();
 			});
 
-			expect(activeExecutions.has).toHaveBeenCalledWith('exec-other-main');
-			expect(scalingService.popJobResult('exec-other-main')).toBeUndefined();
-		});
-	});
+			it('should record a v2 job-finished result with its dates and waitTill', () => {
+				const waitTill = new Date('2026-07-25T12:00:00.000Z');
+				// Bull delivers progress messages JSON-serialized, so dates arrive as ISO strings
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+					status: 'waiting',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					waitTill: waitTill.toISOString(),
+				});
 
-	describe('waitForJob', () => {
-		const job = mock<Job>({
-			id: 'job-1',
-			data: { executionId: 'exec-1' },
-			queue: { name: 'jobs' },
-		});
-
-		const getHandler = (event: string) =>
-			queue.on.mock.calls.find(([name]) => (name as string) === event)?.[1] as (
-				...args: unknown[]
-			) => void;
-
-		const jobFinishedMessage = {
-			kind: 'job-finished',
-			version: 2,
-			executionId: 'exec-1',
-			workerId: 'worker-1',
-			success: true,
-			status: 'success',
-			startedAt: '2026-07-25T11:59:00.000Z',
-			stoppedAt: '2026-07-25T11:59:30.000Z',
-		};
-
-		beforeEach(async () => {
-			activeExecutions.has.mockReturnValue(true);
-			await scalingService.setupQueue();
-		});
-
-		it('should resolve when the worker reports the job as finished', async () => {
-			const wait = scalingService.waitForJob(job);
-
-			getHandler('global:progress')('job-1', jobFinishedMessage);
-
-			await expect(wait).resolves.toBeUndefined();
-			expect(scalingService.popJobResult('exec-1')?.status).toBe('success');
-		});
-
-		it('should resolve at once when the result arrived before the wait started', async () => {
-			getHandler('global:progress')('job-1', jobFinishedMessage);
-
-			await expect(scalingService.waitForJob(job)).resolves.toBeUndefined();
-		});
-
-		it('should reject with the worker error when the worker reports the job as failed', async () => {
-			const wait = scalingService.waitForJob(job);
-
-			getHandler('global:progress')('job-1', {
-				kind: 'job-failed',
-				executionId: 'exec-1',
-				workerId: 'worker-1',
-				errorMsg: 'boom',
-				errorStack: '',
-			});
-
-			await expect(wait).rejects.toThrow('boom');
-		});
-
-		it('should resolve when Bull reports the job as completed', async () => {
-			const wait = scalingService.waitForJob(job);
-
-			getHandler('global:completed')('job-1');
-
-			await expect(wait).resolves.toBeUndefined();
-		});
-
-		it('should reject at once when the worker reported the failure before the wait started', async () => {
-			getHandler('global:progress')('job-1', {
-				kind: 'job-failed',
-				executionId: 'exec-1',
-				workerId: 'worker-1',
-				errorMsg: 'boom',
-				errorStack: '',
-			});
-
-			await expect(scalingService.waitForJob(job)).rejects.toThrow('boom');
-		});
-
-		it('should settle only the wait for the queue that emitted the Bull event', async () => {
-			const poolJob = mock<Job>({
-				id: 'job-1',
-				data: { executionId: 'exec-pool' },
-				queue: { name: 'jobs-gpu' },
-			});
-			let poolSettled = false;
-			void scalingService.waitForJob(poolJob).finally(() => (poolSettled = true));
-			const wait = scalingService.waitForJob(job);
-
-			// Bull job IDs are unique per queue only, and this handler belongs to the `jobs` queue
-			getHandler('global:completed')('job-1');
-
-			await expect(wait).resolves.toBeUndefined();
-			expect(poolSettled).toBe(false);
-
-			// Drop the pending pool wait so its recheck timer does not outlive the test
-			poolJob.isActive.mockResolvedValue(false);
-			poolJob.remove.mockResolvedValue();
-			await scalingService.stopJob(poolJob);
-		});
-
-		it('should resolve from the DB when the execution row is gone', async () => {
-			vi.useFakeTimers();
-			try {
-				executionRepository.findSingleExecution.mockResolvedValue(undefined);
-
-				const wait = scalingService.waitForJob(job);
-				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
-
-				await expect(wait).resolves.toBeUndefined();
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('should keep rechecking after a failed DB read', async () => {
-			vi.useFakeTimers();
-			try {
-				executionRepository.findSingleExecution
-					.mockRejectedValueOnce(new Error('db unavailable'))
-					.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
-
-				const wait = scalingService.waitForJob(job);
-				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
-
-				await expect(wait).resolves.toBeUndefined();
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(2);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('should reject with the Bull reason when Bull reports the job as failed', async () => {
-			const wait = scalingService.waitForJob(job);
-
-			getHandler('global:failed')('job-1', 'job stalled more than maxStalledCount');
-
-			await expect(wait).rejects.toThrow('job stalled more than maxStalledCount');
-		});
-
-		it('should resolve from the DB when every completion event was missed', async () => {
-			vi.useFakeTimers();
-			try {
-				executionRepository.findSingleExecution.mockResolvedValue(
-					mock<IExecutionBase>({ status: 'success' }),
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'exec-123',
+					expect.objectContaining({
+						status: 'waiting',
+						startedAt: new Date('2026-07-25T11:59:00.000Z'),
+						// A missing waitTill makes main treat a waiting execution as finished and
+						// delete it when the workflow does not save successful executions
+						waitTill,
+					}),
 				);
+			});
 
-				const wait = scalingService.waitForJob(job);
-				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
+			it('should record a job-failed report as a handled error', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-failed',
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					errorMsg: 'boom',
+					errorStack: '',
+				});
 
-				await expect(wait).resolves.toBeUndefined();
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('should keep waiting while the DB still shows the execution as running', async () => {
-			vi.useFakeTimers();
-			try {
-				executionRepository.findSingleExecution.mockResolvedValue(
-					mock<IExecutionBase>({ status: 'running' }),
+				expect(jobOutcomeTracker.recordFailed).toHaveBeenCalledWith(
+					'exec-123',
+					expect.any(OperationalError),
 				);
-				let settled = false;
+				expect(jobOutcomeTracker.recordFailed.mock.calls[0][1].message).toBe('boom');
+			});
 
-				void scalingService.waitForJob(job).finally(() => (settled = true));
-				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
+			it('should settle the wait for a job Bull reports as failed, by queue and job ID', () => {
+				getHandler('global:failed')('job-1', 'job stalled more than maxStalledCount');
 
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(2);
-				expect(settled).toBe(false);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
+				expect(jobOutcomeTracker.settleByJobKey).toHaveBeenCalledWith(
+					'jobs',
+					'job-1',
+					expect.any(OperationalError),
+				);
+			});
 
-		it('should drop the wait and its recheck when the job is stopped', async () => {
-			vi.useFakeTimers();
-			try {
-				job.isActive.mockResolvedValue(false);
-				job.remove.mockResolvedValue();
+			it('should settle the wait for a job Bull reports as completed, by queue and job ID', () => {
+				getHandler('global:completed')('job-1');
 
-				void scalingService.waitForJob(job);
-				await scalingService.stopJob(job);
-				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
-
-				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
-			} finally {
-				vi.useRealTimers();
-			}
+				expect(jobOutcomeTracker.settleByJobKey).toHaveBeenCalledWith('jobs', 'job-1');
+			});
 		});
 	});
 
