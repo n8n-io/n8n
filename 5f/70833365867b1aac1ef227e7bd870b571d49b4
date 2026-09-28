@@ -16,6 +16,7 @@ packages/cli/src/modules/agents/agent-chat-execution.service.ts
   s_c5954c3047b5ed::t_3a2626bcb4f182 43-48,67-72,156-159,176-184
   s_c5954c3047b5ed::t_bf4b0f3c83e6d8 185-186
   s_e5a64625bc5cd1::t_4a1dfa5731ccd8 12-13,35-36,62,104-105,121-138,142-143,150,155,164-168,172-175,197,277-283
+  s_e5a64625bc5cd1::t_ee3da683a5acfe 139-141,169-171
 packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
   s_c5954c3047b5ed::t_f23a67cb1ddb4b 820-823,827-834
   s_c5954c3047b5ed::t_601cda6162ba98 74-75,1268,1276-1277,1320,1505-1506,1529-1536,1541-1543,1546-1549,1701-1708,1717-1724,1729,1733,1740-1744,1749-1767,1777-1780,1784-1785,1789,1793-1801,1805,1809-1819,1823-1831,1842-1844,1917-1924,1935-1936,1940-1942,1946-1953,1962,1966-1967,1972-1983
@@ -286,6 +287,7 @@ packages/cli/src/modules/agents/agent-chat.controller.ts
 packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 20-24,144,154,182,224-226,316-317,338-339,746,787,813,826-827,833-834,837,839-899,901-902,905,911,916,923-946,1059
   s_e5a64625bc5cd1::t_4722ce25f39976 521-554
+  s_e5a64625bc5cd1::t_e6e6dd90752457 555-556
 packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 363
 packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
@@ -584,10 +586,13 @@ packages/cli/src/modules/agents/background/background-job-tools.ts
   s_e5a64625bc5cd1::t_c7ea8d644cea2e 8,11,66-67,158,168-171,217-219
 packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
   s_e5a64625bc5cd1::t_0bd5c86955870d 230,241,366
+  s_e5a64625bc5cd1::t_ba5b88852972f7 74-79,81,83,87-88,90-92,120-136
 packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
   s_e5a64625bc5cd1::t_d78d061a082772 20,106-114,116-119,127-128,297,305,333
+  s_e5a64625bc5cd1::t_ee3da683a5acfe 83,88,115,174
 packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
   s_e5a64625bc5cd1::t_f14a75855e9f76 13,32,40-41,102-106,119-130,137,166,270,329,335,482-508
+  s_e5a64625bc5cd1::t_ee3da683a5acfe 314-319
 packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
   s_e5a64625bc5cd1::t_7ff18cab0231c0 7,12,14-17,136-180
 packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
