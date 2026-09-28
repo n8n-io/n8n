@@ -26,6 +26,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -101,6 +102,9 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { executeReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
@@ -204,6 +208,13 @@ export function useNodeExecution(
 
 		if (workflowExecutionStateStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
+		}
+
+		// A run is checked against the person it acts as, so a credential this user
+		// cannot use stops the whole workflow, not just the node that holds it.
+		// Refused by the backend either way; said here before the click.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
 		}
 
 		return '';

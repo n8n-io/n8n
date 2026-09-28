@@ -148,6 +148,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -1271,7 +1272,17 @@ const isExecutionWaitingForWebhook = computed(
 	() => workflowExecutionState.value.executionWaitingForWebhook,
 );
 
+const { executeReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+);
+
 const isExecutionDisabled = computed(() => {
+	// A run is checked against the person it acts as, so a credential this user
+	// cannot use stops the workflow. The backend refuses it either way.
+	if (unusableCredentialReason.value) {
+		return true;
+	}
+
 	if (
 		containsChatTriggerNodes.value &&
 		isOnlyChatTriggerNodeActive.value &&
@@ -2217,6 +2228,7 @@ onBeforeUnmount(() => {
 			/>
 			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
+					:disabled-reason="unusableCredentialReason"
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
 					:disabled="isExecutionDisabled"

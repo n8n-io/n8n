@@ -47,6 +47,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
@@ -78,6 +79,10 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
+
+const { publishReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+);
 const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
 	props.isNewWorkflow ? undefined : props.id,
 );
@@ -398,6 +403,21 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
+	// A published workflow runs as its publisher, so publishing is refused for a
+	// credential this user cannot use — before permissions, because no permission
+	// makes it publishable.
+	if (unusableCredentialReason.value) {
+		return {
+			text: i18n.baseText('workflows.publish'),
+			enabled: false,
+			loading: false,
+			showIndicator: !!activeVersion.value,
+			indicatorClass: activeVersion.value ? 'published' : '',
+			tooltip: unusableCredentialReason.value,
+			showVersionInfo: !!activeVersion.value,
+		};
+	}
+
 	// Handle permission-denied state first
 	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
