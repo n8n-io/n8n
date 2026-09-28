@@ -8,7 +8,6 @@ import type {
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -212,12 +211,12 @@ export class ApiHelpers {
 			},
 		});
 
+		// The endpoint responds only after the reset and the user seeding complete,
+		// so no extra wait is necessary.
 		if (!response.ok()) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {
