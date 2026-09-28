@@ -7,7 +7,7 @@ export type StorageState = Awaited<ReturnType<APIRequestContext['storageState']>
 export type SessionRole = UserRole | 'none';
 
 /** The session of an unauthenticated test (`@auth:none`). */
-export const NO_SESSION: StorageState = { cookies: [], origins: [] };
+const NO_SESSION: StorageState = { cookies: [], origins: [] };
 
 const ROLES: readonly SessionRole[] = ['admin', 'owner', 'member', 'chat', 'none'];
 

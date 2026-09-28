@@ -79,7 +79,6 @@ DEVP-1074 and DEVP-1073 are independent of each other.
 | Evidence | PR CI | Add by hand |
 | --- | --- | --- |
 | Managed Testcontainers path | Yes: the E2E container projects | — |
-| Fixture order, reset and login counts | No | Run `test:harness` locally when fixtures change |
 | Attached path (local, pre-started stack) | No. CI never attaches. | Run rows 2 and 3 locally. Paste the result in the PR. |
 | Kafka with TLS and SASL | No | One local run against a SASL broker |
 | K3s | Only when Helm files change | The matrix job |
@@ -88,8 +87,8 @@ DEVP-1074 and DEVP-1073 are independent of each other.
 
 - Keep the selected test set and assertions. Do not add unexplained skips,
   retries, or timeout increases.
-- Add or change a case in `tests/framework/harness-contract.test.ts` for each
-  behavior change.
+- Prove fixture changes through the product specs. There is no separate harness
+  suite. Unit-test pure fixture logic next to the code.
 - Keep existing fixture names as aliases.
 - A green PR E2E run is the main evidence. Record timings only when startup
   changes: DEVP-1067 and DEVP-1069.
@@ -98,7 +97,6 @@ DEVP-1074 and DEVP-1073 are independent of each other.
 pnpm --filter=n8n-playwright typecheck
 pnpm --filter=n8n-playwright lint
 pnpm --filter=n8n-playwright test:unit
-pnpm --filter=n8n-playwright test:harness
 pnpm --filter=n8n-playwright janitor
 ```
 
@@ -187,7 +185,7 @@ Step 3 of DEVP-1067 (DEVP-1069 merged in) · M
 | `playwright.config.ts` | Declare `containerConfig` as a typed worker option. Remove the `ProjectUse` cast. |
 | `fixtures/backend-v8-coverage.ts` | Read `backendUrl` |
 | `fixtures/observability.ts` | Read `sut.stack` |
-| `tests/framework/` | Override `sut` with a fake. A recording server proves that `attach` never resets without a grant and never stops the instance. |
+| `fixtures/sut.test.ts` (new) | Unit tests: `attach` denies a reset without a grant, never stops the instance, and names a missing service. |
 
 `startSut` holds the only source choice:
 
@@ -367,7 +365,6 @@ harness works, and they record what each environment can and cannot do.
 
 | Suite | Rows | Proves |
 | --- | --- | --- |
-| Harness contract (`test:harness`) | Synthetic | Fixture order, reset and login counts, cleanup |
 | Sentinels: `tests/e2e/building-blocks/` plus one `@db:reset` spec, one Mailpit spec, one multi-main spec, and the queue worker sentinel | 1–6 | The same API and UI journeys work on every source |
 | Full `e2e` project | 1, 2, 4 | The eligibility map: what runs, what is filtered, what skips and why |
 

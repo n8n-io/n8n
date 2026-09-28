@@ -29,23 +29,23 @@ export interface Sut {
 	stop(): Promise<void>;
 }
 
-export async function resetDatabase(url: string): Promise<void> {
+async function resetDatabase(url: string): Promise<void> {
 	await using context = await request.newContext({ baseURL: url });
 	await new ApiHelpers(context).resetDatabase();
 }
 
-export async function applyDefaultFeatures(url: string): Promise<void> {
+async function applyDefaultFeatures(url: string): Promise<void> {
 	await using context = await request.newContext({ baseURL: url });
 	await new ApiHelpers(context).applyDefaultFeatures();
 }
 
-export function denied(operation: string) {
+function denied(operation: string) {
 	return async () => {
 		throw new TestError(`${operation} is not permitted on this SUT`);
 	};
 }
 
-export function unavailableServices(label: string): ServiceHelpers {
+function unavailableServices(label: string): ServiceHelpers {
 	return new Proxy({} as ServiceHelpers, {
 		get(_target, property) {
 			// Awaiting or inspecting the object must not throw.
@@ -56,7 +56,7 @@ export function unavailableServices(label: string): ServiceHelpers {
 }
 
 /** Starts a Docker stack for one worker and brings it to the known state. */
-export async function startTestcontainers(config: N8NConfig): Promise<Sut> {
+async function startTestcontainers(config: N8NConfig): Promise<Sut> {
 	const stack = await createN8NStack(config);
 	const sut: Sut = {
 		url: stack.baseUrl,

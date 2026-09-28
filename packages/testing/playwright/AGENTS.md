@@ -15,7 +15,7 @@ Choose the suite by the behavior under test:
 | Database, queue, multi-main, encryption, or process lifecycle | `tests/infrastructure/` | `test:infrastructure` or the named project |
 | Infrastructure throughput and resource use | `tests/infrastructure/benchmarks/` | `test:benchmark` |
 | Browser and canvas performance | `tests/performance/` | `test:performance` |
-| Fixture or harness contract | `tests/framework/` | `test:unit` or `test:harness` |
+| Fixture or harness helper logic | Next to the code, as `*.test.ts` | `test:unit` |
 | Evaluation scenario | Existing evaluation directory | Its named evaluation project |
 
 Use Playwright when the test needs its worker lifecycle, fixtures, retries,
@@ -48,14 +48,10 @@ Product Playwright tests live under `tests/`. Keep product E2E specs under
 `tests/e2e/` and keep infrastructure, performance, evaluation, and related
 suites in their existing directories under `tests/`.
 
-Framework and harness tests live under `tests/framework/`. Use this directory
-for tests of fixtures, startup lifecycle, diagnostics, telemetry, and harness
-contracts. These tests are not product E2E specs and must not be placed under
-`tests/e2e/`.
-
-Framework unit tests use the package Vitest configuration. Browser-backed
-harness contract tests use `vitest.harness.config.ts` so they stay separate
-from browser-free unit tests.
+Fixtures have no separate harness suite. The product specs exercise them: a
+fixture change must keep the E2E projects green. Unit-test pure fixture logic
+(config resolution, tag parsing, SUT sources) with Vitest next to the code,
+for example `fixtures/sut.test.ts`.
 
 ## Test Maintenance (Janitor)
 
