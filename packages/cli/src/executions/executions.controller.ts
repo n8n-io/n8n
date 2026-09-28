@@ -38,7 +38,7 @@ export class ExecutionsController {
 		const { rangeQuery: query, cursor } = req;
 
 		query.user = req.user;
-		query.sharingOptions = await this.executionListService.buildSharingOptions('workflow:read');
+		query.sharingOptions = await this.executionListService.buildSharingOptions('execution:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
@@ -61,7 +61,7 @@ export class ExecutionsController {
 
 	@Get('/versions/:workflowId')
 	async getVersions(req: ExecutionRequest.GetVersions) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
 			return [];
@@ -74,7 +74,7 @@ export class ExecutionsController {
 	async getOne(req: ExecutionRequest.GetOne) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -131,7 +131,9 @@ export class ExecutionsController {
 
 	@Post('/delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Body payload: DeleteExecutionsDto) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		// Deleting is its own permission: a role can run and view workflows without
+		// being able to remove their execution history.
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:delete');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -142,14 +144,14 @@ export class ExecutionsController {
 	async update(req: ExecutionRequest.Update) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
 
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
 		// The data plane stores no annotations.
 		if (isExecutionIdV2(req.params.id)) {
-			throw new NotImplementedError('Annotating engine 2.0 executions is not supported yet');
+			throw new NotImplementedError('Annotating engine v2 executions is not supported yet');
 		}
 
 		const { body: payload } = req;

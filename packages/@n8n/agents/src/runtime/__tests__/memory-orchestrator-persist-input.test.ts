@@ -45,6 +45,40 @@ function textsOf(messages: AgentDbMessage[]): string[] {
 	});
 }
 
+describe('MemoryOrchestrator.discardRejectedInput', () => {
+	it('removes input from storage, deltas, and serialized state without changing history', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const history: AgentDbMessage = {
+			id: 'history',
+			createdAt: new Date('2026-01-01'),
+			...userMsg('Earlier message'),
+		};
+		await store.saveMessages({ threadId: THREAD_ID, resourceId: RESOURCE_ID, messages: [history] });
+		const list = new AgentMessageList();
+		list.addHistory([history]);
+		list.addInput([userMsg('Rejected message'), userMsg('Additional input')]);
+		const orchestrator = buildOrchestrator(store);
+		await orchestrator.persistInputMessages(list, PERSIST);
+
+		await orchestrator.discardRejectedInput(list, PERSIST);
+		await orchestrator.discardRejectedInput(list, PERSIST);
+		await orchestrator.persistInputMessages(list, PERSIST);
+		await orchestrator.persistTurnDelta(list, PERSIST);
+		await orchestrator.saveToMemory(list, PERSIST);
+
+		expect(list.inputDelta()).toEqual([]);
+		expect(list.turnDelta()).toEqual([]);
+		expect(list.serialize()).toMatchObject({
+			messages: [history],
+			inputIds: [],
+			historyIds: ['history'],
+		});
+		expect(AgentMessageList.deserialize(list.serialize()).turnDelta()).toEqual([]);
+		expect(await store.getMessages(THREAD_ID)).toEqual([history]);
+	});
+});
+
 describe('MemoryOrchestrator.persistInputMessages', () => {
 	it('persists only the input delta, not history or responses', async () => {
 		const store = new InMemoryMemory();

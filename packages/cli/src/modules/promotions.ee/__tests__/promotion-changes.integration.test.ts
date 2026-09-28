@@ -651,7 +651,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authlessAgent.get(endpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	// A project admin can export and update the project, but lacks the global push and pull scopes.
+	// A project admin manages the project, but lacks the global git connection scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);

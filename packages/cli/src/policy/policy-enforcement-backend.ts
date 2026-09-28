@@ -1,6 +1,7 @@
 import type {
 	ContentImportContext,
 	CredentialDecryptContext,
+	CredentialSaveContext,
 	EnforcementPoint,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -15,6 +16,7 @@ type PolicyContexts = {
 	workflowPublish: WorkflowPublishContext;
 	workflowStart: WorkflowStartContext;
 	workflowTransfer: WorkflowTransferContext;
+	credentialSave: CredentialSaveContext;
 	credentialDecrypt: CredentialDecryptContext;
 	contentImport: ContentImportContext;
 };

@@ -87,6 +87,7 @@ export interface ObservationLogObserverInput {
 	telemetry?: BuiltTelemetry;
 }
 
+/** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
 export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
 
 export interface ObservationLogReflectorInput {

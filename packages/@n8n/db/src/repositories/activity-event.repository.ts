@@ -55,7 +55,10 @@ export type ActivityFeedQuery = {
 	projectIds: ActivityProjectScope;
 	userId?: string;
 	resourceId?: string;
-	category?: ActivityEvent['category'];
+	/** Optional category filter. It must be in `allowedCategories`. */
+	filterCategory?: ActivityEvent['category'];
+	/** The categories the caller has permission to read. */
+	allowedCategories: Array<ActivityEvent['category']>;
 	/**
 	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
 	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
@@ -108,14 +111,20 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 */
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
-		// An empty allowance means nothing is visible, not everything — `In([])` would match no
-		// row on Postgres but is worth being explicit about rather than relying on it.
-		if (isEmptyScope(query.projectIds)) return [];
+		// Empty project or category permissions must not widen the query.
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return [];
+		if (
+			query.filterCategory !== undefined &&
+			!query.allowedCategories.includes(query.filterCategory)
+		)
+			return [];
 
-		const where: FindOptionsWhere<ActivityEvent> = projectScopeWhere(query.projectIds);
+		const where: FindOptionsWhere<ActivityEvent> = {
+			...projectScopeWhere(query.projectIds),
+			category: query.filterCategory ?? In(query.allowedCategories),
+		};
 		if (query.userId !== undefined) where.userId = query.userId;
 		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
-		if (query.category !== undefined) where.category = query.category;
 
 		// Both bounds can apply at once — "what arrived while this page was open" pages an
 		// already-bounded range — so they combine rather than overwrite each other.
@@ -139,11 +148,16 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	async findEntry(query: {
 		id: number;
 		projectIds: ActivityProjectScope;
+		allowedCategories: Array<ActivityEvent['category']>;
 	}): Promise<ActivityEvent | null> {
-		if (isEmptyScope(query.projectIds)) return null;
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
-			where: { id: query.id, ...projectScopeWhere(query.projectIds) },
+			where: {
+				id: query.id,
+				...projectScopeWhere(query.projectIds),
+				category: In(query.allowedCategories),
+			},
 		});
 	}
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.40.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -56,6 +56,7 @@
     }
   },
   "dependencies": {
+    "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "catalog:",

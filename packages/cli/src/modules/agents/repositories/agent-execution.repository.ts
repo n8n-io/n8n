@@ -1,8 +1,12 @@
+import type { AgentExecutionStatus } from '@n8n/api-types';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -22,14 +26,18 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
+	}
+
+	async saveInContext(execution: AgentExecution, ctx: OperationContext): Promise<AgentExecution> {
+		return await this.managerFor(ctx).save(execution);
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
-		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
@@ -39,12 +47,31 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
+	async existsRunningByThread(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentExecution, { threadId, status: 'running' });
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	async findRunningByThread(threadId: string, ctx: OperationContext): Promise<AgentExecution[]> {
+		return await this.managerFor(ctx).findBy(AgentExecution, { threadId, status: 'running' });
+	}
+
+	async findExecution(
+		executionId: string,
+		ctx: OperationContext = {},
+	): Promise<AgentExecution | null> {
+		return await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
+	}
+
+	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
+	}
+
+	async touchRunning(executionId: string): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			{ updatedAt: new Date() },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -61,9 +88,16 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update(
-			{ id: executionId, status: 'running' },
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThanOrEqual(staleBefore) } : {}),
+			},
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
@@ -84,31 +118,41 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	/**
-	 * The first user-message text in each of the given threads. Used by the
-	 * sessions list to render a preview before the LLM-generated title is
-	 * available.
-	 *
-	 * Excludes resumed runs (null `userMessage`). Returns one row per thread
-	 * containing the userMessage from that thread's earliest matching run.
+	 * The first visible input in each session supplies its preview text.
+	 * Use canonical messages when available. Keep legacy execution inputs.
 	 */
 	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
-
-		// Correlated subquery: for each thread, pick the row with the smallest
-		// createdAt that has a non-empty userMessage. Identifiers are double-quoted
-		// so Postgres preserves their camelCase (it lowercases unquoted names),
-		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
-		const tableName = this.metadata.tablePath;
-		const rows = await this.createQueryBuilder('e')
-			.select(['e."threadId" AS "threadId"', 'e."userMessage" AS "userMessage"'])
-			.where('e."threadId" IN (:...threadIds)', { threadIds })
-			.andWhere('e."userMessage" IS NOT NULL')
-			.andWhere('e."userMessage" != \'\'')
-			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" IS NOT NULL ' +
-					'AND e2."userMessage" != \'\')',
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const originalText = isPostgres
+			? "message.content->'content'->0->>'text'"
+			: "json_extract(message.content, '$.content[0].text')";
+		const hidden = isPostgres
+			? "message.origin->>'hidden'"
+			: "json_extract(message.origin, '$.hidden')";
+		const input = `CASE WHEN input.messageId IS NULL THEN e.userMessage WHEN CAST(${hidden} AS TEXT) IN ('true', '1') THEN NULL ELSE ${originalText} END`;
+		const candidates = this.createQueryBuilder('e')
+			.leftJoin(
+				AgentExecutionMessageLink,
+				'input',
+				"input.executionId = e.id AND input.direction = 'input' AND input.position = 0",
 			)
+			.leftJoin(AgentMessageEntity, 'message', 'message.id = input.messageId')
+			.select('e.threadId', 'threadId')
+			.addSelect(input, 'userMessage')
+			.addSelect(
+				'ROW_NUMBER() OVER (PARTITION BY e.threadId ORDER BY e.createdAt, e.id)',
+				'rowNumber',
+			)
+			.where('e.threadId IN (:...threadIds)', { threadIds })
+			.andWhere(`${input} IS NOT NULL AND TRIM(${input}) != ''`);
+		const rows = await this.manager
+			.createQueryBuilder()
+			.select('preview."threadId"', 'threadId')
+			.addSelect('preview."userMessage"', 'userMessage')
+			.from(`(${candidates.getQuery()})`, 'preview')
+			.where('preview."rowNumber" = 1')
+			.setParameters(candidates.getParameters())
 			.getRawMany<{ threadId: string; userMessage: string }>();
 
 		return new Map(rows.map((r) => [r.threadId, r.userMessage]));
@@ -120,7 +164,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	 *
 	 * Returns one row per thread from that thread's earliest matching run.
 	 */
-	async findFirstSourceByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
+	async findFirstSourceByThreadIds(
+		threadIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
 
 		// Correlated subquery: for each thread, pick the row with the smallest
@@ -128,7 +175,9 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		// so Postgres preserves their camelCase (it lowercases unquoted names),
 		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
 		const tableName = this.metadata.tablePath;
-		const rows = await this.createQueryBuilder('e')
+		const rows = await this.managerFor(ctx)
+			.getRepository(AgentExecution)
+			.createQueryBuilder('e')
 			.select(['e."threadId" AS "threadId"', 'e."source" AS "source"'])
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."source" IS NOT NULL')
@@ -215,20 +264,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
-	/**
-	 * Whether the thread ever parked a run. Counts rows on the
-	 * `(threadId, createdAt)` index without loading any execution data, so it is
-	 * cheap enough to ask on every inbound message.
-	 *
-	 * A row keeps `hitlStatus: 'suspended'` after its resume (the resumed turn is
-	 * a separate row), so this can only rule a thread out, never confirm that
-	 * something is parked right now — the checkpoint is the authority for that.
-	 */
-	async hasSuspendedRun(threadId: string): Promise<boolean> {
-		const count = await this.count({ where: { threadId, hitlStatus: 'suspended' } });
-		return count > 0;
-	}
-
 	/** Backfill model on a set of executions in a single statement. */
 	async backfillModel(executionIds: string[], model: string): Promise<void> {
 		if (executionIds.length === 0) return;
@@ -237,21 +272,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.set({ model })
 			.whereInIds(executionIds)
 			.execute();
-	}
-
-	/** Delete every run in a thread. Caller must verify ownership first. */
-	async deleteByThreadId(threadId: string): Promise<void> {
-		await this.delete({ threadId });
-	}
-
-	/** Blob-stored log refs for every run in a thread — for log cleanup on thread delete. */
-	async findBlobRefsByThreadId(
-		threadId: string,
-	): Promise<Array<Pick<AgentExecution, 'id' | 'storedAt'>>> {
-		return await this.find({
-			select: ['id', 'storedAt'],
-			where: { threadId, storedAt: Not('db') },
-		});
 	}
 
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */

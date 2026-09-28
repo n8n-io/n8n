@@ -11,13 +11,13 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import type { AgentIntegrationRemovalContext } from '../agent-chat-integration';
 import {
 	SlackManagedSetupService,
-	type DeleteManagedSlackAppOptions,
 	type FinalizeSlackManagerCredentialOptions,
 	type GetManagedSetupStateOptions,
 	type GetManagedSlackAppSettingsOptions,
@@ -125,7 +125,7 @@ describe('Slack setup services', () => {
 			options: UpdateManagedSlackAppSettingsOptions,
 		) => ReturnType<SlackManagedSetupService['updateAppSettings']>;
 		deleteManagedAppForCredential: (
-			options: DeleteManagedSlackAppOptions,
+			options: AgentIntegrationRemovalContext,
 		) => ReturnType<SlackManagedSetupService['deleteAppForCredential']>;
 	};
 
@@ -190,7 +190,6 @@ describe('Slack setup services', () => {
 			methods,
 			userRepository,
 			cacheService,
-			cipher,
 			projectService,
 		);
 		const managedService = new SlackManagedSetupService(

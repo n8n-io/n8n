@@ -1,6 +1,7 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKey } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { CryptoKey } from 'jose';
 import { CompactEncrypt, compactDecrypt, exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -14,16 +15,19 @@ import {
 	JWE_PRIVATE_KEY_TYPE,
 } from '../oauth-jwe.constants';
 
+let keyStore: Repository<DeploymentKey>;
+
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {
 		encryptionKey: 'oauth-jwe-test-encryption-key',
 		n8nFolder: '/tmp/n8n-test',
 	});
 	await testDb.init();
+	keyStore = Container.get(DataSource).getRepository(DeploymentKey);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DeploymentKey']);
+	await testDb.resetDeploymentKeys();
 	await Container.get(CacheService).delete(JWE_KEY_CACHE_KEY);
 });
 
@@ -35,7 +39,7 @@ describe('OAuthJweKeyService (integration)', () => {
 	it('persists exactly one active private-key row per algorithm on first initialize', async () => {
 		await Container.get(OAuthJweKeyService).initialize();
 
-		const rows = await Container.get(DeploymentKeyRepository).find({
+		const rows = await keyStore.find({
 			where: { type: JWE_PRIVATE_KEY_TYPE, status: 'active' },
 		});
 
@@ -56,7 +60,7 @@ describe('OAuthJweKeyService (integration)', () => {
 		await Container.get(CacheService).delete(JWE_KEY_CACHE_KEY);
 		await service.initialize();
 
-		const rows = await Container.get(DeploymentKeyRepository).find({
+		const rows = await keyStore.find({
 			where: { type: JWE_PRIVATE_KEY_TYPE, status: 'active' },
 		});
 		expect(rows).toHaveLength(JWE_KEY_ALGORITHMS.length);
@@ -80,7 +84,7 @@ describe('OAuthJweKeyService (integration)', () => {
 	it('stores new private JWKs in the DEK-style wrap', async () => {
 		await Container.get(OAuthJweKeyService).initialize();
 
-		const rows = await Container.get(DeploymentKeyRepository).find({
+		const rows = await keyStore.find({
 			where: { type: JWE_PRIVATE_KEY_TYPE, status: 'active' },
 		});
 		const cipher = Container.get(Cipher);
@@ -94,7 +98,6 @@ describe('OAuthJweKeyService (integration)', () => {
 	it('reads a row in the earlier wrap format and leaves its stored wrap in place', async () => {
 		const algorithm = JWE_KEY_ALGORITHMS[0];
 		const cipher = Container.get(Cipher);
-		const repository = Container.get(DeploymentKeyRepository);
 
 		// A row as earlier releases persisted it.
 		const id = 'legacy-format-row-1';
@@ -102,7 +105,7 @@ describe('OAuthJweKeyService (integration)', () => {
 		const privateJwk = { ...(await exportJWK(privateKey)), kid: id, alg: algorithm, use: 'enc' };
 		const legacyValue = cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
 		expect(legacyValue.startsWith('U2FsdGVkX1')).toBe(true);
-		await repository.insert({
+		await keyStore.insert({
 			id,
 			type: JWE_PRIVATE_KEY_TYPE,
 			value: legacyValue,
@@ -119,13 +122,13 @@ describe('OAuthJweKeyService (integration)', () => {
 
 		// The stored value keeps its wrap byte for byte: older instances in a
 		// rolling deployment can only read this format, and the cache is shared.
-		const row = await repository.findOne({ where: { id } });
+		const row = await keyStore.findOne({ where: { id } });
 		expect(row!.value).toBe(legacyValue);
 
 		// A cold re-read leaves it untouched too.
 		await Container.get(CacheService).delete(JWE_KEY_CACHE_KEY);
 		await service.initialize();
-		const rowAfter = await repository.findOne({ where: { id } });
+		const rowAfter = await keyStore.findOne({ where: { id } });
 		expect(rowAfter!.value).toBe(legacyValue);
 	});
 

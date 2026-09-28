@@ -1,9 +1,11 @@
+import { assertClearedFor, credentialContentSubject, credentialSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	CredentialsEntity,
@@ -33,6 +35,13 @@ export class CredentialIdConflictError extends UserError {
 }
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+/**
+ * An import payload the clearance can bind to: `type` is what the subject hashes, and `id` is
+ * concrete rather than the function form a `QueryDeepPartialEntity` would otherwise allow.
+ */
+type UpsertableCredentialContent = QueryDeepPartialEntity<CredentialsEntity> &
+	Pick<CredentialsEntity, 'type'> & { id?: string };
 
 export type CredentialSharingRelation =
 	| 'shared'
@@ -72,6 +81,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		externalSecretProviderIds: string[],
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.runInTransaction(ctx, async (manager) => {
 			const entity = this.create({ ...credential, usageScope: 'project' });
 			try {
@@ -99,7 +109,10 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	async findStartingWith(credentialName: string) {
 		return await this.find({
 			select: ['name'],
-			where: { name: Like(`${credentialName}%`), usageScope: 'project' },
+			where: this.excludePendingAuthorization({
+				name: Like(`${credentialName}%`),
+				usageScope: 'project',
+			}),
 		});
 	}
 
@@ -108,6 +121,28 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			where: { id: In(ids), usageScope: Not('project') },
 			select: ['id'],
 		});
+	}
+
+	/** Id and name for each of the given credential ids. */
+	async findNamesByIds(ids: string[]): Promise<Array<Pick<CredentialsEntity, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: { id: In(ids) },
+			select: ['id', 'name'],
+		});
+	}
+
+	/** The ids among `ids` that still have a row, regardless of usage scope. */
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids) },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
 	}
 
 	/** Filters `ids` down to the global credentials, which every project can use. */
@@ -187,10 +222,58 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Persists a new project credential, gated on a clearance for its type.
+	 *
+	 * A create binds to the type hash, not the id: an id here is generated on insert, so nothing
+	 * may change `type` between the `enforceCredentialSave` call and this write.
+	 */
+	async createContent(
+		credential: CredentialsEntity,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
+		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<CredentialsEntity>,
+		ctx: OperationContext,
+	): Promise<void> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		await this.managerFor(ctx).update(CredentialsEntity, id, content);
+	}
+
+	/**
+	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
+	 * id when there is one, else to the type hash, same as `WorkflowRepository`.
+	 */
+	async upsertImportedContent(
+		content: UpsertableCredentialContent,
+		ctx: OperationContext,
+	): Promise<string> {
+		assertClearedFor(
+			ctx.policyCleared,
+			'contentImport',
+			credentialSubject({ id: content.id ?? null, type: content.type }),
+		);
+
+		const result = await this.managerFor(ctx).upsert(CredentialsEntity, content, ['id']);
+		const id = result.identifiers.at(0)?.id;
+
+		if (typeof id !== 'string') {
+			throw new UnexpectedError('Upsert of an imported credential returned no id');
+		}
+
+		return id;
+	}
+
 	async saveInstanceCredential(
 		credential: CredentialsEntity,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
 	}
 
@@ -199,6 +282,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		data: Pick<ICredentialsDb, 'id' | 'name' | 'type' | 'data'>,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity | null> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id: credentialId });
 		const manager = this.managerFor(ctx);
 		await manager.update(CredentialsEntity, { id: credentialId, usageScope: 'instance' }, data);
 		return await manager.findOneBy(CredentialsEntity, {
@@ -278,8 +362,28 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	private onlyProjectCredentials(
 		findManyOptions: FindManyOptions<CredentialsEntity>,
 	): FindManyOptions<CredentialsEntity> {
-		findManyOptions.where = { ...findManyOptions.where, usageScope: 'project' };
+		findManyOptions.where = this.excludePendingAuthorization({
+			...findManyOptions.where,
+			usageScope: 'project',
+		});
 		return findManyOptions;
+	}
+
+	/**
+	 * Narrows a list filter to credentials the user has finished authorizing. A
+	 * credential created for an in-flight OAuth popup exists only so the callback
+	 * can write to it; lookups by id still find it, lists must not.
+	 */
+	excludePendingAuthorization(
+		where: FindOptionsWhere<CredentialsEntity>,
+	): FindOptionsWhere<CredentialsEntity> {
+		return { ...where, pendingAuthorizationExpiresAt: IsNull() };
+	}
+
+	/** Deletes credentials whose OAuth authorization was never completed in time. */
+	async deleteExpiredPendingAuthorizations(now: Date): Promise<number> {
+		const result = await this.delete({ pendingAuthorizationExpiresAt: LessThan(now) });
+		return result.affected ?? 0;
 	}
 
 	private toFindManyOptions(listQueryOptions?: CredentialsListQueryOptions) {
@@ -418,7 +522,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		options: { includeData?: boolean } = {},
 	): Promise<CredentialsEntity[]> {
 		const findManyOptions = this.toFindManyOptions({ includeData: options.includeData ?? false });
-		findManyOptions.where = { ...findManyOptions.where, isGlobal: true, usageScope: 'project' };
+		findManyOptions.where = this.excludePendingAuthorization({
+			...findManyOptions.where,
+			isGlobal: true,
+			usageScope: 'project',
+		});
 		return await this.find(findManyOptions);
 	}
 
@@ -527,6 +635,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
 		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
+		qb.andWhere('credential.pendingAuthorizationExpiresAt IS NULL');
 
 		if (options.filters?.dependency) {
 			addCredentialDependencyExistsFilter(qb, options.filters.dependency);

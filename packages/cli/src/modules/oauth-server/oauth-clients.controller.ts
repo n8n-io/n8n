@@ -63,7 +63,7 @@ export class OAuthClientsController {
 		return {
 			data: clientDtos,
 			count,
-			scopeTools: this.oauthServerService.getInstanceScopeTools(),
+			scopeTools: await this.oauthServerService.getInstanceScopeTools(),
 			totals,
 			owners,
 		};

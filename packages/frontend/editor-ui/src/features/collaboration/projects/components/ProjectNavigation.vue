@@ -2,6 +2,7 @@
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
@@ -186,18 +187,22 @@ const chat = computed<IMenuItem>(() => ({
 	route: { to: { name: CHAT_VIEW } },
 }));
 
-async function onSourceControlPull() {
-	// Update myProjects for the sidebar display
+/** A pull or an applied package can create and delete projects behind the sidebar. */
+async function reloadMyProjects() {
 	await projectsStore.getMyProjects();
 }
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
-	sourceControlEventBus.on('pull', onSourceControlPull);
+	sourceControlEventBus.on('pull', reloadMyProjects);
+	promotionEventBus.on('applied', reloadMyProjects);
+	promotionEventBus.on('projectRemoved', reloadMyProjects);
 });
 
 onBeforeUnmount(() => {
-	sourceControlEventBus.off('pull', onSourceControlPull);
+	sourceControlEventBus.off('pull', reloadMyProjects);
+	promotionEventBus.off('applied', reloadMyProjects);
+	promotionEventBus.off('projectRemoved', reloadMyProjects);
 });
 </script>
 

@@ -1,5 +1,5 @@
 import type { LoginRequestDto } from '@n8n/api-types';
-import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { ResolveSignupTokenQueryDto, SSO_LOGIN_REQUIRED_ERROR_CODE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -145,6 +145,9 @@ describe('AuthController', () => {
 			const execution = controller.login(req, res, body);
 			await expect(execution).rejects.toThrow(AuthError);
 			await expect(execution).rejects.toThrow('SSO is enabled, please log in with SSO');
+			await expect(execution).rejects.toMatchObject({
+				errorCode: SSO_LOGIN_REQUIRED_ERROR_CODE,
+			});
 
 			// Assert
 
@@ -177,6 +180,9 @@ describe('AuthController', () => {
 			const execution = controller.login(req, res, body);
 			await expect(execution).rejects.toThrow(AuthError);
 			await expect(execution).rejects.toThrow('SSO is enabled, please log in with SSO');
+			await expect(execution).rejects.toMatchObject({
+				errorCode: SSO_LOGIN_REQUIRED_ERROR_CODE,
+			});
 
 			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
 				authenticationMethod: 'email',

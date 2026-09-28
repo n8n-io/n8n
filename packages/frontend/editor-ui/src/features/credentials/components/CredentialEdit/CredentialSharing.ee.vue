@@ -189,6 +189,7 @@ function goToUpgrade() {
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"
+				:teleported="false"
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>

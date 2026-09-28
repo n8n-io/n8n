@@ -5,11 +5,28 @@ import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
+import {
+	REGULAR_NODE_CREATOR_VIEW,
+	DEBOUNCE_TIME,
+	NODE_CREATOR_OPEN_SOURCES,
+} from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
+
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
 
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
@@ -44,6 +61,10 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	beforeEach(() => {
+		mockEmptyCanvasGroupsEnabled.value = true;
+	});
+
 	// Every panel mount schedules a keyboard-navigation refresh via setTimeout.
 	// Drain it while the document still exists — a timer surviving the last test
 	// fires after jsdom teardown and fails the run with an unhandled error.
@@ -94,7 +115,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(10);
 		});
 
 		it('should render regular nodes', async () => {
@@ -155,7 +176,7 @@ describe('NodesListPanel', () => {
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
@@ -212,6 +233,20 @@ describe('NodesListPanel', () => {
 
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 		});
+
+		it('should find Group when the workflow has nodes but no trigger', async () => {
+			getWrapperComponent(() => {
+				useWorkflowDocumentStore(createWorkflowDocumentId('')).setNodes([createTestNode()]);
+			});
+			await nextTick();
+
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'group' },
+			});
+
+			await waitFor(() => expect(screen.getByText('Group')).toBeInTheDocument());
+		});
+
 		it('should not be visible if subcategory contains less than 9 items', async () => {
 			renderComponent();
 			await nextTick();
@@ -278,6 +313,94 @@ describe('NodesListPanel', () => {
 			expect(screen.queryByText('Node 1')).toBeInTheDocument();
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
+		});
+	});
+
+	describe('Group command visibility', () => {
+		function renderWithConnectionSource({ grouped }: { grouped: boolean }) {
+			return getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+				if (grouped) workflowDocumentStore.createGroup([source.id], 'Group 1');
+
+				useUIStore().lastInteractedWithNodeId = source.id;
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT;
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+		}
+
+		it('hides Group when adding from a plus inside a group', async () => {
+			renderWithConnectionSource({ grouped: true });
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'group' },
+			});
+			await waitFor(() => expect(screen.queryByText('Group')).not.toBeInTheDocument());
+		});
+
+		it('shows Group when adding from a plus outside a group', async () => {
+			renderWithConnectionSource({ grouped: false });
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		});
+
+		it('shows Group from the global node creator despite stale grouped-node state', async () => {
+			getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+				workflowDocumentStore.createGroup([source.id], 'Group 1');
+
+				useUIStore().lastInteractedWithNodeId = source.id;
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON;
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		});
+
+		it('keeps Group hidden while navigating in replacement mode', async () => {
+			getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+
+			await fireEvent.click(screen.getByText('Action in an app'));
+			await nextTick();
+			await fireEvent.click(document.querySelector('.backButton')!);
+			await waitFor(() => expect(screen.getByTestId('node-creator-search-bar')).toBeVisible());
+			expect(useNodeCreatorStore().openingContext).toBe('replacement');
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+		});
+
+		it('clears replacement context when the panel is closed', async () => {
+			const { unmount } = getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			const nodeCreatorStore = useNodeCreatorStore();
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
+
+			unmount();
+			expect(nodeCreatorStore.openingContext).toBeNull();
 		});
 	});
 
@@ -662,6 +785,66 @@ describe('NodesListPanel', () => {
 
 			// Context should still be 'replacement' after search
 			expect(nodeCreatorStore.openingContext).toBe('replacement');
+		});
+	});
+
+	describe('restricted node types', () => {
+		const triggerNodes = [...Array(9).keys()].map(
+			(n) =>
+				mockSimplifiedNodeType({
+					name: `Trigger Node ${n}`,
+					displayName: `Trigger Node ${n}`,
+					group: ['trigger'],
+				}) as INodeTypeDescription,
+		);
+
+		function renderTriggerView() {
+			const { container } = getWrapperComponent(() => {
+				const { setMergeNodes } = useNodeCreatorStore();
+				setMergeNodes([...triggerNodes]);
+				return {};
+			});
+			return container;
+		}
+
+		it('hides a restricted type while browsing', async () => {
+			renderTriggerView();
+			mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+			await nextTick();
+
+			screen.getByText('On app event').click();
+			await nextTick();
+
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
+			expect(screen.queryByText('Trigger Node 3')).not.toBeInTheDocument();
+		});
+
+		it('shows a restricted type last when searched for', async () => {
+			vi.useFakeTimers();
+			try {
+				renderTriggerView();
+				mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Trigger Node' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				const items = screen.getAllByTestId('item-iterator-item');
+				expect(items).toHaveLength(9);
+				expect(items[items.length - 1]).toHaveTextContent('Trigger Node 3');
+				expect(
+					items[items.length - 1].querySelector('[data-test-id="node-creator-restricted-item"]'),
+				).toBeInTheDocument();
+				expect(screen.getAllByTestId('node-creator-restricted-item')).toHaveLength(1);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });

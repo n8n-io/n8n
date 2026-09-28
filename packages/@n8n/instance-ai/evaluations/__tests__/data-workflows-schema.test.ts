@@ -49,6 +49,28 @@ beforeEach(() => {
 });
 
 describe('EvalTestCaseSchema', () => {
+	it.each([
+		{ description: undefined, expected: undefined },
+		{ description: null, expected: null },
+		{ description: ' \n ', expected: null },
+		{ description: ' Production reports ', expected: 'Production reports' },
+	])('normalizes credential description $description', ({ description, expected }) => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi', description }],
+		});
+		expect(parsed.credentials?.[0].description).toBe(expected);
+	});
+
+	it('rejects a credential description above the storage limit', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				credentials: [{ type: 'slackApi', description: '🔑'.repeat(257) }],
+			}),
+		).toThrow();
+	});
+
 	it('accepts a minimal valid fixture', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);

@@ -10,10 +10,24 @@ comment:
   require_bundle_changes: bundle_increase
   bundle_change_threshold: 50Kb
   require_changes: 'coverage_drop OR uncovered_patch'
+  # PR runs measure only the changed files, so a PR has no full project figure.
+  hide_project_coverage: true
 
 coverage:
   status:
-    patch: false
+    # Coverage of the changed lines. Informational during the trial: it reports
+    # but does not fail. Limited to the flags that PR runs upload, so that stale
+    # carried-forward data (nightly, Postgres, Python) cannot change the result.
+    patch:
+      default:
+        target: 80%
+        informational: true
+        only_pulls: true
+        flags:
+          - backend-unit
+          - backend-integration
+          - nodes-unit
+          - frontend
     project:
       default:
         threshold: 0.5

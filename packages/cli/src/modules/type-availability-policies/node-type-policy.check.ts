@@ -101,9 +101,13 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
 	 * unattended sync and a hand-run import are held to the same policy, and each host already
 	 * picks its own fail posture.
+	 *
+	 * A credential import has no node types to check — this point has nothing to say about it.
 	 */
-	async onContentImport({ workflow, projectId }: ContentImportContext): Promise<PolicyCheckResult> {
-		return await this.check(workflow, projectId, NOTHING_GRANDFATHERED);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		if (!('workflow' in context)) return NO_VIOLATIONS;
+
+		return await this.check(context.workflow, context.projectId, NOTHING_GRANDFATHERED);
 	}
 
 	/**
@@ -139,7 +143,8 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	private async checkTypes(types: string[], projectId: string | null): Promise<PolicyCheckResult> {
 		// An expired license stops enforcing, matching the `@Licensed` routes that author the
 		// policy: a customer who cannot edit the policy must not keep being blocked by it.
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)) return NO_VIOLATIONS;
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES))
+			return NO_VIOLATIONS;
 
 		if (types.length === 0) return NO_VIOLATIONS;
 

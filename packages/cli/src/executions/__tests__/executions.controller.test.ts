@@ -38,7 +38,7 @@ describe('ExecutionsController', () => {
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
 		});
 
-		it('should pass an engine 2.0 id through to the service', async () => {
+		it('should pass an engine v2 id through to the service', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: V2_EXECUTION_ID } });
 
@@ -55,7 +55,7 @@ describe('ExecutionsController', () => {
 			await expect(executionsController.update(req)).rejects.toThrow(BadRequestError);
 		});
 
-		it('should 501 for an engine 2.0 id, which has no annotation store', async () => {
+		it('should 501 for an engine v2 id, which has no annotation store', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
 
@@ -63,7 +63,7 @@ describe('ExecutionsController', () => {
 			expect(executionService.annotate).not.toHaveBeenCalled();
 		});
 
-		it('should 404 for an engine 2.0 id when no workflows are accessible', async () => {
+		it('should 404 for an engine v2 id when no workflows are accessible', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
 

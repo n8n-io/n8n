@@ -169,6 +169,11 @@ describe('SourceControlImportService', () => {
 		credentialsRepository.runInTransaction.mockImplementation(
 			async (ctx, fn) => await fn(transactionManager, ctx),
 		);
+		// Route the sealed write through `upsert` so the payload assertions below still apply.
+		credentialsRepository.upsertImportedContent.mockImplementation(async (content) => {
+			await credentialsRepository.upsert(content, ['id']);
+			return (content as { id?: string }).id ?? 'generated-id';
+		});
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 
@@ -2801,6 +2806,100 @@ describe('SourceControlImportService', () => {
 			expect(credentialsRepository.upsert).toHaveBeenCalled();
 
 			// Nested structures should be properly sanitized
+		});
+
+		describe('content-import policy enforcement', () => {
+			const mockCredentialFile = '/mock/credential_stubs/cred1.json';
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Credential 1',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			beforeEach(() => {
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockCredentialData));
+				credentialsRepository.find.mockResolvedValue([]);
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+			});
+
+			it('enforces content-import policy for the imported credential, against the resolved target project', async () => {
+				const candidates = [mock<SourceControlledFile>({ file: mockCredentialFile, id: 'cred1' })];
+
+				await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+				expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
+					credential: { id: mockCredentialData.id, type: mockCredentialData.type },
+					projectId: mockPersonalProject.id,
+					transport: 'source-control',
+				});
+			});
+
+			// The clearance is checked at the write, so enforcing after the upsert would seal
+			// nothing — this pins the order.
+			it('enforces before writing the credential', async () => {
+				const candidates = [mock<SourceControlledFile>({ file: mockCredentialFile, id: 'cred1' })];
+
+				await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+				expect(
+					policyEnforcementService.enforceContentImport.mock.invocationCallOrder[0],
+				).toBeLessThan(credentialsRepository.upsertImportedContent.mock.invocationCallOrder[0]);
+			});
+
+			it('skips a blocked credential, reports why, and writes nothing', async () => {
+				const violation: PolicyViolation = {
+					kind: 'credential-type-unavailable',
+					checkId: 'test.check',
+					message: 'not allowed',
+				};
+				policyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new PolicyViolationError([violation]),
+				);
+				const candidates = [mock<SourceControlledFile>({ file: mockCredentialFile, id: 'cred1' })];
+
+				const result = await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+				expect(result).toEqual([
+					{
+						id: mockCredentialData.id,
+						name: mockCredentialFile,
+						type: mockCredentialData.type,
+						contentImportPolicy: { violations: [violation], checkErrors: [] },
+					},
+				]);
+				expect(credentialsRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
+			// A check that cannot answer is an infrastructure fault, not a property of one
+			// credential. Skipping per credential would silently skip the whole pull.
+			it('fails the pull when the policy layer errors', async () => {
+				policyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new Error('backend unavailable'),
+				);
+				const candidates = [mock<SourceControlledFile>({ file: mockCredentialFile, id: 'cred1' })];
+
+				await expect(
+					service.importCredentialsFromWorkFolder(candidates, mockUserId),
+				).rejects.toThrow('backend unavailable');
+
+				expect(credentialsRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
+			it('passes the clearance it was given to the write', async () => {
+				const cleared = mock<PolicyCleared<'contentImport'>>();
+				policyEnforcementService.enforceContentImport.mockResolvedValueOnce(cleared);
+				const candidates = [mock<SourceControlledFile>({ file: mockCredentialFile, id: 'cred1' })];
+
+				await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+				expect(credentialsRepository.upsertImportedContent).toHaveBeenCalledWith(
+					expect.objectContaining({ id: mockCredentialData.id }),
+					expect.objectContaining({ policyCleared: cleared }),
+				);
+			});
 		});
 	});
 

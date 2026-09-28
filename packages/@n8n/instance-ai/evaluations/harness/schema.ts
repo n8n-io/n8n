@@ -1,4 +1,8 @@
-import { findSeedFolderIssues, instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
+import {
+	credentialDescriptionSchema,
+	findSeedFolderIssues,
+	instanceAiEvalSeedDataTableSchema,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -170,6 +174,9 @@ const evalTestCaseObjectSchema = z
 		buildMode: z.enum(['progressive', 'default']).optional(),
 		promptVersion: z.string().trim().min(1).max(128).optional(),
 		allowUserExecution: z.boolean().optional(),
+		/** Harness lowers the observer threshold for this thread, and reports the case
+		 *  not judged if compaction never ran. */
+		requiresMemoryCompaction: z.boolean().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
@@ -206,7 +213,10 @@ const evalTestCaseObjectSchema = z
 							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
 						}),
 					name: z.string().min(1).optional(),
+					description: credentialDescriptionSchema.optional(),
+					// False lets the connection test fail for a credential that is already broken.
 					valid: z.boolean().optional(),
+					// True seeds no field values and disables the connection-test bypass.
 					blank: z.boolean().optional(),
 				}),
 			)

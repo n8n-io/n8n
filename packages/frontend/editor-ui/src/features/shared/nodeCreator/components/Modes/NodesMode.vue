@@ -19,6 +19,7 @@ import {
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	AI_CATEGORY_MCP_NODES,
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	REQUEST_NODE_FORM_URL,
 } from '@/app/constants';
 
@@ -29,11 +30,14 @@ import { TriggerView, RegularView, AIView, AINodesView } from '../../views/views
 import {
 	flattenCreateElements,
 	filterAndSearchNodes,
+	getNodeCreatorSearchItems,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
+	isNodeItemRestricted,
+	sinkRestrictedNodesLast,
 } from '../../nodeCreator.utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -53,6 +57,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -60,19 +65,31 @@ export interface Props {
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	emptyGroupSelected: [];
 }>();
 
 const i18n = useI18n();
 
 const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
 
-const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = nodeCreatorStore;
 const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const shouldHideEmptyGroupCommand = computed(
+	() => !emptyCanvasGroupsEnabled.value || nodeCreatorStore.openingContext === 'replacement',
+);
+const visibleItems = computed(() => {
+	const items = activeViewStack.value.items ?? [];
+	if (!shouldHideEmptyGroupCommand.value) return items;
+
+	return items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
+});
 const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -80,7 +97,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
-	return filterAndSearchNodes(
+	const hits = filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
 		{
@@ -89,11 +106,15 @@ const moreFromCommunity = computed(() => {
 			aiConnectionType: activeViewStack.value.connectionType,
 		},
 	);
+	return sinkRestrictedNodesLast(hits, isNodeItemRestricted);
 });
 
 const isSearchResultEmpty = computed(() => {
-	const hasNodeResults = (activeViewStack.value.items ?? []).some(
-		(item) => !isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE,
+	// The pinned MCP client is a placeholder, not a result — unless it is restricted, in which
+	// case it is an ordinary search hit.
+	const hasNodeResults = visibleItems.value.some(
+		(item) =>
+			!isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE || isNodeItemRestricted(item.key),
 	);
 	return (
 		!hasNodeResults &&
@@ -120,6 +141,12 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
+	if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM && shouldHideEmptyGroupCommand.value) return;
+
+	// Insertion itself is refused in getAddedNodesAndConnections; this keeps a restricted
+	// node from opening its actions view.
+	if (item.type === 'node' && isNodeItemRestricted(item.key)) return;
+
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -233,6 +260,13 @@ function onSelected(item: INodeCreateElement) {
 		});
 	}
 
+	if (item.type === 'command') {
+		if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM) {
+			emit('emptyGroupSelected');
+		}
+		return;
+	}
+
 	if (item.type === 'view') {
 		const views = {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
@@ -258,8 +292,8 @@ function onSelected(item: INodeCreateElement) {
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
 			mode: 'nodes',
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
 		});
 	}
 
@@ -328,7 +362,7 @@ function arrowLeft() {
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(globalCallouts.value ?? []),
-		...(activeViewStack.value.items ?? []),
+		...visibleItems.value,
 		...(globalSearchItemsDiff.value ?? []),
 		...(moreFromCommunity.value ?? []),
 	]);
@@ -341,7 +375,8 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
+	condition: (type) =>
+		['subcategory', 'node', 'link', 'view', 'openTemplate', 'command'].includes(type),
 	handler: onKeySelect,
 });
 
@@ -368,8 +403,8 @@ registerKeyHook('MainViewArrowLeft', {
 
 		<!-- Main Node Items -->
 		<ItemsRenderer
-			v-memo="[activeViewStack.search]"
-			:elements="activeViewStack.items"
+			v-memo="[activeViewStack.search, emptyCanvasGroupsEnabled]"
+			:elements="visibleItems"
 			:class="[$style.items, { [$style.emptyItems]: isSearchResultEmpty && !isMcpCategory }]"
 			@selected="onSelected"
 		>
@@ -377,6 +412,8 @@ registerKeyHook('MainViewArrowLeft', {
 				<NoResults
 					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
+					:suggest-webhook="!isNodeItemRestricted(WEBHOOK_NODE_TYPE)"
+					:suggest-http-request="!isNodeItemRestricted(HTTP_REQUEST_NODE_TYPE)"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>

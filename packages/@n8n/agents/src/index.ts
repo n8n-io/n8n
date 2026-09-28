@@ -336,6 +336,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {

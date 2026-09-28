@@ -31,6 +31,8 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		...executionFields,
 		// Must match `ExecutionMode`.
 		mode: z.enum(['production', 'manual']),
+		/** The host's finer execution mode. */
+		hostMode: z.string().min(1),
 	}),
 	z.object({ type: z.literal('execution:completed'), ...executionFields }),
 	z.object({ type: z.literal('execution:failed'), ...executionFields }),

@@ -63,7 +63,7 @@ function onDropdownVisibleChange(visible: boolean) {
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>
-			<N8nBadge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
+			<N8nBadge v-if="customDataLength > 0" :class="$style.badge" variant="primary">
 				{{ customDataLength.toString() }}
 			</N8nBadge>
 		</N8nButton>

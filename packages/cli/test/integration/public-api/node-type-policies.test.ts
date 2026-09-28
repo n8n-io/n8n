@@ -11,7 +11,7 @@ import * as utils from '@test-integration/utils';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['publicApi'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -156,11 +156,11 @@ describe('node type policies public API authorization', () => {
 
 describe('node type policies public API license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	test('rejects an owner with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
 		const instance = await testServer.publicApiAgentFor(owner).get('/node-type-policies/instance');
 		expect(instance.statusCode).toBe(403);

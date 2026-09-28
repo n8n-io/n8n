@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -6,11 +6,17 @@ import type {
 	INodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Expression, ExpressionError } from 'n8n-workflow';
+import {
+	Expression,
+	ExpressionError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
 	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
@@ -44,6 +50,12 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 			manualTriggerTo('Subject'),
 		),
 	);
+
+/** The outputs of a result, for a test that feeds one step's output into the next. */
+function outputsOf(result: StepExecutionResult): StepSlots {
+	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
+	return result.outputs;
+}
 
 describe('V1StepExecutor', () => {
 	it('rejects legacy expression engine', async () => {
@@ -281,8 +293,9 @@ describe('V1StepExecutor', () => {
 			const graph = expressionWorkflow({ message: "={{ $('A').first().json.message }}" });
 
 			const aResult = await testStepExecutor(graph).execute(stepRequest(graph, 'a', items({})));
-			const bResult = await testStepExecutor(graph, { a: aResult.outputs }).execute(
-				stepRequest(graph, 'b', aResult.outputs),
+			const aOutputs = outputsOf(aResult);
+			const bResult = await testStepExecutor(graph, { a: aOutputs }).execute(
+				stepRequest(graph, 'b', aOutputs),
 			);
 
 			expect(bResult.outputs).toEqual([[{ json: { message: 'from-A' } }]]);
@@ -330,6 +343,123 @@ describe('V1StepExecutor', () => {
 				stepRequest(graph, 'b', items({})),
 			);
 			expect(result.outputs).toEqual([[{ json: { message: 'ran-before' } }]]);
+		});
+	});
+
+	describe('a node that puts the execution to wait', () => {
+		const input = items({ keep: 'me' });
+
+		// The flag defaults to true, as it does in core. The deadline emits the
+		// node's input, which is what v1 passes through on a timed resume.
+		it.each([
+			['omitted', true],
+			['true', true],
+			['false', false],
+		])(
+			'declares a deadline wait with acceptsResumeRequest %s',
+			async (acceptsResumeRequest, declared) => {
+				const graph = graphWith('test.waitsUntil', {
+					waitTill: '2026-10-01T12:00:00.000Z',
+					acceptsResumeRequest,
+				});
+				const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+				expect(result).toEqual({
+					wait: {
+						resumeAt: '2026-10-01T12:00:00.000Z',
+						outputsAtDeadline: input,
+						acceptsResumeRequest: declared,
+					},
+				});
+			},
+		);
+
+		it('fails the step when the node asks to wait until a value that is not a date', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: 'not a date' });
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(InvalidWaitDateError);
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" asked to wait until a date that is not valid',
+			);
+		});
+
+		// Core's `executeWorkflow` asks to wait when the child went to waiting.
+		it('fails the step when a sub-workflow it ran is itself waiting', async () => {
+			const graph = graphWith('test.runsSubWorkflow');
+			const executor = new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: async (context) => ({
+					...(await testAdditionalDataFactory(context)),
+					executeWorkflow: vi.fn().mockResolvedValue({
+						executionId: 'child-1',
+						data: [[]],
+						waitTill: new Date('2099-01-01T00:00:00.000Z'),
+					}),
+				}),
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const execution = executor.execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
+			);
+		});
+
+		// The v1 hook sets the status in the host's `ActiveExecutions`. A data-plane
+		// run is not registered there, so the call throws.
+		it('does not call the host execution status hook', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
+			const setExecutionStatus = vi.fn();
+			const executor = new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: async (context) => ({
+					...(await testAdditionalDataFactory(context)),
+					setExecutionStatus,
+				}),
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const result = await executor.execute(stepRequest(graph, 'n', input));
+
+			expect(result.wait).toBeDefined();
+			expect(setExecutionStatus).not.toHaveBeenCalled();
+		});
+
+		// Core sleeps in the process for a deadline-only wait under 65 s. A sleep
+		// returns no declaration, so `result.wait` proves that the step suspended.
+		it('suspends a short time wait of the Wait node instead of sleeping', async () => {
+			const graph = graphWith('n8n-nodes-base.wait', {
+				resume: 'timeInterval',
+				amount: 2,
+				unit: 'seconds',
+			});
+			const before = Date.now();
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			const after = Date.now();
+
+			expect(result.wait).toMatchObject({ outputsAtDeadline: input, acceptsResumeRequest: false });
+			const resumeAt = Date.parse(result.wait!.resumeAt!);
+			expect(resumeAt).toBeGreaterThanOrEqual(before + 2000);
+			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
+		});
+
+		// Nothing can deliver a resume request yet and sub-workflow steps do not
+		// exist, so completing the step would report a wait that never happened.
+		it.each([
+			[
+				'WAIT_INDEFINITELY',
+				WAIT_INDEFINITELY,
+				'Node "Subject" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.',
+			],
+			[
+				'WAIT_FOR_SUB_EXECUTION',
+				WAIT_FOR_SUB_EXECUTION,
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
+			],
+		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
+			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(message);
 		});
 	});
 

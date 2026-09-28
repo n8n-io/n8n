@@ -1,15 +1,10 @@
 import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	PublicApiCreateDataTableDto,
-	PublicTestRunStatus,
-	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
-	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
-	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
@@ -19,7 +14,6 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { AuthlessRequest } from '@/requests';
-import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
 	{},
@@ -32,37 +26,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace TestRunRequest {
-	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
-	// resolves it from `req.params.id`); `runId` is the test run id.
-	type GetMany = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{
-			status?: PublicTestRunStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-		}
-	>;
-	type GetOne = AuthenticatedRequest<{ id: string; runId: string }>;
-	type GetCases = AuthenticatedRequest<
-		{ id: string; runId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-		}
-	>;
-	type Create = AuthenticatedRequest<{ id: string }>;
-	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
-}
-
 export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -78,6 +41,20 @@ export declare namespace PackageRequest {
 		{},
 		{},
 		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+
+	type ImportSelection = AuthenticatedRequest<
+		{},
+		{},
+		{
+			selectedProjectId?: string;
+			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
+			selectedWorkflowIds?: string;
+			deletedWorkflowIds?: string;
+			workflowConflictPolicy?: string;
+			workflowIdPolicy?: string;
+		},
 		Record<string, never>
 	>;
 }
@@ -104,13 +81,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
-
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthlessRequest<
@@ -124,8 +94,6 @@ export declare namespace UserRequest {
 		}
 	>;
 }
-
-export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
 
@@ -157,27 +125,6 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
-
-	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
-
-	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},
@@ -211,8 +158,6 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
 
 	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
@@ -234,27 +179,6 @@ export declare namespace CommunityPackageRequest {
 	type List = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
-}
-
-// ----------------------------------
-//           /audit
-// ----------------------------------
-
-export declare namespace AuditRequest {
-	type Generate = AuthenticatedRequest<
-		{},
-		{},
-		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
-	>;
-}
-
-// ----------------------------------
-//        /settings/security-policy
-// ----------------------------------
-
-export declare namespace SecurityPolicyRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }
 
 export declare namespace LogStreamingRequest {
@@ -295,13 +219,4 @@ export declare namespace LdapRequest {
 	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
-}
-
-// ----------------------------------
-//        /settings/sso/oidc
-// ----------------------------------
-
-export declare namespace SsoOidcRequest {
-	type Get = AuthenticatedRequest;
-	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

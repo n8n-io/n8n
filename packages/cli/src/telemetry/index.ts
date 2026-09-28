@@ -108,8 +108,6 @@ export class Telemetry {
 
 	private userCloudId?: string;
 
-	private pulseIntervalReference: NodeJS.Timeout;
-
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
@@ -209,21 +207,14 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
 	}
 
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
-	}
-
-	private async pulse() {
+	/**
+	 * Sends the events buffered in this process and empties the buffers. Does
+	 * nothing while diagnostics are off, because nothing buffers then.
+	 */
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -231,21 +222,18 @@ export class Telemetry {
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
 		this.flushAgentSessionMetrics();
+		this.flushApiInvocations();
+	}
 
-		// Flush API invocation counts
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
-			}
+	/**
+	 * Sends one `pulse` packet of license and usage counters. The counters
+	 * describe the whole instance, so a second sender reports the same numbers
+	 * again. Does nothing while diagnostics are off.
+	 */
+	async sendPulsePacket(): Promise<void> {
+		if (!this.rudderStack) {
+			return;
 		}
-		this.apiInvocationsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
@@ -265,6 +253,22 @@ export class Telemetry {
 		};
 
 		this.track('pulse', pulsePacket);
+	}
+
+	private flushApiInvocations() {
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -514,8 +518,6 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 

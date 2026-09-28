@@ -136,7 +136,7 @@ describe('EngineV2Dispatcher', () => {
 	});
 
 	describe('routesToEngineV2', () => {
-		it('routes a manual run of a workflow that opted into engine 2.0', () => {
+		it('routes a manual run of a workflow that opted into engine v2', () => {
 			expect(dispatcher.routesToEngineV2(runData())).toBe(true);
 		});
 
@@ -149,11 +149,11 @@ describe('EngineV2Dispatcher', () => {
 			expect(dispatcher.routesToEngineV2(data)).toBe(false);
 		});
 
-		it('routes a webhook run of a workflow that opted into engine 2.0', () => {
+		it('routes a webhook run of a workflow that opted into engine v2', () => {
 			expect(dispatcher.routesToEngineV2(webhookRunData())).toBe(true);
 		});
 
-		it('routes an active trigger run of a workflow that opted into engine 2.0', () => {
+		it('routes an active trigger run of a workflow that opted into engine v2', () => {
 			expect(dispatcher.routesToEngineV2(triggerRunData())).toBe(true);
 		});
 
@@ -287,16 +287,30 @@ describe('EngineV2Dispatcher', () => {
 			]);
 		});
 
+		// The check asks the acting user for a credential the project does not carry,
+		// so the dispatcher has to hand it over. Asserting the `undefined` case below
+		// alone would pass even if `data.userId` were dropped.
+		it('forwards the acting user to the credential check', async () => {
+			await dispatcher.start(runData({ userId: 'user-1' }));
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				'user-1',
+			);
+		});
+
 		it('checks credential permissions before converting', async () => {
 			const failure = new UserError('Node "X" uses invalid credential');
 			credentialsPermissionChecker.check.mockRejectedValueOnce(failure);
 
 			await expect(dispatcher.start(runData())).rejects.toThrow(failure);
 
-			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('wf-1', [
-				MANUAL_TRIGGER,
-				SET_NODE,
-			]);
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				undefined,
+			);
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
@@ -477,7 +491,7 @@ describe('EngineV2Dispatcher', () => {
 				});
 
 				await expect(dispatcher.start(data)).rejects.toThrow(
-					'Engine 2.0 cannot run the "Stripe Trigger" trigger yet, because it takes credentials from the request.',
+					'Engine v2 cannot run the "Stripe Trigger" trigger yet, because it takes credentials from the request.',
 				);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
 			});
@@ -509,7 +523,7 @@ describe('EngineV2Dispatcher', () => {
 				});
 
 				await expect(dispatcher.start(data)).rejects.toThrow(
-					'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+					'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 				);
 			});
 
@@ -518,30 +532,30 @@ describe('EngineV2Dispatcher', () => {
 					name: 'a partial execution',
 					data: { runData: {} as IRunData },
 					message:
-						'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+						'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 				},
 				{
 					name: 'a destination node',
 					data: { destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' as const } },
 					message:
-						'Engine 2.0 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
+						'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
 				},
 				{
 					name: 'selected start nodes',
 					data: { startNodes: [mock<StartNodeData>()] },
 					message:
-						'Engine 2.0 cannot start from selected nodes yet. Run the whole workflow instead.',
+						'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
 				},
 				{
 					name: 'an AI tool run',
 					data: { agentRequest: { query: { [SET_NODE.name]: 'do it' }, tool: { name: 'tool' } } },
-					message: 'Engine 2.0 cannot run a workflow as an AI tool yet.',
+					message: 'Engine v2 cannot run a workflow as an AI tool yet.',
 				},
 				{
 					name: 'pinned data on a non-trigger node',
 					data: { pinData: { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData },
 					message:
-						'Engine 2.0 does not support pinned data on "Edit Fields" yet. Unpin it to run this workflow.',
+						'Engine v2 does not support pinned data on "Edit Fields" yet. Unpin it to run this workflow.',
 				},
 			])('rejects $name', async ({ data, message }) => {
 				const attempt = dispatcher.start(runData(data));

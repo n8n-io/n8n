@@ -34,6 +34,8 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { bindExecutionInput } from '../utils/execution-input';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
@@ -56,7 +58,7 @@ import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 export interface SubAgentRunContext {
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
-	parentAgentId?: string;
+	parentAgentId: string;
 	credentialProvider: CredentialProvider;
 	/**
 	 * Telemetry classification inherited from the delegating parent run.
@@ -211,11 +213,16 @@ export class SubAgentRunner {
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		const recording: StartExecutionParams = {
+			// Saved parents supply access in the thread creation transaction.
+			access: { accessScope: 'user', ownerId: null },
 			threadId,
 			agentId: runtimeSource.source.sourceId,
 			agentName: runtimeSource.source.config.name,
 			projectId: context.projectId,
 			userMessage,
+			resourceId,
+			resumeRunId: operation.type === 'resume' ? operation.request.childRunId : undefined,
+			sessionMode: operation.type === 'resume' ? 'existing' : 'new',
 			source: 'subagent',
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,
@@ -233,10 +240,8 @@ export class SubAgentRunner {
 			recording,
 		);
 		context.abortSignal?.throwIfAborted();
-		const executionId = await this.turnExecutionService.startExecution(
-			recording,
-			recorder.startedAt,
-		);
+		const admission = await this.turnExecutionService.startExecution(recording, recorder.startedAt);
+		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
 		let agent: BuiltAgent | undefined;
@@ -278,24 +283,26 @@ export class SubAgentRunner {
 			executionStarted = operation.type === 'run';
 			const resultStream =
 				operation.type === 'run'
-					? await agent.stream(userMessage ?? '', {
+					? await agent.stream(bindExecutionInput(userMessage ?? '', admission.inputMessageIds), {
 							...executionOptions,
 							persistence: {
 								resourceId,
 								threadId,
 								delegated: true,
-								...(sandboxPrincipalHash !== undefined
-									? {
-											hostMetadata: encodeAgentSandboxHostMetadata({
+								hostMetadata: {
+									[EXECUTION_METADATA_KEY]: executionId,
+									...(sandboxPrincipalHash !== undefined
+										? encodeAgentSandboxHostMetadata({
 												projectId: context.projectId,
 												principalHash: sandboxPrincipalHash,
-											}),
-										}
-									: {}),
+											})
+										: {}),
+								},
 							},
 						})
 					: await agent.resume('stream', operation.request.resumeData, {
 							...executionOptions,
+							hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
 							onResumeClaimed: () => {

@@ -26,6 +26,7 @@ const DEADLINES_MS = {
 	workflowPublish: 1_000,
 	workflowStart: 250,
 	workflowTransfer: 1_000,
+	credentialSave: 1_000,
 	credentialDecrypt: 250,
 	contentImport: 1_000,
 } as const satisfies Record<EnforcementPoint, number>;

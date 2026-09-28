@@ -25,7 +25,7 @@ import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createCredentials } from '../shared/db/credentials';

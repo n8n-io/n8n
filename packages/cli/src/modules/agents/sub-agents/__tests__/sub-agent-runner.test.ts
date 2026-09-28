@@ -19,6 +19,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentMessageQueueService } from '../../agent-message-queue.service';
+import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
@@ -131,13 +133,25 @@ describe('SubAgentRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
-			new AgentTurnExecutionService(logger, agentExecutionService),
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+				mock<AgentMessageQueueService>(),
+			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
@@ -161,6 +175,7 @@ describe('SubAgentRunner', () => {
 
 	it('resolves reconstruction from the container at run time', async () => {
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -170,9 +185,16 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -198,21 +220,36 @@ describe('SubAgentRunner', () => {
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
-			parentAgentIdForDelegation: undefined,
+			parentAgentIdForDelegation: parentAgentId,
 			user: undefined,
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [
+						{
+							type: 'text',
+							text: expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
+						},
+					],
+				},
+			],
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
-		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
+		const [input] = childAgent.stream.mock.calls[0][0] as Array<{
+			content: Array<{ text: string }>;
+		}>;
+		const childPrompt = input.content[0].text;
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
 		expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -267,6 +304,7 @@ describe('SubAgentRunner', () => {
 		const onChunk = vi.fn();
 
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -291,6 +329,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, childThreadId: 'pre-minted-thread' },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -299,7 +338,7 @@ describe('SubAgentRunner', () => {
 
 		expect(result.threadId).toBe('pre-minted-thread');
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: expect.objectContaining({ threadId: 'pre-minted-thread' }),
 			}),
@@ -308,6 +347,7 @@ describe('SubAgentRunner', () => {
 
 	it('records the child turn with the parent run type, not its own published state', async () => {
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'test',
@@ -329,7 +369,7 @@ describe('SubAgentRunner', () => {
 	])(
 		'resolves the child draft for test runs and the published version for production ($runType)',
 		async ({ runType, usePublishedVersion }) => {
-			await runner.run(spawnRequest, { projectId, credentialProvider, runType });
+			await runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType });
 
 			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
 				projectId,
@@ -342,6 +382,7 @@ describe('SubAgentRunner', () => {
 		'reconstructs child workflow tools with the parent %s execution mode',
 		async (workflowToolExecutionMode) => {
 			await runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -358,6 +399,7 @@ describe('SubAgentRunner', () => {
 		const user = mock<User>({ id: 'user-1' });
 
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -373,6 +415,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -380,12 +423,13 @@ describe('SubAgentRunner', () => {
 		);
 
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: {
 					resourceId: 'draft-chat:user-1',
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
@@ -397,6 +441,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentSandboxPrincipalHash: principalHash },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -407,10 +452,13 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({ sandboxPrincipalHash: principalHash }),
 		);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: expect.objectContaining({
-					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nExecutionId: 'agent-execution-1',
+					},
 				}),
 			}),
 		);
@@ -421,7 +469,10 @@ describe('SubAgentRunner', () => {
 				threadId: result.threadId,
 				resourceId: result.threadId,
 				delegated: true,
-				hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				hostMetadata: {
+					...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					n8nExecutionId: 'agent-execution-1',
+				},
 			},
 			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
 			pendingToolCalls: {},
@@ -437,6 +488,7 @@ describe('SubAgentRunner', () => {
 				parentThreadId,
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -451,6 +503,7 @@ describe('SubAgentRunner', () => {
 	it('threads the parent workspace handle into child reconstruction with the delegation thread id', async () => {
 		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -474,6 +527,7 @@ describe('SubAgentRunner', () => {
 				parentThreadId,
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -522,12 +576,13 @@ describe('SubAgentRunner', () => {
 			}),
 		);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
@@ -569,6 +624,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(
 			runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -757,6 +813,7 @@ describe('SubAgentRunner', () => {
 				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -814,6 +871,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(
 			runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -830,7 +888,12 @@ describe('SubAgentRunner', () => {
 			const cause = new Error('recording unavailable');
 			agentExecutionService[operation].mockRejectedValue(cause);
 			await expect(
-				runner.run(spawnRequest, { projectId, credentialProvider, runType: 'production' }),
+				runner.run(spawnRequest, {
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+				}),
 			).rejects.toMatchObject({
 				phase: operation === 'startExecutionRecording' ? 'create' : 'finalize',
 				executionStarted: operation === 'finalizeExecution',
@@ -850,7 +913,12 @@ describe('SubAgentRunner', () => {
 		const error = new Error('child initialization failed');
 		reconstructionService.reconstructFromResolvedSource.mockRejectedValue(error);
 		await expect(
-			runner.run(spawnRequest, { projectId, credentialProvider, runType: 'production' }),
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			}),
 		).rejects.toBe(error);
 		expect(childAgent.stream).not.toHaveBeenCalled();
 		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
@@ -877,6 +945,7 @@ describe('SubAgentRunner', () => {
 		);
 
 		const run = runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -888,7 +957,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(run).resolves.toMatchObject({ status: 'failed' });
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 	});
@@ -904,6 +973,7 @@ describe('SubAgentRunner', () => {
 		};
 
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -911,7 +981,7 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				telemetry: {
 					...parentTelemetry,
@@ -925,6 +995,7 @@ describe('SubAgentRunner', () => {
 
 	it('omits telemetry from the child stream call when the parent context has none', async () => {
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',

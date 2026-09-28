@@ -43,7 +43,7 @@ export class WorkflowExecution {
 	triggerOutputs!: TriggerOutputs | null;
 
 	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
-	@Column('jsonb', { name: 'caller_context', default: () => "'{}'" })
+	@Column('jsonb', { name: 'caller_context' })
 	callerContext!: CallerContext;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })

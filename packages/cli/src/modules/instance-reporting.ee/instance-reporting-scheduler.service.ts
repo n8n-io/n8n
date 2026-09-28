@@ -7,11 +7,18 @@ import { strict } from 'node:assert';
 
 import { EventService } from '@/events/event.service';
 
+import type { InstanceMonitoringReport } from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
-import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
+import {
+	InstanceReportAlreadyCreatedError,
+	InstanceReportingService,
+} from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
+
+/** How long to wait before re-attempting a delivery that failed. */
+const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
  * Fires the daily instance report at this instance's configured report time.
@@ -112,9 +119,14 @@ export class InstanceReportingScheduler {
 		try {
 			const reportTime = await this.settingsService.getReportTime();
 
-			// An attempt too soon after the last one arms for the remainder rather
-			// than falling through, which would sleep until tomorrow and drop the retry.
-			const waitMs = await this.reportingService.msUntilRetryAllowed(new Date());
+			// Wait out the gap between retries, but never past the pending row's own
+			// next slot — at that slot it is skipped, not retried. A wait that reaches
+			// the slot collapses to zero, so this pass falls through to reportIfDue,
+			// which skips the stale row and sends a fresh report.
+			const waitMs = Math.min(
+				await this.msUntilRetryAllowed(new Date()),
+				await this.msUntilNextSlot(reportTime),
+			);
 			if (waitMs > 0) {
 				this.scheduleNext(waitMs);
 				return;
@@ -123,7 +135,7 @@ export class InstanceReportingScheduler {
 			// A failed delivery retries; the row decides when the attempts run out,
 			// after which the day reads as settled and this waits for the next slot.
 			if ((await this.reportIfDue(reportTime)) === 'failed') {
-				this.scheduleNext(RETRY_DELAY_MS);
+				this.scheduleNext(Math.min(RETRY_DELAY_MS, await this.msUntilNextSlot(reportTime)));
 				return;
 			}
 
@@ -137,20 +149,70 @@ export class InstanceReportingScheduler {
 	}
 
 	/**
-	 * Report when this day's slot has passed and the day is not settled yet. Both
-	 * conditions are re-checked here rather than inferred from the timer having
-	 * fired, so an early fire (a backward clock jump) reports nothing and a
-	 * duplicate fire is a no-op.
+	 * Send the report when it is due.
+	 *
+	 * A pending report is a retry. Resend it now, also after midnight; it holds
+	 * frozen data, so the slot does not apply to it. But once its own next slot
+	 * has passed, its cycle is over: stop trying and let a new report cover its
+	 * day. A new report waits for the slot, which makes sure the day is complete
+	 * before the code measures it.
 	 */
 	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
 		const now = new Date();
+		const pending = await this.reportRepository.findPending();
+
+		if (pending) {
+			if (pendingIsStale(pending, reportTime, now)) {
+				await this.reportingService.skip(
+					pending.id,
+					pending.attempts,
+					'slot-passed',
+					pending.lastError,
+				);
+			} else {
+				return await this.trySend();
+			}
+		}
+
+		// A new report waits for the slot and runs only when the day is not settled.
 		if (now.getTime() < slotOn(reportTime, now)) return 'skipped';
 		if (await this.reportRepository.hasSettledToday(now)) return 'skipped';
+		return await this.trySend();
+	}
 
+	/**
+	 * Milliseconds until the pending row's own next slot, or `Infinity` when no row
+	 * is pending. Capping a retry sleep with this keeps the timer from sleeping past
+	 * the slot, where the row is skipped and a fresh report takes over — otherwise a
+	 * slot near the end of the UTC day would defer the next report by almost a day.
+	 */
+	private async msUntilNextSlot(reportTime: string): Promise<number> {
+		const pending = await this.reportRepository.findPending();
+		if (!pending) return Number.POSITIVE_INFINITY;
+
+		const nextSlot =
+			slotOn(reportTime, pending.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+		return nextSlot - Date.now();
+	}
+
+	private async trySend(): Promise<'sent' | 'failed'> {
 		try {
 			await this.reportingService.sendReport();
 			return 'sent';
 		} catch (error) {
+			if (error instanceof InstanceReportAlreadyCreatedError) {
+				this.logger.info(
+					'Unexpected second instance report triggered for today, ignored because there is already a report for today',
+				);
+				// In this case, the report is not actually considered "failed" from a business perspective,
+				// but our code has a bug that led to a report being generated a second time for the same day.
+				// Returning 'failed' here, will lead to a retry of the report being scheduled after RETRY_DELAY_MS.
+				// The expectation is that after that single no-op retry, retrying stops
+				// as InstanceReportingService.sendReport will exit early.
+				return 'failed';
+			}
+
 			this.logger.warn('Failed to deliver the instance report', { error });
 			return 'failed';
 		}
@@ -161,6 +223,34 @@ export class InstanceReportingScheduler {
 
 		this.timeout = setTimeout(async () => await this.tick(), delayMs);
 	}
+
+	/**
+	 * How long the scheduler must wait before attempting today's report again, or
+	 * `0` when it may attempt now.
+	 *
+	 * Derived from the report row, so the wait survives a restart. Without it, a
+	 * crash loop would attempt at once every time and spend the whole budget in
+	 * seconds.
+	 */
+	private async msUntilRetryAllowed(now: Date): Promise<number> {
+		const pending = await this.reportRepository.findPending();
+		if (!pending?.lastAttemptAt) return 0;
+
+		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
+
+		return Math.max(0, RETRY_DELAY_MS - elapsed);
+	}
+}
+
+/**
+ * Whether a pending row sat unsent past its own next slot. Its cycle is then
+ * over, so a new report covers its day instead of a late resend.
+ */
+function pendingIsStale(report: InstanceMonitoringReport, reportTime: string, now: Date): boolean {
+	const nextSlot =
+		slotOn(reportTime, report.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+	return now.getTime() >= nextSlot;
 }
 
 /** Epoch ms of `reportTime` on `now`'s UTC day. */

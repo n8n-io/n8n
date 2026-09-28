@@ -1,4 +1,8 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	LoginRequestDto,
+	ResolveSignupTokenQueryDto,
+	SSO_LOGIN_REQUIRED_ERROR_CODE,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
@@ -124,7 +128,7 @@ export class AuthController {
 				userEmail,
 				reason: 'SSO is enabled, please log in with SSO',
 			});
-			throw new AuthError('SSO is enabled, please log in with SSO');
+			throw new AuthError('SSO is enabled, please log in with SSO', SSO_LOGIN_REQUIRED_ERROR_CODE);
 		}
 	}
 

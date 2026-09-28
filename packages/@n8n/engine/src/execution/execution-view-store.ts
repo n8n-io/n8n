@@ -18,6 +18,8 @@ export interface ExecutionListItemView {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -26,7 +28,7 @@ export interface ExecutionListItemView {
 export interface ExecutionListQuery {
 	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
-	mode?: string;
+	hostMode?: string;
 	createdAfter?: string;
 	createdBefore?: string;
 	before?: { createdAt: string; id: string };
@@ -47,6 +49,8 @@ export interface ExecutionView {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */

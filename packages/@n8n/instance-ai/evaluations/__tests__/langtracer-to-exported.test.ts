@@ -85,6 +85,36 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect('description' in body).toBe(false);
 	});
 
+	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
+		const seedDataTables = [
+			{
+				id: 'seed-table-1',
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' as const }],
+				rows: [{ email: 'ada@example.com' }],
+			},
+		];
+		const body = diskCaseToLangTracerCreate(
+			diskCase({
+				executionScenarios: [
+					{
+						name: 'seeded',
+						description: 'd',
+						dataSetup: 's',
+						successCriteria: 'ok',
+						seedDataTables,
+					},
+					{ name: 'plain', description: 'd', dataSetup: 's', successCriteria: 'ok' },
+				],
+			}),
+			'c',
+			{ suiteId: 1, setKind: 'regression', synthetic: true },
+		);
+
+		expect(body.scenarios?.[0].seedDataTables).toEqual(seedDataTables);
+		expect('seedDataTables' in (body.scenarios?.[1] ?? {})).toBe(false);
+	});
+
 	it('preserves a scenario `requires` field when present', () => {
 		const body = diskCaseToLangTracerCreate(
 			diskCase({
@@ -107,6 +137,26 @@ describe('diskCaseToLangTracerCreate', () => {
 });
 
 describe('unsupportedPushReason', () => {
+	it.each([null, 'Production reports'])(
+		'refuses description %s until the case-write API preserves it',
+		(description) => {
+			const input = diskCase({ credentials: [{ type: 'httpHeaderAuth', description }] });
+			expect(unsupportedPushReason(input)).toContain('description');
+			const body = diskCaseToLangTracerCreate(input, 'description-case', {
+				suiteId: 8,
+				setKind: 'regression',
+				synthetic: true,
+			});
+			expect(body.credentials).toEqual(input.credentials);
+		},
+	);
+
+	it('allows credentials without descriptions', () => {
+		expect(
+			unsupportedPushReason(diskCase({ credentials: [{ type: 'httpHeaderAuth' }] })),
+		).toBeNull();
+	});
+
 	it('refuses a case whose prompt version would be lost', () => {
 		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
 			'promptVersion',

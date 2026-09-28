@@ -10,6 +10,7 @@
 import type {
 	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
+	InstanceAiEvalSeedDataTable,
 	InstanceAiHandoffContext,
 	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
@@ -59,7 +60,7 @@ import {
 	dedupeScenarioSeedTables,
 	evictLeftoverSeedTables,
 	reseedScenarioTables,
-	uniquifyScenarioTableNames,
+	uniquifySeedTableNames,
 } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -110,6 +111,10 @@ const DEFAULT_TIMEOUT_MS = 900_000;
 // Multi-turn driver — wires UserProxyLlm into runMultiTurnConversation
 // ---------------------------------------------------------------------------
 
+/** The request field's floor, so the flag means "compact as soon as there is
+ *  anything to compact" — a case sized for the 30k default is unauthorable. */
+const COMPACTION_OBSERVER_THRESHOLD_TOKENS = 1_000;
+
 interface MultiTurnDriverConfig {
 	client: N8nClient;
 	threadId: string;
@@ -118,6 +123,7 @@ interface MultiTurnDriverConfig {
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
+	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
@@ -212,6 +218,7 @@ async function driveMultiTurnConversation(
 		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
+		config.observerThresholdTokens,
 	);
 
 	await runMultiTurnConversation({
@@ -227,6 +234,7 @@ async function driveMultiTurnConversation(
 		proxyResponses: config.proxyResponses,
 		buildMode: config.buildMode,
 		promptVersion: config.promptVersion,
+		observerThresholdTokens: config.observerThresholdTokens,
 		allowUserExecution: config.allowUserExecution,
 		beforeUserExecution: config.beforeUserExecution,
 	});
@@ -261,7 +269,7 @@ export interface BuildResult {
 	createdFolderIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
-	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
+	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
@@ -299,7 +307,7 @@ export interface BuildResult {
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
-	 *  outage never lands in the builder's baseline (TRUST-374). */
+	 *  outage never lands in the builder's baseline. */
 	providerOutage?: string;
 	/** Ledger from the credential-setup lane, when one ran. Absent for every
 	 *  ordinary case; present even on a failed build, so the deterministic checks
@@ -311,7 +319,7 @@ export interface BuildResult {
  * True when the build failed for a reason the agent doesn't own — seeding,
  * transport or the model provider. Everything downstream that has to attribute
  * a failure (the scenario row, the ungraded expectations) reads this one
- * predicate so the three answers can't drift apart (TRUST-375).
+ * predicate so the three answers can't drift apart.
  */
 export function buildFailedOnInfra(build: BuildResult): boolean {
 	if (build.success) return false;
@@ -462,6 +470,7 @@ export interface BuildWorkflowConfig {
 	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
 	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
+	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
@@ -472,7 +481,7 @@ export interface BuildWorkflowConfig {
 	 *  also supplies the live turn). */
 	seed?: CaseSeed;
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
-	 *  after a successful build, before any scenario runs (TRUST-311). */
+	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
@@ -529,6 +538,9 @@ export function workflowExpectedForCase(
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
 	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	const observerThresholdTokens = config.requiresMemoryCompaction
+		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
+		: undefined;
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -548,11 +560,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const seededProjectIds: string[] = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
-	// TRUST-311 follow-up: scenario seed tables are created empty before the build
+	// Scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
 	const scenarioTableIdsByName: Record<string, string> = {};
 	let scenarioSeedTablesNote = '';
+	let restoredSeedTables = new Map<string, { id: string; name: string }>();
 	// Ids the build itself produced (the agent's workflow + any data tables it
 	// made). Tracked here so a throw AFTER the build lands — scenario-table
 	// seeding, workflow checks — still hands them to the caller's cleanup rather
@@ -836,18 +849,26 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.dataTables.length > 0 ||
 					remapped.agents.length > 0 ||
 					remapped.folders.length > 0;
+				// Named here, not by the server, so the note can name a reused seed table.
+				const seedDataTables = uniquifySeedTableNames(remapped.dataTables);
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
 							threadId,
 							remapped.messages,
 							remapped.workflows,
-							remapped.dataTables,
+							seedDataTables,
 							remapped.agents,
-							{ folders: remapped.folders },
+							{ folders: remapped.folders, uniquifyNames: false },
 						)
 					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [], folderIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
+				restoredSeedTables = new Map(
+					remapped.dataTables.map((table, index) => [
+						table.name,
+						{ id: restoredDataTableIds[index], name: seedDataTables[index].name },
+					]),
+				);
 				restoredAgentIds = restoreResult.agentIds;
 				const restoredAgents: Array<[string, { id: string; name: string }]> = [];
 				for (const [index, agent] of seed.agents.entries()) {
@@ -930,7 +951,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 		}
 
-		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
+		// Create the case's execution-scenario data tables EMPTY
 		// BEFORE the build turn, so the agent discovers the real table (Data Table
 		// list/schema) and binds its real id — the production-faithful flow where the
 		// user's table pre-exists. Rows are reset+seeded per scenario
@@ -949,31 +970,44 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
+				// A seed table of the same name is the one the seeded workflow binds.
+				const toCreate = scenarioSeedTables.filter((table) => !restoredSeedTables.has(table.name));
 				// `uniquifyNames: false` stays — the harness mints the suffix so it knows
 				// which name to give the agent below.
-				const schemasOnly = uniquifyScenarioTableNames(scenarioSeedTables).map((table) => ({
+				const schemasOnly = uniquifySeedTableNames(toCreate).map((table) => ({
 					...table,
 					rows: undefined,
 				}));
-				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, [], {
-					uniquifyNames: false,
-				});
+				const { dataTableIds } =
+					schemasOnly.length > 0
+						? await client.restoreThread(threadId, [], [], schemasOnly, [], {
+								uniquifyNames: false,
+							})
+						: { dataTableIds: [] };
 				// restoreThread returns ids in input order; a length mismatch means we
 				// can't safely map names to ids, so fail rather than mis-seed.
-				if (dataTableIds.length !== scenarioSeedTables.length) {
+				if (dataTableIds.length !== toCreate.length) {
 					throw new Error(
-						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(scenarioSeedTables.length)}; cannot map names to ids.`,
+						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(toCreate.length)}; cannot map names to ids.`,
 					);
 				}
 				// Keyed by the DECLARED name — what a scenario writes.
-				scenarioSeedTables.forEach((table, index) => {
+				toCreate.forEach((table, index) => {
 					scenarioTableIdsByName[table.name] = dataTableIds[index];
 				});
+				const noteTables: InstanceAiEvalSeedDataTable[] = [...schemasOnly];
+				for (const table of scenarioSeedTables) {
+					const restored = restoredSeedTables.get(table.name);
+					if (!restored) continue;
+					scenarioTableIdsByName[table.name] = restored.id;
+					noteTables.push({ ...table, name: restored.name });
+				}
 				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
 				// The agent looks up the name that exists, not the declared one.
-				scenarioSeedTablesNote = buildSeededTablesNote(schemasOnly);
+				scenarioSeedTablesNote = buildSeededTablesNote(noteTables);
+				const reusedCount = scenarioSeedTables.length - toCreate.length;
 				logger.info(
-					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${config.laneTag ?? ''}`,
+					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${reusedCount > 0 ? `, reusing ${String(reusedCount)} seed table(s)` : ''}${config.laneTag ?? ''}`,
 				);
 			}
 		} catch (error: unknown) {
@@ -1089,6 +1123,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				timeoutMs,
 				logger,
 				proxyResponses,
+				observerThresholdTokens,
 				followUpMessagesOut: followUpMessages,
 				// Only wired when the credential view is actually pinned — the
 				// allowlist endpoint a mid-run creation depends on isn't available
@@ -1117,6 +1152,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildMode,
 				promptVersion,
 				openingHandoffContext,
+				observerThresholdTokens,
 			);
 			await waitForAllActivity({
 				client,
@@ -1244,6 +1280,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				createdFolderIds: restoredFolderIds,
+				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
 				conversationMetrics,
 				events,
