@@ -3,7 +3,12 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { StepSlots, StepStatus } from '../../execution/execution.types';
+import type {
+	ResumeCause,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from '../../execution/execution.types';
 import { StepNotFoundError, type NewStepRecord } from '../../execution/step-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
@@ -47,6 +52,7 @@ describe('workflow_step_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: {},
 			triggerOutputs: null,
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(execution);
@@ -70,6 +76,9 @@ describe('workflow_step_execution table (integration)', () => {
 		iteration?: number;
 		status: StepStatus;
 		outputs?: StepSlots;
+		waitDeclaration?: WaitDeclaration;
+		waitTill?: Date | null;
+		resumeCause?: ResumeCause;
 	}): Promise<{ id: string }> {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const row = await repo.save(repo.create(record));
@@ -373,7 +382,341 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toBeNull();
 	});
 
-	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
+	it('TypeOrmStepStore.suspendStep records the declaration and its deadline, marking the step waiting', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		const wait = {
+			resumeAt: '2099-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+
+		expect(await store.suspendStep(id, wait)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('waiting');
+		expect(found.waitDeclaration).toEqual(wait);
+		expect(found.waitTill).toEqual(new Date(wait.resumeAt));
+		// a suspension is not an outcome
+		expect(found.outputs).toBeNull();
+		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.suspendStep leaves the deadline null for a wait that has none', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('waiting');
+		// nothing for the sweep to fire: only a resume request ends this wait
+		expect(found.waitTill).toBeNull();
+	});
+
+	it('TypeOrmStepStore.suspendStep only suspends a step that is running', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await createStep(store, executionId, {
+			nodeId: 'a',
+			iteration: 0,
+			status: 'queued',
+		});
+
+		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(false);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.waitDeclaration).toBeNull();
+	});
+
+	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		await store.suspendStep(id, { acceptsResumeRequest: true });
+
+		// expected but pending: the execution stays open until the wait resolves
+		expect(await store.countSettledSteps(executionId)).toBe(0);
+	});
+
+	it('TypeOrmStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const wait: WaitDeclaration = { acceptsResumeRequest: true };
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: wait,
+		});
+		const resume: ResumeCause = { kind: 'request', outputs: [[{ json: { approved: true } }]] };
+
+		expect(await store.resumeStep(id, resume)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.resumeCause).toEqual(resume);
+		// the declaration stays: the row is the only place it lives, and the
+		// dispatch reads it after the claim
+		expect(found.waitDeclaration).toEqual(wait);
+	});
+
+	it('TypeOrmStepStore.resumeStep only resumes a waiting step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const resume: ResumeCause = { kind: 'deadline' };
+
+		for (const status of ['queued', 'running', 'completed', 'cancelled'] as const) {
+			const { id } = await seedStep({ executionId, nodeId: `n-${status}`, status });
+
+			expect(await store.resumeStep(id, resume)).toBe(false);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(status);
+			expect(found.resumeCause).toBeNull();
+		}
+	});
+
+	it('TypeOrmStepStore.claimStep hands back the declaration and the resume of a resumed step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const wait: WaitDeclaration = {
+			resumeAt: '2099-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: wait,
+		});
+		await store.resumeStep(id, { kind: 'deadline' });
+
+		// the claim carries both, so dispatching a resumed step costs no extra read
+		expect(await store.claimStep(id)).toMatchObject({
+			id,
+			status: 'running',
+			waitDeclaration: wait,
+			resumeCause: { kind: 'deadline' },
+		});
+	});
+
+	/** A suspended row. A `waitTill` of `null` seeds a wait that only a request ends. */
+	async function seedWaitingStep(
+		executionId: string,
+		nodeId: string,
+		waitTill: Date | null,
+	): Promise<{ id: string }> {
+		return await seedStep({
+			executionId,
+			nodeId,
+			status: 'waiting',
+			waitDeclaration:
+				waitTill === null
+					? { acceptsResumeRequest: true }
+					: {
+							resumeAt: waitTill.toISOString(),
+							outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+							acceptsResumeRequest: false,
+						},
+			waitTill,
+		});
+	}
+
+	it('TypeOrmStepStore.resumeDueSteps queues the waits that are due and leaves the rest', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
+		// a second wait, still in the future at the instant the sweep asks about
+		const { id: laterId } = await seedWaitingStep(
+			executionId,
+			'later',
+			new Date('2020-01-03T00:00:00.000Z'),
+		);
+
+		expect(await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10)).toEqual([
+			{ id, executionId },
+		]);
+
+		const repo = dataSource.getRepository(WorkflowStepExecution);
+		const found = await repo.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.resumeCause).toEqual({ kind: 'deadline' });
+		// the declaration stays: the dispatch reads its captured outputs
+		expect(found.waitDeclaration).not.toBeNull();
+
+		const later = await repo.findOneOrFail({ where: { id: laterId } });
+		expect(later.status).toBe('waiting');
+		expect(later.resumeCause).toBeNull();
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedWaitingStep(executionId, 'a', null);
+
+		// no deadline, so no instant makes it due. The sweep is instance-wide and
+		// these cases share a database, so assert about this row rather than the
+		// whole batch — a far-future instant also finds every other test's waits.
+		const resumed = await store.resumeDueSteps(new Date('2099-01-01T00:00:00.000Z'), 10);
+		expect(resumed.map((step) => step.id)).not.toContain(id);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('waiting');
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps ignores a step that is not waiting', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		// a resumed step keeps its declaration and its past deadline, so only the
+		// status keeps the sweep from resuming it twice
+		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
+		await store.resumeStep(id, { kind: 'deadline' });
+
+		expect(await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10)).toEqual([]);
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps caps the batch at the limit, oldest deadline first', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: oldest } = await seedWaitingStep(
+			executionId,
+			'oldest',
+			new Date('2020-01-01T00:00:00.000Z'),
+		);
+		const { id: middle } = await seedWaitingStep(
+			executionId,
+			'middle',
+			new Date('2020-01-02T00:00:00.000Z'),
+		);
+		await seedWaitingStep(executionId, 'newest', new Date('2020-01-03T00:00:00.000Z'));
+
+		const resumed = await store.resumeDueSteps(new Date('2020-01-04T00:00:00.000Z'), 2);
+
+		// a backlog drains in deadline order rather than starving its oldest waits.
+		// Which rows are picked is ordered; the order they come back in is not —
+		// `ORDER BY` sits in the subquery, and an UPDATE cannot order its RETURNING.
+		expect(new Set(resumed.map(({ id }) => id))).toEqual(new Set([oldest, middle]));
+	});
+
+	/** Earlier than every other case's deadline, so only the rows seeded here are ever due. */
+	const SWEEP_DUE = new Date('2019-06-01T00:00:00.000Z');
+
+	async function seedBacklog(executionId: string, count: number): Promise<string[]> {
+		const ids: string[] = [];
+		for (let n = 1; n <= count; n++) {
+			const { id } = await seedWaitingStep(
+				executionId,
+				`backlog-${n}`,
+				new Date(`2019-01-0${n}T00:00:00.000Z`),
+			);
+			ids.push(id);
+		}
+		return ids;
+	}
+
+	// These two pin the concurrency contract that makes `resumeDueSteps` one
+	// statement rather than a scan and a transition per row.
+	it('TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const [first, second, third, fourth] = await seedBacklog(executionId, 4);
+
+		// stand in for a concurrent sweeper mid-claim: hold the two oldest locked
+		const other = dataSource.createQueryRunner();
+		await other.connect();
+		await other.startTransaction();
+		const held = (await other.query(
+			`SELECT id FROM workflow_step_execution
+			 WHERE status = 'waiting' AND wait_till <= $1
+			 ORDER BY wait_till
+			 LIMIT 2
+			 FOR UPDATE SKIP LOCKED`,
+			[SWEEP_DUE],
+		)) as Array<{ id: string }>;
+		expect(held.map(({ id }) => id)).toEqual([first, second]);
+
+		// SKIP LOCKED, so this sweep neither blocks on them nor takes them again:
+		// it moves past the held head and drains the next two
+		const resumed = await store.resumeDueSteps(SWEEP_DUE, 2);
+
+		await other.commitTransaction();
+		await other.release();
+
+		expect(resumed.map(({ id }) => id).sort()).toEqual([third, fourth].sort());
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps hands no step to two concurrent sweeps', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const backlog = await seedBacklog(executionId, 4);
+
+		// both ask for more than the whole backlog at once
+		const [left, right] = await Promise.all([
+			store.resumeDueSteps(SWEEP_DUE, 10),
+			store.resumeDueSteps(SWEEP_DUE, 10),
+		]);
+		const leftIds = left.map(({ id }) => id);
+		const rightIds = right.map(({ id }) => id);
+
+		// no step reached both sweeps, and between them they drained this backlog.
+		// Restricted to the rows seeded here: the sweep is instance-wide, so an
+		// earlier case's still-waiting rows are legitimately in the batch too.
+		const seeded = (ids: string[]) => ids.filter((id) => backlog.includes(id));
+		expect(leftIds.filter((id) => rightIds.includes(id))).toEqual([]);
+		expect([...seeded(leftIds), ...seeded(rightIds)].sort()).toEqual([...backlog].sort());
+	});
+
+	/**
+	 * `nextWaitDeadline` reads every waiting row in the instance, and these cases
+	 * share a database. Deadlines sit in 2018, earlier than every other case's,
+	 * so the minimum is always a row seeded here.
+	 */
+	it('TypeOrmStepStore.nextWaitDeadline returns the earliest waiting deadline', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const earliest = new Date('2018-01-01T00:00:00.000Z');
+		await seedWaitingStep(executionId, 'later', new Date('2018-06-01T00:00:00.000Z'));
+		await seedWaitingStep(executionId, 'earliest', earliest);
+
+		expect(await store.nextWaitDeadline()).toEqual(earliest);
+	});
+
+	it('TypeOrmStepStore.nextWaitDeadline ignores rows the sweep cannot fire', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const waiting = new Date('2018-01-01T00:00:00.000Z');
+		await seedWaitingStep(executionId, 'waiting', waiting);
+		// a wait that only a request ends carries no deadline at all
+		await seedWaitingStep(executionId, 'no-deadline', null);
+		// a resumed row keeps an earlier deadline, but its status excludes it
+		const { id } = await seedWaitingStep(
+			executionId,
+			'resumed',
+			new Date('2017-01-01T00:00:00.000Z'),
+		);
+		await store.resumeStep(id, { kind: 'deadline' });
+
+		expect(await store.nextWaitDeadline()).toEqual(waiting);
+	});
+
+	it('TypeOrmStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -394,6 +737,11 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'completed',
 			outputs: [{}],
 		});
+		const { id: waitingId } = await seedWaitingStep(
+			executionId,
+			'd',
+			new Date('2099-01-01T00:00:00.000Z'),
+		);
 		// scoped to the execution: a sibling execution's queued work is untouched
 		const { id: otherId } = await createStep(store, otherExecutionId, {
 			nodeId: 'a',
@@ -401,12 +749,29 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		await store.cancelQueuedSteps(executionId);
+		await store.cancelPendingSteps(executionId);
 
 		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		// a waiting step is pending too: nothing runs it, and nothing will resume it
+		// once the execution is over
+		expect((await store.loadStep(waitingId)).status).toBe('cancelled');
+		// a running step keeps its claim: its worker still owns the outcome
 		expect((await store.loadStep(runningId)).status).toBe('running');
 		expect((await store.loadStep(completedId)).status).toBe('completed');
 		expect((await store.loadStep(otherId)).status).toBe('queued');
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		// due long ago, so only the status can keep the sweep away from it
+		const { id } = await seedWaitingStep(executionId, 'a', new Date('2019-02-01T00:00:00.000Z'));
+
+		await store.cancelPendingSteps(executionId);
+
+		const resumed = await store.resumeDueSteps(new Date('2019-06-01T00:00:00.000Z'), 10);
+		expect(resumed.map((step) => step.id)).not.toContain(id);
+		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
@@ -713,7 +1078,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
-	it('carries the unique key and the failed-rows partial index in the schema', async () => {
+	it('carries the unique key and the partial indexes in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_step_execution'",
 		);
@@ -726,6 +1091,13 @@ describe('workflow_step_execution table (integration)', () => {
 			'(execution_id, node_id, iteration)',
 		);
 		expect(byName.idx_workflow_step_execution_failed).toContain("WHERE ((status)::text = 'failed'");
+		// the sweep's index: due waits only, so it must not cover settled rows
+		expect(byName.idx_workflow_step_execution_wait_till).toContain('(wait_till)');
+		expect(byName.idx_workflow_step_execution_wait_till).toContain(
+			"WHERE ((status)::text = 'waiting'",
+		);
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
 
 		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
 			`SELECT is_nullable, column_default FROM information_schema.columns

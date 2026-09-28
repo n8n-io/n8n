@@ -106,7 +106,7 @@ beforeEach(async () => {
 	builder = await createOwner();
 });
 
-describe('active trigger runs on engine 2.0', () => {
+describe('active trigger runs on engine v2', () => {
 	test('hands the trigger payload to the data plane and persists no execution', async () => {
 		const workflow = await createV2Workflow();
 		const item = { json: { 'Readable date': 'September 3, 2026' } };

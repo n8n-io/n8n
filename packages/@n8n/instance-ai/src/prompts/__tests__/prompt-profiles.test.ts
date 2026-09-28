@@ -62,6 +62,81 @@ describe('prompt profiles', () => {
 		);
 	});
 
+	it('varies only the communication style in the concise profile', async () => {
+		const concise = resolvePromptProfile({ version: 'concise@1' });
+		expect(concise.fallbackFrom).toBeUndefined();
+		expect(concise.profile.mode).toBe('default');
+
+		// Skills must be untouched: the concise profile carries no skill variants.
+		const result = await loadInstanceAiPromptSkills(concise.profile);
+		const original = await loadInstanceAiPromptSkills(resolvePromptProfile({}).profile);
+		expect(result.source.registry).toEqual(original.source.registry);
+		expect(result.disabledTools).toEqual([]);
+		expect(describePromptProfile(concise, result.source)).toEqual({
+			version: 'concise@1',
+			systemPromptVersion: 'instance-agent-concise@1',
+			skillVariants: [],
+			skillsHash: result.source.registry.skillsHash,
+		});
+	});
+
+	it('carries the rules each measurement put there, and omits the two rejected ones', () => {
+		const concise = resolvePromptProfile({ version: 'concise@1' });
+		const options = { webhookBaseUrl: 'https://n8n.test', formBaseUrl: 'https://n8n.test/form' };
+		const rendered = getVersionedSystemPrompt(concise.profile.systemPromptVersion, options);
+
+		// Sentence limits: a formatting-only draft left mean sentence length flat and
+		// raised the share of sentences over 20 words. Only this rule moves it.
+		expect(rendered).toContain('Keep a sentence under 20 words.');
+		expect(rendered).toContain('End with one concrete next step');
+		expect(rendered).toContain('Keep the fact and drop the significance.');
+		// The substance guard has to name a limit concretely; "a real limitation"
+		// alone lost the platform-restriction disclosure in 2 of 3 runs.
+		expect(rendered).toContain('unprompted or scheduled messages');
+		// No banned-word list: measured zero hits, so it only cost prompt budget.
+		expect(rendered).not.toContain('Do not use these words');
+		// Hedge ban deliberately not adopted — `## Capability Honesty` needs "may not work".
+		expect(rendered).toContain('may not work');
+	});
+
+	it('renders the concise style and keeps every shared system prompt section', () => {
+		const conciseVersion = resolvePromptProfile({ version: 'concise@1' }).profile
+			.systemPromptVersion;
+		const options = { webhookBaseUrl: 'https://n8n.test', formBaseUrl: 'https://n8n.test/form' };
+		const concise = getVersionedSystemPrompt(conciseVersion, options);
+		const standard = getSystemPrompt(options);
+
+		expect(concise).not.toBe(standard);
+		expect(concise).toContain('Say each thing once.');
+		expect(concise).toContain('Brevity must not remove substance.');
+		expect(standard).not.toContain('Say each thing once.');
+		expect(standard).toContain('- Be concise.');
+		expect(concise).not.toContain('- Be concise.');
+
+		// The extraction must not have dropped anything outside the style block.
+		for (const shared of [
+			'## Capability Honesty',
+			'## Setup Accuracy',
+			'## Safety',
+			'## Reply language',
+			'## Instance Info',
+		]) {
+			expect(standard).toContain(shared);
+			expect(concise).toContain(shared);
+		}
+
+		// Operational rules are tone-independent: both variants keep them.
+		for (const operational of [
+			'Never let an empty assistant message',
+			'End every tool call sequence with a brief text summary',
+			'always fill it with one plain-language line',
+			'No emojis unless the user explicitly requests them.',
+		]) {
+			expect(standard).toContain(operational);
+			expect(concise).toContain(operational);
+		}
+	});
+
 	it('rejects duplicate profile identifiers', () => {
 		expect(() =>
 			resolvePromptProfile({}, [...INSTANCE_AI_PROMPT_PROFILES, resolvePromptProfile({}).profile]),
@@ -70,18 +145,18 @@ describe('prompt profiles', () => {
 
 	it('registers another profile without changing the system prompt', async () => {
 		const fixture: SkillVariant = {
-			id: 'concise@1',
+			id: 'terse-fixture@1',
 			changes: [{ skillId: 'answers', appendFrom: 'concise' }],
 		};
 		const profiles = [
 			...INSTANCE_AI_PROMPT_PROFILES,
 			{
 				...resolvePromptProfile({}).profile,
-				version: 'concise@1',
+				version: 'terse-fixture@1',
 				variants: [fixture],
 			},
 		];
-		const selected = resolvePromptProfile({ version: 'concise@1' }, profiles);
+		const selected = resolvePromptProfile({ version: 'terse-fixture@1' }, profiles);
 		const source = createRuntimeSkillSource([
 			{
 				id: 'answers',

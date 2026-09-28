@@ -16,10 +16,12 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
@@ -49,7 +51,7 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -111,6 +113,14 @@ describe('getAllowedToolNames', () => {
 
 	it('resolves the preferences scope to its one tool', () => {
 		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
+	});
+
+	// The read tool does not ride along on the write grant: the consent screen shows them as
+	// two scopes, and a client that may write is expected to hold both.
+	it('resolves the preferences write scope to the save, update and undo tools only', () => {
+		expect(getAllowedToolNames(['aiPreference:write'])).toEqual(
+			new Set(['save_user_preference', 'update_user_preference', 'undo_user_preference']),
+		);
 	});
 
 	it('ignores unknown scopes', () => {
@@ -207,6 +217,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
+			mockInstance(McpConfig),
 		);
 
 	beforeEach(() => {
@@ -226,11 +237,17 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Instance-context
-		// tools need the `instance-ai` module, inactive here for the same reason.
+		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// tools need that module, the verified catalog, and a scope-bearing
+		// caller; their registration guard lives in
+		// install-community-node.registration.test.ts. Instance-context tools
+		// need the `instance-ai` module, inactive here for the same reason.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
 			(name) =>
-				!registered.has(name) && !AGENT_TOOLS.has(name) && !INSTANCE_CONTEXT_TOOLS.has(name),
+				!registered.has(name) &&
+				!AGENT_TOOLS.has(name) &&
+				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
+				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -332,6 +349,9 @@ describe('McpService scope enforcement', () => {
 		);
 
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 2',
 			cursor: {
 				activityMark: 1,
@@ -346,7 +366,7 @@ describe('McpService scope enforcement', () => {
 		);
 
 		// Empty read plus an estate that exists: the client must not be told the instance is empty.
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			NOTHING_EXPOSED_TEXT,
@@ -421,7 +441,11 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
-		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+		// Community-package tools are builder-gated but register in neither
+		// service here, because this harness has the module inactive. Their
+		// builder gating is asserted in install-community-node.registration.test.ts.
+		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		expect(gated).toEqual(expected);
 	});
 
 	describe('get_user_preferences registration', () => {
@@ -464,6 +488,59 @@ describe('McpService scope enforcement', () => {
 			});
 
 			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+	});
+
+	describe('preference write tools registration', () => {
+		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
+
+		it('registers the three write tools when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		it('registers none of them when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
+		});
+
+		it('registers them with the builder disabled, like the read tool', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		// A granted scope set is fixed at authorization, so a client that consented before the
+		// write scope existed cannot write until the user consents again.
+		it('keeps them out of reach of a grant that holds only the read scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:read'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('registers them, and not the read tool, for a write-only grant', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:write'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).not.toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).toContain(name);
 		});
 	});
 

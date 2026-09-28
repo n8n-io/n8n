@@ -56,7 +56,7 @@ import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 export interface SubAgentRunContext {
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
-	parentAgentId?: string;
+	parentAgentId: string;
 	credentialProvider: CredentialProvider;
 	/**
 	 * Telemetry classification inherited from the delegating parent run.
@@ -211,11 +211,14 @@ export class SubAgentRunner {
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		const recording: StartExecutionParams = {
+			// Saved parents supply access in the thread creation transaction.
+			access: { accessScope: 'user', ownerId: null },
 			threadId,
 			agentId: runtimeSource.source.sourceId,
 			agentName: runtimeSource.source.config.name,
 			projectId: context.projectId,
 			userMessage,
+			sessionMode: operation.type === 'resume' ? 'existing' : 'new',
 			source: 'subagent',
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,

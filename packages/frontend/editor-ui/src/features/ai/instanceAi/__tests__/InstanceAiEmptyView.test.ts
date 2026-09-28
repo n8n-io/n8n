@@ -452,6 +452,7 @@ describe('InstanceAiEmptyView', () => {
 		store = mockedStore(useInstanceAiStore);
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.personalProject = { id: PERSONAL_PROJECT_ID } as Project;
+		projectsStore.isTeamProjectFeatureEnabled = true;
 		thread = {
 			id: 'thread-placeholder',
 			isStreaming: false,
@@ -814,6 +815,20 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-split-project-select')).toBeInTheDocument();
+	});
+
+	it('hides the project selector in the split layout when team projects are not licensed', () => {
+		experimentMocks.splitBelowInputVariant.value = true;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isTeamProjectFeatureEnabled = false;
+		projectsStore.myProjects = [
+			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
+			{ id: 'team-project', type: 'team', name: 'Team project' },
+		] as ProjectListItem[];
+
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
 	});
 
 	it('hides the project selector in the split layout when only the personal project exists', () => {

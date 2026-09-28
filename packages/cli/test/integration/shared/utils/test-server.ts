@@ -234,6 +234,10 @@ export const setupTestServer = ({
 						await import('@/controllers/ai-preference.controller.js');
 						break;
 
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;

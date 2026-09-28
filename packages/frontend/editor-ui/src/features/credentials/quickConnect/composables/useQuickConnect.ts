@@ -1,3 +1,4 @@
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -17,6 +18,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 export function useQuickConnect() {
+	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const message = useMessage();
@@ -146,6 +148,7 @@ export function useQuickConnect() {
 		projectId?: string;
 		workflowId?: string;
 		credentialFetchScope?: CredentialFetchScope;
+		description?: string | null;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
@@ -158,11 +161,16 @@ export function useQuickConnect() {
 
 		if (isOAuthCredentialType(credentialTypeName)) {
 			const credential =
-				connectParams.projectId || connectParams.workflowId
+				connectParams.projectId ||
+				connectParams.workflowId ||
+				(credentialDescriptionsEnabled.value && connectParams.description !== undefined)
 					? await createAndAuthorize(credentialTypeName, nodeType, {
 							projectId: connectParams.projectId,
 							workflowId: connectParams.workflowId,
 							credentialFetchScope: connectParams.credentialFetchScope,
+							...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
+								? { description: connectParams.description }
+								: {}),
 						})
 					: await createAndAuthorize(credentialTypeName, nodeType);
 			return credential;
@@ -205,6 +213,9 @@ export function useQuickConnect() {
 					{
 						id: '',
 						name: credentialType.displayName,
+						...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
+							? { description: connectParams.description }
+							: {}),
 						type: credentialTypeName,
 						data: {
 							...credentialData,

@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import type { InstanceAiMessage, InstanceAiSetupItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import type { SetupPanelRow } from '../../../composables/useSetupPanelState';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
@@ -146,7 +147,14 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: () => ({ getNodeType: () => null }),
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) =>
+			name === 'n8n-nodes-base.slack'
+				? mockNodeTypeDescription({
+						properties: [{ name: 'channel', displayName: 'Channel', type: 'string', default: '' }],
+					})
+				: null,
+	}),
 }));
 
 const credentialItem: InstanceAiSetupItem = {
@@ -567,6 +575,30 @@ describe('InstanceAiSetupPanel', () => {
 		expect(getByTestId('setup-panel-back')).toBeVisible();
 	});
 
+	it('keeps Connect available during a row connection without starting another attempt', async () => {
+		oauthMock.isOAuthCredentialType.mockReturnValue(true);
+		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const authorization = Promise.withResolvers<null>();
+		const reopen = vi.fn();
+		oauthMock.createAndAuthorize.mockImplementationOnce((_type, _node, options) => {
+			options.onAuthorizationStarted(reopen);
+			return authorization.promise;
+		});
+		const view = renderComponent();
+		await userEvent.click(view.getByRole('button', { name: 'Connect' }));
+		expect(view.getByRole('button', { name: 'Connect' })).toBeEnabled();
+		expect(view.queryByRole('button', { name: 'Reopen sign-in' })).toBeNull();
+		expect(view.queryByRole('button', { name: 'Cancel' })).toBeNull();
+		await userEvent.click(view.getByRole('button', { name: 'Connect' }));
+		expect(reopen).toHaveBeenCalledOnce();
+		expect(oauthMock.createAndAuthorize).toHaveBeenCalledOnce();
+		authorization.resolve(null);
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Connect' })).toBeEnabled();
+		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
+	});
+
 	it('connects managed OAuth directly from the row and keeps cancellation pending', async () => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(true);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
@@ -581,6 +613,7 @@ describe('InstanceAiSetupPanel', () => {
 		expect(oauthMock.createAndAuthorize).toHaveBeenCalledWith('notionApi', undefined, {
 			projectId: 'p1',
 			workflowId: 'wf1',
+			onAuthorizationStarted: expect.any(Function),
 		});
 		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
 		expect(queryByRole('dialog')).toBeNull();

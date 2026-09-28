@@ -78,7 +78,18 @@ export class PromotionBindingPreflightService {
 				unique(variables.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
 			),
 		]);
+		const targetProjectIds = new Set(targetProjects.map(({ id }) => id));
 		const result: PromotionBindingPreflightResult = {
+			missingProjects: inventory.projects
+				.filter(({ id }) => !targetProjectIds.has(id))
+				.sort((a, b) => compare(a.id, b.id))
+				.map(({ id, name, icon, description, customTelemetryTags }) => ({
+					id,
+					name,
+					...(icon !== undefined ? { icon } : {}),
+					...(description !== undefined ? { description } : {}),
+					...(customTelemetryTags !== undefined ? { customTelemetryTags } : {}),
+				})),
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],

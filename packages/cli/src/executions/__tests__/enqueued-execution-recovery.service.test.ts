@@ -10,6 +10,7 @@ import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-executio
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 const project = mock<Project>({ id: 'project-1' });
@@ -24,6 +25,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	const executionService = mock<ExecutionService>();
 	const executionCrashService = mock<ExecutionCrashService>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const eventService = mock<EventService>();
 
@@ -35,6 +37,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			executionService,
 			executionCrashService,
 			ownershipService,
+			workflowPublisherService,
 			workflowRunner,
 			eventService,
 		);
@@ -84,7 +87,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
@@ -107,7 +113,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['2', '3'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,
@@ -121,7 +130,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['1'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
@@ -142,7 +154,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,

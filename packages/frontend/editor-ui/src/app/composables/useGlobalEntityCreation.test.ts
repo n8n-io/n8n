@@ -641,6 +641,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('instance-ai module', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

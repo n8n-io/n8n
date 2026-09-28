@@ -32,8 +32,9 @@ export class WorkflowPublicationOutboxCleanupService {
 	}
 
 	/**
-	 * One bounded cleanup pass over terminal outbox rows. Never throws: a failed pass is logged.
-	 * An aborted `signal` stops the pass after the current batch.
+	 * One bounded cleanup pass over terminal outbox rows. A failed batch rejects the
+	 * pass, so the caller decides on the retry. An aborted `signal` stops the pass
+	 * after the current batch.
 	 */
 	async cleanup(signal: AbortSignal) {
 		const completedRetentionSeconds =
@@ -47,7 +48,7 @@ export class WorkflowPublicationOutboxCleanupService {
 			{ name: 'Publication outbox cleanup', op: 'publication.outbox.cleanup' },
 			async (span) => {
 				let totalDeleted = 0;
-				let result: PublicationOperationResult = 'success';
+				let result: PublicationOperationResult = 'failure';
 				try {
 					let deleted: number;
 					do {
@@ -59,6 +60,7 @@ export class WorkflowPublicationOutboxCleanupService {
 						totalDeleted += deleted;
 					} while (deleted >= batchSize && !signal.aborted);
 
+					result = 'success';
 					span.setStatus({ code: SpanStatus.ok });
 
 					if (totalDeleted > 0) {
@@ -66,10 +68,6 @@ export class WorkflowPublicationOutboxCleanupService {
 							count: totalDeleted,
 						});
 					}
-				} catch (error) {
-					result = 'failure';
-					span.setStatus({ code: SpanStatus.error });
-					this.logger.error('Failed to clean up workflow publication outbox records', { error });
 				} finally {
 					span.setAttribute('n8n.publication.records_deleted', totalDeleted);
 					this.eventService.emit('workflow-publication-outbox-cleanup', {

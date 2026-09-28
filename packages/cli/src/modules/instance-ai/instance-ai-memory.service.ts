@@ -16,6 +16,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
@@ -31,6 +32,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
@@ -236,7 +238,15 @@ function buildLogDerivedSnapshots(
 		}
 		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
 		group.events.push(row.event);
-		if (row.runId === group.runIds[0] && row.createdAt > group.anchorAt) {
+		// A `preference-card` fact is appended by an Edit or an Undo, which can
+		// happen long after the turn. It must not move the anchor: the parser
+		// drops a snapshot anchored after the next conversational message, so a
+		// late fact would unpair the whole turn instead of correcting one card.
+		if (
+			row.runId === group.runIds[0] &&
+			row.event.type !== 'preference-card' &&
+			row.createdAt > group.anchorAt
+		) {
 			group.anchorAt = row.createdAt;
 		}
 		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;
@@ -339,11 +349,13 @@ export class InstanceAiMemoryService {
 		};
 	}
 
+	/** `title` names a host-opened thread from the start: the header never shows the first user message. */
 	async ensureThread(
 		userId: string,
 		threadId: string,
 		projectId: string,
 		launchMetadata: InstanceAiThreadLaunchMetadata,
+		title = '',
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -361,7 +373,7 @@ export class InstanceAiMemoryService {
 			{
 				id: threadId,
 				resourceId: userId,
-				title: '',
+				title,
 				metadata: {
 					source: launchMetadata.source,
 					origin: launchMetadata.origin,
@@ -375,6 +387,46 @@ export class InstanceAiMemoryService {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	/**
+	 * Store an assistant greeting before any user turn (onboarding). The model API
+	 * needs a user message first, so a hidden auto-follow-up turn precedes the
+	 * greeting; the message parser drops that turn from the UI. `hiddenUserText`
+	 * replaces the auto-follow-up text when the hidden turn carries context for
+	 * the model (the onboarding answers). Returns the id of that hidden turn.
+	 */
+	async seedOpeningMessages(
+		threadId: string,
+		userId: string,
+		greeting: string,
+		hiddenUserText: string = AUTO_FOLLOW_UP_MESSAGE,
+	): Promise<{ userMessageId: string }> {
+		// Both stamps stay in the past: event rows written right after this must
+		// not sort before the greeting, or the fold shows the greeting twice.
+		const now = Date.now();
+		const userMessageId = randomUUID();
+		await this.agentMemory.saveMessages({
+			threadId,
+			resourceId: userId,
+			messages: [
+				{
+					id: userMessageId,
+					createdAt: new Date(now - 1),
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: hiddenUserText }],
+				},
+				{
+					id: randomUUID(),
+					createdAt: new Date(now),
+					type: 'llm',
+					role: 'assistant',
+					content: [{ type: 'text', text: greeting }],
+				},
+			],
+		});
+		return { userMessageId };
 	}
 
 	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt

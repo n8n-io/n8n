@@ -50,6 +50,18 @@ export interface ProtectedResource {
 	scopes: string[];
 
 	/**
+	 * Scopes *this user* may actually grant, narrowing {@link scopes}. Omit when
+	 * every authenticated user can grant everything the resource supports.
+	 *
+	 * Kept separate from {@link scopes} because the two answer different
+	 * questions: discovery metadata is unauthenticated and must describe what the
+	 * resource supports, while the consent screen must only offer what the person
+	 * in front of it could exercise. Offering a scope the caller's role cannot
+	 * use produces a grant that silently does nothing.
+	 */
+	getGrantableScopes?(user: User): Promise<string[]>;
+
+	/**
 	 * Tool names unlocked by each grantable scope, for display on the consent
 	 * screen. Omit when the resource has no per-tool scope mapping.
 	 */

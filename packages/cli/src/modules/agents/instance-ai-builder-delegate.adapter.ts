@@ -17,8 +17,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
-import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
@@ -34,7 +32,11 @@ You are running as a sub-agent inside n8n's instance AI chat; the user sees your
 
 Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
+When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
+
 You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
+
+Use \`agent-context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
 
 The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
 
@@ -98,7 +100,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
-		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -221,32 +222,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 
-			listAgents: async () => {
-				await assertProjectScope('agent:read');
-				const agents = await this.agentsService.findByProjectId(projectId);
-				return agents.map((agent) => ({
-					agentId: agent.id,
-					name: agent.name,
-					published: agent.activeVersionId !== null,
-					updatedAt: agent.updatedAt.toISOString(),
-				}));
-			},
-
-			listAgentCapabilities: async () => {
-				await assertProjectScope('agent:read');
-				// Channels come from the registry (same source the builder's
-				// `list_integration_types` projects); agent-level capabilities and
-				// limitations come from this module's constants, so the registry
-				// and the agent config schema stay the single sources of truth as
-				// channels, tools, or limits are added or removed.
-				const channels = this.agentIntegrationPersistenceService.listChatIntegrations();
-				return {
-					channels,
-					agentCapabilities: [...AGENT_CAPABILITIES],
-					limitations: [...AGENT_LIMITATIONS],
-				};
-			},
-
 			resolveAgentName: async (agentId) => {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
@@ -264,7 +239,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 				return {
 					config,
 					skills: await this.agentSkills.listSkills(agentId, projectId),
-					// The same hash `read_config` hands the model, so consumers can dedupe.
+					// The same hash `agent-context` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
 				};
 			},

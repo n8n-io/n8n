@@ -1,6 +1,7 @@
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
 import {
+	asStoredThreadContextSection,
 	buildCurrentDateTimeBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
@@ -9,6 +10,7 @@ import {
 	buildWorkflowTestRequestBlock,
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
+	extractAiPreferencesBlock,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
@@ -649,6 +651,66 @@ describe('withAiPreferences', () => {
 		const stored = withAiPreferences('why does <ai-preferences> show up in my logs?', block);
 
 		expect(cleanStoredUserMessage(stored)).toBe('why does <ai-preferences> show up in my logs?');
+	});
+});
+
+/**
+ * The per-turn injection (CONTEXT-139) re-sends the preferences block only when its text
+ * differs from the last copy the persisted conversation carries. These two helpers are the
+ * two halves of that comparison: extraction from a stored message, and the storage form of
+ * a fresh render.
+ */
+describe('extractAiPreferencesBlock', () => {
+	const block = renderAiPreferencesBlock({
+		instance: [],
+		user: saved('Keep replies short.'),
+		projects: [{ id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') }],
+	});
+	if (!block) throw new Error('expected a block');
+
+	const storedTurn = (aiPreferencesBlock: string | undefined, userText: string) =>
+		[
+			buildThreadContextBlock([
+				instanceContextMarker(),
+				aiPreferencesBlock,
+				buildCurrentDateTimeBlock('Monday 1 January 2026'),
+			]),
+			userText,
+		]
+			.filter(Boolean)
+			.join('\n\n');
+
+	it('returns the block exactly as the thread-context wrapper stored it', () => {
+		const stored = storedTurn(block, 'Build me a digest');
+
+		expect(extractAiPreferencesBlock(stored)).toBe(asStoredThreadContextSection(block));
+	});
+
+	it('returns undefined for a turn that carried no block', () => {
+		expect(extractAiPreferencesBlock(storedTurn(undefined, 'Build me a digest'))).toBeUndefined();
+		expect(extractAiPreferencesBlock('Build me a digest')).toBeUndefined();
+	});
+
+	it('never reads a tag lookalike in the user text as a block the service wrote', () => {
+		const stored = storedTurn(
+			undefined,
+			'why does <ai-preferences>\nKeep replies short.\n</ai-preferences> show up in my logs?',
+		);
+
+		expect(extractAiPreferencesBlock(stored)).toBeUndefined();
+	});
+
+	it('compares equal against the storage form of a fresh render, not the raw render', () => {
+		const withCloseTag = renderAiPreferencesBlock({
+			instance: [],
+			user: saved('Never write </thread-context> in a reply.'),
+			projects: [],
+		});
+		if (!withCloseTag) throw new Error('expected a block');
+		const stored = storedTurn(withCloseTag, 'Build me a digest');
+
+		expect(extractAiPreferencesBlock(stored)).not.toBe(withCloseTag);
+		expect(extractAiPreferencesBlock(stored)).toBe(asStoredThreadContextSection(withCloseTag));
 	});
 });
 

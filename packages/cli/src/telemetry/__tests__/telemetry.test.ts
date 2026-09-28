@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { defineTelemetryEvents, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
@@ -9,6 +11,8 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
 
+import type { License } from '@/license';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
@@ -51,8 +55,6 @@ describe('Telemetry', () => {
 
 	beforeEach(async () => {
 		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
-		// @ts-expect-error Spying on private method
-		vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -1193,7 +1195,117 @@ describe('Telemetry', () => {
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('failed schema validation'));
 		});
 	});
+
+	describe('sendPulsePacket', () => {
+		const license = mock<License>({
+			getPlanName: () => 'enterprise',
+			getTriggerLimit: () => 400,
+		});
+		const workflowRepository = mock<WorkflowRepository>({
+			getActiveTriggerCount: async () => 7,
+		});
+
+		let pulseTelemetry: Telemetry;
+
+		beforeEach(() => {
+			mockPulsePacketSources();
+
+			pulseTelemetry = new Telemetry(
+				mock(),
+				new PostHogClient(instanceSettings, mock()),
+				license,
+				instanceSettings,
+				workflowRepository,
+				globalConfig,
+				mock(),
+				mock(),
+			);
+		});
+
+		afterEach(async () => {
+			await pulseTelemetry.stopTracking();
+		});
+
+		test('should send one packet of instance-wide counters', async () => {
+			// @ts-expect-error Assigning to private property
+			pulseTelemetry.rudderStack = mockRudderStack;
+
+			await pulseTelemetry.sendPulsePacket();
+
+			expect(spyTrack).toHaveBeenCalledWith('pulse', {
+				plan_name_current: 'enterprise',
+				quota: 400,
+				usage: 7,
+				role_count: { owner: 1 },
+				source_control_set_up: 'main',
+				branchName: 'main',
+				read_only_instance: true,
+				team_projects: 2,
+				project_role_count: {
+					'project:admin': 4,
+					'project:chatUser': 0,
+					'project:editor': 0,
+					'project:personalOwner': 0,
+					'project:viewer': 0,
+				},
+			});
+		});
+
+		test('should send nothing when RudderStack is not initialized', async () => {
+			await pulseTelemetry.sendPulsePacket();
+
+			expect(spyTrack).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('flushBuffers', () => {
+		test('should send the buffered events and empty the buffers', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+			);
+			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send nothing when RudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).not.toHaveBeenCalled();
+		});
+	});
 });
+
+/** Registers the services the pulse packet reads its counters from. */
+const mockPulsePacketSources = () => {
+	mockInstance(SourceControlPreferencesService, {
+		getPreferences: () => mock({ branchName: 'main', branchReadOnly: true }),
+		isSourceControlSetup: () => 'main',
+	});
+	mockInstance(UserRepository, { countUsersByRole: async () => ({ owner: 1 }) });
+	mockInstance(ProjectRepository, { getProjectCounts: async () => ({ personal: 3, team: 2 }) });
+	mockInstance(ProjectRelationRepository, {
+		countUsersByRole: async () => ({
+			'project:admin': 4,
+			'project:chatUser': 0,
+			'project:editor': 0,
+			'project:personalOwner': 0,
+			'project:viewer': 0,
+		}),
+	});
+};
 
 const fakeTestSystemTime = (dateTime: string | Date): Date => {
 	const dt = new Date(dateTime);

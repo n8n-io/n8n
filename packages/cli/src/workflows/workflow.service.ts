@@ -31,6 +31,7 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -58,6 +59,7 @@ import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -129,6 +131,7 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 	) {}
 
 	async getMany(
@@ -517,6 +520,11 @@ export class WorkflowService {
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			});
+			// Only a workflow with groups needs the flags.
+			const rules = workflowUpdateData.nodeGroups?.length
+				? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+				: {};
+
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,
@@ -524,6 +532,7 @@ export class WorkflowService {
 					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+				rules,
 			);
 		}
 
@@ -986,6 +995,9 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
+		}
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
@@ -1021,20 +1033,11 @@ export class WorkflowService {
 
 		// Polices what gets registered — the version row, not the hook's candidate.
 		// Enforced on a same-version republish too.
-		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-			// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
-			// not a passed one, so a failed lookup fails the publish.
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: {
-					id: workflowId,
-					name: workflow.name,
-					nodes: nodesToPublish,
-				},
-				projectId: project.id,
-			});
-		}
+		await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
+			id: workflowId,
+			name: workflow.name,
+			nodes: nodesToPublish,
+		});
 
 		// re-applying the already-published version (e.g. a settings-only update)
 		// publishes no new version, so the review gate must not block it.
@@ -1821,6 +1824,24 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(
 				validation.error ?? 'Dynamic credentials validation failed',
+			);
+		}
+	}
+
+	private async _validatePublisherCredentialAccess(workflowId: string, user: User, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validatePublisherCredentialAccess(
+			user,
+			nodes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed publisher credential access validation', {
+				workflowId,
+				userId: user.id,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Publisher credential access validation failed',
 			);
 		}
 	}

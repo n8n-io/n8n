@@ -45,6 +45,7 @@ import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
@@ -55,6 +56,7 @@ import {
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import { useCredentialSharing } from '../composables/useCredentialSharing';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SYSTEM_RESOLVER_ID,
@@ -66,7 +68,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -255,6 +257,8 @@ const {
 	() => props.showAll,
 	() => props.credentials,
 );
+
+const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
@@ -998,6 +1002,7 @@ function editCredential(credentialType: string): void {
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 		workflowId: telemetryWorkflowId.value || undefined,
+		contextNode: props.node,
 	});
 
 	telemetry.track('User opened Credential modal', {
@@ -1052,6 +1057,90 @@ function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 
 function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+/**
+ * One rendered line of the credential dropdown: a group heading or a
+ * credential. Headings are rows rather than `ElOptionGroup`, which collects
+ * its children once on mount and so renders nothing for a list that arrives
+ * from a fetch.
+ */
+type CredentialRow =
+	| { kind: 'header'; key: string; label: string }
+	| { kind: 'option'; key: string; option: CredentialDropdownOption };
+
+const YOURS_GROUP_KEY = '__credential-group-yours';
+const SHARED_GROUP_KEY = '__credential-group-shared';
+
+/** The project the workflow being edited lives in, for the group heading. */
+const pickerHomeProject = computed(
+	() =>
+		workflowDocumentStore?.value.homeProject ??
+		projectsStore.currentProject ??
+		projectsStore.personalProject,
+);
+
+/** Only when we positively know it, so an unresolved project never claims "everyone". */
+const isPersonalSpace = computed(() => pickerHomeProject.value?.type === ProjectTypes.Personal);
+
+/**
+ * Heading for the credentials the workflow reaches through its project. In a
+ * team project it names the project, because that is what "shared here" means
+ * to the reader. In a personal space only global credentials land here, so it
+ * says who else has them.
+ */
+const sharedGroupLabel = computed(() => {
+	if (isPersonalSpace.value) return i18n.baseText('nodeCredentials.group.availableToEveryone');
+
+	const projectName = pickerHomeProject.value?.name;
+	return projectName
+		? i18n.baseText('nodeCredentials.group.availableInProject', {
+				interpolate: { project: projectName },
+			})
+		: i18n.baseText('nodeCredentials.group.availableInThisProject');
+});
+
+/**
+ * The dropdown lines for one credential type, type-ahead filter already
+ * applied. Two groups, yours first because that is the one people reach for:
+ * what only you can use here, then what the project carries for everyone in
+ * it. Filtering before grouping is what keeps a heading from surviving its
+ * last option.
+ */
+function buildCredentialRows(options: CredentialDropdownOption[]): CredentialRow[] {
+	const visible = options.filter((option) => matches(filter.value, option.name));
+	const toRow = (option: CredentialDropdownOption): CredentialRow => ({
+		kind: 'option',
+		key: option.id,
+		option,
+	});
+
+	if (!isCredentialSharingEnabled.value) return visible.map(toRow);
+
+	// Yours either because it travels with you into this project, or because
+	// this is your own space and the credential is not published instance-wide.
+	const isYours = (option: CredentialDropdownOption) =>
+		option.sharedRoute === 'personal' || (isPersonalSpace.value && !option.isGlobal);
+
+	const yours = visible.filter(isYours);
+	const shared = visible.filter((option) => !isYours(option));
+	const rows: CredentialRow[] = [];
+
+	if (yours.length > 0) {
+		rows.push({
+			kind: 'header',
+			key: YOURS_GROUP_KEY,
+			label: i18n.baseText('nodeCredentials.group.availableToYou'),
+		});
+		rows.push(...yours.map(toRow));
+	}
+
+	if (shared.length > 0) {
+		rows.push({ kind: 'header', key: SHARED_GROUP_KEY, label: sharedGroupLabel.value });
+		rows.push(...shared.map(toRow));
+	}
+
+	return rows;
 }
 
 // The n8n credits option's value is UI-only select state: selecting it routes
@@ -1311,13 +1400,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
 									</N8nText>
 								</span>
-								<N8nActionPill
+								<N8nBadge
 									v-if="balancePill"
-									size="small"
-									:type="balancePill.type"
-									:text="balancePill.text"
+									size="xxsmall"
+									:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
 									:class="$style.entryPill"
-								/>
+								>
+									{{ balancePill.text }}
+								</N8nBadge>
 							</div>
 						</N8nOption>
 						<template #empty> </template>
@@ -1404,12 +1494,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<N8nText :class="$style.optionName">
 										{{ N8N_CREDITS_LABEL }}
 									</N8nText>
-									<N8nActionPill
+									<N8nBadge
 										v-if="balancePill"
-										size="small"
-										:type="balancePill.type"
-										:text="balancePill.text"
-									/>
+										size="xxsmall"
+										:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+									>
+										{{ balancePill.text }}
+									</N8nBadge>
 									<N8nIcon
 										v-if="isAiGatewayManagedCredentials(type.name)"
 										icon="check"
@@ -1418,52 +1509,63 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									/>
 								</div>
 							</N8nOption>
-							<N8nOption
-								v-for="item in options.filter((o) => matches(filter, o.name))"
-								:key="item.id"
-								:data-test-id="`node-credentials-select-item-${item.id}`"
-								:label="item.name"
-								:value="item.id"
-							>
-								<div :class="$style.credentialOption">
-									<N8nIcon
-										:icon="item.isResolvable ? 'user-round' : 'key-round'"
-										size="large"
-										:class="$style.optionIcon"
-									/>
-									<div :class="$style.credentialOptionName">
-										<N8nText :class="$style.optionName">{{ item.name }}</N8nText>
-										<N8nTooltip
-											v-if="isPrivateCredentialsEnabled && item.isResolvable"
-											placement="top"
-										>
-											<template #content>{{
-												i18n.baseText('credentials.private.tooltip')
-											}}</template>
-											<N8nIcon
-												icon="user-round-key"
-												size="small"
-												data-test-id="credential-option-private-badge"
-											/>
-										</N8nTooltip>
+							<template v-for="row in buildCredentialRows(options)" :key="row.key">
+								<N8nOption
+									v-if="row.kind === 'header'"
+									:data-test-id="`node-credentials-select-group-${row.key}`"
+									:class="$style.credentialGroupHeader"
+									:label="row.label"
+									:value="row.key"
+									disabled
+								>
+									<N8nText size="small" color="text-light" bold>{{ row.label }}</N8nText>
+								</N8nOption>
+								<N8nOption
+									v-else
+									:data-test-id="`node-credentials-select-item-${row.option.id}`"
+									:label="row.option.name"
+									:value="row.option.id"
+								>
+									<div :class="$style.credentialOption">
+										<N8nIcon
+											:icon="row.option.isResolvable ? 'user-round' : 'key-round'"
+											size="large"
+											:class="$style.optionIcon"
+										/>
+										<div :class="$style.credentialOptionName">
+											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
+											<N8nTooltip
+												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
+												placement="top"
+											>
+												<template #content>{{
+													i18n.baseText('credentials.private.tooltip')
+												}}</template>
+												<N8nIcon
+													icon="user-round-key"
+													size="small"
+													data-test-id="credential-option-private-badge"
+												/>
+											</N8nTooltip>
+										</div>
+										<N8nText size="small" color="text-light" :class="$style.optionMeta">
+											{{
+												row.option.isResolvable
+													? i18n.baseText(
+															'credentialEdit.credentialConfig.credentialType.endUser.title',
+														)
+													: row.option.typeDisplayName
+											}}
+										</N8nText>
+										<N8nIcon
+											v-if="getSelectedId(type) === row.option.id"
+											icon="check"
+											size="large"
+											:class="$style.checkIcon"
+										/>
 									</div>
-									<N8nText size="small" color="text-light" :class="$style.optionMeta">
-										{{
-											item.isResolvable
-												? i18n.baseText(
-														'credentialEdit.credentialConfig.credentialType.endUser.title',
-													)
-												: item.typeDisplayName
-										}}
-									</N8nText>
-									<N8nIcon
-										v-if="getSelectedId(type) === item.id"
-										icon="check"
-										size="large"
-										:class="$style.checkIcon"
-									/>
-								</div>
-							</N8nOption>
+								</N8nOption>
+							</template>
 							<template #empty> </template>
 							<template #footer>
 								<button
@@ -1492,7 +1594,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
 								N8N_CREDITS_LABEL
 							}}</span>
-							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
+							<N8nBadge
+								size="xxsmall"
+								:variant="balancePill?.type === 'danger' ? 'danger' : 'success'"
+							>
+								{{ balancePill?.text }}
+							</N8nBadge>
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
@@ -1725,6 +1832,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	width: 100%;
 }
 
+/* A heading, not a choice. Disabled so it cannot be picked or arrowed onto,
+   which otherwise reads as "not allowed" rather than "not a choice". */
+.credentialGroupHeader {
+	cursor: default;
+	padding-top: var(--spacing--2xs);
+}
+
 .checkIcon {
 	flex-shrink: 0;
 	margin-left: auto;
@@ -1852,6 +1966,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);
+	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
+	// re-skinned pill stays fully neutral (box size unchanged).
+	border-color: transparent;
 	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
 	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
 	font-size: var(--font-size--3xs);

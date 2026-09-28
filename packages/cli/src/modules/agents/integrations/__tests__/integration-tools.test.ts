@@ -17,6 +17,7 @@ import {
 	type IntegrationMessageContextStore,
 	type IntegrationMessageContext,
 } from '../integration-tools';
+import { INTEGRATION_ACTION_RESUME_SCHEMA } from '../integration-tool-execution';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',
@@ -1222,17 +1223,21 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		);
+
 		expect(readIntegrationMessageContext(ctx.persistence)?.messageId).toBe('123.456');
-		expect(ctx.suspend).toHaveBeenCalledWith({
-			type: 'integration_action',
-			action: 'send_channel_message',
-			integrationConnectionId: 'slack:cred-a',
-			messageContext: expect.objectContaining({
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			{
+				type: 'integration_action',
+				action: 'send_channel_message',
 				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				messageId: '123.456',
-			}),
-		});
+				messageContext: expect.objectContaining({
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					messageId: '123.456',
+				}),
+			},
+			{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+		);
 	});
 
 	it('keeps the turn context and propagates an action context write failure', async () => {
@@ -1342,16 +1347,19 @@ describe('integration tools', () => {
 				messageId: '123.789',
 			}),
 		);
-		expect(ctx.suspend).toHaveBeenCalledWith({
-			type: 'integration_action',
-			action: 'respond',
-			integrationConnectionId: 'slack:cred-a',
-			messageContext: expect.objectContaining({
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			{
+				type: 'integration_action',
+				action: 'respond',
 				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				messageId: '123.789',
-			}),
-		});
+				messageContext: expect.objectContaining({
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					messageId: '123.789',
+				}),
+			},
+			{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+		);
 	});
 
 	it('action tool description forbids claiming an action succeeded before the tool call returns', () => {
@@ -1574,5 +1582,282 @@ describe('integration tools', () => {
 				}),
 			}),
 		);
+	});
+
+	describe('action approval', () => {
+		const slackWithApproval: AgentIntegrationConfig = {
+			...slackA,
+			approval: { mode: 'selected', tools: ['send_channel_message'] },
+		};
+
+		function approvalTool(integration: AgentIntegrationConfig) {
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true });
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([integration], 'agent-1', () => ({
+					actions: ['respond', 'send_channel_message', 'send_dm'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			return { tool, actionExecutor };
+		}
+
+		const sendToChannel = {
+			action: 'send_channel_message' as const,
+			input: { channelId: 'slack:C999', message: { text: 'Hi' } },
+		};
+
+		it('suspends for approval instead of running a gated action', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+			const ctx = makeInterruptibleCtx();
+
+			await tool.handler!(sendToChannel, ctx);
+
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+			expect(ctx.suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'approval',
+					toolName: 'send_channel_message',
+					displayName: 'send_channel_message → slack:C999',
+				}),
+				expect.objectContaining({ resumeSchema: expect.anything() }),
+			);
+		});
+
+		it('runs an action the channel does not gate', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+			const ctx = makeInterruptibleCtx();
+
+			await tool.handler!(
+				{ action: 'send_dm', input: { userId: 'slack:U1', message: { text: 'Hi' } } },
+				ctx,
+			);
+
+			expect(ctx.suspend).not.toHaveBeenCalled();
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'send_dm' }),
+			);
+		});
+
+		it('runs nothing when the channel has no approval config', async () => {
+			const { tool, actionExecutor } = approvalTool(slackA);
+			const ctx = makeInterruptibleCtx();
+
+			await tool.handler!(sendToChannel, ctx);
+
+			expect(ctx.suspend).not.toHaveBeenCalled();
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'send_channel_message' }),
+			);
+		});
+
+		it('gates every action when the mode is global', async () => {
+			const { tool, actionExecutor } = approvalTool({
+				...slackA,
+				approval: { mode: 'global' },
+			});
+			const ctx = makeInterruptibleCtx();
+
+			await tool.handler!({ action: 'respond', input: { message: { text: 'Hi' } } }, ctx);
+
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+			expect(ctx.suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'approval', toolName: 'respond' }),
+				expect.anything(),
+			);
+		});
+
+		it('never asks before staying silent, even in global mode', async () => {
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, silent: true });
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors(
+					[{ ...slackA, approval: { mode: 'global' } }],
+					'agent-1',
+					() => ({ actions: ['respond', 'do_not_respond'] }),
+				)[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+			const ctx = makeInterruptibleCtx();
+
+			await tool.handler!({ action: 'do_not_respond', input: {} }, ctx);
+
+			expect(ctx.suspend).not.toHaveBeenCalled();
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'do_not_respond' }),
+			);
+		});
+
+		it('runs the action once the user approves it', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+
+			await tool.handler!(
+				sendToChannel,
+				makeInterruptibleCtx({
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_channel_message',
+						args: sendToChannel.input,
+					},
+					resumeData: { approved: true },
+				}),
+			);
+
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'send_channel_message' }),
+			);
+		});
+
+		it('reports the refusal without running the action when the user denies it', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+
+			const result = await tool.handler!(
+				sendToChannel,
+				makeInterruptibleCtx({
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_channel_message',
+						args: sendToChannel.input,
+					},
+					resumeData: { approved: false },
+				}),
+			);
+
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'ACTION_DECLINED',
+					message: 'The action "send_channel_message" was not approved.',
+				},
+			});
+		});
+
+		it('treats an unreadable approval resume as a refusal', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+
+			const result = await tool.handler!(
+				sendToChannel,
+				makeInterruptibleCtx({
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_channel_message',
+						args: sendToChannel.input,
+					},
+					resumeData: { clicked: 'yes' },
+				}),
+			);
+
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: { code: 'ACTION_DECLINED' } });
+		});
+
+		it('does not leave an interactive follow-up card expecting an approval resume', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					target: { type: 'channel', channelId: 'slack:C999', threadId: 'slack:C999:1' },
+					messageId: '1',
+					updatedAt: '2026-05-18T10:00:00.000Z',
+				},
+			});
+			const ctx = makeInterruptibleCtx({
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'send_channel_message',
+					args: sendToChannel.input,
+				},
+				resumeData: { approved: true },
+			});
+
+			await tool.handler!(
+				{
+					action: 'send_channel_message',
+					input: {
+						channelId: 'slack:C999',
+						message: {
+							text: 'Choose',
+							card: {
+								components: [{ type: 'button', label: 'Go', value: 'go' }],
+							},
+						},
+					},
+				},
+				ctx,
+			);
+
+			expect(ctx.suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'integration_action', action: 'send_channel_message' }),
+				{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+			);
+		});
+
+		it('still hands a card resume straight back to the model', async () => {
+			const { tool } = approvalTool(slackWithApproval);
+
+			const result = await tool.handler!(
+				sendToChannel,
+				makeInterruptibleCtx({
+					suspendPayload: {
+						type: 'integration_action',
+						action: 'respond',
+						integrationConnectionId: 'slack:cred-a',
+						messageContext: null,
+					},
+					resumeData: { type: 'button', value: 'go' },
+				}),
+			);
+
+			expect(result).toEqual({ type: 'button', value: 'go' });
+		});
+
+		// A batch cannot suspend, so without this the model could put a gated
+		// action in a batch and skip the gate.
+		it('refuses a gated action inside a batch rather than running it', async () => {
+			const { tool, actionExecutor } = approvalTool(slackWithApproval);
+
+			const result = await tool.handler!(
+				{
+					actions: [
+						{ action: 'send_dm', input: { userId: 'slack:U1', message: { text: 'Hi' } } },
+						sendToChannel,
+					],
+				},
+				makeInterruptibleCtx(),
+			);
+
+			expect(actionExecutor.execute).toHaveBeenCalledTimes(1);
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ action: 'send_dm' }),
+			);
+			expect(result).toMatchObject({
+				ok: true,
+				results: [
+					{ action: 'send_dm', result: { ok: true } },
+					{
+						action: 'send_channel_message',
+						result: {
+							ok: false,
+							error: {
+								code: 'ACTION_NEEDS_APPROVAL',
+								message:
+									'The action "send_channel_message" needs approval, which cannot be asked for here. Send that action on its own.',
+							},
+						},
+					},
+				],
+			});
+		});
 	});
 });

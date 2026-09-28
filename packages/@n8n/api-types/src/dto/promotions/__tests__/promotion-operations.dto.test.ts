@@ -91,7 +91,13 @@ describe('ApplyPackageResultDto', () => {
 		configId: 'config1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
-	const preflight = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
+	const preflight = {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+	};
 
 	it('retains the named response schema and parses each stopped outcome', () => {
 		expect(ApplyPackageResultDto.name).toBe('ApplyPackageResultDto');
@@ -108,6 +114,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity },
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
+		{ ...identity, status: 'blocked', preflight: { ...preflight, missingProjects: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

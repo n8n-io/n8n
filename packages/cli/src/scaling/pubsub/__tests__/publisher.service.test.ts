@@ -171,7 +171,9 @@ describe('Publisher', () => {
 
 		it.each([
 			'relay-agent-execution-update',
+			'cancel-agent-chat-execution',
 			'relay-agent-background-tasks-update',
+			'relay-agent-message-queue-update',
 			'relay-agent-update',
 			'display-workflow-activation',
 			'display-workflow-deactivation',

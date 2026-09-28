@@ -15,23 +15,28 @@ import type { AgentMessageList } from '../model/message-list';
  * Keeps trusted skill instructions available without invalidating the cached
  * prompt prefix.
  *
- * Each active skill is delivered in one of two places, decided by whether the
- * tool call that activated it is still in the visible LLM window:
+ * A skill body rides on the tool result that activated it (the recorded result
+ * is collapsed first, so an obsolete persisted body is never replayed). The
+ * top-level system prompt does not mention the skill, so activating and
+ * carrying a skill never rewrites the cached prefix — within a run or across
+ * runs.
  *
- * - Anchor visible: the current skill body rides on that tool result (the
- *   recorded result is collapsed first, so an obsolete persisted body is
- *   never replayed). The top-level system prompt does not mention the skill,
- *   so activating and carrying a skill never rewrites the cached prefix —
- *   within a run or across runs.
- * - Anchor masked by observational memory (or unknown, e.g. a non-`load_skill`
- *   activation from an earlier run): the skill moves into the
- *   `<active_skills>` block of the system prompt. Observation already rewrote
- *   the prefix at that moment, so the move costs no extra cache invalidation.
+ * The `<active_skills>` block of the system prompt is a recovery path only.
+ * Anthropic renders the prompt as `tools → system → messages`, so any edit to
+ * `system` invalidates the tool block and every message after it. The block
+ * therefore holds only the skills the anchored path cannot deliver on this
+ * call — their result masked by observation memory, their activating call
+ * failed, or the activation predates this window with no `load_skill` record:
+ *
+ * - Anchor still deliverable: the skill rides on its resolved tool result, so
+ *   `system` is unchanged and the cached prefix stays warm.
+ * - Anchor gone or unusable: the skill moves into the block so its guidance is
+ *   never lost. When observation memory replaced the history it already rewrote
+ *   the prefix, so the move is free; otherwise it costs one rewrite, the price
+ *   of not dropping an active skill.
  */
 export class ActiveSkills {
 	private readonly loaded = new Map<string, RuntimeSkillContent>();
-	/** skillId → toolCallId for activations this run without a recorded `load_skill` call. */
-	private readonly midRunAnchors = new Map<string, string>();
 	private list?: AgentMessageList;
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
@@ -44,7 +49,6 @@ export class ActiveSkills {
 
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
-		this.midRunAnchors.clear();
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -57,7 +61,11 @@ export class ActiveSkills {
 			list.activeSkillIds === undefined && this.scope
 				? await this.store?.load(this.scope)
 				: undefined;
-		const ids = list.activeSkillIds ?? stored ?? [...this.recordedLoads(list).values()];
+		const ids = list.activeSkillIds ??
+			stored ?? [
+				...this.recordedLoads(list).values(),
+				...this.stampedActivations(list).map(([, skillId]) => skillId),
+			];
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
 		for (const id of new Set(ids)) {
 			if (!registered.has(id)) continue;
@@ -83,9 +91,9 @@ export class ActiveSkills {
 		if (!this.loaded.has(skillId)) {
 			this.loaded.set(skillId, skill);
 			this.list.activeSkillIds = [...this.loaded.keys()];
-			// The first activating call carries the skill text in its result. A
-			// repeat load must not move it and rewrite the cached prompt behind it.
-			if (anchor) this.midRunAnchors.set(skillId, anchor.toolCallId);
+			// Stamp the activating tool result so the body re-anchors there on a
+			// later turn instead of falling back into the system prompt.
+			if (anchor) this.list.stampActivatedSkill(anchor.toolCallId, skillId);
 			await this.persist();
 		}
 		return skill;
@@ -98,10 +106,10 @@ export class ActiveSkills {
 	}
 
 	/**
-	 * The active skills whose delivering tool result is no longer visible, as
-	 * one block for the top-level system prompt. A skill enters this block only
-	 * after observational memory masked its anchor — the moment the prefix was
-	 * rewritten anyway — so the block itself never breaks a warm cache.
+	 * The active skills the anchored path cannot deliver on this call, as one
+	 * block for the top-level system prompt. A skill enters the block only when
+	 * it has no successfully resolved, visible tool result to ride on, so a
+	 * still-anchored skill never edits `system` or breaks a warm cache.
 	 */
 	instructions(): string | undefined {
 		const { inBlock } = this.placement();
@@ -164,6 +172,15 @@ export class ActiveSkills {
 	 * recorded `load_skill` call for the skill, else this run's activating
 	 * call. `instructions()` and `modelMessages()` share this so a skill is
 	 * always delivered exactly once.
+	 *
+	 * An anchor must be a **successfully resolved** tool result: the skill body
+	 * is appended to it (see `appendToolResultText`, which skips error outputs),
+	 * so a pending, canceled, or failed call cannot deliver it. A skill with no
+	 * such anchor — its result masked by observation memory, or its activating
+	 * call failed, or the activation predates this window with no `load_skill`
+	 * record — falls back to the `<active_skills>` block, which never drops it.
+	 * The block only edits `system` when the anchored path cannot deliver, so an
+	 * unchanged, still-anchored skill never rewrites the cached prefix.
 	 */
 	private placement(loads?: Map<string, string>): {
 		anchors: Map<string, string>;
@@ -171,25 +188,59 @@ export class ActiveSkills {
 	} {
 		const anchors = new Map<string, string>();
 		if (this.list) {
-			const visible = new Set<string>();
-			for (const message of this.list.llmVisibleMessages()) {
-				if (!('content' in message)) continue;
-				for (const part of message.content) {
-					if (part.type === 'tool-call') visible.add(part.toolCallId);
-				}
-			}
-			for (const [toolCallId, skillId] of loads ?? this.recordedLoads(this.list)) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
-					anchors.set(skillId, toolCallId);
-				}
-			}
-			for (const [skillId, toolCallId] of this.midRunAnchors) {
-				if (!anchors.has(skillId) && this.loaded.has(skillId) && visible.has(toolCallId)) {
+			const deliverable = this.deliverableToolResults();
+			// `load_skill` results and tool results that stamped a programmatic
+			// activation are both valid anchors; the stamp is what survives a turn.
+			const sources: Array<[string, string]> = [
+				...(loads ?? this.recordedLoads(this.list)),
+				...this.stampedActivations(this.list),
+			];
+			for (const [toolCallId, skillId] of sources) {
+				if (!anchors.has(skillId) && this.loaded.has(skillId) && deliverable.has(toolCallId)) {
 					anchors.set(skillId, toolCallId);
 				}
 			}
 		}
-		return { anchors, inBlock: [...this.loaded.keys()].filter((id) => !anchors.has(id)) };
+		const inBlock = [...this.loaded.keys()].filter((id) => !anchors.has(id));
+		return { anchors, inBlock };
+	}
+
+	/**
+	 * `[toolCallId, skillId]` pairs for tool results that stamped a programmatic
+	 * skill activation (see `stampActivatedSkill`). Unlike `load_skill` records,
+	 * these carry activations a tool started itself, so a post-build skill
+	 * re-anchors to its tool result on the next turn instead of the system block.
+	 */
+	private stampedActivations(list: AgentMessageList): Array<[string, string]> {
+		const pairs: Array<[string, string]> = [];
+		for (const message of list.messages()) {
+			if (!('content' in message)) continue;
+			for (const part of message.content) {
+				if (part.type === 'tool-call' && Array.isArray(part.activatedSkillIds)) {
+					for (const skillId of part.activatedSkillIds) pairs.push([part.toolCallId, skillId]);
+				}
+			}
+		}
+		return pairs;
+	}
+
+	/**
+	 * Tool-call ids whose result is visible and successfully resolved, so a skill
+	 * body can ride on it. Pending, canceled, and failed calls are excluded — a
+	 * skill anchored there would silently vanish, so it belongs in the block.
+	 */
+	private deliverableToolResults(): Set<string> {
+		const ids = new Set<string>();
+		if (!this.list) return ids;
+		for (const message of this.list.llmVisibleMessages()) {
+			if (!('content' in message)) continue;
+			for (const part of message.content) {
+				if (part.type === 'tool-call' && part.state === 'resolved' && !part.canceled) {
+					ids.add(part.toolCallId);
+				}
+			}
+		}
+		return ids;
 	}
 
 	private formatSkill(skillId: string): string | undefined {

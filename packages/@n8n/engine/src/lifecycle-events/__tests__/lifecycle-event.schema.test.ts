@@ -21,7 +21,8 @@ const stepEvent = {
 };
 
 const every: LifecycleEvent[] = [
-	{ type: 'execution:started', ...executionEvent, mode: 'manual' },
+	{ type: 'execution:started', ...executionEvent, mode: 'production', hostMode: 'webhook' },
+	{ type: 'execution:started', ...executionEvent, mode: 'manual', hostMode: 'manual' },
 	{ type: 'execution:completed', ...executionEvent },
 	{ type: 'execution:failed', ...executionEvent },
 	{ type: 'step:started', ...stepEvent },
@@ -30,12 +31,16 @@ const every: LifecycleEvent[] = [
 ];
 
 describe('lifecycleEventSchema', () => {
-	// The union cannot drift, but a field the schema restates in its own
-	// vocabulary can. These pin those, in both directions.
-	it('keeps the mode enum in step with ExecutionMode', () => {
+	it('keeps the engine mode in step with ExecutionMode', () => {
 		expectTypeOf<
 			Extract<LifecycleEvent, { type: 'execution:started' }>['mode']
 		>().toEqualTypeOf<ExecutionMode>();
+	});
+
+	it('carries the host execution mode separately', () => {
+		expectTypeOf<
+			Extract<LifecycleEvent, { type: 'execution:started' }>['hostMode']
+		>().toEqualTypeOf<string>();
 	});
 
 	it('keeps the completed outputs in step with StepSlots', () => {

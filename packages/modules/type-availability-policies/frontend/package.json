@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -24,6 +24,7 @@
     "@n8n/i18n": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"

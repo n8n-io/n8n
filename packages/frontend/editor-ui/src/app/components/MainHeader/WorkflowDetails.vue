@@ -383,8 +383,7 @@ onBeforeUnmount(() => {
 				<N8nBadge
 					v-if="isArchived"
 					class="ml-3xs"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="workflow-archived-tag"
 				>
 					{{ locale.baseText('workflows.item.archived') }}

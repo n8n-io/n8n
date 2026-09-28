@@ -80,13 +80,15 @@ function createHarness(
 		);
 	mockedStore(useWorkflowsStore).updateWorkflow = updateWorkflow;
 	vi.mocked(getWorkflow).mockImplementation(async () => makeWorkflow());
+	const onSaved = vi.fn<(workflow: IWorkflowDb) => void>();
 
 	const actions = useSetupPanelActions({
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
 		onFlushResult: options.onFlushResult,
+		onSaved,
 	});
-	return { actions, building, workflowId, updateWorkflow };
+	return { actions, building, workflowId, updateWorkflow, onSaved };
 }
 
 describe('useSetupPanelActions', () => {
@@ -217,7 +219,7 @@ describe('useSetupPanelActions', () => {
 	});
 
 	it('binds a credential through the version-guarded workflow PATCH', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
 
@@ -234,10 +236,11 @@ describe('useSetupPanelActions', () => {
 				],
 			}),
 		);
+		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[0].value);
 	});
 
 	it('survives a version conflict: refetches, re-applies the delta, retries once', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		vi.mocked(getWorkflow)
 			.mockResolvedValueOnce(makeWorkflow())
 			.mockResolvedValueOnce(makeWorkflow({ versionId: 'v1b', checksum: 'c1b' }));
@@ -260,52 +263,58 @@ describe('useSetupPanelActions', () => {
 				],
 			}),
 		);
+		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[1].value);
 	});
 
 	it('gives up after a second consecutive version conflict', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		updateWorkflow.mockRejectedValue(conflictError());
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('conflict');
 		expect(updateWorkflow).toHaveBeenCalledTimes(2);
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('returns error when the workflow fetch fails', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		vi.mocked(getWorkflow).mockRejectedValue(new Error('network'));
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('refuses to write when the fetched workflow carries no checksum', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ checksum: undefined }));
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('returns error without retrying on a non-conflict PATCH failure', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		updateWorkflow.mockRejectedValue(new Error('boom'));
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
 		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('drops the bind without writing when every target node is gone', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		vi.mocked(getWorkflow).mockResolvedValue(
 			makeWorkflow({ nodes: [createTestNode({ name: 'Other' })] }),
 		);
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('dropped');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('skips the write when every target node already carries the credential', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 		vi.mocked(getWorkflow).mockResolvedValue(
 			makeWorkflow({
 				nodes: [
@@ -319,17 +328,21 @@ describe('useSetupPanelActions', () => {
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('noop');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(onSaved).toHaveBeenCalledExactlyOnceWith(
+			await vi.mocked(getWorkflow).mock.results[0].value,
+		);
 	});
 
 	it('queues a mid-build bind and flushes it once the agent lock releases', async () => {
-		const { actions, building, updateWorkflow } = createHarness({ agentBuilding: true });
+		const { actions, building, updateWorkflow, onSaved } = createHarness({ agentBuilding: true });
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('queued');
 		expect(actions.pendingApplyCount.value).toBe(1);
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
 
 		building.value = false;
-		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(1));
+		await vi.waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
 
 		expect(actions.pendingApplyCount.value).toBe(0);
 		expect(updateWorkflow).toHaveBeenCalledWith(
@@ -342,6 +355,8 @@ describe('useSetupPanelActions', () => {
 				],
 			}),
 		);
+		expect(updateWorkflow).toHaveBeenCalledOnce();
+		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[0].value);
 	});
 
 	it('keeps only the latest queued bind per item and holds the lock on manual flushes', async () => {
@@ -454,7 +469,7 @@ describe('useSetupPanelActions', () => {
 
 	it('reports a conflicted settle flush through onFlushResult', async () => {
 		const onFlushResult = vi.fn();
-		const { actions, building, updateWorkflow } = createHarness({
+		const { actions, building, updateWorkflow, onSaved } = createHarness({
 			agentBuilding: true,
 			onFlushResult,
 		});
@@ -465,6 +480,7 @@ describe('useSetupPanelActions', () => {
 		await vi.waitFor(() =>
 			expect(onFlushResult).toHaveBeenCalledExactlyOnceWith('conflict', WORKFLOW_ID),
 		);
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('does not report a settle flush when nothing is queued', async () => {
@@ -487,7 +503,7 @@ describe('useSetupPanelActions', () => {
 	});
 
 	it('applies parameter values through the same guarded PATCH', async () => {
-		const { actions, updateWorkflow } = createHarness();
+		const { actions, updateWorkflow, onSaved } = createHarness();
 
 		await expect(actions.applyParameterValues('Slack', { channel: '#general' })).resolves.toBe(
 			'applied',
@@ -499,6 +515,7 @@ describe('useSetupPanelActions', () => {
 				nodes: [expect.objectContaining({ parameters: { channel: '#general' } })],
 			}),
 		);
+		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[0].value);
 	});
 
 	it('mirrors an applied bind into a hydrated workflow document', async () => {

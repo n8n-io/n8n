@@ -79,11 +79,11 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all
 		// four, so checking Manage checks them too, and unchecking any one of them
-		// drops Manage out of the fully-checked state.
+		// drops Manage out of the fully-checked state. The read scopes every role
+		// holds anyway live in BASELINE_INSTANCE_SCOPES, not in this bundle.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
-			'credentialResolver:list',
 			'credentialResolver:create',
 			'credentialResolver:update',
 			'credentialResolver:delete',
@@ -98,16 +98,12 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'eventBusDestination:read',
 			'eventBusDestination:update',
 			'eventBusDestination:delete',
-			'eventBusDestination:list',
-			'eventBusDestination:test',
-			'dataTable:list',
 			'aiPreference:create', // Context (instance-wide AI preferences)
 			'aiPreference:read',
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
 			'chatHub:manage', // Chat
-			'chatHub:message', // needed for model listing on the Chat settings page
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
@@ -182,6 +178,44 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:delete',
 		],
 	},
+	credential: {
+		// Instance-wide credential access: what the role can do with credentials it is
+		// not a member of the project for. Project-level credential rights are granted
+		// per project via a project role and are untouched by this group.
+		//
+		// Each option is a strict superset of the one below it, which the editor's
+		// implied/downgrade arithmetic requires (see SUPERSEDED_BY in editor-ui's
+		// instanceRoleScopes).
+		//
+		// View sees every credential in Overview but cannot select one in a node, test
+		// it, or run it — `credential:use` is the separate rung for that.
+		//
+		// Manage also grants instance-wide plaintext decrypt, because decryption is
+		// gated on `credential:read` + `credential:update` (see the TODO about
+		// `credential:decrypt` in credentials.service.ee.ts). Hence the escalation
+		// warning on this group in the editor.
+		//
+		// Deliberately excluded from every option, so they stay Owner/Admin-only:
+		// `credential:shareGlobally` (makes a credential usable by every user on the
+		// instance), `credential:manageInstance` (a separate lane for provider
+		// connections that never reach workflows), `credential:createEndUser` (an
+		// owner-level *project* capability with no instance-wide meaning) and
+		// `credential:connect` (per-user, per-credential; globally it would attach the
+		// holder's own account to every end-user credential on the instance).
+		View: ['credential:list', 'credential:read'],
+		Use: ['credential:list', 'credential:read', 'credential:use'],
+		Manage: [
+			'credential:list',
+			'credential:read',
+			'credential:use',
+			'credential:create',
+			'credential:update',
+			'credential:delete',
+			'credential:move',
+			'credential:share',
+			'credential:unshare',
+		],
+	},
 	project: {
 		Create: ['project:create'],
 	},
@@ -190,11 +224,28 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	},
 } as const satisfies InstanceScopeGroups;
 
-export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set(
-	Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>
+/**
+ * Scopes every instance role carries without a checkbox of their own. The default
+ * Member role holds them and they only unlock read-only surfaces: the Chat page,
+ * the data table list, and the log streaming and credential resolver lists that
+ * other settings pages read. `resolveScopes` and the role editor union them into
+ * every global role, so a custom role never trails Member on these pages and the
+ * editor never has to render them as a half-checked "Manage all settings".
+ */
+export const BASELINE_INSTANCE_SCOPES = [
+	'chatHub:message',
+	'credentialResolver:list',
+	'dataTable:list',
+	'eventBusDestination:list',
+	'eventBusDestination:test',
+] as const satisfies readonly Scope[];
+
+export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set([
+	...Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>
 		Object.values<readonly Scope[]>(optionMap).flat(),
 	),
-);
+	...BASELINE_INSTANCE_SCOPES,
+]);
 
 /** Correlates each resource with its own option keys, so a typo fails the typecheck. */
 type MandatoryInstanceOption = {
@@ -219,14 +270,19 @@ export function isMandatoryInstanceOption(resource: string, option: string): boo
 	return MANDATORY_INSTANCE_OPTIONS.some((m) => m.resource === resource && m.option === option);
 }
 
-/** Derived by indexing the groups table, so a typo contributes nothing silently. */
+/**
+ * Every scope a global role write unions in: the mandatory options' scopes (derived
+ * by indexing the groups table, so a typo contributes nothing silently) plus the
+ * baseline scopes that have no option of their own.
+ */
 export const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = [
-	...new Set(
-		MANDATORY_INSTANCE_OPTIONS.flatMap(({ resource, option }) => {
+	...new Set<Scope>([
+		...MANDATORY_INSTANCE_OPTIONS.flatMap(({ resource, option }) => {
 			const optionMap: Record<string, readonly Scope[]> = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS[resource];
 			return optionMap[option];
 		}),
-	),
+		...BASELINE_INSTANCE_SCOPES,
+	]),
 ];
 
 /** Unions in the mandatory scopes (see `MANDATORY_INSTANCE_OPTIONS`) on top of an already-filtered scope list. */

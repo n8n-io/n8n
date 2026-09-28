@@ -214,16 +214,12 @@ describe('toV1ExecuteMode', () => {
 		workflowId: 'wf-1',
 		mode: 'production',
 		iteration: 0,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	});
 
 	it('returns the host mode when v1 knows it', () => {
 		expect(toV1ExecuteMode(context({ callerContext: { hostMode: 'webhook' } }))).toBe('webhook');
-	});
-
-	it('throws when the caller context has no host mode', () => {
-		expect(() => toV1ExecuteMode(context({}))).toThrow('no v1 execution mode');
 	});
 
 	it('throws when the host mode is not one v1 knows', () => {

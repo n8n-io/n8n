@@ -5,6 +5,7 @@ import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
+	isNodeCreatorOpenFromConnection,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
@@ -18,6 +19,7 @@ import type {
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
+import { useNodeCreatorStore } from '../nodeCreator.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
 import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
@@ -54,6 +56,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
+	addEmptyGroup: [connectToLastInteractedNode: boolean];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
@@ -67,6 +70,7 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
 const settingsStore = useSettingsStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -99,6 +103,14 @@ function addStickyNote() {
 	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
 }
 
+function addEmptyGroup() {
+	if (document.activeElement) {
+		(document.activeElement as HTMLElement).blur();
+	}
+
+	emit('addEmptyGroup', isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource));
+}
+
 function closeNodeCreator(hasAddedNodes = false) {
 	if (props.createNodeActive) {
 		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
@@ -108,6 +120,11 @@ function closeNodeCreator(hasAddedNodes = false) {
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	emit('addNodes', getAddedNodesAndConnections(value));
+	closeNodeCreator(true);
+}
+
+function emptyGroupSelected() {
+	addEmptyGroup();
 	closeNodeCreator(true);
 }
 
@@ -167,7 +184,12 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<N8nButtonList v-if="!createNodeActive" orientation="vertical" :class="$style.nodeButtonsWrapper">
+	<N8nButtonList
+		v-if="!createNodeActive"
+		orientation="vertical"
+		variant="toolbar"
+		:class="$style.nodeButtonsWrapper"
+	>
 		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"
@@ -175,7 +197,7 @@ function openCommandBar(event: MouseEvent) {
 				placement="left"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="plus"
 					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
@@ -191,7 +213,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="ghost"
 				size="large"
 				icon="search"
 				:aria-label="i18n.baseText('nodeView.openCommandBar')"
@@ -205,7 +227,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="ghost"
 				size="large"
 				icon="sticky-note"
 				:aria-label="i18n.baseText('nodeView.addStickyHint')"
@@ -219,7 +241,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="ghost"
 				size="large"
 				icon="panel-right"
 				:aria-label="sidePanelTooltip"
@@ -235,7 +257,7 @@ function openCommandBar(event: MouseEvent) {
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
-			variant="subtle"
+			variant="ghost"
 			icon-only
 			size="large"
 			:aria-label="i18n.baseText('aiAssistant.tooltip')"
@@ -256,7 +278,7 @@ function openCommandBar(event: MouseEvent) {
 		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				variant="subtle"
+				variant="ghost"
 				iconOnly
 				size="large"
 				:aria-label="i18n.baseText('aiAssistant.tooltip')"
@@ -276,6 +298,7 @@ function openCommandBar(event: MouseEvent) {
 		<LazyNodeCreator
 			:active="createNodeActive"
 			@node-type-selected="nodeTypeSelected"
+			@empty-group-selected="emptyGroupSelected"
 			@close-node-creator="closeNodeCreator"
 		/>
 	</Suspense>
@@ -284,9 +307,8 @@ function openCommandBar(event: MouseEvent) {
 <style lang="scss" module>
 .nodeButtonsWrapper {
 	position: absolute;
-	top: 0;
-	right: 0;
-	padding: var(--spacing--sm);
+	top: var(--spacing--sm);
+	right: var(--spacing--sm);
 	pointer-events: all !important;
 }
 

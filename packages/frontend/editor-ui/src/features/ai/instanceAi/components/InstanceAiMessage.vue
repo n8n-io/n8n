@@ -14,6 +14,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
@@ -62,6 +63,13 @@ const outOfCreditsTitleKey = computed(() =>
 );
 
 const { goToUpgrade } = usePageRedirectionHelper();
+const { isEligible: isTopUpEligible } = useAssistantTopUpEligibility();
+
+const outOfCreditsCtaKey = computed(() =>
+	isTopUpEligible.value
+		? 'aiAssistant.builder.settings.getMoreCredits'
+		: 'instanceAi.error.outOfCredits.upgrade',
+);
 
 /** A run the user (or a timeout/shutdown) stopped before it completed. */
 const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
@@ -172,7 +180,12 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+			<AgentActivityTree
+				v-if="props.message.agentTree"
+				:agent-node="props.message.agentTree"
+				:message-id="props.message.id"
+				:run-id="props.message.runId"
+			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
@@ -184,7 +197,7 @@ function formatJson(value: unknown): string {
 						data-test-id="instance-ai-out-of-credits-upgrade"
 						@click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 					>
-						{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+						{{ i18n.baseText(outOfCreditsCtaKey) }}
 					</N8nButton>
 				</template>
 			</N8nCallout>

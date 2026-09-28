@@ -5,6 +5,19 @@ import { AgentMessageList } from '../model/message-list';
 import { ActiveSkills } from '../skills/active-skills';
 
 const scope = { threadId: 'thread-1', resourceId: 'user-1' };
+
+/**
+ * Mark the list as observation-masked, so recovered skills render in the
+ * `<active_skills>` system block. Without a mask the block stays empty and
+ * skills ride on their still-visible activating tool result.
+ */
+function mask(list: AgentMessageList): AgentMessageList {
+	list.maskObservedMessages({
+		lastObservedAt: new Date(Date.now() + 60_000),
+		lastObservedMessageId: 'observation-cursor',
+	});
+	return list;
+}
 const source = createRuntimeSkillSource([
 	{
 		id: 'planning',
@@ -87,7 +100,8 @@ describe('active skills', () => {
 
 		await active.restore(list, scope);
 
-		// The recorded load is still visible, so the skill rides there, not in the block.
+		// The load_skill result is still visible, so the body rides on it and the
+		// system block stays empty — no cached-prefix rewrite.
 		expect(active.instructions()).toBeUndefined();
 		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
 			'Build one workflow.',
@@ -95,6 +109,35 @@ describe('active skills', () => {
 		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
 			'builder',
 		]);
+	});
+
+	it('recovers a skill into the system block once observation masks its load', async () => {
+		const memory = new InMemoryMemory();
+		const list = new AgentMessageList();
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'old-load',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		// Visible load → block empty.
+		expect(active.instructions()).toBeUndefined();
+
+		// Observation hides the load result → the skill moves into the block.
+		mask(list);
+		expect(active.instructions()).toContain('Build one workflow.');
 	});
 
 	it('persists checkpoint skills when they differ from stored state', async () => {
@@ -124,7 +167,15 @@ describe('active skills', () => {
 					{
 						type: 'tool-call',
 						toolName: 'load_skill',
-						toolCallId: 'old-load',
+						toolCallId: 'builder-load',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
+					},
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'planning-load',
 						input: { skillId: 'planning' },
 						state: 'resolved',
 						output: { type: 'content', value: [{ type: 'text', text: 'Create a task plan.' }] },
@@ -139,14 +190,130 @@ describe('active skills', () => {
 		);
 		await active.restore(list, scope);
 
-		expect(active.instructions()).toContain('Build one workflow.');
-		expect(active.instructions()).not.toContain('Create a task plan.');
-		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).not.toContain(
-			'Create a task plan.',
-		);
+		// Both loads are still visible, so the block stays empty; the enabled skill
+		// rides on its result while the disabled one is collapsed out of it.
+		expect(active.instructions()).toBeUndefined();
+		const rendered = JSON.stringify(active.modelMessages(list.forLlm('').messages, list));
+		expect(rendered).toContain('Build one workflow.');
+		expect(rendered).not.toContain('Create a task plan.');
 		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
 			'builder',
 		]);
+	});
+
+	it('re-anchors a stamped tool activation on a later turn instead of the block', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
+		const list = new AgentMessageList();
+		// Turn 1 activated the skill from a tool and stamped its result. On the
+		// next turn the body must ride on that result again, not the system block.
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+						activatedSkillIds: ['builder'],
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toBeUndefined();
+		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
+			'Build one workflow.',
+		);
+	});
+
+	it('persists a tool activation stamp across serialization', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+		await active.load('builder', { toolCallId: 'build-1' });
+
+		const roundTripped = AgentMessageList.deserialize(structuredClone(list.serialize()));
+		const stamped = roundTripped
+			.messages()
+			.flatMap((message) => ('content' in message ? message.content : []))
+			.find((part) => part.type === 'tool-call' && part.toolCallId === 'build-1');
+		expect(stamped).toMatchObject({ activatedSkillIds: ['builder'] });
+	});
+
+	it('recovers a restored programmatic skill through the block when no stamp survives', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder']);
+		const list = new AgentMessageList();
+		// Legacy data: a prior programmatic activation left no stamp and no
+		// `load_skill` record. The skill must still reach the model via the block.
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toContain('Build one workflow.');
+	});
+
+	it('recovers a skill through the block when its activating tool call failed', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-fail',
+						input: {},
+						state: 'rejected',
+						error: 'boom',
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+		// The tool activated the skill, then failed — its error result cannot
+		// carry the body, so the skill belongs in the block, not silently dropped.
+		await active.load('builder', { toolCallId: 'build-fail' });
+
+		expect(active.instructions()).toContain('Build one workflow.');
 	});
 
 	it('keeps threads, resources, and agents isolated', async () => {
@@ -169,6 +336,40 @@ describe('active skills', () => {
 		).resolves.toBeUndefined();
 	});
 
+	it('keeps the system block empty for an anchored activation until observation masks it', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'build_workflow',
+						toolCallId: 'build-1',
+						input: {},
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'built' }] },
+					},
+				],
+			},
+		]);
+		await active.restore(list, scope);
+
+		// A programmatic activation anchored to the calling tool result stays out
+		// of the system prompt — the body rides on that visible result instead.
+		await active.load('builder', { toolCallId: 'build-1' });
+		expect(active.instructions()).toBeUndefined();
+		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
+			'Build one workflow.',
+		);
+
+		// Only once observation hides the anchor does the skill move into the block.
+		mask(list);
+		expect(active.instructions()).toContain('Build one workflow.');
+	});
+
 	it('does not activate a missing skill or a failed load', async () => {
 		const missing: RuntimeSkillSource = { ...source, loadSkill: vi.fn().mockResolvedValue(null) };
 		const active = new ActiveSkills(missing, 'assistant');
@@ -178,216 +379,6 @@ describe('active skills', () => {
 		await expect(active.load('builder')).resolves.toBeNull();
 		expect(list.activeSkillIds).toEqual([]);
 		expect(active.instructions()).toBeUndefined();
-	});
-
-	it('keeps the system block frozen mid-run and appends the skill to its activating tool result', async () => {
-		const memory = new InMemoryMemory();
-		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
-		const active = new ActiveSkills(source, 'assistant', memory.skillState);
-		const list = new AgentMessageList();
-		await active.restore(list, scope);
-		const blockAtRunStart = active.instructions();
-		expect(blockAtRunStart).toContain('Create a task plan.');
-		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Build it' }] }]);
-		list.addResponse([
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'inspect_node',
-						toolCallId: 'inspect-1',
-						input: {},
-						state: 'pending',
-					},
-				],
-			},
-		]);
-
-		await active.load('builder', { toolCallId: 'inspect-1' });
-		list.setToolCallResult('inspect-1', { node: 'model' });
-		// A repeat load must not move the anchor.
-		await active.load('builder', { toolCallId: 'inspect-2' });
-
-		// The block does not change within the run, but the activation is recorded.
-		expect(active.instructions()).toBe(blockAtRunStart);
-		expect(list.activeSkillIds).toEqual(['planning', 'builder']);
-
-		const messages = active.modelMessages(list.forLlm('').messages, list);
-		expect(messages.map((message) => message.role)).toEqual(['user', 'assistant', 'tool']);
-		const tool = messages[2];
-		if (tool.role !== 'tool') throw new Error('Expected a tool message');
-		expect(tool.content[0]).toMatchObject({
-			type: 'tool-result',
-			toolCallId: 'inspect-1',
-			output: {
-				type: 'content',
-				value: [
-					{ type: 'text', text: '{"node":"model"}' },
-					{ type: 'text', text: expect.stringContaining('Build one workflow.') },
-				],
-			},
-		});
-		// The persisted message is untouched; the appendix is a per-call view.
-		expect(JSON.stringify(list.serialize())).not.toContain('Build one workflow.');
-	});
-
-	it('appends a mid-run load_skill activation after the collapsed result', async () => {
-		const memory = new InMemoryMemory();
-		const active = new ActiveSkills(source, 'assistant', memory.skillState);
-		const list = new AgentMessageList();
-		await active.restore(list, scope);
-		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Build it' }] }]);
-		list.addResponse([
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'load_skill',
-						toolCallId: 'load-1',
-						input: { skillId: 'builder' },
-						state: 'pending',
-					},
-				],
-			},
-		]);
-		await active.load('builder', { toolCallId: 'load-1' });
-		list.setToolCallResult('load-1', { success: true, skillId: 'builder', content: 'active' });
-
-		expect(active.instructions()).toBeUndefined();
-		const messages = active.modelMessages(list.forLlm('').messages, list);
-		const tool = messages[2];
-		if (tool.role !== 'tool') throw new Error('Expected a tool message');
-		expect(tool.content[0]).toMatchObject({
-			output: {
-				type: 'content',
-				value: [
-					{ type: 'text', text: '{"skillId":"builder","active":true}' },
-					{ type: 'text', text: expect.stringContaining('Build one workflow.') },
-				],
-			},
-		});
-	});
-
-	it('moves a mid-run activation into the system block on the next run', async () => {
-		const memory = new InMemoryMemory();
-		const list = new AgentMessageList();
-		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Build it' }] }]);
-		list.addResponse([
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'inspect_node',
-						toolCallId: 'inspect-1',
-						input: {},
-						state: 'pending',
-					},
-				],
-			},
-		]);
-		const first = new ActiveSkills(source, 'assistant', memory.skillState);
-		await first.restore(list, scope);
-		await first.load('builder', { toolCallId: 'inspect-1' });
-		list.setToolCallResult('inspect-1', { node: 'model' });
-
-		const next = new ActiveSkills(source, 'assistant', memory.skillState);
-		await next.restore(list, scope);
-
-		expect(next.instructions()).toContain('Build one workflow.');
-		const messages = next.modelMessages(list.forLlm('').messages, list);
-		expect(JSON.stringify(messages)).not.toContain('Build one workflow.');
-		expect(messages[2]).toMatchObject({
-			role: 'tool',
-			content: [{ type: 'tool-result', output: { type: 'json', value: { node: 'model' } } }],
-		});
-	});
-
-	it('collapses a recorded load_skill body and re-appends the current version at that result', async () => {
-		const memory = new InMemoryMemory();
-		const list = new AgentMessageList();
-		list.addHistory([
-			{ role: 'user', content: [{ type: 'text', text: 'Build it' }] },
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'load_skill',
-						toolCallId: 'old-load',
-						input: { skillId: 'builder' },
-						state: 'resolved',
-						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
-					},
-				],
-			},
-			{ role: 'assistant', content: [{ type: 'text', text: 'Loaded.' }] },
-		]);
-		const active = new ActiveSkills(source, 'assistant', memory.skillState);
-		await active.restore(list, scope);
-
-		const messages = active.modelMessages(list.forLlm('').messages, list);
-
-		expect(messages.map((message) => message.role)).toEqual([
-			'user',
-			'assistant',
-			'tool',
-			'assistant',
-		]);
-		// The persisted body is collapsed away, and the current version is
-		// appended at the same result — the block stays empty while the recorded
-		// load is visible, so restoring the skill never rewrites the prefix.
-		const tool = messages[2];
-		if (tool.role !== 'tool') throw new Error('Expected a tool message');
-		expect(tool.content[0]).toMatchObject({
-			output: {
-				type: 'content',
-				value: [
-					{ type: 'text', text: '{"skillId":"builder","active":true}' },
-					{ type: 'text', text: expect.stringContaining('Build one workflow.') },
-				],
-			},
-		});
-		expect(active.instructions()).toBeUndefined();
-	});
-
-	it('folds a skill into the block once observational memory masks its recorded load', async () => {
-		const memory = new InMemoryMemory();
-		const list = new AgentMessageList();
-		list.addHistory([
-			{ role: 'user', content: [{ type: 'text', text: 'Build it' }] },
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'load_skill',
-						toolCallId: 'old-load',
-						input: { skillId: 'builder' },
-						state: 'resolved',
-						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
-					},
-				],
-			},
-			{ role: 'assistant', content: [{ type: 'text', text: 'Loaded.' }] },
-		]);
-		const active = new ActiveSkills(source, 'assistant', memory.skillState);
-		await active.restore(list, scope);
-		expect(active.instructions()).toBeUndefined();
-
-		const loadMessage = list.messages()[1];
-		const createdAt = loadMessage.createdAt;
-		if (!(createdAt instanceof Date)) throw new Error('Expected a createdAt date');
-		list.maskObservedMessages({ lastObservedAt: createdAt, lastObservedMessageId: loadMessage.id });
-
-		// The anchor left the visible window, so the skill moves to the block —
-		// at the same moment observation rewrote the prefix anyway.
-		expect(active.instructions()).toContain('Build one workflow.');
-		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).not.toContain(
-			'Build one workflow.',
-		);
 	});
 
 	it('records concurrent loads without dropping either skill', async () => {

@@ -48,7 +48,19 @@ export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
-	createBranch: z.boolean(),
+	// Optional here, unlike the required message on the full-instance promote.
+	commitMessage: z
+		.string()
+		.trim()
+		.min(1)
+		.max(1000)
+		.describe('Message for the promotion commit. A default is used when omitted.')
+		.optional(),
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;
+
+/** Request body for the project-scoped selective promote endpoint. */
+export class PromoteSelectionRequestDto extends Z.class(promoteRequestSchema.shape, {
+	strict: true,
+}) {}

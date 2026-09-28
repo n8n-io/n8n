@@ -85,7 +85,7 @@ function reset() {
 			>
 				<template v-if="activeFilterCount > 0" #default>
 					<N8nBadge
-						theme="primary"
+						variant="primary"
 						:class="$style.filterBadge"
 						data-test-id="agent-sessions-filter-badge"
 					>

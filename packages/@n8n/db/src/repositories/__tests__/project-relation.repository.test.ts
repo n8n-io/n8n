@@ -8,7 +8,7 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ProjectRelationRepository } from '../project-relation.repository';
 
 describe('ProjectRelationRepository', () => {
-	mockEntityManager(ProjectRelation);
+	const entityManager = mockEntityManager(ProjectRelation);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
 	beforeEach(() => {
@@ -50,6 +50,44 @@ describe('ProjectRelationRepository', () => {
 			const result = await projectRelationRepository.findPersonalOwnerEmails([]);
 
 			expect(createQueryBuilder).not.toHaveBeenCalled();
+			expect(result).toEqual(new Map());
+		});
+	});
+
+	describe('findProjectIdsByUserIds', () => {
+		beforeEach(() => {
+			entityManager.find.mockReset();
+		});
+
+		it('maps each user id to every project id they belong to', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				{ userId: 'user1', projectId: 'project1' },
+				{ userId: 'user1', projectId: 'project2' },
+				{ userId: 'user2', projectId: 'project3' },
+			]);
+
+			const result = await projectRelationRepository.findProjectIdsByUserIds(['user1', 'user2']);
+
+			expect(result).toEqual(
+				new Map([
+					['user1', ['project1', 'project2']],
+					['user2', ['project3']],
+				]),
+			);
+		});
+
+		it('queries once for several user ids, not once per user', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await projectRelationRepository.findProjectIdsByUserIds(['user1', 'user2', 'user1']);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not query when there are no user ids', async () => {
+			const result = await projectRelationRepository.findProjectIdsByUserIds([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
 			expect(result).toEqual(new Map());
 		});
 	});

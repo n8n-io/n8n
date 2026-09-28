@@ -19,6 +19,10 @@
     "./nodes": {
       "types": "./dist/configs/nodes.d.ts",
       "default": "./dist/configs/nodes.js"
+    },
+    "./import-x-alias": {
+      "types": "./dist/import-x-alias.d.ts",
+      "default": "./dist/import-x-alias.js"
     }
   },
   "scripts": {
@@ -41,6 +45,7 @@
   "dependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
+    "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "oxlint": "catalog:"
