@@ -8,7 +8,6 @@ import type {
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -212,48 +211,12 @@ export class ApiHelpers {
 			},
 		});
 
+		// The endpoint responds only after the reset and the user seeding complete,
+		// so no extra wait is necessary.
 		if (!response.ok()) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-
-		await this.waitForSeededOwnerLogin(new URL('/rest/login', response.url()));
-	}
-
-	/**
-	 * Confirms that the reset instance accepts the seeded owner credentials.
-	 * The probe uses `fetch`, so its session cookie does not enter this context.
-	 * `@auth:none` tests therefore stay unauthenticated.
-	 */
-	private async waitForSeededOwnerLogin(loginUrl: URL, timeoutMs = 10_000): Promise<void> {
-		const deadline = Date.now() + timeoutMs;
-		let lastResult = 'no response';
-
-		while (Date.now() < deadline) {
-			try {
-				const response = await fetch(loginUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						emailOrLdapLoginId: INSTANCE_OWNER_CREDENTIALS.email,
-						password: INSTANCE_OWNER_CREDENTIALS.password,
-					}),
-					// Keep the total wait within `timeoutMs`.
-					signal: AbortSignal.timeout(Math.max(1, Math.min(5_000, deadline - Date.now()))),
-				});
-				if (response.ok) return;
-				lastResult = `${response.status} ${await response.text()}`;
-				// A retry inside the rate-limit window cannot succeed, so stop now.
-				if (response.status === 429) break;
-			} catch (error) {
-				lastResult = error instanceof Error ? error.message : String(error);
-			}
-			await wait(100);
-		}
-
-		throw new TestError(
-			`Owner login failed after the database reset (limit ${timeoutMs}ms): ${lastResult}`,
-		);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {
