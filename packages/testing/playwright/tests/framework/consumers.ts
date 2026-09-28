@@ -2,24 +2,15 @@ import { failFirstAttempt, marker, provision, record } from './support';
 import { INSTANCE_MEMBER_CREDENTIALS, INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
 import { test as base, expect } from '../../fixtures/base';
 
-let suppliedFrontendUrl: string;
 const test = base.extend({
-	n8nContainer: [
+	sut: [
 		async ({}, use) => {
-			const { stack, frontendUrl } = await provision();
-			suppliedFrontendUrl = frontendUrl;
+			const { sut, stop } = await provision();
 			try {
-				await use(stack);
+				await use(sut);
 			} finally {
-				await stack.stop();
+				await stop();
 			}
-		},
-		{ scope: 'worker' },
-	],
-	frontendUrl: [
-		async ({ n8nContainer }, use) => {
-			void n8nContainer;
-			await use(suppliedFrontendUrl);
 		},
 		{ scope: 'worker' },
 	],
@@ -84,25 +75,28 @@ test.describe(
 		});
 
 		test('state predecessor', async ({ api }) => {
+			record({ type: 'body' });
 			expect((await api.request.post('/state')).ok()).toBe(true);
 		});
 
 		test('state successor', { tag: '@db:reset' }, async ({ api }) => {
+			record({ type: 'body' });
 			expect(await (await api.request.get('/state')).json()).toEqual({ changed: false });
 		});
 
 		test('failure predecessor', async ({ api }) => {
+			record({ type: 'body' });
 			await api.request.post('/state');
 			throw new Error(`${marker}:predecessor-error`);
 		});
 
 		test('failure successor', { tag: '@db:reset' }, async ({ api }) => {
+			record({ type: 'body' });
 			expect(await (await api.request.get('/state')).json()).toEqual({ changed: false });
 		});
 
 		test('retry-worker', { tag: '@db:reset' }, async ({ api }, testInfo) => {
-			const state = await (await api.request.get('/state')).json();
-			expect(state).toEqual({ changed: false });
+			record({ type: 'body' });
 			await failFirstAttempt(api, testInfo.retry);
 		});
 
@@ -121,12 +115,18 @@ test.describe(
 			expect((await n8n.page.goto('/consumer'))?.status()).toBe(401);
 		});
 
-		test('forbidden-reset', { tag: '@db:reset' }, async ({ api }) => {
+		test('per-test-reset-failure', { tag: '@db:reset' }, async ({ api }) => {
 			void api;
 			record({ type: 'body' });
 		});
 
-		test('per-test-reset-failure', { tag: '@db:reset' }, async ({ api }) => {
+		test('attached', async ({ api }) => {
+			record({ type: 'body' });
+			const response = await api.request.get('/identity');
+			expect(await response.json()).toEqual({ id: INSTANCE_OWNER_CREDENTIALS.email });
+		});
+
+		test('forbidden-reset', { tag: '@db:reset' }, async ({ api }) => {
 			void api;
 			record({ type: 'body' });
 		});

@@ -1,11 +1,13 @@
 import { MailpitHelper } from 'n8n-containers/services/mailpit';
-import type { N8NStack } from 'n8n-containers/stack';
+import type { ServiceHelpers } from 'n8n-containers/services/types';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { appendFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 
 import { N8N_AUTH_COOKIE } from '../../config/constants';
+import { INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
+import { applyDefaultFeatures, attach, resetDatabase, type Sut } from '../../fixtures/sut';
 import type { ApiHelpers } from '../../services/api-helper';
 
 export interface Evidence {
@@ -25,6 +27,11 @@ export function record(event: Evidence) {
 	appendFileSync(process.env.HARNESS_EVENTS!, `${JSON.stringify(event)}\n`);
 }
 
+const harnessCase = process.env.HARNESS_CASE ?? '';
+const ATTACHED_CASES = ['attached', 'forbidden-reset'];
+const SPLIT_URL_CASES = ['ui-only', 'ui-unauthenticated'];
+
+/** Changes server state, then fails, so the retry must start from a reset. */
 export async function failFirstAttempt(api: ApiHelpers, retry: number) {
 	if (retry !== 0) return;
 	await api.request.post('/state');
@@ -42,7 +49,12 @@ function strict<T extends object>(value: T): T {
 
 export async function provision() {
 	const servers: Server[] = [];
-	const users = new Map<string, string>();
+	// An attached instance already has its users. A managed one gets them from the reset.
+	const users = new Map<string, string>(
+		ATTACHED_CASES.includes(harnessCase)
+			? [INSTANCE_OWNER_CREDENTIALS].map((user) => [user.email, user.password])
+			: [],
+	);
 	const sessions = new Map<string, string>();
 	let changed = false;
 	let mailCleared = false;
@@ -88,8 +100,8 @@ export async function provision() {
 					if (name === 'backend' && route === 'POST /rest/e2e/reset') {
 						resets++;
 						if (
-							process.env.HARNESS_CASE === 'bootstrap-failure' ||
-							(process.env.HARNESS_CASE === 'per-test-reset-failure' && resets === 2)
+							harnessCase === 'bootstrap-failure' ||
+							(harnessCase === 'per-test-reset-failure' && resets === 2)
 						) {
 							res.writeHead(500).end(`${marker}:reset-error`);
 							return;
@@ -99,8 +111,14 @@ export async function provision() {
 							{ email: string; password: string } | Array<{ email: string; password: string }>
 						>;
 						for (const user of Object.values(data).flat()) users.set(user.email, user.password);
+						// A reset recreates users, so earlier sessions stop working.
 						changed = false;
 						sessions.clear();
+						res.end('{}');
+					} else if (
+						name === 'backend' &&
+						['PATCH /rest/e2e/feature', 'PATCH /rest/e2e/quota'].includes(route)
+					) {
 						res.end('{}');
 					} else if (name === 'backend' && route === 'POST /rest/login') {
 						const data = JSON.parse(body) as { emailOrLdapLoginId: string; password: string };
@@ -135,11 +153,6 @@ export async function provision() {
 						res.end(
 							`<html><head><link rel="icon" href="data:,"></head><body><h1>${email}</h1></body></html>`,
 						);
-					} else if (
-						name === 'backend' &&
-						['PATCH /rest/e2e/feature', 'PATCH /rest/e2e/quota'].includes(route)
-					) {
-						res.end('{}');
 					} else {
 						res.writeHead(404).end(`Unexpected route: ${route}`);
 					}
@@ -159,14 +172,26 @@ export async function provision() {
 		return url;
 	};
 	try {
-		const baseUrl = await listen('backend');
-		const frontendUrl = ['ui-only', 'ui-unauthenticated'].includes(process.env.HARNESS_CASE ?? '')
-			? await listen('frontend')
-			: baseUrl;
-		const services = strict({ mailpit: new MailpitHelper(baseUrl) });
-		// Only the supplied endpoint, service, and lifecycle surface is implemented. All other reads throw.
-		const stack = strict({ baseUrl, mainUrls: [baseUrl], services, stop }) as unknown as N8NStack;
-		return { stack, frontendUrl };
+		const url = await listen('backend');
+		const editorUrl = SPLIT_URL_CASES.includes(harnessCase) ? await listen('frontend') : url;
+		if (ATTACHED_CASES.includes(harnessCase)) {
+			return { sut: attach({ N8N_BASE_URL: url, N8N_EDITOR_URL: editorUrl }), stop };
+		}
+		// A managed SUT, like the Testcontainers source: reset at start. Only the
+		// listed fields exist. Any other read throws.
+		const sut: Sut = strict({
+			url,
+			editorUrl,
+			internalUrl: url,
+			mainUrls: [url],
+			services: strict({ mailpit: new MailpitHelper(url) }) as unknown as ServiceHelpers,
+			stack: undefined,
+			reset: async () => await resetDatabase(url),
+			applyDefaults: async () => await applyDefaultFeatures(url),
+			stop,
+		});
+		await sut.reset();
+		return { sut, stop };
 	} catch (error) {
 		await stop();
 		throw error;

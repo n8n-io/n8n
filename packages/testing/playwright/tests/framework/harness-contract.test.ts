@@ -16,6 +16,170 @@ import type { Evidence } from './support';
 const packageDir = resolve(__dirname, '../..');
 const cli = createRequire(__filename).resolve('@playwright/test/cli');
 
+const OWNER = 'nathan@n8n.io';
+
+interface Contract {
+	/** Status of each attempt, in order. */
+	attempts: Array<'passed' | 'failed'>;
+	exitCode: 0 | 1;
+	resets: number;
+	logins: number;
+	browser: boolean;
+	servers: number;
+	/** The identity every successful probe must carry. */
+	identity?: string;
+	/** Probes must be rejected: the test has no session. */
+	unauthenticated?: boolean;
+	/** Text the first failed attempt's error must contain. */
+	error?: string;
+	/** The test body must not run. */
+	noBody?: boolean;
+}
+
+const CONTRACTS: Record<string, Contract> = {
+	'api-only': {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 1,
+		browser: false,
+		servers: 1,
+		identity: OWNER,
+	},
+	'ui-only': {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 1,
+		browser: true,
+		servers: 2,
+		identity: OWNER,
+	},
+	// Worker start plus one per-test reset. API and UI share one sign-in.
+	combined: {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 2,
+		logins: 1,
+		browser: true,
+		servers: 1,
+		identity: 'member@n8n.io',
+	},
+	'service-only': {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 0,
+		browser: false,
+		servers: 1,
+	},
+	'body-failure': {
+		attempts: ['failed'],
+		exitCode: 1,
+		resets: 1,
+		logins: 1,
+		browser: true,
+		servers: 1,
+		identity: OWNER,
+		error: 'body-error',
+	},
+	'bootstrap-failure': {
+		attempts: ['failed'],
+		exitCode: 1,
+		resets: 1,
+		logins: 0,
+		browser: false,
+		servers: 1,
+		error: 'reset-error',
+		noBody: true,
+	},
+	state: {
+		attempts: ['passed', 'passed'],
+		exitCode: 0,
+		resets: 2,
+		logins: 2,
+		browser: false,
+		servers: 1,
+	},
+	// The failed predecessor replaces the worker, so the successor gets a new stack.
+	failure: {
+		attempts: ['failed', 'passed'],
+		exitCode: 1,
+		resets: 3,
+		logins: 2,
+		browser: false,
+		servers: 2,
+		error: 'predecessor-error',
+	},
+	// Each attempt runs on its own worker: a start reset and a per-test reset.
+	'retry-worker': {
+		attempts: ['failed', 'passed'],
+		exitCode: 0,
+		resets: 4,
+		logins: 2,
+		browser: false,
+		servers: 2,
+		error: 'retry-error',
+	},
+	'admin-role': {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 1,
+		browser: false,
+		servers: 1,
+		identity: 'admin@n8n.io',
+	},
+	unauthenticated: {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 0,
+		browser: false,
+		servers: 1,
+		unauthenticated: true,
+	},
+	'ui-unauthenticated': {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 1,
+		logins: 0,
+		browser: true,
+		servers: 2,
+		unauthenticated: true,
+	},
+	'per-test-reset-failure': {
+		attempts: ['failed'],
+		exitCode: 1,
+		resets: 2,
+		logins: 0,
+		browser: false,
+		servers: 1,
+		error: 'reset-error',
+		noBody: true,
+	},
+	// An attached SUT is never reset at start.
+	attached: {
+		attempts: ['passed'],
+		exitCode: 0,
+		resets: 0,
+		logins: 1,
+		browser: false,
+		servers: 1,
+		identity: OWNER,
+	},
+	'forbidden-reset': {
+		attempts: ['failed'],
+		exitCode: 1,
+		resets: 0,
+		logins: 0,
+		browser: false,
+		servers: 1,
+		error: 'Reset is not permitted on this SUT',
+		noBody: true,
+	},
+};
+
 function results(suites: JSONReportSuite[]): JSONReportTestResult[] {
 	return suites.flatMap((suite) => [
 		...suite.specs.flatMap((spec) => spec.tests.flatMap((entry) => entry.results)),
@@ -23,24 +187,23 @@ function results(suites: JSONReportSuite[]): JSONReportTestResult[] {
 	]);
 }
 
-test.each([
-	'api-only',
-	'ui-only',
-	'combined',
-	'service-only',
-	'body-failure',
-	'bootstrap-failure',
-	'state',
-	'failure',
-	'retry-worker',
-	'admin-role',
-	'unauthenticated',
-	'ui-unauthenticated',
-	'forbidden-reset',
-	'per-test-reset-failure',
-])(
+/** Every test body must follow its own resets, then its sign-in. */
+function expectResetBeforeLogin(events: Evidence[]) {
+	let windowStart = 0;
+	for (const [index, event] of events.entries()) {
+		if (event.type !== 'body' && event.type !== 'server-listening') continue;
+		const window = events.slice(windowStart, index);
+		const lastReset = window.findLastIndex((item) => item.path === '/rest/e2e/reset');
+		const firstLogin = window.findIndex((item) => item.path === '/rest/login');
+		if (lastReset > -1 && firstLogin > -1) expect(lastReset).toBeLessThan(firstLogin);
+		windowStart = index + 1;
+	}
+}
+
+test.each(Object.keys(CONTRACTS))(
 	'base.ts consumer: %s',
 	async (scenario) => {
+		const contract = CONTRACTS[scenario];
 		const outputDir = await mkdtemp(join(tmpdir(), 'harness-contract-'));
 		const marker = randomUUID();
 		// Do not inherit instance endpoints, credentials, telemetry, NODE_OPTIONS, or proxy settings.
@@ -58,7 +221,6 @@ test.each([
 			DEBUG_COLORS: '0',
 			FORCE_COLOR: '0',
 		});
-		if (scenario === 'forbidden-reset') env.N8N_BASE_URL = 'http://127.0.0.1:1';
 		const localBrowsers = join(packageDir, '.playwright-browsers');
 		if (existsSync(localBrowsers)) env.PLAYWRIGHT_BROWSERS_PATH = localBrowsers;
 		const child = spawn(
@@ -108,176 +270,101 @@ test.each([
 		try {
 			const code = await exited;
 			expect(timedOut, output).toBe(false);
-			const failing =
-				scenario.endsWith('failure') || ['failure', 'forbidden-reset'].includes(scenario);
-			expect(code, output).toBe(failing ? 1 : 0);
+			expect(code, output).toBe(contract.exitCode);
 			const report = JSON.parse(
 				await readFile(join(outputDir, 'report.json'), 'utf8'),
 			) as JSONReport;
 			const attempts = results(report.suites);
 			expect(report.errors, output).toEqual([]);
-			const multi = ['state', 'failure', 'retry-worker'].includes(scenario);
-			expect(attempts, output).toHaveLength(multi ? 2 : 1);
-			if (multi) {
-				expect(
-					attempts.map((attempt) => attempt.status),
-					output,
-				).toEqual(scenario === 'state' ? ['passed', 'passed'] : ['failed', 'passed']);
-			} else {
-				expect(attempts[0].status, output).toBe(failing ? 'failed' : 'passed');
-				expect(attempts[0].errors, output).toHaveLength(failing ? 1 : 0);
-			}
+			expect(
+				attempts.map((attempt) => attempt.status),
+				output,
+			).toEqual(contract.attempts);
+			const failed = attempts.find((attempt) => attempt.status === 'failed');
+			if (contract.error) expect(failed?.errors[0].message, output).toContain(contract.error);
+
 			const events = (await readFile(env.HARNESS_EVENTS!, 'utf8'))
 				.trim()
 				.split('\n')
 				.map((line) => JSON.parse(line) as Evidence);
 			const requests = events.filter((event) => event.type === 'response');
-			const body = events.findIndex((event) => event.type === 'body');
-			const reset = events.findIndex((event) => event.path === '/rest/e2e/reset');
+			const count = (path: string) => requests.filter((event) => event.path === path).length;
+			const launches = [...output.matchAll(/<launched> pid=(\d+)/g)];
+
+			// Keep these counts visible when a fixture changes.
+			console.info(
+				`${scenario}: exit=${code}, browser launches=${launches.length}, ` +
+					`resets=${count('/rest/e2e/reset')}, logins=${count('/rest/login')}, ` +
+					`attempt duration=${attempts[0].duration}ms`,
+			);
+
+			expect(count('/rest/e2e/reset'), output).toBe(contract.resets);
+			expect(count('/rest/login'), output).toBe(contract.logins);
+			expectResetBeforeLogin(events);
+
+			// Owned servers close after their last request, and stop answering.
 			const servers = events.filter((event) => event.type === 'server-listening');
-			expect(servers.length).toBeGreaterThan(0);
+			expect(servers).toHaveLength(contract.servers);
 			for (const [index, server] of servers.entries()) {
-				expect(events).toContainEqual({ type: 'server-closed', server: server.server });
-				if (['failure', 'retry-worker'].includes(scenario)) {
-					const start = events.indexOf(server);
-					const end = servers[index + 1] ? events.indexOf(servers[index + 1]) : events.length;
-					const segment = events.slice(start, end);
-					expect(segment.at(-1)).toEqual({ type: 'server-closed', server: server.server });
-				} else {
-					expect(
-						events.findIndex(
-							(event) => event.type === 'server-closed' && event.server === server.server,
-						),
-					).toBeGreaterThan(events.findLastIndex((event) => event.type === 'response'));
-				}
+				const start = events.indexOf(server);
+				const next = servers.slice(index + 1).find((item) => item.server === server.server);
+				const segment = events.slice(start, next ? events.indexOf(next) : events.length);
+				const closed = segment.findIndex(
+					(event) => event.type === 'server-closed' && event.server === server.server,
+				);
+				expect(closed).toBeGreaterThan(segment.findLastIndex((event) => event.type === 'response'));
 				await expect(fetch(server.url!, { signal: AbortSignal.timeout(1000) })).rejects.toThrow();
 			}
-			const launches = [...output.matchAll(/<launched> pid=(\d+)/g)];
-			if (
-				[
-					'api-only',
-					'service-only',
-					'bootstrap-failure',
-					'state',
-					'failure',
-					'retry-worker',
-					'admin-role',
-					'unauthenticated',
-					'forbidden-reset',
-					'per-test-reset-failure',
-				].includes(scenario)
-			) {
-				expect(launches, output).toHaveLength(0);
-			}
-			if (['ui-only', 'ui-unauthenticated', 'combined', 'body-failure'].includes(scenario)) {
-				expect(launches.length, output).toBeGreaterThan(0);
-			}
+
+			// API-only consumers launch no browser. Every launched browser exits.
+			if (contract.browser) expect(launches.length, output).toBeGreaterThan(0);
+			else expect(launches, output).toHaveLength(0);
 			for (const [, pid] of launches) {
 				expect(output).toContain(`[pid=${pid}] <process did exit:`);
 			}
-			if (multi) {
-				const stateChanges = requests.filter((event) => event.path === '/state');
-				expect(stateChanges.map((event) => event.method)).toEqual(
-					scenario === 'retry-worker' ? ['GET', 'POST', 'GET'] : ['POST', 'GET'],
-				);
-				expect(stateChanges.at(-1)?.status).toBe(200);
-				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(
-					scenario === 'state' ? 2 : scenario === 'failure' ? 3 : 4,
-				);
-				expect(servers).toHaveLength(scenario === 'state' ? 1 : 2);
-				if (scenario !== 'state') expect(attempts[0].errors[0].message).toContain(marker);
-				return;
-			}
-			if (scenario === 'forbidden-reset') {
+
+			const body = events.findIndex((event) => event.type === 'body');
+			if (contract.noBody) {
 				expect(body).toBe(-1);
-				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(1);
-				expect(attempts[0].errors[0].message).toContain('Database reset is not enabled');
 				return;
 			}
-			if (scenario === 'per-test-reset-failure') {
-				expect(body).toBe(-1);
-				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(2);
-				expect(requests.findLast((event) => event.path === '/rest/e2e/reset')?.status).toBe(500);
-				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
-				expect(attempts[0].errors[0].message).toContain(`${marker}:reset-error`);
-				return;
-			}
-			if (scenario === 'unauthenticated') {
-				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
-				expect(requests.find((event) => event.path === '/identity')?.status).toBe(401);
-				return;
-			}
-			if (scenario === 'ui-unauthenticated') {
-				expect(servers).toHaveLength(2);
-				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
-				expect(requests.find((event) => event.path === '/consumer')?.status).toBe(401);
-				return;
-			}
-			// Keep these counts visible when a fixture changes.
-			console.info(
-				`${scenario}: exit=${code}, browser launches=${launches.length}, server closes=${servers.length}, ` +
-					`resets=${requests.filter((event) => event.path === '/rest/e2e/reset').length}, ` +
-					`logins=${requests.filter((event) => event.path === '/rest/login').length}, ` +
-					`attempt duration=${attempts[0].duration}ms`,
+
+			const probes = requests.filter((event) =>
+				['/identity', '/consumer'].includes(event.path ?? ''),
 			);
-			if (scenario === 'bootstrap-failure') {
-				expect(reset).toBeGreaterThan(-1);
-				expect(body).toBe(-1);
-				expect(requests).toHaveLength(1);
-				expect(requests[0]).toMatchObject({ path: '/rest/e2e/reset', status: 500 });
-				expect(attempts[0].errors[0].message).toContain(`${marker}:reset-error`);
-				return;
+			if (contract.unauthenticated) {
+				expect(probes.length).toBeGreaterThan(0);
+				for (const probe of probes) expect(probe.status).toBe(401);
 			}
-			expect(body).toBeGreaterThan(-1);
-			expect(
-				requests.every((event) => event.status === 200),
-				JSON.stringify(requests),
-			).toBe(true);
+			if (contract.identity) {
+				expect(probes.length).toBeGreaterThan(0);
+				for (const probe of probes)
+					expect(probe).toMatchObject({ status: 200, email: contract.identity });
+			}
+
+			if (scenario === 'combined') {
+				expect(probes.map((event) => event.path)).toEqual(['/identity', '/consumer']);
+			}
+			if (scenario === 'ui-only' || scenario === 'ui-unauthenticated') {
+				expect(servers[0].url).not.toBe(servers[1].url);
+				expect(probes[0].server).toBe('frontend');
+			}
+			if (scenario === 'ui-only') {
+				expect(requests.find((event) => event.path === '/rest/login')?.server).toBe('backend');
+				expect(events).toContainEqual({ type: 'page-closed' });
+			}
 			if (scenario === 'service-only') {
 				expect(
 					requests
 						.filter((event) => event.path === '/api/v1/messages')
 						.map((event) => event.method),
 				).toEqual(['DELETE', 'GET']);
-				return;
 			}
-			expect(reset).toBeGreaterThan(-1);
-			expect(body).toBeGreaterThan(reset);
-			const login = events.findIndex((event) => event.path === '/rest/login');
-			expect(login).toBeGreaterThan(reset);
-			expect(body).toBeGreaterThan(login);
-			const identity =
-				scenario === 'combined'
-					? 'member@n8n.io'
-					: scenario === 'admin-role'
-						? 'admin@n8n.io'
-						: 'nathan@n8n.io';
-			const probes = requests.filter((event) =>
-				['/identity', '/consumer'].includes(event.path ?? ''),
-			);
-			expect(probes.length).toBeGreaterThan(0);
-			for (const probe of probes) expect(probe.email).toBe(identity);
-			if (scenario === 'combined') {
-				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(2);
-				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(2);
-				expect(events.findIndex((event) => event.path === '/rest/login')).toBeGreaterThan(
-					events.findLastIndex((event) => event.path === '/rest/e2e/reset'),
-				);
-				expect(probes.map((event) => event.path)).toEqual(['/identity', '/consumer']);
-				// Both worker bootstrap and the per-test reset must precede the consumer.
-				expect(events.findLastIndex((event) => event.path === '/rest/e2e/reset')).toBeLessThan(
-					body,
-				);
-			}
-			if (scenario === 'ui-only') {
-				expect(servers).toHaveLength(2);
-				expect(servers[0].url).not.toBe(servers[1].url);
-				expect(events[login].server).toBe('backend');
-				expect(probes[0].server).toBe('frontend');
-				expect(events).toContainEqual({ type: 'page-closed' });
+			if (scenario === 'state' || scenario === 'failure') {
+				const state = requests.filter((event) => event.path === '/state');
+				expect(state.map((event) => event.method)).toEqual(['POST', 'GET']);
 			}
 			if (scenario === 'body-failure') {
-				expect(attempts[0].errors[0].message).toContain(`${marker}:body-error`);
 				const attachment = attempts[0].attachments.find((item) => item.name === 'console-errors');
 				expect(attachment).toBeDefined();
 				const diagnostic = attachment?.body

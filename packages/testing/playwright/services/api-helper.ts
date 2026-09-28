@@ -6,7 +6,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
-import { request, type APIRequestContext } from '@playwright/test';
+import { request, type APIRequestContext, type Page } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
 import type { UserCredentials } from '../config/test-users';
@@ -122,6 +122,17 @@ export class ApiHelpers {
 		this.publicApi = new PublicApiHelper(this);
 	}
 
+	/**
+	 * An API client that shares the page's cookies, so API sign-in and UI sign-in
+	 * affect the same session. The dev server proxies backend routes, so the
+	 * editor URL reaches the API in every mode.
+	 */
+	static forPage(page: Page, options: ApiHelpersOptions): ApiHelpers {
+		return new ApiHelpers(page.context().request, options);
+	}
+
+	// ===== CORE METHODS =====
+
 	async resetDatabase(): Promise<void> {
 		const response = await this.request.post('/rest/e2e/reset', {
 			data: {
@@ -154,18 +165,21 @@ export class ApiHelpers {
 	async setFeature(feature: string, enabled: boolean): Promise<void> {
 		await this.request.patch('/rest/e2e/feature', {
 			data: { feature: `feat:${feature}`, enabled },
+			failOnStatusCode: true,
 		});
 	}
 
 	async setQuota(quotaName: string, value: number | string): Promise<void> {
 		await this.request.patch('/rest/e2e/quota', {
 			data: { feature: `quota:${quotaName}`, value },
+			failOnStatusCode: true,
 		});
 	}
 
 	async setQueueMode(enabled: boolean): Promise<void> {
 		await this.request.patch('/rest/e2e/queue-mode', {
 			data: { enabled },
+			failOnStatusCode: true,
 		});
 	}
 
@@ -254,6 +268,7 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
 			data: { flags },
+			failOnStatusCode: true,
 		});
 		return await response.json();
 	}
@@ -267,6 +282,7 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
 			data: { flags: {} },
+			failOnStatusCode: true,
 		});
 		return await response.json();
 	}
@@ -274,7 +290,9 @@ export class ApiHelpers {
 	async getEnvFeatureFlags(): Promise<{
 		data: Record<string, string>;
 	}> {
-		const response = await this.request.get('/rest/e2e/env-feature-flags');
+		const response = await this.request.get('/rest/e2e/env-feature-flags', {
+			failOnStatusCode: true,
+		});
 		return await response.json();
 	}
 
@@ -319,16 +337,19 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
-	/**
-	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
-	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
-	 */
+	/** Enable all project features (sharing, folders, advancedPermissions, projectRoles). */
 	async enableProjectFeatures(): Promise<void> {
 		await this.enableFeature('sharing');
 		await this.enableFeature('folders');
 		await this.enableFeature('advancedPermissions');
 		await this.enableFeature('projectRole:admin');
 		await this.enableFeature('projectRole:editor');
+	}
+
+	/** The license state every test starts with. The session fixture applies it before each test. */
+	async applyDefaultFeatures(): Promise<void> {
+		await this.enableProjectFeatures();
+		await this.setMaxTeamProjectsQuota(-1);
 	}
 
 	async disableFeature(feature: string): Promise<void> {

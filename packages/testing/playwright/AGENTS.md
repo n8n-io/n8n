@@ -216,7 +216,7 @@ See `composables/TestEntryComposer.ts` for UI entry points.
 | `fromNewProject()` | Project-scoped test, no canvas (returns projectId) |
 | `fromImportedWorkflow(file)` | Test pre-built workflow JSON |
 | `withUser(user)` | Isolated browser context per user |
-| `withProjectFeatures()` | Enable sharing/folders/permissions |
+| `withProjectFeatures()` | Re-apply the default project features (the `session` fixture already applies them) |
 
 ## Accessibility Checks
 
@@ -374,7 +374,7 @@ await member2Page.navigate.toCredentials();
 | `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
 | Fresh DB per file | Tests need isolated container | `test.use({ capability: { env: { TEST_ISOLATION: 'name' } } })` |
 | Fresh DB per test | Tests modify shared state | `@db:reset` tag on describe (container-only, combined with `test.use()`) |
-| `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
+| `n8n.api.signin()` | Changes the browser user for the rest of the test | `n8n.start.withUser()` |
 | `Date.now()` for IDs | Race conditions | `nanoid()` |
 | `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
 | `.toHaveCount(N)` | Brittle | Named element assertions |
@@ -516,14 +516,31 @@ await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible()
 
 ## Feature Enablement
 
-The `n8n` fixture automatically enables project features. For API-only tests (no `n8n` fixture), enable features explicitly:
+The `session` fixture applies the default project features before every test,
+API-only tests included: sharing, folders, advanced permissions, project roles,
+and unlimited team projects. Enable or disable other features in the test:
 
 ```typescript
 test('API-only test', async ({ api }) => {
-  await api.enableProjectFeatures();
+  await api.enableFeature('variables');
   // ...
 });
 ```
+
+## Fixture Model
+
+See [docs/HARNESS_DESIGN.md](docs/HARNESS_DESIGN.md) for the design.
+
+| Fixture | Scope | Provides |
+| --- | --- | --- |
+| `sut` | Worker | The n8n instance under test: a Docker stack, or an attached instance when `N8N_BASE_URL` is set |
+| `session` | Test | Reset with `@db:reset`, default features, then one sign-in as a storage state |
+| `api` | Test | An isolated API client with its own cookies, signed in as the test's role |
+| `n8n` | Test | The UI facade. `n8n.api` shares the page's cookies, so API sign-in changes the browser user. |
+| `n8nContainer` | Test | The Docker stack. Skips the test when the SUT has none. |
+
+An attached SUT is never reset at worker start, because workers share it. A
+per-test reset needs `RESET_E2E_DB=true`.
 
 ### Feature Flag Overrides
 
