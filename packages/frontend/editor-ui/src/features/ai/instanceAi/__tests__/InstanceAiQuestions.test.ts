@@ -136,7 +136,7 @@ describe('InstanceAiQuestions', () => {
 		await fireEvent.click(getByText('Capture new leads'));
 		vi.advanceTimersByTime(250);
 
-		expect(emitted().submit[0][0][0]).toMatchObject({ selectedOptions: [option] });
+		expect(emitted().submit).toEqual([[[expect.objectContaining({ selectedOptions: [option] })]]]);
 	});
 
 	it('shows the freeTextLabel of a question as the free-text placeholder', () => {
