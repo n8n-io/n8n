@@ -175,15 +175,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				if (response !== MODAL_CONFIRM) {
 					return undefined;
 				}
+			}
 
+			// The executor only ever runs the DB copy, so a refused save (e.g. a
+			// node type policy) must stop the run: otherwise the stored version
+			// runs and the canvas highlights nodes the builder no longer sees.
+			if (isNewWorkflow || uiStore.stateIsDirty) {
 				const saved = await workflowSaving.saveCurrentWorkflow({
 					id: workflowDocumentStore.value.workflowId,
 				});
 				if (!saved) {
 					return undefined;
 				}
-			} else if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
-				await workflowSaving.saveCurrentWorkflow({ id: workflowDocumentStore.value.workflowId });
 			}
 
 			const workflowData = workflowDocumentStore.value.serialize();
