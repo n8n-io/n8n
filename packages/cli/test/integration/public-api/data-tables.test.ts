@@ -963,6 +963,22 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(response.body.message).toBe('Invalid sort direction');
 	});
 
+	test('should reject an unknown sort column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'bogusCol:asc' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"Validation error with data table request: unknown column name 'bogusCol'",
+		);
+	});
+
 	test('should sort by system column (id)', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'name', type: 'string' }],
