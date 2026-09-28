@@ -179,8 +179,8 @@ describe('AddAgentExecutionMessages migration', () => {
 			AND (${context.escape.columnName('modelContextAt')} IS NOT NULL OR ${context.escape.columnName('origin')} IS NULL)
 			AND ${timestamp} < :before
 			ORDER BY ${timestamp} DESC, ${context.escape.columnName('id')} DESC LIMIT 10`;
-		// Small fixtures need this setting to expose whether PostgreSQL can use the index.
-		if (context.isPostgres) await context.runQuery('SET enable_seqscan = off');
+		// Discourage explicit sorts to test whether the index provides the required order.
+		if (context.isPostgres) await context.runQuery('SET enable_sort = off');
 		try {
 			const explain = context.isSqlite ? 'EXPLAIN QUERY PLAN' : 'EXPLAIN (COSTS OFF)';
 			const plan = await context.runQuery<Array<Record<string, string | number>>>(
@@ -189,7 +189,7 @@ describe('AddAgentExecutionMessages migration', () => {
 			);
 			expect(plan.flatMap(Object.values).join('\n')).not.toMatch(/Sort|TEMP B-TREE/);
 		} finally {
-			if (context.isPostgres) await context.runQuery('RESET enable_seqscan');
+			if (context.isPostgres) await context.runQuery('RESET enable_sort');
 		}
 
 		const outputId = randomUUID();
