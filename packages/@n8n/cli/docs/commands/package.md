@@ -148,11 +148,13 @@ An imported workflow's destination ID must not appear in `--deleted-workflow-ids
 The command rejects this overlap before any writes, including with the `skip`
 policy. It checks the destination ID even if the workflow is absent or archived.
 
-The result lists removed workflows under `removedWorkflows`, each with a `deletion`
-field of `archived` or `deleted`. With the default `--overwrite-deletion-policy=archive`
-the command keeps workflows and their execution history recoverable;
-`hard-delete` removes them permanently. It skips absent or already archived
-workflows and omits them from this list.
+The result lists removed workflows under `removedWorkflows`. Each entry has a
+`deletion` field of `archived` or `deleted` that reports what actually happened.
+With the default `--overwrite-deletion-policy=archive` the command archives each
+workflow, so it and its execution history stay recoverable. `hard-delete` also
+removes the workflow permanently. A workflow can stay `archived` under
+`hard-delete` when deferred trigger teardown blocks the delete. The command skips
+absent or already archived workflows and omits them from this list.
 
 ```bash
 n8n-cli package export --project-id=<id> --output=project.n8np
@@ -168,7 +170,7 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 | `--deleted-workflow-ids` | Target workflow IDs to remove. Separate IDs with commas, or repeat the flag. The removal manner follows `--overwrite-deletion-policy`. Absent or already archived workflows are ignored. |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
-| `--overwrite-deletion-policy` | How `--deleted-workflow-ids` removes each target workflow: `archive` (default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. Each `removedWorkflows` entry reports what happened in its `deletion` field. |
+| `--overwrite-deletion-policy` | How `--deleted-workflow-ids` removes each target workflow: `archive` (default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. A workflow can stay `archived` under `hard-delete` when deferred trigger teardown blocks the delete. Each `removedWorkflows` entry reports the actual result in its `deletion` field. |
 
 Requires the API key to hold:
 
