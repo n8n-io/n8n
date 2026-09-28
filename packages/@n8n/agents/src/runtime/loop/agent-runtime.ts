@@ -740,7 +740,9 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		if (this.config.toolNameAliases) list.renameToolCalls(this.config.toolNameAliases);
+		if (this.config.toolNameAliases) {
+			list.renameToolCalls(this.context.getApplicableToolNameAliases());
+		}
 		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.

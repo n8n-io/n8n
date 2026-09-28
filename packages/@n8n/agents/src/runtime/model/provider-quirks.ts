@@ -117,6 +117,15 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// decides the shape and the config only fills in its details.
 		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
 	},
+	// OpenRouter's Messages endpoint speaks the Anthropic wire format and
+	// passes thinking blocks through, so it takes the Anthropic quirks as-is.
+	'openrouter-anthropic': {
+		providerOptionsNamespace: 'anthropic',
+		reasoningReplayKeys: ['signature', 'redactedData'],
+		mergesAdjacentAssistantMessages: true,
+		toolProviderOptionDefaults: { eagerInputStreaming: false },
+		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+	},
 	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
 	// stay under the `anthropic` namespace even though the model id prefix differs.
 	'google-vertex-anthropic': {

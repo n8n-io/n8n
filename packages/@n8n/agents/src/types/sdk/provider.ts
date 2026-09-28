@@ -15,6 +15,7 @@ export type Provider =
 	| 'mistral'
 	| 'openai'
 	| 'openrouter'
+	| 'openrouter-anthropic'
 	| 'perplexity'
 	| 'vercel'
 	| 'xai'
@@ -94,7 +95,10 @@ export interface XaiThinkingConfig {
  * Known providers get their specific config; unknown providers default
  * to OpenAI-style (reasoningEffort) since most providers follow that API.
  */
-export type ThinkingConfigFor<P> = P extends 'anthropic' | 'google-vertex-anthropic'
+export type ThinkingConfigFor<P> = P extends
+	| 'anthropic'
+	| 'google-vertex-anthropic'
+	| 'openrouter-anthropic'
 	? AnthropicThinkingConfig
 	: P extends 'google'
 		? GoogleThinkingConfig

@@ -247,6 +247,7 @@ export {
 	supportsNativeToolSearch,
 } from './runtime/tools/native-tool-search';
 export type { NativeToolSearch } from './runtime/tools/native-tool-search';
+export { routeOpenRouterClaudeModel } from './runtime/model/openrouter';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {

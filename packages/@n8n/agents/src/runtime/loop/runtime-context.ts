@@ -44,6 +44,12 @@ import {
 } from '../tools/native-tool-search';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
+function sortByName(tools: BuiltTool[]): BuiltTool[] {
+	return [...tools].sort((left, right) =>
+		left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+	);
+}
+
 /** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
 function wrapBuiltInRules(fragments: string[]): string | undefined {
 	if (fragments.length === 0) return undefined;
@@ -154,7 +160,7 @@ export class RuntimeContextBuilder {
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
 		// A suspended call resumes under the name it had when it ran.
-		for (const [oldName, newName] of Object.entries(this.config.toolNameAliases ?? {})) {
+		for (const [oldName, newName] of Object.entries(this.getApplicableToolNameAliases())) {
 			const tool = toolMap.get(newName);
 			if (tool && !toolMap.has(oldName)) toolMap.set(oldName, tool);
 		}
@@ -229,7 +235,7 @@ export class RuntimeContextBuilder {
 
 	private nativelyDeferredToolNames(): Set<string> {
 		if (!this.nativeToolSearch || !this.deferredToolManager) return new Set();
-		return new Set(this.deferredToolManager.getUnloadedTools().map((tool) => tool.name));
+		return new Set(this.deferredToolManager.getAllTools().map((tool) => tool.name));
 	}
 
 	getCurrentTools(
@@ -242,23 +248,42 @@ export class RuntimeContextBuilder {
 		const native = this.nativeToolSearch;
 		const tools = [
 			...baseTools,
-			// Native search replaces the local discovery pair. Tools a skill loaded
-			// still go eagerly, so the model can call them without a search.
+			// Native search replaces the local discovery pair and keeps every
+			// deferred tool deferred: moving a tool to the eager set would change
+			// the cached prefix. The model finds a skill's tools by searching.
 			...(manager && !native ? manager.getControllerTools() : []),
-			...(manager ? manager.getLoadedTools() : []),
+			...(manager && !native ? manager.getLoadedTools() : []),
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
 		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
 		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
-		const eagerTools = flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
+		// Sort by name so the same toolset always serializes to the same prefix.
+		const eagerTools = sortByName(flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall);
 		if (!manager || !native) return eagerTools;
 		// Deferred tools go last, after every eagerly sent tool, so the cache
 		// breakpoint on the last eager tool covers the whole rendered tool block.
 		return [
 			...eagerTools,
-			...manager.getUnloadedTools().map((tool) => withDeferLoading(tool, native.namespace)),
+			...sortByName(manager.getAllTools()).map((tool) => withDeferLoading(tool, native.namespace)),
 		];
+	}
+
+	/**
+	 * Tool-name aliases that apply to this agent: the new name is one of its
+	 * tools and the old name is not. An old name that is still a live tool, for
+	 * example an MCP tool, is never rewritten.
+	 */
+	getApplicableToolNameAliases(): Record<string, string> {
+		const known = new Set([
+			...(this.config.tools ?? []).map((tool) => tool.name),
+			...(this.deferredToolManager?.getAllTools() ?? []).map((tool) => tool.name),
+		]);
+		return Object.fromEntries(
+			Object.entries(this.config.toolNameAliases ?? {}).filter(
+				([oldName, newName]) => known.has(newName) && !known.has(oldName),
+			),
+		);
 	}
 
 	/**
@@ -270,13 +295,15 @@ export class RuntimeContextBuilder {
 		toolName: string,
 		persistence?: AgentPersistenceOptions,
 	): BuiltTool | undefined {
-		const aliases = this.config.toolNameAliases ?? {};
-		const name = Object.prototype.hasOwnProperty.call(aliases, toolName)
-			? aliases[toolName]
-			: toolName;
-		return (
+		const find = (name: string) =>
 			this.getCurrentTools(persistence).find((tool) => tool.name === name) ??
-			this.deferredToolManager?.getTool(name)
+			this.deferredToolManager?.getTool(name);
+		const aliases = this.getApplicableToolNameAliases();
+		return (
+			find(toolName) ??
+			(Object.prototype.hasOwnProperty.call(aliases, toolName)
+				? find(aliases[toolName])
+				: undefined)
 		);
 	}
 

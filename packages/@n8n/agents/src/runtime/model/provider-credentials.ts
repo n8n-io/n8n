@@ -46,6 +46,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	minimax: apiKeyCreds,
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
+	/**
+	 * Claude through OpenRouter's Anthropic-compatible Messages endpoint. Same
+	 * OpenRouter API key; the Messages wire format carries Anthropic features
+	 * such as tool search and thinking blocks that Chat Completions drops.
+	 */
+	'openrouter-anthropic': apiKeyCreds,
 	nvidia: apiKeyCreds,
 
 	'azure-openai': z

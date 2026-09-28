@@ -147,11 +147,9 @@ export class DeferredToolManager {
 		return this.toolsByName.get(toolName);
 	}
 
-	/** Deferred tools not loaded yet. Native tool search sends these with `deferLoading`. */
-	getUnloadedTools(): BuiltTool[] {
-		return Array.from(this.toolsByName.values()).filter(
-			(tool) => !this.loadedToolNames.has(tool.name),
-		);
+	/** Every deferred tool, loaded or not. Native tool search sends all of them with `deferLoading`. */
+	getAllTools(): BuiltTool[] {
+		return Array.from(this.toolsByName.values());
 	}
 
 	hydrateLoadedToolsFromMessages(messages: AgentDbMessage[]): void {

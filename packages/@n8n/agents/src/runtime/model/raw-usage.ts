@@ -75,6 +75,7 @@ export class AnthropicRawUsageReader implements RawUsageReader {
 const RAW_USAGE_READERS: Partial<Record<ProviderId, () => RawUsageReader>> = {
 	anthropic: () => new AnthropicRawUsageReader(),
 	'google-vertex-anthropic': () => new AnthropicRawUsageReader(),
+	'openrouter-anthropic': () => new AnthropicRawUsageReader(),
 };
 
 /**

@@ -119,10 +119,11 @@ describe('RuntimeContextBuilder with native tool search', () => {
 		const staticContext = builder.buildStaticLoopContext();
 		const tools = builder.buildToolLoopContext(staticContext.aiProviderTools);
 
+		// Eager tools first, then deferred tools, each sorted by name.
 		expect(Object.keys(tools.aiTools)).toEqual([
 			'core_tool',
-			'rare_tool',
 			'other_tool',
+			'rare_tool',
 			'anthropic.tool_search_bm25_20251119',
 		]);
 		expect(tools.aiTools.rare_tool.providerOptions?.anthropic).toMatchObject({
@@ -132,7 +133,7 @@ describe('RuntimeContextBuilder with native tool search', () => {
 		expect(tools.aiTools).not.toHaveProperty(SEARCH_TOOLS_TOOL_NAME);
 		expect(tools.aiTools).not.toHaveProperty(LOAD_TOOL_TOOL_NAME);
 		// Every deferred tool stays executable when the model calls it after a search.
-		expect([...tools.toolMap.keys()]).toEqual(['core_tool', 'rare_tool', 'other_tool']);
+		expect([...tools.toolMap.keys()]).toEqual(['core_tool', 'other_tool', 'rare_tool']);
 	});
 
 	it('keeps the cache breakpoint on the last eagerly sent tool', () => {
@@ -147,7 +148,7 @@ describe('RuntimeContextBuilder with native tool search', () => {
 		);
 	});
 
-	it('sends a loaded tool eagerly and includes its rules only then', () => {
+	it('keeps the tool list fixed when a skill loads a deferred tool', () => {
 		const { builder, manager } = createBuilder(
 			stubModel('anthropic.messages', 'claude-sonnet-4-6'),
 			[core],
@@ -155,16 +156,27 @@ describe('RuntimeContextBuilder with native tool search', () => {
 		);
 		const staticContext = builder.buildStaticLoopContext();
 		const before = builder.buildToolLoopContext(staticContext.aiProviderTools);
-		expect(before.effectiveInstructions).not.toContain('Tuesdays');
 
 		manager.load('rare_tool');
 		const after = builder.buildToolLoopContext(staticContext.aiProviderTools);
-		expect(after.aiTools.rare_tool.providerOptions?.anthropic).not.toHaveProperty('deferLoading');
-		expect(after.aiTools.other_tool.providerOptions?.anthropic).toMatchObject({
-			deferLoading: true,
-		});
-		expect(after.staticToolCacheName).toBe('rare_tool');
-		expect(after.volatileInstructions).toContain('Tuesdays');
+
+		// Moving the tool to the eager set would rewrite the cached prefix.
+		expect(after.aiTools).toEqual(before.aiTools);
+		expect(after.staticToolCacheName).toBe('core_tool');
+		expect(after.effectiveInstructions).not.toContain('Tuesdays');
+		expect(after.volatileInstructions ?? '').not.toContain('Tuesdays');
+	});
+
+	it('orders eager tools by name whatever order they are registered in', () => {
+		const { builder } = createBuilder(
+			stubModel('anthropic.messages', 'claude-sonnet-4-6'),
+			[tool('zeta'), tool('alpha')],
+			[rare],
+		);
+		const staticContext = builder.buildStaticLoopContext();
+		const tools = builder.buildToolLoopContext(staticContext.aiProviderTools);
+		expect(Object.keys(tools.aiTools).slice(0, 2)).toEqual(['alpha', 'zeta']);
+		expect(tools.staticToolCacheName).toBe('zeta');
 	});
 
 	it('keeps search_tools and load_tool for providers without tool search', () => {
@@ -178,8 +190,8 @@ describe('RuntimeContextBuilder with native tool search', () => {
 
 		expect(Object.keys(tools.aiTools)).toEqual([
 			'core_tool',
-			SEARCH_TOOLS_TOOL_NAME,
 			LOAD_TOOL_TOOL_NAME,
+			SEARCH_TOOLS_TOOL_NAME,
 		]);
 		expect(tools.staticToolCacheName).toBeUndefined();
 	});
@@ -227,5 +239,25 @@ describe('RuntimeContextBuilder.findToolForResume', () => {
 		const builder = new RuntimeContextBuilder(config, undefined);
 		expect(builder.findToolForResume('ask-user')).toBe(renamed);
 		expect(builder.findToolForResume('constructor')).toBeUndefined();
+	});
+});
+
+describe('RuntimeContextBuilder.getApplicableToolNameAliases', () => {
+	it('skips an alias whose old name is still a live tool', () => {
+		const config = {
+			name: 'test-agent',
+			model: stubModel('anthropic.messages', 'claude-sonnet-4-6'),
+			instructions: '',
+			// An MCP tool that still uses a name the agent's own tool gave up.
+			tools: [tool('nodes_search'), tool('search_nodes')],
+			toolNameAliases: {
+				search_nodes: 'nodes_search',
+				write_config: 'config_write',
+				'build-workflow': 'workflow_build',
+			},
+		} as AgentRuntimeConfig;
+		const builder = new RuntimeContextBuilder(config, undefined);
+		expect(builder.getApplicableToolNameAliases()).toEqual({});
+		expect(builder.findToolForResume('search_nodes')?.name).toBe('search_nodes');
 	});
 });

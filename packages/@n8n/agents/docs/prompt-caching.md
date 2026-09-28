@@ -237,5 +237,8 @@ definitions out of the rendered prefix, so:
 - Finding a deferred tool does not change the request, so the cache survives.
 - A deferred tool's `systemInstruction` is left out until the tool is loaded.
 
-Tools that an active skill needs are still sent eagerly, as with `load_tool`.
+The tool list is fixed for the conversation: eager tools sorted by name, then
+deferred tools sorted by name. A tool that an active skill loads stays
+deferred, because moving it to the eager set would change the prefix; the
+model finds it with the search tool.
 

@@ -58,7 +58,11 @@ function isEnabledForProvider(
 /** Providers that speak the Anthropic Messages API (including Vertex Claude). */
 export function isAnthropicMessagesProvider(modelId: string): boolean {
 	const provider = getProviderPrefix(modelId);
-	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
+	return (
+		provider === 'anthropic' ||
+		provider === 'google-vertex-anthropic' ||
+		provider === 'openrouter-anthropic'
+	);
 }
 
 /**

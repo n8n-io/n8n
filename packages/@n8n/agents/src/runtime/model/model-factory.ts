@@ -16,6 +16,7 @@ import {
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
+import { OPENROUTER_API_BASE_URL, withOpenRouterProviderPreference } from './openrouter';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -155,6 +156,7 @@ export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 		case 'anthropic':
 		case 'google-vertex-anthropic':
 		case 'openrouter':
+		case 'openrouter-anthropic':
 			return true;
 		case 'openai': {
 			if (typeof model === 'string') return true;
@@ -245,6 +247,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				}
 			}
 			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	'openrouter-anthropic': {
+		build: (creds, model, fetch) => {
+			const { createAnthropic } =
+				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
+			return createAnthropic({
+				baseURL: creds.baseURL || OPENROUTER_API_BASE_URL,
+				// OpenRouter authenticates with a Bearer token, not `x-api-key`.
+				authToken: creds.apiKey,
+				headers: creds.headers,
+				fetch: withOpenRouterProviderPreference(fetch ?? globalFetch, 'anthropic'),
+			})(model);
 		},
 	},
 	'google-vertex-anthropic': {

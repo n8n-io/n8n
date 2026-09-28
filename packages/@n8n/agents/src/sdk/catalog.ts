@@ -9,10 +9,17 @@ const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
 	'azure-cognitive-services': 'azure-openai',
 };
 
+/** Agent providers priced from another catalog provider's entry for the same model. */
+const COST_PROVIDER_FALLBACKS: Record<string, string> = {
+	// OpenRouter bills Claude at Anthropic's list price.
+	'openrouter-anthropic': 'anthropic',
+};
+
 const AGENT_PROVIDER_NAMES: Record<string, string> = {
 	'aws-bedrock': 'AWS Bedrock',
 	'azure-openai': 'Azure OpenAI',
 	'google-vertex-anthropic': 'Google Vertex Anthropic',
+	'openrouter-anthropic': 'OpenRouter Anthropic',
 };
 
 /** Cost per million tokens. */
@@ -297,8 +304,9 @@ export async function getModelCost(modelId: string): Promise<ModelCost | undefin
 	if (!catalog) return undefined;
 
 	const { provider, model: modelName } = splitModelId(modelId);
+	const catalogProvider = COST_PROVIDER_FALLBACKS[provider] ?? provider;
 
-	return catalog[provider]?.models[modelName]?.cost;
+	return catalog[catalogProvider]?.models[modelName]?.cost;
 }
 
 /**

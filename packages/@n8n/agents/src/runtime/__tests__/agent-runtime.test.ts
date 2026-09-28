@@ -6694,7 +6694,7 @@ describe('promptCaching', () => {
 		}
 	});
 
-	it('adds a tool cache breakpoint on flag_memory for an episodic Anthropic agent', async () => {
+	it('adds a tool cache breakpoint on the last memory tool for an episodic Anthropic agent', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -6716,7 +6716,9 @@ describe('promptCaching', () => {
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
 		expect(tools).toHaveProperty('recall_memory');
 		expect(tools).toHaveProperty('flag_memory');
-		expect(tools.flag_memory.providerOptions).toEqual({
+		// Tools are sorted by name, so `recall_memory` closes the tool block.
+		expect(Object.keys(tools).at(-1)).toBe('recall_memory');
+		expect(tools.recall_memory.providerOptions).toEqual({
 			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
