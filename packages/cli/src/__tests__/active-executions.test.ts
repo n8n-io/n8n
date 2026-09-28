@@ -610,6 +610,7 @@ describe('ActiveExecutions', () => {
 			expect(workflowExecution.cancel).toHaveBeenCalled();
 			expect(enqueuedWorkflowExecution.cancel).not.toHaveBeenCalled();
 			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([inProcessExecutionId]);
+			expect(activeExecutions.has(enqueuedExecutionId)).toBe(true);
 
 			const outcome = await Promise.race([
 				enqueuedPostExecutePromise.then(() => 'settled').catch(() => 'settled'),
