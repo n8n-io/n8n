@@ -20,7 +20,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface GatewayTokenResponse {
 	token: string;

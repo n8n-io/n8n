@@ -10,7 +10,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 

@@ -1,5 +1,6 @@
 /** Compute per-package scope and dispatch to vitest with the right flags. */
 
+import { changedCoverageIncludes } from '@n8n/vitest-config/changed-file-coverage';
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 
@@ -12,6 +13,37 @@ export interface TestScopedOptions {
 	packageName?: string;
 	affectedPackages?: string[] | null;
 	passthroughArgs: string[];
+	/** True when the run collects coverage (`COVERAGE_ENABLED=true`). */
+	collectCoverage?: boolean;
+}
+
+/**
+ * Build the vitest coverage flags for a run with a CHANGED_FILES signal.
+ *
+ * `@n8n/vitest-config/changed-file-coverage` decides which files count. The
+ * shared vitest configs apply the same rule. The flags also cover packages
+ * whose config does not use the shared helper, because CLI flags win.
+ * When the package has no changed source files, coverage is turned off.
+ */
+export function buildCoverageArgs(
+	changedFiles: string[],
+	packageDir: string,
+	rootDir: string,
+): string[] {
+	const includes = changedCoverageIncludes(changedFiles, packageDir, rootDir);
+	if (includes.length === 0) return ['--coverage.enabled=false'];
+	return ['--coverage.provider=istanbul', ...includes.map((f) => `--coverage.include=${f}`)];
+}
+
+/**
+ * Coverage flags for a run. Returns none when the run collects no coverage or
+ * has no change signal: then the vitest config decides coverage.
+ */
+export function resolveCoverageArgs(
+	options: Pick<TestScopedOptions, 'changedFiles' | 'packageDir' | 'rootDir' | 'collectCoverage'>,
+): string[] {
+	if (!options.collectCoverage || options.changedFiles === null) return [];
+	return buildCoverageArgs(options.changedFiles, options.packageDir, options.rootDir);
 }
 
 /**
@@ -54,7 +86,16 @@ export function runTestScoped(options: TestScopedOptions): number {
 		console.log(`[janitor:test-scoped] scoping to ${scope.files.length} file(s)`);
 	}
 
-	const args = buildRunnerArgs(scope, options.rootDir, options.passthroughArgs);
+	const coverageArgs = resolveCoverageArgs(options);
+	if (coverageArgs.length > 0) {
+		console.log(`[janitor:test-scoped] coverage: ${coverageArgs.join(' ')}`);
+	}
+
+	// Coverage flags go first, so a passthrough flag wins for single-value options.
+	const args = buildRunnerArgs(scope, options.rootDir, [
+		...coverageArgs,
+		...options.passthroughArgs,
+	]);
 	// Pass cwd explicitly so an override via --package-dir is honoured
 	// (otherwise spawnSync inherits the caller's cwd and vitest would
 	// resolve config + tests from the wrong project).

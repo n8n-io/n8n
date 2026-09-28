@@ -53,13 +53,9 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
-  # CodSpeed benchmarks run post-merge only. On PRs they failed for reasons
-  # unrelated to the change, so the red check gave authors no usable signal.
-  performance:
-    name: Performance
-    uses: ./.github/workflows/test-bench-reusable.yml
-    with:
-      ref: ${{ github.sha }}
+  # The CodSpeed `performance` job (test-bench-reusable.yml) is removed for now:
+  # @codspeed/vitest-plugin does not support Vitest 5 yet. Add the job back, and
+  # add it to `notify-on-failure.needs`, when the plugin supports Vitest 5.
 
   # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
   verify-single-instance-npm:
@@ -74,7 +70,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [unit-test, lint, performance, build-and-format]
+    needs: [unit-test, lint, build-and-format]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

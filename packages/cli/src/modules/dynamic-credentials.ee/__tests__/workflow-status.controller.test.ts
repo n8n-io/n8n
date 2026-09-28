@@ -8,7 +8,7 @@ import type { DynamicCredentialCorsService } from '../services/dynamic-credentia
 import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 import { WorkflowStatusController } from '../workflow-status.controller';
 import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { GlobalConfig } from '@n8n/config';
 

@@ -152,6 +152,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
 	credentialTypePolicyIdParamSchema,
@@ -453,6 +454,9 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
+	instanceAiThreadTabRefSchema,
+	instanceAiThreadTabSchema,
+	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -664,6 +668,10 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
+	InstanceAiThreadTabRef,
+	InstanceAiThreadTab,
+	InstanceAiThreadTabsState,
+	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,

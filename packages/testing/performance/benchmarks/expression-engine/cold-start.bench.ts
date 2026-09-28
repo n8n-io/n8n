@@ -8,10 +8,9 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
-import { bench } from 'vitest';
 import { IsolatedVmBridge, QuickJsBridge } from '@n8n/expression-runtime';
 
-import { BENCH_OPTIONS } from '../bench-options';
+import { defineBench } from '../bench-options';
 
 const EXPRESSION = 'return typeof DateTime !== "undefined" && 40 + 2';
 
@@ -21,35 +20,23 @@ const warmup = new QuickJsBridge({ timeout: 5000 });
 await warmup.initialize();
 await warmup.dispose();
 
-bench(
-	'cold start: isolated-vm initializeSync + eval',
-	async () => {
-		const bridge = new IsolatedVmBridge({ timeout: 5000 });
-		bridge.initializeSync();
-		bridge.execute(EXPRESSION, {});
-		await bridge.dispose();
-	},
-	BENCH_OPTIONS,
-);
+defineBench('cold start: isolated-vm initializeSync + eval', async () => {
+	const bridge = new IsolatedVmBridge({ timeout: 5000 });
+	bridge.initializeSync();
+	bridge.execute(EXPRESSION, {});
+	await bridge.dispose();
+});
 
-bench(
-	'cold start: isolated-vm initializeSync + eval, compile cache',
-	async () => {
-		const bridge = new IsolatedVmBridge({ timeout: 5000, compileCache: true });
-		bridge.initializeSync();
-		bridge.execute(EXPRESSION, {});
-		await bridge.dispose();
-	},
-	BENCH_OPTIONS,
-);
+defineBench('cold start: isolated-vm initializeSync + eval, compile cache', async () => {
+	const bridge = new IsolatedVmBridge({ timeout: 5000, compileCache: true });
+	bridge.initializeSync();
+	bridge.execute(EXPRESSION, {});
+	await bridge.dispose();
+});
 
-bench(
-	'cold start: quickjs initializeSync + eval',
-	async () => {
-		const bridge = new QuickJsBridge({ timeout: 5000 });
-		bridge.initializeSync();
-		bridge.execute(EXPRESSION, {});
-		await bridge.dispose();
-	},
-	BENCH_OPTIONS,
-);
+defineBench('cold start: quickjs initializeSync + eval', async () => {
+	const bridge = new QuickJsBridge({ timeout: 5000 });
+	bridge.initializeSync();
+	bridge.execute(EXPRESSION, {});
+	await bridge.dispose();
+});
