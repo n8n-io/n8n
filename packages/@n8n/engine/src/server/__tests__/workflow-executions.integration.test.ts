@@ -21,8 +21,8 @@ import {
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
-import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
+import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -218,7 +218,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
-let responseSender: ExecutionResponseSender;
+let lifecycleEventPublisher: LifecycleEventPublisher;
 let url: string;
 let stop: () => Promise<void>;
 
@@ -233,16 +233,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-	responseSender = { send: vi.fn(), emitterFor: vi.fn(), stop: vi.fn() };
+	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
-		cancelExecution: new CancelExecutionService(
-			executionStore,
-			stepStore,
-			noopLifecycleEventPublisher,
-			responseSender,
-		),
+		cancelExecution: new CancelExecutionService(executionStore, stepStore, lifecycleEventPublisher),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
@@ -735,12 +730,11 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 		for (const step of [queued, waiting]) {
 			expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
 		}
-		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
-			type: 'ended',
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'execution:cancelled',
 			executionId,
 			workflowId: 'wf-1',
-			status: 'cancelled',
-			lastStep: null,
+			at: expect.any(String),
 		});
 	});
 
@@ -751,7 +745,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 		const response = await cancel(executionId).expect(200);
 
 		expect(response.body).toEqual({ executionId, status: 'cancelled' });
-		expect(responseSender.send).toHaveBeenCalledTimes(1);
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(1);
 	});
 
 	it('refuses to cancel an execution that has ended', async () => {
@@ -767,6 +761,6 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			reason: 'The execution has already completed',
 			details: { status: 'completed' },
 		});
-		expect(responseSender.send).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });
