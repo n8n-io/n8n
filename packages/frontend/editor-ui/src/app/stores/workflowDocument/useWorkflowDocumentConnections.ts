@@ -54,9 +54,8 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 
 		const [sourceData, destinationData] = data.connection;
 		const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
-		const connectionsToCheck = connections.value[sourceData.node]?.[sourceData.type]?.[
-			sourceData.index
-		];
+		const connectionsToCheck =
+			connections.value[sourceData.node]?.[sourceData.type]?.[sourceData.index];
 
 		if (!connectionsToCheck) return false;
 
