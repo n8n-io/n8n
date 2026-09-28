@@ -257,7 +257,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
 		properties: z.object({
 			variant: z.enum(['control', 'variant']),
-			// eslint-disable-next-line @typescript-eslint/naming-convention (PostHog feature property)
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
 		}),
 	},
@@ -272,7 +272,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
 				),
 			variant: z.enum(['control', 'variant']),
-			// eslint-disable-next-line @typescript-eslint/naming-convention (PostHog feature property)
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
 		}),
 	},
