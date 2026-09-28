@@ -345,10 +345,9 @@ const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
 /**
- * Where the follow-up instructions live depends on the branch: an activated
- * skill is delivered by the runtime (appended to this result on the turn that
- * activates it, in the system prompt on later turns), an inlined copy sits in
- * `instructions`.
+ * Where the follow-up instructions live depends on the branch: the runtime
+ * delivers an activated skill with this tool result, and an inlined copy sits
+ * in `instructions`.
  */
 function followInstructionsClause(skillId: string, label: string, activated: boolean): string {
 	return activated
