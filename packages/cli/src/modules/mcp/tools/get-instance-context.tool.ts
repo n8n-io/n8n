@@ -32,7 +32,7 @@ export const EMPTY_INSTANCE_CONTEXT_TEXT = 'Nothing has been built on this insta
  */
 export const NOTHING_EXPOSED_TEXT =
 	'No workflows on this instance are exposed to MCP, so there is nothing to report here. ' +
-	'Ask the user to expose one in Settings, under MCP.';
+	'Ask the user to turn on "Available in MCP" in the workflow settings.';
 
 const DESCRIPTION =
 	'Read the opening picture of this n8n instance: which workflows exist, what has recently been ' +
