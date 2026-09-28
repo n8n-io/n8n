@@ -662,7 +662,6 @@ describe('StepSettledHandler lifecycle events', () => {
 	});
 
 	it('announces nothing for the steps it cancels or skips', async () => {
-		// TODO(CAT-3990): cancelled and skipped steps announce nothing.
 		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
 
 		await handler.handle(event);
