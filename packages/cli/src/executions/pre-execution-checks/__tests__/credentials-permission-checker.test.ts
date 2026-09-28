@@ -771,6 +771,59 @@ describe('CredentialsPermissionChecker', () => {
 				expect.arrayContaining([activeCredentialId, staleCredentialId]),
 			);
 		});
+
+		describe('getCredentialIdsForNodes', () => {
+			it('only returns the credential type actively used by the current configuration', () => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						credentials: [
+							{
+								name: 'httpSslAuth',
+								required: true,
+								displayOptions: { show: { provideSslCertificates: [true] } },
+							},
+						],
+					},
+				} as never);
+
+				expect(permissionChecker.getCredentialIdsForNodes([httpRequestNode])).toEqual([
+					activeCredentialId,
+				]);
+			});
+
+			it('returns every referenced credential when the node type cannot be resolved', () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(() => {
+					throw new Error('Unknown node type');
+				});
+
+				expect(permissionChecker.getCredentialIdsForNodes([httpRequestNode])).toEqual(
+					expect.arrayContaining([activeCredentialId, staleCredentialId]),
+				);
+			});
+		});
+	});
+
+	describe('getCredentialIdsForNodes', () => {
+		it('returns the ids of credentials referenced by the given nodes, deduplicated', () => {
+			const nodeB: INode = { ...node, name: 'Node B' };
+
+			expect(permissionChecker.getCredentialIdsForNodes([node, nodeB])).toEqual([credentialId]);
+		});
+
+		it('skips disabled nodes', () => {
+			const disabledNode: INode = { ...node, disabled: true };
+
+			expect(permissionChecker.getCredentialIdsForNodes([disabledNode])).toEqual([]);
+		});
+
+		it('skips a credential reference with no id instead of throwing', () => {
+			const nodeWithNoId: INode = {
+				...node,
+				credentials: { someCredential: { id: null as unknown as string, name: 'No id' } },
+			};
+
+			expect(permissionChecker.getCredentialIdsForNodes([nodeWithNoId])).toEqual([]);
+		});
 	});
 
 	describe('checkForUser', () => {
@@ -986,6 +1039,73 @@ describe('CredentialsPermissionChecker', () => {
 
 			await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
 				'Node "Test Node" does not have access to the credential',
+			);
+		});
+	});
+
+	// The per-credential rule itself lives in `CredentialsFinderService` and is
+	// tested there. These two only own the layering: instance-scoped ids that
+	// nobody may use, and a user id that cannot be resolved.
+	describe('resolveInaccessibleCredentialIdsForUser', () => {
+		const user = mock<User>({ role: GLOBAL_OWNER_ROLE });
+
+		it('returns what the shared check reports, and forwards the options', async () => {
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Team Gmail', exists: true, ownerProject: null },
+			]);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([credentialId]);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				user,
+				[credentialId],
+				{ ignoreGlobalUseScope: true },
+			);
+		});
+
+		it('reports an instance-scoped credential without asking about it', async () => {
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: credentialId }),
+			]);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId]),
+			).resolves.toEqual([credentialId]);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resolveInaccessibleCredentialIdsForUserId', () => {
+		const userId = 'user-123';
+
+		it('fails closed when the user cannot be found', async () => {
+			userRepository.findOne.mockResolvedValueOnce(null);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUserId(userId, [credentialId]),
+			).resolves.toEqual([credentialId]);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
+		});
+
+		it('loads the user with the role relation and delegates to the core check', async () => {
+			const actingUser = mock<User>({ id: userId, role: GLOBAL_OWNER_ROLE });
+			userRepository.findOne.mockResolvedValueOnce(actingUser);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([]);
+
+			await expect(
+				permissionChecker.resolveInaccessibleCredentialIdsForUserId(userId, [credentialId]),
+			).resolves.toEqual([]);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: userId },
+				relations: ['role'],
+			});
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				actingUser,
+				[credentialId],
+				{},
 			);
 		});
 	});

@@ -91,6 +91,57 @@ const mentionEntity = {
 	mentioned: { id: `28:${TEAMS_APP_ID}`, name: 'n8n Agent' },
 };
 
+// A channel conversation id carries the id of the thread's root message, so
+// every thread in a channel is its own conversation — and its own session.
+// `channelData.team.aadGroupId` + `channelData.channel.id` are what mark the
+// activity as a channel one.
+
+const TEAMS_CHANNEL_ID = '19:channel_engineering@thread.tacv2';
+const TEAMS_TEAM_ID = '19:team_platform@thread.tacv2';
+const TEAMS_TEAM_AAD_GROUP_ID = '77777777-6666-5555-4444-333333333333';
+
+export const TEAMS_CHANNEL_CONVERSATION_ID = `${TEAMS_CHANNEL_ID};messageid=1700000000001`;
+export const TEAMS_CHANNEL_SECOND_THREAD_CONVERSATION_ID = `${TEAMS_CHANNEL_ID};messageid=1700000000002`;
+
+function channelActivity(overrides: Partial<TeamsActivityFixture> = {}): TeamsActivityFixture {
+	return baseActivity({
+		conversation: {
+			id: TEAMS_CHANNEL_CONVERSATION_ID,
+			conversationType: 'channel',
+			tenantId: TEAMS_TENANT_ID,
+		},
+		channelData: {
+			tenant: { id: TEAMS_TENANT_ID },
+			team: { id: TEAMS_TEAM_ID, aadGroupId: TEAMS_TEAM_AAD_GROUP_ID },
+			channel: { id: TEAMS_CHANNEL_ID },
+		},
+		...overrides,
+	});
+}
+
+export const channelMention: TeamsActivityFixture = channelActivity({
+	id: 'activity-channel-1',
+	text: '<at>n8n Agent</at> hello agent',
+	entities: [mentionEntity],
+});
+
+/** No mention: it only reaches the agent because the mention subscribed the thread. */
+export const channelFollowUp: TeamsActivityFixture = channelActivity({
+	id: 'activity-channel-2',
+	text: 'follow up',
+});
+
+export const channelSecondThreadMention: TeamsActivityFixture = channelActivity({
+	id: 'activity-channel-3',
+	text: '<at>n8n Agent</at> a different thread',
+	entities: [mentionEntity],
+	conversation: {
+		id: TEAMS_CHANNEL_SECOND_THREAD_CONVERSATION_ID,
+		conversationType: 'channel',
+		tenantId: TEAMS_TENANT_ID,
+	},
+});
+
 // A group chat conversation id carries no message id, so the whole chat is one
 // conversation and one session.
 
@@ -112,4 +163,43 @@ export const groupChatMention: TeamsActivityFixture = groupChatActivity({
 	id: 'activity-group-1',
 	text: '<at>n8n Agent</at> hello agent',
 	entities: [mentionEntity],
+});
+
+export const groupChatFollowUp: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-group-2',
+	text: 'follow up',
+});
+
+/**
+ * A group chat whose conversation id does not start with `19:`.
+ *
+ * The adapter reads the conversation id alone as "not a direct message" only
+ * when it starts with `19:`. This shape disagrees with that rule, so the
+ * explicit `conversationType` must carry the classification instead. If it does
+ * not, the chat is read as a direct message, and the adapter then holds the
+ * webhook response open for the whole agent run.
+ */
+export const TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID = 'a:group_chat_legacy';
+
+export const legacyGroupChatMention: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-legacy-group-1',
+	text: '<at>n8n Agent</at> hello agent',
+	entities: [mentionEntity],
+	conversation: {
+		id: TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
+		conversationType: 'groupChat',
+		tenantId: TEAMS_TENANT_ID,
+		isGroup: true,
+	},
+});
+
+export const legacyGroupChatFollowUp: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-legacy-group-2',
+	text: 'follow up',
+	conversation: {
+		id: TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
+		conversationType: 'groupChat',
+		tenantId: TEAMS_TENANT_ID,
+		isGroup: true,
+	},
 });

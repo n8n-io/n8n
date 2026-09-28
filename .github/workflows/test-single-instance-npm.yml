@@ -74,7 +74,7 @@ jobs:
       # to `base-ref`, but only to diff it: `git diff --name-only --no-renames` reads trees, so the
       # blobs can stay on the server. Nothing after this step reads an object outside the working
       # tree, which the checkout materializes in full.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base-branch }}
           fetch-depth: ${{ inputs.base-branch != '' && 1 || 0 }}

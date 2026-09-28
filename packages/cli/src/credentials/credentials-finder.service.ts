@@ -49,7 +49,10 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isGlobal: true, usageScope: 'project' },
+			where: this.credentialsRepository.excludePendingAuthorization({
+				isGlobal: true,
+				usageScope: 'project',
+			}),
 			relations: { shared: true },
 		});
 	}
@@ -188,7 +191,7 @@ export class CredentialsFinderService {
 		}
 
 		const credentials = await this.credentialsRepository.find({
-			where,
+			where: this.credentialsRepository.excludePendingAuthorization(where),
 			relations: { shared: true },
 		});
 
@@ -342,14 +345,19 @@ export class CredentialsFinderService {
 	 *
 	 * A credential that no longer exists counts as unusable — for the instance
 	 * owner too, since nobody can use a row that is gone.
+	 *
+	 * @param ignoreGlobalUseScope - answer for this user's own access only, as if
+	 * they held no instance-wide `credential:use`. Redaction asks this way: an
+	 * Owner must not see execution data through a grant nobody else has.
 	 */
 	async findUnusableCredentialsForUser(
 		user: User,
 		credentialIds: string[],
+		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<UnusableCredential[]> {
 		if (credentialIds.length === 0) return [];
 
-		if (hasGlobalScope(user, 'credential:use')) {
+		if (!ignoreGlobalUseScope && hasGlobalScope(user, 'credential:use')) {
 			const existingIds = new Set(await this.credentialsRepository.findExistingIds(credentialIds));
 			return await this.describeCredentials(credentialIds.filter((id) => !existingIds.has(id)));
 		}
@@ -358,6 +366,9 @@ export class CredentialsFinderService {
 			credentialIds,
 			user,
 			CREDENTIAL_USABILITY_SCOPES,
+			// Ask for this user's own access, ignoring an instance-wide grant, so the
+			// answer matches what a colleague with no elevated scopes would get.
+			ignoreGlobalUseScope ? { ignoreGlobalOverride: true } : {},
 		);
 
 		return await this.describeCredentials(credentialIds.filter((id) => !usableIds.has(id)));
@@ -388,7 +399,7 @@ export class CredentialsFinderService {
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { visibilityOnly?: boolean } = {},
+		options: { visibilityOnly?: boolean; ignoreGlobalOverride?: boolean } = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
@@ -397,7 +408,10 @@ export class CredentialsFinderService {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
+		if (
+			options.ignoreGlobalOverride ||
+			!this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+		) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -425,28 +439,30 @@ export class CredentialsFinderService {
 			}
 		}
 
-		// Also include global credentials if scopes allow read-only access
-		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
-			}
-		} else if (this.hasGlobalConnectAccess(scopes)) {
-			// Only end-user (resolvable) global credentials grant connect access.
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: {
-						id: In(chunk),
-						isGlobal: true,
-						usageScope: 'project',
-						isResolvable: true,
-					},
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
+		// Also include global credentials if scopes allow read-only access.
+		if (!options.ignoreGlobalOverride) {
+			if (this.hasGlobalReadOnlyAccess(scopes)) {
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
+			} else if (this.hasGlobalConnectAccess(scopes)) {
+				// Only end-user (resolvable) global credentials grant connect access.
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: {
+							id: In(chunk),
+							isGlobal: true,
+							usageScope: 'project',
+							isResolvable: true,
+						},
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
 			}
 		}
 

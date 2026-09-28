@@ -1,4 +1,4 @@
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -187,6 +187,46 @@ export class CredentialsPermissionChecker {
 		};
 	}
 
+	/**
+	 * Id-based sibling of {@link resolveInaccessibleCredentialIdsForUser}, for a caller
+	 * that only has a user id and not an already-loaded `User` (e.g. a triggering user
+	 * looked up from a sub-workflow's parameter data).
+	 */
+	async resolveInaccessibleCredentialIdsForUserId(
+		userId: string,
+		credentialIds: string[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<string[]> {
+		const user = await this.loadUserWithRole(userId);
+		if (!user) {
+			// Cannot resolve the user - fail closed.
+			return credentialIds;
+		}
+		return await this.resolveInaccessibleCredentialIdsForUser(user, credentialIds, options);
+	}
+
+	/**
+	 * The ids among `credentialIds` that `user` personally cannot use, plus the ones
+	 * no workflow may use at all. Ids only, for callers that do not need to name them
+	 * in an error — redaction, which only has to decide whether to redact.
+	 */
+	async resolveInaccessibleCredentialIdsForUser(
+		user: User,
+		credentialIds: string[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<string[]> {
+		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
+		if (projectScopedIds.length === 0) return instanceScopedIds;
+
+		const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
+			user,
+			projectScopedIds,
+			options,
+		);
+
+		return [...instanceScopedIds, ...unusable.map((c) => c.id)];
+	}
+
 	/** Loads the role relation (scopes are eager) so `hasGlobalScope` can resolve. */
 	private async loadUserWithRole(userId: string) {
 		return await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
@@ -316,6 +356,32 @@ export class CredentialsPermissionChecker {
 			),
 			unusableForActingUser,
 		};
+	}
+
+	/**
+	 * The ids of the credentials actively referenced by `nodes` — filtered to
+	 * the credential type actually selected on each node's current
+	 * configuration, same as `mapCredIdsToNodes` — deduplicated.
+	 *
+	 * Unlike `mapCredIdsToNodes`, this never throws on a credential reference
+	 * with no id: it is used on the read path for past executions (redaction),
+	 * where a malformed or legacy reference must be skipped, not treated as a
+	 * validation failure worth failing the request over.
+	 */
+	getCredentialIdsForNodes(nodes: INode[]): string[] {
+		const ids = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled || !node.credentials) continue;
+
+			const activeCredTypes = this.getActiveCredentialTypes(node);
+
+			for (const [credType, cred] of Object.entries(node.credentials)) {
+				if (!cred.id) continue;
+				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;
+				ids.add(cred.id);
+			}
+		}
+		return [...ids];
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {
