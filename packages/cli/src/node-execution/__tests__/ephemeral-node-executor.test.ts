@@ -21,6 +21,8 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
@@ -97,6 +99,7 @@ describe('EphemeralNodeExecutor', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 	const logger = mockInstance(Logger);
+	const policyEnforcementService = mockInstance(PolicyEnforcementService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
 	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
 	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
@@ -108,6 +111,7 @@ describe('EphemeralNodeExecutor', () => {
 		credentialsRepository,
 		sharedCredentialsRepository,
 		logger,
+		policyEnforcementService,
 	);
 
 	const toolDescription: INodeTypeDescription = {
@@ -700,6 +704,110 @@ describe('EphemeralNodeExecutor', () => {
 
 			expect(result.status).toBe('error');
 			expect(result.error).toMatch(/No output data/);
+		});
+	});
+
+	describe('node type policy', () => {
+		const blocked = () =>
+			new PolicyViolationError([
+				{
+					kind: 'node-type-unavailable',
+					checkId: 'node-type-availability',
+					message: 'Node type "n8n-nodes-base.dateTimeTool" is blocked by an instance policy',
+					subject: 'n8n-nodes-base.dateTimeTool',
+					subjectType: 'nodeType',
+					scope: 'instance',
+				},
+			]);
+
+		it('polices the node as a one-node workflow in the tool project', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledWith(
+				{
+					workflow: {
+						id: null,
+						name: 'Target Node',
+						nodes: [
+							expect.objectContaining({ type: 'n8n-nodes-base.dateTimeTool', typeVersion: 2 }),
+						],
+					},
+					projectId: 'p-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
+		});
+
+		it('returns a tool error and never runs a blocked node', async () => {
+			const execute = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: expect.stringContaining('is blocked by an instance policy'),
+			});
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it('never runs supplyData for a blocked native tool node', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: { input: 'n8n' } }],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+
+		it('skips schema introspection for a blocked node instead of failing the agent build', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
 		});
 	});
 

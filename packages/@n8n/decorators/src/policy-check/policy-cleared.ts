@@ -15,7 +15,7 @@ import type {
  * that silently never matches. Open to widening: `contentImport` in particular is generic over
  * artifact kind, and adding a kind here touches no signature.
  */
-export type PolicySubjectType = 'workflow' | 'credential';
+export type PolicySubjectType = 'workflow' | 'credential' | 'agent';
 
 /** What a decision was about. */
 export type PolicySubject = {
@@ -33,11 +33,13 @@ export type PolicySubject = {
  * clearance cover the content policy actually saw, so nothing may mutate `nodes` between the
  * check and the write.
  */
-export function workflowContentSubject(workflow: Pick<PolicedWorkflow, 'nodes'>): PolicySubject {
+export function workflowContentSubject(
+	workflow: Pick<PolicedWorkflow, 'nodes' | 'artifactKind'>,
+): PolicySubject {
 	// Same object within one request, so key order is stable.
 	const hash = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
 
-	return { type: 'workflow', id: hash };
+	return { type: workflow.artifactKind ?? 'workflow', id: hash };
 }
 
 /**
@@ -47,8 +49,10 @@ export function workflowContentSubject(workflow: Pick<PolicedWorkflow, 'nodes'>)
  * present would bind every create to the same `undefined` subject — a token for one create
  * would then clear any other.
  */
-export function workflowSubject(workflow: Pick<PolicedWorkflow, 'id' | 'nodes'>): PolicySubject {
-	if (workflow.id) return { type: 'workflow', id: workflow.id };
+export function workflowSubject(
+	workflow: Pick<PolicedWorkflow, 'id' | 'nodes' | 'artifactKind'>,
+): PolicySubject {
+	if (workflow.id) return { type: workflow.artifactKind ?? 'workflow', id: workflow.id };
 
 	return workflowContentSubject(workflow);
 }

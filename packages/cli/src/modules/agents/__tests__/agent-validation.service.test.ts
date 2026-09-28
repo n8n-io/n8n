@@ -14,6 +14,7 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentPolicyService } from '../agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -78,6 +79,8 @@ function makeService() {
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
+	const agentPolicyService = mock<AgentPolicyService>();
+	agentPolicyService.evaluatePublish.mockResolvedValue([]);
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -91,7 +94,9 @@ function makeService() {
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			agentPolicyService,
 		),
+		agentPolicyService,
 		agentRepository,
 		agentSkillsService,
 		agentTaskRepository,
@@ -501,6 +506,94 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
 			}),
 		]);
+	});
+
+	describe('policy', () => {
+		const slackTool = {
+			type: 'node' as const,
+			name: 'post_message',
+			node: {
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				credentials: { slackApi: { id: 'slack-1', name: 'Slack' } },
+			},
+		};
+		const blockedBy = (subjectType: string, subject: string) => ({
+			kind: 'x',
+			checkId: 'x',
+			message: 'blocked',
+			subjectType,
+			subject,
+		});
+
+		function setUp() {
+			const setup = makeService();
+			setup.nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { credentials: [], properties: [] },
+			} as never);
+			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, tools: [slackTool] }),
+			);
+			return setup;
+		}
+
+		const credentials = makeCredentialProvider([
+			{ id: 'openai-main', type: 'openAiApi' },
+			{ id: 'slack-1', type: 'slackApi' },
+		]);
+
+		it('points a blocked node type and a blocked credential type at the tool that uses them', async () => {
+			const { service, agentPolicyService } = setUp();
+			agentPolicyService.evaluatePublish.mockResolvedValue([
+				blockedBy('nodeType', 'n8n-nodes-base.slack'),
+				blockedBy('credentialType', 'slackApi'),
+			]);
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			const capability = { kind: 'tool', id: 'post_message', index: 0, toolType: 'node' };
+			expect(result.status).toBe('invalid');
+			expect(result.issues).toEqual([
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.node.nodeType',
+					capability,
+					reason: 'blocked_by_policy',
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.node.credentials.slackApi',
+					capability,
+					reason: 'blocked_by_policy',
+				},
+			]);
+			expect(agentPolicyService.evaluatePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				expect.objectContaining({ tools: [slackTool] }),
+			);
+		});
+
+		it('ignores a violation about something no tool uses', async () => {
+			const { service, agentPolicyService } = setUp();
+			agentPolicyService.evaluatePublish.mockResolvedValue([
+				blockedBy('nodeType', 'n8n-nodes-base.code'),
+			]);
+
+			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+			expect(result.issues).toEqual([]);
+		});
+
+		// A blocked tool fails on its own at run time; it must not refuse the whole chat.
+		it('does not ask the policy at runtime scope', async () => {
+			const { service, agentPolicyService } = setUp();
+
+			await service.validateAgentIsRunnable(agentId, projectId, credentials);
+
+			expect(agentPolicyService.evaluatePublish).not.toHaveBeenCalled();
+		});
 	});
 
 	it('ignores a conditionally required node-tool credential when its display options are inactive', async () => {

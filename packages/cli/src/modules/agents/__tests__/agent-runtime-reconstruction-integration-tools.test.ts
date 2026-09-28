@@ -84,6 +84,8 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -288,6 +290,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(logger, agentRepository, saveCompletion);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
@@ -331,6 +334,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -349,6 +353,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			saveCompletion,
 			definitionService,
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
@@ -366,6 +371,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<ProjectScopeService>(),
 			mock<AgentsSettingsService>(),
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
