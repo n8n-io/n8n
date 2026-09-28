@@ -609,7 +609,7 @@ export class PromotionsService {
 			...identity,
 			projectId,
 			selectedCount: selection.selectedWorkflowIds.length,
-			deletedCount: selection.deletedWorkflowIds.length,
+			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
