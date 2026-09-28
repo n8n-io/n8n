@@ -81,7 +81,10 @@ import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
-import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
+import type {
+	PendingWebhookResponse,
+	WebhookRunOutcome,
+} from '@/services/pending-webhook-response';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -1375,23 +1378,11 @@ export async function executeWebhook(
 					return await engineV2Webhooks.toRun(outcome, executionMode);
 				}
 
-				const isUndeliverable = outcome.status === 'undeliverable';
-				const errorResponse = isUndeliverable
-					? {
-							logMessage: 'Could not deliver an engine v2 webhook response',
-							responseMessage: outcome.error.message,
-							responseCode: 500,
-						}
-					: {
-							// timeout
-							logMessage: 'No answer arrived for an engine v2 webhook run',
-							responseMessage: 'The workflow did not answer in time',
-							responseCode: 504,
-						};
+				const errorResponse = toUnansweredRunResponse(outcome);
 				Container.get(Logger).warn(errorResponse.logMessage, {
 					executionId,
 					workflowId: workflowData.id,
-					...(isUndeliverable ? { error: outcome.error } : {}),
+					...(outcome.status === 'undeliverable' ? { error: outcome.error } : {}),
 				});
 				// The webhook node can answer before the execution starts. Do not send a
 				// second response when the execution response later settles.
@@ -1729,4 +1720,30 @@ export function _privateGetWebhookErrorMessage(
 		return error.message;
 	}
 	return `Workflow ${webhookType} Error: Workflow could not be started!`;
+}
+
+/** What to answer when an engine v2 run ends without a node's answer. */
+function toUnansweredRunResponse(
+	outcome: Extract<WebhookRunOutcome, { status: 'undeliverable' | 'cancelled' | 'timeout' }>,
+): { logMessage: string; responseMessage: string; responseCode: number } {
+	switch (outcome.status) {
+		case 'undeliverable':
+			return {
+				logMessage: 'Could not deliver an engine v2 webhook response',
+				responseMessage: outcome.error.message,
+				responseCode: 500,
+			};
+		case 'cancelled':
+			return {
+				logMessage: 'An engine v2 webhook run was cancelled',
+				responseMessage: 'The execution was cancelled',
+				responseCode: 500,
+			};
+		case 'timeout':
+			return {
+				logMessage: 'No answer arrived for an engine v2 webhook run',
+				responseMessage: 'The workflow did not answer in time',
+				responseCode: 504,
+			};
+	}
 }

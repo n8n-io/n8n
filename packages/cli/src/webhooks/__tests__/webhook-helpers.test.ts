@@ -2686,6 +2686,21 @@ describe('executeWebhook on engine v2', () => {
 				},
 			]);
 		});
+
+		it('answers with an error when the run is cancelled', async () => {
+			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const pending = await waitForResponse.mock.results[0]?.value;
+
+			expect(pending).toBeDefined();
+			pending?.resolve({ status: 'cancelled' });
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{ data: { message: 'The execution was cancelled' }, responseCode: 500 },
+			]);
+		});
 	});
 
 	describe('responseNode', () => {

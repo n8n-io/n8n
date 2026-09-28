@@ -13,6 +13,8 @@ export type WebhookRunOutcome =
 	| { status: 'failed'; nodeName: string; error?: { name: string; message: string } }
 	/** The execution response could not be produced or delivered. */
 	| { status: 'undeliverable'; error: { name: string; message: string } }
+	/** The run was stopped on request, so no node answers. */
+	| { status: 'cancelled' }
 	| { status: 'timeout' };
 
 export type PendingWebhookResponseOptions = {

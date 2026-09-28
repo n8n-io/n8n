@@ -186,6 +186,12 @@ export class EngineV2WebhookResponder {
 	}
 
 	private onEnded(received: EndedMessage, response: PendingWebhookResponse): void {
+		// Only a cancelled run ends without a settled step, so there is no answer to relay.
+		if (received.lastStep === null) {
+			response.resolve({ status: 'cancelled' });
+			return;
+		}
+
 		const { nodeName, outputs, error } = received.lastStep;
 
 		if (received.status === 'failed') {

@@ -153,6 +153,14 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
+	it('reports a cancelled run', async () => {
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
+
+		deliver(endedResponse(pending.executionId, { status: 'cancelled', lastStep: null }));
+
+		await expect(pending.settled).resolves.toEqual({ status: 'cancelled' });
+	});
+
 	it('reports the response produced by the Respond node', async () => {
 		const pending = await responder.waitForResponse(createExecutionIdV2(), stepResponse);
 
