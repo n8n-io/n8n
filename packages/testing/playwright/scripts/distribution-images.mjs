@@ -1,6 +1,7 @@
 // @ts-check
 
 const CAPABILITY_SERVICES = {
+	'community-packages': ['npmRegistry'],
 	'dynamic-credentials': ['keycloak'],
 	email: ['mailpit'],
 	'external-secrets': ['localstack'],
@@ -24,6 +25,7 @@ const SERVICE_IMAGES = {
 	mailpit: ['mailpit'],
 	mysql: ['mysql'],
 	ngrok: ['ngrok'],
+	npmRegistry: ['verdaccio'],
 	enginePostgres: ['postgres'],
 	postgres: ['postgres'],
 	postgresExporter: ['postgresExporter'],
