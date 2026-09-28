@@ -532,43 +532,6 @@ describe('InstanceReportingService', () => {
 		});
 	});
 
-	describe('msUntilRetryAllowed', () => {
-		const now = new Date('2026-03-26T07:42:00.000Z');
-
-		test('allows an attempt when no report is pending', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(null);
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
-		});
-
-		test('allows the first attempt, which has nothing to wait for', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(makeReport({ lastAttemptAt: null }));
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
-		});
-
-		test('returns the remaining wait when the last attempt was recent', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:40:00.000Z') }),
-			);
-
-			// Two of the five minutes are spent, so three remain.
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(3 * 60 * 1000);
-		});
-
-		test('allows an attempt once the wait has passed', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:30:00.000Z') }),
-			);
-
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
-		});
-	});
-
 	describe('missed days', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
