@@ -1120,6 +1120,34 @@ describe('enqueueExecution', () => {
 		expect(finalizeExecution).toHaveBeenCalledWith('1');
 	});
 
+	it('should finalize the execution without reporting when its record is gone after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+			undefined,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		// An unsaved execution is deleted by the worker, so a missing record is not a bug
+		await expect(workflowExecution).rejects.toThrowError('Could not find execution with id "1"');
+		expect(reportError).not.toHaveBeenCalled();
+		expect(finalizeExecution).toHaveBeenCalledWith('1');
+	});
+
 	it('should finalize the execution when pool resolution fails', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();

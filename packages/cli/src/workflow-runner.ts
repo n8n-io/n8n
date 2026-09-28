@@ -33,8 +33,8 @@ import {
 	ExecutionCancelledError,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -872,15 +872,23 @@ export class WorkflowRunner {
 							includeData: true,
 							unflattenData: true,
 						});
-						if (!fullExecutionData) {
-							throw new UnexpectedError(`Could not find execution with id "${executionId}"`);
-						}
 					} catch (error) {
 						// An async executor's throw would never settle this promise, and the
 						// active execution would keep the request alive until restart
 						this.errorReporter.error(error, { executionId });
 						this.activeExecutions.finalizeExecution(executionId);
 						return reject(error);
+					}
+
+					if (!fullExecutionData) {
+						// Not a bug by itself: the worker deletes an execution that is not saved
+						this.logger.warn(`Execution ${executionId} ended but its record is gone`, {
+							executionId,
+						});
+						this.activeExecutions.finalizeExecution(executionId);
+						return reject(
+							new OperationalError(`Could not find execution with id "${executionId}"`),
+						);
 					}
 
 					runData = {
