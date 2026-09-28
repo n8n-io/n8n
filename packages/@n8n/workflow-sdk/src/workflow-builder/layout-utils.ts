@@ -553,8 +553,11 @@ export function resolveStickyGeometry(
 	const boxOfNode = (name: string): BoundingBox | undefined => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return undefined;
-		const position = graphNode.instance.config?.position ?? positions.get(name);
-		if (!position) return undefined;
+		// Fall back the way the serializer does. A graph with no root gets no positions
+		// from the basic layout, and those nodes still reach the canvas at the fallback
+		// spot — so they are real obstacles, and a note must not be placed on them.
+		const position = graphNode.instance.config?.position ??
+			positions.get(name) ?? [START_X, DEFAULT_Y];
 		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
 		return { x: position[0], y: position[1], width, height };
 	};

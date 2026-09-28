@@ -287,6 +287,23 @@ describe('sticky note placement with tidyUp', () => {
 		expect(contains(deliverBox, nodeBox(json, 'Record run'))).toBe(true);
 	});
 
+	it('keeps a sticky clear of nodes the basic layout could not place', () => {
+		// A graph with no root gets no positions from the basic layout, so every node
+		// serializes at the same fallback spot. The note must still give way to them.
+		const a = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'A' } });
+		const b = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'B' } });
+
+		const json = workflow('wf', 'Test')
+			.add(a.to(b))
+			.add(b.to(a))
+			.add(sticky('## Free', { name: 'Free note' }))
+			.toJSON();
+
+		const box = stickyBox(json, 'Free note');
+		expect(overlaps(box, nodeBox(json, 'A'))).toBe(false);
+		expect(overlaps(box, nodeBox(json, 'B'))).toBe(false);
+	});
+
 	it('emits every sticky as a sticky note node', () => {
 		const { start, fetch } = buildChain();
 
