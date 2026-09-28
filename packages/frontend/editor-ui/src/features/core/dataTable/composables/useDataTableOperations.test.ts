@@ -945,6 +945,47 @@ describe('useDataTableOperations', () => {
 			});
 		});
 
+		it('preserves each grid update when columns are renamed from left to right (ADO-5680)', async () => {
+			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: renameDataTableColumnMock,
+			});
+
+			const colDefs = ref([
+				{ colId: 'col2', field: 'field2', headerName: 'field2', cellDataType: 'text' },
+				{ colId: 'col3', field: 'field3', headerName: 'field3', cellDataType: 'text' },
+				{ colId: 'col4', field: 'field4', headerName: 'field4', cellDataType: 'text' },
+			]);
+			const rowData = ref([{ id: 1, field2: 'a', field3: 'b', field4: 'c' }]);
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col2', 'renamed2');
+			const firstUpdate = vi.mocked(params.setGridData).mock.lastCall?.[0].colDefs;
+			await onRenameColumn('col3', 'renamed3');
+			const secondUpdate = vi.mocked(params.setGridData).mock.lastCall?.[0].colDefs;
+			await onRenameColumn('col4', 'renamed4');
+
+			expect(renameDataTableColumnMock.mock.calls).toEqual([
+				['test', 'test', 'col2', 'renamed2'],
+				['test', 'test', 'col3', 'renamed3'],
+				['test', 'test', 'col4', 'renamed4'],
+			]);
+			expect(rowData.value).toEqual([{ id: 1, renamed2: 'a', renamed3: 'b', renamed4: 'c' }]);
+			// Each update must keep its column names when a later rename changes the grid.
+			expect(firstUpdate?.map((col) => col.headerName)).toEqual(['renamed2', 'field3', 'field4']);
+			expect(secondUpdate?.map((col) => col.headerName)).toEqual([
+				'renamed2',
+				'renamed3',
+				'field4',
+			]);
+			expect(colDefs.value.map((col) => col.headerName)).toEqual([
+				'renamed2',
+				'renamed3',
+				'renamed4',
+			]);
+		});
+
 		it('should handle when new name equals old field name', async () => {
 			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(useDataTableStore).mockReturnValue({
