@@ -1,7 +1,14 @@
-export { ApplicationError, BaseError, type BaseErrorOptions } from '@n8n/errors';
-export { OperationalError, type OperationalErrorOptions } from './base/operational.error';
-export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.error';
-export { UserError, type UserErrorOptions } from './base/user.error';
+export {
+	ApplicationError,
+	BaseError,
+	type BaseErrorOptions,
+	OperationalError,
+	type OperationalErrorOptions,
+	UnexpectedError,
+	type UnexpectedErrorOptions,
+	UserError,
+	type UserErrorOptions,
+} from '@n8n/errors';
 export { NodeVersionNotFoundError } from './node-version-not-found.error';
 export { ExpressionError } from './expression.error';
 export {

@@ -1,6 +1,7 @@
 export { ApplicationError } from './application.error';
 export { BaseError, type BaseErrorOptions } from './base.error';
 export { IsolateError } from './isolate.error';
+export { OperationalError, type OperationalErrorOptions } from './operational.error';
 export { AuthError } from './response-errors/auth.error';
 export { BadRequestError } from './response-errors/bad-request.error';
 export { ConflictError } from './response-errors/conflict.error';
@@ -18,4 +19,6 @@ export { TooManyRequestsError } from './response-errors/too-many-requests.error'
 export { UnauthenticatedError } from './response-errors/unauthenticated.error';
 export { UnprocessableRequestError } from './response-errors/unprocessable.error';
 export { UnsupportedMediaTypeError } from './response-errors/unsupported-media-type.error';
+export { UnexpectedError, type UnexpectedErrorOptions } from './unexpected.error';
+export { UserError, type UserErrorOptions } from './user.error';
 export type * from './types';

@@ -1,12 +1,11 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';

@@ -1,4 +1,4 @@
-import { BaseError, type BaseErrorOptions } from '@n8n/errors';
+import { BaseError, type BaseErrorOptions } from './base.error';
 
 export type UnexpectedErrorOptions = Omit<BaseErrorOptions, 'level'> & {
 	level?: 'error' | 'fatal';
