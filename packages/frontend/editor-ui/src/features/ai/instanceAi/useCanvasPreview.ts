@@ -197,7 +197,7 @@ export function useCanvasPreview({
 		() =>
 			isPreviewOpen.value &&
 			activeTabId.value !== undefined &&
-			allArtifactTabs.value.some((tab) => tab.id === activeTabId.value),
+			openTabs.value.some((tab) => tab.id === activeTabId.value),
 	);
 
 	// --- Resource attachments (workflow or agent hand-offs) ---
@@ -205,7 +205,7 @@ export function useCanvasPreview({
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
 	const firstAttachedArtifactId = computed(() => {
-		const tabIds = new Set(allArtifactTabs.value.map(({ id }) => id));
+		const tabIds = new Set(openTabs.value.map(({ id }) => id));
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
 				const artifactId = getAttachedArtifactId(attachment);
