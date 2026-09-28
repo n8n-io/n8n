@@ -3092,6 +3092,92 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.markStateDirty).toHaveBeenCalled();
 		});
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('tracks the first connection added to an empty group', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), { validateNodeGroups: false });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+					was_first_connection: true,
+				},
+			);
+		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('does not track telemetry for an already existing connection', () => {
+			const telemetry = useTelemetry();
+			const anchorA = createTestNode({
+				id: 'anchor-a',
+				name: 'Empty Group Anchor A',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const anchorB = createTestNode({
+				id: 'anchor-b',
+				name: 'Empty Group Anchor B',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const groupA = { id: 'group-a', nodeIds: [anchorA.id], name: 'Group A' };
+			const groupB = { id: 'group-b', nodeIds: [anchorB.id], name: 'Group B' };
+			const existingConnection = workflowConnection(anchorA, anchorB);
+			setupGroupedCanvas({
+				nodes: [anchorA, anchorB],
+				groups: [groupA, groupB],
+				connections: createConnectionsBySource(existingConnection),
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'hasConnection').mockReturnValue(true);
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchorA, anchorB), { validateNodeGroups: false });
+
+			expect(workflowDocumentStoreInstance.addConnection).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.anything(),
+			);
+		});
+
+		it('does not track internal connection rewiring', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), {
+				validateNodeGroups: false,
+				trackEmptyGroupTelemetry: false,
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.anything(),
+			);
+		});
+
 		it('should not set UI state as dirty if keepPristine is true', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
