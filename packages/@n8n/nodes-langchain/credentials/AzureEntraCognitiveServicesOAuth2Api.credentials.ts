@@ -17,7 +17,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',
-			default: 'authorizationCode',
+			default: 'clientCredentials',
 		},
 		{
 			displayName: 'Endpoint Type',
@@ -70,10 +70,12 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			displayName: 'Tenant ID',
 			name: 'tenantId',
 			type: 'string',
-			default: 'common',
-			description:
-				'Enter your Azure Tenant ID (Directory ID) or keep "common" for multi-tenant apps. Using a specific Tenant ID is generally recommended and required for certain authentication flows.',
-			placeholder: 'e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx or common',
+			required: true,
+			default: '',
+			// The node signs in as the application. Entra issues an app-only token for a named
+			// tenant only, so the `common` multi-tenant alias cannot be used here.
+			description: 'The Directory (tenant) ID of the Entra app registration',
+			placeholder: 'e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
 		},
 		{
 			displayName: 'Authorization URL',
@@ -86,6 +88,12 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			name: 'accessTokenUrl',
 			type: 'hidden',
 			default: '=https://login.microsoftonline.com/{{$self["tenantId"]}}/oauth2/token',
+		},
+		{
+			displayName: 'Send Additional Body Properties',
+			name: 'sendAdditionalBodyProperties',
+			type: 'hidden',
+			default: false,
 		},
 		{
 			displayName: 'Additional Body Properties',
@@ -101,12 +109,12 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			default: 'body',
 		},
 		{
+			// Hidden, not removed: the `scope` expression below still reads it, so a saved value
+			// keeps resolving. An app-only sign-in has no browser consent step for a scope to steer.
 			displayName: 'Custom Scopes',
 			name: 'customScopes',
-			type: 'boolean',
+			type: 'hidden',
 			default: false,
-			description:
-				'Define custom scopes. You might need this if the default scopes are not sufficient or if you want to minimize permissions. Ensure you include "openid" and "offline_access".',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -120,15 +128,8 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
-			type: 'string',
-			displayOptions: {
-				show: {
-					customScopes: [true],
-				},
-			},
+			type: 'hidden',
 			default: defaultScopes.join(' '),
-			placeholder: 'openid offline_access',
-			description: 'Space-separated list of scopes to request.',
 		},
 		{
 			displayName: 'Scope',

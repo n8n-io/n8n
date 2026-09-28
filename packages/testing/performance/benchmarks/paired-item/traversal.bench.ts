@@ -8,7 +8,7 @@
  * Keep the chains short: `itemMatching` also runs a `getParentNodes` connection
  * check that is superlinear in the chain length and would otherwise dominate.
  */
-import { bench, describe } from 'vitest';
+import { describe } from 'vitest';
 import { Workflow, WorkflowDataProxy } from 'n8n-workflow';
 import type {
 	IConnections,
@@ -21,7 +21,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
-import { BENCH_OPTIONS } from '../bench-options';
+import { defineBench } from '../bench-options';
 
 const MAIN = 'main';
 
@@ -210,13 +210,9 @@ describe('Paired item ancestry traversal', () => {
 						{ item: 0, input: 0 },
 					],
 	});
-	bench(
-		'itemMatching: recombining chain (20 nodes, 2^20 paths)',
-		() => {
-			recombining.$('n0').itemMatching(0);
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('itemMatching: recombining chain (20 nodes, 2^20 paths)', () => {
+		recombining.$('n0').itemMatching(0);
+	});
 
 	// One item paired to 10k inputs that all trace to the same origin: no path is
 	// walked twice, so every visit is new work.
@@ -229,22 +225,14 @@ describe('Paired item ancestry traversal', () => {
 			return { item: 0, input: 0 };
 		},
 	});
-	bench(
-		`itemMatching: fan-in (one item paired to ${FAN} ancestors)`,
-		() => {
-			fanIn.$('n0').itemMatching(0);
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench(`itemMatching: fan-in (one item paired to ${FAN} ancestors)`, () => {
+		fanIn.$('n0').itemMatching(0);
+	});
 
 	// Branches converge from two separate parents, so a shared ancestor is reached
 	// under one state from several routes. Exponential paths, must stay linear.
 	const diamonds = diamondProxy(14);
-	bench(
-		'itemMatching: diamond chain (14 diamonds, 2^14 paths)',
-		() => {
-			diamonds.$('origin').itemMatching(0);
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('itemMatching: diamond chain (14 diamonds, 2^14 paths)', () => {
+		diamonds.$('origin').itemMatching(0);
+	});
 });

@@ -734,7 +734,10 @@ function stubInitialRunSurface(
 	instanceContextEnabled = false,
 ): void {
 	Object.assign(service, {
-		resolveContextAttachments: vi.fn(async () => []),
+		adapterService: {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+		},
+		resolveContextAttachments: vi.fn(() => []),
 		createProxyRunConfig: vi.fn(async () => ({})),
 		browserSessionService: { getExtensionTraceContext: vi.fn() },
 		readThreadProvenance: vi.fn(async () => ({})),
@@ -934,7 +937,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				progressiveBuildingEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
 				instanceContextEnabled,
@@ -946,7 +951,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1286,6 +1294,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
 			}),
@@ -1296,7 +1305,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -5055,7 +5067,10 @@ describe('InstanceAiService run input gates', () => {
 				orchestrationContext: {},
 			};
 			const service = Object.assign(Object.create(InstanceAiService.prototype), {
-				resolveContextAttachments: vi.fn(async () => []),
+				adapterService: {
+					resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+				},
+				resolveContextAttachments: vi.fn(() => []),
 				instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },
@@ -5076,6 +5091,7 @@ describe('InstanceAiService run input gates', () => {
 				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 				shouldPreserveHitlOnShutdown: vi.fn(() => true),
 				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+				telemetry: { track: vi.fn() },
 				domainAccessTrackersByThread: new Map(),
 				updateInternalFollowUpFailureStreak: vi.fn(),
 			}) as {
@@ -5137,6 +5153,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
 		browserSessionService: { getExtensionTraceContext: Mock };
+		adapterService: { resolveExperimentGates: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -5157,6 +5174,9 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		};
 		service.browserSessionService = {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
+		};
+		service.adapterService = {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
 		};
 		return service;
 	}

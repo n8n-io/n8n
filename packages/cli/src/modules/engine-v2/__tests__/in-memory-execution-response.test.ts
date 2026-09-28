@@ -83,12 +83,12 @@ describe('in-memory execution responses', () => {
 		);
 	});
 
-	it('delivers a base64 Buffer envelope unchanged', () => {
+	it('delivers a base64 Buffer envelope unchanged', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => seen.push(response));
+		await receiver.receive('exec-1', (response) => seen.push(response));
 		const payload = {
 			body: { [ENCODED_BUFFER_KEY]: Buffer.from([0x00, 0xff, 0x10]).toString('base64') },
 			headers: { 'content-type': 'application/octet-stream' },
@@ -100,22 +100,22 @@ describe('in-memory execution responses', () => {
 		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload }]);
 	});
 
-	it('validates a response before delivering it', () => {
+	it('validates a response before delivering it', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => seen.push(response));
+		await receiver.receive('exec-1', (response) => seen.push(response));
 
 		channel.publish('exec-1', JSON.stringify(ended()));
 
 		expect(seen).toEqual([ended()]);
 	});
 
-	it('discards malformed and unreadable responses', () => {
+	it('discards malformed and unreadable responses', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => seen.push(response));
+		await receiver.receive('exec-1', (response) => seen.push(response));
 
 		channel.publish('exec-1', '{"type":"nonsense"}');
 		channel.publish('exec-1', 'not json at all');
@@ -123,24 +123,24 @@ describe('in-memory execution responses', () => {
 		expect(seen).toEqual([]);
 	});
 
-	it('isolates a handler that throws', () => {
+	it('isolates a handler that throws', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
-		receiver.receive('exec-1', () => {
+		await receiver.receive('exec-1', () => {
 			throw new Error('boom');
 		});
 
 		expect(() => channel.publish('exec-1', JSON.stringify(ended()))).not.toThrow();
 	});
 
-	it('delivers a response to every handler for that execution', () => {
+	it('delivers a response to every handler for that execution', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const first: ExecutionResponse[] = [];
 		const second: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => first.push(response));
-		receiver.receive('exec-1', (response) => second.push(response));
+		await receiver.receive('exec-1', (response) => first.push(response));
+		await receiver.receive('exec-1', (response) => second.push(response));
 
 		sender.send(ended());
 
@@ -148,24 +148,24 @@ describe('in-memory execution responses', () => {
 		expect(second).toEqual(first);
 	});
 
-	it('does not deliver a response to another execution', () => {
+	it('does not deliver a response to another execution', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => seen.push(response));
+		await receiver.receive('exec-1', (response) => seen.push(response));
 
 		sender.send(ended('exec-2'));
 
 		expect(seen).toEqual([]);
 	});
 
-	it('stops delivery after the handler is removed', () => {
+	it('stops delivery after the handler is removed', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		const unsubscribe = receiver.receive('exec-1', (response) => seen.push(response));
+		const unsubscribe = await receiver.receive('exec-1', (response) => seen.push(response));
 
 		unsubscribe();
 		sender.send(ended());
@@ -190,7 +190,7 @@ describe('in-memory execution responses', () => {
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
 		const seen: ExecutionResponse[] = [];
-		receiver.receive('exec-1', (response) => seen.push(response));
+		await receiver.receive('exec-1', (response) => seen.push(response));
 
 		await receiver.stop();
 		sender.send(ended());

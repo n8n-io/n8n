@@ -73,7 +73,8 @@ export type ForwardedChildChunkWire =
 	  };
 
 export type AgentSseEvent =
-	| { type: 'execution-started'; executionId: string; sessionId: string }
+	| { type: 'message-queued'; queueId: string; sessionId: string }
+	| { type: 'execution-started'; executionId: string; sessionId: string; message?: string }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
 	| { type: 'text-start'; id: string }

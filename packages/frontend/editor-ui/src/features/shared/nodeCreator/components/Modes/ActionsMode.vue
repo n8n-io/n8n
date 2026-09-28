@@ -371,6 +371,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
+			:node-type-name="communityNodeDetails.key"
 			:show-manage="communityNodeDetails.installed && usersStore.isAdminOrOwner"
 		/>
 	</div>

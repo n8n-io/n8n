@@ -3476,6 +3476,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
@@ -3775,7 +3777,7 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
-	 * Only engine 2.0 reads this. The caller mints the data-plane execution id
+	 * Only engine v2 reads this. The caller mints the data-plane execution id
 	 * when it has to wait for the run's answer, so it can subscribe before the
 	 * run starts.
 	 */

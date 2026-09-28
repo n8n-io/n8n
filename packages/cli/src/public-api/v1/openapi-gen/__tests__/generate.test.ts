@@ -49,6 +49,68 @@ describe('mergeDecoratorDocument', () => {
 		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(/GET \/tags/);
 	});
 
+	it.each([
+		['/credentials/{id}', '/credentials/{credentialId}'],
+		['/tags/{id}', '/tags/{tagId}'],
+		['/projects/{projectId}/credentials/{id}', '/projects/{projectId}/credentials/{credentialId}'],
+	])('rejects conflicting parameter names in %s and %s', (legacyPath, decoratorPath) => {
+		const eov: OpenApiDocument = {
+			paths: { [legacyPath]: { patch: { operationId: 'updateResource' } } },
+		};
+		const decorator: OpenApiDocument = {
+			paths: { [decoratorPath]: { get: { operationId: 'getResource' } } },
+		};
+
+		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(UnexpectedError);
+		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(
+			`Equivalent OpenAPI paths use different parameter names: '${legacyPath}' and '${decoratorPath}'.`,
+		);
+	});
+
+	it.each(['eov', 'decorator'])(
+		'rejects conflicting parameter names within the %s document',
+		(side) => {
+			const conflictingPaths: OpenApiDocument['paths'] = {
+				'/credentials/{id}': { patch: { operationId: 'updateCredential' } },
+				'/credentials/{credentialId}': { get: { operationId: 'getCredential' } },
+			};
+			const eov: OpenApiDocument = { paths: side === 'eov' ? conflictingPaths : {} };
+			const decorator: OpenApiDocument = { paths: side === 'decorator' ? conflictingPaths : {} };
+
+			expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(
+				/Equivalent OpenAPI paths use different parameter names/,
+			);
+		},
+	);
+
+	it('merges methods with matching path parameters without changing either input', () => {
+		const patch = {
+			operationId: 'updateCredential',
+			parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+		};
+		const get = { operationId: 'getCredential' };
+		const eov: OpenApiDocument = { paths: { '/credentials/{id}': { patch } } };
+		const decorator: OpenApiDocument = { paths: { '/credentials/{id}': { get } } };
+
+		const merged = mergeDecoratorDocument(eov, decorator);
+
+		expect(merged.paths).toEqual({ '/credentials/{id}': { patch, get } });
+		expect(eov.paths).toEqual({ '/credentials/{id}': { patch } });
+		expect(decorator.paths).toEqual({ '/credentials/{id}': { get } });
+	});
+
+	it('keeps different static paths with the same parameter positions separate', () => {
+		const patch = { operationId: 'updateCredential' };
+		const get = { operationId: 'getCredentialType' };
+		const eov: OpenApiDocument = { paths: { '/credentials/{id}': { patch } } };
+		const decorator: OpenApiDocument = { paths: { '/credential-types/{name}': { get } } };
+
+		expect(mergeDecoratorDocument(eov, decorator).paths).toEqual({
+			'/credentials/{id}': { patch },
+			'/credential-types/{name}': { get },
+		});
+	});
+
 	it('dedupes an identical component that both sides hoisted from the same shared file', () => {
 		const unauthorized = { description: 'Unauthorized' };
 		const eov: OpenApiDocument = {

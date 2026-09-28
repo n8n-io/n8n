@@ -152,10 +152,12 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
 	credentialTypePolicyIdParamSchema,
 	credentialTypePolicyScopeIdParamSchema,
+	dataTableIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -196,6 +198,7 @@ export {
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
+export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -359,6 +362,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	instanceAiQuestionSchema,
 	buildRunWorkflowSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -385,6 +389,8 @@ export {
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
+	agentActivitySchema,
+	agentChangeSchema,
 	agentCompletedPayloadSchema,
 	textDeltaPayloadSchema,
 	reasoningDeltaPayloadSchema,
@@ -422,6 +428,7 @@ export {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -449,6 +456,9 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
+	instanceAiThreadTabRefSchema,
+	instanceAiThreadTabSchema,
+	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -486,6 +496,8 @@ export {
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
+	MAX_INSTANCE_AI_NODES_PER_SET,
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
@@ -559,10 +571,13 @@ export type {
 	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
+	InstanceAiQuestion,
 	InstanceAiCredentialRequest,
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
+	InstanceAiAgentActivity,
+	InstanceAiAgentChange,
 	TaskItem,
 	TaskList,
 	InstanceAiRunStartEvent,
@@ -656,6 +671,10 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
+	InstanceAiThreadTabRef,
+	InstanceAiThreadTab,
+	InstanceAiThreadTabsState,
+	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -846,6 +865,10 @@ export {
 	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+} from './constants/canvas-feature-flags';
 export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,

@@ -1,4 +1,5 @@
 import type { StepSlots } from '@n8n/engine';
+import type { INode, WebhookResponseMode } from 'n8n-workflow';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,6 +13,37 @@ const engineV2Webhooks = new EngineV2Webhooks(
 	mock<EngineV2PayloadGuard>(),
 	mock<EngineDataPlaneProxyService>(),
 );
+
+describe('EngineV2Webhooks.assertSupported', () => {
+	const assertSupported = (responseMode: WebhookResponseMode) => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(true);
+		const webhooks = new EngineV2Webhooks(
+			mock<EngineV2Dispatcher>(),
+			mock<EngineV2PayloadGuard>(),
+			proxy,
+		);
+
+		webhooks.assertSupported({
+			workflowStartNode: mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: {},
+			}),
+			responseMode,
+			executionId: undefined,
+		});
+	};
+
+	// The engine mode no longer reaches this check, so these modes pass with a
+	// remote data plane and in-process alike.
+	it.each(['onReceived', 'lastNode', 'responseNode'] as const)(
+		'allows %s responses in every engine mode',
+		(responseMode) => {
+			expect(() => assertSupported(responseMode)).not.toThrow();
+		},
+	);
+});
 
 describe('EngineV2Webhooks.toRun', () => {
 	it('converts a completed outcome with outputs', async () => {

@@ -9,8 +9,23 @@ import { positiveIntSchema } from '../schemas';
  */
 const AUTH_SECRET_MIN_LENGTH = 32;
 
+const engineModeSchema = z.enum(['in-process', 'remote']);
+
+export type EngineMode = z.infer<typeof engineModeSchema>;
+
 @Config
 export class EngineConfig {
+	/**
+	 * Where the data plane runs. `in-process`: this main hosts it. `remote`:
+	 * another process hosts it (`n8n engine`), and this main runs only the
+	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
+	 * `N8N_ENGINE_AUTH_SECRET`.
+	 *
+	 * The mode also sets how execution responses reach the control plane:
+	 * in memory for `in-process`, and over Redis for `remote`.
+	 */
+	@Env('N8N_ENGINE_MODE', engineModeSchema)
+	mode: EngineMode = 'in-process';
 	/** Port the engine HTTP server listens on. */
 	@Env('N8N_ENGINE_PORT')
 	port: number = 3000;

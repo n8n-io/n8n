@@ -27,7 +27,7 @@ function toExecuteData(nodeType: string): IExecuteData {
 }
 
 /**
- * Resolves a credential for the engine 2.0 data plane. The data plane has no
+ * Resolves a credential for the engine v2 data plane. The data plane has no
  * credential store and no encryption key, so this is the only place where a
  * step's credential is decrypted.
  */
