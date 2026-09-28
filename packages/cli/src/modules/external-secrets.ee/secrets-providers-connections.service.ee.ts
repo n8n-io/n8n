@@ -5,7 +5,6 @@ import {
 	type SecretCompletionsResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
-	type SecretsProviderConnectionManagedBy,
 	type SecretsProviderType,
 	type TestSecretProviderConnectionResponse,
 	testSecretProviderConnectionResponseSchema,
@@ -323,7 +322,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
-			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
+			managedBy: connection.managedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -343,7 +342,11 @@ export class SecretsProvidersConnectionsService {
 	): Promise<SecretProviderConnection> {
 		const decryptedSettings = await this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
-		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
+		const redactedSettings = this.redactionService.redact(
+			decryptedSettings,
+			properties,
+			connection.configSourcedFields ?? [],
+		);
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -352,7 +355,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
-			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
+			managedBy: connection.managedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.

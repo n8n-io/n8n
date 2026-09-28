@@ -7,17 +7,26 @@ import { containsExpression } from '@/utils';
 @Service()
 export class RedactionService {
 	/**
-	 * Redacts sensitive fields based on provider properties
+	 * Redacts sensitive fields based on provider properties, plus any additionally named fields.
 	 * @param data - Settings to redact
 	 * @param properties - INodeProperties[] defining which fields are sensitive
+	 * @param additionalFieldNames - Field names to redact regardless of the provider's own
+	 *   `typeOptions.password` flag. Used for config-file-sourced values (`fromEnv`/`fromFile`),
+	 *   which are treated as sensitive by virtue of the operator choosing an indirection for them,
+	 *   even when the provider itself doesn't flag that field as a password (e.g. AWS `accessKeyId`).
 	 * @returns Deep copy with sensitive values replaced by CREDENTIAL_BLANKING_VALUE
 	 */
-	redact(data: IDataObject, properties: INodeProperties[]): IDataObject {
+	redact(
+		data: IDataObject,
+		properties: INodeProperties[],
+		additionalFieldNames: string[] = [],
+	): IDataObject {
 		const copiedData = deepCopy(data || {});
 
-		const fieldsToRedact = properties
-			.filter((prop) => prop.typeOptions?.password)
-			.map((prop) => prop.name);
+		const fieldsToRedact = new Set([
+			...properties.filter((prop) => prop.typeOptions?.password).map((prop) => prop.name),
+			...additionalFieldNames,
+		]);
 
 		for (const fieldName of fieldsToRedact) {
 			if (fieldName in copiedData && this.shouldRedactValue(copiedData[fieldName])) {

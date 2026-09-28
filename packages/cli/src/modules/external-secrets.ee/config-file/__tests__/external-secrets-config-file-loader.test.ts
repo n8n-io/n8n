@@ -61,8 +61,33 @@ describe('ExternalSecretsConfigFileLoader', () => {
 				isEnabled: true,
 				projectIds: ['project-1'],
 				settings: { url: 'https://vault.example.com', authMethod: 'appRole', roleId: 'abc' },
+				configSourcedFields: [],
 			},
 		]);
+	});
+
+	test('records which settings fields were sourced via fromEnv/fromFile', async () => {
+		vi.stubEnv('TEST_LOADER_SECRET_ID', 'shh');
+		const filePath = writeConfigFile({
+			connections: [
+				{
+					key: 'vaultProd',
+					type: 'vault',
+					settings: {
+						url: 'https://vault.example.com',
+						authMethod: 'appRole',
+						roleId: 'abc',
+						secretId: { fromEnv: 'TEST_LOADER_SECRET_ID' },
+					},
+				},
+			],
+		});
+
+		const loader = Container.get(ExternalSecretsConfigFileLoader);
+		const [loaded] = await loader.load(filePath);
+
+		expect(loaded.configSourcedFields).toEqual(['secretId']);
+		vi.unstubAllEnvs();
 	});
 
 	test('throws on malformed JSON naming the file path', async () => {
@@ -138,5 +163,18 @@ describe('ExternalSecretsConfigFileLoader', () => {
 		await expect(loader.load(filePath)).rejects.toThrow(
 			/connection "vaultTypo": unknown setting\(s\) for provider type "vault": secretID/,
 		);
+	});
+
+	test('rejects two connections that share the same key', async () => {
+		const filePath = writeConfigFile({
+			connections: [
+				{ key: 'vaultProd', type: 'vault', settings: { url: 'https://vault.example.com' } },
+				{ key: 'vaultProd', type: 'vault', settings: { url: 'https://vault2.example.com' } },
+			],
+		});
+
+		const loader = Container.get(ExternalSecretsConfigFileLoader);
+
+		await expect(loader.load(filePath)).rejects.toThrow(/duplicate connection key "vaultProd"/);
 	});
 });

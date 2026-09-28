@@ -21,6 +21,16 @@ export class ExternalSecretsConfigFileReconciler {
 	 * Encryption and decryption run before the lock, and provider syncs run after it. The lock
 	 * transaction holds a DB connection, so it must not wait on a key lookup or on a network
 	 * call to a secrets backend.
+	 *
+	 * Every desired connection is resynced into THIS instance's own in-memory provider registry
+	 * at the end, regardless of whether this instance's own diff found anything to write. This
+	 * instance's registry was loaded during its own boot, which can race another instance's write
+	 * under this same lock (multi-main): if this instance loses that race, its diff correctly
+	 * finds nothing left to change, but its registry still reflects what it saw before the other
+	 * instance's write landed. The only other way it would learn about that write is a
+	 * cross-instance pub/sub broadcast, which can be missed while this instance is still wiring
+	 * up its own subscriptions during boot. Resyncing unconditionally closes that gap without
+	 * relying on broadcast delivery.
 	 */
 	async reconcile(connections: LoadedExternalSecretsConnection[]): Promise<void> {
 		const desiredByKey = new Map(connections.map((c) => [c.key, c]));
@@ -49,10 +59,10 @@ export class ExternalSecretsConfigFileReconciler {
 			}
 		}
 
-		const changedKeys = await this.dbLockService.withLockContext(
+		const deletedKeys = await this.dbLockService.withLockContext(
 			DbLock.EXTERNAL_SECRETS_CONFIG_RECONCILE,
 			async (ctx) => {
-				const changed: string[] = [];
+				const deleted: string[] = [];
 				const existingByKey = new Map(
 					(await this.repository.findByManagedBy('config-file', ctx)).map((c) => [
 						c.providerKey,
@@ -66,33 +76,39 @@ export class ExternalSecretsConfigFileReconciler {
 						isEnabled: desired.isEnabled,
 						projectIds: desired.projectIds,
 						encryptedSettings: encryptedByKey.get(desired.key)!,
+						configSourcedFields: desired.configSourcedFields,
 					};
 					const existing = existingByKey.get(desired.key);
 
 					if (!existing) {
 						await this.connectionsService.createConfigFileConnection(desired.key, data, ctx);
-						changed.push(desired.key);
 						continue;
 					}
 
 					if (this.matchesDesiredState(existing, desired, unchangedCiphertexts)) continue;
 
 					await this.connectionsService.updateConfigFileConnection(existing.id, data, ctx);
-					changed.push(desired.key);
 				}
 
 				for (const existing of existingByKey.values()) {
 					if (!desiredByKey.has(existing.providerKey)) {
 						await this.connectionsService.deleteConfigFileConnection(existing.id, ctx);
-						changed.push(existing.providerKey);
+						deleted.push(existing.providerKey);
 					}
 				}
 
-				return changed;
+				return deleted;
 			},
 		);
 
-		await this.connectionsService.syncConfigFileConnections(changedKeys);
+		// Every desired key is resynced, not only the ones this instance's own diff changed — see
+		// the multi-main race explained on `reconcile`'s doc comment above. Deleted keys still
+		// need their own sync call (`syncProviderConnection` also handles removal when the row is
+		// gone), so they're included alongside every currently-desired key.
+		await this.connectionsService.syncConfigFileConnections([
+			...connections.map((c) => c.key),
+			...deletedKeys,
+		]);
 	}
 
 	private matchesDesiredState(
@@ -103,12 +119,17 @@ export class ExternalSecretsConfigFileReconciler {
 		const existingProjectIds = new Set(existing.projectAccess.map((access) => access.projectId));
 		const desiredProjectIds = new Set(desired.projectIds);
 
+		const existingConfigSourcedFields = new Set(existing.configSourcedFields ?? []);
+		const desiredConfigSourcedFields = new Set(desired.configSourcedFields);
+
 		return (
 			existing.type === desired.type &&
 			existing.isEnabled === desired.isEnabled &&
 			unchangedCiphertexts.has(existing.encryptedSettings) &&
 			existingProjectIds.size === desiredProjectIds.size &&
-			[...desiredProjectIds].every((id) => existingProjectIds.has(id))
+			[...desiredProjectIds].every((id) => existingProjectIds.has(id)) &&
+			existingConfigSourcedFields.size === desiredConfigSourcedFields.size &&
+			[...desiredConfigSourcedFields].every((field) => existingConfigSourcedFields.has(field))
 		);
 	}
 }

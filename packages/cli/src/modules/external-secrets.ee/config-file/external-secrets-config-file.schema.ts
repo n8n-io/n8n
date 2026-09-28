@@ -8,13 +8,20 @@ export const configFileValueSchema = z.union([
 ]);
 export type ConfigFileValue = z.infer<typeof configFileValueSchema>;
 
-export const externalSecretsConfigFileConnectionSchema = z.object({
-	key: z.string().min(1).max(128).regex(SECRETS_PROVIDER_KEY_REGEX),
-	type: secretsProviderTypeSchema,
-	isEnabled: z.boolean().default(true),
-	projectIds: z.array(z.string().min(1)).default([]),
-	settings: z.record(z.string(), configFileValueSchema),
-});
+export const externalSecretsConfigFileConnectionSchema = z
+	.object({
+		key: z.string().min(1).max(128).regex(SECRETS_PROVIDER_KEY_REGEX),
+		type: secretsProviderTypeSchema,
+		isEnabled: z.boolean().default(true),
+		projectIds: z
+			.array(z.string().min(1))
+			.default([])
+			.refine((ids) => ids.length === new Set(ids).size, {
+				message: 'must not contain duplicate project IDs',
+			}),
+		settings: z.record(z.string(), configFileValueSchema),
+	})
+	.strict();
 export type ExternalSecretsConfigFileConnection = z.infer<
 	typeof externalSecretsConfigFileConnectionSchema
 >;

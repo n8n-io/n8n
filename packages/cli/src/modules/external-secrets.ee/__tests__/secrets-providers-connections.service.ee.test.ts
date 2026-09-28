@@ -108,7 +108,11 @@ describe('SecretsProvidersConnectionsService', () => {
 			);
 			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('my-aws');
 			expect(mockExternalSecretsManager.getSecretNames).toHaveBeenCalledWith('my-aws');
-			expect(mockRedactionService.redact).toHaveBeenCalledWith(decryptedSettings, mockProperties);
+			expect(mockRedactionService.redact).toHaveBeenCalledWith(
+				decryptedSettings,
+				mockProperties,
+				[],
+			);
 		});
 
 		it('should map entity to DTO without projects and with empty secrets', async () => {
@@ -219,6 +223,80 @@ describe('SecretsProvidersConnectionsService', () => {
 			const result = await service.toPublicConnection(connection);
 
 			expect(result.state).toBe('error');
+		});
+
+		it('should pass configSourcedFields to the redaction service, so config-sourced values are blanked regardless of the provider password flag', async () => {
+			const decryptedSettings = { accessKeyId: 'AKIAEXAMPLE', region: 'us-east-1' };
+			const redactedSettings = { accessKeyId: CREDENTIAL_BLANKING_VALUE, region: 'us-east-1' };
+			const mockProperties: INodeProperties[] = [
+				{ name: 'accessKeyId', type: 'string', displayName: 'Access Key ID', default: '' },
+				{ name: 'region', type: 'string', displayName: 'Region', default: '' },
+			];
+			const mockProvider = {
+				state: 'connected' as const,
+				properties: mockProperties,
+			} as SecretsProvider;
+
+			const connection = {
+				id: 5,
+				providerKey: 'config-file-aws',
+				type: 'awsSecretsManager',
+				isEnabled: true,
+				encryptedSettings: JSON.stringify(decryptedSettings),
+				managedBy: 'config-file',
+				configSourcedFields: ['accessKeyId'],
+				projectAccess: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+			} as unknown as SecretsProviderConnection;
+
+			mockExternalSecretsManager.getProviderProperties.mockReturnValue(mockProperties);
+			mockExternalSecretsManager.getProvider.mockReturnValue(mockProvider);
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
+			mockRedactionService.redact.mockReturnValue(redactedSettings);
+
+			await service.toPublicConnection(connection);
+
+			expect(mockRedactionService.redact).toHaveBeenCalledWith(decryptedSettings, mockProperties, [
+				'accessKeyId',
+			]);
+		});
+
+		it('should pass an empty array to the redaction service when configSourcedFields is null', async () => {
+			const decryptedSettings = { region: 'us-east-1' };
+			const mockProperties: INodeProperties[] = [
+				{ name: 'region', type: 'string', displayName: 'Region', default: '' },
+			];
+			const mockProvider = {
+				state: 'connected' as const,
+				properties: mockProperties,
+			} as SecretsProvider;
+
+			const connection = {
+				id: 6,
+				providerKey: 'api-aws',
+				type: 'awsSecretsManager',
+				isEnabled: true,
+				encryptedSettings: JSON.stringify(decryptedSettings),
+				managedBy: 'api',
+				configSourcedFields: null,
+				projectAccess: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+			} as unknown as SecretsProviderConnection;
+
+			mockExternalSecretsManager.getProviderProperties.mockReturnValue(mockProperties);
+			mockExternalSecretsManager.getProvider.mockReturnValue(mockProvider);
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
+			mockRedactionService.redact.mockReturnValue(decryptedSettings);
+
+			await service.toPublicConnection(connection);
+
+			expect(mockRedactionService.redact).toHaveBeenCalledWith(
+				decryptedSettings,
+				mockProperties,
+				[],
+			);
 		});
 	});
 

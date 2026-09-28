@@ -15,6 +15,10 @@ export interface LoadedExternalSecretsConnection {
 	isEnabled: boolean;
 	projectIds: string[];
 	settings: Record<string, string>;
+	/** Names of settings fields whose value came from `fromEnv`/`fromFile`, not a literal in the
+	 * file. Persisted so the connection API can redact them unconditionally — see
+	 * `SecretsProviderConnection.configSourcedFields`. */
+	configSourcedFields: string[];
 }
 
 // Deliberately looser than `externalSecretsConfigFileSchema`: it only asserts the
@@ -90,17 +94,23 @@ export class ExternalSecretsConfigFileLoader {
 
 			try {
 				const settings = resolveConfigFileSettings(entry.settings, context);
+				const configSourcedFields = Object.entries(entry.settings)
+					.filter(([, value]) => typeof value !== 'string')
+					.map(([field]) => field);
 				loaded.push({
 					key: entry.key,
 					type: entry.type,
 					isEnabled: entry.isEnabled,
 					projectIds: entry.projectIds,
 					settings,
+					configSourcedFields,
 				});
 			} catch (error) {
 				errors.push((error as Error).message);
 			}
 		}
+
+		errors.push(...this.findDuplicateKeyErrors(loaded));
 
 		if (errors.length > 0) {
 			throw new UserError(
@@ -109,6 +119,22 @@ export class ExternalSecretsConfigFileLoader {
 		}
 
 		return loaded;
+	}
+
+	/** Each `key` must be globally unique — it maps 1:1 to `providerKey`, which has a unique DB
+	 * index. Reported once per duplicated key, not once per occurrence. */
+	private findDuplicateKeyErrors(loaded: LoadedExternalSecretsConnection[]): string[] {
+		const seen = new Set<string>();
+		const duplicates = new Set<string>();
+		for (const connection of loaded) {
+			if (seen.has(connection.key)) {
+				duplicates.add(connection.key);
+			}
+			seen.add(connection.key);
+		}
+		return [...duplicates].map(
+			(key) => `duplicate connection key "${key}": each connection must have a unique "key".`,
+		);
 	}
 
 	/** Best-effort label for error messages: the raw `key` value if present, even if it will

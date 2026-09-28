@@ -25,6 +25,7 @@ function connection(
 		isEnabled: true,
 		projectIds: [],
 		settings: { url: 'https://vault.example.com' },
+		configSourcedFields: [],
 		...overrides,
 	};
 }
@@ -75,7 +76,7 @@ describe('ExternalSecretsConfigFileReconciler', () => {
 		expect(stillApiManaged?.managedBy).toBe('api');
 	});
 
-	test('does not rewrite or resync a connection when the file is unchanged', async () => {
+	test('does not rewrite the DB row when the file is unchanged, but still resyncs the registry', async () => {
 		const project = await createTeamProject('Unchanged Reconcile Project');
 		const reconciler = Container.get(ExternalSecretsConfigFileReconciler);
 		const repository = Container.get(SecretsProviderConnectionRepository);
@@ -88,9 +89,49 @@ describe('ExternalSecretsConfigFileReconciler', () => {
 		await reconciler.reconcile([{ ...desired, projectIds: [project.id] }]);
 		const second = await repository.findOneOrFail({ where: { providerKey: 'reconcilerNoopTest' } });
 
+		// No DB write for the unchanged row — the whole point of the "unchanged" optimization.
 		expect(second.updatedAt).toEqual(first.updatedAt);
 		expect(second.encryptedSettings).toBe(first.encryptedSettings);
-		expect(sync).not.toHaveBeenCalledWith('reconcilerNoopTest');
+		// But this instance's own in-memory registry is still resynced from the DB every
+		// reconcile, regardless of whether THIS instance wrote anything — closing the multi-main
+		// race where another instance's write (under the same advisory lock) is the one that
+		// actually changed the row, and this instance's registry would otherwise never learn
+		// about it except via a cross-instance pub/sub broadcast that might be missed during boot.
+		expect(sync).toHaveBeenCalledWith('reconcilerNoopTest');
+		sync.mockRestore();
+	});
+
+	test('resyncs every desired config-file connection even when nothing changed on this instance — closing the multi-main lock-loser race', async () => {
+		const reconciler = Container.get(ExternalSecretsConfigFileReconciler);
+		const repository = Container.get(SecretsProviderConnectionRepository);
+
+		// Simulate: another instance already wrote this row under the lock (e.g. it won the
+		// race), so THIS instance's reconcile call finds nothing to change — matchesDesiredState
+		// is already true on the very first call. Without a resync-regardless-of-changed-keys
+		// fix, this instance's own manager registry (loaded moments earlier during its own boot,
+		// before this reconcile ran) would never be told about a connection it never itself wrote.
+		await repository.save(
+			repository.create({
+				providerKey: 'reconcilerLockLoserTest',
+				type: 'vault',
+				encryptedSettings: await Container.get(Cipher).encryptV2(
+					JSON.stringify({ url: 'https://vault.example.com' }),
+				),
+				isEnabled: true,
+				managedBy: 'config-file',
+				configSourcedFields: [],
+			}),
+		);
+
+		const sync = vi.spyOn(Container.get(ExternalSecretsManager), 'syncProviderConnection');
+		await reconciler.reconcile([
+			connection({
+				key: 'reconcilerLockLoserTest',
+				settings: { url: 'https://vault.example.com' },
+			}),
+		]);
+
+		expect(sync).toHaveBeenCalledWith('reconcilerLockLoserTest');
 		sync.mockRestore();
 	});
 
@@ -127,5 +168,23 @@ describe('ExternalSecretsConfigFileReconciler', () => {
 
 		const decrypted = await Container.get(Cipher).decryptV2(updated.encryptedSettings);
 		expect(JSON.parse(decrypted)).toEqual({ region: 'eu-west-1' });
+	});
+
+	test('persists which settings fields were config-sourced, for later redaction', async () => {
+		const reconciler = Container.get(ExternalSecretsConfigFileReconciler);
+		const repository = Container.get(SecretsProviderConnectionRepository);
+
+		await reconciler.reconcile([
+			connection({
+				key: 'reconcilerProvenanceTest',
+				settings: { url: 'https://vault.example.com', roleId: 'abc', secretId: 'resolved' },
+				configSourcedFields: ['secretId'],
+			}),
+		]);
+
+		const saved = await repository.findOneOrFail({
+			where: { providerKey: 'reconcilerProvenanceTest' },
+		});
+		expect(saved.configSourcedFields).toEqual(['secretId']);
 	});
 });

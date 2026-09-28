@@ -17,6 +17,7 @@ export interface ConfigFileConnectionData {
 	isEnabled: boolean;
 	encryptedSettings: string;
 	projectIds: string[];
+	configSourcedFields: string[];
 }
 
 @Service()
@@ -59,6 +60,7 @@ export class SecretsProviderConnectionRepository extends BaseRepository<SecretsP
 					isEnabled: data.isEnabled,
 					encryptedSettings: data.encryptedSettings,
 					managedBy: 'config-file',
+					configSourcedFields: data.configSourcedFields,
 				}),
 			);
 
@@ -89,7 +91,12 @@ export class SecretsProviderConnectionRepository extends BaseRepository<SecretsP
 			await manager.update(
 				SecretsProviderConnection,
 				{ id: connectionId },
-				{ type: data.type, isEnabled: data.isEnabled, encryptedSettings: data.encryptedSettings },
+				{
+					type: data.type,
+					isEnabled: data.isEnabled,
+					encryptedSettings: data.encryptedSettings,
+					configSourcedFields: data.configSourcedFields,
+				},
 			);
 
 			const existingAccess = await manager.find(ProjectSecretsProviderAccess, {

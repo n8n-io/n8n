@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { UserError } from 'n8n-workflow';
 
 import type { ConfigFileValue } from './external-secrets-config-file.schema';
 
@@ -10,7 +11,7 @@ export function resolveConfigFileValue(value: ConfigFileValue, context: string):
 	if ('fromEnv' in value) {
 		const resolved = process.env[value.fromEnv];
 		if (resolved === undefined) {
-			throw new Error(`${context}: environment variable "${value.fromEnv}" is not set`);
+			throw new UserError(`${context}: environment variable "${value.fromEnv}" is not set`);
 		}
 		return resolved;
 	}
@@ -18,7 +19,7 @@ export function resolveConfigFileValue(value: ConfigFileValue, context: string):
 	try {
 		return readFileSync(value.fromFile, 'utf8').trim();
 	} catch (error) {
-		throw new Error(
+		throw new UserError(
 			`${context}: could not read file "${value.fromFile}": ${(error as Error).message}`,
 		);
 	}
@@ -40,7 +41,7 @@ export function resolveConfigFileSettings(
 	}
 
 	if (errors.length > 0) {
-		throw new Error(errors.join('\n'));
+		throw new UserError(errors.join('\n'));
 	}
 
 	return resolved;

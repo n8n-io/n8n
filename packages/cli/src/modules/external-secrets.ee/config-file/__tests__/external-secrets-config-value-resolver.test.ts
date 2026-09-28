@@ -8,18 +8,21 @@ import {
 } from '../external-secrets-config-value-resolver';
 
 describe('resolveConfigFileValue', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	test('returns a literal string unchanged', () => {
 		expect(resolveConfigFileValue('literal-value', 'test')).toBe('literal-value');
 	});
 
 	test('resolves fromEnv when the env var is set', () => {
-		process.env.TEST_RESOLVER_VAR = 'from-env-value';
+		vi.stubEnv('TEST_RESOLVER_VAR', 'from-env-value');
 		expect(resolveConfigFileValue({ fromEnv: 'TEST_RESOLVER_VAR' }, 'test')).toBe('from-env-value');
-		delete process.env.TEST_RESOLVER_VAR;
 	});
 
 	test('throws when fromEnv references a missing env var', () => {
-		delete process.env.TEST_RESOLVER_MISSING_VAR;
+		vi.stubEnv('TEST_RESOLVER_MISSING_VAR', undefined);
 		expect(() =>
 			resolveConfigFileValue({ fromEnv: 'TEST_RESOLVER_MISSING_VAR' }, 'test (field "token")'),
 		).toThrow('test (field "token"): environment variable "TEST_RESOLVER_MISSING_VAR" is not set');
@@ -54,8 +57,12 @@ describe('resolveConfigFileValue', () => {
 });
 
 describe('resolveConfigFileSettings', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	test('resolves every field and aggregates all errors together', () => {
-		process.env.TEST_RESOLVER_VAR = 'resolved';
+		vi.stubEnv('TEST_RESOLVER_VAR', 'resolved');
 
 		const resolved = resolveConfigFileSettings(
 			{
@@ -71,13 +78,11 @@ describe('resolveConfigFileSettings', () => {
 			roleId: 'abc',
 			secretId: 'resolved',
 		});
-
-		delete process.env.TEST_RESOLVER_VAR;
 	});
 
 	test('aggregates errors from multiple fields into one thrown error', () => {
-		delete process.env.TEST_RESOLVER_MISSING_A;
-		delete process.env.TEST_RESOLVER_MISSING_B;
+		vi.stubEnv('TEST_RESOLVER_MISSING_A', undefined);
+		vi.stubEnv('TEST_RESOLVER_MISSING_B', undefined);
 
 		expect(() =>
 			resolveConfigFileSettings(
