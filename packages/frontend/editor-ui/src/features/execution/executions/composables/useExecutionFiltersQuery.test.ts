@@ -5,7 +5,11 @@ import { useExecutionsStore } from '../executions.store';
 import { useExecutionFiltersQuery } from './useExecutionFiltersQuery';
 
 const query = ref<Record<string, string>>({});
-const route = { get query() { return query.value; } };
+const route = {
+	get query() {
+		return query.value;
+	},
+};
 const replace = vi.fn(async ({ query: nextQuery }: { query: Record<string, string> }) => {
 	query.value = nextQuery;
 });

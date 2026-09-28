@@ -119,7 +119,10 @@ export function useExecutionFiltersQuery(workflowId?: () => string | undefined) 
 	if (workflowId) {
 		watch(workflowId, (id, previousId) => {
 			if (!id || id === previousId) return;
-			void updateFilters({ ...executionsStore.filters, workflowId: id, workflowVersionId: 'all' }, id);
+			void updateFilters(
+				{ ...executionsStore.filters, workflowId: id, workflowVersionId: 'all' },
+				id,
+			);
 		});
 	}
 
