@@ -924,10 +924,14 @@ describe('content-import policy', () => {
 		try {
 			await command.run([`--input=${inputPath}`]);
 
-			expect(enforceContentImport).toHaveBeenCalledTimes(1);
-			expect(enforceContentImport.mock.invocationCallOrder[0]).toBeLessThan(
-				withLock.mock.invocationCallOrder[0],
+			// Other services may take their own locks while the command starts up, so look at the
+			// import lock only.
+			const importLockOrder = withLock.mock.calls.flatMap(([lockId], index) =>
+				lockId === DbLock.INSTANCE_AI_SETTINGS ? [withLock.mock.invocationCallOrder[index]] : [],
 			);
+			expect(importLockOrder).toHaveLength(1);
+			expect(enforceContentImport).toHaveBeenCalledTimes(1);
+			expect(enforceContentImport.mock.invocationCallOrder[0]).toBeLessThan(importLockOrder[0]);
 		} finally {
 			withLock.mockRestore();
 		}
