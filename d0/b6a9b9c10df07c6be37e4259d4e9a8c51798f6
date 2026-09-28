@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/composables/useKeybindings.ts
+  s_4b01c67aa9701e::t_5320875a05e0a8 30-35,201,217,219-221,223-225
+  s_4b01c67aa9701e::t_9bcebd9f1089e0 226-229
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_4b01c67aa9701e::t_3917ec6e687a40 431-434
+  s_4b01c67aa9701e::t_cf2712cd860945 436-437
+packages/frontend/editor-ui/src/app/composables/useKeybindings.test.ts
+  s_4b01c67aa9701e::t_2d26e647212e84 5,47-153,155-181
+  s_4b01c67aa9701e::t_1cf69085dec2c1 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0b6a9b9c10df07c6be37e4259d4e9a8c51798f6",
+  "prompts": {},
+  "sessions": {
+    "s_4b01c67aa9701e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cdf4-90b0-7204-bbd9-de4a4d603f42",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_fdc85da9c3a723::t_7735e1811d1570 117
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_fdc85da9c3a723::t_7735e1811d1570 116
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_fdc85da9c3a723::t_7735e1811d1570 116,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a680611fac1edf941eeeb704422772b5f1bc5766",
+  "prompts": {},
+  "sessions": {
+    "s_fdc85da9c3a723": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "decd9eac-a0fb-4a80-8f62-fde2d15dd546",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

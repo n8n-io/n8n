@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_ffa0492de4d6b4::t_2c9c9806a7a31f 980-981,1032-1033,1035-1037
+  s_ffa0492de4d6b4::t_21bb83c1565753 998-1005,1049-1056
+  s_ffa0492de4d6b4::t_11bf694207f72d 1034
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_ffa0492de4d6b4::t_2c9c9806a7a31f 603
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_ffa0492de4d6b4::t_2c9c9806a7a31f 192,194,277,279
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_ffa0492de4d6b4::t_015787a5d3f948 7,398-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "875d1b8526522e814b48d49298d88cf6f44c5a18",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
