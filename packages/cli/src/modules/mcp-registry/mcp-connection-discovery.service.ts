@@ -116,7 +116,7 @@ export class McpConnectionDiscoveryService {
 		try {
 			prepared = await this.prepareRegistrySource(user, request);
 		} catch (error) {
-			if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
+			if (error instanceof NotFoundError) throw error;
 			this.logger.warn('Failed to prepare MCP discovery', {
 				errorType: ensureError(error).name,
 			});

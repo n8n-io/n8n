@@ -148,6 +148,14 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 					deps,
 				);
 				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+
+				if (client.getConnectionFailures().length > 0) {
+					return {
+						ok: false,
+						error: client.getConnectionFailures()[0].error,
+					};
+				}
+
 				const mappedTools = tools.map((t) => ({
 					name: t.mcpToolName ?? t.name,
 					description: t.description ?? '',
