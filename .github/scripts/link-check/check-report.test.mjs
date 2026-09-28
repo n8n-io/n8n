@@ -27,16 +27,20 @@ test('classify counts missing anchors only on docs.n8n.io', () => {
 	assert.equal(classify({ url: 'https://github.com/x#a', code: null, text }), 'ignore');
 });
 
-test('classify sends blocked, redirected, and timed-out links to the browser', () => {
+test('classify sends blocked, redirected, timed-out, and unreachable links to the browser', () => {
 	for (const code of [302, 403, 429, 999]) {
 		assert.equal(classify({ url: 'https://x.com/', code, text: '' }), 'browser');
 	}
 	assert.equal(classify({ url: 'https://x.com/', code: null, text: 'Timeout' }), 'browser');
+	assert.equal(
+		classify({ url: 'https://x.com/', code: null, text: 'Network error: Connection failed' }),
+		'browser',
+	);
 });
 
 test('classify treats other failures as broken', () => {
 	assert.equal(classify({ url: 'https://x.com/', code: 404, text: '' }), 'broken');
-	assert.equal(classify({ url: 'https://x.com/', code: null, text: 'Network error' }), 'broken');
+	assert.equal(classify({ url: 'https://x.com/', code: 410, text: '' }), 'broken');
 });
 
 test('isBrowserPass rejects error statuses and not-found pages', () => {

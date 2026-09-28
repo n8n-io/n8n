@@ -7,8 +7,9 @@
  *
  * - Missing anchors count only on docs.n8n.io. Many other sites add their
  *   anchors with JavaScript, which lychee does not run.
- * - Redirects that lychee rejects, 403, 429, 999, and timeouts are opened again
- *   in headless Chrome. Many sites block HTTP clients but serve browsers.
+ * - Redirects that lychee rejects, 403, 429, 999, timeouts, and network errors
+ *   are opened again in headless Chrome. Many sites block HTTP clients but serve
+ *   browsers, and a second request confirms that a connection failure persists.
  *
  * Prints the broken links, adds them to $GITHUB_STEP_SUMMARY, and exits 1 if
  * there are any. Needs Chrome, which GitHub-hosted Ubuntu runners include.
@@ -18,7 +19,7 @@ import { pathToFileURL } from 'node:url';
 
 const STRICT_ANCHOR_HOST = 'docs.n8n.io';
 const BROWSER_STATUSES = new Set([403, 429, 999]);
-const CHALLENGE_TITLE = /just a moment|attention required/i;
+const CHALLENGE_TITLE = /just a moment|attention required|security checkpoint/i;
 
 export function collectFailures(report) {
 	const failures = [
@@ -48,7 +49,11 @@ export function classify({ url, code, text }) {
 	if (code === null && /fragment/i.test(text)) {
 		return new URL(url).hostname === STRICT_ANCHOR_HOST ? 'broken' : 'ignore';
 	}
-	if (/^timeout$/i.test(text) || BROWSER_STATUSES.has(code) || (code >= 300 && code < 400)) {
+	if (
+		/^timeout$|^network error/i.test(text) ||
+		BROWSER_STATUSES.has(code) ||
+		(code >= 300 && code < 400)
+	) {
 		return 'browser';
 	}
 	return 'broken';
@@ -82,7 +87,7 @@ async function checkInBrowser(urls) {
 				.waitForFunction(
 					(source) => !new RegExp(source, 'i').test(document.title),
 					CHALLENGE_TITLE.source,
-					{ timeout: 20_000 },
+					{ timeout: 30_000 },
 				)
 				.catch(() => {});
 			const result = { status, title: await page.title() };
