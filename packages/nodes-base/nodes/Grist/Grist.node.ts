@@ -178,6 +178,22 @@ export class Grist implements INodeType {
 			return table;
 		};
 
+		// A saved mapping keeps a renamed or removed column until the node is opened again.
+		const assertKnownColumns = (i: number, columns: string[], target: GristTable) => {
+			const unknown = columns.filter((column) => column !== 'id' && !target.columns.has(column));
+			if (unknown.length) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Not found in the table: ${unknown.join(', ')}`,
+					{
+						itemIndex: i,
+						description:
+							'The column may have been renamed or removed in Grist. Open the node to refresh its columns.',
+					},
+				);
+			}
+		};
+
 		const getMappedRow = async (
 			i: number,
 			docId: string,
@@ -191,17 +207,20 @@ export class Grist implements INodeType {
 				);
 			}
 			// The mapper stores null until a column has a value, and a fallback only replaces undefined.
-			return (this.getNodeParameter('columns.value', i, {}) as IDataObject | null) ?? {};
+			const row = (this.getNodeParameter('columns.value', i, {}) as IDataObject | null) ?? {};
+			assertKnownColumns(i, Object.keys(row), await getTable(docId, tableId));
+			return row;
 		};
 
 		// Without a value to match on, Grist can change the wrong rows.
-		const getMatchingColumns = (i: number, row: IDataObject): string[] => {
+		const getMatchingColumns = (i: number, row: IDataObject, target: GristTable): string[] => {
 			const matchingColumns = this.getNodeParameter('columns.matchingColumns', i, []) as string[];
 			if (!matchingColumns.length) {
 				throw new NodeOperationError(this.getNode(), 'Select a column to match on', {
 					itemIndex: i,
 				});
 			}
+			assertKnownColumns(i, matchingColumns, target);
 			const unset = matchingColumns.filter((column) => row[column] == null);
 			if (unset.length) {
 				throw new NodeOperationError(this.getNode(), 'No value for the column to match on', {
@@ -226,8 +245,8 @@ export class Grist implements INodeType {
 		// Returns the record to send, and the values it sets or matches on for the item's output.
 		const getMatchedRecord = async (i: number, docId: string, tableId: string) => {
 			const row = await getMappedRow(i, docId, tableId);
-			const matchingColumns = getMatchingColumns(i, row);
 			const target = await getTable(docId, tableId);
+			const matchingColumns = getMatchingColumns(i, row, target);
 			const { require, fields } = splitRow(row, target, matchingColumns);
 			return {
 				record: { require: encodeRow(require, target), fields: encodeRow(fields, target) },

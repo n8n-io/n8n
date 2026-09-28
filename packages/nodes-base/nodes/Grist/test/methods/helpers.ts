@@ -6,10 +6,14 @@ import { mock } from 'vitest-mock-extended';
 import { credentials } from '../credentials';
 
 // `getNodeParameter` takes no item index here, and `extractValue` unwraps a locator.
-export const createLoadOptionsFunctions = (parameters: Record<string, unknown>, request: Mock) => {
+export const createLoadOptionsFunctions = (
+	parameters: Record<string, unknown>,
+	request: Mock,
+	gristApi: Record<string, string> = credentials.gristApi,
+) => {
 	const loadOptionsFunctions = mock<ILoadOptionsFunctions>();
 	loadOptionsFunctions.helpers.request = request;
-	loadOptionsFunctions.getCredentials.mockResolvedValue(credentials.gristApi);
+	loadOptionsFunctions.getCredentials.mockResolvedValue(gristApi);
 	loadOptionsFunctions.getNodeParameter.mockImplementation(((
 		name: string,
 		fallback?: unknown,

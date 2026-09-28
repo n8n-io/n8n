@@ -217,6 +217,7 @@ describe('Execute Grist Node', () => {
 	});
 
 	it('names a row ID to match on that is not a number', async () => {
+		vi.mocked(getColumns).mockResolvedValue([{ id: 'Repo', fields: { type: 'Text' } }]);
 		await expect(
 			runV2({
 				operation: 'update',
@@ -226,6 +227,35 @@ describe('Execute Grist Node', () => {
 			}),
 		).rejects.toThrow('The row ID to match on is not a number: Row 7');
 		expect(gristApiRequest).not.toHaveBeenCalled();
+	});
+
+	describe('a saved mapping with a column the table no longer has', () => {
+		beforeEach(() => {
+			vi.mocked(getColumns).mockResolvedValue([{ id: 'Repo', fields: { type: 'Text' } }]);
+		});
+
+		it('names the column instead of sending it', async () => {
+			await expect(
+				runV2({
+					operation: 'create',
+					'columns.mappingMode': 'defineBelow',
+					'columns.value': { Repo: 'dtinth/automatron', Stars: 12 },
+				}),
+			).rejects.toThrow('Not found in the table: Stars');
+			expect(gristApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('names a column to match on', async () => {
+			await expect(
+				runV2({
+					operation: 'update',
+					'columns.mappingMode': 'defineBelow',
+					'columns.value': { Repo: 'dtinth/automatron' },
+					'columns.matchingColumns': ['Url'],
+				}),
+			).rejects.toThrow('Not found in the table: Url');
+			expect(gristApiRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	it('sends explicitly defined fields for all items in one batched request', async () => {
