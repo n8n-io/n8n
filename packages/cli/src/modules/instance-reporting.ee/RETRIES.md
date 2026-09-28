@@ -87,8 +87,7 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
     `N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS` minus one: 179
     days with the default settings. Compaction folds older days into one row
     per week, so those days have no exact value. The day of margin covers
-    Postgres, which dates the threshold in the session's time zone. Older days
-    are dropped and logged.
+    Postgres, which dates the threshold in the session's time zone.
   - Days before the first data are not reported, not even as `0`. Inside the
     window, a day without data is reported as `0`. `insights` writes rows only
     for executions and never stores a `0`, so a day without executions and a
