@@ -9,23 +9,15 @@ interface TrailSquare {
 	source: 'ambient' | 'pointer';
 }
 
-const props = withDefaults(
-	defineProps<{
-		height?: number;
-	}>(),
-	{
-		height: 220,
-	},
-);
-
 const variables = reactive({
 	cellSize: 16,
 	cellGap: 0,
 	canvasPixelSize: 4,
 	backgroundOpacity: 0.2,
 	backgroundDitherOpacity: 48,
-	trailColor: '#FF3466',
-	trailOpacity: 0.6,
+	backgroundColor: '',
+	trailColor: '',
+	trailOpacity: 0,
 	revealDurationMs: 180,
 	trailHoldDurationMs: 1200,
 	trailFadeDurationMs: 500,
@@ -55,6 +47,16 @@ let isPointerOverCanvas = false;
 
 function getSquareKey(column: number, row: number) {
 	return `${column}:${row}`;
+}
+
+function updateTrailVariables() {
+	const canvas = canvasRef.value;
+	if (!canvas) return;
+
+	const styles = getComputedStyle(canvas);
+	variables.backgroundColor = styles.color;
+	variables.trailColor = styles.borderColor;
+	variables.trailOpacity = Number.parseFloat(styles.getPropertyValue('--word-grid-trail-opacity'));
 }
 
 function easeOutCubic(progress: number) {
@@ -117,7 +119,7 @@ function draw(timestamp = performance.now()) {
 		for (let column = 0; column < columns; column++) {
 			const key = getSquareKey(column, row);
 			const trailSquare = trailSquares.get(key);
-			context.fillStyle = trailSquare ? variables.trailColor : '#666';
+			context.fillStyle = trailSquare ? variables.trailColor : variables.backgroundColor;
 			context.globalAlpha = trailSquare
 				? getTrailOpacity(trailSquare, timestamp)
 				: variables.backgroundOpacity;
@@ -296,6 +298,7 @@ function resize() {
 	const canvas = canvasRef.value;
 	if (!canvas) return;
 
+	updateTrailVariables();
 	const width = canvas.clientWidth;
 	const height = canvas.clientHeight;
 	canvas.width = Math.ceil(width / variables.canvasPixelSize);
@@ -336,12 +339,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<canvas
-		ref="canvasRef"
-		:class="$style.wordGrid"
-		:style="{ height: `${props.height}px` }"
-		aria-hidden="true"
-	/>
+	<canvas ref="canvasRef" :class="$style.wordGrid" aria-hidden="true" />
 </template>
 
 <style lang="css" module>
@@ -350,10 +348,14 @@ onUnmounted(() => {
 	bottom: 0;
 	left: 0;
 	width: 100%;
-	max-height: 400px;
+	max-height: clamp(120px, 45dvh, 1280px);
 	pointer-events: none;
 	image-rendering: pixelated;
-	/*mask-image: linear-gradient(to top, black -50%, transparent 80%);*/
+	--word-grid-background-color: #666;
+	color: var(--word-grid-background-color);
+	--word-grid-trail-color: #ff3466;
+	border-color: var(--word-grid-trail-color);
+	--word-grid-trail-opacity: 0.6;
 	-webkit-mask-image: radial-gradient(
 		circle at bottom,
 		rgba(0, 0, 0, 0.2) 20%,
@@ -364,5 +366,15 @@ onUnmounted(() => {
 	mask-size: contain;
 	-webkit-mask-repeat: no-repeat;
 	mask-repeat: no-repeat;
+
+	:global(body[data-theme='dark']) & {
+		--word-grid-background-color: #ccc;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(body:not([data-theme])) & {
+			--word-grid-background-color: #ccc;
+		}
+	}
 }
 </style>

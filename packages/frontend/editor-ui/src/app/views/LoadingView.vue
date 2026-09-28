@@ -5,7 +5,7 @@ import { N8nSpinner } from '@n8n/design-system';
 <template>
 	<div :class="$style.wrapper" data-test-id="node-view-loader">
 		<div :class="$style.spinner">
-			<N8nSpinner />
+			<N8nSpinner size="xlarge" />
 		</div>
 	</div>
 </template>
@@ -25,11 +25,5 @@ import { N8nSpinner } from '@n8n/design-system';
 
 .spinner {
 	margin: 0 auto;
-
-	* {
-		color: var(--color--primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
 }
 </style>
