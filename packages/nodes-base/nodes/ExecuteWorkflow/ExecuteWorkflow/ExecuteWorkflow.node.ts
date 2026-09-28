@@ -408,9 +408,11 @@ workflowInputs: {
 								executionMode: this.getMode(),
 							},
 						);
-						const workflowResult = executionResult.data as INodeExecutionData[][];
+						const workflowResult = executionResult.data;
 
-						for (const [outputIndex, outputData] of workflowResult.entries()) {
+						for (const outputData of workflowResult) {
+							if (!outputData) continue;
+
 							for (const item of outputData) {
 								item.pairedItem = { item: i };
 								item.metadata = {
@@ -421,11 +423,8 @@ workflowInputs: {
 								};
 							}
 
-							if (returnData[outputIndex] === undefined) {
-								returnData[outputIndex] = [];
-							}
-
-							returnData[outputIndex].push(...outputData);
+							returnData[0] ??= [];
+							returnData[0].push(...outputData);
 						}
 					} else {
 						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
@@ -526,11 +525,13 @@ workflowInputs: {
 
 				const workflowRunData = await this.getExecutionDataById(executionResult.executionId);
 
-				const workflowResult = executionResult.data as INodeExecutionData[][];
+				const workflowResult = executionResult.data;
 
 				const fallbackPairedItemData = generatePairedItemData(items.length);
 
 				for (const output of workflowResult) {
+					if (!output) continue;
+
 					const sameLength = output.length === items.length;
 
 					for (const [itemIndex, item] of output.entries()) {
@@ -557,7 +558,7 @@ workflowInputs: {
 					}
 				}
 
-				return workflowResult;
+				return [workflowResult.flatMap((output) => output ?? [])];
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {

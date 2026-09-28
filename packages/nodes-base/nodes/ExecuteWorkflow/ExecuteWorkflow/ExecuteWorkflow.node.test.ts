@@ -103,6 +103,53 @@ describe('ExecuteWorkflow', () => {
 		);
 	});
 
+	test('should return second-branch items in the single output in "each" mode', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database')
+			.mockReturnValueOnce('each')
+			.mockReturnValueOnce({})
+			.mockReturnValueOnce([])
+			.mockReturnValueOnce(true);
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		executeFunctions.executeWorkflow.mockResolvedValue({
+			executionId: 'subExecutionId',
+			data: [[], [{ json: { id: 55 } }]],
+		});
+
+		expect(await executeWorkflow.execute.call(executeFunctions)).toEqual([
+			[
+				{
+					json: { id: 55 },
+					pairedItem: { item: 0 },
+					metadata: {
+						subExecution: { workflowId: 'subWorkflowId', executionId: 'subExecutionId' },
+					},
+				},
+			],
+		]);
+	});
+
+	test('should return items from both branches in the single output in "once" mode', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database')
+			.mockReturnValueOnce('once')
+			.mockReturnValueOnce({})
+			.mockReturnValueOnce([])
+			.mockReturnValueOnce(true);
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		executeFunctions.executeWorkflow.mockResolvedValue({
+			executionId: 'subExecutionId',
+			data: [[{ json: { id: 55 } }], [{ json: { id: 56 } }]],
+		});
+
+		expect(await executeWorkflow.execute.call(executeFunctions)).toEqual([
+			[
+				{ json: { id: 55 }, pairedItem: { item: 0 } },
+				{ json: { id: 56 }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
 	test('should execute workflow in "once" mode and not wait for sub-workflow completion', async () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
