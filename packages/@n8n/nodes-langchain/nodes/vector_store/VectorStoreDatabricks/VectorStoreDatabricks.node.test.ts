@@ -329,7 +329,9 @@ describe('VectorStoreDatabricks', () => {
 	});
 
 	describe('supplyData in retrieve-as-tool mode', () => {
-		it('carries the search mode, metadata filter and limit into every tool call', async () => {
+		// A managed-embedding index rejects query_vector, so the agent's query has to reach the
+		// store as text. The factory picks that path from this node's `searchByText`.
+		it('searches the agent query as text and never embeds it', async () => {
 			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
 			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
 			const ctx = setupContext<ISupplyDataFunctions>({
@@ -337,7 +339,6 @@ describe('VectorStoreDatabricks', () => {
 				mode: 'retrieve-as-tool',
 				toolDescription: 'Company policies. Use for any policy question.',
 				topK: 3,
-				options: { searchMode: 'HYBRID', searchFilterJson: { source: 'hr' } },
 			});
 			ctx.addInputData = vi.fn().mockReturnValue({ index: 0 });
 			ctx.addOutputData = vi.fn();
@@ -345,13 +346,12 @@ describe('VectorStoreDatabricks', () => {
 			const { response } = await node.supplyData.call(ctx, 0);
 			await (response as Tool).invoke({ input: 'what is the leave policy' });
 
-			expect(mockedFromExistingIndex).toHaveBeenCalledWith(
-				embeddings,
-				expect.objectContaining({ queryType: 'HYBRID' }),
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith(
+				'what is the leave policy',
+				3,
+				undefined,
 			);
-			expect(store.similaritySearchWithScore).toHaveBeenCalledWith('what is the leave policy', 3, {
-				source: 'hr',
-			});
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
 		});
 	});
 
