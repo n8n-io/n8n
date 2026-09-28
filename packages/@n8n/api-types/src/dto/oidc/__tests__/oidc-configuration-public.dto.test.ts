@@ -1,3 +1,5 @@
+import assert from 'node:assert';
+
 import {
 	OidcConfigurationPublicDto,
 	UpdateOidcConfigurationPublicDto,
@@ -55,10 +57,9 @@ describe('UpdateOidcConfigurationPublicDto', () => {
 	test('reports every field as missing for an empty body', () => {
 		const result = UpdateOidcConfigurationPublicDto.safeParse({});
 
-		expect(result.success).toBe(false);
-		const missing = result.success
-			? []
-			: [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
+		assert(!result.success, 'Expected validation to fail for an empty body');
+
+		const missing = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
 		expect(missing).toEqual(Object.keys(configuration).sort());
 	});
 
