@@ -96,6 +96,8 @@ const config: KnipConfig = {
 			],
 		}),
 		'packages/@n8n/instance-ai': pkg({
+			// Copied into generated apps, whose scaffold template's package.json declares these imports.
+			ignore: ['skills/app-builder/component-registry/**', 'dist/**'],
 			// psl is loaded with a dynamic import, which knip does not link to @types.
 			ignoreDependencies: ['@types/psl'],
 		}),

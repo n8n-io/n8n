@@ -21,7 +21,7 @@ const sourceTypesAfter = [...sourceTypesBefore, 'app_version'];
  * the row records where. An Instance AI thread can be bound to the app it
  * builds so the app page resumes the newest one.
  */
-export class CreateAppTables1789136891803 implements ReversibleMigration {
+export class CreateAppTables1790586394985 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const { createTable, createIndex, addColumns, addForeignKey, column } = ctx.schemaBuilder;
 		const table = async (name: string) =>

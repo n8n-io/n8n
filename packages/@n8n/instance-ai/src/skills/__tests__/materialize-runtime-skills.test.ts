@@ -414,7 +414,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		async ({ group, path, warns }) => {
 			const source = createRuntimeSkillSourceWithLinkedFile(path, {
 				group,
-				content: 'x'.repeat(64 * 1024 + 1),
+				content: 'x'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1),
 			});
 			const { workspace, writes } = createMockWorkspace();
 			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };

@@ -1,2 +1,1 @@
-export { default as Markdown } from './Markdown.vue';
-export { renderMarkdown } from './markdown';
+export { default as Markdown, renderMarkdown } from './Markdown.vue';

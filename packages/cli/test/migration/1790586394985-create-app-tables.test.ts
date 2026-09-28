@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateAppTables1789136891803';
+const MIGRATION_NAME = 'CreateAppTables1790586394985';
 const APP_TABLE = 'app';
 const APP_VERSION_TABLE = 'app_version';
 const THREAD_TABLE = 'instance_ai_threads';
