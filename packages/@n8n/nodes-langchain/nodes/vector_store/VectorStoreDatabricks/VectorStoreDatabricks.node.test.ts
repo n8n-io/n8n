@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased-id */
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { Tool } from '@langchain/core/tools';
 import { proxyFetch } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -324,6 +325,33 @@ describe('VectorStoreDatabricks', () => {
 			expect(store.similaritySearchWithScore).toHaveBeenCalledWith('what is up', 3, {
 				source: 'hr',
 			});
+		});
+	});
+
+	describe('supplyData in retrieve-as-tool mode', () => {
+		// A managed-embedding index rejects query_vector, so the agent's query has to reach the
+		// store as text. The factory picks that path from this node's `searchByText`.
+		it('searches the agent query as text and never embeds it', async () => {
+			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
+			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
+			const ctx = setupContext<ISupplyDataFunctions>({
+				...baseParams,
+				mode: 'retrieve-as-tool',
+				toolDescription: 'Company policies. Use for any policy question.',
+				topK: 3,
+			});
+			ctx.addInputData = vi.fn().mockReturnValue({ index: 0 });
+			ctx.addOutputData = vi.fn();
+
+			const { response } = await node.supplyData.call(ctx, 0);
+			await (response as Tool).invoke({ input: 'what is the leave policy' });
+
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith(
+				'what is the leave policy',
+				3,
+				undefined,
+			);
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
 		});
 	});
 
