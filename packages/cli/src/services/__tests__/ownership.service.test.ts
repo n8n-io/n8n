@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -19,7 +20,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -45,7 +46,6 @@ import {
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,

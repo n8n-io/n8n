@@ -10,6 +10,7 @@ import {
 	userIdentifierParamSchema,
 	userUuidParamSchema,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -33,7 +34,6 @@ import type { Response } from 'express';
 import pick from 'lodash/pick';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

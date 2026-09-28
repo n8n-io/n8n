@@ -1773,6 +1773,13 @@ importers:
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/@n8n/backend-services:
+    dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../backend-common
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4463,6 +4470,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../@n8n/backend-services
       '@n8n/blob-storage':
         specifier: workspace:*
         version: link:../@n8n/blob-storage

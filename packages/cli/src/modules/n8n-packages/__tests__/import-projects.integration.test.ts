@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -26,7 +27,6 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';

@@ -4,6 +4,7 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import {
@@ -25,7 +26,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

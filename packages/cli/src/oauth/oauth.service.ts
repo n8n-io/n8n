@@ -5,6 +5,7 @@ import {
 	type HttpRequestClient,
 	type SsrfBridge,
 } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -66,7 +67,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { CacheService } from '@/services/cache/cache.service';

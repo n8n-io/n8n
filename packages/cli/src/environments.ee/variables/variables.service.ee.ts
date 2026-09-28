@@ -4,6 +4,7 @@ import {
 	NEW_VARIABLE_KEY_REGEX,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
@@ -15,7 +16,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 

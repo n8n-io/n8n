@@ -1,5 +1,6 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -40,7 +41,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';

@@ -6,6 +6,7 @@ import {
 	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -45,7 +46,6 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';

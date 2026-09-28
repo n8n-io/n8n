@@ -12,6 +12,7 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -46,7 +47,6 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,

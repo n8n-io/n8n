@@ -23,6 +23,7 @@ import {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
@@ -60,7 +61,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { toPublicProject } from '@/public-api/v1/shared/project.mapper';

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -7,7 +8,6 @@ import { z, ZodError } from 'zod';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 
 import { TokenExchangeService } from '../services/token-exchange.service';

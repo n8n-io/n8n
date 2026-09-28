@@ -3,6 +3,7 @@ import {
 	type ListRoleMappingRuleQueryInput,
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	isUniqueConstraintError,
 	ProjectRepository,
@@ -18,7 +19,6 @@ import type { z } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import type { UserLike } from '@/events/maps/relay.event-map';
 
 import {

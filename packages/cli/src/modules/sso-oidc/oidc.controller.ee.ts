@@ -1,5 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -10,7 +11,6 @@ import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,
