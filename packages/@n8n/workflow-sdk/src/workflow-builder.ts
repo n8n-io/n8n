@@ -730,17 +730,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// with old IDs. This mapping allows mergeInstanceConnections() to resolve
 		// those stale references to the correct map key (important for auto-renamed nodes).
 		const staleIdToKeyMap = new Map<string, string>();
+		// Work out every new id before copying any node, so a sticky copied first
+		// can still point at the new ids of the nodes it wraps.
+		const newIdByKey = new Map<string, string>();
+		const newIdByOldId = new Map<string, string>();
 
-		for (const [mapKey, graphNode] of this._nodes) {
-			const instance = graphNode.instance;
+		for (const [mapKey, { instance }] of this._nodes) {
 			staleIdToKeyMap.set(instance.id, mapKey);
 			const newId =
 				instance.config?.id ??
 				existingIdsByName?.get(mapKey) ??
 				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new ID
-			const newInstance = cloneNodeWithId(instance, newId);
+			newIdByKey.set(mapKey, newId);
+			newIdByOldId.set(instance.id, newId);
+		}
+
+		for (const [mapKey, graphNode] of this._nodes) {
+			const instance = graphNode.instance;
+			const newId = newIdByKey.get(mapKey) ?? instance.id;
+
+			// Copy the node under its new id. A node's id is read-only, so it cannot change in place.
+			const newInstance = cloneNodeWithId(instance, newId, newIdByOldId);
 
 			newNodes.set(mapKey, {
 				instance: newInstance,
