@@ -22,6 +22,8 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -555,6 +557,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({
+					status: 'success',
 					timeline: record.timeline,
 					storedAt: 'db',
 					failureSummary: {
@@ -972,13 +975,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it.each([
-			{ name: 'suspended turn', record: makeMessageRecord(), hitlStatus: 'suspended' as const },
-			{
-				name: 'max-iterations turn',
-				record: makeMessageRecord({ finishReason: 'max-iterations' }),
-			},
-		])('tracks $name without an error as succeeded', async ({ record, hitlStatus }) => {
+		it('tracks a suspended turn without an error as succeeded', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
@@ -994,8 +991,8 @@ describe('AgentExecutionService', () => {
 				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
-				record,
-				...(hitlStatus ? { hitlStatus } : {}),
+				record: makeMessageRecord(),
+				hitlStatus: 'suspended',
 				telemetry: {
 					runType: 'test',
 					configuration: {
@@ -1012,6 +1009,50 @@ describe('AgentExecutionService', () => {
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					turn_status: 'succeeded',
+				}),
+			);
+		});
+
+		it('tracks a max-iterations turn as failed', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
+
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ finishReason: 'max-iterations' }),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					status: 'error',
+					error: MAX_ITERATIONS_STOPPED_MESSAGE,
+				}),
+			);
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'failed',
 				}),
 			);
 		});
@@ -1121,14 +1162,59 @@ describe('AgentExecutionService', () => {
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});
+
+		it('persists a successful mark_session_failed call as an execution error', async () => {
+			const record = makeMessageRecord({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 0,
+						endTime: 1,
+						success: true,
+					},
+				],
+			});
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					status: 'error',
+					error: 'Could not recover',
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'execution',
+							name: null,
+							message: 'Could not recover',
+							occurredAt: 1,
+						},
+					},
+				}),
+			);
+		});
 	});
 
 	describe('getThreads', () => {
 		it('returns composite statuses and aggregated failure summaries', async () => {
-			const failedThread = makeThread({ id: 'thread-failed' });
+			const recoveredThread = makeThread({ id: 'thread-recovered' });
 			const cleanThread = makeThread({ id: 'thread-clean', accessScope: 'project', ownerId: null });
 			const runningThread = makeThread({ id: 'thread-running', parentThreadId: 'parent' });
 			const emptyThread = makeThread({ id: 'thread-empty' });
+			const errorThread = makeThread({ id: 'thread-error' });
 			const failureSummary = {
 				count: 2,
 				latest: {
@@ -1140,19 +1226,20 @@ describe('AgentExecutionService', () => {
 				},
 			};
 			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
-				threads: [failedThread, cleanThread, runningThread, emptyThread],
+				threads: [recoveredThread, cleanThread, runningThread, emptyThread, errorThread],
 				nextCursor: null,
 			});
 			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
-				new Map([[failedThread.id, failureSummary]]),
+				new Map([[recoveredThread.id, failureSummary]]),
 			);
 			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
 				new Map([
-					[failedThread.id, 'success'],
+					[recoveredThread.id, 'success'],
 					[cleanThread.id, 'success'],
 					[runningThread.id, 'running'],
+					[errorThread.id, 'error'],
 				]),
 			);
 
@@ -1160,9 +1247,9 @@ describe('AgentExecutionService', () => {
 
 			expect(result.threads).toEqual([
 				expect.objectContaining({
-					id: failedThread.id,
+					id: recoveredThread.id,
 					failureSummary,
-					status: 'error',
+					status: 'succeeded',
 					canContinueInPreview: true,
 				}),
 				expect.objectContaining({
@@ -1178,6 +1265,12 @@ describe('AgentExecutionService', () => {
 					canContinueInPreview: false,
 				}),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
+				expect.objectContaining({
+					id: errorThread.id,
+					failureSummary: null,
+					status: 'error',
+					canContinueInPreview: true,
+				}),
 			]);
 		});
 	});
