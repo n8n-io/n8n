@@ -64,6 +64,7 @@ import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/age
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
 
@@ -2004,7 +2005,11 @@ describe('AgentExecutionRepository', () => {
 				{ sessionNumber: 5, source: null, expected: 'preview' },
 				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
 				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
-				{ sessionNumber: 8, source: 'n8n_chat_production', expected: 'n8n_chat_production' },
+				{
+					sessionNumber: 8,
+					source: N8N_CHAT_PRODUCTION_SOURCE,
+					expected: N8N_CHAT_PRODUCTION_SOURCE,
+				},
 			];
 			const expectedIds = new Map<AgentSessionOrigin, string[]>();
 
@@ -2049,7 +2054,7 @@ describe('AgentExecutionRepository', () => {
 			const theirs = await createThread({ sessionNumber: 2, ownerId: other.id });
 			const unowned = await createThread({ sessionNumber: 3 });
 			for (const thread of [mine, theirs, unowned]) {
-				await createExecution({ threadId: thread.id, source: 'n8n_chat_production' });
+				await createExecution({ threadId: thread.id, source: N8N_CHAT_PRODUCTION_SOURCE });
 			}
 			const list = async (filters: AgentSessionQueryFilters) =>
 				(
@@ -2063,8 +2068,8 @@ describe('AgentExecutionRepository', () => {
 					)
 				).threads.map(({ id }) => id);
 
-			expect(await list({ origin: 'n8n_chat_production', scope: 'mine' })).toEqual([mine.id]);
-			expect(new Set(await list({ origin: 'n8n_chat_production' }))).toEqual(
+			expect(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE, scope: 'mine' })).toEqual([mine.id]);
+			expect(new Set(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE }))).toEqual(
 				new Set([mine.id, theirs.id, unowned.id]),
 			);
 		});
