@@ -11,7 +11,7 @@ import {
 	watch,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nChatMessage, N8nIcon, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -62,7 +62,8 @@ import {
 	stashPendingHandoffContext,
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_PREFILL_TYPE_FALLBACK, type InstanceAiMessageAuthorship } from '../prefills';
+import type { InstanceAiMessageAuthorship } from '../prefills';
+import type { InstanceAiEmptyStateSuggestion } from '../emptyStateSuggestions';
 import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
 import { useAppThreadScope } from '@/features/apps/composables/useAppThreadScope';
 import type {
@@ -251,21 +252,44 @@ const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role
 // The new-app page: a bound app does not exist yet, so the composer asks for the idea first.
 const appScope = useAppThreadScope();
 const isNewAppPage = computed(() => appScope !== null && !appScope.value.appId);
-const NEW_APP_EXAMPLES = [
-	{ key: 'instanceAi.newApp.example.todo', icon: 'square-check' },
-	{ key: 'instanceAi.newApp.example.form', icon: 'file-text' },
-	{ key: 'instanceAi.newApp.example.agentChat', icon: 'message-circle' },
-] as const;
-const showNewAppExamples = computed(
-	() => isNewAppPage.value && displayedMessages.length === 0 && !thread.isStreaming,
+// Idea starters, rendered by the composer like the assistant home page's pills. Its own
+// catalog version keeps their suggestion telemetry apart from the home page's.
+const NEW_APP_SUGGESTIONS_VERSION = 'app-builder-v1';
+const NEW_APP_SUGGESTIONS: readonly InstanceAiEmptyStateSuggestion[] = [
+	{
+		type: 'prompt',
+		id: 'event-rsvp',
+		icon: 'calendar',
+		labelKey: 'instanceAi.newApp.suggestions.eventRsvp.label',
+		promptKey: 'instanceAi.newApp.suggestions.eventRsvp.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'feedback-board',
+		icon: 'messages-square',
+		labelKey: 'instanceAi.newApp.suggestions.feedbackBoard.label',
+		promptKey: 'instanceAi.newApp.suggestions.feedbackBoard.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'equipment-booking',
+		icon: 'laptop',
+		labelKey: 'instanceAi.newApp.suggestions.equipmentBooking.label',
+		promptKey: 'instanceAi.newApp.suggestions.equipmentBooking.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'onboarding-hub',
+		icon: 'clipboard-list',
+		labelKey: 'instanceAi.newApp.suggestions.onboardingHub.label',
+		promptKey: 'instanceAi.newApp.suggestions.onboardingHub.prompt',
+	},
+];
+const newAppSuggestions = computed(() =>
+	isNewAppPage.value && displayedMessages.length === 0 && !thread.isStreaming
+		? NEW_APP_SUGGESTIONS
+		: undefined,
 );
-function useNewAppExample(key: (typeof NEW_APP_EXAMPLES)[number]['key']) {
-	chatInputRef.value?.setPrefill({
-		text: i18n.baseText(key),
-		prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
-	});
-	chatInputRef.value?.focus();
-}
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
@@ -1040,23 +1064,6 @@ defineExpose({
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<div
-								v-if="showNewAppExamples"
-								:class="$style.newAppExamples"
-								data-test-id="instance-ai-new-app-examples"
-							>
-								<button
-									v-for="(example, index) in NEW_APP_EXAMPLES"
-									:key="example.key"
-									type="button"
-									:class="$style.newAppExample"
-									:style="{ animationDelay: `${index * 50}ms` }"
-									@click="useNewAppExample(example.key)"
-								>
-									<N8nIcon :icon="example.icon" :size="12" :class="$style.newAppExampleIcon" />
-									<span>{{ i18n.baseText(example.key) }}</span>
-								</button>
-							</div>
 							<slot name="above-input" />
 							<div :class="$style.inputSwap">
 								<Transition name="input-swap">
@@ -1091,6 +1098,10 @@ defineExpose({
 										:placeholder-key="
 											isNewAppPage ? 'instanceAi.input.newAppPlaceholder' : undefined
 										"
+										:suggestions="newAppSuggestions"
+										:suggestion-catalog-version="
+											newAppSuggestions ? NEW_APP_SUGGESTIONS_VERSION : undefined
+										"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
@@ -1112,8 +1123,6 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-@use '../../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
-
 @property --instance-ai-artifacts-layout-width {
 	syntax: '<length>';
 	inherits: true;
@@ -1253,27 +1262,6 @@ defineExpose({
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
-}
-
-.newAppExamples {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--xs);
-}
-
-.newAppExample {
-	@include promptSuggestions.prompt-suggestion-button;
-}
-
-.newAppExampleIcon {
-	@include promptSuggestions.prompt-suggestion-icon;
-
-	.newAppExample:hover &,
-	.newAppExample:focus-visible & {
-		opacity: 1;
-	}
 }
 
 // The leaving child is detached from layout (see `.input-swap-leave-active`
