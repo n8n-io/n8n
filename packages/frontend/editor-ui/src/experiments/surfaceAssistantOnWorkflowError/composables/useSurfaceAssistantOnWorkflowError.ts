@@ -19,6 +19,7 @@ let lastTriggeredExecutionId: string | undefined;
 let showNudgeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const isWorkflowErrorNudgeVisible = ref(false);
+export const workflowErrorNudgeWorkflowId = ref<string | undefined>();
 
 function clearShowNudgeTimer() {
 	if (showNudgeTimer === undefined) return;
@@ -39,6 +40,7 @@ export function releaseWorkflowErrorNudge(executionId: string) {
 
 export function resetSurfaceAssistantOnWorkflowError() {
 	lastTriggeredExecutionId = undefined;
+	workflowErrorNudgeWorkflowId.value = undefined;
 	clearShowNudgeTimer();
 	isWorkflowErrorNudgeVisible.value = false;
 }
@@ -58,7 +60,11 @@ export function useSurfaceAssistantOnWorkflowError() {
 		);
 	}
 
-	function triggerOnWorkflowError(executionId: string, options?: { reopen?: boolean }) {
+	function triggerOnWorkflowError(
+		executionId: string,
+		workflowId: string,
+		options?: { reopen?: boolean },
+	) {
 		if (CLOUD_ONLY && !settingsStore.isCloudDeployment) {
 			return;
 		}
@@ -83,6 +89,7 @@ export function useSurfaceAssistantOnWorkflowError() {
 		}
 
 		lastTriggeredExecutionId = executionId;
+		workflowErrorNudgeWorkflowId.value = workflowId;
 		clearShowNudgeTimer();
 		showNudgeTimer = setTimeout(() => {
 			showNudgeTimer = undefined;

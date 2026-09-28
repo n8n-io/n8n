@@ -474,7 +474,10 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					// EOF Experiment cleanup
 				});
 				// Experiment cleanup (119_surface_assistant_on_workflow_error)
-				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(execution.id);
+				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(
+					execution.id,
+					execution.workflowId ?? execution.workflowData.id,
+				);
 				// EOF Experiment cleanup
 			}
 		}

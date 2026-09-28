@@ -174,6 +174,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	// Experiment cleanup (119_surface_assistant_on_workflow_error)
 	function showExecutionErrorToast(
 		executionId: string,
+		workflowId: string,
 		title: string,
 		message: Parameters<typeof toast.showMessage>[0]['message'],
 	) {
@@ -185,7 +186,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
 			onClose: () => releaseWorkflowErrorNudge(executionId),
 		});
-		triggerOnWorkflowError(executionId, { reopen: true });
+		triggerOnWorkflowError(executionId, workflowId, { reopen: true });
 	}
 	// EOF Experiment cleanup
 
@@ -224,7 +225,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 					lastNodeExecuted: resultData.lastNodeExecuted,
 				});
 				// Experiment cleanup (119_surface_assistant_on_workflow_error)
-				showExecutionErrorToast(executionId, title, message);
+				showExecutionErrorToast(executionId, data.workflowData.id, title, message);
 				// EOF Experiment cleanup
 			} else if (!data.finished && resultData?.error) {
 				// Skip when a node already captured the error — it shows on the node.
@@ -235,6 +236,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 					// Experiment cleanup (119_surface_assistant_on_workflow_error)
 					showExecutionErrorToast(
 						executionId,
+						data.workflowData.id,
 						i18n.baseText('nodeView.showError.workflowError'),
 						resultData.error.message,
 					);

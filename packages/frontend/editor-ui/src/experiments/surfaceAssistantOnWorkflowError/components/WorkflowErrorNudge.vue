@@ -4,8 +4,9 @@
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useInstanceAiHandoffCapability } from '@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability';
 import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import {
@@ -13,6 +14,7 @@ import {
 	WORKFLOW_ERROR_NUDGE_TOAST_CLASS,
 	dismissWorkflowErrorNudge,
 	isWorkflowErrorNudgeVisible,
+	workflowErrorNudgeWorkflowId,
 } from '../composables/useSurfaceAssistantOnWorkflowError';
 import { buildNudgeOutline, type NudgeOutline } from '../workflowErrorNudgeOutline';
 import { restackContentToasts } from '../workflowErrorNudgePosition';
@@ -40,6 +42,12 @@ const i18n = useI18n();
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const { openWorkflow } = useInstanceAiHandoffCapability();
+const currentWorkflowId = useWorkflowId();
+const nudgeActive = computed(
+	() =>
+		isWorkflowErrorNudgeVisible.value &&
+		workflowErrorNudgeWorkflowId.value === currentWorkflowId.value,
+);
 const opening = ref(false);
 const actionRef = ref<HTMLElement | null>(null);
 const embedHost = ref<HTMLElement | null>(null);
@@ -197,9 +205,9 @@ async function onFixWithAssistant() {
 }
 
 watch(
-	isWorkflowErrorNudgeVisible,
-	(visible) => {
-		if (!visible) {
+	nudgeActive,
+	(active) => {
+		if (!active) {
 			stopTracking();
 			return;
 		}
@@ -219,7 +227,7 @@ onBeforeUnmount(stopTracking);
 
 <template>
 	<div :class="$style.root">
-		<Teleport v-if="isWorkflowErrorNudgeVisible && embedHost" :to="embedHost">
+		<Teleport v-if="nudgeActive && embedHost" :to="embedHost">
 			<div
 				ref="actionRef"
 				:class="$style.embed"

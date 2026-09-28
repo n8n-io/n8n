@@ -21,6 +21,7 @@ vi.mock('@/features/ai/instanceAi/instanceAiPermissions', () => ({
 }));
 
 const EXECUTION_ID = 'exec-1';
+const WORKFLOW_ID = 'wf-1';
 
 function setup({
 	variant = 'variant',
@@ -58,7 +59,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 	it('shows the nudge after the delay for the variant arm', () => {
 		const { posthogStore, trigger } = setup();
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 
 		expect(posthogStore.trackExposure).toHaveBeenCalledWith(
 			SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
@@ -73,7 +74,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 	it('tracks exposure but does not show the nudge for the control arm', () => {
 		const { posthogStore, trigger } = setup({ variant: 'control' });
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 
 		expect(posthogStore.trackExposure).toHaveBeenCalled();
@@ -83,7 +84,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 	it('skips self-hosted instances entirely', () => {
 		const { posthogStore, trigger } = setup({ cloud: false });
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 
 		expect(posthogStore.trackExposure).not.toHaveBeenCalled();
@@ -93,15 +94,15 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 	it('ignores a repeated trigger for the same execution unless reopen is set', () => {
 		const { trigger } = setup();
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 		isWorkflowErrorNudgeVisible.value = false;
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 		expect(isWorkflowErrorNudgeVisible.value).toBe(false);
 
-		trigger(EXECUTION_ID, { reopen: true });
+		trigger(EXECUTION_ID, WORKFLOW_ID, { reopen: true });
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 		expect(isWorkflowErrorNudgeVisible.value).toBe(true);
 	});
@@ -110,7 +111,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 		canMessageInstanceAi.mockReturnValue(false);
 		const { trigger } = setup();
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 
 		expect(isWorkflowErrorNudgeVisible.value).toBe(false);
@@ -119,7 +120,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 	it('shows the nudge to an admin when the Assistant is disabled', () => {
 		const { trigger } = setup({ assistantEnabled: false });
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 
 		expect(isWorkflowErrorNudgeVisible.value).toBe(true);
@@ -129,7 +130,7 @@ describe('useSurfaceAssistantOnWorkflowError', () => {
 		canManageInstanceAi.mockReturnValue(false);
 		const { trigger } = setup({ assistantEnabled: false });
 
-		trigger(EXECUTION_ID);
+		trigger(EXECUTION_ID, WORKFLOW_ID);
 		vi.advanceTimersByTime(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 
 		expect(isWorkflowErrorNudgeVisible.value).toBe(false);

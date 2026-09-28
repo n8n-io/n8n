@@ -27,10 +27,12 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability', (
 	useInstanceAiHandoffCapability: () => ({ openWorkflow }),
 }));
 
+const WORKFLOW_ID = 'wf-1';
+
 const push = vi.fn();
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
-	useRoute: () => ({ params: {}, query: {} }),
+	useRoute: () => ({ params: { workflowId: WORKFLOW_ID }, query: {} }),
 }));
 
 vi.mock('@/features/ai/instanceAi/instanceAiPermissions', () => ({
@@ -45,7 +47,7 @@ const EXECUTION_ID = 'exec-1';
 let appRoot: HTMLElement | undefined;
 let unmount: (() => void) | undefined;
 
-async function showCta(assistantEnabled = true) {
+async function showCta(assistantEnabled = true, workflowId = WORKFLOW_ID) {
 	appRoot = document.createElement('div');
 	appRoot.id = 'n8n-app';
 	appRoot.innerHTML =
@@ -66,7 +68,7 @@ async function showCta(assistantEnabled = true) {
 	} as typeof settingsStore.moduleSettings;
 
 	vi.useFakeTimers();
-	useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(EXECUTION_ID);
+	useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(EXECUTION_ID, workflowId);
 	await vi.advanceTimersByTimeAsync(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 	await nextTick();
 	vi.useRealTimers();
@@ -75,7 +77,12 @@ async function showCta(assistantEnabled = true) {
 	if (!(group instanceof HTMLElement)) {
 		throw new Error('Error toast group was not found');
 	}
-	return within(group).getByTestId('workflow-error-nudge-action');
+	return within(group);
+}
+
+async function showCtaButton(assistantEnabled = true) {
+	const group = await showCta(assistantEnabled);
+	return group.getByTestId('workflow-error-nudge-action');
 }
 
 describe('WorkflowErrorNudge', () => {
@@ -94,9 +101,9 @@ describe('WorkflowErrorNudge', () => {
 	});
 
 	it('injects the Fix with Assistant button into the error toast after a workflow error', async () => {
-		const button = await showCta();
+		const button = await showCtaButton();
 
-		expect(button).toHaveTextContent('Fix with Assistant');
+		expect(button).toHaveTextContent('Fix with n8n Assistant');
 		expect(button.closest('.el-notification.content-toast')).toBe(appRoot?.firstElementChild);
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE,
@@ -106,8 +113,15 @@ describe('WorkflowErrorNudge', () => {
 		);
 	});
 
+	it('does not inject the button when the error belongs to another workflow', async () => {
+		const group = await showCta(true, 'other-workflow');
+
+		expect(group.queryByTestId('workflow-error-nudge-action')).toBeNull();
+		expect(track).not.toHaveBeenCalled();
+	});
+
 	it('opens the assistant and sends telemetry when Assistant is enabled', async () => {
-		const button = await showCta(true);
+		const button = await showCtaButton(true);
 
 		await userEvent.click(button);
 
@@ -120,7 +134,7 @@ describe('WorkflowErrorNudge', () => {
 	});
 
 	it('opens Assistant settings and sends telemetry when Assistant is disabled', async () => {
-		const button = await showCta(false);
+		const button = await showCtaButton(false);
 
 		await userEvent.click(button);
 
