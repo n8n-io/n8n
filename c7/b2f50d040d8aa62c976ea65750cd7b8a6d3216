@@ -1,0 +1,46 @@
+packages/@n8n/cli/src/index.ts
+  s_b2694b68ec0a88::t_af36551634f112 41-42
+  s_b2694b68ec0a88::t_dd7eaff1008520 131-132
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_b2694b68ec0a88::t_3f5d8395624e85 3
+  s_b2694b68ec0a88::t_6781f5305b9526 29
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_b2694b68ec0a88::t_01bf3484303a18 118-149
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection.ts
+  s_b2694b68ec0a88::t_12ac5bf970bc6d 1-40
+  s_b2694b68ec0a88::t_b8d2a6d4e67ce4 41-44
+packages/@n8n/cli/docs/commands/promotions.md
+  s_b2694b68ec0a88::t_b2e2062f1ac524 342-392
+packages/@n8n/cli/src/commands/promotion-connection/apply.ts
+  s_b2694b68ec0a88::t_5d4ba54196794b 27
+  s_b2694b68ec0a88::t_d2de5853cece84 3
+packages/@n8n/cli/src/client.ts
+  s_b2694b68ec0a88::t_1c2875d846bdb1 467-489
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_b2694b68ec0a88::t_a23f6d4544d5ab 6-11,17,40,62,64,77,81-106
+  s_b2694b68ec0a88::t_87b4e031053c07 107
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection-continue.ts
+  s_b2694b68ec0a88::t_9c42feb636383d 1-42
+  s_b2694b68ec0a88::t_cab8386a6e1a0c 43-46
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_b2694b68ec0a88::t_e53b4bbe54f67c 7-8
+  s_b2694b68ec0a88::t_5e7bb5609334b8 361-476
+packages/@n8n/cli/README.md
+  s_b2694b68ec0a88::t_26bf0ee8a86c42 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7b2f50d040d8aa62c976ea65750cd7b8a6d3216",
+  "prompts": {},
+  "sessions": {
+    "s_b2694b68ec0a88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdd94cab-0dd4-436e-90fd-35ee07b392cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
