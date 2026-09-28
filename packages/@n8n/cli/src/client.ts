@@ -41,6 +41,7 @@ export interface ImportPackageSelectionFields {
 	deletedWorkflowIds?: string[];
 	workflowConflictPolicy?: string;
 	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -809,6 +810,7 @@ export class N8nClient {
 			selectedProjectId: fields.selectedProjectId,
 			workflowConflictPolicy: fields.workflowConflictPolicy,
 			workflowIdPolicy: fields.workflowIdPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
 		};
 		for (const [key, value] of Object.entries(stringFields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);

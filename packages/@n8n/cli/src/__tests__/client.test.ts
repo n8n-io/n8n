@@ -440,6 +440,7 @@ describe('N8nClient packages', () => {
 					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
 					workflowConflictPolicy: 'skip',
 					workflowIdPolicy: 'new',
+					overwriteDeletionPolicy: 'hard-delete',
 				},
 			);
 
@@ -455,6 +456,7 @@ describe('N8nClient packages', () => {
 			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
 			expect(form.get('workflowConflictPolicy')).toBe('skip');
 			expect(form.get('workflowIdPolicy')).toBe('new');
+			expect(form.get('overwriteDeletionPolicy')).toBe('hard-delete');
 
 			const pkg = form.get('package') as File;
 			expect(pkg).toBeInstanceOf(Blob);
@@ -478,6 +480,7 @@ describe('N8nClient packages', () => {
 			expect(form.has('deletedWorkflowIds')).toBe(false);
 			expect(form.has('workflowConflictPolicy')).toBe(false);
 			expect(form.has('workflowIdPolicy')).toBe(false);
+			expect(form.has('overwriteDeletionPolicy')).toBe(false);
 		});
 
 		it('preserves an explicit empty deletion list', async () => {
