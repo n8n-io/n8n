@@ -18,6 +18,11 @@ type PendingJobWait = {
 /** Bull job IDs are unique per queue only, so pool queues can reuse them. */
 const toJobKey = (queueName: string, jobId: JobId) => `${queueName}:${jobId.toString()}`;
 
+type RecheckedStatus = ExecutionStatus | 'deleted';
+
+/** `unknown` is stoppable and in flight elsewhere in the codebase, so it is in flight here too. */
+const IN_FLIGHT_STATUSES = new Set<RecheckedStatus>(['new', 'running', 'unknown']);
+
 /**
  * Tracks the outcome of queued jobs on a `main` or `webhook` process, and lets
  * the process that enqueued a job wait for it.
@@ -148,27 +153,33 @@ export class JobOutcomeTracker {
 	private async recheck(executionId: string) {
 		if (!this.pendingWaits.has(executionId)) return;
 
-		let execution: { status: ExecutionStatus } | undefined;
+		const status = await this.readStatus(executionId);
+		if (status === undefined || IN_FLIGHT_STATUSES.has(status)) return;
+
+		this.logger.warn(
+			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
+			{ executionId, status },
+		);
+		this.settle(executionId);
+	}
+
+	/**
+	 * @returns the execution status, `deleted` when the row is gone, or `undefined`
+	 * when the read failed and the next recheck should try again.
+	 */
+	private async readStatus(executionId: string): Promise<RecheckedStatus | undefined> {
 		try {
-			execution = await this.executionRepository.findSingleExecution(executionId);
+			const execution = await this.executionRepository.findSingleExecution(executionId);
+
+			// A missing row means the worker finished and the execution was not saved,
+			// e.g. a manual execution with saving disabled. Nothing is left to wait for.
+			return execution?.status ?? 'deleted';
 		} catch (error) {
 			this.logger.warn(`Failed to recheck the status of execution ${executionId}, will retry`, {
 				executionId,
 				error,
 			});
-			return;
+			return undefined;
 		}
-
-		// `unknown` is stoppable and in flight elsewhere in the codebase, so it is in flight here too
-		const inFlightStatuses: ExecutionStatus[] = ['new', 'running', 'unknown'];
-		if (execution && inFlightStatuses.includes(execution.status)) return;
-
-		// A missing row means the worker finished and the execution was not saved,
-		// e.g. a manual execution with saving disabled. Nothing is left to wait for.
-		this.logger.warn(
-			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
-			{ executionId, status: execution?.status ?? 'deleted' },
-		);
-		this.settle(executionId);
 	}
 }
