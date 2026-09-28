@@ -555,6 +555,44 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
+	it('should render resources with missing timestamps', async () => {
+		router.resolve = vi.fn().mockReturnValue({ href: '/projects/1/folders/2' });
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			{ ...TEST_WORKFLOW_RESOURCE, updatedAt: null } as unknown as WorkflowListResource,
+			{ ...TEST_FOLDER_RESOURCE, createdAt: null, updatedAt: null } as unknown as WorkflowListResource,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalled();
+		expect(getByTestId('workflow-card-name')).toHaveTextContent(TEST_WORKFLOW_RESOURCE.name);
+		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
+		expect(queryByTestId('folder-card-last-updated')).not.toBeInTheDocument();
+		expect(queryByTestId('folder-card-created')).not.toBeInTheDocument();
+	});
+
+	it('should render a workflow without any timestamps', async () => {
+		foldersStore.totalWorkflowCount = 1;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			{
+				...TEST_WORKFLOW_RESOURCE,
+				createdAt: null,
+				updatedAt: null,
+			} as unknown as WorkflowListResource,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const card = getByTestId('resources-list-item-workflow');
+		expect(within(card).getByTestId('workflow-card-name')).toHaveTextContent('Workflow 1');
+		expect(card).not.toHaveTextContent('Invalid date');
+	});
+
 	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);

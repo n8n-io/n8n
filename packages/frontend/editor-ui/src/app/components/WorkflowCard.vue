@@ -668,12 +668,12 @@ const tags = computed(
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data">
+			<span v-if="data.updatedAt">
 				{{ locale.baseText('workflows.item.updated') }}
 				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
-			<span v-show="data" :class="$style.divider">|</span>
-			<span v-show="data">
+			<span v-if="data.updatedAt && data.createdAt" :class="$style.divider">|</span>
+			<span v-if="data.createdAt">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 			</span>
 			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>

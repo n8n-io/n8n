@@ -264,6 +264,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 							}}
 						</N8nText>
 						<N8nText
+							v-if="data.updatedAt"
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--updated']]"
@@ -273,6 +274,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 							<TimeAgo :date="String(data.updatedAt)" />
 						</N8nText>
 						<N8nText
+							v-if="data.createdAt"
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--created']]"
