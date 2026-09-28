@@ -311,7 +311,8 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 		const previewExecution = await Container.get(AgentExecutionRepository).findLatestByThreadId(
 			previewDone.sessionId,
 		);
-		expect(previewExecution?.source).toBeNull();
+		// Queued preview turns carry the queue item source, not the production marker.
+		expect(previewExecution?.source).toBe('chat');
 	}, 120_000);
 
 	it('suspends a tool call and resumes it only for the session owner', async () => {
