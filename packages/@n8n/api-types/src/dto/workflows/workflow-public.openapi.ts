@@ -132,6 +132,10 @@ export const workflowCreateFieldDocs = {
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowUpdateFieldDocs = {
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
 	parentFolderId: {
 		writeOnly: true,
 		description:

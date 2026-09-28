@@ -148,6 +148,7 @@ const staticDataWritePublicSchema = z
 	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
+// Each route adds `description` to its own DTO so their request schemas stay independent.
 export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
@@ -180,5 +181,4 @@ export const workflowWritePublicShape = {
 		.optional()
 		.openapi(workflowCreateFieldDocs.shared),
 	activeVersion: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersion),
-	description: z.string().optional().openapi(workflowCreateFieldDocs.description),
 } as const;
