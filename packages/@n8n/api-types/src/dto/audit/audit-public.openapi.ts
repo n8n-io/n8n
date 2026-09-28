@@ -102,9 +102,12 @@ export const auditReportFieldDocs: Record<string, ZodOpenAPIMetadata> = {
 						'Consider setting the "Authentication" field to an option other than "None", or validating the payload with one of the following nodes.',
 					location: [
 						{
-							kind: 'community',
-							nodeType: 'n8n-nodes-test.test',
-							packageUrl: 'https://www.npmjs.com/package/n8n-nodes-test',
+							kind: 'node',
+							workflowId: '1',
+							workflowName: 'My Workflow',
+							nodeId: '51eb5852-ce0b-4806-b4ff-e41322a4041a',
+							nodeName: 'Webhook',
+							nodeType: 'n8n-nodes-base.webhook',
 						},
 					],
 				},
