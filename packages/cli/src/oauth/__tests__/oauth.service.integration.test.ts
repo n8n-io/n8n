@@ -17,7 +17,7 @@ import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.s
 import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 interface Received {
 	method?: string;

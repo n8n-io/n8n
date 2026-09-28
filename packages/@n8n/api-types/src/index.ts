@@ -198,6 +198,7 @@ export {
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
+export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -361,6 +362,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	instanceAiQuestionSchema,
 	buildRunWorkflowSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -433,6 +435,8 @@ export {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
@@ -454,6 +458,9 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
+	instanceAiThreadTabRefSchema,
+	instanceAiThreadTabSchema,
+	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -566,6 +573,7 @@ export type {
 	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
+	InstanceAiQuestion,
 	InstanceAiCredentialRequest,
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
@@ -665,6 +673,10 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
+	InstanceAiThreadTabRef,
+	InstanceAiThreadTab,
+	InstanceAiThreadTabsState,
+	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -719,12 +731,24 @@ export {
 	parseMessageBlocks,
 	parseUsageSummary,
 	parseInputExtras,
+	parseStepConfig,
 	parseOutputDisplayBlocks,
 	parseOutputExtras,
 	parseStepSummary,
+	parseStepCacheBreaks,
 } from './schemas/llm-step-display';
 
-export type { ReadableContentBlock, ReadableSegment } from './schemas/llm-step-display';
+export type {
+	CacheBreakCause,
+	StepCacheBreak,
+	ReadableContentBlock,
+	ReadableSegment,
+	ReadableStepConfig,
+	ReadableStepSetting,
+	ReadableStepTool,
+	ReadableUsageRow,
+	ReadableUsageSummary,
+} from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,

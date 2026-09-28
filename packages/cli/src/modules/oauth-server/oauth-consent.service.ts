@@ -14,7 +14,7 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type ConsentDetailsResult =
 	| {

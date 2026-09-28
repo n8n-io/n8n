@@ -34,6 +34,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -52,6 +53,14 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
+export {
+	AuditPublicDto,
+	GenerateAuditPublicDto,
+	SECURITY_AUDIT_CATEGORIES,
+	auditPublicSchema,
+	type AuditPublic,
+} from './audit/audit-public.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -403,12 +412,17 @@ export {
 } from './roles/role-members-response.dto';
 
 export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export {
+	OidcConfigurationPublicDto,
+	oidcConfigurationPublicSchema,
+} from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	UpdateDataTablePublicDto,

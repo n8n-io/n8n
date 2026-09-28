@@ -86,10 +86,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
+| [instance_ai_thread_tabs](instance_ai_thread_tabs.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
-| [instance_monitoring_report](instance_monitoring_report.md) | 9 |  | table |
+| [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -283,6 +284,8 @@ erDiagram
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1190,6 +1193,13 @@ erDiagram
   datetime_3_ updatedAt
   varchar userId PK
 }
+"instance_ai_thread_tabs" {
+  datetime_3_ createdAt
+  TEXT state
+  varchar threadId PK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
 "instance_ai_threads" {
   datetime_3_ createdAt
   varchar id PK
@@ -1222,6 +1232,7 @@ erDiagram
   varchar id PK
   datetime_3_ lastAttemptAt
   TEXT lastError
+  varchar_10_ reportDate
   varchar_64_ status
   datetime_3_ updatedAt
 }

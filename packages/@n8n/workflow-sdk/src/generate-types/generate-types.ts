@@ -585,6 +585,96 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 }
 
 /**
+ * Folder name (lowercased) to `__schema__` path for one schema root. It holds the
+ * same answers as the direct search in `findSchemaDirectory`, but it reads each
+ * directory once.
+ */
+interface SchemaRootIndex {
+	/** Direct children of the root. The flat search checks these first. */
+	flat: Map<string, string>;
+	/** First match in the pre-order walk that `findNestedSchemaDir` does. */
+	nested: Map<string, string>;
+}
+
+function buildSchemaRootIndex(root: string): SchemaRootIndex {
+	const index: SchemaRootIndex = { flat: new Map(), nested: new Map() };
+
+	const walk = (dir: string, depth: number) => {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync(dir, { withFileTypes: true });
+		} catch {
+			return;
+		}
+
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+
+			const entryPath = path.join(dir, entry.name);
+			const key = entry.name.toLowerCase();
+			const schemaPath = path.join(entryPath, '__schema__');
+			if (fs.existsSync(schemaPath)) {
+				if (depth === 0 && !index.flat.has(key)) index.flat.set(key, schemaPath);
+				if (!index.nested.has(key)) index.nested.set(key, schemaPath);
+			}
+
+			if (entry.name !== '__schema__' && entry.name !== 'node_modules') {
+				walk(entryPath, depth + 1);
+			}
+		}
+	};
+
+	walk(root, 0);
+	return index;
+}
+
+/**
+ * Schema root indexes for the active generation run. A run looks up hundreds of
+ * node versions, and each miss used to walk the whole `dist/nodes` tree again.
+ * The indexes live only for one run, because other callers (and tests) can add
+ * schema directories between calls.
+ */
+let activeSchemaIndexes: Map<string, SchemaRootIndex> | undefined;
+
+/** Run `fn` with schema directory lookups served from a one-time index of each root. */
+export async function withSchemaDirIndex<T>(fn: () => Promise<T>): Promise<T> {
+	if (activeSchemaIndexes) return await fn();
+
+	activeSchemaIndexes = new Map();
+	try {
+		return await fn();
+	} finally {
+		activeSchemaIndexes = undefined;
+	}
+}
+
+function indexedSchemaDirectory(
+	indexes: Map<string, SchemaRootIndex>,
+	roots: string[],
+	baseName: string,
+): string | undefined {
+	const rootIndexes = roots.map((root) => {
+		let index = indexes.get(root);
+		if (!index) {
+			index = buildSchemaRootIndex(root);
+			indexes.set(root, index);
+		}
+		return index;
+	});
+
+	const key = baseName.toLowerCase();
+	for (const index of rootIndexes) {
+		const found = index.flat.get(key);
+		if (found) return found;
+	}
+	for (const index of rootIndexes) {
+		const found = index.nested.get(key);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+/**
  * Schema roots to search, in priority order: the package currently being
  * generated (generate-node-defs-cli runs with CWD = that package, so e.g.
  * nodes-langchain's own `__schema__` dirs resolve), then nodes-base as the
@@ -604,7 +694,7 @@ export function schemaSearchRoots(): string[] {
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+export function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
 	const roots = schemaSearchRoots();
 
 	// If explicit schemaPath is provided, use it directly
@@ -615,6 +705,10 @@ function findSchemaDirectory(baseName: string, schemaPath?: string): string | un
 				return explicitPath;
 			}
 		}
+	}
+
+	if (activeSchemaIndexes) {
+		return indexedSchemaDirectory(activeSchemaIndexes, roots, baseName);
 	}
 
 	const possibleNames = [
@@ -4611,6 +4705,10 @@ export interface GenerationResult {
  * @returns Result with count of nodes processed
  */
 export async function orchestrateGeneration(options: GenerationOptions): Promise<GenerationResult> {
+	return await withSchemaDirIndex(async () => await generateAll(options));
+}
+
+async function generateAll(options: GenerationOptions): Promise<GenerationResult> {
 	const { nodes, outputDir } = options;
 
 	// Group nodes by package, filtering hidden

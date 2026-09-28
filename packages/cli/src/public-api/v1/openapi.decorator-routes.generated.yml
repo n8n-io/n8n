@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /audit:
+    post:
+      $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
@@ -71,6 +74,9 @@ paths:
       $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
     delete:
       $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  /data-tables/{dataTableId}/columns:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTableColumns.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
@@ -262,6 +268,9 @@ paths:
       $ref: ./handlers/settings/spec/paths/getSecurityPolicy.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateSecurityPolicy.generated.yml
+  /settings/sso/oidc:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOidcConfiguration.generated.yml
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml

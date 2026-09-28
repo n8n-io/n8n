@@ -98,7 +98,11 @@ import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
-import { WebhookResponder, type WebhookResponseCallback } from './webhook-responder';
+import {
+	WebhookResponder,
+	type WebhookResponseCallback,
+	type WebhookCallbackResponseData,
+} from './webhook-responder';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
@@ -252,7 +256,7 @@ export function handleHostedChatResponse(
 	// The response is written here, but callers treat the callback as the
 	// "response is done" signal — it is what settles their promise and
 	// releases the expression isolate in their `finally`.
-	responder.respondWith({ noWebhookResponse: true });
+	responder.respondWithNoResponse();
 }
 
 /**
@@ -368,10 +372,10 @@ export function autoDetectResponseMode(
 /**
  * for formTrigger and form nodes redirection has to be handled by sending redirectURL in response body
  */
-export const handleFormRedirectionCase = (
-	data: IWebhookResponseCallbackData,
+export const handleFormRedirectionCase = <T extends IWebhookResponseCallbackData>(
+	data: T,
 	workflowStartNode: INode,
-) => {
+): T => {
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return data;
 	}
@@ -438,7 +442,7 @@ async function sendResponseNodeResponse(
 					executionId,
 				});
 			}
-			responder.respondWith({ noWebhookResponse: true });
+			responder.respondWithNoResponse();
 		} else if (Buffer.isBuffer(response.body)) {
 			if (response.statusCode) {
 				res.status(response.statusCode);
@@ -446,12 +450,12 @@ async function sendResponseNodeResponse(
 			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 			applySandboxCSP(res);
 			res.end(response.body);
-			responder.respondWith({ noWebhookResponse: true });
+			responder.respondWithNoResponse();
 		} else {
 			// TODO: This probably needs some more changes depending on the options on the
 			//       Webhook Response node
 
-			let data: IWebhookResponseCallbackData = {
+			let data: WebhookCallbackResponseData = {
 				data: response.body as IDataObject,
 				headers: response.headers,
 				responseCode: response.statusCode,
@@ -615,7 +619,7 @@ export function handleImmediateWebhookResponse({
 	responder: WebhookResponder;
 }): boolean {
 	if (webhookResultData.noWebhookResponse === true && !responder.hasResponded) {
-		responder.respondWith({ noWebhookResponse: true });
+		responder.respondWithNoResponse();
 	}
 
 	if (webhookResultData.workflowData !== undefined) return true;
@@ -1290,7 +1294,7 @@ export async function executeWebhook(
 			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			// See handleHostedChatResponse: the callback is the contract, not the write.
-			responder.respondWith({ noWebhookResponse: true });
+			responder.respondWithNoResponse();
 		}
 
 		handleHostedChatResponse(

@@ -51,7 +51,7 @@ next slot has passed, the retry stops: the row is marked
 - The row is created once, as `pending`, with its data points already
   measured. A retry changes only `attempts`, `lastAttemptAt`, `lastError` and,
   in the end, `status`. The data points and the `batchId` stay the same.
-- `InstanceReportingService.msUntilRetryAllowed()` reads `lastAttemptAt` from
+- `InstanceReportingScheduler.msUntilRetryAllowed()` reads `lastAttemptAt` from
   the row. The scheduler waits `RETRY_DELAY_MS` (5 minutes) between attempts.
 - The budget is `MAX_ATTEMPTS` (3). The attempt that spends the last one flips
   the row to `skipped_after_max_retries` at once. There is no fourth attempt,
