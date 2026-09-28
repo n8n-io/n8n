@@ -115,6 +115,8 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// Argument defaults: a missing replacement inserts "undefined", a null
 	// separator joins with "null".
 	"={{ $json.item.big.replaceAll('y') }}",
+	// Several chunks obey the same limit as one.
+	'={{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}',
 	"={{ $json.item.bigger.replaceAll('y') }}",
 	'={{ $json.item.manyEmpty.join(null) }}',
 	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
@@ -330,12 +332,11 @@ describe('Expression - fast native evaluation parity', () => {
 		expect(fresh.json.item.my_object.addresses.primary).toBe('123 Main St');
 	});
 
-	// Divergences accepted on purpose, all against the legacy engine only:
-	// native evaluation sides with the vm/quickjs engines, which the parity
-	// assertions below confirm. Both need data no node should produce; the
-	// engine does not enforce that yet, so the divergence is pinned.
-	// Pinned so a change in either direction is visible.
-	describe('known divergences from the legacy engine on non-JSON data', () => {
+	// Values no node should produce (the engine does not enforce that yet) and
+	// inherited members on the root. Native either matches the configured
+	// engine or hands the expression to it; the one remaining divergence is
+	// the DateTime copy under legacy, pinned so a change is visible.
+	describe('non-JSON values and inherited members', () => {
 		const exotic = {
 			json: {
 				item: { fn: () => 1, sym: Symbol('s'), dt: DateTime.fromISO('2026-01-02T03:04:05Z') },
@@ -347,20 +348,33 @@ describe('Expression - fast native evaluation parity', () => {
 		// Read per test: the engine is only initialised once the suite runs.
 		const isLegacy = () => Expression.getActiveImplementation() === 'legacy';
 
-		test('a function-valued read is undefined natively; legacy throws', () => {
-			const legacy = isLegacy();
-			expect(evaluateExotic('={{ $json.item.fn }}', true)).toBeUndefined();
-			if (legacy)
-				expect(() => evaluateExotic('={{ $json.item.fn }}', false)).toThrow('this is a function');
-			else expect(evaluateExotic('={{ $json.item.fn }}', false)).toBeUndefined();
-		});
+		// Function and symbol values hand the expression to the engine, so the
+		// outcome is whatever the configured engine does: legacy throws for a
+		// function, the isolates drop a nested one and fail on an inherited one.
+		// Compared as values or as errors, whichever the engine produces.
+		test.each([
+			'={{ $json.item.fn }}',
+			'={{ $json.item.sym }}',
+			'={{ $json.hasOwnProperty }}',
+			'={{ $json.toString }}',
+			'={{ $json.item.valueOf }}',
+		])('%s matches the engine, value or error', (expr) => {
+			const capture = (native: boolean) => {
+				try {
+					return { value: evaluateExotic(expr, native) };
+				} catch (error) {
+					return { error: error as Error };
+				}
+			};
+			const viaEngine = capture(false);
+			const viaNative = capture(true);
 
-		test('a symbol-valued read is undefined natively; legacy returns the symbol', () => {
-			const legacy = isLegacy();
-			expect(evaluateExotic('={{ $json.item.sym }}', true)).toBeUndefined();
-			const viaEngine = evaluateExotic('={{ $json.item.sym }}', false);
-			if (legacy) expect(typeof viaEngine).toBe('symbol');
-			else expect(viaEngine).toBeUndefined();
+			if (viaEngine.error) {
+				expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);
+				expect(viaNative.error?.message).toBe(viaEngine.error.message);
+			} else {
+				expect(viaNative).toStrictEqual(viaEngine);
+			}
 		});
 
 		test('a whole-value DateTime read is a copy natively; legacy returns the instance', () => {

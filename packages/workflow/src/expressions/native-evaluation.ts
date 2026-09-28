@@ -400,11 +400,11 @@ function evalMember(
 
 	const value = object[node.key];
 
-	// Never surface functions or symbols: matches the VM bridge, whose transfer
-	// drops both. (The legacy engine returns them - a pre-existing engine
-	// divergence; we side with the isolated engines.)
+	// Neither crosses an engine boundary the same way twice (the vm bridge
+	// drops a nested function but fails on an inherited one; legacy throws),
+	// so the configured engine decides rather than this module guessing.
 	if (typeof value === 'function' || typeof value === 'symbol') {
-		return undefined;
+		throw new EngineFallbackError();
 	}
 
 	return value;
@@ -730,5 +730,5 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 	// part as-is; everything else joins to a string.
 	if (compiled.chunks.length < 2) return parts[0] ?? '';
 
-	return parts.join('');
+	return bounded(parts.join(''));
 }
