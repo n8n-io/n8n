@@ -34,6 +34,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -52,6 +53,14 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
+export {
+	AuditPublicDto,
+	GenerateAuditPublicDto,
+	SECURITY_AUDIT_CATEGORIES,
+	auditPublicSchema,
+	type AuditPublic,
+} from './audit/audit-public.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';

@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { LicenseRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { LicenseService } from './license.service';
 

@@ -92,7 +92,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 

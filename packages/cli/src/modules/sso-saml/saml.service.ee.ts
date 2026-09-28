@@ -22,7 +22,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
