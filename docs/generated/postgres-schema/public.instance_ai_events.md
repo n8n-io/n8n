@@ -50,6 +50,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_threads" {
+  varchar_36_ appId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   json metadata

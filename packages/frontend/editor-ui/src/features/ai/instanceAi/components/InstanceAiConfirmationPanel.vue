@@ -12,6 +12,7 @@ import { isPendingItemFloating } from '../confirmationKinds';
 import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
+import AppBindingApproval from './AppBindingApproval.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -645,6 +646,14 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 							:request-id="chunk.item.toolCall.confirmation.requestId"
 							:query="chunk.item.toolCall.confirmation.webSearch!.query"
 							:severity="chunk.item.toolCall.confirmation.severity"
+						/>
+
+						<!-- App binding -->
+						<AppBindingApproval
+							v-else-if="chunk.item.toolCall.confirmation.appBindings"
+							:app-bindings="chunk.item.toolCall.confirmation.appBindings!"
+							:options="buildApprovalOptions(chunk.item)"
+							@select="(key) => handleApprovalSelect(chunk.item, key)"
 						/>
 
 						<!-- Generic approval -->

@@ -13,6 +13,7 @@
 			"**/coverage",
 			"**/dist",
 			"**/package.json",
+			"**/package-lock.json",
 			"**/pnpm-lock.yaml",
 			"**/CHANGELOG.md",
 			"**/cl100k_base.json",

@@ -48,6 +48,7 @@ export type TimelineBlock =
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'app-blueprint'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
@@ -58,6 +59,7 @@ type ToolCallKind =
 	| 'tasks'
 	| 'plan-review'
 	| 'mcp-connect'
+	| 'app-blueprint'
 	| 'questions'
 	| 'questions-pending'
 	| 'preference'
@@ -84,6 +86,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	}
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
+	if (tc.confirmation?.inputType === 'app-blueprint') return 'app-blueprint';
 	if (tc.renderHint === 'planner') return 'hidden';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
@@ -240,6 +243,9 @@ export function buildTimelineBlocks(
 			case 'mcp-connect':
 				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
 				return;
+			case 'app-blueprint':
+				pushStandalone({ type: 'app-blueprint', key: `app-blueprint-${idx}`, toolCall: tc });
+				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
 				return;
@@ -308,7 +314,7 @@ export function isStreamingTimelineEntry(
 }
 
 export interface ArtifactInfo {
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'app';
 	resourceId: string;
 	name: string;
 	projectId?: string;
@@ -316,7 +322,7 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
+/** Extract all artifacts (workflows, data tables, agents, and apps) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
 
@@ -371,6 +377,29 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				name,
 				completedAt: tc.completedAt,
 			});
+			continue;
+		}
+
+		// App artifacts: apps create → { app: { id, name, projectId } }, apps publish → { appId, name, projectId }
+		if (tc.toolName === 'apps') {
+			const created = result.app && typeof result.app === 'object' ? result.app : undefined;
+			const source = (created ?? result) as Record<string, unknown>;
+			const appId =
+				typeof source.appId === 'string'
+					? source.appId
+					: typeof source.id === 'string'
+						? source.id
+						: undefined;
+			if (appId && !seenIds.has(appId)) {
+				seenIds.add(appId);
+				artifacts.push({
+					type: 'app',
+					resourceId: appId,
+					name: typeof source.name === 'string' ? source.name : 'Untitled',
+					projectId: typeof source.projectId === 'string' ? source.projectId : undefined,
+					completedAt: tc.completedAt,
+				});
+			}
 			continue;
 		}
 

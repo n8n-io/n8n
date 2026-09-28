@@ -1,4 +1,13 @@
-import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
+import {
+	computed,
+	effectScope,
+	nextTick,
+	reactive,
+	ref,
+	triggerRef,
+	watch,
+	type EffectScope,
+} from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -44,6 +53,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useAppsStore } from '@/features/apps/apps.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import {
@@ -75,6 +85,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -199,6 +210,24 @@ export function getAgentBuilderTargetFromThreadMetadata(
 	};
 }
 
+export function getAppBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.appId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return {
+		appId: target.appId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+		// The page the artifact preview should open to — seeded once when the
+		// thread is opened from a specific page's inspector; not kept in sync
+		// with in-app navigation afterwards.
+		...(typeof target.pagePath === 'string' ? { pagePath: target.pagePath } : {}),
+	};
+}
+
 export function getAgentBuilderTargetsFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
@@ -294,7 +323,11 @@ function collectActionableConfirmations(
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
-	return conf.inputType !== 'plan-review' && !conf.mcpConnectRequest;
+	return (
+		conf.inputType !== 'plan-review' &&
+		conf.inputType !== 'app-blueprint' &&
+		!conf.mcpConnectRequest
+	);
 }
 
 /**
@@ -462,20 +495,40 @@ export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
 	return { runStateByGroupId, groupIdByRunId };
 }
 
-export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
+export type ThreadRuntime = ReturnType<typeof setupThreadRuntime>;
 
 /**
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
+ *
+ * The runtime's watchers live in their own detached scope: the store creates
+ * a runtime from whichever component first reads the thread, and that instance
+ * can be a Suspense duplicate that is discarded during a layout transition
+ * while the runtime stays in the store (see the unmount guard in
+ * InstanceAiThreadView). Bound to the caller's scope, the watchers would stop
+ * with it and the registry would freeze for the live instance.
  */
 export function createThreadRuntime(
 	threadId: string,
 	hooks: ThreadRuntimeHooks,
 	initialProjectId?: string,
+): ThreadRuntime {
+	const scope = effectScope(true);
+	const runtime = scope.run(() => setupThreadRuntime(threadId, hooks, initialProjectId, scope));
+	if (!runtime) throw new Error(`Thread runtime scope for ${threadId} is not active`);
+	return runtime;
+}
+
+function setupThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId: string | undefined,
+	scope: EffectScope,
 ) {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const appsStore = useAppsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -597,7 +650,7 @@ export function createThreadRuntime(
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
-	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceIndex, linkableResourceIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
@@ -606,6 +659,8 @@ export function createThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => getAppBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		(appId) => (appsStore.bindingsAppId === appId ? appsStore.bindings : undefined),
 		() => pendingWorkflowAttachment.value ?? undefined,
 		() => [...transientWorkflowReferences.values()],
 		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
@@ -1382,6 +1437,7 @@ export function createThreadRuntime(
 	function dispose(): void {
 		closeSSE();
 		resetState();
+		scope.stop();
 		readSetupChatTelemetryContext = undefined;
 	}
 
@@ -1873,8 +1929,8 @@ export function createThreadRuntime(
 		hasMessages,
 		isHydratingThread,
 		producedArtifacts,
-		resourceNameIndex,
-		linkableResourceNameIndex,
+		resourceIndex,
+		linkableResourceIndex,
 		activeArtifactId,
 		setActiveArtifactId,
 		feedbackByResponseId,

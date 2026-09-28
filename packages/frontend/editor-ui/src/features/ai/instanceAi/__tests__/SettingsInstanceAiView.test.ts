@@ -652,9 +652,22 @@ describe('SettingsInstanceAiView', () => {
 				'credentials',
 				'system',
 				'web',
+				'apps',
 			]) {
 				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
 			}
+		});
+
+		it('lists the workflow, data table and agent permissions in the apps group', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.apps'));
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-permission-bindAppWorkflow')).toBeVisible(),
+			);
+			expect(getByTestId('n8n-agent-permission-bindAppDataTable')).toBeVisible();
+			expect(getByTestId('n8n-agent-permission-bindAppAgent')).toBeVisible();
 		});
 
 		it('shows the Execute a node permission when the Nodes group is expanded', async () => {

@@ -44,6 +44,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'app',
 	'teams',
 ] as const;
 

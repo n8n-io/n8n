@@ -1,4 +1,6 @@
 import type {
+	InstanceAiAppPreviewDiagnosticsAttachment,
+	InstanceAiAppAttachment,
 	InstanceAiAgentAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
@@ -58,6 +60,33 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 		const result = service.resolveContextAttachments([workflowAttachment, agentAttachment], false);
 
 		expect(result).toEqual([workflowAttachment, agentAttachment]);
+	});
+
+	it('passes an app attachment through when node context is off', () => {
+		const service = createService();
+		const appAttachment: InstanceAiAppAttachment = {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		};
+
+		const result = service.resolveContextAttachments([appAttachment], false);
+
+		expect(result).toEqual([appAttachment]);
+	});
+
+	it('passes a preview diagnostics attachment through when node context is off', () => {
+		const service = createService();
+		const diagnostics: InstanceAiAppPreviewDiagnosticsAttachment = {
+			type: 'app-preview-diagnostics',
+			appId: 'app-1',
+			items: [{ kind: 'uncaught', message: 'boom', at: '2026-09-08T10:00:00.000Z' }],
+		};
+
+		const result = service.resolveContextAttachments([diagnostics], false);
+
+		expect(result).toEqual([diagnostics]);
 	});
 
 	it('keeps a workflow attachment alongside an enabled nodes attachment', () => {

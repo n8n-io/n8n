@@ -2,6 +2,9 @@ import {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
+	type InstanceAiAppAttachment,
+	type InstanceAiAppPreviewDiagnosticsAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifact,
@@ -412,6 +415,49 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `  - Selected nodes in workflow \`${sanitisePromptText(attachment.workflowId)}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
+/** Renders one app attachment: the thread is bound to the app, so the agent edits it, never creates it. */
+function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
+	const appId = sanitisePromptText(attachment.appId);
+	const namespace = attachment.namespace ? sanitisePromptText(attachment.namespace) : undefined;
+	const namespaceLabel = namespace ? `, namespace \`${namespace}\`` : '';
+	const appDir = `apps/${namespace ?? '<namespace>'}`;
+	return `  - App "${sanitisePromptText(attachment.name)}" (id: \`${appId}\`${namespaceLabel}, in project \`${sanitisePromptText(attachment.projectId)}\`). This thread is bound to this app and its source is in ${appDir}: edit the files there with the \`workspace_*\` tools and the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
+}
+
+/**
+ * Renders one picked-element attachment. Carries a DOM description only (no
+ * source location) — the agent locates the matching source itself, e.g. by
+ * searching the app's files for the element's text or selector.
+ */
+function buildElementAttachmentLine(attachment: InstanceAiElementAttachment): string {
+	const where = attachment.route ? ` on page \`${sanitisePromptText(attachment.route)}\`` : '';
+	const text = attachment.text ? ` with text "${sanitisePromptText(attachment.text)}"` : '';
+	const selector = attachment.selector
+		? ` (matches \`${sanitisePromptText(attachment.selector)}\`)`
+		: '';
+	return `  - The user selected a \`<${sanitisePromptText(attachment.tagName)}>\` element${text}${selector}${where} in app \`${sanitisePromptText(attachment.appId)}\`'s preview. Find it in the app's source and act on the user's instruction about it.`;
+}
+
+/**
+ * Renders the errors the live preview reported since the user's last message
+ * as plain text. The message and stack are the app's own strings, so they go
+ * in a fenced block and never as markup. Unlike `sanitisePromptText`, this keeps
+ * line breaks so stacks stay readable.
+ */
+function buildAppPreviewDiagnosticsBlock(
+	attachment: InstanceAiAppPreviewDiagnosticsAttachment,
+): string {
+	const escape = (value: string) => value.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	const items = attachment.items.map((item) => {
+		const where = item.file
+			? ` at ${item.file}${item.line !== undefined ? `:${item.line}` : ''}${item.column !== undefined ? `:${item.column}` : ''}`
+			: '';
+		const stack = item.stack ? `\n${item.stack}` : '';
+		return escape(`[${item.at}] ${item.kind}${where}: ${item.message}${stack}`);
+	});
+	return `Errors observed in the live preview of app \`${sanitisePromptText(attachment.appId)}\` since your last message (${items.length}). Fix them before anything else:\n\`\`\`text\n${items.join('\n\n')}\n\`\`\``;
+}
+
 /**
  * JSON that cannot hold a literal tag: `<` and `>` become `\u003c` / `\u003e`,
  * which `JSON.parse` maps back to the original characters. Keeps a name like
@@ -423,7 +469,7 @@ function toTagSafeJson(value: unknown): string {
 }
 
 function attachmentToThreadArtifact(
-	attachment: Exclude<InstanceAiResourceAttachment, InstanceAiNodesAttachment>,
+	attachment: Extract<InstanceAiResourceAttachment, { type: 'workflow' | 'agent' }>,
 ): InstanceAiThreadArtifact {
 	return {
 		type: attachment.type,
@@ -472,9 +518,22 @@ export function buildThreadArtifactsBlock(
 	// selection is never a tab, so it always lands here.
 	const listedKeys = new Set(previewArtifacts.map((artifact) => `${artifact.type}:${artifact.id}`));
 	const handoffLines: string[] = [];
+	const diagnosticsBlocks: string[] = [];
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'nodes') {
 			handoffLines.push(buildNodesAttachmentLine(attachment));
+			continue;
+		}
+		if (attachment.type === 'app') {
+			handoffLines.push(buildAppAttachmentLine(attachment));
+			continue;
+		}
+		if (attachment.type === 'element') {
+			handoffLines.push(buildElementAttachmentLine(attachment));
+			continue;
+		}
+		if (attachment.type === 'app-preview-diagnostics') {
+			diagnosticsBlocks.push(buildAppPreviewDiagnosticsBlock(attachment));
 			continue;
 		}
 		if (listedKeys.has(`${attachment.type}:${attachment.id}`)) continue;
@@ -514,6 +573,7 @@ export function buildThreadArtifactsBlock(
 			: []),
 		currentGuidance,
 		pendingAgentGuidance,
+		...diagnosticsBlocks,
 		inspectGuidance,
 	]
 		.filter(Boolean)

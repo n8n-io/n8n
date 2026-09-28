@@ -10,6 +10,7 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
@@ -22,6 +23,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { readIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { APP_CHAT_INTEGRATION_TYPE } from './integrations/platforms/app-chat-integration';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -42,6 +44,7 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -146,6 +149,11 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
+		if (agentRun.integrationType === APP_CHAT_INTEGRATION_TYPE) {
+			await this.resumeInApp(agentRun, resumeData);
+			return;
+		}
+
 		if (!agentRun.integrationType) {
 			this.logger.debug('Skipping agent resume for a run with no chat surface', {
 				agentId: agentRun.agentId,
@@ -240,6 +248,28 @@ export class AgentWorkflowToolResumeService {
 			threadId: agentRun.threadId,
 			executionId: result.executionId ?? '',
 		});
+	}
+
+	/**
+	 * An app's SSE stream closed when the run suspended, like the preview's, so
+	 * draining the published resume headlessly is what records the turn; the app
+	 * reads it back through its messages endpoint.
+	 */
+	private async resumeInApp(agentRun: RelatedAgentRun, resumeData: unknown): Promise<void> {
+		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+			agentId: agentRun.agentId,
+			projectId: agentRun.projectId,
+			runId: agentRun.runId,
+			toolCallId: agentRun.toolCallId,
+			resumeData,
+			usePublishedVersion: true,
+			integrationType: APP_CHAT_INTEGRATION_TYPE,
+			expectedMemory: { threadId: agentRun.threadId },
+			source: APP_CHAT_INTEGRATION_TYPE,
+		});
+		for await (const chunk of stream) {
+			if (chunk.type === 'error') throw chunk.error;
+		}
 	}
 
 	private async getIntegrationResumeRoute(

@@ -222,6 +222,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
+		id: 'apps',
+		labelKey: 'settings.n8nAgent.permissions.group.apps',
+		keys: ['bindAppWorkflow', 'bindAppDataTable', 'bindAppAgent'],
+	},
+	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
 		keys: ['readFilesystem', 'cleanupTestExecutions'],

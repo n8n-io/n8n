@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { APP_NEW } from '@/features/apps/apps.constants';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
@@ -56,6 +57,7 @@ export const useGlobalEntityCreation = () => {
 	const VARIABLE_MENU_ID = 'variable';
 	const DATA_TABLE_MENU_ID = 'data-table';
 	const AGENTS_MENU_ID = 'agent';
+	const APP_MENU_ID = 'app';
 	const INSTANCE_AI_THREAD_MENU_ID = 'instance-ai-thread';
 	const DEFAULT_ICON: IconName = 'layers';
 
@@ -196,6 +198,54 @@ export const useGlobalEntityCreation = () => {
 		};
 	});
 
+	const disabledApp = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).app?.create;
+
+	const appRoute = (projectId?: string): RouteLocationRaw => ({
+		name: APP_NEW,
+		params: { projectId },
+	});
+
+	// Apps are built in an assistant thread, so the entry needs the assistant too.
+	const appItem = computed<Item | null>(() => {
+		if (!settingsStore.isModuleActive('apps') || !isInstanceAiAvailable.value) return null;
+		const title = i18n.baseText('projects.menu.create.app');
+		const personalProject = projectsStore.personalProject;
+		if (!projectsStore.isTeamProjectFeatureEnabled || displayProjects.value.length === 0) {
+			return {
+				id: APP_MENU_ID,
+				title,
+				disabled: disabledApp(personalProject?.scopes),
+				route: appRoute(personalProject?.id),
+			};
+		}
+		const readOnly = sourceControlStore.preferences.branchReadOnly;
+		return {
+			id: APP_MENU_ID,
+			title,
+			disabled: readOnly,
+			...(!readOnly && {
+				submenu: [
+					{ id: 'app-title', title: 'Create in', disabled: true },
+					{
+						id: 'app-personal',
+						title: i18n.baseText('projects.menu.personal'),
+						icon: 'user' as const,
+						disabled: disabledApp(personalProject?.scopes),
+						route: appRoute(personalProject?.id),
+					},
+					...displayProjects.value.map((project) => ({
+						id: `app-${project.id}`,
+						title: project.name as string,
+						icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+						disabled: disabledApp(project.scopes),
+						route: appRoute(project.id),
+					})),
+				],
+			}),
+		};
+	});
+
 	const menu = computed<Item[]>(() => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
@@ -204,6 +254,7 @@ export const useGlobalEntityCreation = () => {
 		const instanceAiTrailing = instanceAiThreadItem.value ? [instanceAiThreadItem.value] : [];
 		const variableTrailing = variableItem.value ? [variableItem.value] : [];
 		const dataTableTrailing = dataTableItem.value ? [dataTableItem.value] : [];
+		const appTrailing = appItem.value ? [appItem.value] : [];
 
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
@@ -239,6 +290,7 @@ export const useGlobalEntityCreation = () => {
 							},
 						]
 					: []),
+				...appTrailing,
 				{
 					id: CREATE_PROJECT_ID,
 					title: projectTitle,
@@ -284,6 +336,7 @@ export const useGlobalEntityCreation = () => {
 							},
 						]
 					: []),
+				...appTrailing,
 				{
 					id: CREATE_PROJECT_ID,
 					title: projectTitle,
@@ -397,6 +450,7 @@ export const useGlobalEntityCreation = () => {
 						},
 					]
 				: []),
+			...appTrailing,
 			{
 				id: CREATE_PROJECT_ID,
 				title: projectTitle,

@@ -46,6 +46,10 @@ const loadSaveUserPreferenceTool = lazyMod(
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
+const loadAppBlueprintTool = lazyMod(
+	() => require('./app-blueprint.tool') as typeof import('./app-blueprint.tool'),
+);
 const loadAgentContextTool = lazyMod(
 	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
 );
@@ -152,6 +156,15 @@ function getOrchestratorDomainToolFactories(
 	// block that hands the agent ids to expand rides the orchestrator's turn.
 	if (context.activityService) {
 		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
+	}
+
+	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
+	if (context.appService && context.appWorkspace) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+		tools.push([
+			DOMAIN_TOOL_IDS.APP_BLUEPRINT,
+			() => loadAppBlueprintTool().createAppBlueprintTool(),
+		]);
 	}
 
 	if (context.agentContextService) {

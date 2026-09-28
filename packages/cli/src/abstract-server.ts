@@ -134,7 +134,7 @@ export abstract class AbstractServer {
 		this.app.use(corsMiddleware);
 	}
 
-	protected setupPushServer() {}
+	protected async setupPushServer(): Promise<void> {}
 
 	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
 	markAsReady() {
@@ -233,7 +233,7 @@ export abstract class AbstractServer {
 	async start(): Promise<void> {
 		if (!inTest) {
 			await this.setupErrorHandlers();
-			this.setupPushServer();
+			await this.setupPushServer();
 		}
 
 		this.setupCommonMiddlewares();

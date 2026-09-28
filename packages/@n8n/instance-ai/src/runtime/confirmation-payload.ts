@@ -53,6 +53,12 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'mcpConnect':
 			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
+		case 'appBlueprint':
+			return {
+				approved: request.approved,
+				blueprint: request.blueprint,
+				feedback: request.feedback,
+			};
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -96,5 +102,7 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
 		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
+		...(data.blueprint ? { blueprint: data.blueprint } : {}),
+		...(data.feedback !== undefined ? { feedback: data.feedback } : {}),
 	};
 }

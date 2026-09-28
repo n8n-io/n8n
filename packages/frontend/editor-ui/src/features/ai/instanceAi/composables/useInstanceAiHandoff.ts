@@ -2,9 +2,13 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	type InstanceAiAgentAttachment,
+	type InstanceAiAppAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
@@ -23,6 +27,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
@@ -92,6 +97,9 @@ const pendingHandoffContextKey = (threadId: string) =>
 const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-draft:${threadId}`;
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
+const pendingAppAttachmentKey = (threadId: string) => `n8n-instance-ai-app-attachment:${threadId}`;
+const pendingElementAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-element-attachment:${threadId}`;
 const pendingWorkflowAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-workflow-attachment:${threadId}`;
 const pendingRedirectLandingKey = (threadId: string) =>
@@ -283,6 +291,53 @@ export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
+export function stashPendingAppAttachment(
+	threadId: string,
+	attachment: InstanceAiAppAttachment,
+): void {
+	localStorage.setItem(pendingAppAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function getPendingAppAttachment(threadId: string): InstanceAiAppAttachment | null {
+	const raw = localStorage.getItem(pendingAppAttachmentKey(threadId));
+	if (!raw) return null;
+	try {
+		const parsed = instanceAiAppAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingAppAttachment(threadId: string): void {
+	localStorage.removeItem(pendingAppAttachmentKey(threadId));
+}
+
+/**
+ * A picked element handed off across navigation (e.g. from a standalone
+ * Apps admin page, which has no composer of its own to stage a chip into).
+ * One-shot: consuming it clears it, like the node-set draft attachment below.
+ */
+export function stashPendingElementAttachment(
+	threadId: string,
+	attachment: InstanceAiElementAttachment,
+): void {
+	localStorage.setItem(pendingElementAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function consumePendingElementAttachment(
+	threadId: string,
+): InstanceAiElementAttachment | null {
+	const raw = localStorage.getItem(pendingElementAttachmentKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingElementAttachmentKey(threadId));
+
+	const parsed = instanceAiElementAttachmentSchema.safeParse(
+		jsonParse(raw, { fallbackValue: undefined }),
+	);
+	return parsed.success ? parsed.data : null;
+}
+
 /**
  * Stash a workflow the editor handed off without sending an opening turn. The
  * destination view restores it so the canvas opens and the first real prompt
@@ -370,6 +425,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	clearPendingAppAttachment(threadId);
 	clearPendingWorkflowAttachment(threadId);
 	clearPendingRedirectLanding(threadId);
 	clearPendingFirstMessage(threadId);
@@ -537,6 +593,86 @@ export function useInstanceAiHandoff() {
 			new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
 			i18n.baseText('instanceAi.handoff.openFailed.title'),
 		);
+	}
+
+	/**
+	 * Creates a thread bound to an app and stashes the attachment its first
+	 * message carries. Returns the thread id, or undefined after showing the
+	 * failure toast. Does not navigate.
+	 */
+	async function createAppArtifactThread(
+		attachment: InstanceAiAppAttachment,
+		launch: InstanceAiThreadLaunch,
+		options?: { initialDraft?: string; initialElementAttachment?: InstanceAiElementAttachment },
+	): Promise<string | undefined> {
+		const threadId = uuidv4();
+		try {
+			await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
+		} catch {
+			showOpenFailed();
+			return undefined;
+		}
+		try {
+			// A picked element's route becomes the preview's initial page too,
+			// so opening the thread doesn't strand the user looking at the app
+			// root when they picked the element from a different page.
+			const pagePath = options?.initialElementAttachment?.route;
+			await instanceAiStore.updateThreadMetadata(threadId, {
+				[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+					appId: attachment.appId,
+					projectId: attachment.projectId,
+					name: attachment.name,
+					...(pagePath ? { pagePath } : {}),
+				},
+			});
+		} catch {
+			await instanceAiStore.deleteThread(threadId);
+			showOpenFailed();
+			return undefined;
+		}
+		stashPendingAppAttachment(threadId, attachment);
+		if (options?.initialDraft) {
+			stashPendingComposerDraft(threadId, {
+				text: options.initialDraft,
+				prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+			});
+		}
+		if (options?.initialElementAttachment) {
+			stashPendingElementAttachment(threadId, options.initialElementAttachment);
+		}
+		return threadId;
+	}
+
+	async function openAppArtifactThread(
+		attachment: InstanceAiAppAttachment,
+		launch: InstanceAiThreadLaunch,
+		options?: { initialDraft?: string; initialElementAttachment?: InstanceAiElementAttachment },
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = await createAppArtifactThread(attachment, launch, options);
+			if (!threadId) return false;
+			try {
+				const failure = await router.push({
+					name: INSTANCE_AI_THREAD_VIEW,
+					params: { threadId },
+				});
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
 	}
 
 	async function openThreadWithContext(
@@ -728,6 +864,8 @@ export function useInstanceAiHandoff() {
 		startThread,
 		openWorkflowThread,
 		openThreadWithContext,
+		createAppArtifactThread,
+		openAppArtifactThread,
 		openThreadForDraft,
 	};
 }

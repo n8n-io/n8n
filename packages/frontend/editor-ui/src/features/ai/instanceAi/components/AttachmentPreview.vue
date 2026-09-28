@@ -33,6 +33,22 @@ const workflowAttachment = computed(() =>
 const agentAttachment = computed(() =>
 	props.attachment?.type === 'agent' ? props.attachment : undefined,
 );
+const appAttachment = computed(() =>
+	props.attachment?.type === 'app' ? props.attachment : undefined,
+);
+const elementAttachment = computed(() =>
+	props.attachment?.type === 'element' ? props.attachment : undefined,
+);
+// The route is shown so it's clear at a glance which page the pick came from
+// (the same page the AI opens the preview to) — not just spelled out in a
+// tooltip, since it's easy to miss otherwise.
+const elementChipLabel = computed(() => {
+	const attachment = elementAttachment.value;
+	if (!attachment) return '';
+	const text = attachment.text ? `: "${attachment.text}"` : '';
+	const route = attachment.route ? ` on ${attachment.route}` : '';
+	return `${attachment.tagName}${text}${route}`;
+});
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
 );
@@ -105,6 +121,22 @@ onBeforeUnmount(() => {
 		:label="agentAttachment.name ?? 'Agent'"
 		icon="robot"
 		test-id="attachment-preview-resource"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="appAttachment"
+		:label="appAttachment.name"
+		icon="app-window"
+		test-id="attachment-preview-resource"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="elementAttachment"
+		:label="elementChipLabel"
+		icon="mouse-pointer"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('generic.close')"
+		test-id="attachment-preview-resource"
+		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
 	/>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">

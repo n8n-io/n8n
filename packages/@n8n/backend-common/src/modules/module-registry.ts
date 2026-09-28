@@ -49,6 +49,7 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'apps',
 		// oauth-server precedes mcp: the mcp module registers its protected
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',

@@ -36,6 +36,7 @@ import {
 } from '@n8n/instance-ai';
 
 import {
+	appSandboxKey,
 	InstanceAiSandboxService,
 	type InstanceAiSandboxBackgroundTasks,
 	type InstanceAiSandboxProxy,
@@ -50,6 +51,7 @@ type Overrides = {
 	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
 	config?: Partial<InstanceAiConfig>;
 	runState?: Partial<InstanceAiSandboxRunState>;
+	isAppInUse?: InstanceAiSandboxServiceOptions['isAppInUse'];
 	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
 	settingsService?: Partial<InstanceAiSandboxSettings>;
 	aiService?: Partial<InstanceAiSandboxProxy>;
@@ -82,6 +84,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		logger,
 		errorReporter,
 		runState,
+		isAppInUse: overrides.isAppInUse,
 		backgroundTasks,
 		settingsService,
 		aiService,
@@ -565,6 +568,28 @@ describe('InstanceAiSandboxService', () => {
 			expect(ids[2]).not.toBe(ids[0]);
 		});
 
+		it('gives an app one sandbox, distinct from the sandboxes of its threads', async () => {
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+
+			await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+			await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+			await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			const ids = (createSandbox as Mock).mock.calls.map((call) => (call[0] as { id?: string }).id);
+			expect(appSandboxKey('app-1')).toBe('app-app-1');
+			expect(ids).toHaveLength(2);
+			expect(ids[1]).not.toBe(ids[0]);
+		});
+
 		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
 			const { service } = createSandboxService({
 				config: {
@@ -832,6 +857,37 @@ describe('InstanceAiSandboxService', () => {
 		});
 	});
 
+	describe('getCachedWorkspaceEntry', () => {
+		it('returns the cached entry while it is fresh and never creates one', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+				});
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).not.toHaveBeenCalled();
+
+				const entry = await service.getOrCreateWorkspace(
+					'thread-1',
+					fakeUser,
+					{} as InstanceAiContext,
+				);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBe(entry);
+
+				vi.advanceTimersByTime(1000);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('expiry timers', () => {
 		it('evicts expired runtime sandbox entries without destroying the provider workspace', async () => {
 			vi.useFakeTimers();
@@ -893,6 +949,64 @@ describe('InstanceAiSandboxService', () => {
 				);
 				expect(reused).toBeDefined();
 				expect(createSandbox).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps an app sandbox alive while a thread that builds the app runs', async () => {
+			vi.useFakeTimers();
+			try {
+				const isAppInUse = vi.fn((appId: string) => appId === 'app-1');
+				const { service, runState } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+					isAppInUse,
+				});
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue({
+					init: vi.fn(async () => {}),
+					destroy: vi.fn(async () => {}),
+				});
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				const entry = await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+				vi.advanceTimersByTime(1000);
+
+				expect(isAppInUse).toHaveBeenCalledWith('app-1');
+				expect(runState.getActiveRunId).not.toHaveBeenCalledWith(appSandboxKey('app-1'));
+				expect(service.getCachedWorkspaceEntry(appSandboxKey('app-1'))).toBe(entry);
+
+				isAppInUse.mockReturnValue(false);
+				vi.advanceTimersByTime(1000);
+				expect(service.getCachedWorkspaceEntry(appSandboxKey('app-1'))).toBeUndefined();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('extends the TTL of a cached entry on touch and ignores unknown keys', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+				});
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue({
+					init: vi.fn(async () => {}),
+					destroy: vi.fn(async () => {}),
+				});
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				service.touchCachedWorkspaceEntry('thread-unknown');
+				const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+				vi.advanceTimersByTime(600);
+				service.touchCachedWorkspaceEntry('thread-1');
+				vi.advanceTimersByTime(600);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBe(entry);
+
+				vi.advanceTimersByTime(400);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
 			} finally {
 				vi.useRealTimers();
 			}

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	appBlueprintResumeSchema,
 	credentialDestinationDecisionSchema,
 	domainAccessActionSchema,
 	instanceAiApprovalResumeSchema,
@@ -107,6 +108,11 @@ const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
 	kind: z.literal('mcpConnect'),
 });
 
+/** App blueprint card (inputType='app-blueprint'): approve as edited, or ask for changes. */
+const appBlueprintConfirmSchema = appBlueprintResumeSchema.extend({
+	kind: z.literal('appBlueprint'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -120,6 +126,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
 	mcpConnectConfirmSchema,
+	appBlueprintConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

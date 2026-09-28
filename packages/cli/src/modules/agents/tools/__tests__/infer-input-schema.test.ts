@@ -35,6 +35,41 @@ describe('inferInputSchema — executeWorkflow', () => {
 		expect(schema.parse({ chatId: 123, extra: true })).toEqual({ chatId: 123, extra: true });
 	});
 
+	it('keeps an explicit passthrough on a trigger that also declares fields', () => {
+		const trigger = makeExecuteWorkflowTrigger({
+			inputSource: 'passthrough',
+			workflowInputs: { values: [{ name: 'chatId', type: 'string' }] },
+		});
+
+		expect(listWorkflowInputFields(trigger)).toEqual([]);
+	});
+
+	it('reads the declared fields when the editor omitted the default inputSource (v1.1)', () => {
+		const trigger = makeExecuteWorkflowTrigger({
+			workflowInputs: {
+				values: [
+					{ name: 'message', type: 'string' },
+					{ name: 'count', type: 'number' },
+				],
+			},
+		});
+
+		const schema = inferInputSchema(trigger, 'executeWorkflow');
+		expect(listWorkflowInputFields(trigger)).toEqual([
+			{ name: 'message', type: 'string' },
+			{ name: 'count', type: 'number' },
+		]);
+		expect(schema.safeParse({ count: 'many' }).success).toBe(false);
+	});
+
+	it('treats a v1 trigger without inputSource as passthrough', () => {
+		const trigger = { ...makeExecuteWorkflowTrigger({}), typeVersion: 1 };
+
+		const schema = inferInputSchema(trigger, 'executeWorkflow');
+		expect(listWorkflowInputFields(trigger)).toEqual([]);
+		expect(schema.parse({ anything: 1 })).toEqual({ anything: 1 });
+	});
+
 	it('builds named optional fields for Define using fields below', () => {
 		const trigger = makeExecuteWorkflowTrigger({
 			inputSource: 'workflowInputs',
@@ -120,25 +155,6 @@ describe('inferInputSchema — executeWorkflow', () => {
 		const schema = inferInputSchema(trigger, 'executeWorkflow');
 		expect(listWorkflowInputFields(trigger).map((f) => f.name)).toEqual(['chatId']);
 		expect(schema.parse({ chatId: 'x' })).toEqual({ chatId: 'x' });
-	});
-
-	it('defaults to passthrough when inputSource is absent (legacy / imported triggers)', () => {
-		// Mirrors the runtime fallback `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`:
-		// legacy node versions < 1.1 and imported triggers without a saved inputSource
-		// pass all input data through, so the inferred schema must stay open even if
-		// stale workflowInputs are present.
-		const trigger = makeExecuteWorkflowTrigger({
-			workflowInputs: {
-				values: [{ name: 'chatId', type: 'string' }],
-			},
-		});
-
-		const schema = inferInputSchema(trigger, 'executeWorkflow');
-		expect(listWorkflowInputFields(trigger)).toEqual([]);
-		expect(schema.parse({ chatId: 123, anything: true })).toEqual({
-			chatId: 123,
-			anything: true,
-		});
 	});
 });
 

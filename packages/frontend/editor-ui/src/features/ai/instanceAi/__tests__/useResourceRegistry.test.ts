@@ -55,19 +55,22 @@ function setup(
 		| undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+	appBuilderTarget?: () => { appId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceIndex, linkableResourceIndex } = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		appBuilderTarget,
+		undefined,
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
 	);
-	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+	return { messages, producedArtifacts, resourceIndex, linkableResourceIndex };
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +80,7 @@ function setup(
 describe('useResourceRegistry', () => {
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -96,12 +99,12 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-1')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-1', name: 'My Workflow' }),
 			);
-			expect(resourceNameIndex.get('my workflow')?.id).toBe('wf-1');
-			expect(linkableResourceNameIndex.get('my workflow')?.id).toBe('wf-1');
+			expect(resourceIndex.get('wf-1')?.name).toBe('My Workflow');
+			expect(linkableResourceIndex.get('wf-1')?.name).toBe('My Workflow');
 		});
 
 		test('keeps the known name when a follow-up call reports a blank name', async () => {
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -123,12 +126,11 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('wf-1')?.name).toBe('Lead routing');
-			expect(linkableResourceNameIndex.get('lead routing')?.id).toBe('wf-1');
-			expect(linkableResourceNameIndex.has('')).toBe(false);
+			expect(linkableResourceIndex.get('wf-1')?.name).toBe('Lead routing');
 		});
 
 		test('falls back to args.name when result has no workflowName', async () => {
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -148,7 +150,7 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-2')).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-2', name: 'From Args' }),
 			);
-			expect(linkableResourceNameIndex.get('from args')?.id).toBe('wf-2');
+			expect(linkableResourceIndex.get('wf-2')?.name).toBe('From Args');
 		});
 
 		test('falls back to Untitled when neither workflowName nor args.name is present', async () => {
@@ -202,7 +204,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('replays historical workflows get-json results', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -232,7 +234,7 @@ describe('useResourceRegistry', () => {
 					name: 'Existing Workflow',
 				}),
 			);
-			expect(resourceNameIndex.get('existing workflow')?.id).toBe('wf-existing');
+			expect(resourceIndex.get('wf-existing')?.name).toBe('Existing Workflow');
 		});
 
 		test('does not collide when multiple workflows have no name', async () => {
@@ -296,7 +298,7 @@ describe('useResourceRegistry', () => {
 					workflowName: 'Orders',
 				},
 			]);
-			const { producedArtifacts, linkableResourceNameIndex } = setup(
+			const { producedArtifacts, linkableResourceIndex } = setup(
 				() => 'Canonical Orders',
 				undefined,
 				undefined,
@@ -306,14 +308,14 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
-			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
+			expect(linkableResourceIndex.has('wf-1')).toBe(false);
 
 			transient.value = [];
 			await nextTick();
 			expect(producedArtifacts.has('wf-1')).toBe(false);
 		});
 		test('keeps a pending new-agent attachment produced but not linkable', async () => {
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -338,14 +340,14 @@ describe('useResourceRegistry', () => {
 				projectId: 'proj-1',
 				pending: true,
 			});
-			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
+			expect(linkableResourceIndex.has('agent-1')).toBe(false);
 		});
 
 		test('registers a pending workflow attachment as a produced tab', async () => {
 			const pending = ref<
 				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
 			>({ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' });
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+			const { messages, producedArtifacts, linkableResourceIndex } = setup(
 				undefined,
 				undefined,
 				undefined,
@@ -359,7 +361,7 @@ describe('useResourceRegistry', () => {
 				id: 'wf-1',
 				name: 'FAQ Responder',
 			});
-			expect(linkableResourceNameIndex.get('faq responder')?.id).toBe('wf-1');
+			expect(linkableResourceIndex.get('wf-1')?.name).toBe('FAQ Responder');
 
 			messages.value = [
 				makeMessage({
@@ -382,7 +384,7 @@ describe('useResourceRegistry', () => {
 			const pending = ref<
 				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
 			>({ type: 'workflow', id: 'wf-blank', name: '   ' });
-			const { producedArtifacts, linkableResourceNameIndex } = setup(
+			const { producedArtifacts, linkableResourceIndex } = setup(
 				undefined,
 				undefined,
 				undefined,
@@ -392,7 +394,7 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('wf-blank')?.name).toBe('Untitled');
-			expect(linkableResourceNameIndex.get('untitled')?.id).toBe('wf-blank');
+			expect(linkableResourceIndex.get('wf-blank')?.name).toBe('Untitled');
 		});
 	});
 
@@ -580,7 +582,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('mutation result enriches an existing data-table entry with projectId', async () => {
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -615,13 +617,13 @@ describe('useResourceRegistry', () => {
 					projectId: 'proj-2',
 				}),
 			);
-			expect(linkableResourceNameIndex.get('signups')?.id).toBe('dt-1');
+			expect(linkableResourceIndex.get('dt-1')?.name).toBe('Signups');
 		});
 	});
 
 	describe('producedArtifacts — agent registration', () => {
 		test('registers an agent from a targetResource on the agent tree', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -643,8 +645,8 @@ describe('useResourceRegistry', () => {
 				name: 'SEO Auditor',
 				projectId: 'project-1',
 			});
-			expect(resourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
-			expect(linkableResourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
+			expect(resourceIndex.get('agent-1')?.name).toBe('SEO Auditor');
+			expect(linkableResourceIndex.get('agent-1')?.name).toBe('SEO Auditor');
 		});
 
 		test('hydrates projectId from the persisted agent-builder target', async () => {
@@ -671,7 +673,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('registers an agent with agentName from a build-agent tool result', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -692,7 +694,7 @@ describe('useResourceRegistry', () => {
 				id: 'agent-1',
 				name: 'Support Bot',
 			});
-			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
+			expect(resourceIndex.get('agent-1')?.name).toBe('Support Bot');
 		});
 
 		test('does not register an Agent after a read-only builder turn', async () => {
@@ -729,7 +731,7 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
-			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
 			const builder = makeAgentNode({
 				activity: 'exploring',
 				targetResource: { type: 'agent', id: 'agent-1', name: 'New agent' },
@@ -752,7 +754,7 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
-			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+			expect(linkableResourceIndex.has('agent-1')).toBe(false);
 
 			messages.value[1].agentTree!.toolCalls.push(
 				makeToolCall({
@@ -763,7 +765,7 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
-			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+			expect(linkableResourceIndex.has('agent-1')).toBe(false);
 
 			messages.value[1].agentTree!.toolCalls.push(
 				makeToolCall({
@@ -775,7 +777,7 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('agent-1')?.pending).toBeUndefined();
-			expect(linkableResourceNameIndex.get('new agent')?.id).toBe('agent-1');
+			expect(linkableResourceIndex.get('agent-1')?.name).toBe('New agent');
 		});
 
 		test('keeps project links for two changed Agents after the thread reloads', async () => {
@@ -934,9 +936,194 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — app registration', () => {
+		const createResult = {
+			app: {
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+			},
+			workspacePath: '/workspace/apps/greeter',
+		};
+		const buildResult = {
+			appId: 'app-1',
+			name: 'Greeter',
+			namespace: 'greeter',
+			projectId: 'project-1',
+			versionId: 'v-1',
+			url: 'http://localhost:5678/apps/greeter/',
+			warnings: [],
+		};
+
+		test('registers an app with its namespace from an apps create result', async () => {
+			const { messages, producedArtifacts, linkableResourceIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'create', projectId: 'project-1', name: 'Greeter' },
+								result: createResult,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+			});
+			expect(producedArtifacts.get('app-1')?.versionId).toBeUndefined();
+			expect(linkableResourceIndex.get('app-1')?.name).toBe('Greeter');
+		});
+
+		test('an apps publish result adds versionId and url to the same entry and keeps namespace', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({ toolCallId: 'tc-1', toolName: 'apps', result: createResult }),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'publish', appId: 'app-1' },
+								result: { ...buildResult, name: undefined, namespace: undefined },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+				versionId: 'v-1',
+				url: 'http://localhost:5678/apps/greeter/',
+			});
+		});
+
+		test('a build result alone registers the app from its own fields', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName: 'apps', result: buildResult })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toMatchObject({
+				type: 'app',
+				name: 'Greeter',
+				namespace: 'greeter',
+				versionId: 'v-1',
+			});
+		});
+
+		test('registers the persisted app-builder target when no event produced the app', async () => {
+			const { messages, producedArtifacts, linkableResourceIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => ({ appId: 'app-1', projectId: 'project-1', name: 'Greeter' }),
+			);
+
+			messages.value = [makeMessage()];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceIndex.get('app-1')?.name).toBe('Greeter');
+		});
+
+		test('an apps create result keeps its namespace and name over the persisted target', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => ({ appId: 'app-1', projectId: 'project-1', name: 'Stale Metadata Name' }),
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName: 'apps', result: createResult })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toMatchObject({
+				type: 'app',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+			});
+		});
+
+		test('error and denied results register nothing', async () => {
+			const { messages, producedArtifacts, resourceIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'apps',
+								args: { action: 'publish', appId: 'app-1' },
+								result: { error: true, stage: 'build', message: 'vite failed', log: '' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'create', name: 'Greeter' },
+								result: { denied: true, reason: 'Namespace "greeter" is taken.' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+			expect(resourceIndex.size).toBe(0);
+		});
+	});
+
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -959,13 +1146,13 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.size).toBe(0);
-			expect(resourceNameIndex.get('workspace workflow 1')?.id).toBe('wf-list-1');
-			expect(resourceNameIndex.get('workspace workflow 2')?.id).toBe('wf-list-2');
-			expect(linkableResourceNameIndex.size).toBe(0);
+			expect(resourceIndex.get('wf-list-1')?.name).toBe('Workspace Workflow 1');
+			expect(resourceIndex.get('wf-list-2')?.name).toBe('Workspace Workflow 2');
+			expect(linkableResourceIndex.size).toBe(0);
 		});
 
 		test('data-tables action=list result is indexed by name only', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+			const { messages, producedArtifacts, resourceIndex, linkableResourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -985,12 +1172,12 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.size).toBe(0);
-			expect(resourceNameIndex.get('existing table')?.id).toBe('dt-a');
-			expect(linkableResourceNameIndex.get('existing table')).toBeUndefined();
+			expect(resourceIndex.get('dt-a')?.name).toBe('Existing Table');
+			expect(linkableResourceIndex.has('dt-a')).toBe(false);
 		});
 
-		test('a later write promotes a previously-listed resource into producedArtifacts', async () => {
-			const { messages, producedArtifacts, resourceNameIndex } = setup();
+		test('a later write promotes a previously-listed resource into producedArtifacts and keeps its name', async () => {
+			const { messages, producedArtifacts, resourceIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -1013,18 +1200,15 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.size).toBe(1);
-			// Produced entry keeps the 'Existing' name via fallback-to-untitled
-			// avoidance — the patch call has no name of its own.
-			expect(producedArtifacts.get('wf-1')?.name).toBe('Untitled');
-			// Name index still resolves 'existing'
-			expect(resourceNameIndex.get('existing')?.id).toBe('wf-1');
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Existing');
+			expect(resourceIndex.get('wf-1')?.name).toBe('Existing');
 		});
 	});
 
 	describe('workflowNameLookup enrichment', () => {
 		test('enriches fallback name from store lookup', async () => {
 			const lookup = (id: string) => (id === 'wf-3' ? 'Insert Random City Data' : undefined);
-			const { messages, producedArtifacts, resourceNameIndex } = setup(lookup);
+			const { messages, producedArtifacts, resourceIndex } = setup(lookup);
 
 			messages.value = [
 				makeMessage({
@@ -1042,8 +1226,7 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.get('wf-3')?.name).toBe('Insert Random City Data');
-			expect(resourceNameIndex.get('insert random city data')?.id).toBe('wf-3');
-			expect(resourceNameIndex.get('untitled')).toBeUndefined();
+			expect(resourceIndex.get('wf-3')?.name).toBe('Insert Random City Data');
 		});
 
 		test('keeps original name when lookup returns undefined', async () => {
@@ -1094,7 +1277,7 @@ describe('useResourceRegistry', () => {
 		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
 			'registers data table from %s result with name and projectId',
 			async (toolName) => {
-				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+				const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -1121,7 +1304,7 @@ describe('useResourceRegistry', () => {
 					name: 'Orders',
 					projectId: 'proj-1',
 				});
-				expect(linkableResourceNameIndex.get('orders')?.id).toBe('dt-mut-1');
+				expect(linkableResourceIndex.get('dt-mut-1')?.name).toBe('Orders');
 			},
 		);
 
@@ -1157,7 +1340,7 @@ describe('useResourceRegistry', () => {
 		test.each(['schema', 'query'] as const)(
 			'registers data table from data-tables %s result with resolved metadata',
 			async (action) => {
-				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+				const { messages, producedArtifacts, linkableResourceIndex } = setup();
 
 				messages.value = [
 					makeMessage({
@@ -1185,12 +1368,36 @@ describe('useResourceRegistry', () => {
 					name: 'Signups',
 					projectId: 'proj-4',
 				});
-				expect(linkableResourceNameIndex.get('signups')).toBeUndefined();
+				expect(linkableResourceIndex.has('dt-signups')).toBe(false);
 			},
 		);
 	});
 
 	describe('in-place reactivity contract', () => {
+		test('keeps a produced entry intact when a later resource takes over its name', async () => {
+			const { messages, producedArtifacts } = setup();
+			const tableCall = makeToolCall({
+				toolCallId: 'tc-table',
+				toolName: 'data-tables',
+				result: { table: { id: 'dt-1', name: 'Todos', projectId: 'project-1' } },
+			});
+			messages.value = [makeMessage({ agentTree: makeAgentNode({ toolCalls: [tableCall] }) })];
+			await nextTick();
+
+			const appCall = makeToolCall({
+				toolCallId: 'tc-app',
+				toolName: 'apps',
+				result: { app: { id: 'app-1', name: 'Todos', projectId: 'project-1' } },
+			});
+			messages.value = [
+				makeMessage({ agentTree: makeAgentNode({ toolCalls: [tableCall, appCall] }) }),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('dt-1')).toMatchObject({ type: 'data-table', id: 'dt-1' });
+			expect(producedArtifacts.get('app-1')).toMatchObject({ type: 'app', id: 'app-1' });
+		});
+
 		function setupWithArtifact() {
 			const result = setup();
 			result.messages.value = [
@@ -1268,10 +1475,10 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('rebuilds that change nothing do not notify subscribers', async () => {
-			const { messages, resourceNameIndex } = setupWithArtifact();
+			const { messages, resourceIndex } = setupWithArtifact();
 			let runs = 0;
 			const stop = watchEffect(() => {
-				void [...resourceNameIndex.values()];
+				void [...resourceIndex.values()];
 				runs++;
 			});
 			await nextTick();
@@ -1295,7 +1502,7 @@ describe('useResourceRegistry', () => {
 			);
 			await nextTick();
 			expect(runs).toBe(runsAfterSetup + 1);
-			expect(resourceNameIndex.get('second pipeline')?.id).toBe('wf-2');
+			expect(resourceIndex.get('wf-2')?.name).toBe('Second Pipeline');
 
 			stop();
 		});

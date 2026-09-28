@@ -23,6 +23,11 @@ export default defineConfig(
 		ignores: [
 			'scripts/**/*.cjs',
 			'skills/**/*.mjs',
+			// App starter files copied into the sandbox; they build with their own tsconfig.
+			'skills/**/templates/**',
+			// Hand-authored components copied into apps on demand (apps.tool.ts); same
+			// deal — they build with the app's own tsconfig, not this package's.
+			'skills/**/component-registry/**',
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',

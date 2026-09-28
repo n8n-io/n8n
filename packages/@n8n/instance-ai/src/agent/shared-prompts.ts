@@ -28,5 +28,5 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 
 ${isolation}
 
-You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace.`;
+You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace. In a thread that builds an app the workspace_* tools act on the app's own sandbox, where the source lives under \`apps/<namespace>/\`; pass \`sandbox: 'thread'\` to reach the thread sandbox instead.`;
 }

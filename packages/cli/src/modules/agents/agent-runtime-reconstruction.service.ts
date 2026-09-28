@@ -67,6 +67,7 @@ import {
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { APP_CHAT_INTEGRATION_TYPE } from './integrations/platforms/app-chat-integration';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
@@ -914,8 +915,12 @@ export class AgentRuntimeReconstructionService {
 
 	private async attachIntegrationTools(params: RuntimeDependencies): Promise<void> {
 		const { agent, agentId, integrationType, credentialIntegrations } = params;
-		const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
-		if (credentialIntegrations.length === 0 && !includeN8nChat) return;
+		// Internal channels (in-app chat, built apps) are credential-less and injected per run.
+		const internalChatType =
+			integrationType === N8N_CHAT_INTEGRATION_TYPE || integrationType === APP_CHAT_INTEGRATION_TYPE
+				? integrationType
+				: undefined;
+		if (credentialIntegrations.length === 0 && internalChatType === undefined) return;
 		const integrationRegistry = Container.get(ChatIntegrationRegistry);
 		const { messageContextStore, actionExecutor, queryExecutor } =
 			await getChatIntegrationToolServices();
@@ -926,8 +931,10 @@ export class AgentRuntimeReconstructionService {
 			integrationRegistry,
 		);
 
-		if (includeN8nChat) {
-			descriptors.push(this.createN8nChatDescriptor(agentId, integrationRegistry));
+		if (internalChatType !== undefined) {
+			descriptors.push(
+				this.createInternalChatDescriptor(agentId, internalChatType, integrationRegistry),
+			);
 		}
 
 		for (const descriptor of descriptors) {
@@ -958,26 +965,25 @@ export class AgentRuntimeReconstructionService {
 		);
 	}
 
-	private createN8nChatDescriptor(
+	/** Fixed tool names: exactly one internal channel per run, so no suffixing. */
+	private createInternalChatDescriptor(
 		agentId: string,
+		internalChatType: typeof N8N_CHAT_INTEGRATION_TYPE | typeof APP_CHAT_INTEGRATION_TYPE,
 		integrationRegistry: ChatIntegrationRegistry,
 	): IntegrationToolConnectionDescriptor {
-		const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
-		const n8nChatIntegration = {
-			type: N8N_CHAT_INTEGRATION_TYPE,
-		} as unknown as IntegrationToolConnectionDescriptor['integration'];
+		const internalChat = integrationRegistry.require(internalChatType);
 		return {
 			agentId,
-			integration: n8nChatIntegration,
-			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+			integration: { type: internalChatType },
+			integrationConnectionId: internalChatType,
 			contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
 			actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
-			contextQueries: [...n8nChat.contextQueries],
-			actions: [...n8nChat.actions],
-			contextToolDefinitions: [...n8nChat.contextToolDefinitions],
-			actionToolDefinitions: [...n8nChat.actionToolDefinitions],
-			contextToolGuidance: n8nChat.contextToolGuidance,
-			actionToolGuidance: n8nChat.actionToolGuidance,
+			contextQueries: [...internalChat.contextQueries],
+			actions: [...internalChat.actions],
+			contextToolDefinitions: [...internalChat.contextToolDefinitions],
+			actionToolDefinitions: [...internalChat.actionToolDefinitions],
+			contextToolGuidance: internalChat.contextToolGuidance,
+			actionToolGuidance: internalChat.actionToolGuidance,
 		};
 	}
 

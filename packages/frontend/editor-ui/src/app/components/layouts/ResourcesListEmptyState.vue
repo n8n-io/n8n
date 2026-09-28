@@ -54,6 +54,13 @@ export const EMPTY_STATE_CONFIG = {
 		ctaKey: 'projects.header.create.agent',
 		disabledTooltipKey: 'agents.list.empty.button.disabled.tooltip',
 	},
+	apps: {
+		icon: 'app-window',
+		headingKey: 'apps.empty.heading',
+		descriptionKey: 'apps.empty.description',
+		ctaKey: 'apps.add.button.label',
+		disabledTooltipKey: 'apps.empty.button.disabled.tooltip',
+	},
 } as const satisfies Record<string, EmptyStateConfig>;
 
 export type EmptyStateResourceKey = keyof typeof EMPTY_STATE_CONFIG;

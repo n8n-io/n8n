@@ -1,7 +1,21 @@
 import { computed, type ComputedRef } from 'vue';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 
-import { isAgentEditingAgent, isAgentEditingWorkflow } from '../canvasPreview.utils';
+import {
+	isAgentBuildingApp,
+	isAgentEditingAgent,
+	isAgentEditingWorkflow,
+} from '../canvasPreview.utils';
 import { useThread, type ThreadRuntime } from '../instanceAi.store';
+import type { ResourceEntry } from '../useResourceRegistry';
+
+const BUILDING_SIGNALS: Partial<
+	Record<ResourceEntry['type'], (node: InstanceAiAgentNode, id: string) => boolean>
+> = {
+	workflow: isAgentEditingWorkflow,
+	agent: isAgentEditingAgent,
+	app: isAgentBuildingApp,
+};
 
 /**
  * Ids of the thread's artifacts the AI is actively mutating right now — the
@@ -12,7 +26,8 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
  * Reuses the per-artifact editing-lock signals (`isAgentEditingWorkflow` /
  * `isAgentEditingAgent`), so the indicator covers the same window as the
  * editing lock: from sub-agent spawn (or first mutating tool call) until the
- * run settles. Data tables have no lock signal and are not tracked.
+ * run settles. Apps use the in-flight `apps publish` call (`isAgentBuildingApp`).
+ * Data tables have no lock signal and are not tracked.
  *
  * Pass `runtime` from the component that *provides* the thread — it can't
  * inject what it provides. Everything below it just calls this with no
@@ -24,8 +39,8 @@ export function useBuildingArtifactIds(runtime?: ThreadRuntime): ComputedRef<Set
 	return computed(() => {
 		const ids = new Set<string>();
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type !== 'workflow' && entry.type !== 'agent') continue;
-			const isEditing = entry.type === 'workflow' ? isAgentEditingWorkflow : isAgentEditingAgent;
+			const isEditing = BUILDING_SIGNALS[entry.type];
+			if (!isEditing) continue;
 			for (const message of thread.messages) {
 				if (!message.agentTree) continue;
 				if (isEditing(message.agentTree, entry.id)) {

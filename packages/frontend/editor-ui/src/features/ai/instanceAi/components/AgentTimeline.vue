@@ -18,6 +18,7 @@ import { useThread } from '../instanceAi.store';
 import { resolvePlanTasks } from '../planReview.utils';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import AppBlueprintCard from './AppBlueprintCard.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlanReviewStatus } from './PlanReviewPanel.vue';
@@ -292,6 +293,16 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 				:request-id="block.toolCall.confirmation.requestId"
 				:input-thread-id="block.toolCall.confirmation.inputThreadId"
 				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+				:read-only="isCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation.expired"
+			/>
+
+			<AppBlueprintCard
+				v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
+				:key="block.toolCall.confirmation.requestId"
+				:request-id="block.toolCall.confirmation.requestId"
+				:input-thread-id="block.toolCall.confirmation.inputThreadId"
+				:blueprint="block.toolCall.confirmation.appBlueprint"
 				:read-only="isCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation.expired"
 			/>

@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -30,6 +30,11 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
+		// The live app preview needs the apps module: it resolves the app and proxies its dev server.
+		if (Container.get(ModuleRegistry).isActive('apps')) {
+			await import('./app-preview/app-preview.controller.js');
+			await import('./app-preview/app-preview-proxy.controller.js');
+		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.

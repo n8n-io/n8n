@@ -2,6 +2,7 @@ import { WithTimestamps, JsonColumn, Project } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'instance_ai_threads' })
+@Index(['appId', 'updatedAt'])
 @Index(['resourceId', 'updatedAt', 'id'])
 export class InstanceAiThread extends WithTimestamps {
 	@PrimaryColumn('uuid')
@@ -24,4 +25,8 @@ export class InstanceAiThread extends WithTimestamps {
 
 	@JsonColumn({ nullable: true })
 	metadata: Record<string, unknown> | null;
+
+	/** App this thread builds; the app page resumes the newest thread with its id. FK with SET NULL in the migration. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	appId: string | null;
 }

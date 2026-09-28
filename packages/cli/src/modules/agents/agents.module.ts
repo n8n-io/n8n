@@ -92,6 +92,7 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/teams/teams-integration.js'
 		);
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { AppChatIntegration } = await import('./integrations/platforms/app-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -99,6 +100,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
+		registry.register(Container.get(AppChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
 		// current role calls for.

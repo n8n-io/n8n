@@ -18,7 +18,7 @@ import {
 	useWindowSize,
 } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentAttachment, InstanceAiAppAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	DEBOUNCE_TIME,
@@ -34,11 +34,14 @@ import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getAppBuilderTargetFromThreadMetadata,
 	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
+import { useAppPreviewDiagnostics } from './composables/useAppPreviewDiagnostics';
+import { INSTANCE_AI_PREFILL_TYPE_FALLBACK } from './prefills';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
@@ -60,6 +63,9 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
+import { APP_DETAILS } from '@/features/apps/apps.constants';
+import { useAppThreadScope } from '@/features/apps/composables/useAppThreadScope';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -80,6 +86,12 @@ const router = useRouter();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
+// On the app page the app panel is the point of the view: it stays open, the
+// artifacts sidebar is dropped, and the chat collapses behind the panel instead.
+const appScope = useAppThreadScope();
+const isAppPage = appScope !== null;
+// Errors the live app preview reported; they ride along with the next message.
+const appPreviewDiagnostics = useAppPreviewDiagnostics();
 const recentWorkflowsStore = useRecentWorkflowsStore();
 const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
@@ -100,6 +112,10 @@ function onThreadMissing() {
 
 function onAgentAttachmentRestored(attachment: InstanceAiAgentAttachment) {
 	preview.openAgentPreview(attachment.id, attachment.projectId);
+}
+
+function onAppAttachmentRestored(attachment: InstanceAiAppAttachment) {
+	preview.openAppPreview(attachment.appId, attachment.projectId);
 }
 
 // --- Fix-with-AI offer (failure data emitted by the artifact host) ---
@@ -209,6 +225,8 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () =>
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
 	onPreviewOpenChange: (open) => {
 		persistedArtifactPreviewOpen.value = open;
@@ -294,7 +312,9 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+provide('appPreviewDiagnostics', appPreviewDiagnostics);
 provide('pendingComposerContext', handoffContext);
 provide(
 	'dismissPendingComposerContext',
@@ -397,9 +417,10 @@ const isArtifactsPanelInLayout = computed(
 );
 const canShowArtifactsPanel = computed(
 	() =>
-		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
-		(Boolean(props.threadId) && thread.isHydratingThread),
+		!isAppPage &&
+		(thread.hasMessages ||
+			preview.allArtifactTabs.value.length > 0 ||
+			(Boolean(props.threadId) && thread.isHydratingThread)),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -618,6 +639,13 @@ onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 });
 
+// The assistant page carries the thread in `params.threadId`, the app builder in `?thread=`.
+function routeThreadId(): string | undefined {
+	const { params, query } = router.currentRoute.value;
+	if (typeof params.threadId === 'string') return params.threadId;
+	return typeof query.thread === 'string' ? query.thread : undefined;
+}
+
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
 	// SSE, clears state, drops it from the store) — but only once the app has
@@ -626,7 +654,7 @@ onUnmounted(() => {
 	// hand-off that loads the AIA chunks) and discard one; that discarded
 	// instance's unmount fires while the route still points at the thread, and
 	// must not tear down the runtime the live instance is rendering.
-	if (router.currentRoute.value.params.threadId !== props.threadId) {
+	if (routeThreadId() !== props.threadId) {
 		store.disposeRuntime(props.threadId);
 		// Guarded by the same route check, and scoped to this thread's agent: a
 		// discarded duplicate instance must not drop a request the live instance's
@@ -723,7 +751,39 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 	});
 }
 
+/**
+ * A page +/edit/delete click inside the embedded app builder (this thread is
+ * already bound to the app, via `InstanceAiAppPreview`'s own target sync) —
+ * fill the already-open composer instead of opening another thread.
+ */
+function handleAppPreviewAssistantHandoff(prompt: string) {
+	if (conversationRef.value?.isDirty()) {
+		toast.showMessage({
+			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
+			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
+			type: 'warning',
+		});
+		return;
+	}
+	conversationRef.value?.setPrefill({
+		text: prompt,
+		prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	});
+}
+
+// On the app page a new thread stays on the app page: `thread=new` asks it to start another one.
+const canStartNewThread = computed(() => !isAppPage || Boolean(appScope?.value.appId));
+
 function handleNewThreadClick() {
+	const scope = appScope?.value;
+	if (scope?.appId) {
+		void router.push({
+			name: APP_DETAILS,
+			params: { projectId: scope.projectId, appId: scope.appId },
+			query: { thread: 'new' },
+		});
+		return;
+	}
 	void router.push({ name: INSTANCE_AI_VIEW });
 }
 </script>
@@ -751,7 +811,10 @@ function handleNewThreadClick() {
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
-				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
+				<InstanceAiViewHeader
+					:show-thread-history-label="!currentThreadTitle"
+					:thread-id="props.threadId"
+				>
 					<template #title>
 						<N8nHeading
 							v-if="currentThreadTitle"
@@ -773,6 +836,7 @@ function handleNewThreadClick() {
 					</template>
 					<template #actions>
 						<N8nTooltip
+							v-if="canStartNewThread"
 							:content="i18n.baseText('instanceAi.thread.new')"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -820,6 +884,24 @@ function handleNewThreadClick() {
 							</Transition>
 						</N8nTooltip>
 						<N8nTooltip
+							v-if="isAppPage"
+							:content="i18n.baseText('apps.builder.collapseChat')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<N8nIconButton
+								icon="panel-right"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								:disabled="!preview.isPreviewVisible.value"
+								:aria-label="i18n.baseText('apps.builder.collapseChat')"
+								data-test-id="app-builder-collapse-chat"
+								@click="togglePreviewExpanded"
+							/>
+						</N8nTooltip>
+						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -861,6 +943,7 @@ function handleNewThreadClick() {
 					:mentions-enabled="mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
+					@app-attachment-restored="onAppAttachmentRestored"
 				>
 					<template #above-input>
 						<InstanceAiSetupPanel
@@ -959,7 +1042,7 @@ function handleNewThreadClick() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:preview-toggle-label="artifactsPreviewToggleLabel"
+							:preview-toggle-label="isAppPage ? undefined : artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
@@ -1004,6 +1087,20 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiAppPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAppId.value &&
+									preview.activeAppProjectId.value
+								"
+								:key="preview.activeAppId.value"
+								:class="$style.previewSlot"
+								:app-id="preview.activeAppId.value"
+								:project-id="preview.activeAppProjectId.value"
+								:version-id="preview.activeAppVersionId.value ?? undefined"
+								:building="preview.activeAppBuilding.value"
+								@assistant-handoff="handleAppPreviewAssistantHandoff"
 							/>
 						</div>
 					</TabsRoot>

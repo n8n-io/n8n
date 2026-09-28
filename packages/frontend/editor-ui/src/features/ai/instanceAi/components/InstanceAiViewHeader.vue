@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIconButton,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -9,6 +15,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useInstanceAiStore } from '../instanceAi.store';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import InstanceAiThreadList from './InstanceAiThreadList.vue';
+import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
+import { APP_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
+import { useAppThreadScope } from '@/features/apps/composables/useAppThreadScope';
 
 const props = withDefaults(
 	defineProps<{
@@ -39,6 +48,8 @@ const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
+const appScope = useAppThreadScope();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -56,22 +67,75 @@ const threadCreditsUsed = computed(() =>
 	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
 );
 
+// The app page lists only its app's threads and keeps them on the app page (`?thread=`).
+// The new-app page has no app to scope to yet, so its history is off.
+const effectiveThreadList = computed(() => {
+	const scope = appScope?.value;
+	if (!scope) return props.threadList;
+	return {
+		filter: (thread: InstanceAiThreadSummary) =>
+			getAppBuilderTargetFromThreadMetadata(thread.metadata)?.appId === scope.appId,
+		navigate: false,
+		disabled: !scope.appId,
+	};
+});
+
+function openAppThread(threadId: string) {
+	const scope = appScope?.value;
+	if (!scope?.appId) return;
+	void router.push({
+		name: APP_DETAILS,
+		params: { projectId: scope.projectId, appId: scope.appId },
+		query: { thread: threadId },
+	});
+}
+
 function handleThreadSelect(threadId: string) {
 	emit('select', threadId);
+	if (appScope) openAppThread(threadId);
+}
+
+function handleThreadDeleted(wasActive: boolean) {
+	emit('deleted', wasActive);
+	// `thread=new` asks the app page to start another thread for the same app.
+	if (appScope && wasActive) openAppThread('new');
 }
 </script>
 
 <template>
 	<div :class="$style.header">
+		<RouterLink
+			v-if="appScope"
+			v-slot="{ href, navigate }"
+			:to="{ name: PROJECT_APPS, params: { projectId: appScope.projectId } }"
+			custom
+		>
+			<N8nTooltip
+				:content="i18n.baseText('apps.builder.backToApps')"
+				placement="bottom"
+				:show-after="TOOLTIP_DELAY_MS"
+			>
+				<N8nIconButton
+					:href="href"
+					icon="arrow-left"
+					variant="ghost"
+					size="small"
+					icon-size="large"
+					data-test-id="app-builder-back"
+					:aria-label="i18n.baseText('apps.builder.backToApps')"
+					@click="navigate"
+				/>
+			</N8nTooltip>
+		</RouterLink>
 		<div :class="$style.threadHistory">
 			<InstanceAiThreadList
 				max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
-				:filter="threadList?.filter"
-				:navigate="threadList?.navigate"
-				:disabled="threadList?.disabled"
+				:filter="effectiveThreadList?.filter"
+				:navigate="effectiveThreadList?.navigate"
+				:disabled="effectiveThreadList?.disabled"
 				:active-thread-id="threadId"
 				@select="handleThreadSelect"
-				@deleted="emit('deleted', $event)"
+				@deleted="handleThreadDeleted"
 			>
 				<template #trigger>
 					<N8nTooltip

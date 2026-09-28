@@ -13,12 +13,12 @@ sandbox.
 ```mermaid
 graph LR
     Agent[Instance AI orchestrator] --> Lazy[Lazy runtime Workspace]
-    Lazy --> Service[InstanceAiSandboxService]
-    Service --> Shared[Thread-scoped Workspace]
-    Shared --> FS[Workspace filesystem]
-    Shared --> Cmd[Workspace sandbox]
-    FS --> Provider[Configured sandbox provider]
-    Cmd --> Provider
+    Lazy -->|sandbox: thread| Thread[Thread-scoped Workspace]
+    Lazy -->|sandbox: app| App[App-scoped Workspace]
+    Preview[App preview, publish, Code tab] --> App
+    Thread --> Service[InstanceAiSandboxService]
+    App --> Service
+    Service --> Provider[Configured sandbox provider]
     Provider --> N8n[n8n sandbox service]
     Provider --> Daytona[Daytona]
 ```
@@ -26,7 +26,7 @@ graph LR
 `@n8n/agents` supplies the `Workspace`, filesystem, and sandbox abstractions.
 `@n8n/instance-ai` supplies setup and workflow compilation. The CLI module
 selects credentials, creates the provider configuration, and owns the
-thread-scoped lifecycle.
+sandbox lifecycle.
 
 The runtime attaches a lazy workspace to the orchestrator. The remote sandbox
 is created only when the agent first uses a workspace capability. Instance AI
@@ -39,7 +39,9 @@ exposes this core workspace tool set:
 - `workspace_execute_command`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
-runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`.
+runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`. Each
+core tool takes a `sandbox` input: `'thread'` (default) targets the thread's
+sandbox, `'app'` targets the sandbox of the app the thread builds.
 
 ## Providers
 
@@ -105,6 +107,33 @@ sandboxes available for a restarted process to reuse.
 
 Settings changes invalidate the in-process cache. In-flight users retain the
 entry that they already resolved.
+
+## App-Scoped Sandbox
+
+An app has one sandbox of its own, with the key `app-<appId>`. Every thread
+that builds the app (`instance_ai_threads.appId`) shares it, as do the live
+preview, the publish snapshot, the theme editor, and the Code tab. The thread
+keeps its own sandbox for workflow builds.
+
+The app sandbox is created on first use only:
+
+- the agent calls a workspace tool with `sandbox: 'app'` or an `apps` action;
+- a user opens the app preview;
+- a user saves a file in the Code tab.
+
+A thread that is bound to an app at run start loads its runtime skills into
+the app sandbox, so an app page never creates a thread sandbox that nothing
+uses. A thread that creates an app mid-run gets the app sandbox in that run:
+the binding is read when the lazy workspace resolves. The resolver
+materializes the runtime skills into a new app sandbox, because `apps create`
+copies its templates out of the skills directory.
+
+The app sandbox holds one app. `apps create` is denied in a thread that
+already builds an app.
+
+Discard follows the thread rules: the in-process cache entry expires after
+the idle TTL and the provider reclaims the remote sandbox. Deleting the app
+destroys its sandbox and drops its preview.
 
 ## Workspace Initialization
 

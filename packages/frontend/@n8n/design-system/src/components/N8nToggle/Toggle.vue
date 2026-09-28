@@ -74,7 +74,7 @@ const pressed = computed({
 </script>
 
 <template>
-	<N8nTooltip v-if="showTooltip" :content="label" :disabled="disabled">
+	<N8nTooltip :content="label" :disabled="disabled || !showTooltip">
 		<ToggleGroupItem
 			v-if="value !== undefined"
 			v-bind="attrs"
@@ -107,38 +107,6 @@ const pressed = computed({
 			</span>
 		</TogglePrimitive>
 	</N8nTooltip>
-
-	<ToggleGroupItem
-		v-else-if="value !== undefined"
-		v-bind="attrs"
-		:value="value"
-		:disabled="disabled"
-		:class="classes"
-		:aria-label="label"
-		data-icon-only="true"
-	>
-		<span :class="$style['toggle-inner']">
-			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-			<slot />
-		</span>
-	</ToggleGroupItem>
-
-	<TogglePrimitive
-		v-else
-		v-bind="attrs"
-		v-model="pressed"
-		:disabled="disabled"
-		:name="name"
-		:required="required"
-		:class="classes"
-		:aria-label="label"
-		data-icon-only="true"
-	>
-		<span :class="$style['toggle-inner']">
-			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-			<slot />
-		</span>
-	</TogglePrimitive>
 </template>
 
 <style lang="scss" module>

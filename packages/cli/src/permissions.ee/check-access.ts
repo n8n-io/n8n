@@ -44,6 +44,26 @@ async function hasGlobalCredentialAccess(
 	return isReadOnlyRequest || globalCredential.isResolvable;
 }
 
+/** Apps don't have resource-level roles, only project-level access. */
+async function resolveAppProjectId(appId: string): Promise<string> {
+	const moduleRegistry = Container.get(ModuleRegistry);
+	if (!moduleRegistry.isActive('apps')) {
+		throw new NotFoundError(`App with ID "${appId}" not found.`);
+	}
+
+	const { AppRepository } = await import('@/modules/apps/app.repository.js');
+	const app = await Container.get(AppRepository).findOne({
+		where: { id: appId },
+		relations: ['project'],
+	});
+
+	if (!app) {
+		throw new NotFoundError(`App with ID "${appId}" not found.`);
+	}
+
+	return app.project.id;
+}
+
 /**
  * Check if a user has the required scopes. The check can be:
  *
@@ -61,11 +81,13 @@ export async function userHasScopes(
 		workflowId,
 		projectId,
 		dataTableId,
+		appId,
 	}: {
 		credentialId?: string;
 		workflowId?: string;
 		projectId?: string;
 		dataTableId?: string;
+		appId?: string;
 	} /* only one */,
 	entityManager?: EntityManager,
 ): Promise<boolean> {
@@ -177,9 +199,11 @@ export async function userHasScopes(
 		return userProjectIds.includes(dataTable.project.id);
 	}
 
+	if (appId) return userProjectIds.includes(await resolveAppProjectId(appId));
+
 	if (projectId) return userProjectIds.includes(projectId);
 
 	throw new UnexpectedError(
-		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
+		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, `appId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
 	);
 }

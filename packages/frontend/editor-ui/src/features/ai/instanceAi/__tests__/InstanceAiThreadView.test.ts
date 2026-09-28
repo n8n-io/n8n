@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
-import { defineComponent, h, inject, type PropType, type Ref, nextTick } from 'vue';
+import { defineComponent, h, inject, ref, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -29,9 +29,13 @@ import type {
 } from '@n8n/api-types';
 import {
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	stashPendingAgentAttachment,
+	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
+import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
+import { AppThreadScopeKey } from '@/features/apps/composables/useAppThreadScope';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
@@ -120,6 +124,7 @@ vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 
 const mockRouteState = vi.hoisted(() => ({
 	params: { threadId: 'thread-1' } as { threadId?: string },
+	query: {} as { thread?: string },
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -138,7 +143,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		replace: routerReplaceSpy,
 		currentRoute: {
 			get value() {
-				return { params: mockRouteState.params };
+				return { params: mockRouteState.params, query: mockRouteState.query };
 			},
 		},
 	}),
@@ -334,6 +339,49 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 	},
 });
 
+const PREVIEW_DIAGNOSTIC = {
+	kind: 'uncaught' as const,
+	message: 'boom',
+	file: '/src/pages/Home.vue',
+	line: 12,
+	at: '2026-09-08T10:00:00.000Z',
+};
+
+const InstanceAiAppPreviewStub = defineComponent({
+	name: 'InstanceAiAppPreviewStub',
+	props: {
+		appId: { type: String, required: true },
+		projectId: { type: String, required: true },
+		versionId: { type: String, required: false },
+	},
+	setup(props) {
+		const diagnostics = inject<AppPreviewDiagnostics | undefined>(
+			'appPreviewDiagnostics',
+			undefined,
+		);
+		return () =>
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-app-preview-stub',
+					'data-app-id': props.appId,
+					'data-project-id': props.projectId,
+					'data-version-id': props.versionId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-app-preview-report-error',
+							onClick: () => diagnostics?.add(PREVIEW_DIAGNOSTIC),
+						},
+						'Report error',
+					),
+				],
+			);
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		stubs: {
@@ -349,6 +397,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
+			InstanceAiAppPreview: InstanceAiAppPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: AgentSectionStub,
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
@@ -456,6 +505,7 @@ describe('InstanceAiThreadView', () => {
 		routerReplaceSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
+		mockRouteState.query = {};
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
@@ -1558,6 +1608,109 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	describe('app context chip', () => {
+		const boundApp = {
+			type: 'app' as const,
+			appId: 'app-1',
+			projectId: 'project-1',
+			name: 'Greeter',
+		};
+
+		const sentWith = (attachments: unknown) => ({
+			authorship: USER_TYPED_MESSAGE,
+			attachments,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
+
+		beforeEach(() => {
+			thread.sseState = 'disconnected';
+			vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+			store.updateThreadMetadata.mockResolvedValue(undefined);
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+		});
+
+		it('shows the stashed app as the composer chip and opens its preview', async () => {
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			const preview = await findByTestId('instance-ai-app-preview-stub');
+			expect(preview).toHaveAttribute('data-app-id', 'app-1');
+			expect(preview).toHaveAttribute('data-project-id', 'project-1');
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('app-window');
+		});
+
+		it('sends the app attachment with the first message and then drops the chip', async () => {
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', sentWith([boundApp]));
+			await vi.waitFor(() => {
+				expect(getPendingAppAttachment('thread-1')).toBeNull();
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+		});
+
+		it('attaches buffered preview errors to the next message and clears them', async () => {
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				sentWith([
+					boundApp,
+					{ type: 'app-preview-diagnostics', appId: 'app-1', items: [PREVIEW_DIAGNOSTIC] },
+				]),
+			);
+
+			await vi.waitFor(() => {
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenLastCalledWith('Normal message', sentWith(undefined));
+		});
+
+		it('shows buffered preview errors as a chip and dismisses them without sending', async () => {
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('1 preview error');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent(
+				'triangle-alert',
+			);
+
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', sentWith(undefined));
+		});
+
+		it('dismisses the app chip without sending it', async () => {
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			const preview = await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+			expect(getPendingAppAttachment('thread-1')).toBeNull();
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(preview).toBeInTheDocument();
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', sentWith(undefined));
+		});
+	});
+
 	it('dismisses a pending preview-context chip without sending it', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
@@ -1821,6 +1974,41 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('on the app page drops the artifacts panel and offers back and collapse-chat instead', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+			global: {
+				provide: {
+					[AppThreadScopeKey as symbol]: ref({
+						appId: 'app-1',
+						projectId: 'proj-1',
+						name: 'Greeter',
+					}),
+				},
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(getByTestId('app-builder-collapse-chat')).toBeInTheDocument();
+		});
+		expect(getByTestId('app-builder-back')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-panel-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-preview-toggle')).not.toBeInTheDocument();
 	});
 
 	it('restores an open preview when the artifact has no message attachment', async () => {
@@ -2747,6 +2935,16 @@ describe('InstanceAiThreadView', () => {
 			// A duplicate instance created and discarded during a layout transition
 			// (e.g. an editor hand-off) unmounts while the route still shows the
 			// thread — it must not tear down the runtime the live instance renders.
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			unmount();
+
+			expect(store.disposeRuntime).not.toHaveBeenCalled();
+		});
+
+		it('keeps the runtime when unmounting while `?thread=` still points at the thread', () => {
+			mockRouteState.params = {};
+			mockRouteState.query = { thread: 'thread-1' };
 			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
 
 			unmount();

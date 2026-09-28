@@ -16,6 +16,8 @@ import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
+	InstanceAiAppAttachment,
+	InstanceAiAppPreviewDiagnosticsAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiPrefillPayload,
@@ -31,21 +33,27 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
-import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
+import {
+	getAgentBuilderTargetFromThreadMetadata,
+	getAppBuilderTargetFromThreadMetadata,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
+	clearPendingAppAttachment,
 	clearPendingWorkflowAttachment as clearStashedWorkflowAttachment,
 	consumePendingDraftAttachment,
+	consumePendingElementAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
 	consumePendingRedirectLanding,
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	getPendingWorkflowAttachment,
@@ -55,6 +63,9 @@ import {
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
+import type { InstanceAiEmptyStateSuggestion } from '../emptyStateSuggestions';
+import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
+import { useAppThreadScope } from '@/features/apps/composables/useAppThreadScope';
 import type {
 	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
@@ -100,6 +111,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'thread-missing': [];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
+	'app-attachment-restored': [attachment: InstanceAiAppAttachment];
 }>();
 
 defineSlots<{
@@ -155,9 +167,34 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+const pendingAppAttachment = ref<InstanceAiAppAttachment | null>(null);
+// Errors the live app preview reported; the host owns them, and they ride along with the next message.
+const appPreviewDiagnostics = inject<AppPreviewDiagnostics | undefined>(
+	'appPreviewDiagnostics',
+	undefined,
+);
+// A pending (new) app takes its id from the thread's bound target once the
+// agent's `apps.create` result has been recorded there.
+const currentAppAttachment = computed<InstanceAiAppAttachment | null>(() => {
+	const queued = pendingAppAttachment.value;
+	if (!queued) return null;
+	if (queued.appId) return queued;
+
+	const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+	if (!boundTarget || boundTarget.projectId !== queued.projectId) return queued;
+
+	return {
+		type: 'app',
+		appId: boundTarget.appId,
+		projectId: queued.projectId,
+		name: boundTarget.name ?? queued.name,
+		...(queued.namespace ? { namespace: queued.namespace } : {}),
+	};
+});
 const reservedComposerAttachmentCount = computed(
 	() =>
 		Number(Boolean(currentAgentAttachment.value)) +
+		Number(Boolean(currentAppAttachment.value)) +
 		Number(Boolean(thread.pendingWorkflowAttachment)),
 );
 const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
@@ -212,6 +249,48 @@ watch(
 // Show the input disclaimer only once the AI has produced a visible response.
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
+// The new-app page: a bound app does not exist yet, so the composer asks for the idea first.
+const appScope = useAppThreadScope();
+const isNewAppPage = computed(() => appScope !== null && !appScope.value.appId);
+// Idea starters, rendered by the composer like the assistant home page's pills. Its own
+// catalog version keeps their suggestion telemetry apart from the home page's.
+const NEW_APP_SUGGESTIONS_VERSION = 'app-builder-v1';
+const NEW_APP_SUGGESTIONS: readonly InstanceAiEmptyStateSuggestion[] = [
+	{
+		type: 'prompt',
+		id: 'event-rsvp',
+		icon: 'calendar',
+		labelKey: 'instanceAi.newApp.suggestions.eventRsvp.label',
+		promptKey: 'instanceAi.newApp.suggestions.eventRsvp.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'feedback-board',
+		icon: 'messages-square',
+		labelKey: 'instanceAi.newApp.suggestions.feedbackBoard.label',
+		promptKey: 'instanceAi.newApp.suggestions.feedbackBoard.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'equipment-booking',
+		icon: 'laptop',
+		labelKey: 'instanceAi.newApp.suggestions.equipmentBooking.label',
+		promptKey: 'instanceAi.newApp.suggestions.equipmentBooking.prompt',
+	},
+	{
+		type: 'prompt',
+		id: 'onboarding-hub',
+		icon: 'clipboard-list',
+		labelKey: 'instanceAi.newApp.suggestions.onboardingHub.label',
+		promptKey: 'instanceAi.newApp.suggestions.onboardingHub.prompt',
+	},
+];
+const newAppSuggestions = computed(() =>
+	isNewAppPage.value && displayedMessages.length === 0 && !thread.isStreaming
+		? NEW_APP_SUGGESTIONS
+		: undefined,
+);
+
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
 // the swap between the input and the floating confirmation panel.
@@ -243,6 +322,19 @@ const composerContextChip = computed(() => {
 		};
 	}
 
+	const appAttachment = currentAppAttachment.value;
+	if (appAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+		return {
+			type: 'app-artifact' as const,
+			appId: appAttachment.appId,
+			projectId: appAttachment.projectId,
+			key: `pending-app:${appAttachment.appId}`,
+			label: appAttachment.name,
+			icon: 'app-window',
+			isPending: true,
+		};
+	}
+
 	const workflowAttachment = thread.pendingWorkflowAttachment;
 	if (workflowAttachment) {
 		return {
@@ -269,6 +361,22 @@ const composerContextChip = computed(() => {
 				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
 			),
 			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
+			isPending: true,
+		};
+	}
+
+	const diagnosticsCount = appPreviewDiagnostics?.count.value ?? 0;
+	if (diagnosticsCount > 0) {
+		return {
+			type: 'app-preview-diagnostics' as const,
+			count: diagnosticsCount,
+			key: 'app-preview-diagnostics',
+			label: i18n.baseText('instanceAi.appPreview.diagnostics.chip', {
+				interpolate: { count: diagnosticsCount },
+				adjustToNumber: diagnosticsCount,
+			}),
+			icon: 'triangle-alert',
+			testId: 'instance-ai-app-preview-diagnostics-chip',
 			isPending: true,
 		};
 	}
@@ -427,11 +535,19 @@ function restorePendingHandoffAttachments(): void {
 	if (workflowAttachment) {
 		thread.setPendingWorkflowAttachment(workflowAttachment);
 	}
+	const appAttachment = getPendingAppAttachment(thread.id);
+	if (appAttachment) {
+		pendingAppAttachment.value = appAttachment;
+		const resolved = currentAppAttachment.value;
+		if (resolved?.appId) emit('app-attachment-restored', resolved);
+	}
 }
 
 function reconnectThreadAfterHydration(): void {
 	const draftAttachment = consumePendingDraftAttachment(thread.id);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+	const elementAttachment = consumePendingElementAttachment(thread.id);
+	if (elementAttachment) store.stageElementSelection(elementAttachment);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -611,8 +727,13 @@ async function handleSubmit(
 	const queuedWorkflowAttachment = thread.pendingWorkflowAttachment;
 	// The queued hand-off resources ride the first real prompt. A workflow the
 	// composer already attached is not added twice.
+	const queuedAppAttachment = pendingAppAttachment.value;
+	const appAttachment = currentAppAttachment.value;
+	const diagnosticsAttachment = takeAppPreviewDiagnosticsAttachment();
 	const extraAttachments: InstanceAiAttachment[] = [];
 	if (agentAttachment) extraAttachments.push(agentAttachment);
+	if (appAttachment) extraAttachments.push(appAttachment);
+	if (diagnosticsAttachment) extraAttachments.push(diagnosticsAttachment);
 	if (
 		queuedWorkflowAttachment &&
 		!attachments?.some(
@@ -638,6 +759,7 @@ async function handleSubmit(
 		})
 		.then((sent) => {
 			if (!sent) {
+				diagnosticsAttachment?.items.forEach((item) => appPreviewDiagnostics?.add(item));
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
@@ -666,6 +788,17 @@ async function handleSubmit(
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(thread.id);
 				pendingAgentAttachment.value = null;
+			}
+			// The create-result watcher may have swapped the queued object for its
+			// resolved copy mid-send, so match the app itself and not only the identity.
+			const pendingApp = pendingAppAttachment.value;
+			const isQueuedApp =
+				pendingApp === queuedAppAttachment ||
+				(pendingApp?.projectId === queuedAppAttachment?.projectId &&
+					pendingApp?.namespace === queuedAppAttachment?.namespace);
+			if (queuedAppAttachment && pendingApp && isQueuedApp) {
+				clearPendingAppAttachment(thread.id);
+				pendingAppAttachment.value = null;
 			}
 			if (queuedWorkflowAttachment) {
 				// Clear the stash by id even if leaving the thread disposed the runtime
@@ -740,12 +873,35 @@ function dismissPendingComposerContext(key: string): boolean {
 	return true;
 }
 
+// The previewed app is the one that reported; the bound target covers a closed preview tab.
+function takeAppPreviewDiagnosticsAttachment(): InstanceAiAppPreviewDiagnosticsAttachment | null {
+	if (!appPreviewDiagnostics || appPreviewDiagnostics.count.value === 0) return null;
+	const activeId = thread.activeArtifactId;
+	const activeAppId =
+		activeId && thread.producedArtifacts.get(activeId)?.type === 'app' ? activeId : undefined;
+	const appId =
+		activeAppId ?? getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id))?.appId;
+	if (!appId) return null;
+	return { type: 'app-preview-diagnostics', appId, items: appPreviewDiagnostics.takeAll() };
+}
+
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
+
+	if (composerContextChip.value.type === 'app-preview-diagnostics') {
+		appPreviewDiagnostics?.clear();
+		return;
+	}
 
 	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(thread.id);
 		pendingAgentAttachment.value = null;
+		return;
+	}
+
+	if (pendingAppAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+		clearPendingAppAttachment(thread.id);
+		pendingAppAttachment.value = null;
 		return;
 	}
 
@@ -939,6 +1095,13 @@ defineExpose({
 										:mention-artifacts="mentionArtifacts"
 										:mention-active-workflow-id="mentionActiveWorkflowId"
 										:reserved-attachment-count="reservedComposerAttachmentCount"
+										:placeholder-key="
+											isNewAppPage ? 'instanceAi.input.newAppPlaceholder' : undefined
+										"
+										:suggestions="newAppSuggestions"
+										:suggestion-catalog-version="
+											newAppSuggestions ? NEW_APP_SUGGESTIONS_VERSION : undefined
+										"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
