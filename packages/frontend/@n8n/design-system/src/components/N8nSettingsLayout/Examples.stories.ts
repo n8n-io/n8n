@@ -1818,7 +1818,7 @@ export const ModelContextProtocol: Story = {
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
 						description="Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use."
-						docs-url="https://docs.n8n.io/connect/connect-to-n8n-mcp-server"
+						docs-url="${mcpDocsUrl}"
 					/>
 
 					<!-- Only shown when MCP is ENABLED. While disabled the whole top section (status row +
