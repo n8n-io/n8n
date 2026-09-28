@@ -592,6 +592,9 @@ export interface GenerateMockHintsOptions {
 	scenarioHints?: string;
 }
 
+export const TRIGGER_CONTENT_CORRECTION =
+	'The previous answer left "triggerContent" empty. The Test Scenario describes the event that fires the workflow\'s trigger or start node, so "triggerContent" must carry that event as the node\'s output object and must not be {}. Set "triggerEmitsNoItems": true only when the scenario says the trigger has nothing to emit.';
+
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
 RULES:
@@ -703,11 +706,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 	const warnings: string[] = [];
+	let lastReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
+		const userPrompt = lastReason
+			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
+			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
@@ -776,6 +783,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		}
 
 		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		lastReason = reason;
 		if (attempt < MAX_HINT_ATTEMPTS) {
 			Container.get(Logger).warn(
 				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
@@ -787,4 +795,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
 	return { ...emptyResult, warnings };
+}
+
+function correctionFor(reason: string): string {
+	if (reason === 'empty triggerContent') return TRIGGER_CONTENT_CORRECTION;
+	return `The previous answer was unusable: ${reason}. Return only the JSON object described under "Expected Output".`;
 }

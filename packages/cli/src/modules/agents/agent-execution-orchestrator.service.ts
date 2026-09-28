@@ -65,6 +65,7 @@ import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
+import type { AgentExecutionAdmission } from './types/agent-queued-message';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -85,6 +86,8 @@ interface AgentExecutionInput {
 }
 
 interface ChatExecutionInput extends AgentExecutionInput {
+	admittedExecution?: AgentExecutionAdmission;
+	abortSignal?: AbortSignal;
 	sessionMode?: AgentSessionMode;
 	/** Stored attachments for the user turn. */
 	attachments?: StoredAttachmentRef[];
@@ -212,6 +215,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 }
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
+	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	productionN8nChat?: boolean;
 	messageContext?: IntegrationMessageContext | null;
@@ -498,6 +502,7 @@ export class AgentExecutionOrchestratorService {
 						source: integrationType,
 						access: { accessScope: 'project', ownerId: null },
 						sessionMode,
+						admittedExecution: config.admittedExecution,
 					},
 				),
 			async (runtime) => {
@@ -507,13 +512,21 @@ export class AgentExecutionOrchestratorService {
 						messageContext,
 						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
 					);
-					await this.integrationMessageContextService.installIncoming(
-						messageContext,
-						memory,
-						config.contextConversation,
-					);
 				}
+				const selectedContext = messageContext;
+				const conversation = config.contextConversation;
 				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
+					abortSignal: config.abortSignal,
+					onAdmitted:
+						selectedContext && conversation
+							? async () =>
+									await this.integrationMessageContextService.installIncoming(
+										selectedContext,
+										memory,
+										conversation,
+									)
+							: undefined,
 					messageContext,
 					access: { accessScope: 'project', ownerId: null },
 					agentInstance: runtime.agent,
@@ -590,10 +603,17 @@ export class AgentExecutionOrchestratorService {
 						abortSignal,
 					},
 				),
-			async (runtime) =>
-				this.streamChatResponse({
+			async (runtime) => {
+				const messageContext = this.createN8nChatMessageContext(memory, user.id);
+				return this.streamChatResponse({
 					access: { accessScope: 'user', ownerId: user.id },
-					messageContext: await this.installN8nChatMessageContext(memory, user.id),
+					messageContext,
+					onAdmitted: async () =>
+						await this.integrationMessageContextService.setLatest(
+							memory.threadId,
+							memory.resourceId,
+							messageContext,
+						),
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
@@ -612,7 +632,8 @@ export class AgentExecutionOrchestratorService {
 					abortSignal,
 					onExecutionStarted: config.onExecutionStarted,
 					onExecutionRecorded: config.onExecutionRecorded,
-				}),
+				});
+			},
 		);
 	}
 
@@ -776,6 +797,7 @@ export class AgentExecutionOrchestratorService {
 					),
 					abortSignal,
 					delivery,
+					messageContext?.interactingUserId,
 				),
 		);
 		for await (const _chunk of stream) {
@@ -787,6 +809,7 @@ export class AgentExecutionOrchestratorService {
 		stream: AsyncGenerator<StreamChunk>,
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
+		cardRecipientId?: string,
 	): AsyncGenerator<StreamChunk> {
 		const chunks: StreamChunk[] = [];
 		let runError: unknown;
@@ -801,7 +824,8 @@ export class AgentExecutionOrchestratorService {
 			throw new OperationalError('Background job wake failed', { cause: runError });
 		}
 		abortSignal.throwIfAborted();
-		if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
+		if (delivery)
+			await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks, cardRecipientId);
 	}
 
 	private async getWakeDelivery(
@@ -838,6 +862,8 @@ export class AgentExecutionOrchestratorService {
 	 */
 	async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
 		yield* this.turnExecutionService.execute({
+			admittedExecution: config.admittedExecution,
+			onAdmitted: config.onAdmitted,
 			agentInstance: config.agentInstance,
 			toolRegistry: config.toolRegistry,
 			mcpServerAttributions: config.mcpServerAttributions,
@@ -896,17 +922,26 @@ export class AgentExecutionOrchestratorService {
 			| 'taskVersionId'
 			| 'access'
 			| 'sessionMode'
+			| 'resumeRunId'
 		> & {
+			admittedExecution?: AgentExecutionAdmission;
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
 			automaticContinuationRunId?: string;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, automaticContinuationRunId, ...recording } = session;
+		const {
+			onExecutionRecorded,
+			abortSignal,
+			automaticContinuationRunId,
+			admittedExecution,
+			...recording
+		} = session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
+			if (admittedExecution) throw error;
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
@@ -970,6 +1005,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memoryScope.threadId,
+				resumeRunId: runId,
 				userMessage: null,
 				source,
 				onExecutionRecorded,
@@ -1181,6 +1217,7 @@ export class AgentExecutionOrchestratorService {
 			{
 				threadId: memory.threadId,
 				access,
+				admittedExecution: config.admittedExecution,
 				userMessage: message,
 				attachments,
 				source,
@@ -1209,8 +1246,15 @@ export class AgentExecutionOrchestratorService {
 			previewChat,
 			sessionMode,
 		} = config;
-		const messageContext = await this.installN8nChatMessageContext(memory, user.id);
+		const messageContext = this.createN8nChatMessageContext(memory, user.id);
 		return this.streamChatResponse({
+			admittedExecution: config.admittedExecution,
+			onAdmitted: async () =>
+				await this.integrationMessageContextService.setLatest(
+					memory.threadId,
+					memory.resourceId,
+					messageContext,
+				),
 			access,
 			messageContext,
 			agentInstance: runtime.agent,
@@ -1234,23 +1278,17 @@ export class AgentExecutionOrchestratorService {
 		});
 	}
 
-	private async installN8nChatMessageContext(
+	private createN8nChatMessageContext(
 		memory: AgentMemoryScope,
 		userId: string,
-	): Promise<IntegrationMessageContext> {
-		const context: IntegrationMessageContext = {
+	): IntegrationMessageContext {
+		return {
 			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 			platform: N8N_CHAT_INTEGRATION_TYPE,
 			target: { type: 'dm', userId, threadId: memory.threadId },
 			interactingUserId: userId,
 			updatedAt: new Date().toISOString(),
 		};
-		await this.integrationMessageContextService.setLatest(
-			memory.threadId,
-			memory.resourceId,
-			context,
-		);
-		return context;
 	}
 
 	private async prepareChatTurn(config: StreamChatResponseConfig): Promise<AgentTurnRequest> {

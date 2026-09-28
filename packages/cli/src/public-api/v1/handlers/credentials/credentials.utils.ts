@@ -103,6 +103,12 @@ export function assertValidUpdateProperties(
 	}
 }
 
+// Same rule as the internal route: an omitted field takes its default value.
+function isRequired(property: INodeProperties): boolean {
+	if (!property.required) return false;
+	return property.default === undefined || property.default === null || property.default === '';
+}
+
 /**
  * toJsonSchema
  * Take an array of credentials parameter and map it
@@ -144,7 +150,7 @@ export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 	// the credentials sent in the API call.
 	// eslint-disable-next-line complexity
 	properties.forEach((property) => {
-		if (property.required) {
+		if (isRequired(property)) {
 			requiredFields.push(property.name);
 		}
 		if (property.type === 'options') {
@@ -274,7 +280,7 @@ export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 			}
 
 			// Only enforce a field as required when the credential actually marks it `required`.
-			if (property.required) {
+			if (isRequired(property)) {
 				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
 					required: [property.name],
 				});

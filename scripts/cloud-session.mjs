@@ -63,6 +63,8 @@ function ensureCodespace() {
 		DEVCONTAINER,
 		'-m',
 		MACHINE,
+		'--idle-timeout',
+		'2h',
 	);
 	if (status !== 0) {
 		console.error('Codespace create failed. Authorize the permissions prompt above, then retry.');
@@ -118,7 +120,8 @@ function remoteCommand(session, launcher, extraArgs) {
 	return [
 		prelude,
 		`if [ ! -d "${wt}" ]; then echo "Setting up worktree ${wt}…"`,
-		`git -C /workspaces/n8n worktree add "${wt}" -b "${branch}" 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,
+		`git -C /workspaces/n8n fetch origin master`,
+		`git -C /workspaces/n8n worktree add --no-track -b "${branch}" "${wt}" origin/master 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,
 		`(cd "${wt}" && pnpm install); fi`,
 		`cd "${wt}" && ${command}`,
 	].join('; ');

@@ -86,7 +86,7 @@ test.describe(
 			expect(expressionAcquires).toBeGreaterThan(staticAcquires);
 		});
 
-		test('serves an immediate response with custom code, body and headers natively', async ({
+		test('serves an immediate response with custom code, body and headers natively @engine:v2', async ({
 			api,
 		}) => {
 			const response = await triggerTransformed(api, (node) => {
@@ -103,7 +103,7 @@ test.describe(
 			expect(response.headers()['x-isolate-skip']).toBe('native');
 		});
 
-		test('serves an empty-body response natively', async ({ api }) => {
+		test('serves an empty-body response natively @engine:v2', async ({ api }) => {
 			const response = await triggerTransformed(api, (node) => {
 				node.parameters.responseMode = 'onReceived';
 				node.parameters.options = { noResponseBody: true };

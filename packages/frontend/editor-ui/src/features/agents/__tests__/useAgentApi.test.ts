@@ -5,6 +5,9 @@ import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import {
 	cancelAgentChatExecution,
 	getAgentBackgroundJobs,
+	getAgentChatQueue,
+	removeAgentQueuedMessage,
+	updateAgentQueuedMessage,
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
@@ -90,6 +93,20 @@ describe('useAgentApi', () => {
 			'GET',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
 		);
+	});
+
+	it('encodes the queue route identifiers for listing, editing, and removal', async () => {
+		const args = [restApiContext, 'project/1', 'agent/1', 'agent:chat#1'] as const;
+		await getAgentChatQueue(...args);
+		await updateAgentQueuedMessage(...args, 'queue/1', { message: 'edited' });
+		await removeAgentQueuedMessage(...args, 'queue/1');
+
+		const path = '/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/queue';
+		expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+			[restApiContext, 'GET', path],
+			[restApiContext, 'PATCH', `${path}/queue%2F1`, { message: 'edited' }],
+			[restApiContext, 'DELETE', `${path}/queue%2F1`],
+		]);
 	});
 
 	describe('getChatMessages', () => {

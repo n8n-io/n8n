@@ -155,6 +155,7 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
 		case 'chat':
 		case 'n8n_chat':
