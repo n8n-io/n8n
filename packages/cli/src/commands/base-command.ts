@@ -91,6 +91,13 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/**
+	 * Whether to connect to the control plane database. The engine data plane
+	 * process runs without one, so it also skips the migrations, the persisted
+	 * instance identity and the encryption bootstrap that need it.
+	 */
+	protected needsDb = true;
+
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
@@ -169,46 +176,48 @@ export abstract class BaseCommand<F = never> {
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
 		}
 
-		await this.dbConnection
-			.init()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error initializing DB', error),
-			);
+		if (this.needsDb) {
+			await this.dbConnection
+				.init()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error initializing DB', error),
+				);
 
-		// This needs to happen after DB.init() or otherwise DB Connection is not
-		// available via the dependency Container that services depend on.
-		if (inDevelopment || inTest) {
-			this.shutdownService.validate();
+			// This needs to happen after DB.init() or otherwise DB Connection is not
+			// available via the dependency Container that services depend on.
+			if (inDevelopment || inTest) {
+				this.shutdownService.validate();
+			}
+
+			await this.server?.init();
+
+			await this.dbConnection
+				.migrate()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error running database migrations', error),
+				);
+
+			// Apply the persisted instance identity so every command (e.g. license:info)
+			// sees the same instanceId as the running server. Non-fatal for one-off
+			// commands, which must keep working with restricted DB credentials.
+			try {
+				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+					canSeed: this.seedsInstanceIdentity,
+				});
+			} catch (error) {
+				if (this.seedsInstanceIdentity) throw error;
+				this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+					error: ensureError(error),
+				});
+			}
+
+			// Wire the encryption key provider (and seed keys on a seeding main) before
+			// anything encrypts or decrypts. This must run for every entrypoint —
+			// servers and one-off commands — since the cipher has no fallback path.
+			await Container.get(EncryptionBootstrapService).run();
 		}
-
-		await this.server?.init();
-
-		await this.dbConnection
-			.migrate()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error running database migrations', error),
-			);
-
-		// Apply the persisted instance identity so every command (e.g. license:info)
-		// sees the same instanceId as the running server. Non-fatal for one-off
-		// commands, which must keep working with restricted DB credentials.
-		try {
-			await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
-				canSeed: this.seedsInstanceIdentity,
-			});
-		} catch (error) {
-			if (this.seedsInstanceIdentity) throw error;
-			this.logger.warn('Could not read the instance identity from the DB, using derived values', {
-				error: ensureError(error),
-			});
-		}
-
-		// Wire the encryption key provider (and seed keys on a seeding main) before
-		// anything encrypts or decrypts. This must run for every entrypoint —
-		// servers and one-off commands — since the cipher has no fallback path.
-		await Container.get(EncryptionBootstrapService).run();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 

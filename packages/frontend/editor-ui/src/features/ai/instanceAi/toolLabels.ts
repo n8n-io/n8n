@@ -102,6 +102,21 @@ function extractSkillScriptPath(command: string): string | undefined {
 	return sandboxSkillDirMatch?.[1];
 }
 
+function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
+	switch (operation) {
+		case 'editing':
+			return 'instanceAi.tools.build-agent.editing';
+		case 'exploring':
+			return 'instanceAi.tools.build-agent.exploring';
+		case 'testing':
+			return 'instanceAi.tools.build-agent.testing';
+		case 'publishing':
+			return 'instanceAi.tools.build-agent.publishing';
+		default:
+			return undefined;
+	}
+}
+
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
@@ -146,6 +161,15 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
+		if (toolName === 'build-agent') {
+			const operationKey = getBuildAgentOperationKey(args?.operation);
+			if (operationKey) return i18n.baseText(operationKey);
+		}
+		if (toolName === 'agent-context' && typeof args?.type === 'string') {
+			const lookupKey = `instanceAi.tools.agent-context.${args.type}` as BaseTextKey;
+			const lookupLabel = i18n.baseText(lookupKey);
+			if (lookupLabel !== lookupKey) return lookupLabel;
+		}
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;

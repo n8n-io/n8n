@@ -244,9 +244,27 @@ package anyway, so the full-suite fallback is both safe and correct.
 
 **Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/vitest.setup.*` and
-`<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
+plus setup files at `<pkg>/vitest.setup.*`, `<pkg>/src/__tests__/setup.*`,
+`<pkg>/test/setup.*`, `<pkg>/test/setup-*.*`, `<pkg>/test/global-setup.*`,
+`<pkg>/test/globalSetup.*` and any `vitest.*setup*.*` or `vitest-*setup*.*`.
+No test imports a globalSetup file, so `vitest related` would select zero
+tests for it. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
+
+**Coverage on PR runs:** when `COVERAGE_ENABLED=true` and `CHANGED_FILES` is
+set, `test-scoped` adds `--coverage.provider=istanbul` and one
+`--coverage.include` for each changed source file in the package. Patch
+coverage needs only the changed lines. Istanbul instruments only those files,
+so the rest of the code runs at full speed. V8 coverage slows down all code
+that runs. When the package has no changed source files, coverage is off. With
+no change signal (master, nightly), the vitest config decides coverage.
+
+The rule that decides which files count lives in
+`@n8n/vitest-config/changed-file-coverage`. The shared vitest configs apply
+the same rule when `COVERAGE_SCOPE=changed-files`, so suites that do not go
+through janitor (the turbo-cached Backend jobs and the Postgres integration
+job) also measure only the changed files. Turbo hashes `COVERAGE_SCOPE`, so a
+scoped result never replays in a run that expects full coverage.
 
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml

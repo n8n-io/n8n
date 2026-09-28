@@ -10,13 +10,16 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import { getAgentSectionTitle } from '../builderAgents';
+import { getAgentActivityKey } from '../builderAgents';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
 const settingsStore = useSettingsStore();
+const i18n = useI18n();
 
 const isActive = computed(() => props.agentNode.status === 'active');
 const isExpanded = ref(settingsStore.isCloudDeployment);
@@ -29,7 +32,14 @@ const agentPreviewTarget = computed(() => {
 	return { agentId: target.id, projectId: target.projectId };
 });
 
-const sectionTitle = computed(() => getAgentSectionTitle(props.agentNode) ?? 'Working...');
+const sectionTitle = computed(() => {
+	const activityKey = getAgentActivityKey(props.agentNode);
+	const activityTitle = activityKey ? i18n.baseText(activityKey) : undefined;
+	return (
+		getAgentSectionTitle(props.agentNode, activityTitle) ??
+		i18n.baseText('instanceAi.agentActivity.working')
+	);
+});
 
 /**
  * Most recent timeline entry that SubagentStepTimeline can render (text,

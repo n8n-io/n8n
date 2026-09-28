@@ -42,6 +42,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	lastDelete: () => ReplayApiCall | undefined;
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -123,6 +124,14 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	nock(serviceUrl.origin)
 		.persist()
+		.delete(/\/v3\/conversations\/.+\/activities\/.+/)
+		.reply(function (uri) {
+			apiCalls.push({ method: 'deleteActivity', body: { uri } });
+			return [200, {}];
+		});
+
+	nock(serviceUrl.origin)
+		.persist()
 		.put(/\/v3\/conversations\/.+\/activities\/.+/)
 		.reply(function (_uri, body) {
 			apiCalls.push({
@@ -196,6 +205,7 @@ export async function createTeamsReplayContext(
 		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		lastDelete: () => lastCall('deleteActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();

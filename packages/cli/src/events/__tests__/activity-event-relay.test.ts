@@ -414,6 +414,37 @@ describe('ActivityEventRelay', () => {
 			);
 		});
 
+		it.each([
+			{ label: 'null', name: null },
+			{ label: 'empty', name: '' },
+			{ label: 'long', name: 'v'.repeat(2_000) },
+		])('formats $label version names the same when publishing and updating', async ({ name }) => {
+			relayWith({ flagOverride: true });
+
+			eventService.emit('workflow-activated', {
+				user,
+				workflowId: 'workflow1',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow1',
+					name: 'Lead enrichment',
+					activeVersion: mock<WorkflowHistory>({ name }),
+				}),
+				publicApi: false,
+			});
+			eventService.emit('workflow-version-updated', {
+				user,
+				workflowId: 'workflow1',
+				workflowName: 'Lead enrichment',
+				versionId: 'version1',
+				versionName: name,
+			});
+			await flushPromises();
+
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(2);
+			const [[published], [updated]] = activityEventRepository.record.mock.calls;
+			expect(updated.data).toEqual({ versionId: 'version1', ...published.data });
+		});
+
 		it('records no version name when unpublishing, which clears the relation first', async () => {
 			relayWith({ flagOverride: true });
 

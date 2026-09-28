@@ -19,7 +19,7 @@ import {
 	DynamicCredentialService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
