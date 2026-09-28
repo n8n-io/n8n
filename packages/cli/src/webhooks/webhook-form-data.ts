@@ -1,9 +1,8 @@
+import { BadRequestError, ContentTooLargeError } from '@n8n/backend-services';
 import formidable from 'formidable';
 import { rm } from 'node:fs/promises';
 import type { IncomingMessage } from 'node:http';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { discardBlankFileInputs } from '@/webhooks/webhook-blank-file-inputs';
 
 // formidable reports the status code it considers appropriate on `httpCode`

@@ -1,6 +1,7 @@
 import type { InstanceAiSandboxProvider } from '@n8n/api-types';
 import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentsConfig, DeploymentConfig, InstanceAiConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
@@ -13,7 +14,6 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 

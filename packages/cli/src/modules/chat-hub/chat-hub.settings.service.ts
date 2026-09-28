@@ -6,13 +6,12 @@ import {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 import { SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
 import type { SemanticSearchOptions } from './chat-hub.types';

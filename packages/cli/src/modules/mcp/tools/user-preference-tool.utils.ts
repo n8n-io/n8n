@@ -1,9 +1,9 @@
 import type { AiPreferenceDto, AiPreferenceScope } from '@n8n/api-types';
 import { aiPreferenceScopeOf } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { InferTelemetryProps, TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiPreferenceWriteRejection } from '@/services/ai-preference-write';
 import { secondsSinceSaved, toAiPreferenceWriteRejection } from '@/services/ai-preference-write';
 import type { UrlService } from '@/services/url.service';

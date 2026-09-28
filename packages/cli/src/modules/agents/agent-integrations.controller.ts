@@ -5,6 +5,7 @@ import {
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
@@ -19,7 +20,6 @@ import { AgentChannelStatusRepository } from './repositories/agent-channel-statu
 import { AgentRepository } from './repositories/agent.repository';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {

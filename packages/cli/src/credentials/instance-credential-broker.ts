@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import {
 	CredentialsEntity,
 	InstanceCredentialAssignmentRepository,
@@ -6,8 +7,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { CredentialsService } from './credentials.service';
 import {

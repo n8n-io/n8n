@@ -1,10 +1,9 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { Telemetry } from '@/telemetry';
 

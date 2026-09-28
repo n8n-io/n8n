@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 type WorkflowReviewAvailability = { available: true } | { available: false; errorMessage: string };

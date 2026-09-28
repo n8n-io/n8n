@@ -1,8 +1,8 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { TagService } from '@/services/tag.service';
 
 import { TagImporter } from '../tag-importer';

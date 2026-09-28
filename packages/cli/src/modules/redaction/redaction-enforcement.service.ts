@@ -1,7 +1,6 @@
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
-
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 import { policyMeetsFloor, REDACTION_FLOOR_VIOLATION_MESSAGE } from './redaction-policy';

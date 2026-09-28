@@ -1,12 +1,11 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';

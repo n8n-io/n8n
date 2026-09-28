@@ -1,5 +1,6 @@
 import type { ListEncryptionKeysQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import {
 	DeploymentKeyRepository,
 	type DeploymentKey,
@@ -15,8 +16,6 @@ import {
 	type KeyInfo,
 } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
 

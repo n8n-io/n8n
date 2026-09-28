@@ -1,10 +1,10 @@
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 

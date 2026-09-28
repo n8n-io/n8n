@@ -1,3 +1,4 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type {
 	CredentialsEntity,
 	User,
@@ -8,7 +9,6 @@ import type {
 import { validate } from 'class-validator';
 
 import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
-import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 export async function validateEntity(
 	entity:

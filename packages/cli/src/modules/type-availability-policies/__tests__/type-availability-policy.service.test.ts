@@ -1,10 +1,9 @@
+import { ConflictError, NotFoundError } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';

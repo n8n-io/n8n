@@ -1,9 +1,8 @@
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 
 export async function assertProjectScope(

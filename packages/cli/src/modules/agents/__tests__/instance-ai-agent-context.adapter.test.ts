@@ -1,3 +1,4 @@
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { AgentTaskDto } from '@n8n/api-types';
 import { beforeEach, vi } from 'vitest';
@@ -6,8 +7,6 @@ import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';

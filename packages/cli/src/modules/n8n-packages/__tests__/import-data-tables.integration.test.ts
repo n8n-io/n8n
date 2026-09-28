@@ -1,4 +1,5 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
@@ -7,7 +8,6 @@ import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflo
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';

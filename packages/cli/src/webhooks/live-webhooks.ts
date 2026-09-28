@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -13,7 +14,6 @@ import {
 } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';

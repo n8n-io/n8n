@@ -1,3 +1,4 @@
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 const discoveryMock = vi.fn();
 const authorizationCodeGrantMock = vi.fn();
 const fetchUserInfoMock = vi.fn();
@@ -23,8 +24,6 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';

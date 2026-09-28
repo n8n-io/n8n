@@ -1,4 +1,5 @@
 import type { WorkflowReviewDecisionIneligibilityReason } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -19,7 +20,6 @@ import {
 	hasGlobalScope,
 } from '@n8n/permissions';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

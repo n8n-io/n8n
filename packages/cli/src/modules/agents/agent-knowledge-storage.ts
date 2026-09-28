@@ -1,8 +1,7 @@
 import type { AgentFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
+import { BadRequestError } from '@n8n/backend-services';
 import path from 'node:path';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { AgentFile } from './entities/agent-file.entity';
 

@@ -7,13 +7,11 @@ import {
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { OAuthServerService } from './oauth-server.service';
 

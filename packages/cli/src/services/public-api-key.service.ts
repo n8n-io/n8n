@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,8 +22,6 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';

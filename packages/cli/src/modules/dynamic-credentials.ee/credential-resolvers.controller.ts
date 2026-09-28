@@ -10,6 +10,7 @@ import {
 	credentialResolverTypesSchema,
 	type CredentialResolverAffectedWorkflow,
 } from '@n8n/api-types';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -24,10 +25,6 @@ import {
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
 import { Response } from 'express';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { collectSecretFieldNames, redactSecretConfig } from './config-redaction';
 import { CredentialResolutionError } from './errors/credential-resolution.error';

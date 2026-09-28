@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
@@ -13,7 +14,6 @@ import { Cipher } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,

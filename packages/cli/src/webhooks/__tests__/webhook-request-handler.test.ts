@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ResponseError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Response } from 'express';
 import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
@@ -6,7 +7,6 @@ import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import type {
 	IWebhookManager,

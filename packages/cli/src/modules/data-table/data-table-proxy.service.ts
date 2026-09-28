@@ -1,5 +1,6 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -25,7 +26,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';

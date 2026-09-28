@@ -1,6 +1,6 @@
+import { BadRequestError } from '@n8n/backend-services';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ExecutionRequest } from '@/executions/execution.types';
 
 const executionUpdateSchema = z.object({

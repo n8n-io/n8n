@@ -1,6 +1,5 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type { Role } from '@n8n/db';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,

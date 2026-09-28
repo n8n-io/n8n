@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { BadRequestError, ConflictError, UnprocessableRequestError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -15,9 +16,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';

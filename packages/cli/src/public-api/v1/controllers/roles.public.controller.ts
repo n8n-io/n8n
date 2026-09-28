@@ -8,6 +8,7 @@ import {
 	UpdateRolePublicDto,
 	roleSlugParamSchema,
 } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -30,7 +31,6 @@ import {
 import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';

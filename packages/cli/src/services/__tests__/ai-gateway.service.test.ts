@@ -1,5 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { BadRequestError } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -9,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';

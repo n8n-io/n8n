@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
@@ -20,8 +21,6 @@ import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import {

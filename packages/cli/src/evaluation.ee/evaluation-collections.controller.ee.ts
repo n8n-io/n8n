@@ -5,11 +5,10 @@ import {
 	UpdateEvaluationCollectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PostHogClient } from '@/posthog';
 
 import { EvaluationCollectionService } from './evaluation-collection.service';

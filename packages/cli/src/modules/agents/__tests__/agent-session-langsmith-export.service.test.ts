@@ -1,10 +1,10 @@
+import { NotFoundError } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';

@@ -1,3 +1,4 @@
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type {
 	AiPreference,
 	AiPreferenceRepository,
@@ -13,8 +14,6 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
 	AI_PREFERENCES_REPLACES_EARLIER,

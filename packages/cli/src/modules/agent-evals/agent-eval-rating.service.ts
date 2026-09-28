@@ -1,6 +1,7 @@
 import type { AgentEvalRatingRecord, CreateAgentEvalRatingPayload } from '@n8n/api-types';
 import { AGENT_EVAL_MAX_COMMENT_CHARS, AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { AgentEvalResult, User } from '@n8n/db';
 import {
 	AgentEvalRatingRepository,
@@ -9,8 +10,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { toRatingRecord } from './agent-eval-record-mappers';

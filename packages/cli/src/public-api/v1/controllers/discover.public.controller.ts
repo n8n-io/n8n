@@ -1,4 +1,5 @@
 import { DiscoverPublicDto, DiscoverQueryPublicDto } from '@n8n/api-types';
+import { UnauthenticatedError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -11,7 +12,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { buildDiscoverResponse } from '@/public-api/v1/handlers/discover/discover.service';
 
 @PublicApiController('/discover')

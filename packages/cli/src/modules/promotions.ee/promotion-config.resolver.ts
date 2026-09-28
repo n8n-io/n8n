@@ -1,10 +1,8 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { promotionConnectionTargetSchema, promotionProviderTypeSchema } from '@n8n/api-types';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { PromotionConfig } from './database/entities/promotion-config.entity';
 import { PromotionConfigRepository } from './database/repositories/promotion-config.repository';

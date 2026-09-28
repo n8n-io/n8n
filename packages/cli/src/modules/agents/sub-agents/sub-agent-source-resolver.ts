@@ -4,10 +4,9 @@ import {
 	type ResolvedSubAgentSource,
 	type SubAgentSource,
 } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';

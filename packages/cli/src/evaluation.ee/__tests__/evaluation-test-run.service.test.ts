@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { PaymentRequiredError } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type {
 	TestCaseExecution,
@@ -9,8 +10,6 @@ import type {
 } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
 
 import { EvaluationTestRunService } from '../evaluation-test-run.service';
 

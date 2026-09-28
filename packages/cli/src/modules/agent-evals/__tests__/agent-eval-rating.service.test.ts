@@ -1,5 +1,6 @@
 import type { CreateAgentEvalRatingPayload } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type {
 	AgentEvalRating,
 	AgentEvalRatingRepository,
@@ -12,8 +13,6 @@ import type {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { AgentEvalRatingService } from '../agent-eval-rating.service';

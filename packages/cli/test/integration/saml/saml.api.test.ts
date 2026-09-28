@@ -1,3 +1,4 @@
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 // Global mocks in test/setup-mocks.ts replace `node:fs` with vi auto-mocks,
 // which breaks express view lookup in the SAML connection-test round-trip.
 // Restore the real fs so the ACS handler can render its handlebars template.
@@ -26,8 +27,6 @@ import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,

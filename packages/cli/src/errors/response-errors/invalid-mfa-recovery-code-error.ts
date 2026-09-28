@@ -1,4 +1,4 @@
-import { ForbiddenError } from './forbidden.error';
+import { ForbiddenError } from '@n8n/backend-services';
 
 export class InvalidMfaRecoveryCodeError extends ForbiddenError {
 	constructor(hint?: string) {

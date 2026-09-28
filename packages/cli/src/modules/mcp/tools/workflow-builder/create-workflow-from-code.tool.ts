@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import {
 	type Folder,
 	type Project,
@@ -47,7 +48,6 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,

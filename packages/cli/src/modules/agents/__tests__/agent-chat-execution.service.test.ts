@@ -1,11 +1,11 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatExecutionService } from '../agent-chat-execution.service';

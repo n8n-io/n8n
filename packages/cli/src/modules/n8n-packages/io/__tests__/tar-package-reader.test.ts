@@ -1,4 +1,4 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/backend-services';
 
 import { streamToBuffer } from '../../__tests__/utils/tar-support';
 import { TarPackageReader, type TarReaderLimits } from '../tar/tar-package-reader';

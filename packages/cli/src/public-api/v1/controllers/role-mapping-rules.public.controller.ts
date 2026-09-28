@@ -8,6 +8,7 @@ import {
 	roleMappingRuleIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -27,7 +28,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import {

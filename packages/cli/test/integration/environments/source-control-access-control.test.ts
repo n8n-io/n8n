@@ -1,11 +1,11 @@
 // Access-control coverage for Source Control read endpoints. Runs the real auth +
 // RBAC stack and scoped-service context resolution; only git-touching methods are stubbed.
+import { ForbiddenError } from '@n8n/backend-services';
 import { mockInstance, createTeamProject } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
