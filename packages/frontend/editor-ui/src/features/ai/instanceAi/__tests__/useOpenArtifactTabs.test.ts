@@ -40,11 +40,15 @@ function createStorage(state: InstanceAiThreadTabsState | null = null) {
 describe('useOpenArtifactTabs', () => {
 	let scope: EffectScope;
 
-	function setup(initialArtifacts: ArtifactTab[], storage?: ThreadTabsStorage) {
+	function setup(
+		initialArtifacts: ArtifactTab[],
+		storage?: ThreadTabsStorage,
+		previewOpen?: () => boolean | undefined,
+	) {
 		const artifacts = ref(initialArtifacts);
 		scope = effectScope();
 		const tabs = scope.run(() =>
-			useOpenArtifactTabs({ artifactTabs: () => artifacts.value, storage }),
+			useOpenArtifactTabs({ artifactTabs: () => artifacts.value, storage, previewOpen }),
 		)!;
 		return { artifacts, tabs };
 	}
@@ -224,6 +228,37 @@ describe('useOpenArtifactTabs', () => {
 
 		expect(tabs.isLoaded.value).toBe(true);
 		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('saves whether the preview is open at the time of the save', async () => {
+		const { storage, save, finishLoad } = createStorage();
+		const previewOpen = ref(true);
+		const { tabs } = setup([workflowTab('wf-1')], storage, () => previewOpen.value);
+		await finishLoad(null);
+
+		tabs.saveTabs('wf-1');
+		previewOpen.value = false;
+		await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+		expect(save).toHaveBeenCalledWith(expect.objectContaining({ previewOpen: false }));
+	});
+
+	it('exposes the stored preview state, or undefined when it was not stored', async () => {
+		const withPreview = createStorage({
+			tabs: [],
+			closedTabs: [],
+			activeTab: null,
+			previewOpen: false,
+		});
+		const first = setup([workflowTab('wf-1')], withPreview.storage);
+		await withPreview.finishLoad();
+		expect(first.tabs.storedPreviewOpen.value).toBe(false);
+		scope.stop();
+
+		const withoutPreview = createStorage({ tabs: [], closedTabs: [], activeTab: null });
+		const second = setup([workflowTab('wf-1')], withoutPreview.storage);
+		await withoutPreview.finishLoad();
+		expect(second.tabs.storedPreviewOpen.value).toBeUndefined();
 	});
 
 	it('exposes the stored active tab once the layout loads', async () => {

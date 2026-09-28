@@ -52,13 +52,18 @@ function fromStoredTab(tab: InstanceAiThreadTab): ArtifactTab {
 export function useOpenArtifactTabs({
 	artifactTabs,
 	storage,
+	previewOpen,
 }: {
 	artifactTabs: () => ArtifactTab[];
 	storage?: ThreadTabsStorage;
+	/** Whether the preview panel is open. Each save stores the value at that time. */
+	previewOpen?: () => boolean | undefined;
 }) {
 	// `null` until the user changes the tabs or a stored layout loads.
 	const layout = shallowRef<TabsLayout | null>(null);
 	const storedActiveTab = ref<InstanceAiThreadTabRef | null>(null);
+	// `undefined` when the stored state has no preview preference.
+	const storedPreviewOpen = ref<boolean>();
 	const isLoaded = ref(!storage);
 
 	const openTabs = computed((): ArtifactTab[] => {
@@ -148,10 +153,12 @@ export function useOpenArtifactTabs({
 	function buildState(activeTabId: string | undefined): InstanceAiThreadTabsState {
 		const tabs = openTabs.value;
 		const active = tabs.find((tab) => tab.id === activeTabId);
+		const isPreviewOpen = previewOpen?.();
 		return {
 			tabs: tabs.map(toStoredTab),
 			closedTabs: currentLayout().closedTabs,
 			activeTab: active ? { type: active.type, id: active.id } : null,
+			...(isPreviewOpen !== undefined ? { previewOpen: isPreviewOpen } : {}),
 		};
 	}
 
@@ -187,6 +194,7 @@ export function useOpenArtifactTabs({
 			if (state && !layout.value) {
 				layout.value = { tabs: state.tabs, closedTabs: state.closedTabs };
 				storedActiveTab.value = state.activeTab;
+				storedPreviewOpen.value = state.previewOpen;
 			}
 		} catch {
 			// Show the default tabs when the stored layout cannot load.
@@ -207,6 +215,7 @@ export function useOpenArtifactTabs({
 		openTabs,
 		isLoaded,
 		storedActiveTab,
+		storedPreviewOpen,
 		closeTab,
 		reopenTab,
 		saveTabs,

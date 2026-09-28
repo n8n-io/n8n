@@ -141,6 +141,7 @@ export function useCanvasPreview({
 	const tabs = useOpenArtifactTabs({
 		artifactTabs: () => artifactTabs.value,
 		storage: tabsStorage,
+		previewOpen: () => isPreviewOpen.value,
 	});
 	const openTabs = tabs.openTabs;
 
@@ -265,12 +266,22 @@ export function useCanvasPreview({
 		{ immediate: true },
 	);
 
-	// Show the tab that was active when the user last changed the tabs. A tab the
-	// user picks while the stored tabs load wins, because the stored tabs are then ignored.
+	// Show the tab that was active, and the preview state, from when the user last
+	// changed the tabs. A tab the user picks while the stored tabs load wins,
+	// because the stored tabs are then ignored.
 	watch(tabs.isLoaded, (isLoaded) => {
+		if (!isLoaded) return;
 		const stored = tabs.storedActiveTab.value;
-		if (!isLoaded || !stored) return;
-		if (openTabs.value.some((tab) => tab.id === stored.id)) activeTabId.value = stored.id;
+		// Restore the tab first, so the first-tab fallback does not pick another one.
+		if (stored && openTabs.value.some((tab) => tab.id === stored.id)) {
+			activeTabId.value = stored.id;
+		}
+		const storedPreviewOpen = tabs.storedPreviewOpen.value;
+		if (storedPreviewOpen !== undefined && storedPreviewOpen !== isPreviewOpen.value) {
+			// The stored state wins over this browser's value, which only renders the first frame.
+			setPreviewOpen(storedPreviewOpen, false);
+			onPreviewOpenChange?.(storedPreviewOpen);
+		}
 	});
 
 	// --- Actions ---
@@ -297,6 +308,7 @@ export function useCanvasPreview({
 	function closePreview() {
 		userTabId.value = undefined;
 		setPreviewOpen(false);
+		tabs.saveTabs(activeTabId.value);
 	}
 
 	// Show an artifact the agent just touched. Do not override a tab the user

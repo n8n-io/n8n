@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -141,6 +142,7 @@ function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
 	previewOpenState?: () => boolean | undefined;
+	onPreviewOpenChange?: (open: boolean) => void;
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
@@ -153,6 +155,7 @@ function setup(options?: {
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
 		previewOpenState: options?.previewOpenState,
+		onPreviewOpenChange: options?.onPreviewOpenChange,
 		tabsStorage: options?.tabsStorage,
 	});
 
@@ -1408,6 +1411,98 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'wf-2']);
 			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		describe('stored preview state', () => {
+			function storageWith(state: Awaited<ReturnType<ThreadTabsStorage['load']>>) {
+				return {
+					load: vi.fn().mockResolvedValue(state),
+					save: vi.fn().mockResolvedValue(undefined),
+				} satisfies ThreadTabsStorage;
+			}
+
+			const storedTabs = [
+				{ type: 'workflow' as const, id: 'wf-1', name: 'Workflow wf-1' },
+				{ type: 'workflow' as const, id: 'wf-2', name: 'Workflow wf-2' },
+			];
+
+			test('keeps the preview closed when it was stored as closed', async () => {
+				const onPreviewOpenChange = vi.fn();
+				const ctx = setup({
+					previewOpenState: () => true,
+					onPreviewOpenChange,
+					tabsStorage: storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-2' },
+						previewOpen: false,
+					}),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.isPreviewVisible.value).toBe(false);
+				expect(onPreviewOpenChange).toHaveBeenCalledWith(false);
+			});
+
+			test('opens the preview on the stored tab when it was stored as open', async () => {
+				const onPreviewOpenChange = vi.fn();
+				const ctx = setup({
+					previewOpenState: () => false,
+					onPreviewOpenChange,
+					tabsStorage: storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-2' },
+						previewOpen: true,
+					}),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.isPreviewVisible.value).toBe(true);
+				expect(ctx.activeTabId.value).toBe('wf-2');
+				expect(onPreviewOpenChange).toHaveBeenCalledWith(true);
+			});
+
+			test('keeps the browser value when no preview state was stored', async () => {
+				const onPreviewOpenChange = vi.fn();
+				const ctx = setup({
+					previewOpenState: () => true,
+					onPreviewOpenChange,
+					tabsStorage: storageWith({ tabs: storedTabs, closedTabs: [], activeTab: null }),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.isPreviewVisible.value).toBe(true);
+				expect(onPreviewOpenChange).not.toHaveBeenCalled();
+			});
+
+			test('saves the closed preview when the user closes it', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith(null);
+					const ctx = setup({ tabsStorage });
+					await flushPromises();
+					registerWorkflow(ctx.thread, 'wf-1');
+					ctx.selectTab('wf-1');
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+					tabsStorage.save.mockClear();
+
+					ctx.closePreview();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: false }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
 		});
 
 		test('keeps the tab the user picked while the stored tabs loaded', async () => {
