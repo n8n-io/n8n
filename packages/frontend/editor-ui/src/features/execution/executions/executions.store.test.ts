@@ -10,6 +10,10 @@ vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
 }));
 
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ params: {}, query: {} }),
+}));
+
 // Test-only cursors are plain strings; the brand is only meaningful in app code.
 const cursor = (value: string) => value as SerializedCursor;
 
@@ -99,6 +103,25 @@ describe('executions.store', () => {
 
 		const mockResponse = (n: number) =>
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(page(n));
+
+		it('discards a page and stops refresh after the view is released', async () => {
+			let resolveRequest: ((response: IExecutionsListResponse) => void) | undefined;
+			vi.mocked(makeRestApiRequest).mockReturnValueOnce(
+				new Promise<IExecutionsListResponse>((resolve) => {
+					resolveRequest = resolve;
+				}),
+			);
+			let active = true;
+			const initialization = executionsStore.initialize(undefined, () => active);
+			executionsStore.reset();
+			active = false;
+			resolveRequest?.(page(1));
+			await initialization;
+
+			expect(executionsStore.executions).toEqual([]);
+			expect(executionsStore.initialLoadComplete).toBe(false);
+			expect(executionsStore.autoRefreshTimeout).toBeNull();
+		});
 
 		it('should allow loading more when the first page is full', async () => {
 			mockResponse(10);

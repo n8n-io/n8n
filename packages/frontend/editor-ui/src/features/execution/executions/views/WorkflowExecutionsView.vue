@@ -19,7 +19,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useExecutionFiltersQuery } from '../composables/useExecutionFiltersQuery';
 
 const executionsStore = useExecutionsStore();
-const { restoreQuery, updateFilters } = useExecutionFiltersQuery();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
@@ -35,6 +34,9 @@ const loadingMore = ref(false);
 const workflow = ref<IWorkflowDb | undefined>();
 
 const workflowId = useInjectWorkflowId();
+const { restoreQuery, initialize, updateFilters, isActive } = useExecutionFiltersQuery(
+	() => workflowId.value,
+);
 
 const executionId = computed(() => {
 	const id = route.params.executionId;
@@ -89,13 +91,16 @@ watch(
 
 onMounted(async () => {
 	fetchWorkflow();
+	await restoreQuery();
+	if (!isActive()) return;
 
 	if (workflowId.value) {
-		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
+		await Promise.all([initialize(), fetchExecution()]);
 	}
 
+	if (!isActive()) return;
 	await initializeRoute();
-	await restoreQuery();
+	if (!isActive()) return;
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
 

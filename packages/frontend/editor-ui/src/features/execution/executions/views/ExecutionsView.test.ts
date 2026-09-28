@@ -10,14 +10,25 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { VIEWS } from '@/app/constants';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import type { IWorkflowDb } from '@/Interface';
+import { ref } from 'vue';
 
 const push = vi.fn();
 const replace = vi.fn();
-const route = vi.hoisted(() => ({
+const rawRoute = vi.hoisted(() => ({
 	params: {} as Record<string, string>,
 	query: {} as Record<string, string>,
 	name: '',
 }));
+const query = ref(rawRoute.query);
+const route = {
+	...rawRoute,
+	get query() {
+		return query.value;
+	},
+	set query(value: Record<string, string>) {
+		query.value = value;
+	},
+};
 
 vi.mock('vue-router', () => ({
 	useRoute: () => route,
@@ -57,7 +68,9 @@ describe('ExecutionsView', () => {
 		workflowsListStore.fetchAllWorkflows.mockResolvedValue([]);
 		workflowsListStore.hasFetchedAllWorkflows.mockReturnValue(false);
 
-		mockedStore(useProjectsStore).personalProject = {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.getProject.mockResolvedValue(undefined);
+		projectsStore.personalProject = {
 			id: 'p1',
 			scopes: ['workflow:create'],
 		} as Project;
@@ -176,7 +189,7 @@ describe('ExecutionsView', () => {
 
 		expect(returnedView.getByTestId('global-executions-list-stub')).toBeInTheDocument();
 		expect(executionsStore.filters.status).toBe('error');
-		expect(Object.values(route.query).join(' ')).toContain('error');
+		expect(JSON.parse(route.query.executionFilters)).toMatchObject({ status: 'error' });
 	});
 
 	it('restores filters from a shared executions link before loading', async () => {
@@ -199,6 +212,65 @@ describe('ExecutionsView', () => {
 		expect(executionsStore.filters.status).toBe('error');
 		expect(executionsStore.filters.startDate).toEqual(new Date('2026-09-01T12:00:00.000Z'));
 		expect(executionsStore.initialize).toHaveBeenCalled();
+	});
+
+	it('reloads executions when the filter query changes without remounting', async () => {
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		vi.spyOn(executionsStore, 'initialize').mockResolvedValue();
+		vi.spyOn(useWorkflowsListStore(), 'fetchAllWorkflows').mockResolvedValue([]);
+
+		const view = renderComponent({ pinia });
+		await waitAllPromises();
+		route.query = { executionFilters: JSON.stringify({ status: 'error' }) };
+		await waitAllPromises();
+
+		expect(executionsStore.filters.status).toBe('error');
+		expect(executionsStore.initialize).toHaveBeenCalledTimes(2);
+		view.unmount();
+	});
+
+	it('restores the filter URL before the executions request finishes', async () => {
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		executionsStore.setFilters({ ...executionsStore.filters, status: 'error' });
+		let finishRequest: (() => void) | undefined;
+		vi.spyOn(executionsStore, 'initialize').mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishRequest = resolve;
+				}),
+		);
+		vi.spyOn(useWorkflowsListStore(), 'fetchAllWorkflows').mockResolvedValue([]);
+		replace.mockImplementation(async ({ query }: { query: Record<string, string> }) => {
+			route.query = query;
+		});
+
+		const view = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(JSON.parse(route.query.executionFilters)).toMatchObject({ status: 'error' });
+		view.unmount();
+		finishRequest?.();
+		await waitAllPromises();
+	});
+
+	it('invalidates a pending initialization when the view unmounts', async () => {
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		let isCurrent: (() => boolean) | undefined;
+		vi.spyOn(executionsStore, 'initialize').mockImplementation(async (_workflowId, check) => {
+			isCurrent = check;
+		});
+		vi.spyOn(useWorkflowsListStore(), 'fetchAllWorkflows').mockResolvedValue([]);
+
+		const view = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(isCurrent?.()).toBe(true);
+		view.unmount();
+		expect(isCurrent?.()).toBe(false);
 	});
 
 	it('uses default filters when the URL filter is invalid', async () => {

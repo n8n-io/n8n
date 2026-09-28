@@ -149,11 +149,12 @@ export const useExecutionsStore = defineStore('executions', () => {
 		filters.value = value;
 	}
 
-	async function initialize(workflowId?: string) {
+	async function initialize(workflowId?: string, isCurrent?: () => boolean) {
 		if (workflowId) {
 			filters.value.workflowId = workflowId;
 		}
-		await fetchExecutions();
+		await fetchExecutions(executionsFilters.value, isCurrent);
+		if (isCurrent?.() === false) return;
 		await startAutoRefreshInterval(workflowId);
 	}
 
@@ -173,7 +174,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 	 */
 	type PageToLoad = 'first' | 'more' | 'refresh';
 
-	async function loadExecutionsPage(filter: ExecutionsQueryFilter, page: PageToLoad) {
+	async function loadExecutionsPage(
+		filter: ExecutionsQueryFilter,
+		page: PageToLoad,
+		isCurrent?: () => boolean,
+	) {
 		// `executionFilterToQueryFilter` writes the keys in a fixed order, so equal
 		// filters stringify the same way. A stable stringify is not necessary.
 		const filterKey = JSON.stringify(filter);
@@ -196,7 +201,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 			const data = await fetchExecutionsPage(filter, cursor ?? undefined);
 
 			// The filter changed while the request was in flight, so its rows are stale.
-			if (activeFilterKey !== filterKey) return data;
+			if (activeFilterKey !== filterKey || isCurrent?.() === false) return data;
 
 			// Only the top of the list carries the current set, and a cursor page holds
 			// completed rows alone, so a page appended below must leave that set alone.
@@ -226,14 +231,16 @@ export const useExecutionsStore = defineStore('executions', () => {
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
-			loading.value = false;
-			initialLoadComplete.value = true;
+			if (isCurrent?.() !== false) {
+				loading.value = false;
+				initialLoadComplete.value = true;
+			}
 		}
 	}
 
 	/** Load the first page, replacing the pages loaded so far. */
-	async function fetchExecutions(filter = executionsFilters.value) {
-		return await loadExecutionsPage(filter, 'first');
+	async function fetchExecutions(filter = executionsFilters.value, isCurrent?: () => boolean) {
+		return await loadExecutionsPage(filter, 'first', isCurrent);
 	}
 
 	/** Append the page after the last one loaded. Does nothing at the end of the list. */
@@ -396,6 +403,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	function reset() {
 		itemsPerPage.value = 10;
 		autoRefresh.value = true;
+		loading.value = false;
 		initialLoadComplete.value = false;
 		resetData();
 		stopAutoRefreshInterval();

@@ -83,6 +83,23 @@ const filter = reactive({
 		? props.initialFilters.metadata.map((item) => ({ ...item }))
 		: getDefaultFilter().metadata,
 });
+let applyingInitialFilters = false;
+
+watch(
+	() => props.initialFilters,
+	(initialFilters) => {
+		if (!initialFilters || JSON.stringify(initialFilters) === JSON.stringify(filter)) return;
+		applyingInitialFilters = true;
+		Object.assign(filter, {
+			...initialFilters,
+			annotationTags: [...initialFilters.annotationTags],
+			metadata: initialFilters.metadata.length
+				? initialFilters.metadata.map((item) => ({ ...item }))
+				: getDefaultFilter().metadata,
+		});
+	},
+	{ flush: 'sync' },
+);
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);
@@ -131,6 +148,10 @@ function fetchVersions() {
 watch(
 	filter,
 	(newFilter) => {
+		if (applyingInitialFilters) {
+			applyingInitialFilters = false;
+			return;
+		}
 		// Use debounced emit if filter contains date changes to prevent rapid API calls
 		if (newFilter.startDate || newFilter.endDate) {
 			debouncedEmit('filterChanged', newFilter);

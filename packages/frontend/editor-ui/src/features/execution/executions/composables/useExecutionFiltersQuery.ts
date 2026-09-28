@@ -1,3 +1,4 @@
+import { onScopeDispose, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { z } from 'zod';
 import { useExecutionsStore } from '../executions.store';
@@ -25,16 +26,18 @@ function parseDate(value?: string): Date | '' {
 	return Number.isNaN(date.getTime()) ? '' : date;
 }
 
-export function useExecutionFiltersQuery() {
+export function useExecutionFiltersQuery(workflowId?: () => string | undefined) {
 	const route = useRoute();
 	const router = useRouter();
 	const executionsStore = useExecutionsStore();
+	let active = true;
+	let requestId = 0;
+	onScopeDispose(() => {
+		active = false;
+		requestId++;
+	});
 
-	const rawFilters = route.query.executionFilters;
-	const restorePreviousFilters =
-		rawFilters === undefined &&
-		JSON.stringify(executionsStore.filters) !== JSON.stringify(getDefaultExecutionFilters());
-	if (rawFilters !== undefined) {
+	function parseFilters(rawFilters: typeof route.query.executionFilters): ExecutionFilterType {
 		let filters = getDefaultExecutionFilters();
 		try {
 			if (typeof rawFilters === 'string') {
@@ -51,25 +54,74 @@ export function useExecutionFiltersQuery() {
 		} catch {
 			// Ignore invalid filter links.
 		}
-		executionsStore.setFilters(filters);
+		const currentWorkflowId = workflowId?.();
+		if (currentWorkflowId) {
+			if (filters.workflowId !== 'all' && filters.workflowId !== currentWorkflowId) {
+				filters.workflowVersionId = 'all';
+			}
+			filters.workflowId = currentWorkflowId;
+		}
+		return filters;
+	}
+
+	const rawFilters = route.query.executionFilters;
+	const restorePreviousFilters =
+		rawFilters === undefined &&
+		JSON.stringify(executionsStore.filters) !== JSON.stringify(getDefaultExecutionFilters());
+	if (rawFilters !== undefined) {
+		executionsStore.setFilters(parseFilters(rawFilters));
+	} else if (workflowId?.() && executionsStore.filters.workflowId !== workflowId()) {
+		executionsStore.setFilters({
+			...executionsStore.filters,
+			workflowId: workflowId() ?? 'all',
+			workflowVersionId: 'all',
+		});
 	}
 
 	async function restoreQuery() {
-		if (restorePreviousFilters) {
+		if (restorePreviousFilters && active) {
 			await router.replace({
 				query: { ...route.query, executionFilters: JSON.stringify(executionsStore.filters) },
 			});
 		}
 	}
 
-	async function updateFilters(newFilters: ExecutionFilterType, workflowId?: string) {
+	async function initialize() {
+		const currentRequest = ++requestId;
+		const currentWorkflowId = workflowId?.();
+		const isCurrent = () =>
+			active && currentRequest === requestId && workflowId?.() === currentWorkflowId;
+		if (isCurrent()) await executionsStore.initialize(currentWorkflowId, isCurrent);
+	}
+
+	async function updateFilters(newFilters: ExecutionFilterType, targetWorkflowId?: string) {
+		if (!active) return;
 		executionsStore.reset();
 		executionsStore.setFilters(newFilters);
 		await router.replace({
 			query: { ...route.query, executionFilters: JSON.stringify(newFilters) },
 		});
-		await executionsStore.initialize(workflowId);
+		if (active && workflowId?.() === targetWorkflowId) await initialize();
 	}
 
-	return { restoreQuery, updateFilters };
+	watch(
+		() => route.query.executionFilters,
+		(raw) => {
+			if (!active) return;
+			const filters = parseFilters(raw);
+			if (JSON.stringify(filters) === JSON.stringify(executionsStore.filters)) return;
+			executionsStore.reset();
+			executionsStore.setFilters(filters);
+			void initialize();
+		},
+	);
+
+	if (workflowId) {
+		watch(workflowId, (id, previousId) => {
+			if (!id || id === previousId) return;
+			void updateFilters({ ...executionsStore.filters, workflowId: id, workflowVersionId: 'all' }, id);
+		});
+	}
+
+	return { restoreQuery, initialize, updateFilters, isActive: () => active };
 }

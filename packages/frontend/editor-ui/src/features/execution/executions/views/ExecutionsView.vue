@@ -29,7 +29,7 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
-const { restoreQuery, updateFilters } = useExecutionFiltersQuery();
+const { restoreQuery, initialize, updateFilters, isActive } = useExecutionFiltersQuery();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
@@ -94,8 +94,8 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('executionsList.workflowExecutions'));
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	await executionsStore.initialize();
 	await restoreQuery();
+	if (isActive()) await initialize();
 });
 
 onBeforeUnmount(() => {

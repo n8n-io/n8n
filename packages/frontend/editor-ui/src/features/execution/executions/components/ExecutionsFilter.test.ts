@@ -184,6 +184,19 @@ describe('ExecutionsFilter', () => {
 		expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
 	});
 
+	test('updates visible filters when the parent restores another filter', async () => {
+		const { getByTestId, queryByTestId, rerender, emitted } = renderComponent({
+			props: { initialFilters: defaultFilterState },
+		});
+		await rerender({ initialFilters: { ...defaultFilterState, status: 'error' } });
+		expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
+		expect(emitted().filterChanged).toBeUndefined();
+
+		await rerender({ initialFilters: defaultFilterState });
+		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+		expect(emitted().filterChanged).toBeUndefined();
+	});
+
 	test('shows annotation filters when advanced filters are enabled', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 

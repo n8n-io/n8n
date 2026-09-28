@@ -342,7 +342,9 @@ test.describe('Workflow Executions', () => {
 			await expect(n8n.executions.getNoContent()).toBeVisible();
 
 			await n8n.canvas.waitForSaveWorkflowCompleted();
-			await n8n.page.waitForURL(/\/workflow\/.+\/executions$/);
+			await expect(n8n.page).toHaveURL((url) =>
+				/\/workflow\/[^/]+\/executions$/.test(url.pathname),
+			);
 		});
 	});
 });
