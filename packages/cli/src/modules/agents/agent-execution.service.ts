@@ -22,7 +22,15 @@ import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
-import { checkpointExecutionId } from './types/agent-queued-message';
+import {
+	checkpointExecutionId,
+	EXECUTION_METADATA_KEY,
+	type AgentExecutionAdmission,
+} from './types/agent-queued-message';
+import { AgentMessageRepository } from './repositories/agent-message.repository';
+import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-message.entity';
+import { messageToDto } from './agent-message-mapper';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
@@ -63,7 +71,7 @@ export interface RecordMessageParams {
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
-	/** Attachments included on the user turn; persisted on the run for the sessions view. */
+	/** Attachments included on the original input message. */
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
@@ -85,6 +93,9 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	resourceId: string;
+	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
+	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
@@ -97,6 +108,7 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 export interface AgentExecutionReservation {
 	execution: AgentExecution;
 	needsTitleSync: boolean;
+	inputMessageIds: string[];
 }
 
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
@@ -157,15 +169,23 @@ export class AgentExecutionService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
 		private readonly queueRepository: AgentMessageQueueRepository,
+		private readonly messageRepository: AgentMessageRepository,
 	) {}
 
-	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
+	async startExecutionRecording(
+		params: StartExecutionParams,
+		startedAt: Date,
+	): Promise<AgentExecutionAdmission> {
 		const reservation = await this.txRunner.run(
 			{},
 			async (ctx) => await this.reserveExecution(params, startedAt, ctx),
 		);
 		this.activateExecution(reservation, params);
-		return reservation.execution.id;
+		return {
+			executionId: reservation.execution.id,
+			startedAt,
+			inputMessageIds: reservation.inputMessageIds,
+		};
 	}
 
 	async reserveExecution(
@@ -174,15 +194,15 @@ export class AgentExecutionService {
 		ctx: OperationContext,
 	): Promise<AgentExecutionReservation> {
 		const prepared = await this.prepareThread(params, ctx);
-		const queueItem = await this.checkAdmission(params, ctx);
+		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
 			startedAt,
 			stoppedAt: null,
 			duration: 0,
-			userMessage: prepared.userMessage,
-			author: params.author ?? null,
+			userMessage: null,
+			author: null,
 			model: null,
 			promptTokens: null,
 			completionTokens: null,
@@ -195,9 +215,10 @@ export class AgentExecutionService {
 			failureSummary: null,
 			hitlStatus: null,
 			source: params.source ?? null,
-			attachments: params.attachments?.length ? params.attachments : null,
+			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		const inputMessageIds = await this.reserveInput(params, inserted.id, predecessorId, ctx);
 		if (
 			queueItem &&
 			!(await this.queueRepository.linkExecution(
@@ -209,7 +230,45 @@ export class AgentExecutionService {
 		) {
 			throw new AgentTurnAlreadyRunningError();
 		}
-		return { execution: inserted, needsTitleSync: prepared.created || !prepared.thread.title };
+		return {
+			execution: inserted,
+			needsTitleSync: prepared.created || !prepared.thread.title,
+			inputMessageIds,
+		};
+	}
+
+	private async reserveInput(
+		params: StartExecutionParams,
+		executionId: string,
+		predecessorId: string | undefined,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (predecessorId) {
+			return await this.messageRepository.copyExecutionInputs(
+				executionId,
+				predecessorId,
+				params.threadId,
+				ctx,
+			);
+		}
+		if (params.resumeRunId || params.userMessage === null) return [];
+		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
+		const id = await this.messageRepository.createExecutionInput(
+			{
+				executionId,
+				threadId: params.threadId,
+				resourceId: params.resourceId,
+				content,
+				author: params.author,
+				origin: {
+					...params.messageOrigin,
+					source: params.source ?? null,
+					...(params.hideUserMessageFromTranscript && { hidden: true }),
+				},
+			},
+			ctx,
+		);
+		return [id];
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
@@ -233,7 +292,12 @@ export class AgentExecutionService {
 			) {
 				throw new AgentTurnAlreadyRunningError();
 			}
-			return active;
+			const inputExecutionId =
+				checkpoint.checkpoint.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
+			return {
+				queueItem: active,
+				predecessorId: typeof inputExecutionId === 'string' ? inputExecutionId : undefined,
+			};
 		}
 		if (
 			running.length ||
@@ -244,7 +308,7 @@ export class AgentExecutionService {
 		}
 		const head = await this.queueRepository.findHead(threadId, ctx);
 		if (head?.id !== queueItemId && (head || queueItemId)) throw new AgentTurnAlreadyRunningError();
-		return head;
+		return { queueItem: head, predecessorId: undefined };
 	}
 
 	/** Activate only after the reservation transaction commits. */
@@ -442,7 +506,7 @@ export class AgentExecutionService {
 	async prepareThread(
 		params: StartExecutionParams,
 		ctx: OperationContext,
-	): Promise<{ userMessage: string | null; created: boolean; thread: AgentExecutionThread }> {
+	): Promise<{ created: boolean; thread: AgentExecutionThread }> {
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
 			params.threadId,
 			params.agentId,
@@ -456,7 +520,7 @@ export class AgentExecutionService {
 			params.sessionMode,
 		);
 		if (!created) await this.agentExecutionThreadRepository.bumpUpdatedAt(params.threadId, ctx);
-		return { userMessage: cleanUserMessage(params.userMessage, params.agentName), created, thread };
+		return { created, thread };
 	}
 
 	private async completeRecordedExecution(
@@ -635,7 +699,7 @@ export class AgentExecutionService {
 			return {
 				...t,
 				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
-				firstMessage: messageMap.get(t.id) ?? null,
+				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
@@ -658,8 +722,64 @@ export class AgentExecutionService {
 		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	private async hydrateExecutionInputs(
+		executions: AgentExecution[],
+		agentName: string,
+	): Promise<void> {
+		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
+		const seen = new Set<string>();
+		for (const execution of executions) {
+			const messages = inputs.get(execution.id);
+			if (!messages) continue;
+			execution.inputMessageIds = messages.map(({ id }) => id);
+			execution.inputMessages = [];
+			for (const message of messages) {
+				if (seen.has(message.id)) continue;
+				seen.add(message.id);
+				if (message.origin?.hidden) continue;
+				const dto = this.inputMessageToDto(message, execution.id, agentName);
+				if (!dto) continue;
+				execution.inputMessages.push(dto);
+			}
+			const parts = execution.inputMessages.flatMap(({ content }) => content);
+			execution.userMessage =
+				parts
+					.filter((part) => part.type === 'text' && part.text)
+					.map((part) => part.text)
+					.join('\n') || null;
+			execution.author = execution.inputMessages[0]?.author ?? null;
+			execution.attachments = parts.flatMap((part) => {
+				if (part.type !== 'file' || !part.fileId) return [];
+				return [
+					{
+						id: part.fileId,
+						fileName: part.fileName ?? '',
+						mimeType: part.mimeType ?? 'application/octet-stream',
+						sizeBytes: part.sizeBytes ?? 0,
+					},
+				];
+			});
+		}
+	}
+
+	private inputMessageToDto(message: AgentMessageEntity, executionId: string, agentName: string) {
+		const dto = messageToDto({ ...message.content, id: message.id, createdAt: message.createdAt });
+		if (!dto) return null;
+		dto.author = message.author ?? undefined;
+		dto.executionId = executionId;
+		dto.content = dto.content.filter((part) => {
+			if (part.type !== 'text' || part.text === undefined) return true;
+			const text = cleanUserMessage(part.text, agentName);
+			if (text === null) return false;
+			part.text = text;
+			return true;
+		});
+		return dto;
 	}
 
 	/**

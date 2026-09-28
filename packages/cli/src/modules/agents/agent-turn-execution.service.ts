@@ -26,6 +26,7 @@ import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
 import { createAttributionTracker } from './utils/mcp-attribution';
+import { bindExecutionInput } from './utils/execution-input';
 
 type RecordingContext = Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>;
 
@@ -55,7 +56,7 @@ interface ExecuteTurnConfig {
 	previewChat?: boolean;
 	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
+	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
 }
@@ -304,7 +305,7 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		executionError?: unknown,
-	): Promise<string> {
+	): Promise<AgentExecutionAdmission> {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (cause) {
@@ -364,7 +365,7 @@ export class AgentTurnExecutionService {
 				params: { ...params, record: recorder.getMessageRecord() },
 			});
 		};
-		const executionId = await recordStart();
+		const { executionId } = await recordStart();
 		try {
 			await recordFailure(executionId);
 		} finally {
@@ -379,11 +380,10 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const executionId =
-			config.admittedExecution?.executionId ??
-			(await this.recordTurnStart(turn, config, recorder, state));
-		state.executionId = executionId;
-		return await this.startAcceptedTurn(executionId, turn, config, recorder, state, previewControl);
+		const admission =
+			config.admittedExecution ?? (await this.recordTurnStart(turn, config, recorder, state));
+		state.executionId = admission.executionId;
+		return await this.startAcceptedTurn(admission, turn, config, recorder, state, previewControl);
 	}
 
 	private async recordTurnStart(
@@ -391,9 +391,9 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): Promise<string> {
+	): Promise<AgentExecutionAdmission> {
 		turn.options.abortSignal?.throwIfAborted();
-		const id = await this.startExecution(
+		const admission = await this.startExecution(
 			{
 				...turn.recording,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
@@ -404,19 +404,21 @@ export class AgentTurnExecutionService {
 			},
 			recorder.startedAt,
 		);
-		state.executionId = id;
+		state.executionId = admission.executionId;
 		turn.options.abortSignal?.throwIfAborted();
-		return id;
+		return admission;
 	}
 
 	private async startAcceptedTurn(
-		executionId: string,
+		admission: AgentExecutionAdmission,
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
+		const { executionId, inputMessageIds } = admission;
+		if (turn.type === 'start') turn.input = bindExecutionInput(turn.input, inputMessageIds);
 		const executionSignal = this.agentExecutionService.getAbortSignal(executionId);
 		turn.options.abortSignal = turn.options.abortSignal
 			? AbortSignal.any([turn.options.abortSignal, executionSignal])
@@ -444,7 +446,7 @@ export class AgentTurnExecutionService {
 			);
 			previewControl.detachRequest();
 		}
-		config.onExecutionStarted?.(executionId, config.context.threadId);
+		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();
 		await config.onAdmitted?.();
 		turn.options.abortSignal?.throwIfAborted();

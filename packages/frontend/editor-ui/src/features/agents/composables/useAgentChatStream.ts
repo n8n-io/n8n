@@ -678,6 +678,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'execution-started':
 				if (session.userMessage) {
+					const inputMessageId = event.inputMessageIds?.[0];
+					if (inputMessageId) session.userMessage.id = inputMessageId;
 					// Local messages enter FIFO order. An earlier request cannot own a later turn.
 					for (const [controller, earlier] of streams) {
 						if (controller === session.controller) break;
