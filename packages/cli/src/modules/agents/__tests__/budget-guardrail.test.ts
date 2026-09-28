@@ -1,8 +1,10 @@
-import { InMemorySpendLedger } from '@n8n/agents';
+import { InMemorySpendLedger, type ExecutionOptions, type RunOptions } from '@n8n/agents';
 
 import { withBudgetGuardrail } from '../budget-guardrail';
 
-const base = { persistence: { threadId: 'thread-1', resourceId: 'user-1' } };
+const base: RunOptions & ExecutionOptions = {
+	persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+};
 const saved = {
 	enabled: false as const,
 	monthlyBudgetUsd: 20,
