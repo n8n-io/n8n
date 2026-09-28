@@ -6,7 +6,7 @@ import z from 'zod';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiPreferenceWriteRejection } from '@/services/ai-preference-write';
 import { secondsSinceSaved, toAiPreferenceWriteRejection } from '@/services/ai-preference-write';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 /**
  * Why a write by id did not land. The shared rejections plus `not_found`, which only a tool that

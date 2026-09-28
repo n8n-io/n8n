@@ -696,7 +696,6 @@ describe('ExecutionService', () => {
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
-					// @ts-expect-error Private method
 					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**

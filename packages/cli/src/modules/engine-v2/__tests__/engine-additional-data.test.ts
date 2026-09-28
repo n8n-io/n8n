@@ -5,7 +5,7 @@ import type { ICredentialsHelper } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
 

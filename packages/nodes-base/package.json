@@ -898,6 +898,7 @@
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-istanbul": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",

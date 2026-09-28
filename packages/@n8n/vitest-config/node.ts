@@ -4,6 +4,7 @@ import type { Alias } from 'vite';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
+import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 
 /**
@@ -71,6 +72,8 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 					reporter: process.env.CI === 'true' ? 'lcov' : 'text-summary',
 					include: ['src/**/*.ts'],
 					exclude: [...coverageConfigDefaults.exclude, ...coverageExcludes],
+					// With a CHANGED_FILES signal (PR runs), measure only the changed files.
+					...changedFileCoverage(),
 				},
 			}
 		: {}),

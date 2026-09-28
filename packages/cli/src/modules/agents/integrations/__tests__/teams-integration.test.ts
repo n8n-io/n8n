@@ -6,7 +6,10 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import type { AgentChatIntegrationContext } from '../agent-chat-integration';
+import type {
+	AgentChatIntegrationContext,
+	BridgeMessageContextParams,
+} from '../agent-chat-integration';
 import {
 	TEAMS_APP_ID as CLIENT_ID,
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
@@ -63,11 +66,14 @@ describe('TeamsIntegration', () => {
 	});
 
 	describe('platform capabilities', () => {
-		it('reuses the Entra credential, stays hidden, buffers, and targets its cards', () => {
+		it('reuses the Entra credential, stays hidden, streams per thread, and targets its cards', () => {
 			expect(integration).toMatchObject({
 				credentialTypes: ['microsoftEntraServicePrincipalApi'],
 				internal: true,
-				disableStreaming: true,
+				// Streaming is decided for each conversation instead, because Teams
+				// only supports it in 1:1 chats.
+				disableStreaming: false,
+				singleStreamedRunPerTurn: true,
 				// Left at the base-class default: full Adaptive Card payloads fit, so
 				// no callback store is needed.
 				needsShortCallbackData: false,
@@ -235,6 +241,51 @@ describe('TeamsIntegration', () => {
 			];
 
 			expect(integration.normalizeComponents(components)).toEqual(components);
+		});
+	});
+
+	describe('streaming decisions', () => {
+		function contextParams(isDM: boolean, credentialId = CREDENTIAL_ID) {
+			const startTyping = vi.fn().mockResolvedValue(undefined);
+			const params = {
+				chat: {},
+				thread: { id: 'thread-1', isDM, startTyping },
+				message: {},
+				integration: { type: 'teams', credentialId, settings: undefined },
+				logger: mock<Logger>(),
+				agentId: AGENT_ID,
+			} as unknown as BridgeMessageContextParams;
+			return { params, startTyping };
+		}
+
+		it('streams a direct message and shows the typing indicator', async () => {
+			const { params, startTyping } = contextParams(true);
+
+			const context = await integration.createBridgeExecutionContext(params);
+
+			expect(context.forceBuffered).toBe(false);
+			expect(startTyping).toHaveBeenCalledTimes(1);
+			await context.statusHandle?.clearBeforeResponse();
+		});
+
+		it('buffers a group chat or channel, and still shows the typing indicator', async () => {
+			const { params, startTyping } = contextParams(false);
+
+			const context = await integration.createBridgeExecutionContext(params);
+
+			expect(context.forceBuffered).toBe(true);
+			expect(startTyping).toHaveBeenCalledTimes(1);
+			await context.statusHandle?.clearBeforeResponse();
+		});
+
+		it('buffers a reply to a card action, because an invoke activity has no streamer', async () => {
+			const { params, startTyping } = contextParams(true);
+
+			const context = await integration.createResumeExecutionContext(params);
+
+			expect(context.forceBuffered).toBe(true);
+			expect(startTyping).toHaveBeenCalledTimes(1);
+			await context.statusHandle?.clearBeforeResponse();
 		});
 	});
 });

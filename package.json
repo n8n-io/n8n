@@ -117,7 +117,7 @@
     "stylelint": "catalog:",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.9.15",
+    "turbo": "2.11.4",
     "typescript": "6.0.2",
     "yaml": "catalog:",
     "zx": "^8.8.5"
