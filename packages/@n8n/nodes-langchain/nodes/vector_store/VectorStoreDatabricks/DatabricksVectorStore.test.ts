@@ -472,16 +472,21 @@ describe('DatabricksVectorStore', () => {
 			);
 		});
 
-		it('names the schema when the content column is not one of its columns', async () => {
-			const store = await createStore(directDescribe, { contentColumn: 'txet' });
+		it.each([
+			['txet', 'Index cat.sch.idx has no column txet. Select a Content Column from: text, source'],
+			['id', 'Column id is the primary key of cat.sch.idx. Select another Content Column'],
+			[
+				'embedding',
+				'Column embedding holds the embedding vector of cat.sch.idx. Select another Content Column',
+			],
+		])('rejects %s as the content column before embedding anything', async (column, message) => {
+			const store = await createStore(directDescribe, { contentColumn: column });
 
 			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
-				'has no column txet',
+				message,
 			);
-			expect(fetchMock).not.toHaveBeenCalledWith(
-				expect.stringContaining('upsert-data'),
-				expect.anything(),
-			);
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it('rejects a managed Delta Sync index without a request', async () => {

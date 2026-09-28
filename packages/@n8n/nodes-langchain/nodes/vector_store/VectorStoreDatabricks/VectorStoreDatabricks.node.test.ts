@@ -378,7 +378,7 @@ describe('VectorStoreDatabricks', () => {
 			);
 			ctx = {
 				getCredentials: vi.fn().mockResolvedValue({ ...mockCredential, host }),
-				getCurrentNodeParameter: vi.fn().mockReturnValue(mode),
+				getCurrentNodeParameter: vi.fn((path: string) => (path === 'mode' ? mode : undefined)),
 				getNode: vi.fn().mockReturnValue(nodeDef),
 				helpers: { httpRequestWithAuthentication },
 			} as unknown as ILoadOptionsFunctions;
@@ -402,14 +402,19 @@ describe('VectorStoreDatabricks', () => {
 			}
 		});
 
-		it('offers only direct-access indexes in insert mode, the only type that accepts writes', async () => {
-			setupSearchContext('https://ws.example.com/', 'insert');
+		// Only insert writes, so only insert may narrow the list; the read modes query both types.
+		it.each([
+			['insert', ['cat.sch.zeta']],
+			['load', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+			['retrieve', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+			['retrieve-as-tool', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+		])('offers the writable indexes in %s mode', async (mode, expected) => {
+			setupSearchContext('https://ws.example.com/', mode);
 
 			const result = await methods.listSearch.searchIndexes.call(ctx);
 
-			expect(result.results).toEqual([
-				{ name: 'cat.sch.zeta', value: 'cat.sch.zeta', description: 'DIRECT_ACCESS - ep1' },
-			]);
+			expect(result.results.map((entry) => entry.value)).toEqual(expected);
+			expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('mode');
 		});
 
 		it('does not let the bearer follow a cross-origin redirect', async () => {
