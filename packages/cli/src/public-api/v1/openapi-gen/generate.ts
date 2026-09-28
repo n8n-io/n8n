@@ -231,11 +231,13 @@ function mergeComponents(
 function assertConsistentPathParameterNames(
 	...pathCollections: Array<OpenApiDocument['paths']>
 ): void {
+	// Matches path parameters such as '{credentialId}'.
+	const PATH_PARAMETER_REGEX = /\{([^}]+)\}/g;
 	const pathByShape = new Map<string, string>();
 
 	for (const paths of pathCollections) {
 		for (const pathKey of Object.keys(paths ?? {})) {
-			const pathShape = pathKey.replace(/\{[^}]+\}/g, '{}');
+			const pathShape = pathKey.replace(PATH_PARAMETER_REGEX, '{}');
 			const equivalentPath = pathByShape.get(pathShape);
 			if (equivalentPath && equivalentPath !== pathKey) {
 				throw new UnexpectedError(
