@@ -110,7 +110,7 @@ beforeEach(async () => {
 	builder = await createOwner();
 });
 
-describe('webhook runs on engine 2.0', () => {
+describe('webhook runs on engine v2', () => {
 	test('hands the webhook payload to the data plane and persists no execution', async () => {
 		const webhookId = randomUUID();
 		const workflow = await createV2Workflow(webhookNode(webhookId));

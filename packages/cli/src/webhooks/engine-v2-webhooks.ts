@@ -61,7 +61,7 @@ export type EngineV2WebhookRequest = {
 };
 
 /**
- * The webhook surface's seam to engine 2.0.
+ * The webhook surface's seam to engine v2.
  *
  * The webhook node itself still runs control-plane-side, so only the start call
  * changes for a v2 workflow. This decides whether a run takes that path, and
@@ -76,7 +76,7 @@ export class EngineV2Webhooks {
 		private readonly engineConfig: EngineConfig,
 	) {}
 
-	/** Whether this webhook run starts on the engine 2.0 data plane. */
+	/** Whether this webhook run starts on the engine v2 data plane. */
 	handles(workflowData: IWorkflowBase, executionMode: WorkflowExecuteMode): boolean {
 		return this.dispatcher.handlesWorkflow(workflowData, executionMode);
 	}
@@ -84,7 +84,7 @@ export class EngineV2Webhooks {
 	/**
 	 * Rejects a run the v2 path cannot serve, from the configuration alone.
 	 *
-	 * A workflow that opted into engine 2.0 never falls back to v1, so each case
+	 * A workflow that opted into engine v2 never falls back to v1, so each case
 	 * fails with the reason instead. These checks live here rather than in
 	 * {@link EngineV2Dispatcher} because they need webhook context the dispatcher
 	 * never sees.
@@ -102,17 +102,17 @@ export class EngineV2Webhooks {
 		// that precedes that call can turn "module off" into a 400 instead of a 500.
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 
 		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
 		if (executionId !== undefined) {
-			throw new UserError('Engine 2.0 cannot resume a waiting execution yet.');
+			throw new UserError('Engine v2 cannot resume a waiting execution yet.');
 		}
 
 		if (UNSUPPORTED_TRIGGERS.has(workflowStartNode.type)) {
-			throw new UserError(`Engine 2.0 cannot run the "${workflowStartNode.name}" trigger yet.`);
+			throw new UserError(`Engine v2 cannot run the "${workflowStartNode.name}" trigger yet.`);
 		}
 
 		// `EngineV2Dispatcher` refuses this too, for every v2 entry path. It is
@@ -124,18 +124,18 @@ export class EngineV2Webhooks {
 				.providesExternalIdentity
 		) {
 			throw new UserError(
-				`Engine 2.0 cannot run the "${workflowStartNode.name}" trigger yet, because it takes credentials from the request.`,
+				`Engine v2 cannot run the "${workflowStartNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}
 
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
-				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
+				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
 		if (this.engineConfig.mode === 'remote' && responseMode !== 'onReceived') {
 			throw new UserError(
-				`Engine 2.0 does not support the '${responseMode}' response mode with a remote data plane yet. Respond immediately instead.`,
+				`Engine v2 does not support the '${responseMode}' response mode with a remote data plane yet. Respond immediately instead.`,
 			);
 		}
 	}
@@ -191,7 +191,7 @@ export class EngineV2Webhooks {
 	assertPayloadSupported(webhookResultData: IWebhookResponseData): void {
 		this.payloadGuard.assertNoFiles(
 			webhookResultData.workflowData ?? [],
-			'Engine 2.0 cannot receive files from a webhook yet.',
+			'Engine v2 cannot receive files from a webhook yet.',
 		);
 	}
 }

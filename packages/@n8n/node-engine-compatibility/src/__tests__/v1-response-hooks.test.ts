@@ -98,9 +98,28 @@ describe('attachResponseHooks', () => {
 		});
 	});
 
+	describe('a stored binary reference body', () => {
+		it('is sent as is, with its headers and status code', async () => {
+			const { request, respond } = newRequest();
+			const additionalData = newAdditionalData();
+			const response = {
+				body: { binaryData: { id: 'filesystem-v2:file-1', mimeType: 'image/png', data: '' } },
+				headers: { 'content-type': 'image/png' },
+				statusCode: 200,
+			};
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [response]);
+
+			expect(respond.send).toHaveBeenCalledWith(response);
+		});
+	});
+
 	it.each([
 		['a stream body', { body: { pipe: () => {} } }],
-		['a binary reference', { body: { binaryData: { id: 'file-1' } } }],
+		['a binary reference without an id', { body: { binaryData: { data: 'aGk=' } } }],
+		['a binary reference with an empty id', { body: { binaryData: { id: '', data: 'aGk=' } } }],
+		['a binaryData value that is not an object', { body: { binaryData: 'file-1' } }],
 		['a bare Buffer in place of a response', Buffer.from('hi')],
 	])('refuses %s, which has no JSON form', async (_name, response) => {
 		const { request } = newRequest();
@@ -108,7 +127,7 @@ describe('attachResponseHooks', () => {
 		attachResponseHooks(additionalData, request);
 
 		await expect(additionalData.hooks?.runHook('sendResponse', [response])).rejects.toThrow(
-			/Engine 2.0 cannot/,
+			/Engine v2 cannot/,
 		);
 	});
 });
