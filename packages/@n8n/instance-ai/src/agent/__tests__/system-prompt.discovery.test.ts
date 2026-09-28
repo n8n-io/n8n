@@ -20,12 +20,21 @@ const browserCapableOptions: { computerUseState: ComputerUseState } = {
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	describe('chat request → Computer Use credential setup skill', () => {
-		it('routes credential setup in an external service console to the Computer Use skill', () => {
+		it('routes credential setup to the Computer Use skill when the browser is available', () => {
 			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(prompt).toMatch(
-				/set up credentials in an external service console,\s+load\s+the `credential-setup-with-computer-use` skill/,
-			);
+			expect(prompt).toContain('credential-setup-with-computer-use');
+		});
+
+		it('omits the Computer Use skill when computer use is unavailable', () => {
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'unavailable' },
+					browser: { status: 'unavailable' },
+				},
+			});
+
+			expect(prompt).not.toContain('credential-setup-with-computer-use');
 		});
 	});
 

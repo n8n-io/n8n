@@ -80,7 +80,7 @@ const pickResourceDecisionSchema = z.object({
  * setup wizard instead (`applySetupWizardDecisionSchema`'s `nodeCredentialsJson`
  * below). This tool *is* reached by a standalone credential-connect request with
  * no build attached (e.g. "connect my Slack account now, before I build
- * anything") — confirmed live against a real instance, all three outcomes:
+ * anything") — confirmed live against a real instance, both outcomes:
  *
  * Live-captured suspend (`credentials(action='setup')` call args):
  * ```json
