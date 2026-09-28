@@ -205,6 +205,11 @@ export class InstanceReportingScheduler {
 				this.logger.info(
 					'Unexpected second instance report triggered for today, ignored because there is already a report for today',
 				);
+				// In this case, the report is not actually considered "failed" from a business perspective,
+				// but our code has a bug that led to a report being generated a second time for the same day.
+				// Returning 'failed' here, will lead to a retry of the report being scheduled after RETRY_DELAY_MS.
+				// The expectation is that after that single no-op retry, retrying stops
+				// as InstanceReportingService.sendReport will exit early.
 				return 'failed';
 			}
 
