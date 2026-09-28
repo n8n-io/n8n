@@ -229,6 +229,38 @@ describe('CreateAppTables migration', () => {
 		await withContext(async (context) => await insertBinaryData(context, 'app_version'));
 	});
 
+	it('re-runs over an existing schema without changing it', async () => {
+		const snapshot = async () =>
+			await withContext(
+				async (context) =>
+					await Promise.all(
+						[APP_TABLE, APP_VERSION_TABLE, THREAD_TABLE, BINARY_DATA_TABLE].map(async (name) => {
+							const table = await context.queryRunner.getTable(`${context.tablePrefix}${name}`);
+							return {
+								columns: table?.columns.map((c) => c.name).sort(),
+								indices: table?.indices.map((i) => `${i.columnNames.join()}:${i.isUnique}`).sort(),
+								foreignKeys: table?.foreignKeys.map((fk) => fk.columnNames.join()).sort(),
+								checks: table?.checks.length,
+							};
+						}),
+					),
+			);
+		const before = await snapshot();
+		await withContext(async (context) => await insertBinaryData(context, 'app_version'));
+		await withContext(
+			async (context) =>
+				await context.runQuery(
+					`DELETE FROM ${context.escape.tableName('migrations')} WHERE ${context.escape.columnName('name')} = :name`,
+					{ name: MIGRATION_NAME },
+				),
+		);
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		expect(await snapshot()).toEqual(before);
+	});
+
 	it('restores the previous schema on revert', async () => {
 		await withContext(async (context) => await insertBinaryData(context, 'app_version'));
 
