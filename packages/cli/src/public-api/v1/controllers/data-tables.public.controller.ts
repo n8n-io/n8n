@@ -355,8 +355,6 @@ export class DataTablesPublicController {
 		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
 		@Param('columnId', columnIdParamSchema) columnId: string,
 	): Promise<void> {
-		// deleteColumn only ever throws DataTableNotFoundError, already a ResponseError with the
-		// right status — nothing here needs handleError's translation.
 		const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 
 		await this.dataTableService.deleteColumn(dataTableId, projectId, columnId);
