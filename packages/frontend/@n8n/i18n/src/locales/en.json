@@ -6271,6 +6271,7 @@
 	"projects.menu.create.variable": "New variable",
 	"projects.menu.create.dataTable": "New data table",
 	"projects.menu.create.agent": "New agent",
+	"projects.menu.create.app": "New app",
 	"projects.menu.create.project": "New project",
 	"projects.menu.create.instanceAiThread": "New AI chat",
 	"projects.settings": "Project settings",
