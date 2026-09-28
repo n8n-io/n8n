@@ -152,6 +152,17 @@ describe('useNdvLayout', () => {
 			expect(panelWidthPercentage.value.main).toBeGreaterThanOrEqual((368 / 1317) * 100);
 		});
 
+		it('keeps the output panel inside the container when stored widths are too large', () => {
+			// ADO-5636: Saved widths can push the output panel outside the node details view.
+			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
+			localStorage.setItem(key, JSON.stringify({ left: 80, main: 70, right: 20 }));
+
+			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+
+			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
+			expect(panelWidthPercentage.value.right).toBeGreaterThanOrEqual(12);
+		});
+
 		it('falls back to the defaults when the stored value is not usable', () => {
 			containerWidth.value = 1317;
 			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
