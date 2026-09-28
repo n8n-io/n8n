@@ -38,6 +38,10 @@ test.describe(
 			'webhook-last-node-text-html-content-type',
 			'webhook-response-data-csp-header',
 			'webhook-last-node-csp-header',
+			'respond-to-webhook-text-no-content-type',
+			'respond-to-webhook-text-content-type-text-html',
+			'respond-to-webhook-text-csp-header',
+			'respond-to-webhook-json-as-text-html',
 		]);
 
 		const expectedCSP =
