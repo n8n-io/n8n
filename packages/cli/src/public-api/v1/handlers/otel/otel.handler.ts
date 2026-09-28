@@ -1,13 +1,9 @@
-import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { TestOtelTraceDto } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { OtelLifecycleHandler } from '@/modules/otel/otel-lifecycle-handler';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelService } from '@/modules/otel/otel.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { toOtelSettingsResponse } from './otel.mapper';
 import type { OtelSettingsRequest } from '../../../types';
@@ -16,7 +12,6 @@ import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/
 
 type OtelHandlers = {
 	getOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Get>;
-	updateOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Update>;
 	testOtelTrace: PublicAPIEndpoint<OtelSettingsRequest.Test>;
 };
 
@@ -26,41 +21,6 @@ const otelHandlers: OtelHandlers = {
 		async (_req, res) => {
 			const settingsService = Container.get(OtelSettingsService);
 			await settingsService.loadSettings();
-
-			return res.json(toOtelSettingsResponse(settingsService.getSettings()));
-		},
-	],
-
-	updateOtelSettings: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'otel:manage' }),
-		async (req, res) => {
-			const payload = UpdateOtelSettingsDto.safeParse(req.body);
-			if (!payload.success) {
-				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
-			}
-
-			const settingsService = Container.get(OtelSettingsService);
-
-			// Fields managed via environment variables are read-only: the UI greys them
-			// out, so reject any attempt to change one here instead of silently ignoring
-			// it. Re-submitting a field's current (env-enforced) value is not a change,
-			// so a GET -> edit -> PUT round-trip still succeeds.
-			await settingsService.loadSettings();
-			const current = settingsService.getSettings();
-			const conflicts = current.envManagedFields.filter(
-				(key) => payload.data[key] !== current[key],
-			);
-			if (conflicts.length > 0) {
-				throw new ConflictError(
-					`The following field(s) are managed by environment variables and cannot be changed through the API: ${conflicts.join(', ')}`,
-				);
-			}
-
-			await settingsService.saveSettings(payload.data);
-
-			await Container.get(OtelLifecycleHandler).onReloadOtelConfig();
-			await Container.get(ModuleRegistry).refreshModuleSettings('otel');
-			void Container.get(Publisher).publishCommand({ command: 'reload-otel-config' });
 
 			return res.json(toOtelSettingsResponse(settingsService.getSettings()));
 		},

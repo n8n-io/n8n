@@ -570,6 +570,11 @@ export {
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export {
+	OtelSettingsPublicDto,
+	UpdateOtelSettingsPublicDto,
+	UpdateOtelSettingsQueryPublicDto,
+} from './otel/otel-settings-public.dto';
 
 export {
 	PromotionChangesDto,
