@@ -46,6 +46,13 @@ export const STICKY_PADDING = GRID_SIZE * 2; // 32
 /** Headroom above wrapped nodes so the sticky's text does not sit on top of them. */
 export const STICKY_HEADER_HEIGHT = GRID_SIZE * 4; // 64
 
+/**
+ * Vertical chrome around a sticky's text when it wraps nodes: the renderer's own
+ * 8px top padding, plus STICKY_PADDING of clearance between the last line of text
+ * and the top of the node row.
+ */
+export const STICKY_TEXT_INTERNAL_PADDING = 8 + STICKY_PADDING; // 40
+
 /** Bound on the sticky de-overlap walk so a pathological graph can't spin. */
 export const MAX_STICKY_SEPARATION_STEPS = 50;
 
