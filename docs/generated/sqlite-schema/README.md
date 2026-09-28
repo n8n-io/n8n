@@ -23,6 +23,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
+| [agent_message_queue](agent_message_queue.md) | 7 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -51,7 +52,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 13 |  | table |
+| [credentials_entity](credentials_entity.md) | 14 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -85,6 +86,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
+| [instance_ai_thread_tabs](instance_ai_thread_tabs.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
@@ -180,6 +182,8 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -280,6 +284,8 @@ erDiagram
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -569,6 +575,15 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId PK
+}
+"agent_message_queue" {
+  datetime_3_ createdAt
+  varchar_36_ executionId FK
+  INTEGER id
+  TEXT payload
+  varchar_32_ source
+  varchar_128_ threadId FK
+  datetime_3_ updatedAt
 }
 "agent_task_definition" {
   varchar_36_ agentId FK
@@ -862,6 +877,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  DATETIME pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
@@ -1173,6 +1189,13 @@ erDiagram
 "instance_ai_thread_grants" {
   datetime_3_ createdAt
   varchar_512_ grantKey PK
+  varchar threadId PK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
+"instance_ai_thread_tabs" {
+  datetime_3_ createdAt
+  TEXT state
   varchar threadId PK
   datetime_3_ updatedAt
   varchar userId PK

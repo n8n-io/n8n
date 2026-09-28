@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { WorkflowListItem, UserAction } from '@/Interface';
+import type { UserAction } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 import {
 	N8nActionToggle,
@@ -21,7 +22,7 @@ import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import { getResourcePermissions } from '@n8n/permissions';
 
 type Props = {
-	workflows: WorkflowListItem[];
+	workflows: McpWorkflow[];
 	totalCount?: number;
 	loading: boolean;
 };
@@ -58,10 +59,10 @@ const tableSortBy = computed({
 });
 
 const emit = defineEmits<{
-	removeMcpAccess: [workflow: WorkflowListItem];
+	removeMcpAccess: [workflow: McpWorkflow];
 	bulkRemoveMcpAccess: [workflowIds: string[]];
 	connectWorkflows: [];
-	updateDescription: [workflow: WorkflowListItem];
+	updateDescription: [workflow: McpWorkflow];
 	'update:options': [payload: TableOptions];
 }>();
 
@@ -79,7 +80,7 @@ watch(
 	},
 );
 
-const isRowSelectable = (workflow: WorkflowListItem) =>
+const isRowSelectable = (workflow: McpWorkflow) =>
 	!!getResourcePermissions(workflow.scopes).workflow.update;
 
 const clearSelection = () => {
@@ -90,7 +91,7 @@ const onBulkRemoveMcpAccess = () => {
 	emit('bulkRemoveMcpAccess', selectedWorkflowIds.value);
 };
 
-const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
+const tableHeaders = ref<Array<TableHeader<McpWorkflow>>>([
 	{
 		title: i18n.baseText('settings.mcp.workflows.table.column.name'),
 		key: 'workflow',
@@ -130,7 +131,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	},
 ]);
 
-const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<WorkflowListItem>> => {
+const getAvailableActions = (workflow: McpWorkflow): Array<UserAction<McpWorkflow>> => {
 	const permissions = getResourcePermissions(workflow.scopes);
 
 	return [
@@ -147,7 +148,7 @@ const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<Workf
 	];
 };
 
-const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
+const onWorkflowAction = (action: string, workflow: McpWorkflow) => {
 	switch (action) {
 		case 'removeFromMCP':
 			emit('removeMcpAccess', workflow);

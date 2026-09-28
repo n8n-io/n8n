@@ -80,7 +80,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
@@ -1606,6 +1606,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1619,6 +1622,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(NotFoundError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1626,7 +1632,14 @@ describe('InstanceAiController', () => {
 
 		it('edit checks thread access, then returns the preference with the published fact', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = { runId: 'run-1', toolCallId: 'tc-1', content: 'Keep replies brief.' };
+			const payload = {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				content: 'Keep replies brief.',
+				scope: 'user' as const,
+				userId: USER_ID,
+				projectId: null,
+			};
 			const editedEvent: InstanceAiPreferenceCardEvent = {
 				...undoneEvent,
 				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },

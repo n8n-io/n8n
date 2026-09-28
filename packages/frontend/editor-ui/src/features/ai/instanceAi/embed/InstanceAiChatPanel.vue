@@ -62,6 +62,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:threadId': [threadId: string];
 	'update:building': [building: boolean];
+	'update:processing': [processing: boolean];
 	close: [];
 }>();
 
@@ -341,6 +342,7 @@ watch(
 onUnmounted(() => {
 	// A host closing the panel mid-build must not stay locked forever.
 	emit('update:building', false);
+	emit('update:processing', false);
 	if (props.threadId && props.threadId !== handedOffThreadId) store.disposeRuntime(props.threadId);
 });
 
@@ -402,11 +404,26 @@ const currentThreadTitle = computed<string | undefined>(() => {
 const ThreadScope = defineComponent({
 	name: 'InstanceAiChatPanelThreadScope',
 	props: { threadId: { type: String, required: true } },
-	emits: ['thread-missing', 'update:building'],
+	emits: ['thread-missing', 'update:building', 'update:processing'],
 	setup(scopeProps, { emit: scopeEmit }) {
 		const runtime = provideThread(scopeProps.threadId);
 		useAgentMutationRefresh(runtime);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
+		const isPreparingSend = ref(false);
+		async function beforeConversationSend() {
+			isPreparingSend.value = true;
+			try {
+				await props.beforeSend?.();
+			} finally {
+				isPreparingSend.value = false;
+			}
+		}
+		watch(
+			() => isPreparingSend.value || runtime.isSendingMessage || runtime.isStreaming,
+			(processing) => scopeEmit('update:processing', processing),
+			{ immediate: true },
+		);
+		onUnmounted(() => scopeEmit('update:processing', false));
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
 			(value) => scopeEmit('update:building', value),
@@ -423,7 +440,7 @@ const ThreadScope = defineComponent({
 					// Forward the live subject so the chat-input context chip follows a
 					// host rename instead of the snapshot stashed at thread mint.
 					subject: props.subject,
-					beforeSend: props.beforeSend,
+					beforeSend: props.beforeSend ? beforeConversationSend : undefined,
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
 				slots.empty ? { empty: slots.empty } : undefined,
@@ -502,6 +519,7 @@ const ThreadScope = defineComponent({
 				:class="$style.conversation"
 				@thread-missing="mintThread"
 				@update:building="onBuildingChange"
+				@update:processing="emit('update:processing', $event)"
 			/>
 		</div>
 	</div>

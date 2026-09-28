@@ -1,8 +1,7 @@
-import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -14,9 +13,15 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
 	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { canContinueThreadInPreview, threadBelongsTo } from './utils/agent-thread-access';
+import {
+	canContinueThreadInPreview,
+	N8N_CHAT_PRODUCTION_SOURCE,
+	threadBelongsTo,
+} from './utils/agent-thread-access';
 import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 
 type ExecutionContext = PubSubCommandMap['cancel-agent-chat-execution'];
@@ -27,14 +32,16 @@ export interface CancelSuspendedRunParams {
 	resourceId: string;
 }
 
-export class AgentTurnAlreadyRunningError extends UserError {
-	constructor() {
-		super('A turn is already running in this conversation.');
-	}
-}
+export { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 
 @Service()
 export class AgentChatExecutionService {
+	// Remote mains may never register the run. Retain early Stops beyond the recovery window.
+	private static readonly PENDING_CANCEL_TTL_MS = 5 * 60 * 1000;
+	private readonly pendingCancellations = new Map<
+		string,
+		{ context: ExecutionContext; timer: NodeJS.Timeout }
+	>();
 	private readonly executions = new Map<
 		string,
 		{ context: ExecutionContext; controller: AbortController }
@@ -50,52 +57,14 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 	) {}
 
-	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			if (await this.executionRepository.existsRunningByThread(threadId)) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await create();
-		});
-	}
-
-	async admitAutomaticContinuation<T>(
-		threadId: string,
-		agentId: string,
-		runId: string,
-		createAndClaim: () => Promise<T>,
-	): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
-			if (
-				checkpoint.status !== 'active' ||
-				checkpoint.checkpoint.status !== 'suspended' ||
-				checkpoint.checkpoint.persistence?.threadId !== threadId
-			) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await createAndClaim();
-		});
-	}
-
-	private async withAdmissionLease<T>(
-		key: string,
-		admit: (signal: AbortSignal) => Promise<T>,
-	): Promise<T> {
-		try {
-			return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, key, admit, {
-				waitTimeoutMs: 0,
-			});
-		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) throw new AgentTurnAlreadyRunningError();
-			throw error;
-		}
-	}
-
 	register(context: ExecutionContext, controller: AbortController): void {
 		this.executions.set(context.executionId, { context, controller });
+		const pending = this.pendingCancellations.get(context.executionId);
+		if (pending) {
+			clearTimeout(pending.timer);
+			this.pendingCancellations.delete(context.executionId);
+			this.cancelLocal(pending.context);
+		}
 	}
 
 	async settle(
@@ -124,7 +93,9 @@ export class AgentChatExecutionService {
 					await this.cancelSuspended({
 						agentId: context.agentId,
 						runId: suspendedRunId,
-						resourceId: draftChatMemoryResourceId(context.userId),
+						resourceId: context.productionN8nChat
+							? productionChatMemoryResourceId(context.userId)
+							: draftChatMemoryResourceId(context.userId),
 					});
 				},
 			);
@@ -142,7 +113,8 @@ export class AgentChatExecutionService {
 				if (!execution) throw new NotFoundError('Execution not found');
 				if (this.cancelLocal(context)) return true;
 				if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
-				if (!this.instanceSettings.isMultiMain) return false;
+				this.cancelOrRemember(context);
+				if (!this.instanceSettings.isMultiMain) return true;
 				await this.publisher.publishCommand({
 					command: 'cancel-agent-chat-execution',
 					payload: context,
@@ -160,9 +132,23 @@ export class AgentChatExecutionService {
 			`agent-preview-turn:${context.threadId}`,
 			async () => {
 				if (this.cancelLocal(context)) return;
-				if (await this.getOwnedExecution(context)) await this.cancelRecordedSuspension(context);
+				const execution = await this.getOwnedExecution(context);
+				if (!execution) return;
+				if (execution.status === 'running') this.cancelOrRemember(context);
+				await this.cancelRecordedSuspension(context);
 			},
 		);
+	}
+
+	private cancelOrRemember(context: ExecutionContext): void {
+		// Registration can finish while ownership validation awaits the database.
+		if (this.cancelLocal(context) || this.pendingCancellations.has(context.executionId)) return;
+		const timer = setTimeout(
+			() => this.pendingCancellations.delete(context.executionId),
+			AgentChatExecutionService.PENDING_CANCEL_TTL_MS,
+		);
+		timer.unref();
+		this.pendingCancellations.set(context.executionId, { context, timer });
 	}
 
 	private cancelLocal(context: ExecutionContext): boolean {
@@ -184,7 +170,17 @@ export class AgentChatExecutionService {
 		const thread = await this.executionService.findThreadById(threadId);
 		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
-		if (!execution || !canContinueThreadInPreview(thread, userId, execution.source)) return null;
+		if (
+			!execution ||
+			(context.productionN8nChat
+				? !(
+						thread.accessScope === 'user' &&
+						thread.ownerId === userId &&
+						execution.source === N8N_CHAT_PRODUCTION_SOURCE
+					)
+				: !canContinueThreadInPreview(thread, userId, execution.source))
+		)
+			return null;
 		return execution;
 	}
 
@@ -202,7 +198,9 @@ export class AgentChatExecutionService {
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
-			resourceId: draftChatMemoryResourceId(context.userId),
+			resourceId: context.productionN8nChat
+				? productionChatMemoryResourceId(context.userId)
+				: draftChatMemoryResourceId(context.userId),
 		});
 	}
 
@@ -218,7 +216,20 @@ export class AgentChatExecutionService {
 		)
 			return false;
 		const thread = await this.executionService.findThreadById(checkpoint.persistence.threadId);
-		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId);
+		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
+		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId) ?? productionUserId;
+		if (
+			productionUserId &&
+			(!thread ||
+				!(await this.executionService.canUseProductionChatThread(
+					thread.id,
+					thread.projectId,
+					params.agentId,
+					productionUserId,
+					'existing',
+				)))
+		)
+			return false;
 		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId)))
 			return false;
 		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);

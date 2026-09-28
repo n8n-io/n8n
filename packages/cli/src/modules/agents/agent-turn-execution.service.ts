@@ -13,7 +13,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -40,6 +43,8 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 );
 
 interface ExecuteTurnConfig {
+	admittedExecution?: AgentExecutionAdmission;
+	onAdmitted?: () => Promise<void>;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	mcpServerAttributions: Map<string, string>;
@@ -48,6 +53,7 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
@@ -103,6 +109,7 @@ export class AgentTurnExecutionService {
 		private readonly logger: Logger,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly messageQueue: AgentMessageQueueService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -112,18 +119,23 @@ export class AgentTurnExecutionService {
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
 		let turn: AgentTurnRequest | undefined;
 		let previewControl: PreviewExecutionControl | undefined;
-		const state: TurnExecutionState = { executionStarted: false, receivedFinish: false };
+		const state: TurnExecutionState = {
+			executionStarted: false,
+			receivedFinish: false,
+			executionId: config.admittedExecution?.executionId,
+		};
 		const recorder = this.createRecorder(
 			config.toolRegistry,
 			() => state.executionId,
 			config.context,
 			config.backgroundJobSignal,
+			config.admittedExecution?.startedAt,
 		);
 
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
-			if (config.previewChat) {
+			if (config.previewChat || config.productionN8nChat) {
 				previewControl = this.createPreviewExecutionControl(preparedTurn);
 				preparedTurn.options.abortSignal = previewControl.controller.signal;
 			}
@@ -137,8 +149,12 @@ export class AgentTurnExecutionService {
 		} finally {
 			previewControl?.detachRequest();
 			if (turn && state.executionId) {
-				await this.settleTurn(turn, config, recorder, state.executionId, state);
-				await config.onSettled?.(recorder.suspended);
+				try {
+					await this.settleTurn(turn, config, recorder, state.executionId, state);
+					await config.onSettled?.(recorder.suspended);
+				} finally {
+					await this.messageQueue.settle(config.context.threadId, state.executionId);
+				}
 			}
 		}
 	}
@@ -223,7 +239,7 @@ export class AgentTurnExecutionService {
 	): Promise<void> {
 		const finalize = async () =>
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
-		if (config.previewChat) {
+		if (config.previewChat || config.productionN8nChat) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
 			await finalize();
@@ -263,6 +279,7 @@ export class AgentTurnExecutionService {
 		getExecutionId: () => string | undefined = () => undefined,
 		context?: RecordingContext,
 		backgroundJobSignal?: AgentBackgroundJobSignal,
+		startedAt?: Date,
 	): ExecutionRecorder {
 		return new ExecutionRecorder(
 			toolRegistry,
@@ -279,6 +296,7 @@ export class AgentTurnExecutionService {
 				}
 			},
 			backgroundJobSignal,
+			startedAt,
 		);
 	}
 
@@ -290,6 +308,7 @@ export class AgentTurnExecutionService {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (cause) {
+			if (cause instanceof AgentTurnAlreadyRunningError) throw cause;
 			throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError });
 		}
 	}
@@ -327,7 +346,15 @@ export class AgentTurnExecutionService {
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
 		const recordStart = async () =>
-			await this.startExecution(params, recorder.startedAt, executionError);
+			await this.startExecution(
+				{
+					...params,
+					resumeRunId: params.resumeRunId ?? options.automaticContinuationRunId,
+					allowSuspendedPredecessor: Boolean(options.automaticContinuationRunId),
+				},
+				recorder.startedAt,
+				executionError,
+			);
 		const recordFailure = async (executionId: string) => {
 			await this.finalizeExecution({
 				executionId,
@@ -337,18 +364,11 @@ export class AgentTurnExecutionService {
 				params: { ...params, record: recorder.getMessageRecord() },
 			});
 		};
-		if (options.previewChat && options.automaticContinuationRunId) {
-			await this.chatExecutionService.admitAutomaticContinuation(
-				params.threadId,
-				params.agentId,
-				options.automaticContinuationRunId,
-				async () => await recordFailure(await recordStart()),
-			);
-		} else {
-			const executionId = options.previewChat
-				? await this.chatExecutionService.admit(params.threadId, recordStart)
-				: await recordStart();
+		const executionId = await recordStart();
+		try {
 			await recordFailure(executionId);
+		} finally {
+			await this.messageQueue.settle(params.threadId, executionId);
 		}
 	}
 
@@ -359,22 +379,11 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const recordStart = async () => await this.recordTurnStart(turn, config, recorder, state);
-		const startAccepted = async (id: string) =>
-			await this.startAcceptedTurn(id, turn, config, recorder, state, previewControl);
-		if (previewControl && config.automaticPreviewContinuation && turn.type === 'resume') {
-			return await this.chatExecutionService.admitAutomaticContinuation(
-				config.context.threadId,
-				config.context.agentId,
-				turn.options.runId,
-				async () => await startAccepted(await recordStart()),
-			);
-		}
-		const executionId = previewControl
-			? await this.chatExecutionService.admit(config.context.threadId, recordStart)
-			: await recordStart();
+		const executionId =
+			config.admittedExecution?.executionId ??
+			(await this.recordTurnStart(turn, config, recorder, state));
 		state.executionId = executionId;
-		return await startAccepted(executionId);
+		return await this.startAcceptedTurn(executionId, turn, config, recorder, state, previewControl);
 	}
 
 	private async recordTurnStart(
@@ -387,6 +396,8 @@ export class AgentTurnExecutionService {
 		const id = await this.startExecution(
 			{
 				...turn.recording,
+				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
+				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
 					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
 					: {}),
@@ -406,14 +417,36 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
+		const executionSignal = this.agentExecutionService.getAbortSignal(executionId);
+		turn.options.abortSignal = turn.options.abortSignal
+			? AbortSignal.any([turn.options.abortSignal, executionSignal])
+			: executionSignal;
+		if (turn.type === 'start' && turn.options.persistence) {
+			turn.options.persistence.hostMetadata = {
+				...turn.options.persistence.hostMetadata,
+				[EXECUTION_METADATA_KEY]: executionId,
+			};
+		} else if (turn.type === 'resume') {
+			turn.options.hostMetadata = {
+				...turn.options.hostMetadata,
+				[EXECUTION_METADATA_KEY]: executionId,
+			};
+		}
 		if (previewControl) {
 			this.chatExecutionService.register(
-				{ ...config.context, userId: previewControl.userId, executionId },
+				{
+					...config.context,
+					userId: previewControl.userId,
+					executionId,
+					...(config.productionN8nChat ? { productionN8nChat: true } : {}),
+				},
 				previewControl.controller,
 			);
 			previewControl.detachRequest();
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId);
+		turn.options.abortSignal?.throwIfAborted();
+		await config.onAdmitted?.();
 		turn.options.abortSignal?.throwIfAborted();
 		return await this.startTurn(turn, config, recorder, state);
 	}

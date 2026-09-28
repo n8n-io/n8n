@@ -23,6 +23,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 7 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -51,7 +52,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_sessions](public.chat_hub_sessions.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
-| [public.credentials_entity](public.credentials_entity.md) | 13 |  | BASE TABLE |
+| [public.credentials_entity](public.credentials_entity.md) | 14 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -85,6 +86,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
@@ -198,6 +200,8 @@ erDiagram
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
@@ -298,6 +302,8 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--o| "public.instance_ai_checkpoints" : "FOREIGN KEY (#quot;checkpointKey#quot;) REFERENCES instance_ai_checkpoints(key) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -583,6 +589,15 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_message_queue" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  bigint id
+  json payload
+  varchar_32_ source
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_definition" {
   varchar_36_ agentId FK
@@ -876,6 +891,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type
@@ -1187,6 +1203,13 @@ erDiagram
 "public.instance_ai_thread_grants" {
   timestamp_3__with_time_zone createdAt
   varchar_512_ grantKey
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+}
+"public.instance_ai_thread_tabs" {
+  timestamp_3__with_time_zone createdAt
+  json state
   uuid threadId FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK

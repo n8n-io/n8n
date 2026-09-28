@@ -15,7 +15,7 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 
@@ -172,6 +172,15 @@ describe('McpProtectedResource', () => {
 			expect(resource.scopes).toContain('aiPreference:read');
 			expect((await resource.getScopeTools())['aiPreference:read']).toEqual([
 				'get_user_preferences',
+			]);
+		});
+
+		it('advertises the preferences write scope with its three tools', async () => {
+			expect(resource.scopes).toContain('aiPreference:write');
+			expect((await resource.getScopeTools())['aiPreference:write']).toEqual([
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
 			]);
 		});
 

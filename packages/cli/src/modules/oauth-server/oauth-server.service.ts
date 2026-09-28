@@ -30,7 +30,7 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
@@ -163,6 +163,13 @@ export class OAuthServerService implements OAuthServerProvider {
 				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
 				if (!client) {
 					return await this.resolveVirtualClient(clientId);
+				}
+
+				// A persisted first-party row is only an FK placeholder (see `resolveVirtualClient`);
+				// the live resource decides, e.g. after a webhook is switched to bearer-only.
+				if (client.isFirstParty) {
+					const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+					if (!resource?.isFirstParty) return undefined;
 				}
 
 				// Some clients echo back the `scope` they saw on registration and

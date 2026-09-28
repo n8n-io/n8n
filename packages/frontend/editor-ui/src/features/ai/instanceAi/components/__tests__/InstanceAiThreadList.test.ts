@@ -16,8 +16,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: vi.fn() }),
 }));
 
+const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: vi.fn(), showMessage }),
 }));
 
 const { observe } = vi.hoisted(() => ({ observe: vi.fn() }));
@@ -64,6 +66,7 @@ async function renderList(options: Parameters<typeof renderThreadList>[0] = {}) 
 describe('InstanceAiThreadList', () => {
 	beforeEach(() => {
 		observe.mockClear();
+		showMessage.mockClear();
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		const store = mockedStore(useInstanceAiStore);
@@ -174,6 +177,9 @@ describe('InstanceAiThreadList', () => {
 		await nextTick();
 
 		expect(store.renameThread).toHaveBeenCalledWith('a', 'Renamed conversation');
+		await vi.waitFor(() => {
+			expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+		});
 		expect(searchInput).toHaveFocus();
 		expect(emitted().select).toBeUndefined();
 	});

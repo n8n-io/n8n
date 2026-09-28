@@ -30,6 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	applied: [result: AppliedResult];
+	'preflight-updated': [preflight: BlockedApplyResult['preflight']];
 	'source-changed': [result: SourceChangedResult];
 	'close-requested': [resources: CreatedPromotionBinding[]];
 }>();
@@ -58,6 +59,13 @@ watch(
 	},
 	{ immediate: true },
 );
+watch(
+	preflight,
+	(value) => {
+		if (value) emit('preflight-updated', value);
+	},
+	{ immediate: true, flush: 'sync' },
+);
 onBeforeUnmount(bindings.end);
 
 const errorDetail = computed(() =>
@@ -74,6 +82,14 @@ function close() {
 
 function preventBusyDismissal(event: Event) {
 	if (isBusy.value) event.preventDefault();
+}
+
+function preventEscapeDismissal(event: KeyboardEvent) {
+	// An editor can close before this event reaches the parent dialog.
+	const dialog = title.value?.closest('[role="dialog"]');
+	if (isBusy.value || !(event.target instanceof Node) || !dialog?.contains(event.target)) {
+		event.preventDefault();
+	}
 }
 
 function focusTitle(event: Event) {
@@ -131,9 +147,10 @@ async function continueApply() {
 		size="fit"
 		:show-close-button="!isBusy"
 		:trap-focus="!isCreating"
+		:disable-outside-pointer-events="!isCreating"
 		@open-auto-focus="focusTitle"
 		@update:open="close"
-		@escape-key-down="preventBusyDismissal"
+		@escape-key-down="preventEscapeDismissal"
 		@interact-outside="preventBusyDismissal"
 	>
 		<form :class="$style.form" @submit.prevent="continueApply">
@@ -160,6 +177,7 @@ async function continueApply() {
 				</div>
 			</header>
 			<div :class="$style.body" data-test-id="promotion-bindings-body">
+				<slot name="notices" />
 				<p :class="$style.description">{{ i18n.baseText('promotions.bindings.description') }}</p>
 				<N8nCallout v-if="sourceChanged" theme="warning">
 					{{ i18n.baseText('promotions.bindings.sourceChanged') }}

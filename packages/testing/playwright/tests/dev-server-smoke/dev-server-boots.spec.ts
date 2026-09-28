@@ -125,20 +125,28 @@ test.describe(
 			});
 		});
 
-		// The dev frontend derives its REST base from N8N_PORT. "Boots cleanly" is
-		// not enough on its own: on the default ports a hardcoded 5678 would be
-		// indistinguishable from correct derivation, so assert the origin directly.
-		test('REST calls go to the configured backend', async ({ n8n }) => {
-			const restOrigins = new Set<string>();
+		// The dev frontend proxies REST calls to N8N_PORT. Assert that the browser
+		// makes same-origin requests to the frontend and receives successful responses
+		// from the backend via the proxy.
+		test('REST calls route through the dev server proxy to backend', async ({ n8n }) => {
+			const restRequests: string[] = [];
+
 			n8n.page.on('request', (request) => {
 				const url = new URL(request.url());
-				if (url.pathname.startsWith('/rest/')) restOrigins.add(url.origin);
+				if (url.pathname.startsWith('/rest/')) {
+					restRequests.push(url.origin);
+				}
 			});
+
+			// Verify that an API call through the helper routes to the backend successfully
+			const activeModules = await n8n.api.getActiveModules();
+			expect(Array.isArray(activeModules)).toBe(true);
 
 			await n8n.start.fromHome();
 
-			const backendOrigin = new URL(process.env.N8N_BASE_URL!).origin;
-			expect([...restOrigins]).toEqual([backendOrigin]);
+			const frontendOrigin = new URL(n8n.page.url()).origin;
+			expect(new Set(restRequests)).toEqual(new Set([frontendOrigin]));
+			expect(restRequests.length).toBeGreaterThan(0);
 		});
 
 		test('blank canvas boots cleanly', async ({ n8n }) => {

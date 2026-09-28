@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse } from '@n8n/engine';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { ENCODED_BUFFER_KEY } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
@@ -8,6 +10,7 @@ import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-cha
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,
+	SUBSCRIBE_TIMEOUT_MS,
 } from '@/services/engine-v2-webhook-responder.service';
 
 const TIMEOUT_MS = 50_000;
@@ -25,13 +28,14 @@ function fakeReceiver() {
 
 	return {
 		receiver: {
-			receive: (executionId: string, handler: (r: ExecutionResponse) => void) => {
+			receive: async (executionId: string, handler: (r: ExecutionResponse) => void) => {
 				const forExecution = handlers.get(executionId) ?? [];
 				handlers.set(executionId, [...forExecution, handler]);
 
 				return () => handlers.delete(executionId);
 			},
-		} as unknown as ExecutionResponseReceiver,
+			stop: async () => {},
+		} satisfies ExecutionResponseReceiver,
 		deliver: (response: ExecutionResponse) =>
 			handlers.get(response.executionId)?.forEach((h) => h(response)),
 	};
@@ -62,46 +66,56 @@ describe('EngineV2WebhookResponder', () => {
 	let responder: EngineV2WebhookResponder;
 
 	beforeEach(() => {
+		vi.useFakeTimers();
 		const fake = fakeReceiver();
 		deliver = fake.deliver;
 		responder = newResponder();
 		responder.useReceiver(fake.receiver);
 	});
 
-	it('listens under the id the run is started with', () => {
-		const executionId = createExecutionIdV2();
-
-		expect(responder.waitForResponse(executionId).executionId).toBe(executionId);
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
-	it('refuses to listen before the host hands over a receiver', () => {
-		expect(() => newResponder().waitForResponse(createExecutionIdV2())).toThrow(
+	it('listens under the id the run is started with', async () => {
+		const executionId = createExecutionIdV2();
+
+		expect((await responder.waitForResponse(executionId)).executionId).toBe(executionId);
+	});
+
+	it('refuses to listen before the host hands over a receiver', async () => {
+		await expect(newResponder().waitForResponse(createExecutionIdV2())).rejects.toThrow(
 			'without a receiver',
 		);
 	});
 
-	it('refuses a run once it listens for as many as it can hold', () => {
+	it('refuses a run once it listens for as many as it can hold', async () => {
 		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
-			responder.waitForResponse(createExecutionIdV2());
+			await responder.waitForResponse(createExecutionIdV2());
 		}
 
 		// Refused before dispatch, so no run starts that nothing can answer.
-		expect(() => responder.waitForResponse(createExecutionIdV2())).toThrow('Try again later');
+		await expect(responder.waitForResponse(createExecutionIdV2())).rejects.toThrow(
+			'Try again later',
+		);
 	});
 
-	it('listens again once an answered run releases its slot', () => {
-		const pending = Array.from({ length: MAX_PENDING_WEBHOOKS }, () =>
-			responder.waitForResponse(createExecutionIdV2()),
+	it('listens again once an answered run releases its slot', async () => {
+		const pending = await Promise.all(
+			Array.from(
+				{ length: MAX_PENDING_WEBHOOKS },
+				async () => await responder.waitForResponse(createExecutionIdV2()),
+			),
 		);
 
 		pending[0].release();
 
-		expect(() => responder.waitForResponse(createExecutionIdV2())).not.toThrow();
+		await expect(responder.waitForResponse(createExecutionIdV2())).resolves.toBeDefined();
 	});
 
 	it('leaves an unrelated pending run unaffected', async () => {
-		const other = responder.waitForResponse(createExecutionIdV2());
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const other = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 
 		deliver(endedResponse(pending.executionId));
 
@@ -114,7 +128,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports the step the run ended with', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 
 		deliver(endedResponse(pending.executionId));
 
@@ -125,7 +139,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports no last node when that step produced nothing', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 
 		deliver(
 			endedResponse(pending.executionId, {
@@ -136,8 +150,72 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
+	it('reports the response produced by the Respond node', async () => {
+		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'response',
+			response: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+	});
+
+	it('restores a Buffer body the data plane sent as a base64 envelope', async () => {
+		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+		const bytes = Buffer.from([0x00, 0xff, 0x10]);
+		const headers = { 'content-type': 'application/octet-stream', 'content-length': 3 };
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: {
+				body: { [ENCODED_BUFFER_KEY]: bytes.toString('base64') },
+				headers,
+				statusCode: 201,
+			},
+		});
+
+		const outcome = await pending.settled;
+		expect(outcome).toEqual({
+			status: 'response',
+			response: { body: bytes, headers, statusCode: 201 },
+		});
+		expect(Buffer.isBuffer((outcome as { response: { body: unknown } }).response.body)).toBe(true);
+	});
+
+	it('keeps the first terminal outcome', async () => {
+		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'response' });
+	});
+
+	it('ignores a Respond node result when the response mode waits for the last node', async () => {
+		const pending = await responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+	});
+
 	it('reports a failure with the node that caused it', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 
 		deliver(
 			endedResponse(pending.executionId, {
@@ -160,7 +238,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports a response failure without attributing it to a node', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 
 		deliver({
 			type: 'undeliverable',
@@ -178,13 +256,15 @@ describe('EngineV2WebhookResponder', () => {
 		const impatient = newResponder(1);
 		impatient.useReceiver(fakeReceiver().receiver);
 
-		await expect(impatient.waitForResponse(createExecutionIdV2()).settled).resolves.toEqual({
+		const pending = await impatient.waitForResponse(createExecutionIdV2());
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(pending.settled).resolves.toEqual({
 			status: 'timeout',
 		});
 	});
 
 	it('drops later responses for a released run', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2());
 		pending.release();
 
 		deliver(endedResponse(pending.executionId));
@@ -192,5 +272,106 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(Promise.race([pending.settled, Promise.resolve('still waiting')])).resolves.toBe(
 			'still waiting',
 		);
+	});
+
+	it('refuses a second wait for the same execution', async () => {
+		const executionId = createExecutionIdV2();
+		await responder.waitForResponse(executionId);
+
+		await expect(responder.waitForResponse(executionId)).rejects.toThrow(
+			'already waits for a response for this execution',
+		);
+	});
+});
+
+describe('EngineV2WebhookResponder while the receiver subscribes', () => {
+	/** A receiver whose subscriptions complete only when the test says so. */
+	function slowReceiver() {
+		const subscriptions: Array<IDeferredPromise<() => void>> = [];
+
+		return {
+			receiver: {
+				receive: async () => {
+					const subscription = createDeferredPromise<() => void>();
+					subscriptions.push(subscription);
+					return await subscription.promise;
+				},
+				stop: async () => {},
+			} satisfies ExecutionResponseReceiver,
+			subscriptions,
+		};
+	}
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('counts runs that are still subscribing against the limit', async () => {
+		const { receiver } = slowReceiver();
+		const responder = newResponder();
+		responder.useReceiver(receiver);
+
+		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
+			void responder.waitForResponse(createExecutionIdV2());
+		}
+
+		await expect(responder.waitForResponse(createExecutionIdV2())).rejects.toThrow(
+			'Try again later',
+		);
+	});
+
+	it('frees the slot and the timer when the subscription fails', async () => {
+		const { receiver, subscriptions } = slowReceiver();
+		const responder = newResponder();
+		responder.useReceiver(receiver);
+		const executionId = createExecutionIdV2();
+
+		const failed = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(1));
+		subscriptions[0].reject(new Error('Redis is unavailable'));
+
+		await expect(failed).rejects.toThrow('Redis is unavailable');
+		expect(vi.getTimerCount()).toBe(0);
+
+		const retried = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
+		subscriptions[1].resolve(() => {});
+		await expect(retried).resolves.toBeDefined();
+	});
+
+	it('gives up at the subscribe timeout and drops a late subscription', async () => {
+		const { receiver, subscriptions } = slowReceiver();
+		// The response timeout is shorter, but it must not end the subscribe wait.
+		const responder = newResponder(1_000);
+		responder.useReceiver(receiver);
+		const executionId = createExecutionIdV2();
+
+		let settled = false;
+		const waiting = responder.waitForResponse(executionId).finally(() => {
+			settled = true;
+		});
+		const rejection = expect(waiting).rejects.toThrow(`within ${SUBSCRIBE_TIMEOUT_MS / 1000}s`);
+
+		await vi.advanceTimersByTimeAsync(SUBSCRIBE_TIMEOUT_MS - 1);
+		expect(settled).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
+		await rejection;
+		expect(vi.getTimerCount()).toBe(0);
+
+		// The slot is free before the late subscription completes.
+		const retried = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
+
+		const unsubscribe = vi.fn();
+		subscriptions[0].resolve(unsubscribe);
+		await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
+
+		subscriptions[1].resolve(() => {});
+		await expect(retried).resolves.toBeDefined();
 	});
 });
