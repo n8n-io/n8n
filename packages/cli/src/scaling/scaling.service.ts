@@ -376,6 +376,7 @@ export class ScalingService {
 
 		// The worker may have reported the outcome before this wait was registered.
 		if (this.jobResults.has(executionId)) return;
+
 		const earlyFailure = this.jobFailures.get(executionId);
 		if (earlyFailure) {
 			this.jobFailures.delete(executionId);
@@ -385,11 +386,13 @@ export class ScalingService {
 		await new Promise<void>((resolve, reject) => {
 			// Bull job IDs are unique per queue only, so pool queues can reuse them
 			const jobKey = toJobKey(job.queue.name, job.id);
+
 			// ponytail: one status query per minute per in-flight execution; move to
 			// a single batched query if thousands of executions are in flight at once
 			const recheckTimer = setInterval(() => {
 				void this.recheckJobWait(executionId);
 			}, JOB_WAIT_RECHECK_INTERVAL_MS);
+
 			this.pendingJobWaits.set(executionId, { jobKey, resolve, reject, recheckTimer });
 			this.executionIdByJobKey.set(jobKey, executionId);
 		});
@@ -400,14 +403,20 @@ export class ScalingService {
 		const wait = this.clearJobWait(executionId);
 		if (!wait) return false;
 
-		if (error) wait.reject(error);
-		else wait.resolve();
+		if (error) {
+			wait.reject(error);
+		} else {
+			wait.resolve();
+		}
+
 		return true;
 	}
 
 	private settleJobWaitByJobKey(queueName: string, jobId: JobId, error?: Error) {
 		const executionId = this.executionIdByJobKey.get(toJobKey(queueName, jobId));
-		if (executionId) this.settleJobWait(executionId, error);
+		if (!executionId) return;
+
+		this.settleJobWait(executionId, error);
 	}
 
 	/** Drop the wait without settling it, e.g. when the caller cancelled the execution. */
@@ -681,6 +690,7 @@ export class ScalingService {
 						// The worker already reported the underlying error, so this copy is only a handled signal
 						const error = new OperationalError(msg.errorMsg);
 						const settled = this.settleJobWait(msg.executionId, error);
+
 						// A fast failure can arrive before the enqueuing main starts to wait
 						if (!settled && this.activeExecutions.has(msg.executionId)) {
 							this.jobFailures.set(msg.executionId, error);
