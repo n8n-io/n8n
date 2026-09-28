@@ -103,6 +103,10 @@ export const workflowSettingsFieldDocs = {
 
 export const workflowCreateFieldDocs = {
 	name: { example: 'Workflow 1' },
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
 	nodes: { description: 'Nodes that make up the workflow' },
 	nodeGroups: { description: 'Visual groupings of nodes shown as frames on the canvas' },
 	staticData: { description: 'Data the workflow keeps between executions', example: { lastId: 1 } },
@@ -128,10 +132,6 @@ export const workflowCreateFieldDocs = {
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowUpdateFieldDocs = {
-	description: {
-		description: 'Description of the workflow',
-		example: 'My workflow description',
-	},
 	parentFolderId: {
 		writeOnly: true,
 		description:

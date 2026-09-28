@@ -9,7 +9,6 @@ const { projectId: _projectId, ...workflowUpdatePublicShape } = workflowWritePub
 export class UpdateWorkflowPublicDto extends Z.class(
 	{
 		...workflowUpdatePublicShape,
-		description: z.string().optional().openapi(workflowUpdateFieldDocs.description),
 		parentFolderId: z
 			.string()
 			.nullable()

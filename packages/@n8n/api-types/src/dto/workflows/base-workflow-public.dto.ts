@@ -148,13 +148,6 @@ const staticDataWritePublicSchema = z
 	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
-/**
- * The public workflow write surface, shared by the create and update request bodies.
- *
- * `CreateWorkflowPublicDto` uses it as-is. `UpdateWorkflowPublicDto` omits `projectId` from its
- * shape, since a project is only chosen when a workflow is created, and adds `description`, which
- * only the update body has ever accepted.
- */
 export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
@@ -187,4 +180,5 @@ export const workflowWritePublicShape = {
 		.optional()
 		.openapi(workflowCreateFieldDocs.shared),
 	activeVersion: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersion),
+	description: z.string().optional().openapi(workflowCreateFieldDocs.description),
 } as const;
