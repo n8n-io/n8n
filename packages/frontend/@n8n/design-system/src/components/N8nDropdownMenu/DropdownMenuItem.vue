@@ -83,13 +83,13 @@ const hasChildren = computed(() => props.children && props.children.length > 0);
 const hasSubMenu = computed(() => hasChildren.value || props.loading || props.searchable);
 
 const handleSubMenuOpenChange = (open: boolean) => {
+	if (internalSubMenuOpen.value === open) return;
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
 };
 
 const closeSubMenu = () => {
-	internalSubMenuOpen.value = false;
-	emit('update:subMenuOpen', false);
+	handleSubMenuOpenChange(false);
 };
 
 const leadingProps = computed(() => ({
