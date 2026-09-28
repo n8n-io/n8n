@@ -60,6 +60,9 @@
   },
   "typesVersions": {
     "*": {
+      "errors": [
+        "dist/errors/index.d.ts"
+      ],
       "parsers": [
         "dist/parsers/index.d.ts"
       ],
