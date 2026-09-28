@@ -92,24 +92,27 @@ callback end one wait only.
 
 ## Alternatives Considered
 
-- **Add a scope to `ActionScope`.** This option reuses the action token. The audience of that token
-  is the control plane, but the data plane verifies a resume request. Its 60-second lifetime also
-  needs an override. Almost none of the existing spec would remain. The shared enum would also tell
-  a reader that the replay guarantee still applies, which would be false.
-- **Mint the token at suspension and store it on the step row.** This option can revoke one wait
-  without a change to the secret. The derived token cannot do this. The option needs a column. It
-  also makes the shim read the row again to build a message URL. No requirement asks for this
-  revocation path.
-- **Set the expiry to the deadline of the wait.** This option gives the shortest window for a wait
-  that has a deadline. A wait that only a resume request ends has no deadline. Therefore the option
-  needs a second rule for that case. Two rules for one question increase the risk of a gap in the
-  check.
-- **Use one long lifetime, for example ninety days.** This option limits the damage from a URL that
-  leaks. It does not depend on the declaration. It also sets a maximum wait length that no other
-  part of the engine sets. It converts a secret-management problem into a product limit.
-- **Copy engine v1: store a random token per wait and compare it.** This option is known and it can
-  revoke one wait. It needs the column that the derived token avoids. The optional check of v1 is
-  also a failure mode to avoid: with no stored token, v1 makes no check.
+- **Add a scope to `ActionScope`.** We rejected it because almost none of the spec of the action
+  token would remain. The audience of that token is the control plane, but the data plane verifies a
+  resume request, and its 60-second lifetime would need an override. The shared enum would also tell
+  a reader that each token is still valid at one endpoint only, which would be false. This option
+  would reuse an existing token.
+- **Mint the token at suspension and store it on the step row.** We rejected it because it would
+  need a column, and the shim would read the row again to build a message URL. No requirement asks
+  for the revocation path that it would give. This option could revoke one wait without a change to
+  the secret.
+- **Set the expiry to the deadline of the wait.** We rejected it because a wait that only a resume
+  request ends has no deadline, so this option would need a second rule for that case. Two rules for
+  one question increase the risk of a gap in the check. This option would give the shortest window
+  for a wait that has a deadline.
+- **Use one long lifetime, for example ninety days.** We rejected it because it would set a maximum
+  wait length that no other part of the engine sets. It would turn a secret-management problem into
+  a product limit. This option would limit the damage from a URL that leaks, and it would not depend
+  on the declaration.
+- **Copy engine v1: store a random token per wait and compare it.** We rejected it for two reasons.
+  It would need the column that the derived token avoids. The optional check of v1 is also a failure
+  mode to avoid: with no stored token, v1 makes no check. This option is known, and it could revoke
+  one wait.
 - **Name the execution in every token.** We rejected it because an approval from an earlier
   iteration of a loop would end a later wait. This option would need one claim shape only.
 - **Let the URL decide the kind, as engine v1 does.** We rejected it because the rule would then
@@ -143,17 +146,15 @@ callback end one wait only.
   request body. Engine v1 verifies that reference in the control plane. Here the data plane verifies
   it. The control plane reads only the id in the reference, to pick the engine, and forwards the
   body.
-- The approval callback must fit in 64 bytes. Therefore it is a compact reference, not the resume
-  token. Like every token, it states its kind, names its step, binds its decision, and names the
-  secret that signed it.
+- The approval callback must fit in 64 bytes, the limit of Telegram. Therefore it is a compact
+  reference, not the resume token.
 - The control plane picks the engine by the shape of the id in the request, as its other execution
   routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an open resume URL carries the
   execution id in its path, and a signed resume URL and an approval callback carry the step id. An
   id of the wrong shape reaches an engine that rejects the token.
 - The engine cannot revoke one resume URL. A URL stops working when the step leaves the `waiting`
   status, or when its secret leaves the accepted set.
-- The data plane signs with one secret and accepts every secret in a configured set. A token names
-  the secret that signed it, so the verifier finds the secret without a trial of each one.
+- The data plane signs with one secret and accepts every secret in a configured set.
 - A rotation takes two rollouts. The first adds the new secret to the accepted set. The second makes
   it the signing secret. A rotation does not invalidate an outstanding resume URL.
 - The token does not expire, so an old secret stays in the accepted set while a step that it signed
@@ -172,9 +173,8 @@ callback end one wait only.
   that a step still waits. Therefore the resolve path reads the step row in all cases. The token
   does not remove a database read. It decides if the request can continue.
 - A rotation of the shared secret of the two planes does not affect outstanding resume URLs.
-- A derived token without an expiry needs a change to the token primitive. `signSharedSecretToken`
-  always sets `expiresIn`, and `verifySharedSecretToken` always passes `maxAge`. Both values come
-  from the spec. Therefore the change is to make the lifetime optional in the spec.
+- The token primitive must allow a token without an expiry. Therefore the lifetime is optional in
+  the token spec.
 - A resume request can still arrive before the engine records the suspension
   (ADR-20260902-steps-declare-waits). At this endpoint, that window appears as a valid token for a
   step that does not yet hold the `waiting` status.
