@@ -257,6 +257,21 @@ export function extractAiPreferencesBlock(stored: string): string | undefined {
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
+/** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
+const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
+
+/**
+ * The thread artifacts block a stored user message carries, exactly as stored, or
+ * `undefined`. Read from the leading internal blocks only, like the preferences block.
+ * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractThreadArtifactsBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
+}
+
 /** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */
 const PROMPT_TEXT_MAX_LENGTH = 128;
 
@@ -523,8 +538,16 @@ export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
 	resourceAttachments: InstanceAiResourceAttachment[] = [],
 ): string {
-	const previewArtifacts = context?.artifacts ?? [];
-	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
+	// A fixed order, so reordering tabs does not change the block and re-send it.
+	const previewArtifacts = [...(context?.artifacts ?? [])].sort((a, b) =>
+		`${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
+	);
+	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) {
+		// An empty list that the client sent means the user closed every tab.
+		return context
+			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has closed every tab in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
+			: '';
+	}
 
 	const executionByWorkflowId = new Map<string, string>();
 	for (const attachment of resourceAttachments) {
@@ -583,7 +606,10 @@ export function buildThreadArtifactsBlock(
 
 	const prose = [
 		...(previewLines.length > 0
-			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
+			? [
+					'Tabs the user has open in this conversation’s preview, as of this message:',
+					...previewLines,
+				]
 			: []),
 		...(handoffLines.length > 0
 			? [

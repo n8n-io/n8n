@@ -216,6 +216,12 @@ watch(
 	},
 	{ immediate: true },
 );
+// The agent sees the open tabs, not every artifact the thread produced.
+watch(
+	() => preview.openTabs.value,
+	(tabs) => thread.setOpenTabs(tabs),
+	{ immediate: true },
+);
 // --- Setup panel (checklist docked above the composer) ---
 // Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {

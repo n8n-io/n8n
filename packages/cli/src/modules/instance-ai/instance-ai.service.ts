@@ -220,6 +220,7 @@ import {
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
 	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
@@ -4208,9 +4209,18 @@ export class InstanceAiService {
 
 			// Keep setup handoffs first and the user's message last.
 			// Group ambient context in the thread-context wrapper.
+			// One read of the replayed history serves every section sent only when it changed.
+			let replayedHistory: Promise<AgentDbMessage[]> | undefined;
+			const loadReplayedHistory = async () =>
+				await (replayedHistory ??= this.getReplayedMessages(threadId));
 			const threadArtifactsBlock =
 				resumeReason === undefined
-					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
+					? await this.resolveThreadArtifactsTurn(
+							threadId,
+							threadArtifacts,
+							contextAttachments,
+							loadReplayedHistory,
+						)
 					: '';
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
@@ -4223,7 +4233,12 @@ export class InstanceAiService {
 			// already in the history the follow-up replays.
 			const aiPreferencesTurn =
 				aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
-					? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId)
+					? await this.resolveAiPreferencesTurn(
+							user.id,
+							boundProject,
+							threadId,
+							loadReplayedHistory,
+						)
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext.state === 'injected' ? instanceContext.block : '',
@@ -5379,6 +5394,8 @@ export class InstanceAiService {
 		userId: string,
 		project: ProjectSummary | undefined,
 		threadId: string,
+		loadHistory: () => Promise<AgentDbMessage[]> = async () =>
+			await this.getReplayedMessages(threadId),
 	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
 		const resolved = await this.bestEffort(
 			'Instance AI failed to read the AI preferences for this turn',
@@ -5401,7 +5418,7 @@ export class InstanceAiService {
 		const history = await this.bestEffort(
 			'Instance AI failed to read the last AI preferences block of this thread',
 			{ threadId },
-			async () => await this.findAiPreferencesHistory(threadId),
+			async () => await this.findAiPreferencesHistory(loadHistory),
 		);
 		const lastBlock = history?.block;
 		const savedSinceLastBlock = history?.savedSinceLastBlock === true;
@@ -5460,9 +5477,9 @@ export class InstanceAiService {
 	 * current preferences must be injected again when the window has no block.
 	 */
 	private async findAiPreferencesHistory(
-		threadId: string,
+		loadHistory: () => Promise<AgentDbMessage[]>,
 	): Promise<{ block?: string; savedSinceLastBlock: boolean }> {
-		const history = await this.getReplayedMessages(threadId);
+		const history = await loadHistory();
 		let savedSinceLastBlock = false;
 		for (let i = history.length - 1; i >= 0; i--) {
 			const m = history[i];
@@ -5482,6 +5499,50 @@ export class InstanceAiService {
 			if (block !== undefined) return { block, savedSinceLastBlock };
 		}
 		return { savedSinceLastBlock };
+	}
+
+	/**
+	 * The open tabs block for this turn, or `''` when the agent already has the same
+	 * block in its replayed history. The agent reads the latest block as the current
+	 * tabs, so an unchanged block is not sent again.
+	 */
+	private async resolveThreadArtifactsTurn(
+		threadId: string,
+		context: InstanceAiThreadArtifactsContext | undefined,
+		attachments: InstanceAiResourceAttachment[],
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string> {
+		const freshBlock = buildThreadArtifactsBlock(context, attachments);
+		if (!freshBlock) return '';
+		// A hand-off always rides its own turn: the parser rebuilds the attachments from it.
+		if (attachments.length > 0) return freshBlock;
+
+		const history = await this.bestEffort(
+			'Instance AI failed to read the last thread artifacts block of this thread',
+			{ threadId },
+			async () => ({ block: await this.findLastThreadArtifactsBlock(loadHistory) }),
+		);
+		// Send the block when the history cannot be read, so the agent never has stale tabs.
+		if (!history) return freshBlock;
+		if (history.block === undefined) {
+			// With no earlier block, there is no list to correct, so "no tabs" needs no block.
+			return context?.artifacts.length === 0 ? '' : freshBlock;
+		}
+		return asStoredThreadContextSection(freshBlock) === history.block ? '' : freshBlock;
+	}
+
+	/** The latest thread artifacts block in the replay window, or `undefined`. */
+	private async findLastThreadArtifactsBlock(
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string | undefined> {
+		const history = await loadHistory();
+		for (let i = history.length - 1; i >= 0; i--) {
+			const m = history[i];
+			if (!('role' in m) || m.role !== 'user') continue;
+			const block = extractThreadArtifactsBlock(this.extractStoredMessageText(m.content));
+			if (block !== undefined) return block;
+		}
+		return undefined;
 	}
 
 	/**

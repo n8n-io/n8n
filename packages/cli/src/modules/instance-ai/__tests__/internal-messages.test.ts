@@ -12,6 +12,7 @@ import {
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
 	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
@@ -693,6 +694,30 @@ describe('withAiPreferences', () => {
  * two halves of that comparison: extraction from a stored message, and the storage form of
  * a fresh render.
  */
+describe('extractThreadArtifactsBlock', () => {
+	const block = buildThreadArtifactsBlock({
+		artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+		activeId: 'wf-1',
+	});
+
+	it('returns the block exactly as the thread-context wrapper stored it', () => {
+		const stored = [
+			buildThreadContextBlock([
+				instanceContextMarker(),
+				block,
+				buildCurrentDateTimeBlock('Monday 1 January 2026'),
+			]),
+			'Change it',
+		].join('\n\n');
+
+		expect(extractThreadArtifactsBlock(stored)).toBe(asStoredThreadContextSection(block));
+	});
+
+	it('ignores a tag lookalike in the user text', () => {
+		expect(extractThreadArtifactsBlock(`Please explain\n${block}`)).toBeUndefined();
+	});
+});
+
 describe('extractAiPreferencesBlock', () => {
 	const block = renderAiPreferencesBlock({
 		instance: [],
@@ -748,9 +773,27 @@ describe('extractAiPreferencesBlock', () => {
 });
 
 describe('buildThreadArtifactsBlock', () => {
-	it('returns empty when there are no artifacts', () => {
+	it('returns empty when the client sent no tabs', () => {
 		expect(buildThreadArtifactsBlock(undefined)).toBe('');
-		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe('');
+	});
+
+	it('says the user closed every tab when the client sent an empty list', () => {
+		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe(
+			'<thread-artifacts>\nThe user has closed every tab in this conversation’s preview.\n</thread-artifacts>',
+		);
+	});
+
+	it('lists the open tabs as of this message, in the same order however the tabs are sorted', () => {
+		const workflow = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+		const table = { type: 'data-table' as const, id: 'dt-1', name: 'FAQ' };
+
+		const block = buildThreadArtifactsBlock({ artifacts: [workflow, table] });
+
+		expect(block).toContain(
+			'Tabs the user has open in this conversation’s preview, as of this message:',
+		);
+		expect(block.indexOf('Data table "FAQ"')).toBeLessThan(block.indexOf('Workflow "Digest"'));
+		expect(buildThreadArtifactsBlock({ artifacts: [table, workflow] })).toBe(block);
 	});
 
 	it('marks the focused tab as current and lists the rest', () => {

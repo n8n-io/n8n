@@ -141,6 +141,17 @@ A request to build something genuinely new goes straight to the build path — n
 `;
 }
 
+/**
+ * The turn sends the tabs block only when the open tabs change, so the model
+ * needs to know what a user message without one means.
+ */
+function getPreviewTabsSection(): string {
+	return `
+## Preview Tabs
+
+The latest \`<thread-artifacts>\` block lists the tabs the user has open now, and a user message without one means nothing changed. An item the latest block no longer lists was closed: act on it when the user asks, but do not assume the user is looking at it.`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -233,6 +244,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
+${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}

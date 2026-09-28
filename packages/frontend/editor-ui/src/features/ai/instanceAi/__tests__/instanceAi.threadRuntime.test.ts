@@ -1746,6 +1746,22 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		);
 	});
 
+	test('sendMessage forwards the open tabs instead of every produced artifact', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Closed' });
+		runtime.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Open' });
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open' }],
+			activeId: 'wf-2',
+		});
+	});
+
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);
