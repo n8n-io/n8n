@@ -16,7 +16,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { Agent } from '@/features/agents/agent.types';
+import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
@@ -36,7 +36,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const agentsLoading = ref(false);
-const availableAgents = ref<Agent[]>([]);
+const availableAgents = ref<McpAgent[]>([]);
 const availableAgentsTotal = ref(0);
 const agentsTableState = ref<TableOptions>({
 	page: 0,
