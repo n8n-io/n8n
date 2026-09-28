@@ -67,7 +67,7 @@ test.describe(
 	'Webhook isolate skip',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		test('skips the webhook-phase isolate only when the trigger evaluates nothing', async ({
+		test('skips the webhook-phase isolate only when the trigger evaluates nothing @engine:v2', async ({
 			api,
 		}) => {
 			// Identical workflows but for the trigger's parameters, so the difference
@@ -113,7 +113,7 @@ test.describe(
 			expect(await response.text()).toBe('');
 		});
 
-		test('serves a last-node response with property selection and content type natively', async ({
+		test('serves a last-node response with property selection and content type natively @engine:v2', async ({
 			api,
 		}) => {
 			const response = await triggerTransformed(api, (node) => {
@@ -128,7 +128,9 @@ test.describe(
 			expect(await response.text()).toContain('static-ok');
 		});
 
-		test('parses a multipart body without the webhook-phase isolate', async ({ api }) => {
+		test('parses a multipart body without the webhook-phase isolate @engine:v2', async ({
+			api,
+		}) => {
 			const boundary = '----isolateSkipBoundary';
 			const response = await triggerTransformed(api, () => {}, {
 				headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
@@ -146,7 +148,9 @@ test.describe(
 			expect(await response.json()).toMatchObject({ result: 'static-ok' });
 		});
 
-		test('acquires for typeVersion 1, whose body parsing evaluates a template', async ({ api }) => {
+		test('acquires for typeVersion 1, whose body parsing evaluates a template @engine:v2', async ({
+			api,
+		}) => {
 			// Same comparative shape as the headline test: v1 must fall back to the
 			// engine, so it costs strictly more acquires than the gated v2 request.
 			const staticAcquires = await acquiresForTrigger(
