@@ -45,7 +45,7 @@ const DAYTONA_API_URL = 'https://app.daytona.io/api';
 const N8N_SANDBOX_HEADER = 'x-api-key';
 const STATIC_SECRET_MASK = '••••••••••••';
 const SANDBOX_DOCS_URL =
-	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant#pick-your-setup';
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant#setup-2-self-host-the-sandbox-manually-advanced';
 const SEARCH_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant#enable-web-search';
 const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
