@@ -1,5 +1,4 @@
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseSender } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type { ExecutionStatus } from './execution.types';
 import type { StepStore } from './step-store';
@@ -10,19 +9,14 @@ export interface CancelExecutionResult {
 }
 
 /**
- * Ends an execution on request.
- *
- * The same mechanics a step failure uses: end the execution, then cancel every
- * step nothing has claimed. A `running` step is left to its worker, which
- * records the outcome it produces; the ended execution plans nothing behind it.
- * TODO(CAT-4757): interrupt running steps through their executor.
+ * Ends an execution on request. No more steps will be planned.
+ * TODO(CAT-4757): interrupt already-running steps through their executor.
  */
 export class CancelExecutionService {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
-		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
 	/** @throws {ExecutionNotFoundError} if absent. */
@@ -30,29 +24,20 @@ export class CancelExecutionService {
 		const cancelled = await this.executionStore.cancelExecution(executionId);
 		// Loaded after the compare-and-set, so a lost race reports the status that won.
 		const execution = await this.executionStore.loadExecution(executionId);
-		if (!cancelled && execution.status !== 'cancelled') return { status: execution.status };
 
-		// After the execution ended, like the failure sweep, so a step planned or
-		// claimed in between finds the execution ended and refuses. Repeated on a
-		// repeated cancel, so a retry heals a sweep that failed the first time.
-		await this.stepStore.cancelPendingSteps(executionId);
-		if (!cancelled) return { status: 'cancelled' };
+		// Also on a repeated cancel, so a retry heals a sweep that failed the first time.
+		if (execution.status === 'cancelled') await this.stepStore.cancelPendingSteps(executionId);
 
-		// Only the request whose write won announces the end.
-		this.lifecycleEventPublisher.publish({
-			type: 'execution:cancelled',
-			executionId,
-			workflowId: execution.workflowId,
-			at: new Date().toISOString(),
-		});
-		this.responseSender.send({
-			type: 'ended',
-			executionId,
-			workflowId: execution.workflowId,
-			status: 'cancelled',
-			lastStep: null,
-		});
+		if (cancelled) {
+			// Only the request whose write won announces the end.
+			this.lifecycleEventPublisher.publish({
+				type: 'execution:cancelled',
+				executionId,
+				workflowId: execution.workflowId,
+				at: new Date().toISOString(),
+			});
+		}
 
-		return { status: 'cancelled' };
+		return { status: execution.status };
 	}
 }
