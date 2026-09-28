@@ -267,8 +267,12 @@ export function sanitisePromptText(value: string): string {
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
-export function getProjectContextSection(project: { name: string; type: string }): string {
-	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
+export function getProjectContextSection(project: {
+	id: string;
+	name: string;
+	type: string;
+}): string {
+	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}, id: \`${sanitisePromptText(project.id)}\`).`;
 }
 
 /**
