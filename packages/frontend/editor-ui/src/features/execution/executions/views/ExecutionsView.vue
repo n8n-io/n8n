@@ -20,6 +20,7 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoadingState.vue';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { VIEWS } from '@/app/constants';
+import { useExecutionFiltersQuery } from '../composables/useExecutionFiltersQuery';
 
 const route = useRoute();
 const router = useRouter();
@@ -28,6 +29,7 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
+const { restoreQuery, updateFilters } = useExecutionFiltersQuery();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
@@ -93,6 +95,7 @@ onMounted(async () => {
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
 	await executionsStore.initialize();
+	await restoreQuery();
 });
 
 onBeforeUnmount(() => {
@@ -125,9 +128,7 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
-	executionsStore.reset();
-	executionsStore.setFilters(newFilters);
-	await executionsStore.initialize();
+	await updateFilters(newFilters);
 }
 
 async function onExecutionStop() {

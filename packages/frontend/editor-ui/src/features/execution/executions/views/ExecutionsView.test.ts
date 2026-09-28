@@ -170,11 +170,49 @@ describe('ExecutionsView', () => {
 		expect(executionsStore.filters.status).toBe('error');
 
 		view.unmount();
+		route.query = {};
 		const returnedView = renderComponent({ pinia });
 		await waitAllPromises();
 
 		expect(returnedView.getByTestId('global-executions-list-stub')).toBeInTheDocument();
 		expect(executionsStore.filters.status).toBe('error');
 		expect(Object.values(route.query).join(' ')).toContain('error');
+	});
+
+	it('restores filters from a shared executions link before loading', async () => {
+		route.query = {
+			executionFilters: JSON.stringify({ status: 'error', startDate: '2026-09-01T12:00:00.000Z' }),
+		};
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		const listStore = useWorkflowsListStore();
+		vi.spyOn(executionsStore, 'initialize').mockResolvedValue();
+		vi.spyOn(listStore, 'fetchAllWorkflows').mockResolvedValue([]);
+		vi.spyOn(listStore, 'hasFetchedAllWorkflows').mockReturnValue(true);
+		listStore.workflowsById = { w1: { id: 'w1' } as IWorkflowDb };
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(getByTestId('global-executions-list-stub')).toBeInTheDocument();
+		expect(executionsStore.filters.status).toBe('error');
+		expect(executionsStore.filters.startDate).toEqual(new Date('2026-09-01T12:00:00.000Z'));
+		expect(executionsStore.initialize).toHaveBeenCalled();
+	});
+
+	it('uses default filters when the URL filter is invalid', async () => {
+		route.query = { executionFilters: '{invalid' };
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		const executionsStore = useExecutionsStore();
+		executionsStore.filters.status = 'error';
+		vi.spyOn(executionsStore, 'initialize').mockResolvedValue();
+		vi.spyOn(useWorkflowsListStore(), 'fetchAllWorkflows').mockResolvedValue([]);
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(executionsStore.filters.status).toBe('all');
 	});
 });

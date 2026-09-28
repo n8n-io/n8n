@@ -395,7 +395,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	function reset() {
 		itemsPerPage.value = 10;
-		filters.value = getDefaultExecutionFilters();
 		autoRefresh.value = true;
 		initialLoadComplete.value = false;
 		resetData();

@@ -29,6 +29,7 @@ import {
 } from '@n8n/design-system';
 
 export type ExecutionFilterProps = {
+	initialFilters?: ExecutionFilterType;
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	workflowId?: string;
 	popoverSide?: 'top' | 'right' | 'bottom' | 'left';
@@ -74,7 +75,14 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	vote: 'all',
 	workflowVersionId: 'all',
 });
-const filter = reactive(getDefaultFilter());
+const filter = reactive({
+	...getDefaultFilter(),
+	...props.initialFilters,
+	annotationTags: [...(props.initialFilters?.annotationTags ?? [])],
+	metadata: props.initialFilters?.metadata?.length
+		? props.initialFilters.metadata.map((item) => ({ ...item }))
+		: getDefaultFilter().metadata,
+});
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);

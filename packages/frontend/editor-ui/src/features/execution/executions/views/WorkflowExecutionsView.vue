@@ -16,8 +16,10 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useExecutionFiltersQuery } from '../composables/useExecutionFiltersQuery';
 
 const executionsStore = useExecutionsStore();
+const { restoreQuery, updateFilters } = useExecutionFiltersQuery();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
@@ -93,6 +95,7 @@ onMounted(async () => {
 	}
 
 	await initializeRoute();
+	await restoreQuery();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
 
@@ -195,9 +198,7 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
-	executionsStore.reset();
-	executionsStore.setFilters(newFilters);
-	await executionsStore.initialize(workflowId.value);
+	await updateFilters(newFilters, workflowId.value);
 }
 
 async function onExecutionStop(id?: string) {

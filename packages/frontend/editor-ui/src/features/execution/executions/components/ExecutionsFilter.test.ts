@@ -176,6 +176,14 @@ describe('ExecutionsFilter', () => {
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
 	});
 
+	test('shows restored filters as active', () => {
+		const { getByTestId } = renderComponent({
+			props: { initialFilters: { ...defaultFilterState, status: 'error' } },
+		});
+
+		expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
+	});
+
 	test('shows annotation filters when advanced filters are enabled', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
