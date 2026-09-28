@@ -147,7 +147,7 @@ feat(API)!: Remove deprecated v1 endpoints
 
 ### No changelog entry
 ```
-refactor(core): Simplify error handling (no-changelog)
+feat(core): Experimental feature not enabled yet (no-changelog)
 ```
 
 ### No scope (affects multiple areas)
