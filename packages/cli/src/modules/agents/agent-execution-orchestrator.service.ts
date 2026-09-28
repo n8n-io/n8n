@@ -600,6 +600,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						attachments,
 						source: N8N_CHAT_PRODUCTION_SOURCE,

@@ -977,7 +977,8 @@ describe('AgentChatController production n8n Chat', () => {
 		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);
 		agentExecutionOrchestratorService.executeForN8nChatPublished.mockImplementation(
-			async function* () {
+			async function* (config) {
+				config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 				yield { type: 'text-delta', id: 'text-1', delta: 'Hi' };
 			},
 		);
@@ -994,6 +995,14 @@ describe('AgentChatController production n8n Chat', () => {
 			}),
 		);
 		expect(writes.some((line) => line.includes('"delta":"Hi"'))).toBe(true);
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toContainEqual({
+			type: 'execution-started',
+			executionId: 'exec-99',
+			sessionId: 'thread-1',
+			inputMessageIds: ['message-1'],
+		});
 	});
 
 	it('rejects a foreign session before saving an attachment', async () => {
@@ -1020,8 +1029,12 @@ describe('AgentChatController production n8n Chat', () => {
 	it('checks publication and the production checkpoint scope before resuming', async () => {
 		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);
-		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {});
-		await controller.productionChatResume(request as never, makeSseResponse([]), 'agent-1', {
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
+			yield { type: 'text-delta', id: 'text-1', delta: 'Done' };
+		});
+		const writes: string[] = [];
+		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
 			runId: 'run-1',
 			toolCallId: 'call-1',
 			resumeData: { approved: true },
@@ -1033,6 +1046,14 @@ describe('AgentChatController production n8n Chat', () => {
 				expectedMemory: { resourceId: 'n8n-chat-production:user-1' },
 			}),
 		);
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toContainEqual({
+			type: 'execution-started',
+			executionId: 'exec-99',
+			sessionId: 'thread-1',
+			inputMessageIds: ['message-1'],
+		});
 	});
 
 	it('rejects production resume when the channel is not published', async () => {
