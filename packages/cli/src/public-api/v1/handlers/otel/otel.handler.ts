@@ -1,4 +1,4 @@
-import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
+import { UpdateOtelSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
@@ -6,7 +6,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { OtelLifecycleHandler } from '@/modules/otel/otel-lifecycle-handler';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
-import { OtelService } from '@/modules/otel/otel.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { toOtelSettingsResponse } from './otel.mapper';
@@ -17,7 +16,6 @@ import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/
 type OtelHandlers = {
 	getOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Get>;
 	updateOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Update>;
-	testOtelTrace: PublicAPIEndpoint<OtelSettingsRequest.Test>;
 };
 
 const otelHandlers: OtelHandlers = {
@@ -63,22 +61,6 @@ const otelHandlers: OtelHandlers = {
 			void Container.get(Publisher).publishCommand({ command: 'reload-otel-config' });
 
 			return res.json(toOtelSettingsResponse(settingsService.getSettings()));
-		},
-	],
-
-	testOtelTrace: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'otel:manage' }),
-		async (req, res) => {
-			const payload = TestOtelTraceDto.safeParse(req.body);
-			if (!payload.success) {
-				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
-			}
-
-			const settingsService = Container.get(OtelSettingsService);
-			const connection = settingsService.resolveTestConnection(payload.data);
-			const result = await Container.get(OtelService).sendTestTrace(connection);
-
-			return res.json(result);
 		},
 	],
 };

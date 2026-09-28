@@ -488,6 +488,18 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects an unknown field with 400', async () => {
+			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, unknown: true });
+
+			expect(response.status).toBe(400);
+			expect(sendTestTrace).not.toHaveBeenCalled();
+		});
+
 		it('accepts a connection body written before exporterProtocol existed', async () => {
 			const sendTestTrace = vi
 				.spyOn(Container.get(OtelService), 'sendTestTrace')
@@ -512,6 +524,20 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(testConnection);
 
 			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the API key lacks the otel:manage scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post('/settings/otel/test-trace')
+				.send(testConnection);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(sendTestTrace).not.toHaveBeenCalled();
 		});
 	});
 });
