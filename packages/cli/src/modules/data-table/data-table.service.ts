@@ -335,6 +335,15 @@ export class DataTableService {
 
 		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
+			if (dto.sortBy) {
+				const [sortColumn] = dto.sortBy;
+				if (
+					!columns.some(({ name }) => name === sortColumn) &&
+					!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn)
+				) {
+					throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
+				}
+			}
 			const transformedDto = dto.filter
 				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
 				: dto;

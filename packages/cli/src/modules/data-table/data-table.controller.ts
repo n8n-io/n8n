@@ -299,6 +299,8 @@ export class DataTableController {
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
 			} else {
