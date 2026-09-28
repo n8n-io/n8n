@@ -2095,7 +2095,7 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		const response = await authOwnerAgent.get('/data-tables/not-a-nanoid/columns');
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/dataTableId must match format "nanoid"');
 	});
 
 	test('should list columns for a data table', async () => {
@@ -2207,7 +2207,7 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 		});
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/dataTableId must match format "nanoid"');
 	});
 
 	test('should add a column', async () => {
@@ -2324,7 +2324,7 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 		);
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/dataTableId must match format "nanoid"');
 	});
 
 	test('should reject a malformed column id', async () => {
@@ -2338,7 +2338,7 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 		);
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/columnId must match format "nanoid"');
 	});
 
 	test('should delete a column', async () => {
@@ -2431,7 +2431,7 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			.send({ name: 'renamed' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/dataTableId must match format "nanoid"');
 	});
 
 	test('should reject a malformed column id', async () => {
@@ -2445,7 +2445,7 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			.send({ name: 'renamed' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/params/columnId must match format "nanoid"');
 	});
 
 	test('should rename a column', async () => {
@@ -2542,7 +2542,7 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			.send({});
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe('request/body At least one field is required');
 	});
 
 	test('should fail with duplicate column name', async () => {
@@ -2562,7 +2562,9 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			.send({ name: 'email' });
 
 		expect(response.statusCode).toBe(409);
-		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toBe(
+			"Data table column with name 'email' already exists in data table 'duplicate-name-column-test'",
+		);
 	});
 
 	test.each(DATA_TABLE_SYSTEM_COLUMNS)(
@@ -2581,7 +2583,9 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 				.send({ name: systemColumnName });
 
 			expect(response.statusCode).toBe(409);
-			expect(response.body).toHaveProperty('message');
+			expect(response.body.message).toBe(
+				`Column name "${systemColumnName}" is reserved as a system column name.`,
+			);
 		},
 	);
 
