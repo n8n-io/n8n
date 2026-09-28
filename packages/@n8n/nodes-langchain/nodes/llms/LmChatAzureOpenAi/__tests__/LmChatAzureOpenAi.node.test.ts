@@ -188,6 +188,30 @@ describe('LmChatAzureOpenAi', () => {
 			},
 		);
 
+		// The shared chain looks for JSON in modelKwargs.response_format, which the Responses
+		// API never sets. Only that one combination may carry the flag that tells the chain directly.
+		it.each([
+			[true, 'json_object', 'json'],
+			[false, 'json_object', undefined],
+			[true, undefined, undefined],
+		])(
+			'should tell the chain to parse JSON only on Responses with json_object (on=%s, format=%s)',
+			async (enabled, responseFormat, expected) => {
+				const ctx = setupMockContext(
+					'azureOpenAiApi',
+					foundry,
+					responseFormat ? { responseFormat } : {},
+					enabled,
+				);
+
+				await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+				const params = vi.mocked(ChatOpenAI).mock.calls[0][0];
+				expect(params).toBeDefined();
+				expect(params!.metadata?.output_format).toBe(expected);
+			},
+		);
+
 		// Azure answers the route it does not serve with a bare 404, which reads as a missing
 		// deployment. The handler has to say which API the node asked for.
 		it.each([
