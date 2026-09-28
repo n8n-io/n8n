@@ -490,6 +490,12 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'The signup survey answer to "What team are you on?". Null when the survey did not answer it, so the card asks',
 				),
+			team_source: z
+				.enum(['cloud', 'url'])
+				.nullable()
+				.describe(
+					'Where the team answer came from: the n8n Cloud account, or the `?team=` query of a test run. Null when there is no team',
+				),
 		}),
 	},
 	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
@@ -503,11 +509,37 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.string()
 				.nullable()
 				.describe('From the signup survey or the card. Null when the card step was skipped'),
+			team_source: z
+				.enum(['cloud', 'url', 'card'])
+				.nullable()
+				.describe(
+					'Where the team came from: the n8n Cloud account, the `?team=` query of a test run, or the card. Null when the card step was skipped',
+				),
 			apps: z.array(z.string()).describe('Apps picked in the card, by their shown names'),
 			custom_text: z
 				.string()
 				.nullable()
 				.describe('Free text typed in the card, which starts the first model turn'),
+		}),
+	},
+	AI_ASSISTANT_ONBOARDING_ENDED: {
+		name: 'AI Assistant onboarding ended',
+		description:
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, or when a run fails.',
+		properties: z.object({
+			thread_id: z.string(),
+			instance_id: z.string(),
+			outcome: z
+				.enum(['build', 'left', 'run_failed'])
+				.describe(
+					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted',
+				),
+			leave_reason: z
+				.string()
+				.nullable()
+				.describe(
+					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
+				),
 		}),
 	},
 });

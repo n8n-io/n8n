@@ -19,7 +19,18 @@ export function createLeaveOnboardingTool() {
 					'task, then help them with what they asked. Not needed before a build: a build ends the ' +
 					'onboarding by itself.',
 			)
-			.input(z.object({}))
+			.input(
+				z.object({
+					// ponytail: optional, so a call without a reason still ends the onboarding.
+					reason: z
+						.enum(['stop', 'explore', 'unrelated_request'])
+						.optional()
+						.describe(
+							'Why the onboarding ends: the user wants to stop, wants to explore n8n on their ' +
+								'own, or asked for something unrelated to picking a first automation.',
+						),
+				}),
+			)
 			.output(z.object({ left: z.boolean(), note: z.string() }))
 			// ponytail: the frontend persists the exit (thread metadata `onboardingLeft`) when it sees
 			// this call. Persist it here once the backend must know without a connected client.

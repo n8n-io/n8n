@@ -12,6 +12,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	UNLIMITED_CREDITS,
 	type InstanceAiThreadHistoryResponse,
@@ -36,7 +37,11 @@ import {
 	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
-import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import {
+	createThreadRuntime,
+	type OnboardingExitOutcome,
+	type ThreadRuntime,
+} from './instanceAi.threadRuntime';
 import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
@@ -89,7 +94,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
-		onOnboardingLeft: (threadId) => leaveOnboarding(threadId),
+		onOnboardingLeft: leaveOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -439,9 +444,19 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		);
 	}
 	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
-	function leaveOnboarding(threadId: string): void {
+	function leaveOnboarding(
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	): void {
 		if (!isOnboardingChromeHidden(threadId)) return;
 		void updateThreadMetadata(threadId, { onboardingLeft: true });
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			outcome,
+			leave_reason: leaveReason ?? null,
+		});
 	}
 
 	return {

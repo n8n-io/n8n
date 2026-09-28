@@ -52,17 +52,23 @@ type Answer = GivenAnswer & { question: string };
  */
 const surveySchema = z.object({ what_team_are_you_on: z.string().optional() });
 type Survey = z.infer<typeof surveySchema>;
-const launchContextSchema = z.object({ survey: surveySchema.optional() });
+/** Where the survey came from: the n8n Cloud account, or the `?team=` query of a test run. */
+const surveySourceSchema = z.enum(['cloud', 'url']);
+type SurveySource = z.infer<typeof surveySourceSchema> | null;
+const launchContextSchema = z.object({
+	survey: surveySchema.optional(),
+	surveySource: surveySourceSchema.optional(),
+});
 /** Card question id -> the survey key that answers it. */
 // ponytail: one pair; move it into the opening when a second survey-backed question shows up.
 const SURVEY_KEY_BY_QUESTION: Partial<Record<string, keyof Survey>> = {
 	team: 'what_team_are_you_on',
 };
 
-function surveyOf(sourceContext: unknown): Survey {
+function surveyOf(sourceContext: unknown): { survey: Survey; surveySource: SurveySource } {
 	const parsed = launchContextSchema.safeParse(sourceContext ?? {});
 	if (!parsed.success) throw new BadRequestError('Invalid onboarding survey in sourceContext');
-	return parsed.data.survey ?? {};
+	return { survey: parsed.data.survey ?? {}, surveySource: parsed.data.surveySource ?? null };
 }
 
 /**
@@ -152,7 +158,7 @@ export class InstanceAiOnboardingService {
 		launchMetadata: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
 		// Read the survey before the thread exists, so a bad survey creates nothing.
-		const survey = surveyOf(launchMetadata.sourceContext);
+		const { survey, surveySource } = surveyOf(launchMetadata.sourceContext);
 		const { shown } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const response = await this.memoryService.ensureThread(
 			user.id,
@@ -180,10 +186,12 @@ export class InstanceAiOnboardingService {
 			text: greeting,
 			card: { title: ONBOARDING_OPENING.title, questions: shown },
 		});
+		const team = survey.what_team_are_you_on?.trim() || null;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_AI_ASSISTANT_ONBOARDING, {
 			user_id: user.id,
 			thread_id: threadId,
-			team: survey.what_team_are_you_on?.trim() || null,
+			team,
+			team_source: team ? surveySource : null,
 		});
 		return response;
 	}
@@ -208,10 +216,8 @@ export class InstanceAiOnboardingService {
 		if (!row?.toolCallId) return undefined;
 
 		const metadata = await this.memoryService.getThreadMetadata(userId, row.threadId);
-		const { questions, shown, answered } = applySurvey(
-			ONBOARDING_OPENING.questions,
-			surveyOf(metadata?.sourceContext),
-		);
+		const { survey, surveySource } = surveyOf(metadata?.sourceContext);
+		const { questions, shown, answered } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const given = request.kind === 'questions' ? request.answers : [];
 		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
 		const answerFor = (question: Question): Answer => ({
@@ -239,10 +245,14 @@ export class InstanceAiOnboardingService {
 			if (fromSurvey) return [fromSurvey];
 			return given.find((answer) => answer.questionId === id)?.selectedOptions ?? [];
 		};
+		const team = picked('team')[0] ?? null;
+		// The survey answered the team step, or the card did, or the user skipped it.
+		const teamSource = answered.has('team') ? surveySource : team ? 'card' : null;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD, {
 			user_id: userId,
 			thread_id: row.threadId,
-			team: picked('team')[0] ?? null,
+			team,
+			team_source: teamSource,
 			apps: picked('apps'),
 			custom_text:
 				given

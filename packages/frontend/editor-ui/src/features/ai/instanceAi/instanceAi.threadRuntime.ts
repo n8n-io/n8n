@@ -104,7 +104,13 @@ export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
 /** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
-const ONBOARDING_EXIT_TOOL_NAMES = new Set(['leave-onboarding', 'build-workflow']);
+/** How an onboarding thread ended; the telemetry value of each exit. */
+export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
+/** Tool calls that end the onboarding flow, with the outcome each one reports. */
+const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
+	['leave-onboarding', 'left'],
+	['build-workflow', 'build'],
+]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
 
@@ -141,7 +147,11 @@ export interface ThreadRuntimeHooks {
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
 	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
-	onOnboardingLeft?: (threadId: string) => void;
+	onOnboardingLeft?: (
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -1098,13 +1108,21 @@ export function createThreadRuntime(
 			}
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
-			const endsOnboarding =
-				(parsed.data.type === 'tool-call' &&
-					ONBOARDING_EXIT_TOOL_NAMES.has(parsed.data.payload.toolName)) ||
-				(parsed.data.type === 'run-finish' &&
-					(parsed.data.payload.status === 'error' || parsed.data.payload.status === 'interrupted'));
-			if (endsOnboarding) {
-				hooks.onOnboardingLeft?.(threadId);
+			if (parsed.data.type === 'tool-call') {
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const reason = parsed.data.payload.args.reason;
+				if (outcome) {
+					hooks.onOnboardingLeft?.(
+						threadId,
+						outcome,
+						typeof reason === 'string' ? reason : undefined,
+					);
+				}
+			} else if (
+				parsed.data.type === 'run-finish' &&
+				(parsed.data.payload.status === 'error' || parsed.data.payload.status === 'interrupted')
+			) {
+				hooks.onOnboardingLeft?.(threadId, 'run_failed');
 			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
@@ -1815,6 +1833,7 @@ export function createThreadRuntime(
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		resolveActionSource,
 		addAlwaysAllowKey,
 		canAlwaysAllow,
 		findToolCallByRequestId,
