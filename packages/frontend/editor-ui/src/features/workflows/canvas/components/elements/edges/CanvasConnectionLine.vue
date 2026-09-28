@@ -5,7 +5,6 @@ import { BaseEdge } from '@vue-flow/core';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
-import { CanvasConnectionMode } from '../../../canvas.types';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { parseCanvasConnectionHandleString } from '../../../canvas.utils';
 
@@ -20,11 +19,7 @@ const connectionType = computed(
 );
 
 const isEmptyGroupInputDrag = computed(() => {
-	const handle = connectingHandle.value;
-	return (
-		handle?.handleType === 'target' &&
-		parseCanvasConnectionHandleString(handle.handleId).mode === CanvasConnectionMode.Output
-	);
+	return connectingHandle.value?.isEmptyGroupTargetStart === true;
 });
 
 const classes = computed(() => {

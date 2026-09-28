@@ -37,6 +37,7 @@ import type {
 } from '../canvas.types';
 import {
 	CanvasNodeRenderType,
+	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	isCanvasGroupNode,
 	parseCanvasGroupNodeId,
@@ -1393,7 +1394,13 @@ function normalizeEmptyGroupConnectionStart(handle: ConnectStartEvent): ConnectS
 	return {
 		...handle,
 		nodeId: group.nodeId,
-		handleId: createCanvasConnectionHandleString({ mode: 'outputs' }),
+		isEmptyGroupTargetStart: handle.handleType === 'target',
+		// Preserve the side the user started from. A left/input drag should add
+		// a node into the group's input, not turn into an output replacement.
+		handleId: createCanvasConnectionHandleString({
+			mode:
+				handle.handleType === 'target' ? CanvasConnectionMode.Input : CanvasConnectionMode.Output,
+		}),
 	};
 }
 
