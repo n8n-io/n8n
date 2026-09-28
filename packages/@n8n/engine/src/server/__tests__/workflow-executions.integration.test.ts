@@ -711,8 +711,17 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	it('cancels a queued execution and its pending steps, and tells the caller', async () => {
 		const executionId = await start();
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
-		const step = await stepRepo.save(
+		const queued = await stepRepo.save(
 			stepRepo.create({ executionId, nodeId: 'a', iteration: 0, status: 'queued' }),
+		);
+		const waiting = await stepRepo.save(
+			stepRepo.create({
+				executionId,
+				nodeId: 'b',
+				iteration: 0,
+				status: 'waiting',
+				waitDeclaration: { acceptsResumeRequest: true },
+			}),
 		);
 
 		const response = await cancel(executionId).expect(200);
@@ -723,7 +732,9 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('cancelled');
 		expect(row.finishedAt).toBeInstanceOf(Date);
-		expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
+		for (const step of [queued, waiting]) {
+			expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
+		}
 		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
 			type: 'ended',
 			executionId,

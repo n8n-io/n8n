@@ -661,11 +661,14 @@ describe('StepSettledHandler lifecycle events', () => {
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
-	it('announces nothing for the steps it cancels or skips', async () => {
-		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
+	it.each<StepStatus>(['skipped', 'cancelled'])(
+		'announces nothing for a %s step',
+		async (status) => {
+			const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status }));
 
-		await handler.handle(event);
+			await handler.handle(event);
 
-		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-	});
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		},
+	);
 });

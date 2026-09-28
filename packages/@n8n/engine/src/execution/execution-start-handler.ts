@@ -3,7 +3,7 @@ import { findTriggerNode } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
+import { DEFAULT_TRIGGER_OUTPUTS, isLiveExecutionStatus } from './execution.types';
 import type { StepStore } from './step-store';
 
 /**
@@ -33,17 +33,6 @@ export class ExecutionStartHandler {
 
 		const execution = await this.executionStore.loadExecution(event.executionId);
 
-		// This worker won the claim, so it is the one that announces the start.
-		// After the load, because the ids it carries save consumers a round trip.
-		this.lifecycleEventPublisher.publish({
-			type: 'execution:started',
-			executionId: execution.id,
-			workflowId: execution.workflowId,
-			mode: execution.mode,
-			hostMode: execution.callerContext.hostMode,
-			at: new Date().toISOString(),
-		});
-
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {
 			// The start boundary rejects triggerless graphs, so this execution
@@ -65,10 +54,26 @@ export class ExecutionStartHandler {
 			},
 		]);
 		if (!triggerStep) {
+			// The insert also refuses once the execution has ended, and a cancel can
+			// land between the claim and here. That run is over, so nothing follows.
+			const current = await this.executionStore.loadExecution(event.executionId);
+			if (!isLiveExecutionStatus(current.status)) return;
+
 			throw new UnexpectedError(
 				`Trigger step for execution ${event.executionId} already existed despite the claim`,
 			);
 		}
+
+		// This worker won the claim, so it is the one that announces the start.
+		// After the trigger row, so a run cancelled before it began announces nothing.
+		this.lifecycleEventPublisher.publish({
+			type: 'execution:started',
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			mode: execution.mode,
+			hostMode: execution.callerContext.hostMode,
+			at: new Date().toISOString(),
+		});
 
 		// Published only after the row exists, so the consumer can always load it.
 		await this.orchestrationQueue.publish({
