@@ -1,13 +1,25 @@
-import type { ResponseEmitter, StepExecutionRequest } from '@n8n/engine';
+import {
+	ResponseNotExpectedError,
+	type JsonValue,
+	type ResponseEmitter,
+	type StepExecutionRequest,
+} from '@n8n/engine';
 import { ENCODED_BUFFER_KEY, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { attachResponseHooks } from '../v1-response-hooks';
 
 const newRequest = () => {
+	// Builds the payload like an emitter for a caller that expects a step
+	// response, so a test can read what the node sent.
+	const sent: JsonValue[] = [];
 	const respond: ResponseEmitter = {
-		send: vi.fn(() => ({ ok: true as const, result: undefined })),
+		send: vi.fn((build: () => JsonValue) => {
+			sent.push(build());
+			return { ok: true as const, result: undefined };
+		}),
 	};
 	const request = {
 		context: {
@@ -21,14 +33,14 @@ const newRequest = () => {
 		respond,
 	} as unknown as StepExecutionRequest;
 
-	return { request, respond };
+	return { request, respond, sent };
 };
 
 const newAdditionalData = () => ({}) as IWorkflowExecuteAdditionalData;
 
 describe('attachResponseHooks', () => {
 	it('preserves hooks supplied by the host', async () => {
-		const { request, respond } = newRequest();
+		const { request, sent } = newRequest();
 		const existingHandler = vi.fn();
 		const hooks = new ExecutionLifecycleHooks('webhook', 'exec-1', {} as IWorkflowBase);
 		hooks.addHandler('sendChunk', existingHandler);
@@ -40,17 +52,17 @@ describe('attachResponseHooks', () => {
 
 		expect(additionalData.hooks).toBe(hooks);
 		expect(additionalData.hooks.handlers.sendChunk).toEqual([existingHandler]);
-		expect(respond.send).toHaveBeenCalledWith(response);
+		expect(sent).toContainEqual(response);
 	});
 
 	it('sends what the Respond node produced to the channel', async () => {
-		const { request, respond } = newRequest();
+		const { request, sent } = newRequest();
 		const additionalData = newAdditionalData();
 
 		attachResponseHooks(additionalData, request);
 		await additionalData.hooks?.runHook('sendResponse', [{ body: { ok: true }, statusCode: 200 }]);
 
-		expect(respond.send).toHaveBeenCalledWith({ body: { ok: true }, statusCode: 200 });
+		expect(sent).toContainEqual({ body: { ok: true }, statusCode: 200 });
 	});
 
 	it('surfaces errors from the response channel', async () => {
@@ -66,11 +78,52 @@ describe('attachResponseHooks', () => {
 		expect(respond.send).toHaveBeenCalledOnce();
 	});
 
+	describe('when the caller does not expect a step response', () => {
+		const refusingRequest = (kind: 'none' | 'runEnd') => {
+			// Like the engine's emitter: it refuses without calling the builder.
+			const respond: ResponseEmitter = {
+				send: vi.fn(() => ({ ok: false as const, error: new ResponseNotExpectedError(kind) })),
+			};
+			const { request } = newRequest();
+			return { request: { ...request, respond } };
+		};
+
+		it.each([
+			['none', 'Nothing waits for a response from this node.'],
+			['runEnd', 'The Webhook node answers when the last node finishes, not with this node.'],
+		] as const)('fails the node with a user error for %s', async (kind, message) => {
+			const { request } = refusingRequest(kind);
+			const additionalData = newAdditionalData();
+			attachResponseHooks(additionalData, request);
+
+			const error: unknown = await additionalData.hooks
+				?.runHook('sendResponse', [{ body: { ok: true }, statusCode: 200 }])
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message,
+				description:
+					"Set the Webhook node's Respond option to 'Using Respond to Webhook Node', or remove this node.",
+			});
+		});
+
+		it('fails with the expectation error, not the binary error, for a Buffer payload', async () => {
+			const { request } = refusingRequest('none');
+			const additionalData = newAdditionalData();
+			attachResponseHooks(additionalData, request);
+
+			await expect(
+				additionalData.hooks?.runHook('sendResponse', [Buffer.from('hi')]),
+			).rejects.toThrow('Nothing waits for a response from this node.');
+		});
+	});
+
 	describe('a Buffer body', () => {
 		const headers = { 'content-type': 'application/octet-stream', 'content-length': 5 };
 
 		it('is sent as a base64 envelope, with its headers and status code', async () => {
-			const { request, respond } = newRequest();
+			const { request, sent } = newRequest();
 			const additionalData = newAdditionalData();
 
 			attachResponseHooks(additionalData, request);
@@ -78,7 +131,7 @@ describe('attachResponseHooks', () => {
 				{ body: Buffer.from('hello'), headers, statusCode: 201 },
 			]);
 
-			expect(respond.send).toHaveBeenCalledWith({
+			expect(sent).toContainEqual({
 				body: { [ENCODED_BUFFER_KEY]: 'aGVsbG8=' },
 				headers,
 				statusCode: 201,
@@ -100,7 +153,7 @@ describe('attachResponseHooks', () => {
 
 	describe('a stored binary reference body', () => {
 		it('is sent as is, with its headers and status code', async () => {
-			const { request, respond } = newRequest();
+			const { request, sent } = newRequest();
 			const additionalData = newAdditionalData();
 			const response = {
 				body: { binaryData: { id: 'filesystem-v2:file-1', mimeType: 'image/png', data: '' } },
@@ -111,7 +164,7 @@ describe('attachResponseHooks', () => {
 			attachResponseHooks(additionalData, request);
 			await additionalData.hooks?.runHook('sendResponse', [response]);
 
-			expect(respond.send).toHaveBeenCalledWith(response);
+			expect(sent).toContainEqual(response);
 		});
 	});
 
