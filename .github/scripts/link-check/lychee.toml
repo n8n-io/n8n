@@ -1,0 +1,73 @@
+# Weekly link check for product code. See .github/workflows/link-check-weekly.yml.
+# Run from the repository root:
+#   git grep -lE "https?://|documentationUrl = '|DOCS_DOMAIN" -- 'packages/**/*.'{ts,vue,json,mjs,js} \
+#     | lychee --config .github/scripts/link-check/lychee.toml --files-from -
+
+no_progress = true
+mode = "plain"
+format = "json"
+include_fragments = "anchor-only"
+
+user_agent = "Mozilla/5.0 (compatible; n8n-link-check; +https://github.com/n8n-io/n8n)"
+timeout = 20
+max_retries = 2
+retry_wait_time = 2
+max_redirects = 10
+max_concurrency = 32
+host_concurrency = 4
+host_request_interval = "100ms"
+scheme = ["https", "http"]
+exclude_all_private = true
+
+preprocess = { command = ".github/scripts/link-check/preprocess.sh" }
+
+exclude_path = [
+	'\.(test|spec)\.',
+	'/__tests?__/',
+	'/__snapshots__/',
+	'/__mocks__/',
+	'/(test|tests|fixtures|e2e|evaluations)/',
+	'test-helpers\.ts$',
+	'\.stories\.',
+	'CHANGELOG',
+	'^packages/testing/',
+	'^packages/@n8n/benchmark/',
+	# These comments contain URLs that lychee cannot parse, which fails the run.
+	'^packages/@n8n/engine/src/database/data-source\.ts$',
+	'^packages/@n8n/utils/src/scrub-secrets\.ts$',
+	# Sample workflows for an experiment. They call APIs, they do not link to them.
+	'^packages/frontend/editor-ui/src/experiments/readyToRunWorkflows/',
+]
+
+exclude = [
+	# Template strings and URLs built at runtime.
+	'%7B', '\{', '\$', '%24',
+	# Placeholder and example values.
+	'^https?://[^./:]+(:\d+)?(/|$)',
+	'^https?://([^/]+\.)?(example|test)\.(com|org|net|nonexistent)',
+	'^https?://([^/]*\.)?(your|my|xyzcompany|contoso|tenant123|company\.|n8n\.host)',
+	'^https?://(resourcename\.openai\.azure\.com|bucket\.host|mcp\.github\.com)',
+	'xxxxx|USERID|PRESENTATION_ID|/org/repo|/user/repository',
+	'^https://docs\.google\.com/(document|spreadsheets|presentation)/d/',
+	'^https://samltest\.id/',
+	# API endpoints. They reject plain GET requests.
+	'^https?://api[.-]',
+	'^https?://[^/]+\.googleapis\.com',
+	'^https?://graph\.microsoft\.com',
+	'^https://www\.reddit\.com/.*\.json$',
+	# Private to n8n employees.
+	'^https://n8nio\.slack\.com/',
+	'^https://github\.com/n8n-io/license-management',
+	# The API reference renders its anchors with JavaScript.
+	'^https://docs\.n8n\.io/api/api-reference/#',
+	# Snapshots do not change, and the archive is slow to respond.
+	'^https://web\.archive\.org/',
+	# Attribution headers copied as-is from a third-party library.
+	'^http://(getsprink\.com|brett-zamir\.me)',
+	# The docs pages for these hidden nodes do not exist yet (DOC-2341).
+	'n8n-nodes-langchain\.(embeddings|vectorstore)databricks',
+]
+
+# docs.n8n.io has most of the links. It is our own site, so allow a shorter interval.
+[hosts."docs.n8n.io"]
+request_interval = "50ms"
