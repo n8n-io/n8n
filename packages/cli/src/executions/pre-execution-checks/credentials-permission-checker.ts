@@ -61,6 +61,18 @@ class InaccessibleCredentialError extends UserError {
 	}
 }
 
+/**
+ * Two reasons a run may not use a credential, kept apart because the advice
+ * differs: a provider connection cannot be made usable by sharing it, so
+ * telling someone to ask its owner would send them nowhere.
+ */
+type UnusableCredentials = {
+	/** Not usable by any workflow, whoever asks. */
+	instanceScoped: UnusableCredential[];
+	/** Usable in principle, but not granted to this user. */
+	notGranted: UnusableCredential[];
+};
+
 @Service()
 export class CredentialsPermissionChecker {
 	constructor(
@@ -87,16 +99,24 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		const unusable = await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds);
-		if (unusable.length === 0) return;
+		const { instanceScoped, notGranted } = await this.findUnusable(
+			await this.loadUserWithRole(userId),
+			workflowCredIds,
+		);
 
-		const nodeToFlag = credIdsToNodes[unusable[0].id][0];
+		// No owner to ask: sharing a provider connection cannot make a workflow able
+		// to use it, so the richer message would point the user nowhere.
+		if (instanceScoped.length > 0) {
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[instanceScoped[0].id][0]);
+		}
+
+		if (notGranted.length === 0) return;
+
+		const nodeToFlag = credIdsToNodes[notGranted[0].id][0];
 		// The richer message is part of the feature, so it stays behind the flag
-		// along with everything else the user can see. An unnamed entry — an
-		// instance-scoped connection, or an unresolvable user — has nothing to name
-		// or point at, so it keeps the plain message too.
-		throw isCredSharingEnabled() && unusable[0].name !== unusable[0].id
-			? new UnusableCredentialForUserError(nodeToFlag, unusable[0])
+		// along with everything else the user can see.
+		throw isCredSharingEnabled()
+			? new UnusableCredentialForUserError(nodeToFlag, notGranted[0])
 			: new InaccessibleCredentialForUserError(nodeToFlag);
 	}
 
@@ -115,7 +135,9 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return [];
 
-		const unusable = await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds);
+		const unusable = CredentialsPermissionChecker.flatten(
+			await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds),
+		);
 
 		return unusable.map(({ id, name, exists }) => ({
 			id,
@@ -154,7 +176,7 @@ export class CredentialsPermissionChecker {
 		user: User | null,
 		credentialIds: string[],
 		options: { ignoreGlobalUseScope?: boolean } = {},
-	): Promise<UnusableCredential[]> {
+	): Promise<UnusableCredentials> {
 		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
 
 		// A provider connection is not something a workflow may use, whoever asks, so
@@ -165,17 +187,22 @@ export class CredentialsPermissionChecker {
 			? await this.credentialsFinderService.describeCredentials(instanceScopedIds)
 			: [];
 
-		if (projectScopedIds.length === 0) return instanceScoped;
+		if (projectScopedIds.length === 0) return { instanceScoped, notGranted: [] };
 
 		// Handles an unresolvable user too, and describes the credentials as they are
 		// rather than guessing that they are gone.
-		const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
+		const notGranted = await this.credentialsFinderService.findUnusableCredentialsForUser(
 			user,
 			projectScopedIds,
 			options,
 		);
 
-		return [...instanceScoped, ...unusable];
+		return { instanceScoped, notGranted };
+	}
+
+	/** Everything in both groups, for a caller that does not care which is which. */
+	private static flatten({ instanceScoped, notGranted }: UnusableCredentials) {
+		return [...instanceScoped, ...notGranted];
 	}
 
 	/** Splits ids by whether a workflow may use them at all. */
@@ -205,10 +232,8 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
-		const unusable = await this.findUnusable(
-			await this.loadUserWithRole(userId),
-			credentialIds,
-			options,
+		const unusable = CredentialsPermissionChecker.flatten(
+			await this.findUnusable(await this.loadUserWithRole(userId), credentialIds, options),
 		);
 		return unusable.map((c) => c.id);
 	}
@@ -223,7 +248,9 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
-		const unusable = await this.findUnusable(user, credentialIds, options);
+		const unusable = CredentialsPermissionChecker.flatten(
+			await this.findUnusable(user, credentialIds, options),
+		);
 		return unusable.map((c) => c.id);
 	}
 

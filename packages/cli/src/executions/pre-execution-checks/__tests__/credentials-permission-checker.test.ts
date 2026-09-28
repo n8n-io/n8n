@@ -928,6 +928,28 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		// A provider connection cannot be made usable by sharing it, so the "ask its
+		// owner" advice would point the user nowhere — even with the flag on, and even
+		// though the credential now has a real name to quote.
+		it('keeps the plain message for an instance-scoped credential with the flag on', async () => {
+			flags.credSharingEnabled = true;
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: credentialId, usageScope: 'instance' }),
+			]);
+			credentialsFinderService.describeCredentials.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Provider connection', exists: true, ownerProject: null },
+			]);
+
+			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toMatchObject({
+				message: 'Node "Test Node" uses a credential you do not have access to',
+				description:
+					'This node uses a credential you do not have access to. Ask its owner to share it with you.',
+			});
+		});
+
 		it('rejects an instance-scoped credential before anyone is asked', async () => {
 			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
