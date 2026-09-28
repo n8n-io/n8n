@@ -133,6 +133,21 @@ describe('waitForAllActivity under a budget', () => {
 		expect(cfg.client.cancelRun).toHaveBeenCalled();
 	});
 
+	it('ends the turn as a timeout when its budget runs out during the background wait', async () => {
+		// The background wait is bounded by the budget left, so it returns rather
+		// than throws; without a check after it the turn would read as finished.
+		const now = Date.now();
+		const cfg = config({ startTime: now - 60_000, turnStartedAt: now - 900_000 + 300 });
+		cfg.events.push(event('run-finish', now), event('agent-spawned', now));
+		vi.mocked(cfg.client.getThreadStatus).mockResolvedValue({
+			backgroundTasks: [{ status: 'running' }],
+			memoryTasks: [],
+		} as never);
+
+		await expect(waitForAllActivity(cfg)).rejects.toMatchObject({ timeout: { kind: 'turn', turn: 1 } });
+		expect(cfg.client.cancelRun).not.toHaveBeenCalled();
+	});
+
 	it('returns normally when the run finishes inside every budget', async () => {
 		const now = Date.now();
 		const cfg = config({ startTime: now - 60_000, turnStartedAt: now - 60_000 });
@@ -192,7 +207,11 @@ describe('runMultiTurnConversation follow-up gate', () => {
 
 		await expect(run()).resolves.toBeUndefined();
 		expect(cfg.client.sendMessage).toHaveBeenCalledTimes(1);
-		expect(cfg.turnStartedAt).toBeGreaterThanOrEqual(now);
+		// The loop works on a copy of `cfg`, so the turn start is observed through
+		// the shared events array: the follow-up's user-turn marker.
+		const userTurns = cfg.events.filter((e) => e.type === USER_TURN_EVENT);
+		expect(userTurns).toHaveLength(2);
+		expect(userTurns[1].timestamp).toBeGreaterThanOrEqual(now);
 	});
 
 	it('returns undefined when the proxy is done, whatever the budget says', async () => {

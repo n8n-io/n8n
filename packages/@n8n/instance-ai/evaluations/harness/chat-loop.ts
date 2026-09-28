@@ -144,6 +144,11 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		const newRunStarts = countEvents(config.events, 'run-start');
 		const currentRunFinishes = countEvents(config.events, 'run-finish');
 		if (newRunStarts <= currentRunFinishes) {
+			// The waits above return when the budget they are bounded by is spent,
+			// they do not throw. Checked here, or a turn that overran during them
+			// goes on to a follow-up, or is graded as a turn that finished.
+			const breach = elapsedBudgetBreach(config);
+			if (breach) throw new RunTimeoutError(breach);
 			break;
 		}
 
@@ -182,6 +187,23 @@ function remainingBudgetMs(config: WaitConfig, now = Date.now()): number {
  * not started yet is measured from its own user message.
  */
 export function timeoutBreach(config: WaitConfig, now = Date.now()): BuildTimeout | undefined {
+	const elapsed = elapsedBudgetBreach(config, now);
+	if (elapsed) return elapsed;
+	const turn = Math.max(1, countEvents(config.events, USER_TURN_EVENT));
+	if (config.inactivityTimeoutMs !== undefined) {
+		const lastEventAt = config.events.at(-1)?.timestamp ?? config.turnStartedAt ?? config.startTime;
+		const idleMs = now - lastEventAt;
+		if (idleMs > config.inactivityTimeoutMs) return { kind: 'inactivity', turn, elapsedMs: idleMs };
+	}
+	return undefined;
+}
+
+/**
+ * The conversation or turn budget the elapsed time has overrun, if any. The
+ * inactivity bound is not in here: it reads the last event, and the post-run
+ * waits emit none, so it belongs to a run in flight only.
+ */
+export function elapsedBudgetBreach(config: WaitConfig, now = Date.now()): BuildTimeout | undefined {
 	const turn = Math.max(1, countEvents(config.events, USER_TURN_EVENT));
 	const conversationElapsed = now - config.startTime;
 	if (conversationElapsed > config.timeoutMs) {
@@ -190,11 +212,6 @@ export function timeoutBreach(config: WaitConfig, now = Date.now()): BuildTimeou
 	if (config.turnTimeoutMs !== undefined && config.turnStartedAt !== undefined) {
 		const turnElapsed = now - config.turnStartedAt;
 		if (turnElapsed > config.turnTimeoutMs) return { kind: 'turn', turn, elapsedMs: turnElapsed };
-	}
-	if (config.inactivityTimeoutMs !== undefined) {
-		const lastEventAt = config.events.at(-1)?.timestamp ?? config.turnStartedAt ?? config.startTime;
-		const idleMs = now - lastEventAt;
-		if (idleMs > config.inactivityTimeoutMs) return { kind: 'inactivity', turn, elapsedMs: idleMs };
 	}
 	return undefined;
 }
