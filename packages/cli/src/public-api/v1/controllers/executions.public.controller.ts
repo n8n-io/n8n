@@ -48,6 +48,7 @@ import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { StopResult } from '@/executions/execution.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -435,9 +436,7 @@ export class ExecutionsPublicController {
 	}
 }
 
-function toPublicTracingContext(
-	tracingContext: unknown,
-): { traceparent: string; tracestate?: string } | null {
+function toPublicTracingContext(tracingContext: unknown): TracingContext | null {
 	if (!isRecord(tracingContext)) return null;
 
 	const { traceparent, tracestate } = tracingContext;

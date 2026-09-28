@@ -191,9 +191,10 @@ describe('GET /executions/:id', () => {
 			const withoutData = await authOwnerAgent.get(`/executions/${execution.id}`);
 			const withData = await authOwnerAgent.get(`/executions/${execution.id}?includeData=true`);
 
-			expect(withoutData.statusCode).toBe(200);
-			expect(withData.statusCode).toBe(200);
-			expect(withoutData.body.tracingContext).toEqual(expected);
+		expect(withoutData.statusCode).toBe(200);
+		expect(withData.statusCode).toBe(200);
+		expect(withoutData.body.tracingContext).toEqual(expected);
+		expect(withData.body.tracingContext).toEqual(expected);
 		},
 	);
 
