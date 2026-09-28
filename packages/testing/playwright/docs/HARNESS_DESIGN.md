@@ -206,8 +206,8 @@ every test the same start. The call is idempotent, so it is safe on a shared
 attached instance.
 
 No current spec disables a default feature. Three specs disable other features
-(`variables`, `logStreaming`, `workerView`). Fourteen files set
-`maxTeamProjects` to `-1`, which matches the default.
+(`variables`, `logStreaming`, `workerView`). Specs that set `maxTeamProjects`
+set it to `-1`, which matches the default.
 
 ## Identity rules
 
@@ -292,14 +292,9 @@ These have a real use case but no consumer yet. Build them when the consumer exi
 | Test locks, `Reporter.preprocess()`, isolated retries | Workers that share one attached instance in CI |
 | Shard placement cost model | Startup telemetry shows a measurable gain |
 
-## Current defects
+## Known limitations
 
-- The `services` fixture reads `null.services` when no container exists (`fixtures/base.ts:394`).
-- Feature, quota, queue-mode, and environment-flag helpers ignore failed responses.
-- A test that uses `n8n` and `api` resets twice.
-- `createApiForUser` uses the frontend URL as its base URL.
-- `log-streaming-delivery.spec.ts:20` hard-codes a Docker alias.
-- `workflow-publication-service.spec.ts:80` fails locally instead of being skipped.
+- `log-streaming-delivery.spec.ts` hard-codes the Docker alias `http://proxyserver:1080`.
 - Feature toggles reach main-1 only in multi-main stacks. Accepted until a test depends on it.
 
 ## Out of scope

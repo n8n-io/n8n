@@ -79,7 +79,7 @@ DEVP-1074 and DEVP-1073 are independent of each other.
 | Evidence | PR CI | Add by hand |
 | --- | --- | --- |
 | Managed Testcontainers path | Yes: the E2E container projects | — |
-| Fixture order, reset and login counts | Yes, if `test:harness` runs in CI | — |
+| Fixture order, reset and login counts | No | Run `test:harness` locally when fixtures change |
 | Attached path (local, pre-started stack) | No. CI never attaches. | Run rows 2 and 3 locally. Paste the result in the PR. |
 | Kafka with TLS and SASL | No | One local run against a SASL broker |
 | K3s | Only when Helm files change | The matrix job |
@@ -289,7 +289,7 @@ Step 1 of DEVP-1073 · L · after DEVP-1067 · split by feature folder if too la
 
 **Goal.** Replace `TestRequirements` with ordinary helpers and small fixtures.
 
-- Migrate the 27 files that use `setupRequirements`.
+- Migrate the spec files that use `setupRequirements`.
 - Remove `TestRequirements`, `setupTestRequirements`, and `setupRequirements`.
 - Add two Janitor rules: no provisioner imports in `tests/e2e/`, and no
   `testInfo.project.name` checks in specs.
@@ -334,8 +334,8 @@ Step 4 of DEVP-1074 · S
 Step 2 of DEVP-1073 · S
 
 - Replace the 12 `!n8nContainer` skip guards with a declared capability.
-- Remove the 39 explicit default-feature calls and the 14 `setMaxTeamProjectsQuota(-1)`
-  calls. `session` applies these now.
+- Remove the explicit default-feature and `setMaxTeamProjectsQuota(-1)` calls.
+  `session` applies these now.
 
 ---
 
