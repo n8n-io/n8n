@@ -34,7 +34,7 @@ import { hasViolations, PolicyViolationError } from './policy-violation.error';
 /** Fresh each time — `violations` is mutable. */
 const emptyDecision = (): PolicyDecision => ({ violations: [] });
 
-/** What the checks see. The clearance still binds to the host's own nodes, which it writes. */
+/** What the checks see. The clearance binds to the host's own subject, never the added nodes. */
 function expanded(workflow: PolicedWorkflow): PolicedWorkflow {
 	const nodes = withInlineAgentToolNodes(workflow.nodes);
 	return nodes === workflow.nodes ? workflow : { ...workflow, nodes };

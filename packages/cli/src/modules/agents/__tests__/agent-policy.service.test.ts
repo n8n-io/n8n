@@ -8,6 +8,10 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { AgentPolicyService } from '../agent-policy.service';
 
+vi.mock('@/node-execution/resolve-tool-node-type', () => ({
+	resolveToolNodeType: (nodeType: string) => nodeType,
+}));
+
 const dateTimeTool = {
 	type: 'node',
 	name: 'Current date',
@@ -69,6 +73,18 @@ describe('AgentPolicyService', () => {
 		);
 	});
 
+	it('throws the violations when a policy refuses a save', async () => {
+		const { backend, service } = setUp();
+		backend.enforce.mockResolvedValue({ violations: [violation] });
+
+		const error = await service
+			.enforceSave('proj-1', 'agent-1', agent([dateTimeTool]), agent([]), actor)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PolicyViolationError);
+		expect((error as PolicyViolationError).violations).toEqual([violation]);
+	});
+
 	it('throws the violations when a policy refuses a publish', async () => {
 		const { backend, service } = setUp();
 		backend.enforce.mockResolvedValue({ violations: [violation] });
@@ -82,12 +98,16 @@ describe('AgentPolicyService', () => {
 		expect((error as PolicyViolationError).violations).toEqual([violation]);
 	});
 
-	it('returns the violations of an advisory publish check without throwing', async () => {
+	it('returns the whole advisory publish decision, failed checks included', async () => {
 		const { backend, service } = setUp();
-		backend.evaluate.mockResolvedValue({ violations: [violation] });
+		const decision = {
+			violations: [violation],
+			checkErrors: [{ checkId: 'credential-type-availability', correlationId: 'corr-1' }],
+		};
+		backend.evaluate.mockResolvedValue(decision);
 
 		await expect(
 			service.evaluatePublish('proj-1', 'agent-1', agent([dateTimeTool])),
-		).resolves.toEqual([violation]);
+		).resolves.toEqual(decision);
 	});
 });

@@ -7,6 +7,10 @@ import type { PolicyActor, PolicyEnforcementBackend } from '../policy-enforcemen
 import { PolicyEnforcementService } from '../policy-enforcement.service';
 import { PolicyViolationError } from '../policy-violation.error';
 
+vi.mock('@/node-execution/resolve-tool-node-type', () => ({
+	resolveToolNodeType: (nodeType: string) => nodeType,
+}));
+
 const savedWorkflow: PolicedWorkflow = { id: 'wf-1', name: 'My workflow', nodes: [] };
 
 const violation: PolicyViolation = {

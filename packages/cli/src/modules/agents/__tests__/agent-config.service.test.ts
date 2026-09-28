@@ -304,7 +304,13 @@ describe('AgentConfigService', () => {
 			},
 		);
 
-		it('polices the config it writes against the stored draft', async () => {
+		const dateTimeTool = {
+			type: 'node' as const,
+			name: 'Current date',
+			node: { nodeType: 'n8n-nodes-base.dateTime', nodeTypeVersion: 2, nodeParameters: {} },
+		};
+
+		it('polices the node tools it writes against the stored draft', async () => {
 			const { service, agentRepository, agentPolicyService } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -314,7 +320,7 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...baseConfig, instructions: 'New instructions' },
+				{ ...baseConfig, tools: [dateTimeTool] },
 				user,
 				{ ...byUser, baseConfigHash: getAgentConfigHash(currentConfig) },
 			);
@@ -322,7 +328,7 @@ describe('AgentConfigService', () => {
 			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
 				projectId,
 				agentId,
-				expect.objectContaining({ instructions: 'New instructions' }),
+				expect.objectContaining({ tools: [expect.objectContaining(dateTimeTool)] }),
 				baseConfig,
 				{ kind: 'user', user },
 			);
@@ -337,13 +343,10 @@ describe('AgentConfigService', () => {
 			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
 
 			await expect(
-				service.updateConfig(
-					agentId,
-					projectId,
-					{ ...baseConfig, instructions: 'New instructions' },
-					user,
-					{ ...byUser, baseConfigHash: getAgentConfigHash(currentConfig) },
-				),
+				service.updateConfig(agentId, projectId, { ...baseConfig, tools: [dateTimeTool] }, user, {
+					...byUser,
+					baseConfigHash: getAgentConfigHash(currentConfig),
+				}),
 			).rejects.toThrow('Blocked by policy');
 
 			expect(agent.schema).toBe(baseConfig);

@@ -1,6 +1,20 @@
-import type { INode } from 'n8n-workflow';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { INode, INodeType } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import { NodeTypes } from '@/node-types';
 
 import { toPolicedNodes, withInlineAgentToolNodes } from '../policed-agent-nodes';
+
+const nodeTypes = mockInstance(NodeTypes);
+
+beforeEach(() => {
+	// Only Slack has a `…Tool` variant here, so other tools keep their configured type.
+	nodeTypes.getByNameAndVersion.mockImplementation((name) => {
+		if (name === 'n8n-nodes-base.slackTool') return mock<INodeType>();
+		throw new Error(`Unknown node type ${name}`);
+	});
+});
 
 const dateTimeTool = {
 	type: 'node',
@@ -38,7 +52,7 @@ describe('toPolicedNodes', () => {
 			}),
 			expect.objectContaining({
 				name: 'Post message',
-				type: 'n8n-nodes-base.slack',
+				type: 'n8n-nodes-base.slackTool',
 				typeVersion: 2.3,
 				credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
 			}),
@@ -57,6 +71,36 @@ describe('toPolicedNodes', () => {
 		expect(toPolicedNodes([managed])[0].credentials).toEqual({
 			openAiApi: { id: null, name: 'n8n' },
 		});
+	});
+
+	it('keeps a type that is already a tool variant', () => {
+		const tool = {
+			...slackTool,
+			node: { ...slackTool.node, nodeType: 'n8n-nodes-base.slackTool' },
+		};
+
+		expect(toPolicedNodes([tool])[0].type).toBe('n8n-nodes-base.slackTool');
+	});
+
+	it('adds the tools of an inline agent that a Message an Agent tool embeds', () => {
+		const nested = {
+			type: 'node',
+			name: 'Ask helper',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgent',
+				nodeTypeVersion: 2,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: { config: { tools: [dateTimeTool, slackTool] } },
+				},
+			},
+		};
+
+		expect(toPolicedNodes([nested]).map((node) => [node.id, node.type])).toEqual([
+			['agent-tool-0', 'n8n-nodes-base.messageAnAgent'],
+			['agent-tool-0-0', 'n8n-nodes-base.dateTime'],
+			['agent-tool-0-1', 'n8n-nodes-base.slackTool'],
+		]);
 	});
 
 	it('ignores workflow and custom tools, which run through their own gates', () => {
@@ -103,6 +147,21 @@ describe('withInlineAgentToolNodes', () => {
 		expect(types).toEqual([
 			'n8n-nodes-base.code',
 			'n8n-nodes-base.messageAnAgent',
+			'n8n-nodes-base.dateTime',
+		]);
+	});
+
+	it('appends the node tools of an inline agent attached as an AI Agent tool', () => {
+		const agentNode = {
+			...messageAnAgent({
+				agentSource: 'inline',
+				inlineAgent: { config: { tools: [dateTimeTool] } },
+			}),
+			type: 'n8n-nodes-base.messageAnAgentTool',
+		};
+
+		expect(withInlineAgentToolNodes([agentNode]).map((node) => node.type)).toEqual([
+			'n8n-nodes-base.messageAnAgentTool',
 			'n8n-nodes-base.dateTime',
 		]);
 	});

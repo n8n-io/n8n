@@ -1,5 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { PolicedWorkflow, PolicyViolation } from '@n8n/decorators';
+import type { PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { toPolicedNodes } from '@/policy/policed-agent-nodes';
@@ -60,12 +60,10 @@ export class AgentPolicyService {
 		projectId: string,
 		agentId: string,
 		content: PolicedAgentContent,
-	): Promise<PolicyViolation[]> {
-		const decision = await this.policyEnforcementService.evaluateWorkflowPublish({
+	): Promise<PolicyDecision> {
+		return await this.policyEnforcementService.evaluateWorkflowPublish({
 			workflow: policedAgent(agentId, content),
 			projectId,
 		});
-
-		return decision.violations;
 	}
 }

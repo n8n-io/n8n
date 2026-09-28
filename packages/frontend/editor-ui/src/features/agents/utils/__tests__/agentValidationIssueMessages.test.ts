@@ -16,4 +16,17 @@ describe('resolveAgentValidationIssueMessageKey', () => {
 			'agents.builder.validation.issue.tool.node.blockedByPolicy',
 		);
 	});
+
+	it('names a policy check that failed to run', () => {
+		const issue: AgentConfigValidationIssue = {
+			code: 'invalid_value',
+			path: 'tools',
+			capability: { kind: 'tool' },
+			reason: 'policy_check_failed',
+		};
+
+		expect(resolveAgentValidationIssueMessageKey(issue)).toBe(
+			'agents.builder.validation.issue.tool.node.policyCheckFailed',
+		);
+	});
 });
