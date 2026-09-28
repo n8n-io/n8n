@@ -457,6 +457,15 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+<<<<<<< HEAD
+=======
+			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			onboardingThread?: boolean;
+			credentialDescriptionsEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
+>>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -477,6 +486,12 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+<<<<<<< HEAD
+=======
+			onboardingThread,
+			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
+>>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 			modelId,
 		} = options ?? {};
 
@@ -495,6 +510,11 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+<<<<<<< HEAD
+=======
+			...(onboardingThread ? { onboardingThread: true } : {}),
+			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
+>>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,

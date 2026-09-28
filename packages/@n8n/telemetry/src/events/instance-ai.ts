@@ -486,4 +486,101 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
 	},
+<<<<<<< HEAD
+=======
+	USER_STARTED_AI_ASSISTANT_ONBOARDING: {
+		name: 'User started AI Assistant onboarding',
+		description:
+			'An onboarding thread was created: the user arrived from the n8n Cloud signup survey (/assistant?source=onboarding) or opened the onboarding by hand. Fires once per thread, from the backend, when the seeded greeting and question card are stored.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe(
+					'The signup survey answer to "What team are you on?". Null when the survey did not answer it, so the card asks',
+				),
+			team_source: z
+				.enum(['cloud', 'url'])
+				.nullable()
+				.describe(
+					'Where the team answer came from: the n8n Cloud account, or the `?team=` query of a test run. Null when there is no team',
+				),
+		}),
+	},
+	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
+		name: 'User answered AI Assistant onboarding card',
+		description:
+			'The user settled the question card an onboarding thread opens with. Fires once per thread, from the backend, when the answers are stored. Carries the picked apps and the free text as typed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe('From the signup survey or the card. Null when the card step was skipped'),
+			team_source: z
+				.enum(['cloud', 'url', 'card'])
+				.nullable()
+				.describe(
+					'Where the team came from: the n8n Cloud account, the `?team=` query of a test run, or the card. Null when the card step was skipped',
+				),
+			apps: z.array(z.string()).describe('Apps picked in the card, by their shown names'),
+			custom_text: z
+				.string()
+				.nullable()
+				.describe('Free text typed in the card, which starts the first model turn'),
+		}),
+	},
+	AI_ASSISTANT_ONBOARDING_ENDED: {
+		name: 'AI Assistant onboarding ended',
+		description:
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, or when a run fails.',
+		properties: z.object({
+			thread_id: z.string(),
+			instance_id: z.string(),
+			outcome: z
+				.enum(['build', 'left', 'run_failed'])
+				.describe(
+					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted',
+				),
+			leave_reason: z
+				.string()
+				.nullable()
+				.describe(
+					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
+				),
+		}),
+	},
+	INSTANCE_CONTEXT_TURN: {
+		name: 'Instance AI instance-context turn completed',
+		description:
+			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
+		properties: z.discriminatedUnion('block_state', [
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('absent'),
+					absence_reason: z
+						.enum(instanceContextAbsenceReasonSchema.options)
+						.describe('Why this turn received no block'),
+				})
+				.strict(),
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('injected'),
+					block_is_update: z.boolean().describe('The block adds to an earlier window'),
+					block_inventory_rows: z.number().int(),
+					block_event_rows: z.number().int(),
+					block_run_rows: z.number().int(),
+					block_chars: z.number().int().describe('Exact rendered block length'),
+					block_tokens_estimated: z
+						.number()
+						.int()
+						.describe('Block token estimate at four characters per token'),
+				})
+				.strict(),
+		]),
+	},
+>>>>>>> d765bbd6 (feat: Add an n8n Assistant onboarding thread for new Cloud signups (#39730))
 });

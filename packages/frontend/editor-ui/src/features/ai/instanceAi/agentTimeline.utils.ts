@@ -5,8 +5,10 @@ import type {
 } from '@n8n/api-types';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+/** Tool calls that are internal bookkeeping and should not be shown to the user.
+ *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  that reply a user-facing final message instead of narration before a tool call. */
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */

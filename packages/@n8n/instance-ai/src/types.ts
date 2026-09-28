@@ -1486,6 +1486,8 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
+	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
