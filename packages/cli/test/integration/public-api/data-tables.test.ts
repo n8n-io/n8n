@@ -2105,21 +2105,54 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
 				{ name: 'active', type: 'boolean' },
+				{ name: 'signedUpAt', type: 'date' },
 			],
 		});
 
 		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(3);
-		expect(response.body[0]).toHaveProperty('id');
-		expect(response.body[0]).toHaveProperty('name');
-		expect(response.body[0]).toHaveProperty('type');
-		expect(response.body[0]).toHaveProperty('index');
-		expect(response.body[0]).toHaveProperty('dataTableId', dataTable.id);
-		expect(response.body[0]).toHaveProperty('createdAt');
-		expect(response.body[0]).toHaveProperty('updatedAt');
+
+		// Columns aren't guaranteed to come back in index order, so sort before comparing.
+		const columns = [...response.body].sort((a, b) => a.index - b.index);
+		expect(columns).toStrictEqual([
+			{
+				id: expect.any(String),
+				name: 'name',
+				type: 'string',
+				index: 0,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'age',
+				type: 'number',
+				index: 1,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'active',
+				type: 'boolean',
+				index: 2,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'signedUpAt',
+				type: 'date',
+				index: 3,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should return 404 for non-existing data table', async () => {

@@ -259,14 +259,10 @@ export class DataTablesPublicController {
 		_res: Response,
 		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
 	): Promise<DataTableColumnListPublicDto> {
-		try {
-			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
-			const columns = await this.dataTableService.getColumns(dataTableId, projectId);
+		const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+		const columns = await this.dataTableService.getColumns(dataTableId, projectId);
 
-			return columns.map(toDataTableColumnPublicDto);
-		} catch (error) {
-			return handleError(error);
-		}
+		return columns.map(toDataTableColumnPublicDto);
 	}
 
 	private async withSize(dataTable: DataTable): Promise<DataTablePublicDto> {
