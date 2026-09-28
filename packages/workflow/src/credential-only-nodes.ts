@@ -7,9 +7,12 @@ import { CREDENTIAL_ONLY_NODE_PREFIX } from './constants';
  * stored as `n8n-nodes-base.httpRequest` with `extendsCredential` set to the credential type.
  *
  * Its generated name is `n8n-creds-base.<credentialType>`.
+ *
+ * Accepts a missing name because the editor asks about nodes that have no type yet, for
+ * example while a node is being placed. Such a node is not credential-only.
  */
-export function isCredentialOnlyNodeType(nodeTypeName: string): boolean {
-	return nodeTypeName.startsWith(`${CREDENTIAL_ONLY_NODE_PREFIX}.`);
+export function isCredentialOnlyNodeType(nodeTypeName: string | null | undefined): boolean {
+	return nodeTypeName?.startsWith(`${CREDENTIAL_ONLY_NODE_PREFIX}.`) ?? false;
 }
 
 export function getCredentialOnlyNodeTypeName(credentialTypeName: string): string {

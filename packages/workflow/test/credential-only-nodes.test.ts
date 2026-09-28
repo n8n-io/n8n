@@ -16,6 +16,12 @@ describe('credential-only nodes', () => {
 		expect(isCredentialOnlyNodeType('n8n-creds-baseX.virusTotalApi')).toBe(false);
 	});
 
+	it('answers false for a node that has no type yet', () => {
+		expect(isCredentialOnlyNodeType(undefined)).toBe(false);
+		expect(isCredentialOnlyNodeType(null)).toBe(false);
+		expect(isCredentialOnlyNodeType('')).toBe(false);
+	});
+
 	it('round-trips a credential type through the generated name', () => {
 		const nodeTypeName = getCredentialOnlyNodeTypeName('virusTotalApi');
 
