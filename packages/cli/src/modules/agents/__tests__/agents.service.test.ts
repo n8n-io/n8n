@@ -25,8 +25,10 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 
 const agentId = 'agent-1';
+const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 const projectId = 'project-1';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -60,6 +62,7 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
@@ -86,10 +89,12 @@ function makeService() {
 		agentExecutionService,
 		credentialsService,
 		projectScopeService,
+		agentPolicyService,
 	);
 
 	return {
 		service,
+		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
 		agentKnowledgeService,
@@ -122,7 +127,7 @@ describe('AgentsService', () => {
 
 		agentRepository.create.mockReturnValue(saved);
 
-		await expect(service.create(projectId, 'Support Agent')).resolves.toBe(saved);
+		await expect(service.create(projectId, 'Support Agent', { actor })).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
@@ -150,6 +155,7 @@ describe('AgentsService', () => {
 		agentRepository.create.mockReturnValue(saved);
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			defaultModel: {
 				model: 'openai/gpt-5-mini',
 				credential: 'managed',
@@ -174,6 +180,7 @@ describe('AgentsService', () => {
 		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -194,6 +201,7 @@ describe('AgentsService', () => {
 		agentRepository.create.mockReturnValue(saved);
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: { name: 'Support Agent', model: '', instructions: '' },
 		});
 
@@ -213,6 +221,7 @@ describe('AgentsService', () => {
 		};
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -238,6 +247,7 @@ describe('AgentsService', () => {
 		};
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -263,6 +273,7 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -292,6 +303,7 @@ describe('AgentsService', () => {
 			]);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'openai/gpt-5-mini',
@@ -331,6 +343,7 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -347,7 +360,7 @@ describe('AgentsService', () => {
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
 
-			await service.create(projectId, 'Support Agent');
+			await service.create(projectId, 'Support Agent', { actor });
 
 			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
 		});
@@ -358,6 +371,7 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -370,6 +384,44 @@ describe('AgentsService', () => {
 			const [entity] = agentRepository.create.mock.calls[0];
 			expect(entity.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack-1' }]);
 			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
+		});
+	});
+
+	describe('policy', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		it('polices a seeded config as a create, with no stored draft to grandfather', async () => {
+			const { service, agentRepository, agentPolicyService } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+
+			await service.create(projectId, 'Support Agent', {
+				actor,
+				schema: { name: 'Support Agent', model: '', instructions: 'Triage tickets.' },
+				user,
+			});
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				null,
+				expect.objectContaining({ instructions: 'Triage tickets.' }),
+				null,
+				actor,
+			);
+		});
+
+		it('saves nothing when a policy refuses the seeded config', async () => {
+			const { service, agentRepository, agentPolicyService } = makeService();
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.create(projectId, 'Support Agent', {
+					actor,
+					schema: { name: 'Support Agent', model: '', instructions: 'Triage tickets.' },
+				}),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentRepository.insertNew).not.toHaveBeenCalled();
 		});
 	});
 
@@ -387,7 +439,7 @@ describe('AgentsService', () => {
 			const saved = makeAgent({ id: mintedId });
 			agentRepository.create.mockReturnValue(saved);
 
-			await service.create(projectId, 'Support Agent', { id: mintedId });
+			await service.create(projectId, 'Support Agent', { actor, id: mintedId });
 
 			expect(agentRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ id: mintedId }),
@@ -407,6 +459,7 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.create(projectId, 'Support Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -423,9 +476,9 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(raced);
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 
-			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, id: mintedId }),
+			).rejects.toThrow(ConflictError);
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
@@ -449,6 +502,7 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.create(projectId, 'New Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -465,6 +519,7 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.create(projectId, 'Support Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -477,9 +532,9 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
 			agentRepository.insertNew.mockRejectedValue(error);
 
-			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
-				error,
-			);
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, id: mintedId }),
+			).rejects.toBe(error);
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 	});

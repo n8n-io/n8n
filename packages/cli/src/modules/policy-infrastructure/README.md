@@ -139,6 +139,27 @@ to hold an unattended sync to a different standard than a hand-run import. The
 host reads it too, to pick its fail posture: a package import refuses the whole
 package, a source-control pull skips and reports the workflow.
 
+## Agents and embedded nodes
+
+An agent has no enforcement point of its own. It goes through the workflow
+points, so every check that reads `nodes` covers agents with no change.
+
+- **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
+  are its node tools, one node each, built by `toPolicedNodes` in
+  `src/policy/policed-agent-nodes.ts`. The token binds to an `agent` subject, and
+  the audit line records `agentId` and `agentName`.
+- **Agent hosts:** config update and create (`workflowSave`), revert
+  (`workflowSave` over the current draft), publish (`workflowPublish`), and
+  publish-scope validation (`evaluateWorkflowPublish`).
+- **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
+  So `workflowExecuteBefore` never fires. The executor calls `workflowStart` on
+  the one-node workflow it builds, and returns a refusal as a tool error.
+- **Inline agents.** `PolicyEnforcementService` adds the node tools of an inline
+  agent in a Message an Agent node to the nodes it gives the checks, at every
+  workflow point. The token still binds to the nodes the host writes. An inline
+  agent set by an expression is not expanded; the executor polices its tools
+  when they run.
+
 ## Fail posture
 
 - **No check registered for a point:** allowed.
@@ -184,6 +205,8 @@ warn  Policy blocked workflowSave  {
   row — the seal discards it for the same reason, binding a create to its content. The
   line does not reproduce that content subject: computing it is the enforcement point's
   job, and mirroring it here would let the two drift.
+- **An agent logs `agentId` and `agentName`** instead of the workflow fields, with
+  the same `null` rule for a create.
 - **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
   the `warning` level `PolicyViolationError` already gives itself.
 

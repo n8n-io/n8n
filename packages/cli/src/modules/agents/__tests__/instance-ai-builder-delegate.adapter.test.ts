@@ -530,7 +530,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.createAgent('New agent');
 
-			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {});
+			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
+				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			});
 			expect(result).toEqual({
 				agentId: 'agent-9',
 				projectId: 'project-1',
@@ -553,6 +555,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			});
 
 			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
+				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				id: 'aBcDeFgHiJkLmNoP',
 				adoptOnCollision: true,
 			});

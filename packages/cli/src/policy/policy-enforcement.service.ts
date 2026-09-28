@@ -3,6 +3,7 @@ import type {
 	CredentialDecryptContext,
 	CredentialSaveContext,
 	EnforcementPoint,
+	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -21,6 +22,7 @@ import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { withInlineAgentToolNodes } from './policed-agent-nodes';
 import type {
 	PolicyActor,
 	PolicyContext,
@@ -30,6 +32,29 @@ import { hasViolations, PolicyViolationError } from './policy-violation.error';
 
 /** Fresh each time — `violations` is mutable. */
 const emptyDecision = (): PolicyDecision => ({ violations: [] });
+
+/** What the checks see. The clearance still binds to the host's own nodes, which it writes. */
+function expanded(workflow: PolicedWorkflow): PolicedWorkflow {
+	const nodes = withInlineAgentToolNodes(workflow.nodes);
+	return nodes === workflow.nodes ? workflow : { ...workflow, nodes };
+}
+
+function expandedSave(context: WorkflowSaveContext): WorkflowSaveContext {
+	const { workflow, storedWorkflow } = context;
+	return {
+		...context,
+		workflow: expanded(workflow),
+		storedWorkflow: storedWorkflow === null ? null : expanded(storedWorkflow),
+	};
+}
+
+function expandedWorkflow<C extends { workflow: PolicedWorkflow }>(context: C): C {
+	return { ...context, workflow: expanded(context.workflow) };
+}
+
+function expandedImport(context: ContentImportContext): ContentImportContext {
+	return 'workflow' in context ? expandedWorkflow(context) : context;
+}
 
 /**
  * The policy enforcement point every host call site talks to.
@@ -71,33 +96,43 @@ export class PolicyEnforcementService {
 			context.storedWorkflow === null
 				? workflowContentSubject(context.workflow)
 				: workflowSubject(context.workflow);
-		return await this.enforce('workflowSave', context, actor, subject);
+		return await this.enforce('workflowSave', expandedSave(context), actor, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {
-		return await this.evaluate('workflowSave', context);
+		return await this.evaluate('workflowSave', expandedSave(context));
 	}
 
 	async enforceWorkflowPublish(
 		context: WorkflowPublishContext,
 		actor: PolicyActor,
 	): Promise<PolicyCleared<'workflowPublish'>> {
-		return await this.enforce('workflowPublish', context, actor, workflowSubject(context.workflow));
+		return await this.enforce(
+			'workflowPublish',
+			expandedWorkflow(context),
+			actor,
+			workflowSubject(context.workflow),
+		);
 	}
 
 	async evaluateWorkflowPublish(context: WorkflowPublishContext): Promise<PolicyDecision> {
-		return await this.evaluate('workflowPublish', context);
+		return await this.evaluate('workflowPublish', expandedWorkflow(context));
 	}
 
 	async enforceWorkflowStart(
 		context: WorkflowStartContext,
 		actor: PolicyActor,
 	): Promise<PolicyCleared<'workflowStart'>> {
-		return await this.enforce('workflowStart', context, actor, workflowSubject(context.workflow));
+		return await this.enforce(
+			'workflowStart',
+			expandedWorkflow(context),
+			actor,
+			workflowSubject(context.workflow),
+		);
 	}
 
 	async evaluateWorkflowStart(context: WorkflowStartContext): Promise<PolicyDecision> {
-		return await this.evaluate('workflowStart', context);
+		return await this.evaluate('workflowStart', expandedWorkflow(context));
 	}
 
 	async enforceWorkflowTransfer(
@@ -106,14 +141,14 @@ export class PolicyEnforcementService {
 	): Promise<PolicyCleared<'workflowTransfer'>> {
 		return await this.enforce(
 			'workflowTransfer',
-			context,
+			expandedWorkflow(context),
 			actor,
 			workflowSubject(context.workflow),
 		);
 	}
 
 	async evaluateWorkflowTransfer(context: WorkflowTransferContext): Promise<PolicyDecision> {
-		return await this.evaluate('workflowTransfer', context);
+		return await this.evaluate('workflowTransfer', expandedWorkflow(context));
 	}
 
 	async enforceCredentialSave(
@@ -154,11 +189,11 @@ export class PolicyEnforcementService {
 			'workflow' in context
 				? workflowSubject(context.workflow)
 				: credentialSubject(context.credential);
-		return await this.enforce('contentImport', context, actor, subject);
+		return await this.enforce('contentImport', expandedImport(context), actor, subject);
 	}
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {
-		return await this.evaluate('contentImport', context);
+		return await this.evaluate('contentImport', expandedImport(context));
 	}
 
 	private async enforce<Point extends EnforcementPoint>(

@@ -39,6 +39,7 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
+	blocked_by_policy: 'agents.builder.validation.issue.tool.node.blockedByPolicy' as BaseTextKey,
 };
 
 export function resolveAgentValidationIssueMessageKey(

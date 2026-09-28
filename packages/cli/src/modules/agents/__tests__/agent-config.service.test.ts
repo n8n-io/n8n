@@ -23,6 +23,7 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
+import type { AgentPolicyService } from '../agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -76,6 +77,7 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -108,10 +110,12 @@ function makeService() {
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 		agentUpdateBroadcaster,
+		agentPolicyService,
 	);
 
 	return {
 		service,
+		agentPolicyService,
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
@@ -282,6 +286,53 @@ describe('AgentConfigService', () => {
 				);
 			},
 		);
+
+		it('polices the config it writes against the stored draft', async () => {
+			const { service, agentRepository, agentPolicyService } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const currentConfig = composeJsonConfig(agent);
+			if (!currentConfig) throw new Error('Expected the agent to have a config');
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'New instructions' },
+				user,
+				{ ...byUser, baseConfigHash: getAgentConfigHash(currentConfig) },
+			);
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				expect.objectContaining({ instructions: 'New instructions' }),
+				baseConfig,
+				{ kind: 'user', user },
+			);
+		});
+
+		it('writes nothing when a policy refuses the config', async () => {
+			const { service, agentRepository, agentPolicyService, eventService } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const currentConfig = composeJsonConfig(agent);
+			if (!currentConfig) throw new Error('Expected the agent to have a config');
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'New instructions' },
+					user,
+					{ ...byUser, baseConfigHash: getAgentConfigHash(currentConfig) },
+				),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agent.schema).toBe(baseConfig);
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
 
 		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
 			const { service, agentRepository } = makeService();

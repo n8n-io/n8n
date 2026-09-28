@@ -27,6 +27,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -155,6 +156,7 @@ export class EphemeralNodeExecutor {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly logger: Logger,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	/**
@@ -287,7 +289,7 @@ export class EphemeralNodeExecutor {
 	 * Assemble the shared pieces (node, ephemeral workflow, additionalData,
 	 * execute data) both context classes need. Keeps `executeNodeDirectly` and
 	 * `withSupplyDataTool` from drifting — the setup is identical up to the
-	 * choice of context class.
+	 * choice of context class. Every node run passes here, so it is the policy gate.
 	 */
 	private async buildEphemeralContextParts(
 		tool: EphemeralWorkflowToolLike,
@@ -302,6 +304,11 @@ export class EphemeralNodeExecutor {
 			parameters: tool.nodeParameters,
 			credentials: tool.credentials ?? undefined,
 		};
+		// Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+		await this.policyEnforcementService.enforceWorkflowStart(
+			{ workflow: { id: null, name: node.name, nodes: [node] }, projectId: tool.projectId },
+			{ kind: 'system', reason: 'execution' },
+		);
 		const workflow = new Workflow({
 			nodes: [node],
 			connections: {},
@@ -337,25 +344,25 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 	): Promise<NodeExecutionResult> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
-
-		const context = new ExecuteContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			parts.executeData,
-			[],
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-
 		let output: NodeOutput | undefined;
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+
+			const context = new ExecuteContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				parts.executeData,
+				[],
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+
 			const executionResult = await withExpressionIsolate(
 				parts.workflow,
 				async (): Promise<NodeExecutionResult> => {
@@ -465,30 +472,31 @@ export class EphemeralNodeExecutor {
 		inputItems: INodeExecutionData[],
 		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
 	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
 		const closeFunctions: CloseFunction[] = [];
 
-		const context = new SupplyDataContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			NodeConnectionTypes.AiTool,
-			parts.executeData,
-			closeFunctions,
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		const supplyData = nodeType.supplyData;
-		if (typeof supplyData !== 'function') {
-			return { ok: false, error: 'Node does not implement supplyData' };
-		}
-
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+
+			const context = new SupplyDataContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				NodeConnectionTypes.AiTool,
+				parts.executeData,
+				closeFunctions,
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+			const supplyData = nodeType.supplyData;
+			if (typeof supplyData !== 'function') {
+				return { ok: false, error: 'Node does not implement supplyData' };
+			}
+
 			return await withExpressionIsolate(parts.workflow, async () => {
 				const supplyDataResult = await supplyData.call(context, 0);
 				const response = supplyDataResult.response as

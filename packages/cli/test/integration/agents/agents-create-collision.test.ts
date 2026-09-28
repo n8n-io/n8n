@@ -12,6 +12,9 @@ import { ConflictError } from '@n8n/errors';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+// Nothing here is policed, so the actor only has to be well formed.
+const actor = { kind: 'user', user: { id: 'user-1' } } as const;
+
 describe('AgentsService.create — client-minted id', () => {
 	let agentsService: AgentsService;
 	let agentRepo: AgentRepository;
@@ -29,7 +32,7 @@ describe('AgentsService.create — client-minted id', () => {
 
 	it('returns a fully populated entity on a plain create', async () => {
 		const project = await createTeamProject();
-		const agent = await agentsService.create(project.id, 'Fresh Agent');
+		const agent = await agentsService.create(project.id, 'Fresh Agent', { actor });
 
 		expect(agent.id).toEqual(expect.any(String));
 		expect(agent.createdAt).toBeInstanceOf(Date);
@@ -42,18 +45,19 @@ describe('AgentsService.create — client-minted id', () => {
 
 	it('rejects an id that names a row in the same project', async () => {
 		const project = await createTeamProject();
-		const first = await agentsService.create(project.id, 'First');
+		const first = await agentsService.create(project.id, 'First', { actor });
 
-		await expect(agentsService.create(project.id, 'Second', { id: first.id })).rejects.toThrow(
-			ConflictError,
-		);
+		await expect(
+			agentsService.create(project.id, 'Second', { actor, id: first.id }),
+		).rejects.toThrow(ConflictError);
 	});
 
 	it('adopts a same-project row when the caller may adopt it', async () => {
 		const project = await createTeamProject();
-		const first = await agentsService.create(project.id, 'First');
+		const first = await agentsService.create(project.id, 'First', { actor });
 
 		const { agent, adopted } = await agentsService.createOrAdopt(project.id, 'Second', {
+			actor,
 			id: first.id,
 			adoptOnCollision: true,
 		});
@@ -65,10 +69,10 @@ describe('AgentsService.create — client-minted id', () => {
 	it('leaves an agent in its own project when another project reuses its id', async () => {
 		const ownerProject = await createTeamProject();
 		const otherProject = await createTeamProject();
-		const agent = await agentsService.create(ownerProject.id, 'Owned Agent');
+		const agent = await agentsService.create(ownerProject.id, 'Owned Agent', { actor });
 
 		await expect(
-			agentsService.create(otherProject.id, 'Renamed Agent', { id: agent.id }),
+			agentsService.create(otherProject.id, 'Renamed Agent', { actor, id: agent.id }),
 		).rejects.toThrow(ConflictError);
 
 		const stored = await agentRepo.findOneByOrFail({ id: agent.id });
@@ -81,10 +85,11 @@ describe('AgentsService.create — client-minted id', () => {
 	it('rejects a cross-project id the same way when adoption is allowed', async () => {
 		const ownerProject = await createTeamProject();
 		const otherProject = await createTeamProject();
-		const agent = await agentsService.create(ownerProject.id, 'Owned Agent');
+		const agent = await agentsService.create(ownerProject.id, 'Owned Agent', { actor });
 
 		await expect(
 			agentsService.create(otherProject.id, 'Renamed Agent', {
+				actor,
 				id: agent.id,
 				adoptOnCollision: true,
 			}),
