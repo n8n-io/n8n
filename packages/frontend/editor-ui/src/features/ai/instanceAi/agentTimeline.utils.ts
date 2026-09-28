@@ -4,7 +4,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
-import { isSavedPreferenceResult, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
+import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -77,10 +77,10 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
-	// The card is the whole render for a saved preference. A refusal or a call still
-	// in flight has nothing to show, so it drops instead of joining the thinking block.
+	// The card is the whole render for a finished preference write, saved or refused.
+	// A call still in flight drops instead of joining the thinking block.
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
-		return isSavedPreferenceResult(tc.result) ? 'preference' : 'hidden';
+		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
@@ -324,7 +324,14 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	const seenIds = new Set<string>();
 
 	// Check targetResource first (single-resource agents)
-	if (node.targetResource?.id && node.targetResource.type) {
+	if (
+		node.targetResource?.id &&
+		node.targetResource.type &&
+		(node.targetResource.type !== 'agent' ||
+			node.agentChange === 'created' ||
+			node.agentChange === 'updated' ||
+			node.agentChange === undefined)
+	) {
 		const type = node.targetResource.type;
 		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);

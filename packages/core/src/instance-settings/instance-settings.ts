@@ -98,7 +98,7 @@ export class InstanceSettings {
 		private readonly logger: Logger,
 	) {
 		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();

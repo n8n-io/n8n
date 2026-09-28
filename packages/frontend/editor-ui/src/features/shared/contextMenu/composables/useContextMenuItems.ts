@@ -492,7 +492,6 @@ export function useContextMenuItems(
 					id: 'copy',
 					label: i18n.baseText('contextMenu.copy', i18nOptions),
 					shortcut: { metaKey: true, keys: ['C'] },
-					disabled: nodes.some(isRestricted),
 				},
 				{
 					id: 'duplicate',

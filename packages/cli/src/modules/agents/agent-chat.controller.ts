@@ -2,14 +2,25 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
+	AgentChatQueueUpdateDto,
 	type AgentChatMessagesResponse,
+	type AgentChatQueueResponse,
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	RestController,
+} from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
@@ -24,7 +35,8 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionRecordingError } from './agent-execution-recording.error';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import {
 	AgentChatExecutionService,
 	AgentTurnAlreadyRunningError,
@@ -58,6 +70,8 @@ export class AgentChatController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly messageQueue: AgentMessageQueueService,
+		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 	) {}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -66,15 +80,10 @@ export class AgentChatController {
 		const abandon = () => requestController.abort();
 		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
 		if (delivery.abortSignal.aborted) abandon();
-		let executionId: string | undefined;
 		return {
 			send: delivery.send,
 			abortSignal: requestController.signal,
-			get executionId() {
-				return executionId;
-			},
 			onExecutionStarted: (id: string, sessionId: string) => {
-				executionId = id;
 				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId });
 			},
@@ -155,9 +164,10 @@ export class AgentChatController {
 			agentId,
 		);
 
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
-		let executionId: string | undefined;
+		const delivery = initSseStream(res);
+		const { send, abortSignal } = delivery;
+		let accepted = false;
+		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
@@ -194,34 +204,32 @@ export class AgentChatController {
 			});
 			abortSignal.throwIfAborted();
 
-			const result = await this.agentTestRunService.executePreparedDraftRun({
-				agentId,
-				projectId,
-				message,
-				attachments: storedAttachments,
-				user: req.user,
-				sessionId: threadId,
-				sessionMode: prepared.sessionMode,
-				previewChat: true,
-				errorMode: 'forward',
-				onChunk,
-				onExecutionStarted,
-				onExecutionRecorded: (id) => {
-					executionId = id;
+			const item = await this.messageQueue.enqueue(
+				{
+					agentId,
+					projectId,
+					threadId,
+					sessionMode: prepared.sessionMode,
+					source: 'chat',
+					payload: {
+						kind: 'preview',
+						message,
+						attachments: storedAttachments,
+						userId: req.user.id,
+						resourceId: draftChatMemoryResourceId(req.user.id),
+					},
 				},
-				abortSignal,
-			});
-			executionId = result.executionId ?? executionId;
-			if (result.status === 'completed') {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-			}
+				(queueId) => {
+					subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				},
+			);
+			accepted = true;
+			subscription?.accepted();
+			send({ type: 'message-queued', queueId: item.id, sessionId: threadId });
+			await subscription?.done;
 		} catch (error) {
-			executionId ??= execution.executionId;
-			if (error instanceof AgentExecutionRecordingError) executionId ??= error.executionId;
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
+			// Committed messages own their attachments, including after a disconnect.
+			if (!accepted && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
@@ -235,7 +243,8 @@ export class AgentChatController {
 					: {}),
 			});
 		} finally {
-			execution.close();
+			subscription?.close();
+			delivery.close();
 		}
 	}
 
@@ -323,6 +332,55 @@ export class AgentChatController {
 			resourceId: draftChatMemoryResourceId(req.user.id),
 		});
 		return { cancelled };
+	}
+
+	@Get('/:agentId/chat/:threadId/queue')
+	@ProjectScope('agent:read')
+	async getQueuedMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentChatQueueResponse> {
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		return await this.messageQueue.listPending({ ...req.params, userId: req.user.id });
+	}
+
+	@Patch('/:agentId/chat/:threadId/queue/:queueId')
+	@ProjectScope('agent:execute')
+	async updateQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueUpdateDto,
+	): Promise<void> {
+		if (!/^[1-9]\d*$/.test(req.params.queueId)) throw new BadRequestError('Invalid queue ID');
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		await this.messageQueue.updatePending({
+			...req.params,
+			userId: req.user.id,
+			message: payload.message,
+		});
+	}
+
+	@Delete('/:agentId/chat/:threadId/queue/:queueId')
+	@ProjectScope('agent:execute')
+	async removeQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+	) {
+		if (!/^[1-9]\d*$/.test(req.params.queueId)) throw new BadRequestError('Invalid queue ID');
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		await this.messageQueue.removePending({ ...req.params, userId: req.user.id });
+		return { removed: true };
 	}
 
 	@Get('/:agentId/chat/:threadId/background-tasks')

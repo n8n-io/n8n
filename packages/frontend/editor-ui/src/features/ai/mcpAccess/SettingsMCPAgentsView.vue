@@ -15,6 +15,10 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+<<<<<<< HEAD
+=======
+import { useUIStore } from '@/app/stores/ui.store';
+>>>>>>> origin/master
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
@@ -34,7 +38,10 @@ const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 
 const agentsLoading = ref(false);
+<<<<<<< HEAD
 const showConnectAgentsDialog = ref(false);
+=======
+>>>>>>> origin/master
 const availableAgents = ref<McpAgent[]>([]);
 const availableAgentsTotal = ref(0);
 const agentsTableState = ref<TableOptions>({

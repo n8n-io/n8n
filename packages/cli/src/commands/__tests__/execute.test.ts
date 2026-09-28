@@ -185,9 +185,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 		.spyOn(Expression, 'initExpressionEngine')
 		.mockRejectedValue(new Error('isolated-vm failed to load'));
 	const exitSpy = vi
-		// @ts-expect-error Protected method
 		.spyOn(BaseCommand.prototype, 'exitWithCrash')
-		.mockResolvedValue(undefined);
+		.mockResolvedValue(undefined as never);
 
 	Container.set(
 		GlobalConfig,

@@ -18,6 +18,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { trackAndReturnToolError } from './tool-error.utils';
 
 const MAX_RESULTS = 200;
 
@@ -182,23 +183,11 @@ export const createListCredentialsTool = (
 				structuredContent: payload,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output: ListCredentialsResult = {
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
 				data: [],
 				count: 0,
-				error: errorMessage,
-			};
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+				error: message,
+			}));
 		}
 	},
 });

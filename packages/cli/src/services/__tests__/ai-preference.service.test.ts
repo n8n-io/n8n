@@ -12,6 +12,8 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -444,6 +446,21 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
+		it('names the limit and the saved count on the cap error, so a caller can relay the numbers', async () => {
+			aiPreferenceRepository.countForTarget.mockResolvedValue(AI_PREFERENCE_MAX_PER_SCOPE + 2);
+
+			const error = await service
+				.create(member, { content: 'Rule.', scope: 'user' }, 'ui')
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(AiPreferenceScopeFullError);
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toMatchObject({
+				httpStatusCode: 400,
+				meta: { limit: AI_PREFERENCE_MAX_PER_SCOPE, actual: AI_PREFERENCE_MAX_PER_SCOPE + 2 },
+			});
+		});
+
 		it("counts the target user's scope when an admin writes for somebody else", async () => {
 			// The cap belongs to the scope. Counting the caller would let an admin with no
 			// preferences of their own push another user past the cap, and would stop a full
@@ -477,12 +494,24 @@ describe('AiPreferenceService', () => {
 			const updated = await service.update(owner, 'pref-1', {
 				content: 'A better rule.',
 				scope: 'user',
+				userId: 'owner-1',
 			});
 
 			expect(updated.source).toBe('ui');
 			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
 				expect.objectContaining({ content: 'A better rule.', source: 'ui' }),
 			);
+		});
+
+		it('refuses an edit with user scope that names no user, before any permission check', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', source: 'ui' }),
+			);
+
+			await expect(
+				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
+			).rejects.toThrow('An edit of a user preference must name the user');
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('checks the scope a move lands in, not the one it leaves', async () => {
@@ -495,12 +524,66 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({ scope: 'instance' });
 		});
 
+		// A caller that holds no scope it can trust, such as the chat card, names none. The
+		// target then comes off the row this write loads, so a move that landed after the
+		// caller last looked is kept rather than undone.
+		it('keeps a project row in its project when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: 'project-1' }),
+			);
+			projectRepository.findOneBy.mockResolvedValue(mock<Project>({ id: 'project-1' }));
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: 'A better rule.',
+					userId: null,
+					projectId: 'project-1',
+				}),
+			);
+			// Nothing moved, so nothing lands in another scope.
+			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
+		});
+
+		it('keeps the owner of a user row when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', projectId: null }),
+			);
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: 'A better rule.',
+					userId: 'owner-1',
+					projectId: null,
+				}),
+			);
+		});
+
+		it('keeps an instance row on the instance when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: null }),
+			);
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ content: 'A better rule.', userId: null, projectId: null }),
+			);
+		});
+
 		it('leaves an edit in place alone: it adds no row to the scope', async () => {
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),
 			);
 
-			await service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' });
+			await service.update(owner, 'pref-1', {
+				content: 'A better rule.',
+				scope: 'user',
+				userId: 'owner-1',
+			});
 
 			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
 		});
@@ -544,7 +627,11 @@ describe('AiPreferenceService', () => {
 			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(true);
 
 			await expect(
-				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
+				service.update(owner, 'pref-1', {
+					content: 'A better rule.',
+					scope: 'user',
+					userId: 'owner-1',
+				}),
 			).rejects.toThrow('This user already has a preference with the same text');
 			expect(aiPreferenceRepository.existsForTargetWithContent).toHaveBeenCalledWith(
 				{ scope: 'user', userId: 'owner-1' },
@@ -558,7 +645,7 @@ describe('AiPreferenceService', () => {
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),
 			);
 
-			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'user' });
+			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'user', userId: 'owner-1' });
 
 			expect(aiPreferenceRepository.existsForTargetWithContent).not.toHaveBeenCalled();
 		});
@@ -726,6 +813,69 @@ describe('AiPreferenceService', () => {
 				NotFoundError,
 			);
 			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getById', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+		beforeEach(() => {
+			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+		});
+
+		it('returns a visible row as a dto with its scopes', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Mine.',
+					userId: 'user-1',
+					source: 'aia',
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
+			);
+
+			const dto = await service.getById(member, 'pref-1');
+
+			expect(dto).toMatchObject({ id: 'pref-1', content: 'Mine.', userId: 'user-1' });
+			expect(dto.scopes).toEqual([
+				'aiPreference:read',
+				'aiPreference:update',
+				'aiPreference:delete',
+			]);
+		});
+
+		// The card reads the rights off the dto, so a row the caller may see and not write must
+		// come back without them.
+		it('reports read alone for a row the caller may see but not write', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Everyone.',
+					userId: null,
+					projectId: null,
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
+			);
+
+			const dto = await service.getById(member, 'pref-1');
+
+			expect(dto.scopes).toEqual(['aiPreference:read']);
+		});
+
+		it("hides another user's row like a missing one", async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Theirs.',
+					userId: 'user-2',
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
+			);
+
+			await expect(service.getById(member, 'pref-1')).rejects.toThrow(NotFoundError);
 		});
 	});
 });

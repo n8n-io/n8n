@@ -218,6 +218,44 @@ deliberately does not re-sync tier-only edits to an existing case. **Only
 promote to `pr` after `--iterations 5+` shows it's reliably green** — a flaky
 case in the gate poisons it.
 
+## Calibrating a batch of new cases on the dispatchers
+
+One case costs 10–20 minutes per iteration on a laptop, and docker lanes have
+crashed it. A batch calibrates on the LangTracer dispatchers:
+
+1. Author the JSON locally. Static checks only: a `--dry-run` push (schema) and
+   the similarity check against the verification suites.
+2. Push the batch to its suite with the tag `calibration-pending`.
+3. Dispatch one manual sweep for those case ids:
+   `gh workflow run eval-run.yml --repo n8n-io/lang-tracer -f image=n8nio/n8n:nightly -f case_ids=<ids> -f iterations=3 -f trigger=manual`.
+   `trigger=manual` keeps it out of the nightly baseline.
+4. Read `list_eval_runs` → `get_eval_run`. Classify each red: **builder** (keep
+   it red, tag `capability-gap-finding`, propose a ticket), **harness** (fix it or
+   design around it; never leave it to charge the model), **authoring** (fix the
+   case).
+5. Re-push the fixed cases and re-dispatch only those ids.
+6. Swap `calibration-pending` for `calibrated` and stamp the evidence into the
+   description, e.g. "Calibration (Opus 4.8, N=3): sweep 174 3/4, sweep 176 4/4".
+
+## Validating a harness change before merge
+
+```bash
+gh workflow run test-evals-instance-ai.yml --repo n8n-io/n8n \
+  -f branch=<your-branch> -f cache-sha=$(git rev-parse origin/<your-branch>) \
+  -f suite=<suite> -f filter=<slug-substrings> \
+  -f iterations=3 -f experiment-name=<change-name>
+```
+
+`cache-sha` is what puts a backend change under test: without it the workflow
+restores the n8n image cached for master's head, and only the eval CLI runs from
+your branch. A harness-only change works either way.
+
+CI reads cases from LangTracer only. A case that exists only on disk goes into a
+throwaway suite first (`eval:langtracer-push --suite <scratch-suite> <slug>`).
+Never pass `experiment-name=instance-ai-baseline`; that name refreshes the shared
+baseline. Results: the run log's summary table and the
+`instance-ai-workflow-eval-results` artifact (`eval-results.json` + HTML report).
+
 ## Baselines & regression
 
 When `LANGSMITH_API_KEY` is set, every run auto-compares against the most recent

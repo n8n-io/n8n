@@ -8,7 +8,14 @@ import SettingsMCPAgentsView from '@/features/ai/mcpAccess/SettingsMCPAgentsView
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
+<<<<<<< HEAD
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+=======
+import {
+	MCP_CONNECT_AGENTS_MODAL_KEY,
+	MCP_SETTINGS_VIEW,
+} from '@/features/ai/mcpAccess/mcp.constants';
+>>>>>>> origin/master
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({

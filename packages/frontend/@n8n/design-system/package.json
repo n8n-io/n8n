@@ -69,6 +69,7 @@
     "@types/markdown-it-link-attributes": "catalog:",
     "@types/sanitize-html": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vitest/coverage-istanbul": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
     "autoprefixer": "catalog:frontend",

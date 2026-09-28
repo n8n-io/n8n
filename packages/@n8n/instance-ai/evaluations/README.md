@@ -198,6 +198,10 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped, eval-tagged name (`instance-ai-langtracer-<suite>`) so runs don't touch the shared `instance-ai-workflow-evals` cohort and re-runs of a suite upsert one stable dataset. `--filter` / `--exclude` / `--tier` still narrow within the suite. The MCP manifest builder (`eval:build-mcp-manifest`) accepts the same `--source langtracer --suite` flags.
 
+#### Pushing cases to a suite (`eval:langtracer-push`)
+
+`pnpm eval:langtracer-push --suite <slug|id> <slugs...> [--dry-run]` upserts on-disk cases into a suite: create missing, update changed, leave unchanged. Select with exact slugs, `--changed` (git-new or modified case files), `--filter <csv>` or `--tier <name>`. Validation is selective: exact slugs and `--changed` read only the named files, so an unrelated invalid file in `data/workflows` (a case authored on a newer branch) never blocks a push. `--filter` parses only the files whose slug matches; `--tier` reads the tier from inside each file, so it parses them all. An invalid file either one parses is reported as a warning and skipped. A file you named still fails the push when it is invalid.
+
 ### Outputs
 
 Every run produces:

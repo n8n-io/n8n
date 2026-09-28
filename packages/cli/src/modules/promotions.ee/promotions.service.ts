@@ -4,11 +4,12 @@ import type {
 	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteRequest,
 	PromotionCheckoutPublicDto,
 	PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRepository, type User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
@@ -36,11 +38,15 @@ import {
 	type ImportRequest,
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
-import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
+import {
+	GIT_DEFAULT_COMMIT_EMAIL,
+	GIT_DEFAULT_COMMIT_NAME,
+	PACKAGE_SUBFOLDER,
+	PROMOTE_SELECTION_COMMIT_MESSAGE,
+} from './constants';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -55,6 +61,7 @@ import {
 import type {
 	BranchPackage,
 	PromotionCacheDescriptor,
+	PromotionGitCredentials,
 	PromotionOperationInput,
 } from './promotions.types';
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
@@ -94,6 +101,7 @@ export class PromotionsService {
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
@@ -154,20 +162,8 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
-		const targetBranchName = input.config.settings.createBranchOnPromotion
-			? buildPromotionBranchName(new Date())
-			: undefined;
 		const credentials = await this.credentialsFor(input);
-		if (targetBranchName) {
-			await this.gitService.validateBranchName(targetBranchName);
-			await this.gitService.prepareCheckoutForPromotion({
-				remoteUrl: repositoryUrl(input),
-				credentials,
-				paths: this.workingDirectory.paths(input.configId),
-				branchName,
-				configId: input.configId,
-			});
-		}
+		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
@@ -240,30 +236,30 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Promotes selected workflows of one project and their dependencies. Unselected
-	 * workflows stay as-is, and so do the projects and folders the branch already
-	 * holds: a selection creates a container, never renames one, so nothing moves
-	 * that the user did not select.
+	 * Selective promote against an already-resolved connection. Unselected workflows
+	 * stay as-is, and so do the projects and folders the branch already holds: a
+	 * selection creates a container, never renames one, so nothing moves that the
+	 * user did not select. A promotion branch is always new, so force never applies.
 	 */
-	async promoteSelection(
-		connectionId: string,
+	private async promoteSelectionResolved(
+		input: PromotionOperationInput,
 		actor: User,
-		request: PromotePackageDto & { canExportVariableValues: boolean },
+		request: { commitMessage: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
-		if (request.force) {
-			throw new BadRequestError(
-				"Selective promotion doesn't support force. Set force to false and try again.",
-			);
-		}
-
-		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
+		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
+
 		this.workingCopy.validateSelection(selection);
 		await this.assertTeamProject(selection.projectId);
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		const credentials = await this.credentialsFor(input);
+		// A branched config resets the checkout to the latest base here, so the
+		// selection applies on top of it and pushes to a fresh promotion branch.
+		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
+
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 		if (!(await this.hasExportedPackage(packageFolder))) {
@@ -311,14 +307,22 @@ export class PromotionsService {
 				branch,
 			);
 
+			if (targetBranchName) {
+				// The commit moves the local base branch. Remove trust before it moves, and
+				// restore trust only after the base branch is back on its own commit.
+				await this.workingDirectory.invalidateDescriptor(input.configId);
+			}
+
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
-				credentials: await this.credentialsFor(input),
+				credentials,
 				paths: this.workingDirectory.paths(input.configId),
 				branchName,
+				targetBranchName,
 				configId: input.configId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
+				// A promotion branch must be new, so force never applies.
 				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
 				rollbackOnFailure: true,
@@ -330,7 +334,7 @@ export class PromotionsService {
 				connectionId: input.connectionId,
 				configId: input.configId,
 				counts,
-				git: { commitSha, branchName },
+				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
 		} catch (error) {
 			if (backedUp) {
@@ -361,6 +365,71 @@ export class PromotionsService {
 				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
 			});
 		}
+	}
+
+	/**
+	 * Promotes a client-chosen set of a project's workflows. The client sends ids
+	 * only; the server reads each one now, so the push carries the current state.
+	 * Live and archived workflows export; an id this project no longer owns (gone,
+	 * or moved to another project) leaves the branch, matching the change list.
+	 */
+	async promoteProjectSelection(
+		projectId: string,
+		actor: User,
+		request: PromoteRequest & { canExportVariableValues: boolean },
+	): Promise<PromotePackageResultDto> {
+		if (new Set(request.workflowIds).size !== request.workflowIds.length) {
+			throw new BadRequestError('workflowIds contains duplicates');
+		}
+
+		// Resolve like the change preview does, so the promote pushes to the connection
+		// the user previewed. resolveForProject validates the project and connection too.
+		const input = await this.resolver.resolveForProject(projectId, 'promote');
+
+		const selection = await this.classifySelection(projectId, request.workflowIds);
+
+		return await this.promoteSelectionResolved(
+			input,
+			actor,
+			{
+				commitMessage: request.commitMessage ?? PROMOTE_SELECTION_COMMIT_MESSAGE,
+				canExportVariableValues: request.canExportVariableValues,
+			},
+			selection,
+		);
+	}
+
+	/**
+	 * Splits selected ids into pushes and deletions, using the current instance
+	 * state. A live or archived workflow this project owns exports; an id it no
+	 * longer owns — gone from the instance, or moved to another project — leaves
+	 * the branch. This matches the change list, which shows both as deletions.
+	 * assertDeletionsOnBranch rejects a deletion the branch does not hold under
+	 * this project, so a foreign id never writes.
+	 */
+	private async classifySelection(
+		projectId: string,
+		workflowIds: string[],
+	): Promise<SelectivePushOptions> {
+		const ownerProjects =
+			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+
+		const live: string[] = [];
+		const deleted: string[] = [];
+		for (const id of workflowIds) {
+			// This project does not own the workflow: it is gone, or it moved to
+			// another project. Either way the project has dropped it, so promote it
+			// as a deletion.
+			if (ownerProjects.get(id)?.id !== projectId) {
+				deleted.push(id);
+				continue;
+			}
+			// Archived workflows travel like live ones, so the branch keeps them
+			// archived instead of removing them, matching a full promote.
+			live.push(id);
+		}
+
+		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
@@ -499,6 +568,32 @@ export class PromotionsService {
 				});
 			},
 		};
+	}
+
+	/**
+	 * Resolves the branch one promotion pushes to, honoring the resolved config.
+	 * When the config creates a branch per promotion, this validates the new name
+	 * and resets the checkout to the latest base, so the promotion builds on it.
+	 * Otherwise the push targets the base branch and there is nothing to prepare.
+	 */
+	private async prepareTargetBranch(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+	): Promise<string | undefined> {
+		if (input.config.direction !== 'promote' || !input.config.settings.createBranchOnPromotion) {
+			return undefined;
+		}
+		const targetBranchName = buildPromotionBranchName(new Date());
+		await this.gitService.validateBranchName(targetBranchName);
+		await this.gitService.prepareCheckoutForPromotion({
+			remoteUrl: repositoryUrl(input),
+			credentials,
+			paths: this.workingDirectory.paths(input.configId),
+			branchName,
+			configId: input.configId,
+		});
+		return targetBranchName;
 	}
 
 	/**

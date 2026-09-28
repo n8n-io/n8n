@@ -42,7 +42,7 @@
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
-    "vitest-websocket-mock": "^0.5.0"
+    "vitest-websocket-mock": "^0.8.0"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

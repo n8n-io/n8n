@@ -572,4 +572,77 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			skill_id: z.string(),
 		}),
 	},
+	USER_STARTED_AGENT_CHANNEL_SETUP: {
+		name: 'User started agent channel setup',
+		description:
+			'The setup view of a chat channel became visible in the agent channel modal. Pairs with "User closed agent channel setup" to measure the setup funnel.',
+		properties: z.object({
+			agent_id: z.string(),
+			channel_type: z.string(),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLOSED_AGENT_CHANNEL_SETUP: {
+		name: 'User closed agent channel setup',
+		description:
+			'The user left a chat channel setup view: after connecting the channel, going back to the channel list, or closing the modal. Fires once for each "User started agent channel setup".',
+		properties: z.object({
+			agent_id: z.string(),
+			channel_type: z.string(),
+			completed: z.boolean().describe('True when the channel was connected'),
+			session_id: sessionId,
+		}),
+	},
+	USER_FAILED_TO_CONNECT_AGENT_CHANNEL: {
+		name: 'User failed to connect agent channel',
+		description:
+			'Saving a chat channel setup failed. The user can retry, so one setup can emit this more than once.',
+		properties: z.object({
+			agent_id: z.string(),
+			channel_type: z.string(),
+			stage: z
+				.enum(['persist', 'before_save', 'connect'])
+				.describe(
+					'persist: saving the agent failed; before_save: the platform pre-save step failed; connect: the connect request failed',
+				),
+			conflict: z.boolean().describe('True when the connect request answered 409'),
+			session_id: sessionId,
+		}),
+	},
+	USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL: {
+		name: 'User checked Teams channel credential',
+		description:
+			'The Teams channel setup checked the selected credential against Microsoft. Runs on its own whenever the selected credential changes, including when the setup opens with one, and when the user clicks recheck.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger: z
+				.enum(['auto', 'recheck'])
+				.describe('auto: the selected credential changed; recheck: the user clicked recheck'),
+			status: z.enum(['ok', 'failed']),
+			reason: z
+				.enum(['certificate', 'incomplete', 'rejected', 'unreachable', 'cloud', 'request_failed'])
+				.optional()
+				.describe(
+					'Only when status is failed. request_failed: the request to n8n failed, so Microsoft was never asked',
+				),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL: {
+		name: 'User clicked Deploy to Azure for Teams channel',
+		description: 'The user clicked the Deploy to Azure button in the Teams channel setup.',
+		properties: z.object({
+			agent_id: z.string(),
+			session_id: sessionId,
+		}),
+	},
+	USER_DOWNLOADED_TEAMS_APP_PACKAGE: {
+		name: 'User downloaded Teams app package',
+		description: 'The user tried to download the Teams app package in the Teams channel setup.',
+		properties: z.object({
+			agent_id: z.string(),
+			status: z.enum(['success', 'error']),
+			session_id: sessionId,
+		}),
+	},
 });
