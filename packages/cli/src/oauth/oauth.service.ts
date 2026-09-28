@@ -29,7 +29,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	AuthError as OAuth2AuthError,

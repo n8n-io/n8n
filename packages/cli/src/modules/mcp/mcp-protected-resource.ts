@@ -10,7 +10,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
 
 import {

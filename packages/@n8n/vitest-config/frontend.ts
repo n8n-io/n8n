@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
+import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 
 // Resolves to the empty component that stands in for `.svg` imports (see below).
@@ -69,6 +70,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			coverage.include = ['src/**/*.{ts,vue}'];
 			coverage.reporter = ['lcov'];
 		}
+		// With a CHANGED_FILES signal (PR runs), measure only the changed files.
+		Object.assign(coverage, changedFileCoverage());
 	}
 
 	return vitestConfig;

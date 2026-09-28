@@ -20,6 +20,8 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -494,6 +496,8 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
@@ -518,6 +522,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
@@ -538,6 +543,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
@@ -648,6 +654,8 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		/** Concise reply style. Applies only when the default build mode is selected. */
+		conciseStyleEnabled: boolean;
 		setupPanelEnabled: boolean;
 		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
@@ -687,6 +695,8 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			conciseStyleEnabled:
+				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
 				? { setupPanelVariant }

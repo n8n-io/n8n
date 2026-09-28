@@ -31,6 +31,8 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 } from '@/features/execution/executions/executions.utils';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -434,7 +436,15 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
 
-			toast.showMessage({ title, message, type: 'error', duration: 0 });
+			const { showPolicyViolationToast } = usePolicyViolationToast();
+			const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.executeTitle');
+			const violations = getPolicyViolations(execution.data.resultData.error);
+
+			if (violations) {
+				showPolicyViolationToast(violations, policyTitle, 'execute', documentId);
+			} else {
+				toast.showMessage({ title, message, type: 'error', duration: 0 });
+			}
 		}
 
 		useBuilderStore().incrementManualExecutionStats('error');

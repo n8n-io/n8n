@@ -10,7 +10,7 @@ import z from 'zod';
 
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {
