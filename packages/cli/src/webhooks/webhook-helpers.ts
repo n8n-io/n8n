@@ -98,7 +98,11 @@ import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
-import { WebhookResponder, type WebhookResponseCallback } from './webhook-responder';
+import {
+	WebhookResponder,
+	type WebhookResponseCallback,
+	type WebhookCallbackResponseData,
+} from './webhook-responder';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
@@ -388,10 +392,10 @@ export function autoDetectResponseMode(
 /**
  * for formTrigger and form nodes redirection has to be handled by sending redirectURL in response body
  */
-export const handleFormRedirectionCase = (
-	data: IWebhookResponseCallbackData,
+export const handleFormRedirectionCase = <T extends IWebhookResponseCallbackData>(
+	data: T,
 	workflowStartNode: INode,
-) => {
+): T => {
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return data;
 	}
@@ -471,7 +475,7 @@ async function sendResponseNodeResponse(
 			// TODO: This probably needs some more changes depending on the options on the
 			//       Webhook Response node
 
-			let data: IWebhookResponseCallbackData = {
+			let data: WebhookCallbackResponseData = {
 				data: response.body as IDataObject,
 				headers: response.headers,
 				responseCode: response.statusCode,
