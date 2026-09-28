@@ -2185,6 +2185,31 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 		testWithAPIKey('post', '/data-tables/123/columns', 'abcXYZ'),
 	);
 
+	test('should reject adding a column without dataTableColumn:create', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-add-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'email',
+			type: 'string',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.post('/data-tables/not-a-nanoid/columns').send({
+			name: 'email',
+			type: 'string',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should add a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'add-column-test',
@@ -2197,10 +2222,15 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 		});
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body).toHaveProperty('id');
-		expect(response.body).toHaveProperty('name', 'email');
-		expect(response.body).toHaveProperty('type', 'string');
-		expect(response.body).toHaveProperty('index', 1);
+		expect(response.body).toStrictEqual({
+			id: expect.any(String),
+			name: 'email',
+			type: 'string',
+			index: 1,
+			dataTableId: dataTable.id,
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
 
 		const listResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
 		expect(listResponse.body).toHaveLength(2);
@@ -2274,6 +2304,43 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 		testWithAPIKey('delete', '/data-tables/123/columns/456', 'abcXYZ'),
 	);
 
+	test('should reject deleting without dataTableColumn:delete', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-delete-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.delete(`/data-tables/${dataTable.id}/columns/${columnId}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.delete(
+			'/data-tables/not-a-nanoid/columns/AAAAAAAAAAAAAAAA',
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject a malformed column id', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'malformed-column-id-delete-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.delete(
+			`/data-tables/${dataTable.id}/columns/not-a-nanoid`,
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should delete a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'delete-col-test',
@@ -2342,6 +2409,45 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 		testWithAPIKey('patch', '/data-tables/123/columns/456', 'abcXYZ'),
 	);
 
+	test('should reject updating without dataTableColumn:update', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-update-column-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({ name: 'renamed' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent
+			.patch('/data-tables/not-a-nanoid/columns/AAAAAAAAAAAAAAAA')
+			.send({ name: 'renamed' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject a malformed column id', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'malformed-column-id-patch-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/not-a-nanoid`)
+			.send({ name: 'renamed' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should rename a column', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'rename-column-test',
@@ -2358,9 +2464,15 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('id', columnId);
-		expect(response.body).toHaveProperty('name', 'new_name');
-		expect(response.body).toHaveProperty('index', 0);
+		expect(response.body).toStrictEqual({
+			id: columnId,
+			name: 'new_name',
+			type: 'string',
+			index: 0,
+			dataTableId: dataTable.id,
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
 	});
 
 	test('should move a column', async () => {

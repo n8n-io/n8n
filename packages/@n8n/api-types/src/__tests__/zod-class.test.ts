@@ -65,3 +65,23 @@ describe('Z.array', () => {
 		expect(() => new TagIdDto([{}])).toThrow(z.ZodError);
 	});
 });
+
+describe('Z.class object-level OpenAPI metadata', () => {
+	class EitherDto extends Z.class(
+		{ a: z.string().optional(), b: z.string().optional() },
+		{ strict: true, openapi: { anyOf: [{ required: ['a'] }, { required: ['b'] }] } },
+	) {}
+
+	it('puts the metadata on the schema, where the spec generator reads it', () => {
+		expect(EitherDto.schema._def.openapi?.metadata).toMatchObject({
+			anyOf: [{ required: ['a'] }, { required: ['b'] }],
+		});
+	});
+
+	it('keeps the schema an object, so the shape and strictness are unchanged', () => {
+		expect(EitherDto.schema).toBeInstanceOf(z.ZodObject);
+		expect(EitherDto.schema.shape).toHaveProperty('a');
+		expect(EitherDto.safeParse({ a: 'x' }).success).toBe(true);
+		expect(EitherDto.safeParse({ a: 'x', unknown: 1 }).success).toBe(false);
+	});
+});

@@ -1,3 +1,6 @@
+import './openapi-extend';
+
+import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 export interface ZodClass<T = unknown, Shape extends z.ZodRawShape = z.ZodRawShape> {
@@ -35,15 +38,24 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
  * }) {}
  *
  * export class StrictDto extends Z.class({ email: z.string() }, { strict: true }) {}
+ *
+ * // Object-level OpenAPI metadata, for a rule the shape cannot state:
+ * export class EitherDto extends Z.class(
+ *   { a: z.string().optional(), b: z.string().optional() },
+ *   { openapi: { anyOf: [{ required: ['a'] }, { required: ['b'] }] } },
+ * ) {}
  * ```
  */
 export const Z = {
 	class: <T extends z.ZodRawShape>(
 		shape: T,
-		options: { strict?: boolean } = {},
+		options: { strict?: boolean; openapi?: ZodOpenAPIMetadata } = {},
 	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-		const schema = options.strict ? z.object(shape).strict() : z.object(shape);
 		type Output = z.objectOutputType<T, z.ZodTypeAny>;
+
+		const objectSchema = options.strict ? z.object(shape).strict() : z.object(shape);
+		// Object-level metadata, for a rule the shape cannot state (e.g. `anyOf`).
+		const schema = options.openapi ? objectSchema.openapi(options.openapi) : objectSchema;
 
 		const DtoClass = class {
 			static schema = schema;
