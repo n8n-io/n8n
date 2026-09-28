@@ -146,37 +146,52 @@ function getSelectedDocAndTable(this: ILoadOptionsFunctions) {
 	};
 }
 
+// A team document opens only on its own site. Hosted Grist puts each site on a subdomain.
+// Self-hosted Grist usually puts it in the path, and ignores that path when it serves one site.
+function gristDocUrl(siteUrl: string, domain: string | null | undefined, docId: string) {
+	if (!domain) return `${siteUrl}/doc/${docId}`;
+	if (new URL(siteUrl).hostname.endsWith('.getgrist.com')) {
+		return `https://${domain}.getgrist.com/doc/${docId}`;
+	}
+	return `${siteUrl.replace(/\/o\/[^/]+$/, '')}/o/${domain}/doc/${docId}`;
+}
+
 export async function searchDocs(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const orgs = (await gristApiRequest.call(this, 'GET', '/orgs')) as
-		| Array<{ id: number }>
+	// `merged` lists the personal sites as one org with the `docs` domain.
+	const orgs = (await gristApiRequest.call(this, 'GET', '/orgs', {}, { merged: 1 })) as
+		| Array<{ id: number; domain?: string | null }>
 		| undefined;
 	// Keep the orgs that answer, so one unreadable org does not empty the list.
-	const workspaces = await Promise.allSettled(
-		(orgs ?? []).map(
-			async (org) =>
-				(await gristApiRequest.call(this, 'GET', `/orgs/${org.id}/workspaces`)) as
-					| Array<{ docs?: Array<{ id: string; name?: string }> }>
-					| undefined,
-		),
+	const sites = await Promise.allSettled(
+		(orgs ?? []).map(async (org) => ({
+			domain: org.domain,
+			workspaces: (await gristApiRequest.call(this, 'GET', `/orgs/${org.id}/workspaces`)) as
+				| Array<{ docs?: Array<{ id: string; name?: string }> }>
+				| undefined,
+		})),
 	);
 	// If no org answers, report the error. An empty list would look like an answer.
-	const rejected = workspaces.filter(
-		(org): org is PromiseRejectedResult => org.status === 'rejected',
-	);
-	if (workspaces.length && rejected.length === workspaces.length) {
+	const rejected = sites.filter((org): org is PromiseRejectedResult => org.status === 'rejected');
+	if (sites.length && rejected.length === sites.length) {
 		throw rejected[0].reason;
 	}
-	// Grist resolves /doc/<id> to wherever the document lives.
 	const { credentials } = await gristAuth.call(this);
 	const siteUrl = gristBaseUrl(credentials);
 	const search = filter?.toLowerCase() ?? '';
-	const results = workspaces
-		.flatMap((org) => (org.status === 'fulfilled' ? (org.value ?? []) : []))
-		.flatMap((workspace) => workspace?.docs ?? [])
-		.map((doc) => ({ name: doc.name || doc.id, value: doc.id, url: `${siteUrl}/doc/${doc.id}` }))
+	const results = sites
+		.flatMap((org) => (org.status === 'fulfilled' ? [org.value] : []))
+		.flatMap(({ domain, workspaces }) =>
+			(workspaces ?? [])
+				.flatMap((workspace) => workspace?.docs ?? [])
+				.map((doc) => ({
+					name: doc.name || doc.id,
+					value: doc.id,
+					url: gristDocUrl(siteUrl, domain, doc.id),
+				})),
+		)
 		.filter((doc) => doc.name.toLowerCase().includes(search))
 		.sort((a, b) => a.name.localeCompare(b.name));
 	return { results };
