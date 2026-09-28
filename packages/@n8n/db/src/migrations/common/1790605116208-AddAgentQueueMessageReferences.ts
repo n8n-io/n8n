@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMigration {
@@ -79,6 +81,6 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 			`SELECT ${escape.columnName('id')} FROM ${escape.tableName('agent_message_queue')} LIMIT 1`,
 		);
 		if (rows.length)
-			throw new Error('The agent message queue must be empty to change its message references');
+			throw new UserError('The agent message queue must be empty to change its message references');
 	}
 }

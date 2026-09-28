@@ -7,6 +7,7 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'AddAgentQueueMessageReferences1790605116208';
@@ -90,7 +91,7 @@ describe('AddAgentQueueMessageReferences migration', () => {
 		});
 		const [oldQueueItem] = await rows('agent_message_queue');
 		await context.queryRunner.release();
-		await expect(runSingleMigration(MIGRATION_NAME)).rejects.toThrow('queue must be empty');
+		await expect(runSingleMigration(MIGRATION_NAME)).rejects.toThrow(UserError);
 		context = createTestMigrationContext(dataSource);
 		expect(await rows('agent_message_queue')).toEqual([oldQueueItem]);
 		await context.runQuery(`DELETE FROM ${context.escape.tableName('agent_message_queue')}`);
@@ -117,9 +118,7 @@ describe('AddAgentQueueMessageReferences migration', () => {
 		expect(BigInt(String(queueItem.id))).toBeGreaterThan(BigInt(String(oldQueueItem.id)));
 		await expect(insert('agent_message_queue', queueInput)).rejects.toThrow();
 		await context.queryRunner.release();
-		await expect(dataSource.undoLastMigration({ transaction: 'each' })).rejects.toThrow(
-			'queue must be empty',
-		);
+		await expect(dataSource.undoLastMigration({ transaction: 'each' })).rejects.toThrow(UserError);
 		context = createTestMigrationContext(dataSource);
 		expect(await rows('agent_message_queue')).toEqual([queueItem]);
 		await context.runQuery(
