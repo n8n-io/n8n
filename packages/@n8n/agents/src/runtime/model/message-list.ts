@@ -295,6 +295,24 @@ export class AgentMessageList {
 		block.suspension = suspension;
 	}
 
+	/**
+	 * Record that a tool programmatically activated a skill on its own result, so
+	 * `ActiveSkills` can re-anchor the skill body there on a later turn instead
+	 * of falling back to the `<active_skills>` system prompt. The stamp rides on
+	 * the persisted message; it is metadata only and never reaches the model
+	 * (`toAiMessages` ignores it). No-op when the tool call is unknown.
+	 */
+	stampActivatedSkill(toolCallId: string, skillId: string): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block) return;
+		const current = block.activatedSkillIds ?? [];
+		if (current.includes(skillId)) return;
+		block.activatedSkillIds = [...current, skillId];
+		this.responseSet.add(host);
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {

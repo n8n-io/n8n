@@ -27,6 +27,14 @@ if (args[0] === 'codespace' && args[1] === 'list') {
 `,
 	);
 	chmodSync(mockGh, 0o755);
+	for (const [name, script] of Object.entries({
+		infocmp: '[ "$1" = "$SUPPORTED_TERM" ]',
+		tmux: 'printf "%s" "$TERM"',
+	})) {
+		const executable = join(fixtureDir, name);
+		writeFileSync(executable, `#!/bin/sh\n${script}\n`);
+		chmodSync(executable, 0o755);
+	}
 });
 
 after(() => rmSync(fixtureDir, { recursive: true, force: true }));
@@ -58,17 +66,57 @@ function remoteCommand(args) {
 	return invocationArgs[6];
 }
 
+for (const { name, supportedTerm, expectedTerm } of [
+	{
+		name: 'uses xterm-256color when the remote terminal definition is missing',
+		supportedTerm: 'xterm-256color',
+		expectedTerm: 'xterm-256color',
+	},
+	{
+		name: 'keeps the terminal type when the remote definition is available',
+		supportedTerm: 'xterm-ghostty',
+		expectedTerm: 'xterm-ghostty',
+	},
+]) {
+	test(name, () => {
+		const result = spawnSync('/bin/sh', ['-c', remoteCommand(['--opencode', '--legacy'])], {
+			encoding: 'utf8',
+			env: {
+				...process.env,
+				PATH: `${fixtureDir}:${process.env.PATH}`,
+				TERM: 'xterm-ghostty',
+				SUPPORTED_TERM: supportedTerm,
+			},
+		});
+
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout, expectedTerm);
+	});
+}
+
 test('starts a named OpenCode session in a worktree', () => {
-	const command = remoteCommand(['--opencode', 'fix-flaky', '--model', 'test']);
+	const command = remoteCommand(['--opencode', 'fix-flaky', '--legacy', '--model', 'test']);
 
 	assert.match(command, /tmux new -As fix-flaky-opencode/);
 	assert.match(command, /unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN/);
 	assert.match(command, /OPENCODE_CONFIG_CONTENT/);
 	assert.match(command, /export N8N_AGENT_RUNTIME=sandbox; unset N8N_AGENT_PROFILE/);
-	assert.match(command, /git -C \/workspaces\/n8n worktree add "\/workspaces\/wt-fix-flaky"/);
+	assert.match(
+		command,
+		/git -C \/workspaces\/n8n fetch origin master; git -C \/workspaces\/n8n worktree add --no-track -b "session\/fix-flaky" "\/workspaces\/wt-fix-flaky" origin\/master/,
+	);
 	assert.match(command, /cd "\/workspaces\/wt-fix-flaky" && opencode --auto --model test/);
 	assert.doesNotMatch(command, /unset OPENROUTER_API_KEY/);
 	assert.doesNotMatch(command, /claude plugin/);
+});
+
+test('forwards legacy flags without a workspace name to the main checkout', () => {
+	for (const flags of [['--help'], ['--model', 'test']]) {
+		const command = remoteCommand(['--opencode', '--legacy', ...flags]);
+		assert.match(command, /tmux new -As agent-opencode/);
+		assert.ok(command.includes(`cd /workspaces/n8n && opencode --auto ${flags.join(' ')}`));
+		assert.doesNotMatch(command, /git .*worktree add/);
+	}
 });
 
 test('keeps removed credentials out of the login shell', () => {

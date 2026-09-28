@@ -12,7 +12,6 @@ import type {
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
 import { useI18n } from '../../composables/useI18n';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
@@ -136,7 +135,7 @@ defineExpose({
 						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
 							v-if="credentialsMissing && !isLoading"
-							theme="danger"
+							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
 						>
@@ -194,18 +193,22 @@ defineExpose({
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
-					theme="secondary"
+					variant="secondary"
 					size="xsmall"
-					:show-border="false"
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
-				<N8nActionPill
+				<N8nBadge
 					v-if="item.data?.actionPill"
-					size="small"
-					:type="item.data.actionPill.type ?? 'default'"
-					:text="item.data.actionPill.text"
-				/>
+					size="xxsmall"
+					:variant="
+						item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
+							? item.data.actionPill.type
+							: 'success'
+					"
+				>
+					{{ item.data.actionPill.text }}
+				</N8nBadge>
 				<span v-if="item.data?.connectedLabel" :class="$style.connected">
 					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
 					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>

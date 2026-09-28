@@ -7,7 +7,7 @@ import {
 	ExecutionRepository,
 	SettingsRepository,
 } from '@n8n/db';
-import { Command, SystemTaskMetadata } from '@n8n/decorators';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { sleep } from '@n8n/utils/sleep';
@@ -38,13 +38,12 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { RoleCacheService } from '@/services/role-cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
@@ -426,14 +425,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
 
-		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
-			systemTaskMetadata.register(taskClass);
-		}
-
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
-		await Container.get(SystemTaskRunner).init();
+		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

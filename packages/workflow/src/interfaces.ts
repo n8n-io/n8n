@@ -1348,7 +1348,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
-		putExecutionToWait(waitTill: Date): Promise<void>;
+		/**
+		 * Pauses the execution until `waitTill`.
+		 *
+		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
+		 * The engine then keeps a short wait in the process, so the wait does not survive
+		 * a restart. Without the option the engine suspends and persists the execution.
+		 */
+		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;
@@ -3469,6 +3476,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
@@ -3767,6 +3776,12 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	/**
+	 * Only engine v2 reads this. The caller mints the data-plane execution id
+	 * when it has to wait for the run's answer, so it can subscribe before the
+	 * run starts.
+	 */
+	engineExecutionId?: string;
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support

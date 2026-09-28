@@ -64,8 +64,8 @@ mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 // BaseCommand.init() wires the encryption key provider; this command-init test
 // does not exercise encryption, so keep the bootstrap a no-op.
@@ -133,8 +133,10 @@ test('should start a task runner', async () => {
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
 	// arrange
 
-	deploymentKeyRepository.insertOrIgnore.mockClear();
-	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
+	deploymentKeyRepository.seedActiveIdentifier.mockClear();
+	deploymentKeyRepository.findActiveIdentifier.mockRejectedValueOnce(
+		new Error('permission denied'),
+	);
 
 	const cmd = new ReadOnlyCommand();
 
@@ -144,7 +146,7 @@ test('should not seed the instance identity and should tolerate deployment key r
 
 	// assert
 
-	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
+	expect(deploymentKeyRepository.seedActiveIdentifier).not.toHaveBeenCalled();
 });
 
 test('should not init the expression engine for commands that do not need it', async () => {
@@ -183,9 +185,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 		.spyOn(Expression, 'initExpressionEngine')
 		.mockRejectedValue(new Error('isolated-vm failed to load'));
 	const exitSpy = vi
-		// @ts-expect-error Protected method
 		.spyOn(BaseCommand.prototype, 'exitWithCrash')
-		.mockResolvedValue(undefined);
+		.mockResolvedValue(undefined as never);
 
 	Container.set(
 		GlobalConfig,

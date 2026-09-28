@@ -102,6 +102,77 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackStartedChannelSetup(params: { agentId: string; channelType: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_AGENT_CHANNEL_SETUP, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			...common(),
+		});
+	}
+
+	function trackClosedChannelSetup(params: {
+		agentId: string;
+		channelType: string;
+		completed: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLOSED_AGENT_CHANNEL_SETUP, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			completed: params.completed,
+			...common(),
+		});
+	}
+
+	function trackFailedToConnectChannel(params: {
+		agentId: string;
+		channelType: string;
+		stage: 'persist' | 'before_save' | 'connect';
+		conflict: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_TO_CONNECT_AGENT_CHANNEL, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			stage: params.stage,
+			conflict: params.conflict,
+			...common(),
+		});
+	}
+
+	function trackCheckedTeamsCredential(params: {
+		agentId: string;
+		trigger: 'auto' | 'recheck';
+		status: 'ok' | 'failed';
+		reason?: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL
+		>['reason'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL, {
+			agent_id: params.agentId,
+			trigger: params.trigger,
+			status: params.status,
+			...(params.reason ? { reason: params.reason } : {}),
+			...common(),
+		});
+	}
+
+	function trackClickedDeployToAzure(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackDownloadedTeamsAppPackage(params: {
+		agentId: string;
+		status: 'success' | 'error';
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DOWNLOADED_TEAMS_APP_PACKAGE, {
+			agent_id: params.agentId,
+			status: params.status,
+			...common(),
+		});
+	}
+
 	function trackDuplicatedAgent(params: {
 		sourceAgentId: string;
 		agentId: string;
@@ -128,5 +199,11 @@ export function useAgentTelemetry() {
 		trackOpenedAddSkillModal,
 		trackImportedSkill,
 		trackDuplicatedAgent,
+		trackStartedChannelSetup,
+		trackClosedChannelSetup,
+		trackFailedToConnectChannel,
+		trackCheckedTeamsCredential,
+		trackClickedDeployToAzure,
+		trackDownloadedTeamsAppPackage,
 	};
 }

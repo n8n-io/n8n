@@ -64,6 +64,95 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
 	});
 
+	it('repairs a saved tool-call ID that Anthropic cannot accept', () => {
+		// AGENT-1054: A saved ID must not break every later turn in the thread.
+		const invalidId = 'toolu.invalid/id';
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: invalidId,
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const toolCall = assistant.content[0];
+		const toolResult = tool.content[0];
+		if (toolCall.type !== 'tool-call' || toolResult.type !== 'tool-result') {
+			throw new Error('Expected a tool call and its result');
+		}
+		expect(toolCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(toolCall.toolCallId).not.toBe(invalidId);
+		expect(toolResult.toolCallId).toBe(toolCall.toolCallId);
+		expect(input[0].content[0]).toMatchObject({ toolCallId: invalidId });
+	});
+
+	it('keeps repaired IDs distinct and pairs provider-executed results', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'search',
+						input: {},
+						providerExecuted: true,
+						state: 'resolved',
+						output: { hits: 1 },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const [serverCall, serverResult, clientCall] = assistant.content;
+		const clientResult = tool.content[0];
+		if (
+			serverCall.type !== 'tool-call' ||
+			serverResult.type !== 'tool-result' ||
+			clientCall.type !== 'tool-call' ||
+			clientResult.type !== 'tool-result'
+		) {
+			throw new Error('Expected paired tool calls and results');
+		}
+		expect(serverCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(clientCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(serverCall.toolCallId).not.toBe(clientCall.toolCallId);
+		expect(serverResult.toolCallId).toBe(serverCall.toolCallId);
+		expect(clientResult.toolCallId).toBe(clientCall.toolCallId);
+	});
+
 	it('preserves provider metadata on replayed assistant tool-call parts', () => {
 		const providerMetadata = { google: { thoughtSignature: 'gemini-signature' } };
 		const input: Message[] = [

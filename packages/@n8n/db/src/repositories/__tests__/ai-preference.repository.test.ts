@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { In, IsNull } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 
 import { AiPreference } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -38,6 +38,76 @@ describe('AiPreferenceRepository', () => {
 				where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
 				order: { createdAt: 'ASC', id: 'ASC' },
 			});
+		});
+	});
+
+	describe('findPageVisible', () => {
+		it('narrows every visibility branch to the requested ids', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: ['p-1'],
+				allUsers: false,
+				skip: 0,
+				take: 2,
+				ids: ['a', 'b'],
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(AiPreference, {
+				where: [
+					{ userId: IsNull(), projectId: IsNull(), id: In(['a', 'b']) },
+					{ userId: 'user-1', id: In(['a', 'b']) },
+					{ projectId: In(['p-1']), id: In(['a', 'b']) },
+				],
+				relations: { project: true, user: true },
+				order: { createdAt: 'ASC', id: 'ASC' },
+				skip: 0,
+				take: 2,
+			});
+		});
+
+		it('narrows the admin and all-projects branches the same way', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'admin-1',
+				projectIds: 'all',
+				allUsers: true,
+				skip: 0,
+				take: 2,
+				ids: ['a'],
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({
+					where: [
+						{ userId: IsNull(), projectId: IsNull(), id: In(['a']) },
+						{ userId: Not(IsNull()), id: In(['a']) },
+						{ projectId: Not(IsNull()), id: In(['a']) },
+					],
+				}),
+			);
+		});
+
+		it('leaves the visibility branches alone when no ids are given', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: [],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({
+					where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
+				}),
+			);
 		});
 	});
 

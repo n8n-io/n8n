@@ -37,7 +37,7 @@ import {
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
@@ -451,9 +451,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate, toDelete);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});
@@ -472,9 +469,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});

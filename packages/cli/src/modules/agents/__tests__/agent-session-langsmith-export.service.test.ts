@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
@@ -230,6 +231,37 @@ describe('AgentSessionLangSmithExportService', () => {
 				inputs: { tasks },
 			}),
 		);
+	});
+
+	it('checks the caller for each child before sending a trace', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail
+			.mockResolvedValueOnce({ thread: makeThread(), executions: [makeExecution()] })
+			.mockRejectedValueOnce(new NotFoundError('Thread not found'));
+		threadRepository.findByParentThreadId.mockResolvedValueOnce([
+			makeThread({
+				id: 'child-thread',
+				agentId: 'child-agent',
+				parentThreadId: 'parent-thread',
+				parentAgentId: 'parent-agent',
+			}),
+		]);
+		await expect(service.exportSession(input)).rejects.toThrow(NotFoundError);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenNthCalledWith(
+			1,
+			'parent-thread',
+			'project-1',
+			'parent-agent',
+			'user-1',
+		);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenNthCalledWith(
+			2,
+			'child-thread',
+			'project-1',
+			'child-agent',
+			'user-1',
+		);
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('exports a complete redacted session tree with stable snapshot IDs', async () => {

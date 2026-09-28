@@ -61,7 +61,7 @@ import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
@@ -1253,7 +1253,7 @@ export class McpAgentToolsService {
 			});
 			const previewAccessNote = canOpenPreview
 				? undefined
-				: 'Your access permits running this agent but not opening Preview. Share the Preview URL with a project member who has project and agent read access.';
+				: 'Your access permits running this agent but not opening Preview. Ask a project administrator for project and agent read access to open your preview session.';
 			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
 				agentId,
 				suspensions: result.suspensions,

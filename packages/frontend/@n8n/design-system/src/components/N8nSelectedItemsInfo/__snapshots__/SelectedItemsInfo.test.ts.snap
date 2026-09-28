@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nSelectedItemsInfo > matches snapshot 1`] = `
+"<div class="selectionOptions" data-test-id="selected-items-info"><span>2 rows selected</span><!-- Custom bulk actions; defaults to the delete button for existing consumers -->
+  <n8n-button-stub label="Delete" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="button" data-test-id="delete-selected-button"></n8n-button-stub>
+  <n8n-button-stub label="Clear selection" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="button" data-test-id="clear-selection-button"></n8n-button-stub>
+</div>"
+`;

@@ -12,24 +12,25 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	}
 
 	/**
-	 * Today's report, if one was already generated and never reached the receiver.
+	 * The report a retry may resume, or `null` when there is nothing to resume.
+	 * It is the newest row, and only if that row is still `pending`.
 	 *
-	 * Resending it — same `batchId`, same data points — is what keeps a retry from
-	 * re-measuring: the cumulative series is only comparable day to day while its
-	 * sampling interval stays a fixed 24 hours.
+	 * At most one report is genuinely pending: the scheduler settles a stale row
+	 * before it creates the next one. But earlier versions left a failed report
+	 * pending for good, so an instance can still hold an old `pending` row below
+	 * a newer `delivered` one. That row is an orphan — the newer report already
+	 * covers its days, and a resend would report those days two times.
 	 *
-	 * Scoped to `now`'s UTC day on purpose: an older undelivered report measured a
-	 * different day, so it must not stand in for today's. It stays as it is, a
-	 * record of a report that never landed, and its days are covered again by the
-	 * next report.
+	 * So this reads the newest row of any status and then checks that status. It
+	 * must not filter on `status` in the query.
 	 *
-	 * A report that ran out of attempts is not pending, so it is never resent.
+	 * `id` breaks a `createdAt` tie so the result is stable. A tie needs two
+	 * reports in the same millisecond, which the once-a-day cadence never makes.
 	 */
-	async findTodaysPending(now: Date): Promise<InstanceMonitoringReport | null> {
-		return await this.findOne({
-			where: { status: 'pending', createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
-			order: { createdAt: 'DESC' },
-		});
+	async findPending(): Promise<InstanceMonitoringReport | null> {
+		const [latest] = await this.find({ order: { createdAt: 'DESC', id: 'DESC' }, take: 1 });
+
+		return latest?.status === 'pending' ? latest : null;
 	}
 
 	/**

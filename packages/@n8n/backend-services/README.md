@@ -27,9 +27,9 @@ and infrastructure services that need the persistence layer or that only
 
 ## What lives here
 
-Nothing yet. The next PRs move the response errors, `UrlService`, `CacheService`,
-`RedisClientService`, `ProtectedResourceRegistry`, `EventService`, `RoleService`,
-the finder services and the scope checks here, one area at a time.
+The package contains `UrlService`. The next PRs move the response errors,
+`CacheService`, `RedisClientService`, `ProtectedResourceRegistry`, `EventService`,
+`RoleService`, the finder services and the scope checks here, one area at a time.
 
 ## Compatibility with cli
 
@@ -39,7 +39,7 @@ lints and tests here without edits:
 | Concern | Setup | Mirrors |
 | --- | --- | --- |
 | TypeScript | `common.go` + `backend.go`, `lib` es2023, `strictFunctionTypes`, `strictPropertyInitialization` and `useUnknownInCatchVariables` off | `packages/cli/tsconfig.json` |
-| Lint | `oxlint --type-aware`, then the ESLint guardrails pass. `eslint.config.mjs` is the policy twin that code-health and the guardrails read | `packages/cli/oxlint.config.mts`, `eslint.guardrails.config.mjs` |
+| Lint | `oxlint --type-aware`. `eslint.config.mjs` is the policy twin that code-health reads | `packages/cli/oxlint.config.mts`, `eslint.config.mjs` |
 | Tests | Vitest with the decorators config, one fork per file, the same `N8N_USER_FOLDER` and `N8N_ENCRYPTION_KEY` setup | `packages/cli/vitest.config.base.ts`, `test/setup-test-folder.ts` |
 
 Two things do not carry over on purpose:

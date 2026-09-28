@@ -19,6 +19,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
@@ -71,7 +72,15 @@ export class ProjectPackageImporter {
 	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
-		const projects = await this.packageParser.getProjects(reader);
+		const { selection } = request;
+		const selectedProjects = selection
+			? (manifest.projects ?? []).filter((project) => project.id === selection.selectedProjectId)
+			: (manifest.projects ?? []);
+
+		const allProjects = await this.packageParser.getProjects(reader);
+		const projects = selection
+			? allProjects.filter((project) => project.sourceProjectId === selection.selectedProjectId)
+			: allProjects;
 		const projectPlan = await this.projectImporter.plan(
 			request.user,
 			projects,
@@ -104,7 +113,7 @@ export class ProjectPackageImporter {
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
-		for (const project of manifest.projects ?? []) {
+		for (const project of selectedProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
 				reader,
@@ -246,7 +255,14 @@ export class ProjectPackageImporter {
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
-		const workflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+
+		// Do not expand the selection to include referenced sub-workflows.
+		const workflows = request.selection
+			? allWorkflows.filter((workflow) =>
+					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
+				)
+			: allWorkflows;
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
@@ -306,6 +322,7 @@ export class ProjectPackageImporter {
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 		};
 	}
 
@@ -336,5 +353,18 @@ export class ProjectPackageImporter {
 			// Folders it empties go too, so it needs both removal scopes up front.
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
+
+		// Selection imports preserve folders, so explicit deletions need only workflow:delete.
+		if (request.selection?.deletedWorkflowIds?.length) {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
+		}
 	}
+}
+
+function deletesForProject(
+	selection: ImportSelection | undefined,
+	projectId: string,
+): string[] | undefined {
+	if (!selection || selection.selectedProjectId !== projectId) return undefined;
+	return selection.deletedWorkflowIds;
 }

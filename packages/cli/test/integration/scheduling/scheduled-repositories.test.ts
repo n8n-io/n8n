@@ -90,6 +90,7 @@ describe('scheduled repositories', () => {
 		name,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
+		concurrencyLimit: null,
 		...selfOwned(name),
 		taskType: 'scheduleTrigger',
 		payload: {},
@@ -459,6 +460,17 @@ describe('scheduled repositories', () => {
 			expect(ids).toEqual([idByName.get('wf:node:0'), idByName.get('wf:node:1')]);
 		});
 
+		it('stores a concurrency limit, and leaves an omitted one unlimited', async () => {
+			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1', { concurrencyLimit: 2 })];
+
+			await dataSource.transaction(async (trx) => await jobRepository.insertMany(trx, jobs));
+
+			const unlimited = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
+			const limited = await jobRepository.findOneByOrFail({ name: 'wf:node:1' });
+			expect(unlimited.concurrencyLimit).toBeNull();
+			expect(limited.concurrencyLimit).toBe(2);
+		});
+
 		it('returns the existing id for a name already taken, without duplicating the row', async () => {
 			// A prior writer already holds `wf:node:0`; a second provisioning run inserts it
 			// again alongside a fresh name. orIgnore skips the taken row, and the read-back by
@@ -574,6 +586,7 @@ describe('scheduled repositories', () => {
 						maxAttempts: 5,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -590,6 +603,23 @@ describe('scheduled repositories', () => {
 			expect(other.misfireGraceSeconds).toBe(60);
 		});
 
+		it('rewrites the concurrency limit of the given jobs', async () => {
+			const job = await createJob({ concurrencyLimit: null });
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateRunOptions(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
+						misfirePolicy: job.misfirePolicy,
+						misfireGraceSeconds: job.misfireGraceSeconds,
+						concurrencyLimit: 3,
+					}),
+			);
+
+			const after = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(after.concurrencyLimit).toBe(3);
+		});
+
 		it('leaves the queued occurrences of an updated job in place', async () => {
 			const job = await createJob();
 			await createTask(job.id);
@@ -600,6 +630,7 @@ describe('scheduled repositories', () => {
 						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -615,6 +646,7 @@ describe('scheduled repositories', () => {
 						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 

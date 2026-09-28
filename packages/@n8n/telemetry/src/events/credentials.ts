@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { setupTelemetryProperties } from '../setup-properties';
 
 const descriptionProperties = {
 	has_description: z.boolean().describe('Whether the saved credential has a nonempty description.'),
@@ -12,6 +13,16 @@ const descriptionProperties = {
 };
 
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
+	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
+		name: 'User viewed Gateway credits credential error nudge',
+		description:
+			'The credential modal showed a Gateway credits suggestion after a failed credential test for an eligible workflow node.',
+		properties: z.object({
+			credential_type: z.string(),
+			node_type: z.string(),
+			workflow_id: z.string().optional(),
+		}),
+	},
 	USER_CREATED_CREDENTIALS: {
 		name: 'User created credentials',
 		description:
@@ -48,8 +59,9 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			user_role: z.string().optional(),
 			credential_id: z.string(),
 			credential_type: z.string(),
-			source: z.literal('backend'),
-			...descriptionProperties,
+			source: z.literal('backend').optional(),
+			has_description: descriptionProperties.has_description.optional(),
+			description_length: descriptionProperties.description_length.optional(),
 			is_private: z.boolean(),
 			uses_external_secrets: z.boolean(),
 			jwe_enabled: z.boolean(),
@@ -62,6 +74,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user started a connection attempt or selected an existing credential in the setup panel. Includes retries.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string(),
@@ -74,6 +87,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A setup-panel credential was selected or connected and its workflow binding was applied or queued. This does not report workflow validation.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string(),

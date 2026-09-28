@@ -289,7 +289,9 @@ describe('emit-instance-ai', () => {
 			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
+			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',
 			// Display-options matching

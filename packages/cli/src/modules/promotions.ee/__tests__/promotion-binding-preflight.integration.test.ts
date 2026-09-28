@@ -291,6 +291,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createProjectVariable('REGION', 'eu', projectA);
 
 		expect(await service.checkDirectory({ sourceDir })).toEqual({
+			missingProjects: [],
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],
@@ -328,6 +329,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 		const before = await snapshot();
 		const expected = {
+			missingProjects: [],
 			missingBindings: [],
 			conflicts: [],
 			warnings: [],
@@ -393,6 +395,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const before = await snapshot();
 		const result = await service.checkDirectory({ sourceDir });
 		expect(result).toEqual({
+			missingProjects: [{ id: 'proj-new', name: 'New' }],
 			missingBindings: [],
 			warnings: [],
 			accessRequirements: [
@@ -464,6 +467,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createVariable('REGION', 'target-global-value');
 		const before = await snapshot();
 		expect(await service.checkDirectory({ sourceDir })).toEqual({
+			missingProjects: [],
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],

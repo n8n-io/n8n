@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
 const props = defineProps<{
@@ -19,11 +20,6 @@ const props = defineProps<{
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
 
-const SCOPE_TITLE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-};
-
 const i18n = useI18n();
 
 const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
@@ -36,11 +32,9 @@ const isContactAdminOpen = ref(false);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
-		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
+		(props.scope && SCOPE_LABEL_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
-
-const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 </script>
 
 <template>
@@ -83,19 +77,8 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 				</div>
 			</template>
 		</N8nPopover>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
-			:description="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.description', {
-					interpolate,
-				})
-			"
-			:mail-subject="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.mailSubject', {
-					interpolate,
-				})
-			"
-		/>
+		<!-- A sibling of the popover: its content unmounts on close and must not take the dialog with it. -->
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</span>
 </template>
 

@@ -897,6 +897,41 @@ describe('AgentValidationService — structured issues', () => {
 		]);
 	});
 
+	it('accepts credential-free n8n Chat without relaxing other channel checks', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(runnableConfig, {}, { integrations: [{ type: 'n8n_chat', credentialId: '' }] }),
+		);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		await expect(
+			service.validateAgentConfiguration(agentId, projectId, credentials),
+		).resolves.toEqual({ status: 'valid', issues: [] });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				runnableConfig,
+				{},
+				{
+					integrations: [
+						{ type: 'n8n_chat', credentialId: '' },
+						{ type: 'slack', credentialId: '' },
+					],
+				},
+			),
+		);
+		const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'integrations.1.credentialId',
+				capability: { kind: 'channel', id: 'slack', index: 1 },
+			}),
+		]);
+	});
+
 	it('flags a custom tool without a saved body', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

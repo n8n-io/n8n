@@ -33,7 +33,6 @@ test.describe
 			});
 
 			test('should show up in the menu sidebar', async ({ n8n }) => {
-				await n8n.goHome();
 				await n8n.workerView.goto();
 				await expect(n8n.workerView.getWorkerMenuItem()).toBeVisible();
 			});

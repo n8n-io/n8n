@@ -56,7 +56,7 @@ const StartExecutionBody = z.object({
 		.object({
 			userId: z.string().min(1).optional(),
 			projectId: z.string().min(1).optional(),
-			hostMode: z.string().min(1).optional(),
+			hostMode: z.string().min(1),
 		})
 		.strict(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */

@@ -119,3 +119,64 @@ issues. Examples:
 
 Under the default `--credential-missing-mode=create-stub`, missing credentials
 are stubbed instead of blocking the import.
+
+## `package import-selection`
+
+Import a chosen subset of workflows from a `.n8np` project package. Workflow and
+folder packages are not supported. The command imports workflows listed in
+`--selected-workflow-ids` and archives workflows listed in `--deleted-workflow-ids`.
+It leaves workflows outside both lists and other projects unchanged. It can also
+create folders and referenced resources under the fixed policies below.
+
+The selection belongs to one source project (`--selected-project-id`). The command
+writes selected workflows into the target instance project with the same ID.
+It creates that project if it does not exist. There is no separate target option.
+
+These policies are fixed:
+
+| Resource | Policy |
+|----------|--------|
+| Projects | Merge the selected project with the target project. |
+| Folders | Merge all packaged folders in the selected project, including folders with no selected workflows. |
+| Tags | Create missing tags referenced by imported workflows. Skip tag conflicts. |
+| Data tables | Match referenced tables by ID. Create missing tables. Reject incompatible schemas. |
+| Credentials | Match referenced credentials by ID. They must already exist. |
+| Variables | Referenced variables must already exist. Keep their current values. |
+
+An imported workflow's destination ID must not appear in `--deleted-workflow-ids`.
+The command rejects this overlap before any writes, including with the `skip`
+policy. It checks the destination ID even if the workflow is absent or archived.
+
+The result lists archived workflows under `removedWorkflows`, each with
+`deletion: archived`. The command does not permanently delete workflows or their
+execution history. It skips absent or already archived workflows and omits them
+from this list.
+
+```bash
+n8n-cli package export --project-id=<id> --output=project.n8np
+n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>
+n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--file` | Path to the `.n8np` project package file. (required) |
+| `--selected-project-id` | Source project ID for the selection. The target project uses the same ID. (required) |
+| `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
+| `--deleted-workflow-ids` | Target workflow IDs to archive. Separate IDs with commas, or repeat the flag. Absent or already archived workflows are ignored. |
+| `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
+| `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
+
+Requires the API key to hold:
+
+- `workflow:import` — always
+- `workflow:delete` — when `--deleted-workflow-ids` contains IDs or an imported workflow changes between archived and unarchived
+- `project:create` and `project:update` — always, even when the selected project already exists
+- `folder:create` and `folder:update` — when the package contains folders, including folders outside the selected project
+- `tag:create` — when the import creates a missing tag referenced by an imported workflow
+
+Packages with folders also require a license that supports folders. The user must
+have permission to create data tables when the import creates missing tables.
+
+When the import is blocked, the command exits non-zero and lists the blocking
+issues.

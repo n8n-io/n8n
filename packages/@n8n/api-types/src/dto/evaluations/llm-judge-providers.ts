@@ -40,7 +40,7 @@ export const LLM_JUDGE_PROVIDERS: LlmJudgeProvider[] = [
 	},
 	{
 		nodeType: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-		displayName: 'Azure OpenAI Chat Model',
+		displayName: 'Azure AI Foundry Chat Model',
 		credentialTypes: [
 			{ name: 'azureOpenAiApi', displayName: 'Azure OpenAI' },
 			{

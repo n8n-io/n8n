@@ -1,10 +1,13 @@
-# Node type availability policies
+# Type availability policies
 
-Rules that say which node types a project may use. An admin writes the rules. The policy
-infrastructure enforces them at the points that handle a workflow — save, publish, start,
-transfer and import — and at the point where a node asks for a credential.
+Rules that say which node types and which credential types a project may use. An admin writes
+the rules. The policy infrastructure enforces them at the points that handle a workflow — save,
+publish, start, transfer and import — and at the points that handle a credential.
 
-This module is the first tenant of that infrastructure. It adds a check and a store, and
+Most of this document describes the node type check, which came first. "The credential type
+check" below covers the second one and only the ways it differs.
+
+This module is the first tenant of that infrastructure. It adds two checks and one store, and
 nothing else: no enforcement path of its own, no error shape, no audit line. Read
 `../policy-infrastructure/README.md` for the substrate, and the policy infrastructure RFC in
 Notion for why the substrate looks the way it does.
@@ -13,7 +16,7 @@ Notion for why the substrate looks the way it does.
 
 Two gates, both required:
 
-1. The license feature `feat:nodeTypePolicies`. Without it, `init()` never runs, so the
+1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
    controllers are not mounted and no check is registered.
 2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
 
@@ -87,6 +90,50 @@ A refusal fails the decryption with the same `node-type-unavailable` violation t
 points report, naming the **node type** as `subject`. The audit line carries the credential's
 id and type from the context.
 
+## The credential type check
+
+`CredentialTypePolicyCheck` is the second check in this module. It reads the same store under
+the `credential-types` kind, where a type name is bare (`slackApi`) rather than
+package-qualified. The two checks stack: either veto blocks, so a rule on the Slack node and a
+rule on `slackApi` are independent decisions.
+
+A rule of this kind is written on `/credential-type-policies` and
+`/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
+own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
+
+It implements all seven points:
+
+| Point               | What it reads                                      |
+| ------------------- | -------------------------------------------------- |
+| the five workflow points | the keys of every node's `credentials` map    |
+| `credentialSave`    | the type of the credential being written           |
+| `credentialDecrypt` | `credentialType` — the credential's own type       |
+
+Two differences from the node check are the point of the whole thing:
+
+- **`credentialDecrypt` ignores the asking node.** A blocked `slackApi` is refused to the Slack
+  node and to an HTTP Request node alike, which is the hole a node rule alone leaves. A null
+  `consumer` changes nothing either: an OAuth flow or a credential test has no node to police,
+  but it does have a credential type.
+- **`credentialSave` refuses creating a credential of a blocked type.** That is a build
+  experience guard, not a boundary — decryption already makes such a credential inert. An edit
+  that keeps the stored type is grandfathered, so a type blocked after the fact stays openable
+  and renameable.
+
+A violation is `credential-type-unavailable` with `subjectType: 'credentialType'`; everything
+else about the shape matches the node check.
+
+Workflow-point grandfathering works the same way, one level down: the save diff compares
+credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
+adds nothing to police.
+
+### What the second kind costs
+
+The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
+both scopes configured and attached costs 12 queries where one kind cost 6, and a warm one
+costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
+checks together, so the second kind costs queries rather than latency.
+
 ## What a violation looks like
 
 One violation per blocked type, deduplicated, in the order the types first appear:
@@ -127,6 +174,16 @@ Evaluation is `instance ∩ project`, and a project can only restrict further. `
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
 never by a project's bare default. `policy-evaluator.ts` owns that law and is pure, so it is
 the place to read it.
+
+A `name` rule for a node also covers the `Tool` and `HitlTool` variants the registry generates
+from it at startup: a rule for `n8n-nodes-base.gmail` denies `n8n-nodes-base.gmailTool` and
+`n8n-nodes-base.gmailHitlTool` too. A real node whose name ends in `Tool` is not a variant of
+anything, and only its own name matches it. When one rule names the base and another names the
+variant, the first match in rule order decides, as it does when a `name` and a `package` rule
+overlap; a variant rule placed after its base rule can never match, and the write-time shadow
+lint warns about it. The verdict names the variant the user placed and the rule that decided.
+Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
+stores `gmail` is a new type and is judged.
 
 ### Reading it on the execution path
 
@@ -177,8 +234,6 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 ## Known limits
 
-- **Sibling tool types are separate names.** A rule that denies `n8n-nodes-base.gmail` does not
-  deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
   The credential lock still catches such a node once it asks for a credential.
@@ -228,12 +283,15 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
+| `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
+| `credential-type-policy.check.ts`                 | Credential types: all seven points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments                                       |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins                                       |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |
