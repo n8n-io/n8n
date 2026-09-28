@@ -528,7 +528,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				active: resource.active ?? false,
 				activeVersionId: resource.activeVersionId,
 				isArchived: resource.isArchived,
-				updatedAt: resource.updatedAt.toString(),
+				updatedAt: (resource.updatedAt ?? resource.createdAt).toString(),
 				createdAt: resource.createdAt.toString(),
 				homeProject: resource.homeProject,
 				scopes: resource.scopes,
