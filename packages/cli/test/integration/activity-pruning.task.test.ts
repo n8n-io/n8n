@@ -70,6 +70,15 @@ describe('ActivityPruningTask', () => {
 		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await task.run(signal)));
 	}
 
+	/** One row per round trip, so the writes spread across the sweeps' own round trips. */
+	async function writeOneByOne(count: number): Promise<number[]> {
+		const ids: number[] = [];
+		for (let i = 0; i < count; i++) {
+			ids.push(...(await seed(1, new Date())));
+		}
+		return ids;
+	}
+
 	it('leaves the newest entries under the cap when sweeps overlap', async () => {
 		const recent = await seedBacklog();
 
@@ -81,10 +90,13 @@ describe('ActivityPruningTask', () => {
 	it('keeps every entry written while sweeps are in flight', async () => {
 		await seedBacklog();
 
-		const [written] = await Promise.all([seed(WRITES_DURING_SWEEP, new Date()), runOverlapping()]);
+		const [written] = await Promise.all([writeOneByOne(WRITES_DURING_SWEEP), runOverlapping()]);
 
+		// A row written after a sweep read its bound is out of that sweep's reach, so the table may
+		// end above the cap by at most the rows written.
 		const remaining = await remainingIds();
-		expect(remaining).toHaveLength(MAX_ENTRIES);
 		expect(remaining.slice(-WRITES_DURING_SWEEP)).toEqual(written);
+		expect(remaining.length).toBeGreaterThanOrEqual(MAX_ENTRIES);
+		expect(remaining.length).toBeLessThanOrEqual(MAX_ENTRIES + WRITES_DURING_SWEEP);
 	});
 });
