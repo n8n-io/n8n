@@ -256,16 +256,13 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/** `workflows/<entry>/workflow.json`, optionally below one or more `folders/<entry>/` levels. */
+/** `workflows/<entry>/workflow.json`, at the root or under a `folders/<a>/<b>/…` chain of bare slugs. */
 function isWorkflowLocation(segments: string[]): boolean {
-	let start = 0;
-	while (
-		segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory &&
-		segments.length - start > 3
-	) {
-		start += 2;
-	}
-	return isCollectionLocation(segments.slice(start), 'workflows');
+	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
+	const container = segments.slice(0, -3);
+	if (container.length === 0) return true; // root workflow
+	// A folder chain needs a slug after `folders/`.
+	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {

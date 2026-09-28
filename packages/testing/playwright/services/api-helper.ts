@@ -41,7 +41,7 @@ import { WorkflowApiHelper } from './workflow-api-helper';
 export interface ApiHelpersOptions {
 	/**
 	 * Settings merged over every workflow this helper creates. Set per stack, so
-	 * a project that runs engine 2.0 routes every workflow to it.
+	 * a project that runs engine v2 routes every workflow to it.
 	 */
 	workflowSettings?: Partial<IWorkflowSettings>;
 }

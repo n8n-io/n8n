@@ -255,7 +255,7 @@ export class ActivityEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		versionId,
-		versionName,
+		versionName: updatedVersionName,
 	}: RelayEventMap['workflow-version-updated']) {
 		await this.record({
 			category: 'workflow',
@@ -265,9 +265,7 @@ export class ActivityEventRelay extends EventRelay {
 			resourceType: 'workflow',
 			resourceId: workflowId,
 			resourceName: workflowName,
-			// The name is unbounded user input. Left whole it can push `data` past the budget, and an
-			// over-budget payload is replaced entirely — which would take `versionId` with it.
-			data: { versionId, ...(versionName ? { versionName: clip(versionName) } : {}) },
+			data: { versionId, ...versionName(updatedVersionName) },
 		});
 	}
 

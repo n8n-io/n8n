@@ -5,8 +5,10 @@ import {
 	cardAction,
 	dmFollowUp,
 	dmMessage,
+	groupChatMention,
 	selfMessage,
 	TEAMS_DM_CONVERSATION_ID,
+	TEAMS_GROUP_CHAT_CONVERSATION_ID,
 	TEAMS_USER_ID,
 } from '../../../__tests__/helpers/teams/synthetic-fixtures';
 
@@ -150,6 +152,14 @@ describe('Microsoft Teams integration scenarios', () => {
 						displayName: 'Send Teams message',
 						args: { text: 'Continue?' },
 					},
+					// What the approval gate really sends: APPROVAL_RESUME_SCHEMA as
+					// JSON Schema. Without it the mapper encodes the button value as a
+					// bare string, and no decision reaches the formatter.
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
 			],
@@ -175,13 +185,155 @@ describe('Microsoft Teams integration scenarios', () => {
 					runId: 'run-card-1',
 					toolCallId: 'tool-card-1',
 					integrationType: 'teams',
+					resumeData: { approved: true },
 				}),
 			);
 
-			// Generic wording: no CallbackStore, so no decision reaches the formatter.
-			expect(ctx.lastEdit()?.body).toMatchObject({
-				text: '✅ Action selected by Alice',
+			// Removed rather than relabelled, so a stale button cannot be clicked.
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+			expect(ctx.lastEdit()).toBeUndefined();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('addresses a group chat approval card at the user who asked', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+
+			const cardPost = ctx.lastPost();
+			expect(cardPost?.body).toMatchObject({
+				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
+				// A Teams targeted message: delivered to this user alone.
+				recipient: { id: TEAMS_USER_ID },
 			});
+			expect(cardActions(cardPost?.body)).not.toHaveLength(0);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('removes an answered targeted card', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
+			const approve = cardActions(ctx.lastPost()?.body)[0];
+			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
+
+			ctx.nextStream([{ type: 'finish', finishReason: 'stop' }]);
+			await ctx.sendWebhook(
+				cardAction(approve.data as Record<string, unknown>, cardMessageId, groupChatMention),
+			);
+
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					resumeData: { approved: true },
+				}),
+			);
+
+			// A targeted card is only mutable through the targeted endpoint, so the
+			// answered one is deleted there rather than settled in place.
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+			expect(ctx.lastDelete()?.body.uri).toContain('isTargetedActivity=true');
+			expect(ctx.lastEdit()).toBeUndefined();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('answers a click on a card whose run is gone, privately', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
+			const approve = cardActions(ctx.lastPost()?.body)[0];
+			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
+
+			ctx.agentExecutor.isResumable.mockResolvedValue(false);
+			await ctx.sendWebhook(
+				cardAction(approve.data as Record<string, unknown>, cardMessageId, groupChatMention),
+			);
+
+			// No decision took effect, so the click is answered rather than resumed.
+			expect(ctx.agentExecutor.resumeForChat).not.toHaveBeenCalled();
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+
+			const notice = ctx.lastPost();
+			expect(notice?.body).toMatchObject({
+				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
+				// Targeted, so the rest of the group chat never sees it.
+				recipient: { id: TEAMS_USER_ID },
+			});
+			expect(notice?.body.text).toContain('This action is no longer available');
 		} finally {
 			await ctx.shutdown();
 		}
