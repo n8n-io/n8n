@@ -10,14 +10,11 @@ describe('GET /.well-known/jwks.json', () => {
 		const response = await testServer.authlessAgent.get('/.well-known/jwks.json').expect(200);
 
 		const { keys } = response.body as { keys: Array<Record<string, string>> };
-		expect(keys).toHaveLength(2);
-		expect(keys).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ kty: 'RSA', use: 'enc', alg: 'RSA-OAEP-256' }),
-				expect.objectContaining({ kty: 'RSA', use: 'sig', alg: 'RS256' }),
-			]),
-		);
-		expect(keys[0].kid).not.toBe(keys[1].kid);
+		const encKeys = keys.filter((key) => key.use === 'enc');
+		const sigKeys = keys.filter((key) => key.use === 'sig');
+		expect(encKeys).toEqual([expect.objectContaining({ kty: 'RSA', alg: 'RSA-OAEP-256' })]);
+		expect(sigKeys).toEqual([expect.objectContaining({ kty: 'RSA', alg: 'RS256' })]);
+		expect(new Set(keys.map((key) => key.kid)).size).toBe(keys.length);
 		expect(response.headers['cache-control']).toBe('public, max-age=3600, must-revalidate');
 	});
 });

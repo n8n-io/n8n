@@ -7,7 +7,10 @@ export const OAUTH_SIGNING_ALGORITHM = 'RS256';
 export const OAUTH_SIGNING_KEY_USE = 'sig';
 export const OAUTH_SIGNING_MODULUS_LENGTH = 2048;
 
-/** Public signing keys only. The private key stays in process memory. */
+/**
+ * Public signing keys only. The private key stays in process memory.
+ * Delete this entry whenever a signing key is added or changes status.
+ */
 export const OAUTH_SIGNING_KEYS_CACHE_KEY = 'oauth-server:signing-keys';
 
 export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 1 * Time.hours.toSeconds;
