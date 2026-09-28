@@ -6,8 +6,6 @@ import type {
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
 	UpdateOidcConfigurationDto,
-	UpdateOtelSettingsDto,
-	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
@@ -214,16 +212,6 @@ export declare namespace LogStreamingRequest {
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
-}
-
-// ----------------------------------
-//        /settings/otel
-// ----------------------------------
-
-export declare namespace OtelSettingsRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
-	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
 
 // ----------------------------------

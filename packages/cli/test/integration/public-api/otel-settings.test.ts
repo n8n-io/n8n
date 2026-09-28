@@ -110,6 +110,12 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(response.status).toBe(403);
 		});
+
+		it('rejects unknown query parameters', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel?extra=true');
+
+			expect(response.status).toBe(400);
+		});
 	});
 
 	describe('PUT /settings/otel', () => {
@@ -262,6 +268,27 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message');
+		});
+
+		it('rejects unknown body fields', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, extra: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain("Unrecognized key(s) in object: 'extra'");
+		});
+
+		it('rejects unknown query parameters without saving settings', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel?extra=true')
+				.send(validSettings);
+
+			expect(response.status).toBe(400);
+			const settings = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(settings.body.exporterServiceName).toBe('n8n');
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
@@ -486,6 +513,39 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send({ exporterEndpoint: 'http://collector.example.com:4318' });
 
 			expect(response.status).toBe(400);
+		});
+
+		it('rejects unknown connection fields', async () => {
+			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, extra: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain("Unrecognized key(s) in object: 'extra'");
+			expect(sendTestTrace).not.toHaveBeenCalled();
+		});
+
+		it('rejects an API key without the otel scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post('/settings/otel/test-trace')
+				.send(testConnection);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects unknown query parameters before sending a trace', async () => {
+			const sendTestTrace = vi.spyOn(Container.get(OtelService), 'sendTestTrace');
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace?extra=true')
+				.send(testConnection);
+
+			expect(response.status).toBe(400);
+			expect(sendTestTrace).not.toHaveBeenCalled();
 		});
 
 		it('accepts a connection body written before exporterProtocol existed', async () => {
