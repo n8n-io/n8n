@@ -110,6 +110,37 @@ describe('computeScope', () => {
 		expect(result.kind).toBe('full');
 	});
 
+	it.each([
+		'test/global-setup.ts',
+		'test/globalSetup.ts',
+		'test/setup.ts',
+		'test/setup-sqlite-template.ts',
+		'test/setup-testcontainers.ts',
+		'scripts/vitest-global-setup.ts',
+		'vitest.integration.setup.ts',
+	])('bails to full on the setup file %s', (file) => {
+		const rootDir = makePackageDir('packages/cli');
+		const result = computeScope({
+			packageDir: 'packages/cli',
+			rootDir,
+			changedFiles: [`packages/cli/${file}`],
+		});
+		expect(result).toMatchObject({ kind: 'full', trigger: `packages/cli/${file}` });
+	});
+
+	it.each(['test/setup-mocks.test.ts', 'test/integration/setup.ts', 'src/setup.ts'])(
+		'keeps %s scoped: it is a test or a nested file, not a setup file',
+		(file) => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: [`packages/cli/${file}`],
+			});
+			expect(result.kind).toBe('scoped');
+		},
+	);
+
 	describe('global triggers force RUN_FULL', () => {
 		it.each([
 			['pnpm-lock.yaml', 'pnpm-lock.yaml'],

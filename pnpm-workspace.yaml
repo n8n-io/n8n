@@ -179,6 +179,7 @@ catalog:
   '@typescript-eslint/typescript-estree': 8.70.0
   '@typescript-eslint/utils': 8.70.0
   '@vitest/browser-playwright': 5.0.1
+  '@vitest/coverage-istanbul': 5.0.1
   '@vitest/coverage-v8': 5.0.1
   agent-browser: 0.26.0
   ai: ^7.0.66
