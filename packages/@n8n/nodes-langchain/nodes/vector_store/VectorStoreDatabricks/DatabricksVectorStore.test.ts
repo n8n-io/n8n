@@ -460,18 +460,6 @@ describe('DatabricksVectorStore', () => {
 			).rejects.toThrow('Failed primary keys: row-7');
 		});
 
-		it('rejects the primary key as the content column without a request', async () => {
-			const store = await createStore(directDescribe, { contentColumn: 'id' });
-
-			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
-				'primary key',
-			);
-			expect(fetchMock).not.toHaveBeenCalledWith(
-				expect.stringContaining('upsert-data'),
-				expect.anything(),
-			);
-		});
-
 		it.each([
 			['txet', 'Index cat.sch.idx has no column txet. Select a Content Column from: text, source'],
 			['id', 'Column id is the primary key of cat.sch.idx. Select another Content Column'],

@@ -353,6 +353,33 @@ describe('VectorStoreDatabricks', () => {
 			);
 			expect(embeddings.embedQuery).not.toHaveBeenCalled();
 		});
+
+		// An agent-driven search must use the node's own configuration. The community package
+		// drops the mode and the filter on this path, which is the regression this pins.
+		it('carries the configured search mode, metadata filter and limit into the tool search', async () => {
+			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
+			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
+			const ctx = setupContext<ISupplyDataFunctions>({
+				...baseParams,
+				mode: 'retrieve-as-tool',
+				toolDescription: 'Company policies. Use for any policy question.',
+				topK: 3,
+				options: { searchMode: 'HYBRID', searchFilterJson: { source: 'hr' } },
+			});
+			ctx.addInputData = vi.fn().mockReturnValue({ index: 0 });
+			ctx.addOutputData = vi.fn();
+
+			const { response } = await node.supplyData.call(ctx, 0);
+			await (response as Tool).invoke({ input: 'what is the leave policy' });
+
+			expect(mockedFromExistingIndex).toHaveBeenCalledWith(
+				embeddings,
+				expect.objectContaining({ queryType: 'HYBRID' }),
+			);
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith('what is the leave policy', 3, {
+				source: 'hr',
+			});
+		});
 	});
 
 	describe('execute in insert mode', () => {
