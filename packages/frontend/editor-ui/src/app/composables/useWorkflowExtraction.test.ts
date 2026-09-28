@@ -587,6 +587,101 @@ describe('useWorkflowExtraction', () => {
 		});
 	});
 
+	describe('without iterator helpers', () => {
+		// Iterator helpers reached Firefox 131 and Safari 18.4, and .browserslistrc still
+		// covers older builds. The bundler downlevels syntax only, so a helper called on a
+		// Map iterator ships as-is and throws there. Deleting them reproduces those browsers.
+		const HELPERS = ['map', 'filter', 'flatMap', 'take', 'drop', 'toArray'] as const;
+		const removed = new Map<string, unknown>();
+
+		beforeEach(() => {
+			const proto = Object.getPrototypeOf(Object.getPrototypeOf(new Map().entries()));
+			for (const helper of HELPERS) {
+				if (!(helper in proto)) continue;
+				removed.set(helper, proto[helper]);
+				delete proto[helper];
+			}
+		});
+
+		afterEach(() => {
+			const proto = Object.getPrototypeOf(Object.getPrototypeOf(new Map().entries()));
+			for (const [helper, impl] of removed) {
+				Object.defineProperty(proto, helper, {
+					value: impl,
+					writable: true,
+					enumerable: false,
+					configurable: true,
+				});
+			}
+			removed.clear();
+		});
+
+		it('has no iterator helpers to call', () => {
+			expect(new Map().entries()).not.toHaveProperty('map');
+			expect(new Map().keys()).not.toHaveProperty('map');
+		});
+
+		it('builds the trigger inputs and the return node for a selection that reads and is read', async () => {
+			const upstream = makeNode('Upstream', [-200, 0]);
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const downstream = makeNode('Downstream', [400, 0]);
+
+			// A reads a node outside the selection, so the sub-workflow needs a trigger input.
+			nodeA.parameters = { value: "={{ $('Upstream').item.json.foo }}" };
+			// Downstream reads a node inside the selection, so the sub-workflow needs a Return node.
+			downstream.parameters = { value: "={{ $('B').item.json.bar }}" };
+
+			setWorkflowNodes([upstream, nodeA, nodeB, downstream]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				Upstream: {
+					[NodeConnectionTypes.Main]: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Downstream', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+			mockWorkflowDocumentStore.getChildNodes.mockImplementation((name: string) =>
+				name === 'B' ? ['Downstream'] : [],
+			);
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await expect(
+				extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub-workflow'),
+			).resolves.not.toBe(false);
+
+			expect(mockWorkflowsStore.createNewWorkflow).toHaveBeenCalledTimes(1);
+			const created = mockWorkflowsStore.createNewWorkflow.mock.calls[0][0] as WorkflowDataCreate;
+
+			const trigger = (created.nodes ?? []).find(
+				(n: INode) => n.type === 'n8n-nodes-base.executeWorkflowTrigger',
+			);
+			expect(trigger?.parameters.workflowInputs).toEqual({
+				values: [{ name: expect.any(String), type: 'any' }],
+			});
+
+			const returnNode = (created.nodes ?? []).find((n: INode) => n.name === 'Return');
+			const assignments = (
+				returnNode?.parameters.assignments as { assignments: Array<{ name: string }> }
+			).assignments;
+			expect(assignments).toHaveLength(1);
+			expect(assignments[0]).toEqual({
+				id: expect.any(String),
+				name: expect.any(String),
+				value: expect.any(String),
+				type: 'string',
+			});
+		});
+	});
+
 	describe('sub-workflow node groups', () => {
 		it('preserves a group when the selection includes that group plus extra nodes', async () => {
 			const nodeA = makeNode('A', [0, 0]);
