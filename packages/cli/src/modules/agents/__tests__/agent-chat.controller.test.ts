@@ -546,7 +546,7 @@ describe('AgentChatController SSE done payload', () => {
 		let receivedSignal: AbortSignal | undefined;
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			yield { type: 'finish', finishReason: 'stop' };
 			finalizationStarted.resolve();
 			await finalization.promise;
@@ -568,6 +568,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(events[0]).toEqual({
 			type: 'execution-started',
+			inputMessageIds: ['message-1'],
 			executionId: 'exec-99',
 			sessionId: 'thread-1',
 		});
@@ -617,7 +618,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
-			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1');
+			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			markStarted();
 			await runBlocked;
 			yield { type: 'finish', finishReason: 'stop' };
@@ -645,7 +646,7 @@ describe('AgentChatController SSE done payload', () => {
 		const lifecycle: string[] = [];
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			try {
 				yield { type: 'text-delta', id: 'text-1', delta: 'first' };
 				lifecycle.push('continued');
@@ -976,7 +977,8 @@ describe('AgentChatController production n8n Chat', () => {
 		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);
 		agentExecutionOrchestratorService.executeForN8nChatPublished.mockImplementation(
-			async function* () {
+			async function* (config) {
+				config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 				yield { type: 'text-delta', id: 'text-1', delta: 'Hi' };
 			},
 		);
@@ -993,6 +995,14 @@ describe('AgentChatController production n8n Chat', () => {
 			}),
 		);
 		expect(writes.some((line) => line.includes('"delta":"Hi"'))).toBe(true);
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toContainEqual({
+			type: 'execution-started',
+			executionId: 'exec-99',
+			sessionId: 'thread-1',
+			inputMessageIds: ['message-1'],
+		});
 	});
 
 	it('rejects a foreign session before saving an attachment', async () => {
@@ -1019,8 +1029,12 @@ describe('AgentChatController production n8n Chat', () => {
 	it('checks publication and the production checkpoint scope before resuming', async () => {
 		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);
-		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {});
-		await controller.productionChatResume(request as never, makeSseResponse([]), 'agent-1', {
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
+			yield { type: 'text-delta', id: 'text-1', delta: 'Done' };
+		});
+		const writes: string[] = [];
+		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
 			runId: 'run-1',
 			toolCallId: 'call-1',
 			resumeData: { approved: true },
@@ -1032,6 +1046,14 @@ describe('AgentChatController production n8n Chat', () => {
 				expectedMemory: { resourceId: 'n8n-chat-production:user-1' },
 			}),
 		);
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toContainEqual({
+			type: 'execution-started',
+			executionId: 'exec-99',
+			sessionId: 'thread-1',
+			inputMessageIds: ['message-1'],
+		});
 	});
 
 	it('rejects production resume when the channel is not published', async () => {

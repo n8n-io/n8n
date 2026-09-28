@@ -67,6 +67,7 @@ export class AgentMessageQueueService {
 					...input,
 					agentName: agent.name,
 					userMessage: payload.message,
+					resourceId: payload.resourceId,
 					access:
 						payload.kind === 'preview'
 							? { accessScope: 'user', ownerId: payload.userId }
@@ -212,7 +213,11 @@ export class AgentMessageQueueService {
 			item: claimed.item,
 			thread: claimed.thread,
 			recording: claimed.recording,
-			admission: { executionId: execution.id, startedAt: execution.startedAt },
+			admission: {
+				executionId: execution.id,
+				startedAt: execution.startedAt,
+				inputMessageIds: claimed.reservation.inputMessageIds,
+			},
 		};
 	}
 
@@ -269,6 +274,14 @@ export class AgentMessageQueueService {
 			sessionMode: 'existing',
 			queueItemId: item.id,
 			userMessage: item.payload.message,
+			resourceId: item.payload.resourceId,
+			...(item.payload.kind === 'integration' && {
+				messageOrigin: {
+					integrationConnectionId: item.payload.messageContext.integrationConnectionId,
+					platformMessageId: item.payload.messageContext.messageId,
+					platformThreadId: item.payload.platformThreadId,
+				},
+			}),
 			source: item.source,
 			attachments: item.payload.attachments,
 			author: item.payload.kind === 'integration' ? item.payload.author : undefined,

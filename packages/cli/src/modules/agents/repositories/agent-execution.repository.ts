@@ -5,6 +5,8 @@ import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -116,31 +118,41 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
-	 * The first user-message text in each of the given threads. Used by the
-	 * sessions list to render a preview before the LLM-generated title is
-	 * available.
-	 *
-	 * Excludes resumed runs (null `userMessage`). Returns one row per thread
-	 * containing the userMessage from that thread's earliest matching run.
+	 * The first visible input in each session supplies its preview text.
+	 * Use canonical messages when available. Keep legacy execution inputs.
 	 */
 	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
-
-		// Correlated subquery: for each thread, pick the row with the smallest
-		// createdAt that has a non-empty userMessage. Identifiers are double-quoted
-		// so Postgres preserves their camelCase (it lowercases unquoted names),
-		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
-		const tableName = this.metadata.tablePath;
-		const rows = await this.createQueryBuilder('e')
-			.select(['e."threadId" AS "threadId"', 'e."userMessage" AS "userMessage"'])
-			.where('e."threadId" IN (:...threadIds)', { threadIds })
-			.andWhere('e."userMessage" IS NOT NULL')
-			.andWhere('e."userMessage" != \'\'')
-			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" IS NOT NULL ' +
-					'AND e2."userMessage" != \'\')',
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const originalText = isPostgres
+			? "message.content->'content'->0->>'text'"
+			: "json_extract(message.content, '$.content[0].text')";
+		const hidden = isPostgres
+			? "message.origin->>'hidden'"
+			: "json_extract(message.origin, '$.hidden')";
+		const input = `CASE WHEN input.messageId IS NULL THEN e.userMessage WHEN CAST(${hidden} AS TEXT) IN ('true', '1') THEN NULL ELSE ${originalText} END`;
+		const candidates = this.createQueryBuilder('e')
+			.leftJoin(
+				AgentExecutionMessageLink,
+				'input',
+				"input.executionId = e.id AND input.direction = 'input' AND input.position = 0",
 			)
+			.leftJoin(AgentMessageEntity, 'message', 'message.id = input.messageId')
+			.select('e.threadId', 'threadId')
+			.addSelect(input, 'userMessage')
+			.addSelect(
+				'ROW_NUMBER() OVER (PARTITION BY e.threadId ORDER BY e.createdAt, e.id)',
+				'rowNumber',
+			)
+			.where('e.threadId IN (:...threadIds)', { threadIds })
+			.andWhere(`${input} IS NOT NULL AND TRIM(${input}) != ''`);
+		const rows = await this.manager
+			.createQueryBuilder()
+			.select('preview."threadId"', 'threadId')
+			.addSelect('preview."userMessage"', 'userMessage')
+			.from(`(${candidates.getQuery()})`, 'preview')
+			.where('preview."rowNumber" = 1')
+			.setParameters(candidates.getParameters())
 			.getRawMany<{ threadId: string; userMessage: string }>();
 
 		return new Map(rows.map((r) => [r.threadId, r.userMessage]));
@@ -260,11 +272,6 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.set({ model })
 			.whereInIds(executionIds)
 			.execute();
-	}
-
-	/** Delete every run in a thread. Caller must verify ownership first. */
-	async deleteByThreadId(threadId: string): Promise<void> {
-		await this.delete({ threadId });
 	}
 
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */

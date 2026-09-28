@@ -94,7 +94,7 @@ interface ChatExecutionInput extends AgentExecutionInput {
 }
 
 interface ChatExecutionCallbacks {
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
+	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
 	onExecutionRecorded?: (executionId: string) => void;
 }
@@ -496,9 +496,14 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						author,
 						attachments,
+						messageOrigin: {
+							integrationConnectionId: config.messageContext?.integrationConnectionId,
+							platformMessageId: config.messageContext?.messageId,
+						},
 						source: integrationType,
 						access: { accessScope: 'project', ownerId: null },
 						sessionMode,
@@ -595,6 +600,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						attachments,
 						source: N8N_CHAT_PRODUCTION_SOURCE,
@@ -662,6 +668,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						source: 'task',
 						taskId,
@@ -717,6 +724,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						source: 'task',
 						taskId,
@@ -914,6 +922,9 @@ export class AgentExecutionOrchestratorService {
 		session: Pick<
 			StartExecutionParams,
 			| 'threadId'
+			| 'resourceId'
+			| 'messageOrigin'
+			| 'hideUserMessageFromTranscript'
 			| 'userMessage'
 			| 'author'
 			| 'attachments'
@@ -1005,6 +1016,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memoryScope.threadId,
+				resourceId: memoryScope.resourceId,
 				resumeRunId: runId,
 				userMessage: null,
 				source,
@@ -1134,6 +1146,7 @@ export class AgentExecutionOrchestratorService {
 			threadId,
 			agentId,
 			agentName: runtime.agent.name,
+			resourceId: memoryScope.resourceId,
 			projectId,
 			userMessage: null,
 			sessionMode: 'existing',
@@ -1216,6 +1229,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memory.threadId,
+				resourceId: memory.resourceId,
 				access,
 				admittedExecution: config.admittedExecution,
 				userMessage: message,
@@ -1372,7 +1386,15 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			agentName: agentInstance.name,
 			projectId,
-			userMessage: hideUserMessageFromTranscript ? null : message,
+			userMessage: message,
+			resourceId: memory.resourceId,
+			hideUserMessageFromTranscript,
+			...(config.messageContext && {
+				messageOrigin: {
+					integrationConnectionId: config.messageContext.integrationConnectionId,
+					platformMessageId: config.messageContext.messageId,
+				},
+			}),
 			sessionMode,
 			author,
 			attachments,
@@ -1405,7 +1427,9 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memory.threadId,
-				userMessage: null,
+				resourceId: memory.resourceId,
+				userMessage: config.message,
+				hideUserMessageFromTranscript: true,
 				source: productionUserId ? N8N_CHAT_PRODUCTION_SOURCE : integrationType,
 				abortSignal,
 				access,
