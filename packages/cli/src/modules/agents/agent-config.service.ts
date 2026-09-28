@@ -350,7 +350,7 @@ export class AgentConfigService {
 		}
 
 		const nextSchema: AgentJsonConfig = {
-			...omitLegacyAgentDescription(previousSchema),
+			...previousSchema,
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
@@ -387,6 +387,16 @@ export class AgentConfigService {
 		validatedConfig: AgentJsonConfig,
 		clearOmitted: boolean | undefined,
 	): void {
+		// An empty description is a deliberate clear of the stored value.
+		if (validatedConfig.description !== undefined) {
+			const description = validatedConfig.description.trim();
+			if (description) {
+				nextSchema.description = description;
+			} else {
+				delete nextSchema.description;
+			}
+		}
+
 		if (validatedConfig.modelDeploymentName !== undefined) {
 			const deploymentName = validatedConfig.modelDeploymentName?.trim();
 			if (deploymentName) {
@@ -527,6 +537,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
 	const optionalFields = [
 		'credential',
+		'description',
 		'modelDeploymentName',
 		'personalisation',
 		'memory',
@@ -542,13 +553,4 @@ function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJso
 	for (const field of optionalFields) {
 		if (submitted[field] === undefined) delete schema[field];
 	}
-}
-
-function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {
-	if (!config) return {};
-
-	const { description: _description, ...rest } = config as AgentJsonConfig & {
-		description?: unknown;
-	};
-	return rest;
 }

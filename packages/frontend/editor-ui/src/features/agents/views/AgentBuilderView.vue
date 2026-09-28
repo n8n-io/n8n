@@ -91,6 +91,7 @@ import {
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -1987,6 +1988,15 @@ const headerActions = computed(() => {
 		});
 	}
 
+	// Mirrors the workflow menu: description sits right before Favorite.
+	if (effectiveCanEditAgent.value && localConfig.value) {
+		actions.push({
+			id: 'edit-description',
+			label: locale.baseText('agents.builder.editDescription'),
+			icon: 'file-text',
+		});
+	}
+
 	if (agent.value) {
 		actions.push({
 			id: 'toggleFavorite',
@@ -2055,7 +2065,28 @@ function openImportJsonModal() {
 	});
 }
 
+function openDescriptionModal() {
+	if (!effectiveCanEditAgent.value || !localConfig.value) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_DESCRIPTION_MODAL_KEY,
+		data: {
+			agentName: localConfig.value.name,
+			description: localConfig.value.description ?? '',
+			onConfirm: (description: string) => {
+				if (!localConfig.value) return;
+				// Send '' to clear: the backend keeps the stored value for omitted fields.
+				replaceConfigAndScheduleSave({ ...localConfig.value, description });
+			},
+		},
+	});
+}
+
 async function onHeaderAction(action: string) {
+	if (action === 'edit-description') {
+		openDescriptionModal();
+		return;
+	}
 	if (action === 'version-history') {
 		onToggleVersionHistory();
 		return;
