@@ -130,6 +130,32 @@ test.describe(
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 		});
 
+		test('should stop a manual workflow while it waits @engine:v2', async ({ n8n }) => {
+			const { workflowId } = await n8n.start.fromImportedWorkflow('Manual_long_wait_set.json');
+
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.clickExecuteWorkflowButton();
+
+			await expect(n8n.canvas.stopExecutionButton()).toBeVisible();
+			await assertNodeExecutionStates(n8n, [{ nodeName: 'Manual', success: 'visible' }]);
+
+			await n8n.canvas.stopExecutionButton().click();
+
+			// No toast: the editor only shows "Execution stopped" when the finish push
+			// beats its own stop poll, so the outcome is asserted instead.
+			await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
+			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
+			await assertNodeExecutionStates(n8n, [
+				{ nodeName: 'Manual', success: 'visible' },
+				{ nodeName: 'Wait', success: 'hidden', running: 'hidden' },
+				{ nodeName: 'Set', success: 'hidden' },
+			]);
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
+			const [execution] = await n8n.api.workflows.getExecutions(workflowId, 1);
+			expect(execution.status).toBe('canceled');
+		});
+
 		test('should test webhook workflow', async ({ n8n, api }) => {
 			await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
