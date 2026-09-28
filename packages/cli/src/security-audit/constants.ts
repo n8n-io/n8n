@@ -1,12 +1,10 @@
 import { SECURITY_AUDIT_CATEGORIES } from '@n8n/api-types';
 
-import type { Risk } from '@/security-audit/types';
-
 /**
  * Risk categories
  */
 
-export const RISK_CATEGORIES: Risk.Category[] = [...SECURITY_AUDIT_CATEGORIES];
+export const RISK_CATEGORIES = [...SECURITY_AUDIT_CATEGORIES];
 
 /**
  * Node types
