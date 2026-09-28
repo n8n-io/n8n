@@ -89,7 +89,9 @@ onBeforeMount(async () => {
 });
 
 watch(projectId, async () => {
-	await loadWorkflowsForCurrentProject();
+	executionsStore.reset();
+	executionsStore.restoreFilters(filtersKey.value);
+	await Promise.all([executionsStore.initialize(), loadWorkflowsForCurrentProject()]);
 });
 
 onMounted(async () => {
@@ -168,6 +170,7 @@ async function onExecutionStop() {
 	</PageViewLayout>
 	<GlobalExecutionsList
 		v-else
+		:key="filtersKey"
 		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"

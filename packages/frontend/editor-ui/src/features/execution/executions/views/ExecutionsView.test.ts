@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent, within } from '@testing-library/vue';
@@ -12,11 +13,13 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 import type { IWorkflowDb } from '@/Interface';
 
 const push = vi.fn();
-const route = vi.hoisted(() => ({
+const route = reactive({
 	params: {} as Record<string, string>,
 	query: {},
 	name: '',
-}));
+});
+
+vi.mock('@/features/collaboration/projects/projects.api');
 
 vi.mock('vue-router', () => ({
 	useRoute: () => route,
@@ -190,6 +193,24 @@ describe('ExecutionsView', () => {
 			const sameProject = renderComponent();
 			await waitAllPromises();
 			expect(sameProject.getByTestId('filter-status-stub')).toHaveTextContent('error');
+		});
+
+		it('loads the filters of the new project when only the project changes', async () => {
+			const executionsStore = mockedStore(useExecutionsStore);
+			route.params.projectId = 'project-1';
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			await fireEvent.click(getByTestId('filter-error-stub'));
+			executionsStore.initialize.mockClear();
+
+			route.params.projectId = 'project-2';
+			await waitAllPromises();
+			expect(getByTestId('filter-status-stub')).toHaveTextContent('all');
+			expect(executionsStore.initialize).toHaveBeenCalled();
+
+			route.params.projectId = 'project-1';
+			await waitAllPromises();
+			expect(getByTestId('filter-status-stub')).toHaveTextContent('error');
 		});
 	});
 });
