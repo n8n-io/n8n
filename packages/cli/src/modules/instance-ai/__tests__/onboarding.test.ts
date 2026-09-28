@@ -1,15 +1,17 @@
+import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
-import { InstanceAiOnboardingService } from '../onboarding';
+import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from '../onboarding';
 import type { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
 const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
@@ -21,6 +23,7 @@ function setup(sourceContext?: Record<string, unknown>) {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const pendingConfirmationRepo = mock<InstanceAiPendingConfirmationRepository>();
 	const telemetry = mock<Telemetry>();
+	const eventBus = mock<InProcessEventBus>();
 	memoryService.ensureThread.mockResolvedValue({
 		thread: {
 			id: THREAD_ID,
@@ -41,12 +44,12 @@ function setup(sourceContext?: Record<string, unknown>) {
 	);
 	const service = new InstanceAiOnboardingService(
 		memoryService,
-		mock<InProcessEventBus>(),
+		eventBus,
 		mock<DurableEventLog>(),
 		pendingConfirmationRepo,
 		telemetry,
 	);
-	return { service, telemetry };
+	return { service, telemetry, memoryService, pendingConfirmationRepo, eventBus };
 }
 
 describe('InstanceAiOnboardingService telemetry', () => {
@@ -101,5 +104,71 @@ describe('InstanceAiOnboardingService telemetry', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
 			expect.objectContaining({ team: 'Marketing', team_source: 'url', apps: ['Gmail'] }),
 		);
+	});
+});
+
+const freeTextAnswer: InstanceAiConfirmRequest = {
+	kind: 'questions',
+	answers: [{ questionId: 'apps', selectedOptions: [], customText: 'i just want to import a csv' }],
+};
+const approval: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+
+describe('InstanceAiOnboardingService answerCard', () => {
+	it('refuses an answer of another kind before the card is claimed', async () => {
+		const { service, pendingConfirmationRepo, eventBus } = setup();
+
+		await expect(service.answerCard(user.id, CARD_REQUEST_ID, approval)).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(pendingConfirmationRepo.claim).not.toHaveBeenCalled();
+		expect(eventBus.publish).not.toHaveBeenCalled();
+	});
+
+	it('hands free text back as the first message and posts no follow-up', async () => {
+		const { service, memoryService } = setup();
+
+		const card = await service.answerCard(user.id, CARD_REQUEST_ID, freeTextAnswer);
+
+		expect(card).toEqual({
+			threadId: THREAD_ID,
+			firstMessage: expect.stringContaining('typed "i just want to import a csv"'),
+		});
+		expect(memoryService.seedOpeningMessages).not.toHaveBeenCalled();
+	});
+
+	it('posts the follow-up as a finished run when the card holds no free text', async () => {
+		const { service, memoryService } = setup();
+
+		const card = await service.answerCard(user.id, CARD_REQUEST_ID, {
+			kind: 'questions',
+			answers: [{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] }],
+		});
+
+		expect(card).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
+		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
+			THREAD_ID,
+			user.id,
+			'Got it! Tell me a little about how you use Gmail and Slack.',
+			expect.stringContaining('<onboarding-answer>'),
+		);
+	});
+});
+
+describe('startsOnboardingFirstTurn', () => {
+	it.each<[boolean, string, string, InstanceAiConfirmRequest]>([
+		[true, 'free text on the onboarding card', CARD_REQUEST_ID, freeTextAnswer],
+		[
+			false,
+			'blank free text on the onboarding card',
+			CARD_REQUEST_ID,
+			{
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'], customText: ' ' }],
+			},
+		],
+		[false, 'an answer of another kind on the onboarding card', CARD_REQUEST_ID, approval],
+		[false, 'free text on another card', 'req-1', freeTextAnswer],
+	])('returns %s for %s', (expected, _label, requestId, request) => {
+		expect(startsOnboardingFirstTurn(requestId, request)).toBe(expected);
 	});
 });

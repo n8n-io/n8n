@@ -145,13 +145,14 @@ describe('InstanceAiController', () => {
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
+	const onboarding = mock<InstanceAiOnboardingService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
 		browserSessionService,
 		memoryService,
-		mock<InstanceAiOnboardingService>(),
+		onboarding,
 		pendingAgentService,
 		settingsService,
 		modelCatalogService,
@@ -1706,6 +1707,55 @@ describe('InstanceAiController', () => {
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should check the model before a free-text answer consumes the onboarding card', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await expect(controller.confirm(reqWithBody, res, 'onboarding-card')).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(onboarding.answerCard).not.toHaveBeenCalled();
+		});
+
+		it('should start the first turn with the answers when the onboarding card holds free text', async () => {
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', firstMessage: 'answers' });
+			instanceAiService.startRun.mockReturnValue('run-2');
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-2' });
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				reqWithBody.user,
+				'thread-1',
+				'answers',
+			);
+			expect(instanceAiService.resolveConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('should skip the model check and return the follow-up run when the onboarding card holds no free text', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', runId: 'run-3' });
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-3' });
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 	});
 
