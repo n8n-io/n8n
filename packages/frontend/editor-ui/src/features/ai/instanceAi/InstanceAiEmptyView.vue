@@ -6,7 +6,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nOption, N8nSelect, useChatInputAutoFocus } from '@n8n/design-system';
+import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -31,7 +31,6 @@ import {
 	isInstanceAiThreadSource,
 } from './constants';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
-import { provisionOnboardingThread } from './composables/useInstanceAiHandoff';
 import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
@@ -632,35 +631,6 @@ async function handleSubmit(
 	}
 }
 
-// ponytail: prototype trigger for the seeded onboarding thread. The select stands in for the
-// n8n Cloud signup survey; the real entry is a first-landing redirect that forwards the survey.
-const ONBOARDING_SURVEY_TEAMS = [
-	'Executive/Owner',
-	'Support',
-	'Product & Design',
-	'Sales',
-	'IT',
-	'Engineering',
-	'Marketing',
-	'Other',
-];
-const onboardingSurveyTeam = ref('');
-async function startOnboardingThread() {
-	if (isStartingThread.value || !selectedProject.value) return;
-	isStartingThread.value = true;
-	const threadId = await provisionOnboardingThread(
-		selectedProject.value,
-		onboardingSurveyTeam.value ? { what_team_are_you_on: onboardingSurveyTeam.value } : undefined,
-		'internal',
-	);
-	isStartingThread.value = false;
-	if (!threadId) {
-		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
-		return;
-	}
-	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
-}
-
 function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 	void chatInputRef.value?.submitSuggestion(payload);
 }
@@ -784,30 +754,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
-					<div :class="$style.onboardingTest">
-						<N8nSelect
-							v-model="onboardingSurveyTeam"
-							size="small"
-							clearable
-							data-test-id="instance-ai-onboarding-test-team"
-							:placeholder="i18n.baseText('instanceAi.onboarding.testSurveyTeam')"
-						>
-							<N8nOption
-								v-for="team in ONBOARDING_SURVEY_TEAMS"
-								:key="team"
-								:label="team"
-								:value="team"
-							/>
-						</N8nSelect>
-						<N8nButton
-							type="tertiary"
-							size="small"
-							data-test-id="instance-ai-onboarding-test"
-							:label="i18n.baseText('instanceAi.onboarding.startTest')"
-							:loading="isStartingThread"
-							@click="startOnboardingThread()"
-						/>
-					</div>
 				</div>
 				<Transition name="workflow-preview-fade">
 					<div
@@ -827,14 +773,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 </template>
 
 <style lang="scss" module>
-.onboardingTest {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	align-self: center;
-	margin-top: var(--spacing--sm);
-}
-
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
