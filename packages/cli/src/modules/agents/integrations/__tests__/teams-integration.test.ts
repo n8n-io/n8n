@@ -15,7 +15,7 @@ import {
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
 	TEAMS_TENANT_ID as TENANT_ID,
 } from './helpers/teams/synthetic-fixtures';
-import { BUFFERED_ONLY_TTL_MS, TeamsIntegration } from '../platforms/teams/teams-integration';
+import { TeamsIntegration } from '../platforms/teams/teams-integration';
 
 const createTeamsAdapter = vi.fn(() => ({ name: 'teams' }));
 
@@ -286,45 +286,6 @@ describe('TeamsIntegration', () => {
 			expect(context.forceBuffered).toBe(true);
 			expect(startTyping).toHaveBeenCalledTimes(1);
 			await context.statusHandle?.clearBeforeResponse();
-		});
-
-		it('streams the connection again once the pause expires', async () => {
-			vi.useFakeTimers();
-			try {
-				integration.onStreamingPostStalled({
-					type: 'teams',
-					credentialId: CREDENTIAL_ID,
-				} as BridgeMessageContextParams['integration']);
-
-				const paused = await integration.createBridgeExecutionContext(contextParams(true).params);
-				expect(paused.forceBuffered).toBe(true);
-				await paused.statusHandle?.clearBeforeResponse();
-
-				vi.advanceTimersByTime(BUFFERED_ONLY_TTL_MS + 1);
-
-				const resumed = await integration.createBridgeExecutionContext(contextParams(true).params);
-				expect(resumed.forceBuffered).toBe(false);
-				await resumed.statusHandle?.clearBeforeResponse();
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('stops streaming a connection whose stream stalled, and leaves others alone', async () => {
-			integration.onStreamingPostStalled({
-				type: 'teams',
-				credentialId: CREDENTIAL_ID,
-			} as BridgeMessageContextParams['integration']);
-
-			const stalled = await integration.createBridgeExecutionContext(contextParams(true).params);
-			const other = await integration.createBridgeExecutionContext(
-				contextParams(true, 'cred-teams-2').params,
-			);
-
-			expect(stalled.forceBuffered).toBe(true);
-			expect(other.forceBuffered).toBe(false);
-			await stalled.statusHandle?.clearBeforeResponse();
-			await other.statusHandle?.clearBeforeResponse();
 		});
 	});
 });

@@ -171,46 +171,6 @@ function makeStreamingConsumer(
 	});
 }
 
-describe('AgentChatStreamConsumer — streamingPostTimeoutMs', () => {
-	it('posts the streamed text as an ordinary message when the streamed post never settles', async () => {
-		const onStreamingPostStalled = vi.fn();
-		const { thread, discrete } = makeStreamingThread({ stall: true });
-		const consumer = makeStreamingConsumer({
-			streamingPostTimeoutMs: 10,
-			onStreamingPostStalled,
-		});
-
-		await consumer.consume(
-			makeStream([
-				{ type: 'text-delta', id: 't-1', delta: 'Half a ' },
-				{ type: 'text-delta', id: 't-1', delta: 'sentence' },
-			]),
-			thread,
-		);
-
-		expect(discrete).toEqual([{ markdown: 'Half a sentence' }]);
-		expect(onStreamingPostStalled).toHaveBeenCalledTimes(1);
-	});
-
-	it('does not post twice or report a stall when the streamed post settles', async () => {
-		const onStreamingPostStalled = vi.fn();
-		const { thread, streamed, discrete } = makeStreamingThread();
-		const consumer = makeStreamingConsumer({
-			streamingPostTimeoutMs: 10_000,
-			onStreamingPostStalled,
-		});
-
-		await consumer.consume(
-			makeStream([{ type: 'text-delta', id: 't-1', delta: 'All of it' }]),
-			thread,
-		);
-
-		expect(streamed).toHaveLength(1);
-		expect(discrete).toEqual([]);
-		expect(onStreamingPostStalled).not.toHaveBeenCalled();
-	});
-});
-
 describe('AgentChatStreamConsumer — singleStreamedRunPerTurn', () => {
 	const textThenMessageThenText = (): StreamChunk[] => [
 		{ type: 'text-delta', id: 't-1', delta: 'Before' },
@@ -281,85 +241,6 @@ describe('AgentChatStreamConsumer — delivery that must not stream', () => {
 
 		expect(streamed).toEqual([]);
 		expect(discrete).toEqual([{ markdown: 'Scheduled reminder' }]);
-	});
-});
-
-describe('AgentChatStreamConsumer — a streamed post that settles after the deadline', () => {
-	it('posts the buffered text once and does not wait for the late post', async () => {
-		const onStreamingPostStalled = vi.fn();
-		const { thread, streamed, discrete } = makeStreamingThread({ settleAfterMs: 200 });
-		const consumer = makeStreamingConsumer({
-			streamingPostTimeoutMs: 10,
-			onStreamingPostStalled,
-		});
-
-		await consumer.consume(
-			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Late but fine' }]),
-			thread,
-		);
-
-		expect(streamed).toHaveLength(1);
-		expect(discrete).toEqual([{ markdown: 'Late but fine' }]);
-		expect(onStreamingPostStalled).toHaveBeenCalledTimes(1);
-
-		// The turn is over; the late settle must not add a second message.
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		expect(discrete).toEqual([{ markdown: 'Late but fine' }]);
-	});
-
-	it('stays quiet when an abandoned post rejects after the turn ended', async () => {
-		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
-		const { thread, discrete } = makeStreamingThread({ rejectAfterMs: 200 });
-		const consumer = makeStreamingConsumer({
-			streamingPostTimeoutMs: 10,
-			postErrorToThread,
-		});
-
-		await consumer.consume(
-			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Recovered text' }]),
-			thread,
-		);
-
-		expect(discrete).toEqual([{ markdown: 'Recovered text' }]);
-
-		// An error posted now would land after the reply the user already has.
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		expect(postErrorToThread).not.toHaveBeenCalled();
-		expect(discrete).toEqual([{ markdown: 'Recovered text' }]);
-	});
-});
-
-describe('AgentChatStreamConsumer — a rejection that outruns the deadline', () => {
-	it('lets the error reply own the turn instead of posting the text on top of it', async () => {
-		const onStreamingPostStalled = vi.fn();
-		let releaseError: (() => void) | undefined;
-		const postErrorToThread = vi.fn(
-			async () =>
-				await new Promise<void>((resolve) => {
-					releaseError = resolve;
-				}),
-		);
-		const { thread, discrete } = makeStreamingThread({ rejectAfterMs: 5 });
-		const consumer = makeStreamingConsumer({
-			streamingPostTimeoutMs: 40,
-			onStreamingPostStalled,
-			postErrorToThread,
-		});
-
-		// The post rejects, its error reply hangs, and the deadline fires while
-		// that reply is still in flight.
-		await consumer.consume(
-			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Half a reply' }]),
-			thread,
-		);
-
-		expect(discrete).toEqual([]);
-		expect(onStreamingPostStalled).not.toHaveBeenCalled();
-
-		releaseError?.();
-		await new Promise((resolve) => setTimeout(resolve, 20));
-		expect(postErrorToThread).toHaveBeenCalledTimes(1);
-		expect(discrete).toEqual([]);
 	});
 });
 

@@ -14,13 +14,6 @@ type ToolResultChunk = Extract<StreamChunk, { type: 'tool-result' }>;
 
 export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
 
-/**
- * A post that rejected counts as settled: its handler has already told the user,
- * and the platform may have rendered part of the reply, so the text must not be
- * posted again either way. Only a post that never settles is 'stalled'.
- */
-type StreamingPostOutcome = 'settled' | 'stalled';
-
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
@@ -45,11 +38,8 @@ interface AgentChatStreamConsumerOptions {
 	 * tools returning a `silent` field must not mute the reply.
 	 */
 	isIntegrationActionTool?: (toolName: string) => boolean;
-	/** Unset waits indefinitely. See `AgentChatIntegration` for when to set it. */
-	streamingPostTimeoutMs?: number;
 	/** Text after the first streamed run is buffered and posted on its own. */
 	singleStreamedRunPerTurn?: boolean;
-	onStreamingPostStalled?: () => void;
 }
 
 interface ConsumeStreamOptions {
@@ -125,21 +115,10 @@ export class AgentChatStreamConsumer {
 		let pendingText = '';
 		let streamingStopped = false;
 		/** Only a platform that can stop streaming mid-turn re-reads the text. */
-		const retainText =
-			this.options.streamingPostTimeoutMs !== undefined ||
-			this.options.singleStreamedRunPerTurn === true;
-		/**
-		 * A post's rejection handler cannot be detached, so it reads this to stay
-		 * quiet once the turn has recovered without it — an error posted then
-		 * would land after the reply the user already has.
-		 */
-		let streamingPostAbandoned = false;
-		/**
-		 * Recorded before the handler's first await, so the deadline can still see
-		 * a rejection whose error reply is in flight. Without it a slow error reply
-		 * outlives the deadline and the turn posts the text on top of it.
-		 */
+		const retainText = this.options.singleStreamedRunPerTurn === true;
+		/** Set when the post failed, so the retained text is posted instead. */
 		let streamingPostRejected = false;
+		let streamingPostError: unknown;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -186,19 +165,14 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
-			streamingPostAbandoned = false;
 			streamingPostRejected = false;
-			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
+			streamingPostError = undefined;
+			streamingPost = thread.post(iterable).catch((postError: unknown) => {
 				streamingPostRejected = true;
-				const message = postError instanceof Error ? postError.message : String(postError);
-				if (streamingPostAbandoned) {
-					this.options.logger.debug('[AgentChatBridge] Abandoned streaming post failed', {
-						error: message,
-					});
-					return;
-				}
-				await this.options.postErrorToThread(thread, postError);
-				this.options.logger.error('[AgentChatBridge] Streaming post failed', { error: message });
+				streamingPostError = postError;
+				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
+					error: postError instanceof Error ? postError.message : String(postError),
+				});
 			});
 		};
 
@@ -212,16 +186,15 @@ export class AgentChatStreamConsumer {
 				const post = streamingPost;
 				streamingPost = null;
 				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
-				const outcome = await this.awaitStreamingPost(post, thread);
-				// A rejection that outran the deadline is not a stall: its error reply
-				// owns the turn, and the platform may have rendered part of the text.
-				if (outcome === 'stalled' && !streamingPostRejected) {
-					streamingPostAbandoned = true;
-					// Re-opening a stream the platform never acknowledged stalls again.
-					streamingStopped = true;
-					this.options.onStreamingPostStalled?.();
-				} else {
+				await post;
+				// A post that rejected left the reply unsent — on a post-and-edit
+				// platform the user is looking at a placeholder. Post the retained
+				// text below instead of dropping it, and fall back to telling the
+				// user only when there is no text to deliver.
+				if (!streamingPostRejected) {
 					pendingText = '';
+				} else if (!pendingText.trim()) {
+					await this.options.postErrorToThread(thread, streamingPostError);
 				}
 			}
 			const text = pendingText;
@@ -247,6 +220,9 @@ export class AgentChatStreamConsumer {
 					case 'text-delta': {
 						if (responseState.suppressText) break;
 						const { delta } = chunk;
+						// Opening on whitespace alone posts a placeholder that the
+						// platform then has nothing to replace it with.
+						if (!delta.trim() && !responseState.hasVisibleResponse) break;
 						await responseLifecycle.startStreamingResponse();
 						if (retainText) pendingText += delta;
 						textStream.yield?.(delta);
@@ -277,8 +253,8 @@ export class AgentChatStreamConsumer {
 						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) {
 							responseState.suppressText = true;
-							// Streamed text is already on the platform, but text still
-							// pending is not, so the silence can be honored for it.
+							// Whatever already reached the platform cannot be recalled, but
+							// text still pending can be dropped.
 							pendingText = '';
 						}
 						break;
@@ -292,45 +268,6 @@ export class AgentChatStreamConsumer {
 		} finally {
 			await responseLifecycle.finish();
 		}
-	}
-
-	/**
-	 * An adapter can wait on its own acknowledgement with no deadline and swallow
-	 * the rejection that would end that wait, hanging the turn.
-	 *
-	 * The deadline is anchored to the end of the text stream, not its start: the
-	 * post promise is the only signal this layer gets, and it does not settle
-	 * until the stream ends even on a healthy run.
-	 */
-	private async awaitStreamingPost(
-		post: Promise<unknown>,
-		thread: Thread<unknown, unknown>,
-	): Promise<StreamingPostOutcome> {
-		const timeoutMs = this.options.streamingPostTimeoutMs;
-		if (timeoutMs === undefined || timeoutMs <= 0) {
-			await post;
-			return 'settled';
-		}
-
-		let timer: NodeJS.Timeout | undefined;
-		try {
-			const settled = await Promise.race([
-				post.then(() => true),
-				new Promise<boolean>((resolve) => {
-					timer = setTimeout(() => resolve(false), timeoutMs);
-					timer.unref();
-				}),
-			]);
-			if (settled) return 'settled';
-		} finally {
-			clearTimeout(timer);
-		}
-
-		this.options.logger.warn(
-			'[AgentChatBridge] Streaming post did not settle, posting buffered instead',
-			{ threadId: thread.id, timeoutMs },
-		);
-		return 'stalled';
 	}
 
 	/**

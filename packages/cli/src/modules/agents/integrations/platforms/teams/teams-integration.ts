@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -27,17 +27,6 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
-
-export const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
-
-/**
- * Above the SDK's retry ceiling, not just above a healthy round trip. Teams
- * throttles streaming to a request a second and the SDK flushes twice that, so
- * a 429 is ordinary and the SDK retries five times over 7.5s of backoff before
- * it gives up. Giving up sooner posts the reply here while the stream goes on
- * to deliver it too, and the user reads it twice.
- */
-const TEAMS_STREAMING_POST_TIMEOUT_MS = 45_000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -128,25 +117,17 @@ export class TeamsIntegration extends AgentChatIntegration {
 	readonly targetSuspensionCardAtActingUser = true;
 
 	/**
-	 * Teams streams natively in 1:1 chats only, so the decision is made for each
-	 * conversation in `createBridgeExecutionContext` rather than here.
+	 * A direct message renders progressively; every other conversation posts one
+	 * message. The choice is made for each conversation in
+	 * `createBridgeExecutionContext` rather than here.
 	 */
 	readonly disableStreaming = false;
 
-	readonly streamingPostTimeoutMs: number = TEAMS_STREAMING_POST_TIMEOUT_MS;
-
 	/**
-	 * Teams keeps one open stream per inbound activity and the adapter never
-	 * closes it, so a second run refills the first bubble — which sits above any
-	 * card posted in between.
+	 * Text that follows a card is posted on its own rather than folded back into
+	 * the message being edited above it.
 	 */
 	readonly singleStreamedRunPerTurn = true;
-
-	/**
-	 * A stall can be a passing throttle rather than a tenant that refuses
-	 * streaming, so entries expire and the connection is tried again.
-	 */
-	private readonly bufferedOnlyUntil = new Map<string, number>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -193,31 +174,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 		return expandSelectsToButtons(components);
 	}
 
-	onStreamingPostStalled(integration: AgentIntegrationConfig): void {
-		this.bufferedOnlyUntil.set(integration.credentialId, Date.now() + BUFFERED_ONLY_TTL_MS);
-		this.logger.warn('[TeamsIntegration] Streaming paused for this connection after a stall', {
-			credentialId: integration.credentialId,
-			retryInMs: BUFFERED_ONLY_TTL_MS,
-		});
-	}
-
-	private streamingPaused(credentialId: string): boolean {
-		const until = this.bufferedOnlyUntil.get(credentialId);
-		if (until === undefined) return false;
-		if (until > Date.now()) return true;
-		this.bufferedOnlyUntil.delete(credentialId);
-		return false;
-	}
-
 	/**
-	 * A group chat or channel posts one buffered message rather than
-	 * post-and-edit, which Discord and Telegram rejected for edit rate limits and
-	 * half-formed intermediate Markdown.
+	 * Only a direct message renders progressively. Post-and-edit would work in a
+	 * channel too, but a message that visibly rewrites itself is far more
+	 * disruptive there, so that stays a separate decision.
 	 */
 	async createBridgeExecutionContext(
 		params: BridgeMessageContextParams,
 	): Promise<BridgeExecutionContext> {
-		const streamable = params.thread.isDM && !this.streamingPaused(params.integration.credentialId);
+		const streamable = params.thread.isDM;
 		return {
 			platformAgentContext: {},
 			forceBuffered: !streamable,
