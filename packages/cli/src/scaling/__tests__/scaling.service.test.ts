@@ -15,7 +15,7 @@ import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME } from '../constants';
-import type { JobOutcomeTracker } from '../job-outcome-tracker';
+import { JobOutcomeTracker } from '../job-outcome-tracker';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
@@ -919,6 +919,47 @@ describe('ScalingService', () => {
 				getHandler('global:completed')('job-1');
 
 				expect(jobOutcomeTracker.settleByJobKey).toHaveBeenCalledWith('jobs', 'job-1');
+			});
+
+			it('should end the wait when an older worker reports the job as finished', async () => {
+				// A real tracker, so the handler and the tracker are checked together
+				const realTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock());
+				const service = new ScalingService(
+					logger,
+					errorReporter,
+					activeExecutions,
+					jobProcessor,
+					globalConfig,
+					executionRepository,
+					executionPersistence,
+					instanceSettings,
+					mock(),
+					webhookResponseRelay,
+					executionCrashService,
+					realTracker,
+				);
+				await service.setupQueue();
+				const onProgress = queue.on.mock.calls
+					.filter(([event]) => (event as string) === 'global:progress')
+					.at(-1)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+				const job = mock<Job>({
+					id: 'job-1',
+					data: { executionId: 'exec-1' },
+					queue: { name: 'jobs' },
+				});
+				const wait = service.waitForJob(job);
+
+				// A v1 message carries no result, only the fact that the job ended
+				onProgress('job-1', {
+					kind: 'job-finished',
+					executionId: 'exec-1',
+					workerId: 'worker-1',
+					success: true,
+				});
+
+				await expect(wait).resolves.toBeUndefined();
+				expect(service.popJobResult('exec-1')).toBeUndefined();
 			});
 		});
 	});
