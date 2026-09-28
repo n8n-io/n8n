@@ -247,11 +247,11 @@ const handleClick = (event: MouseEvent) => {
 		--button--color: var(--text-color--inverse);
 		--button--border-color: var(--color--primary);
 		--button--border-color--hover: color-mix(
-			in srgb var(----buton--border-color),
+			in srgb var(--buton--border-color),
 			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 10%
 		);
 		--button--border-color--active: color-mix(
-			in srgb var(----buton--border-color),
+			in srgb var(--buton--border-color),
 			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 12%
 		);
 		--button--border--shadow: 0 0 0 1px var(--button--border-color);
