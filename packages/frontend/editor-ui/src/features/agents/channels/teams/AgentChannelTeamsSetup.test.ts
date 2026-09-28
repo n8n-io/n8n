@@ -29,9 +29,9 @@ vi.mock('file-saver', () => ({
 	saveAs: vi.fn(),
 }));
 
-const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage, showError: vi.fn() }),
+	useToast: () => ({ showMessage, showError }),
 }));
 
 vi.mock('./api', () => ({
@@ -617,6 +617,23 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getTeamsSetupState).not.toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
 			expect(getByTestId('teams-download-package')).toBeDisabled();
 			expect(emitted().connect).toBeFalsy();
+			expect(showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'agents.channels.modal.saveChannelError',
+			);
+		});
+
+		it('does not report a save failure when only the setup state fails to load', async () => {
+			vi.mocked(getTeamsSetupState).mockRejectedValue(new Error('offline'));
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+
+			renderComponent({ props: props({ modelValue: 'cred-1', ensureAgentPersisted }) });
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			await flushPromises();
+			expect(showError).not.toHaveBeenCalled();
 		});
 	});
 

@@ -250,10 +250,20 @@ async function downloadAndConnect() {
 async function loadSetupState() {
 	const request = ++latestSetupState;
 	if (!props.projectId || !props.agentId) return;
+	// A new agent has no row yet, and every agent-scoped Teams request needs
+	// one. Picking a credential is the first step that asks for that data.
+	if (props.mode === 'setup' && credentialId.value) {
+		try {
+			await props.ensureAgentPersisted?.();
+		} catch (error) {
+			if (request !== latestSetupState) return;
+			setupState.value = null;
+			// Nothing inline explains a failed save, so it gets the modal's toast.
+			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+			return;
+		}
+	}
 	try {
-		// A new agent has no row yet, and every agent-scoped Teams request needs
-		// one. Picking a credential is the first step that asks for that data.
-		if (props.mode === 'setup' && credentialId.value) await props.ensureAgentPersisted?.();
 		const state = await getTeamsSetupState(
 			rootStore.restApiContext,
 			props.projectId,
