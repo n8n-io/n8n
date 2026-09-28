@@ -765,7 +765,7 @@ describe('GET /workflows/:workflowId', () => {
 		['owner', () => owner],
 		['admin', () => admin],
 	])(
-		'should return workflow with credentials saying %s does have access even when not shared',
+		'should return workflow with credentials saying %s can use them even when not shared',
 		async (_description, getActor) => {
 			const actor = getActor();
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -794,7 +794,7 @@ describe('GET /workflows/:workflowId', () => {
 		},
 	);
 
-	test('should return workflow with credentials for all users with or without access', async () => {
+	test('should return workflow with credentials for all users whether or not they can use them', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const workflowPayload = makeWorkflow({
@@ -811,7 +811,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserCanUse: true, // one user has access
+				currentUserCanUse: true, // one user can use it
 			},
 		]);
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
@@ -825,15 +825,15 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserCanUse: false, // the other one doesn't
+				currentUserCanUse: false, // the other one can't
 			},
 		]);
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
 
-	test('should return workflow with credentials for all users with access', async () => {
+	test('should return workflow with credentials for all users who can use them', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		// Both users have access to the credential (none is owner)
+		// Both users can use the credential (none is owner)
 		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({
@@ -873,7 +873,7 @@ describe('GET /workflows/:workflowId', () => {
 
 	test('should return workflow credentials home project and shared with projects', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		// Both users have access to the credential (none is owner)
+		// Both users can use the credential (none is owner)
 		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({

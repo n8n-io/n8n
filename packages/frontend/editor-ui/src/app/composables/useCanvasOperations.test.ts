@@ -5250,7 +5250,7 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+		it('keeps stored credentials the current user can use when sharing is enabled', () => {
 			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
 			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
 
@@ -5270,7 +5270,7 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+		it('drops stored credentials the current user cannot use when sharing is enabled', () => {
 			const foreignCredential = mock<ICredentialsResponse>({
 				id: 'cred-foreign',
 				name: 'Someone else',

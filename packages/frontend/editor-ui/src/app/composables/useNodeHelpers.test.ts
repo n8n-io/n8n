@@ -277,7 +277,7 @@ describe('useNodeHelpers()', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return an empty array when user has access to all credentials', () => {
+		it('should return an empty array when user can use all credentials', () => {
 			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
 
 			const credentialWithAccess1: IUsedCredential = {
