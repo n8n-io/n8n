@@ -552,6 +552,7 @@ async function handleSubmit(
 	responseStartedAtEpochMs?: number,
 	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -638,6 +639,7 @@ async function handleSubmit(
 			handoffContext,
 			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
 			...(mentionCounts.total > 0 ? { mentionCounts } : {}),
+			...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {

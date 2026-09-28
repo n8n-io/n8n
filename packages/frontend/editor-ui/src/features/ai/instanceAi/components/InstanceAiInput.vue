@@ -147,6 +147,7 @@ const emit = defineEmits<{
 		responseStartedAtEpochMs: number,
 		acceptDraft: () => void,
 		mentionCounts: AssistantMentionCounts,
+		mentionedWorkflowIds: readonly string[],
 	];
 	stop: [];
 	'dismiss-context-chip': [];
@@ -489,6 +490,7 @@ function emitSubmittedMessage(
 	responseStartedAtEpochMs: number,
 	acceptDraft: () => void,
 	mentionCounts: AssistantMentionCounts,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	previewPrompt.value = null;
 	emit(
@@ -500,6 +502,7 @@ function emitSubmittedMessage(
 		responseStartedAtEpochMs,
 		acceptDraft,
 		mentionCounts,
+		mentionedWorkflowIds,
 	);
 }
 
@@ -593,6 +596,7 @@ function submitComposerMessage(
 		resources: InstanceAiResourceAttachment[];
 		mentionReferenceIds: readonly string[];
 		mentionCounts: AssistantMentionCounts;
+		mentionedWorkflowIds: readonly string[];
 	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
@@ -625,6 +629,8 @@ function submitComposerMessage(
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
 	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
 	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
+	const mentionedWorkflowIds =
+		draftSnapshot?.mentionedWorkflowIds ?? mentionAttachments.snapshotMentionedWorkflowIds();
 	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
 	emitSubmittedMessage(
 		message,
@@ -638,6 +644,7 @@ function submitComposerMessage(
 		responseStartedAtEpochMs,
 		mentionSubmission.accept,
 		mentionCounts,
+		mentionedWorkflowIds,
 	);
 	resetDraftComposer();
 }
@@ -679,6 +686,7 @@ async function handleSubmit() {
 	const submittedResources = [...attachedResources.value];
 	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = mentionAttachments.snapshotCounts();
+	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
 	let fileAttachments: InstanceAiAttachment[];
 	try {
@@ -700,7 +708,13 @@ async function handleSubmit() {
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
-		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds, mentionCounts },
+		{
+			files: submittedFiles,
+			resources: submittedResources,
+			mentionReferenceIds,
+			mentionCounts,
+			mentionedWorkflowIds,
+		},
 	);
 }
 

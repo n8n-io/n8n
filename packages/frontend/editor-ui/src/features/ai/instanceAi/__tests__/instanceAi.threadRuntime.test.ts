@@ -1520,6 +1520,27 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		warnSpy.mockRestore();
 	});
 
+	test('sendMessage records a mentioned workflow as a mentioned tab on a fresh thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+
+		// A new thread's first message is the only trace of the mention: on the wire
+		// it is a plain workflow attachment, like a hand-off would be.
+		await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
+				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
+			],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
+		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),

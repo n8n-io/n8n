@@ -655,11 +655,18 @@ export function useResourceRegistry(
 		{ immediate: true },
 	);
 
+	function seedArtifactOrigins(ids: Iterable<string>, origin: ArtifactOrigin): void {
+		for (const id of ids) {
+			if (!producedArtifactOrigins.has(id)) producedArtifactOrigins.set(id, origin);
+		}
+	}
+
 	return {
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
+		seedArtifactOrigins,
 	};
 }
 

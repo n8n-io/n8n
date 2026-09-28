@@ -223,6 +223,10 @@ export function useAssistantMentionAttachments(options: {
 		return counts;
 	}
 
+	function snapshotMentionedWorkflowIds(): string[] {
+		return [...new Set([...selectedRecords.values()].map(({ item }) => item.workflowId))];
+	}
+
 	function detachSubmission(
 		referenceIds: AssistantMentionAttachmentSubmissionSnapshot = snapshotSubmission(),
 	): AssistantMentionAttachmentSubmission {
@@ -280,6 +284,7 @@ export function useAssistantMentionAttachments(options: {
 		clearForProjectChange,
 		snapshotSubmission,
 		snapshotCounts,
+		snapshotMentionedWorkflowIds,
 		detachSubmission,
 	};
 }

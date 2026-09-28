@@ -479,6 +479,7 @@ describe('InstanceAiInput — mention attachments', () => {
 			number,
 			() => void,
 			unknown,
+			string[],
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
 		expect(firstSubmit[6]).toEqual({
@@ -487,6 +488,7 @@ describe('InstanceAiInput — mention attachments', () => {
 			node: 0,
 			group: 0,
 		});
+		expect(firstSubmit[7]).toEqual(['w1']);
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');
 		expect(emitted()['mention-reference-removed']).toBeUndefined();

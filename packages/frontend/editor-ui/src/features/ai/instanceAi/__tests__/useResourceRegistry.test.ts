@@ -62,6 +62,7 @@ function setup(
 		resourceNameIndex,
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
+		seedArtifactOrigins,
 	} = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
@@ -78,6 +79,7 @@ function setup(
 		resourceNameIndex,
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
+		seedArtifactOrigins,
 	};
 }
 
@@ -1464,6 +1466,29 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
+		});
+
+		test('a seeded origin wins over what the same tick then collects, and keeps a known one', async () => {
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+			messages.value = [buildMessage('wf-built')];
+			await nextTick();
+
+			seedArtifactOrigins(['wf-new', 'wf-built'], 'mentioned');
+			messages.value = [...messages.value, attachMessage('wf-new')];
+			await nextTick();
+
+			expect(producedArtifactOrigins.get('wf-new')).toBe('mentioned');
+			expect(producedArtifactOrigins.get('wf-built')).toBe('built');
+		});
+
+		test('drops a seeded origin that no artifact follows', async () => {
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+
+			seedArtifactOrigins(['wf-ghost'], 'mentioned');
+			messages.value = [buildMessage('wf-other')];
+			await nextTick();
+
+			expect(producedArtifactOrigins.has('wf-ghost')).toBe(false);
 		});
 
 		test('forgets the origin of an artifact that leaves the thread', async () => {

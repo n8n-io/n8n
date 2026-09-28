@@ -126,6 +126,8 @@ describe('useAssistantMentionAttachments', () => {
 			node: 1,
 			group: 0,
 		});
+		// Both mentions point at the same workflow: one tab, listed once.
+		expect(mentions.snapshotMentionedWorkflowIds()).toEqual(['w1']);
 		scope.stop();
 	});
 

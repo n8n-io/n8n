@@ -606,6 +606,7 @@ export function createThreadRuntime(
 		resourceNameIndex,
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
+		seedArtifactOrigins,
 	} = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
@@ -1639,6 +1640,7 @@ export function createThreadRuntime(
 			handoffContext?: InstanceAiHandoffContext;
 			responseStartedAtEpochMs?: number;
 			mentionCounts?: AssistantMentionCounts;
+			mentionedWorkflowIds?: readonly string[];
 		},
 	): Promise<boolean> {
 		const {
@@ -1648,6 +1650,7 @@ export function createThreadRuntime(
 			handoffContext,
 			responseStartedAtEpochMs = instanceAiResponseNow(),
 			mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+			mentionedWorkflowIds = [],
 		} = opts;
 		const metricGeneration = responseMetricGeneration;
 		amendContext.value = null;
@@ -1656,6 +1659,7 @@ export function createThreadRuntime(
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const actionSource = resolveActionSource();
+			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
 			trackUserMessageSent(

@@ -527,6 +527,7 @@ describe('InstanceAiInput', () => {
 			expect.any(Number),
 			expect.any(Function),
 			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -841,6 +842,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1039,6 +1041,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1083,6 +1086,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
