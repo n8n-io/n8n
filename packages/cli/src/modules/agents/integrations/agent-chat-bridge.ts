@@ -10,12 +10,18 @@ import {
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { Attachment, Author, Chat, Message, Thread } from 'chat';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentMessageQueueService } from '../agent-message-queue.service';
+import type {
+	AgentExecutionAdmission,
+	QueuedIntegrationMessage,
+} from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
@@ -32,14 +38,18 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	onceStatusHandle,
+	postToUserOrThread,
+} from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
-import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
+import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
@@ -122,24 +132,6 @@ function buildModelMessage(
 	return modelContext.join('\n\n');
 }
 
-/**
- * Reply sent when a message arrives while the run is parked. Leads with the
- * suspension card's own title (e.g. `Waiting on "Approval workflow"`) so the
- * user knows what is holding things up, and falls back to a generic line for
- * payloads that carry no title.
- */
-function stillWaitingNotice(suspendPayload: unknown): string {
-	const title =
-		typeof suspendPayload === 'object' &&
-		suspendPayload !== null &&
-		'title' in suspendPayload &&
-		typeof suspendPayload.title === 'string' &&
-		suspendPayload.title.length > 0
-			? suspendPayload.title
-			: "I'm still waiting on the previous step";
-	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
-}
-
 interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeForChat'> {
 	getSessionMode?(threadId: string): Promise<AgentSessionMode>;
 
@@ -149,18 +141,17 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		},
 	): AsyncGenerator<StreamChunk>;
 
-	/**
-	 * The thread's still-open suspension, if the run is parked on one right now.
-	 * Optional so a caller that cannot look checkpoints up (tests) simply skips
-	 * the inbound gate.
-	 */
+	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
 		agentId: string;
 		threadId: string;
 	}): Promise<OpenSuspension | null>;
+
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 }
 
-/** Enough of a parked run to tell the user what the agent is still waiting on. */
+/** An open checkpoint prevents automatic session rotation. */
 interface OpenSuspension {
 	suspendPayload?: unknown;
 }
@@ -170,6 +161,13 @@ function errorText(error: unknown): string {
 	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
 	if (isAttachmentValidationError(error)) {
 		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
+	}
+	if (
+		isRecord(error) &&
+		typeof error.message === 'string' &&
+		error.message.includes('Output blocked by content filtering policy')
+	) {
+		return `⚠️ ${error.message}`;
 	}
 	if (error instanceof UserError) {
 		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
@@ -181,7 +179,7 @@ function errorText(error: unknown): string {
  * Bridges Chat SDK events to the agent execution pipeline.
  *
  * Registers four handlers on a Chat SDK `Bot` instance:
- * 1. `onNewMention` — new @mentions and DMs → subscribe + execute
+ * 1. `onNewMention` — new @mentions and DMs → subscribe + enqueue
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
  * 4. `onSlashCommand` — /new session reset for adapters that never deliver a
@@ -223,6 +221,9 @@ export class AgentChatBridge {
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
 		private readonly discordHttpClient?: HttpRequestClient,
+		private readonly messageQueue: AgentMessageQueueService = Container.get(
+			AgentMessageQueueService,
+		),
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
 		this.messageContextBridge = new AgentChatMessageContextBridge(
@@ -311,6 +312,8 @@ export class AgentChatBridge {
 				messageContext,
 				contextConversation,
 				sessionMode,
+				admittedExecution,
+				abortSignal,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -331,6 +334,8 @@ export class AgentChatBridge {
 					messageContext,
 					contextConversation,
 					sessionMode,
+					admittedExecution,
+					abortSignal,
 				});
 			},
 			async *resumeForChat(config) {
@@ -346,6 +351,9 @@ export class AgentChatBridge {
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async isResumable({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
 			},
 		};
 		return new AgentChatBridge(
@@ -482,17 +490,32 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			{ notifyOnDuplicate: false, ...(context ? { messageContext: context.messageContext } : {}) },
+			{
+				...(context ? { messageContext: context.messageContext } : {}),
+				// Nobody clicked, so this must not speak to them. It only keeps a
+				// card the resumed turn raises addressed to the person whose
+				// conversation it belongs to.
+				...(context?.messageContext?.interactingUserId
+					? { cardRecipientId: context.messageContext.interactingUserId }
+					: {}),
+			},
 		);
 	}
 
-	async deliverWakeResponse(threadId: string, chunks: StreamChunk[]): Promise<void> {
+	async deliverWakeResponse(
+		threadId: string,
+		chunks: StreamChunk[],
+		cardRecipientId?: string,
+	): Promise<void> {
 		await this.streamConsumer.consume(
 			(async function* () {
 				yield* chunks;
 			})(),
 			this.chat.thread(threadId),
-			{ throwOnDeliveryError: true },
+			{
+				throwOnDeliveryError: true,
+				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+			},
 		);
 	}
 
@@ -677,17 +700,12 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const platformAgentContext = this.getPlatformAgentContext();
 		const session = await this.resolveTurnSession(thread, message);
-		// The run parks against the session it executes in, which for a bound reply
-		// is the task's thread rather than the platform one — so this has to come
-		// after the binding is resolved, and before anything is stored for a turn
-		// that is not going to run.
-		if (await this.postStillWaitingReply(thread, session.memory.threadId.id)) return;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inbound.attachments,
 			session.memory.threadId.id,
 			session.memory.resourceId,
 		);
-		await this.deliverTurn({
+		await this.enqueueTurn({
 			thread,
 			message,
 			text: inbound.text,
@@ -728,7 +746,7 @@ export class AgentChatBridge {
 		};
 	}
 
-	private async deliverTurn({
+	private async enqueueTurn({
 		thread,
 		message,
 		text,
@@ -747,127 +765,148 @@ export class AgentChatBridge {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): Promise<void> {
-		const statusRetry = new AbortController();
 		const replyExpectation =
 			this.integrationImpl?.getReplyExpectation?.({
 				message,
 				isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
-		let statusHandle: ReturnType<typeof onceStatusHandle> | undefined;
-		let consumeStarted = false;
 		try {
-			// Platform status hooks, the lazy `message.subject` fetch, and any
-			// thread-history fetch are all remote round-trips on independent
-			// resources — run them concurrently.
-			const [bridgeExecutionContext, subject] = await Promise.all([
+			const [context, subject] = await Promise.all([
 				this.resolveBridgeExecutionContext(
 					thread,
 					message,
 					platformAgentContext,
-					statusRetry,
 					isNewMention,
 					replyExpectation,
 				),
 				this.messageContextBridge.resolveSubject(message),
 			]);
-			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
-				...bridgeExecutionContext.platformAgentContext,
-				...(bridgeExecutionContext.platformMessage
-					? { platformMessage: bridgeExecutionContext.platformMessage }
-					: {}),
+				...context.platformAgentContext,
+				...(context.platformMessage ? { platformMessage: context.platformMessage } : {}),
 				subject,
 				replyExpectation,
 			});
-			// threadId.id is agent-prefixed for shared conversation history;
-			// resourceId keeps the author identity so episodic recall follows them.
-			// Always run the published snapshot — integrations are production traffic.
-			// The model gets the author label and thread history; the transcript
-			// records the plain text and carries the author as structured data.
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
-			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
-			const modelMessage = buildModelMessage(labelledText, bridgeExecutionContext);
-			const stream = this.agentService.executeForChatPublished({
-				messageContext,
-				contextConversation: {
-					threadId: session.activeThreadId.id,
-					resourceId: message.author.userId,
-				},
+			const { userId, userName, fullName, isBot, isMe } = message.author;
+			await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
-				message: textWithNotes,
-				modelMessage,
-				author,
-				attachments: attachments.length > 0 ? attachments : undefined,
-				memory: session.memory,
+				threadId: session.memory.threadId.id,
 				sessionMode: session.sessionMode,
+				source: this.integration.type,
+				payload: {
+					kind: 'integration',
+					message: textWithNotes,
+					modelMessage: buildModelMessage(
+						`[${author.name} (${author.id})]: ${textWithNotes}`,
+						context,
+					),
+					author,
+					sender: { userId, userName, fullName, isBot, isMe },
+					attachments: attachments.length ? attachments : undefined,
+					resourceId: session.memory.resourceId,
+					credentialId: this.integration.credentialId,
+					platformThreadId: thread.id,
+					messageContext,
+					contextConversation: { threadId: session.activeThreadId.id, resourceId: userId },
+					forceBuffered: context.forceBuffered,
+					slackThreadContext: context.slackThreadContext,
+				},
+			});
+		} catch (error) {
+			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			throw error;
+		}
+	}
+
+	async consumeQueuedMessage(
+		payload: QueuedIntegrationMessage,
+		threadId: string,
+		admittedExecution: AgentExecutionAdmission,
+		abortSignal: AbortSignal,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		const thread = await this.restoreQueuedReplyThread(payload);
+		let statusHandle: ReturnType<typeof onceStatusHandle>;
+		try {
+			if (this.integrationImpl?.isUserAllowed?.(payload.sender, integration) === false) {
+				throw new UserError('You can no longer use this integration');
+			}
+			abortSignal.throwIfAborted();
+			if (payload.messageContext.replyExpectation !== 'optional') {
+				const context = await this.integrationImpl?.createResumeExecutionContext?.({
+					chat: this.chat,
+					thread,
+					logger: this.logger,
+					agentId: this.agentId,
+					slackThreadContext: payload.slackThreadContext,
+				});
+				statusHandle = onceStatusHandle(context?.statusHandle);
+			}
+			const stream = this.agentService.executeForChatPublished({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				message: payload.message,
+				modelMessage: payload.modelMessage,
+				author: payload.author,
+				attachments: payload.attachments,
+				messageContext: payload.messageContext,
+				contextConversation: payload.contextConversation,
+				memory: { threadId: toInternalThreadId(threadId), resourceId: payload.resourceId },
+				sessionMode: 'existing',
 				integrationType: this.integration.type,
+				admittedExecution,
+				abortSignal,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({
 					type: 'integration-thread',
-					connectionId: this.integration.credentialId,
+					connectionId: payload.credentialId,
 					platform: this.integration.type,
 					platformThreadId: this.resolvePlatformThreadId(thread),
 				}),
 			});
-
-			consumeStarted = true;
 			await this.streamConsumer.consume(stream, thread, {
-				forceBuffered: bridgeExecutionContext.forceBuffered,
+				forceBuffered: payload.forceBuffered,
 				statusHandle,
+				actingUserId: payload.sender.userId,
 			});
 		} catch (error) {
-			// The execution generator is lazy: a throw before consumption started means
-			// nothing ran and nothing references this turn's attachments — remove them
-			// (best-effort). Once consumption starts, the turn may be persisted.
-			if (!consumeStarted && attachments.length > 0) {
-				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			}
+			await this.postErrorToThread(thread, error);
 			throw error;
 		} finally {
-			statusRetry.abort();
-			// The stream consumer clears the status right before the first response;
-			// this clear covers failures before/outside consumption, which would
-			// otherwise leave a status indicator (e.g. Telegram's typing keepalive)
-			// running after the error reply. The once-wrapped handle makes this a
-			// no-op await of the consumer's clear when that already ran.
 			await statusHandle?.clearBeforeResponse();
 		}
 	}
 
-	/**
-	 * A run parked on a suspension owns the conversation until it is resolved.
-	 * Starting a second run here would hand the model a history with the pending
-	 * tool call stripped out, so it would call the same tool again — a duplicate
-	 * side effect and a second parked run. Tell the user instead of executing,
-	 * and let them resolve the open card.
-	 *
-	 * Returns true when the message was answered with the notice and must not
-	 * start a run. A failure to post propagates: the gate has already decided not
-	 * to run, and the handler's error reply is the only thing left that can tell
-	 * the user their message went nowhere.
-	 */
-	private async postStillWaitingReply(thread: Thread, threadId: string): Promise<boolean> {
-		const open = await this.agentService.findOpenSuspension?.({
-			agentId: this.agentId,
-			threadId,
-		});
-		if (!open) return false;
+	private async restoreQueuedReplyThread(payload: QueuedIntegrationMessage): Promise<Thread> {
+		const thread = this.chat.thread(payload.platformThreadId);
+		const recipientTeamId = payload.slackThreadContext?.recipientTeamId;
+		if (payload.forceBuffered || !recipientTeamId) return thread;
 
-		try {
-			await thread.post(stillWaitingNotice(open.suspendPayload));
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to post the still-waiting notice', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
-		return true;
+		// The SDK reads the Slack stream recipient from the current message.
+		const { Message, ThreadImpl } = await loadChatSdk();
+		return new ThreadImpl({
+			id: thread.id,
+			channelId: thread.channelId,
+			channelVisibility: thread.channelVisibility,
+			isDM: thread.isDM,
+			adapter: thread.adapter,
+			stateAdapter: this.chat.getState(),
+			currentMessage: new Message({
+				id: payload.messageContext.messageId ?? '',
+				threadId: thread.id,
+				text: payload.message,
+				formatted: { type: 'root', children: [] },
+				author: payload.sender,
+				metadata: { dateSent: new Date(payload.messageContext.updatedAt), edited: false },
+				attachments: [],
+				raw: { team_id: recipientTeamId },
+			}),
+		});
 	}
 
 	/**
@@ -968,7 +1007,6 @@ export class AgentChatBridge {
 		thread: Thread<unknown, unknown>,
 		message: Message<unknown>,
 		platformAgentContext: PlatformAgentContext,
-		statusRetry: AbortController,
 		isNewMention: boolean,
 		replyExpectation: ReplyExpectation,
 	): Promise<BridgeExecutionContext> {
@@ -980,7 +1018,7 @@ export class AgentChatBridge {
 				integration: this.integration,
 				logger: this.logger,
 				agentId: this.agentId,
-				statusRetry,
+				startStatus: false,
 				isNewMention,
 				replyExpectation,
 			})) ?? { platformAgentContext }
@@ -994,6 +1032,7 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
+		actingUserId?: string,
 	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
@@ -1006,7 +1045,6 @@ export class AgentChatBridge {
 		if (!cardPayload) return 'skipped';
 		const callbackMetadata: CallbackMetadata = {
 			groupId: JSON.stringify([runId, toolCallId]),
-			...(isApprovalSuspendPayload(suspendPayload) ? { kind: 'approval' } : {}),
 		};
 
 		try {
@@ -1018,7 +1056,7 @@ export class AgentChatBridge {
 				this.getShortenCallback(callbackMetadata),
 				this.integration.type,
 			);
-			await thread.post({ card });
+			await this.deliverSuspensionCard(thread, card, actingUserId);
 			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
@@ -1029,6 +1067,24 @@ export class AgentChatBridge {
 			});
 			return 'failed';
 		}
+	}
+
+	/**
+	 * Where the platform can address one user, the card goes to them alone, so
+	 * the rest of the conversation never sees it. Everything else falls back to
+	 * the thread: a card nobody receives leaves the run parked with nothing to
+	 * click.
+	 */
+	private async deliverSuspensionCard(
+		thread: Thread,
+		card: CardElement,
+		actingUserId?: string,
+	): Promise<void> {
+		if (this.integrationImpl?.targetSuspensionCardAtActingUser && actingUserId) {
+			await postToUserOrThread(thread, actingUserId, { card });
+			return;
+		}
+		await thread.post({ card });
 	}
 
 	// ---------------------------------------------------------------------------

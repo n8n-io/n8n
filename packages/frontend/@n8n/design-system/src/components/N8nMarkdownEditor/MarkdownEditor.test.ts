@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import type { Editor } from '@tiptap/core';
 
@@ -215,6 +216,123 @@ describe('components/N8nMarkdownEditor', () => {
 
 		await waitFor(() => expect(getEditorElement(wrapper.container)).toBeInTheDocument());
 		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
+	});
+
+	it('shows the expanded view control only when expanded view is enabled', async function showExpandedViewControl() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+			},
+		});
+
+		await waitFor(function waitForEditor() {
+			expect(getEditorElement(wrapper.container)).toBeInTheDocument();
+		});
+		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
+
+		await wrapper.rerender({ modelValue: 'Content', allowExpandedView: true });
+
+		expect(wrapper.getByRole('button', { name: 'Expand editor' })).toBeInTheDocument();
+	});
+
+	it('keeps edited content when the expanded view opens and closes', async function keepExpandedViewContent() {
+		let editor: Editor | undefined;
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: '',
+				allowExpandedView: true,
+				onReady: function setEditor(readyEditor: Editor) {
+					editor = readyEditor;
+				},
+			},
+		});
+
+		await waitFor(function waitForEditor() {
+			expect(editor).toBeDefined();
+		});
+		editor?.commands.insertContent('Inline content');
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedView() {
+			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toHaveTextContent(
+				'Inline content',
+			);
+		});
+
+		editor?.commands.insertContent(' expanded content');
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+
+		await waitFor(function waitForInlineView() {
+			expect(wrapper.queryByRole('dialog', { name: 'Markdown editor' })).not.toBeInTheDocument();
+			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toHaveTextContent(
+				'Inline content expanded content',
+			);
+		});
+		expect(wrapper.emitted<string[]>('update:modelValue')?.at(-1)?.[0]).toBe(
+			'Inline content expanded content',
+		);
+	});
+
+	it('closes the expanded view when Escape is pressed', async function closeExpandedViewWithEscape() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				allowExpandedView: true,
+			},
+		});
+
+		await fireEvent.click(await wrapper.findByRole('button', { name: 'Expand editor' }));
+		const expandedEditor = await wrapper.findByTestId('n8n-markdown-editor-expanded');
+		await fireEvent.keyDown(expandedEditor, { key: 'Escape' });
+
+		await waitFor(function waitForInlineView() {
+			expect(wrapper.queryByRole('dialog', { name: 'Markdown editor' })).not.toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Expand editor' })).toBeInTheDocument();
+		});
+	});
+
+	it('keeps raw Markdown when the expanded view opens and closes', async function keepExpandedRawMarkdown() {
+		const user = userEvent.setup();
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Initial content',
+				allowExpandedView: true,
+			},
+		});
+
+		await user.click(await wrapper.findByRole('button', { name: 'Raw markdown' }));
+		const rawEditor = wrapper.getByTestId('n8n-markdown-editor-raw-content');
+		await user.clear(rawEditor);
+		await user.type(rawEditor, '# Raw content');
+		await user.click(wrapper.getByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedRawEditor() {
+			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
+		});
+		await user.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+
+		await waitFor(function waitForInlineRawEditor() {
+			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
+		});
+	});
+
+	it('opens the expanded view from the floating toolbar control', async function openExpandedFloatingView() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				allowExpandedView: true,
+				showToolbar: 'floating',
+			},
+		});
+
+		await fireEvent.click(await wrapper.findByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedView() {
+			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+		});
 	});
 
 	it('expands and collapses content that exceeds the collapsed height', async function toggleLongContent() {

@@ -14,6 +14,7 @@ import { agentHandler } from './artifacts/agent-handler';
 import { attributionForScenario, type EvalAttribution } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
+import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
@@ -99,7 +100,8 @@ export async function fetchAgentScenarioContext(
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
- * with its real model; its tools' outbound HTTP is served by the mock layer.
+ * with its real model; its tools' outbound HTTP is served by the mock layer and
+ * its Data Table tools read the real table, seeded with the scenario's rows first.
  */
 export async function executeAgentScenario(
 	client: N8nClient,
@@ -111,7 +113,18 @@ export async function executeAgentScenario(
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
 	outputDir?: string,
+	seedContext?: ScenarioSeedContext,
 ): Promise<ExecutionScenarioResult> {
+	if (seedContext) {
+		await reseedScenarioTables(
+			client,
+			scenario,
+			seedContext.threadId,
+			seedContext.tableIdsByName,
+			logger,
+		);
+	}
+
 	const execStart = Date.now();
 	const projectId = await client.getPersonalProjectId();
 	let evalResult = await client.executeAgentWithLlmMock(

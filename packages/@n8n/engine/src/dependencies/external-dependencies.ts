@@ -1,6 +1,7 @@
 import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
+import type { ResponseEmitter } from '../response-channel';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -42,6 +43,11 @@ export interface StepExecutionRequest {
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
 	context: StepExecutionContext;
+	/**
+	 * Response emitter allows the step executor to send messages to the control
+	 * plane side via the execution response channel.
+	 */
+	respond: ResponseEmitter;
 }
 
 /**

@@ -19,6 +19,7 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ExecutionService } from '@/executions/execution.service';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Telemetry } from '@/telemetry';
 
 import {
@@ -42,6 +43,7 @@ let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
 
 mockInstance(Telemetry);
+mockInstance(CommunityPackagesService);
 mockInstance(InstanceSettings, {
 	isMultiMain: false,
 	n8nFolder: '/tmp/n8n-test',

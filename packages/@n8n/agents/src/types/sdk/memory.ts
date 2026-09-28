@@ -381,6 +381,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

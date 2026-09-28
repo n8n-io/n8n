@@ -178,6 +178,8 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	workflowsGroupsWithTriggersEnabled: boolean;
+	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
@@ -196,6 +198,7 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
+		cloudUbbEnabled: boolean;
 	};
 	/**
 	 * @deprecated Gates the AI Transform node's code generation. No longer gates
