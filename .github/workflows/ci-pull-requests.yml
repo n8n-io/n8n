@@ -33,6 +33,12 @@ jobs:
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
+      # The main E2E suite runs. Read by e2e-matrix and e2e.
+      run_e2e: >-
+        ${{ github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group' &&
+        (fromJSON(steps.ci-filter.outputs.results).runtime == true
+          || fromJSON(steps.ci-filter.outputs.results).e2e == true
+          || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
@@ -355,12 +361,7 @@ jobs:
   e2e-matrix:
     name: Prepare E2E / Shard matrix
     needs: install-and-build
-    if: >-
-      github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e'))
+    if: needs.install-and-build.outputs.run_e2e == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
@@ -369,7 +370,7 @@ jobs:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
-          fetch-depth: 200
+          fetch-depth: 1
 
       # Impact selection reads package.json at the merge base.
       - name: Fetch merge base
@@ -406,11 +407,8 @@ jobs:
     if: >-
       needs.prepare-docker.result == 'success' &&
       needs.e2e-matrix.result == 'success' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      needs.e2e-matrix.outputs.skip_tests != 'true' &&
-      github.event_name != 'merge_group'
+      needs.install-and-build.outputs.run_e2e == 'true' &&
+      needs.e2e-matrix.outputs.skip_tests != 'true'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
