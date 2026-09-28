@@ -1,4 +1,4 @@
-import { BaseError } from '../../../src/errors/base/base.error';
+import { BaseError } from '@n8n/errors';
 import { UserError } from '../../../src/errors/base/user.error';
 
 describe('UserError', () => {

@@ -7,7 +7,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
 

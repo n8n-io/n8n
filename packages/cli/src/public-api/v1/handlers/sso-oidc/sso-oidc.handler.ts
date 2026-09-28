@@ -2,8 +2,7 @@ import { UpdateOidcConfigurationDto } from '@n8n/api-types';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 
 import { toOidcConfigurationResponse } from './sso-oidc.mapper';

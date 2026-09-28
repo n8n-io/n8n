@@ -62,11 +62,13 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
+import {
+	ResponseError,
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnsupportedMediaTypeError,
+} from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';

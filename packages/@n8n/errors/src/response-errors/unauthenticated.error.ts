@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from './response.error';
 
 export class UnauthenticatedError extends ResponseError {
 	constructor(message = 'Unauthenticated', hint?: string) {

@@ -13,7 +13,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,

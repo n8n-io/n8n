@@ -17,8 +17,7 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { CacheService } from '@/services/cache/cache.service';

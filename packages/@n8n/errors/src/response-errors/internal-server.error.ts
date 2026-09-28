@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from './response.error';
 
 export class InternalServerError extends ResponseError {
 	constructor(message?: string, cause?: unknown) {

@@ -21,8 +21,7 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';

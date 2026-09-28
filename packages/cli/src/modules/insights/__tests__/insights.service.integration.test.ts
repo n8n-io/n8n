@@ -18,7 +18,7 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { createMember } from '@test-integration/db/users';
 
