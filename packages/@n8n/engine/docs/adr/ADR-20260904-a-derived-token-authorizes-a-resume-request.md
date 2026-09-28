@@ -15,9 +15,10 @@ a person who submits a form, or a person who approves a message. That caller use
 travels through channels that the engine does not control. It stays available for the length of the
 wait, which can be several months.
 
-The data plane verifies the request (ADR-20260902-steps-declare-waits, decision 5). The control
-plane forwards the request and reads none of its own tables. Therefore the token is the only control
-between an unknown caller and a paused workflow.
+ADR-20260902-steps-declare-waits sends every resume request to a data-plane endpoint that checks it
+against the waiting step. That endpoint accepts every request, so the request must authorize itself.
+A resume request also runs the `webhook` method of the node that waits. That method needs the HTTP
+request and the HTTP response, and only the control plane holds them.
 
 The engine has two kinds of shared-secret token. Neither kind fits. `IDENTITY_TOKEN` goes from the
 control plane to the data plane. `ACTION_TOKEN` goes from the data plane to the control plane. Their
@@ -32,8 +33,8 @@ caller.
 Engine v1 also signs the resume URL itself. `getSignedResumeUrl` builds a path from the execution id
 and the node id, adds the parameters that the node needs, and then signs the path and the parameters
 together. It signs with a separate HMAC secret. The signature therefore covers the parameters that a
-node puts in an approval URL, and a holder of the cross-plane secret cannot build a URL. Engine v1
-derives that secret from the encryption key of the instance, so the control plane can build a URL.
+node puts in an approval URL. Engine v1 derives that secret from the encryption key of the instance,
+so the control plane can build a URL.
 
 The data plane can run as its own process. That process has no access to the database or the
 encryption key of the control plane. Node code runs in the data plane, so every node builds its
@@ -43,20 +44,17 @@ Telegram approval callback, which carries a signed reference in the request body
 ## Decision
 
 A **separate kind of capability token** authorizes a resume request. The engine derives the token
-from a secret that only the data plane holds, and does not store the token.
+from a secret that only the data plane holds, and does not store the token. The token is the only
+control between an unknown caller and a paused workflow.
 
 The bar this decision must meet is parity with engine v1: a resume URL is as hard to forge here as
 it is there. The derived token in the form below does not meet that bar. The consequences name the
 gap. Where the planes run as separate processes, the token goes past v1, because the control plane
 cannot build a URL.
 
-The decision is also not a claim that this is the final shape. A later decision supersedes this one
-when the trust layer between the planes settles, or when a requirement arrives that the derived form
-cannot meet. Per-URL revocation is the most likely of those.
-
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own issuer and
-   audience. Therefore a caller cannot replay a resume token at the existing endpoints of either
-   plane. A caller also cannot replay either existing token at the resolve endpoint.
+   audience. Therefore a resume token is not valid at the other endpoints of either plane, and the
+   tokens of those endpoints are not valid at the resume endpoint.
 2. **The engine derives the token and does not persist it.** The engine calculates the token from
    the execution id and the resume secret. It does this each time it needs a URL. This needs no
    column and no migration. Any data-plane code that holds the execution id can build the URL. The
@@ -72,8 +70,9 @@ cannot meet. Per-URL revocation is the most likely of those.
    for a wait that is already resolved, timed out, or cancelled has no effect.
 5. **The data plane owns the resume secret.** The resume secret is not the shared secret of the two
    planes, and the control plane never holds it. The data plane mints every resume token and
-   verifies every resume request. The control plane forwards a resume request without reading its
-   token. The engine does not start without the resume secret.
+   verifies every resume request. No node code runs for a resume request before the data plane
+   accepts its token. The control plane passes the token to the data plane and does not read it. The
+   engine does not start without the resume secret.
 6. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token and does not
    stop an open resume URL. Processes with the old configuration and the new configuration can run
    side by side.
@@ -141,7 +140,9 @@ cannot meet. Per-URL revocation is the most likely of those.
   working. That removal is the only way to revoke resume URLs.
 - The token authenticates the request. It does not authorize the workflow. Who can resume a given
   wait is a separate decision, if that rule becomes narrower than "the caller that holds the URL".
-- One token covers every wait of the execution, not one wait. Engine v1's per-execution
+- One token covers every wait of the execution, not one wait. A request resumes the wait that the
+  execution is in when the request arrives. In a loop, the same URL resumes the wait of every
+  iteration, also a URL that a node sent in an earlier iteration. Engine v1's per-execution
   `resumeToken` does the same, so the bar is unchanged. An execution with two waits open at once is
   ambiguous, and the resolve path answers 409. Engine v1 has the same single-wait limit. A
   `webhookSuffix` is the natural way to tell two apart if that limit ever lifts.
