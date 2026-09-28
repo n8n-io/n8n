@@ -51,6 +51,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import type { Job } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -1167,6 +1168,25 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
+
+	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const activeExecutions = Container.get(ActiveExecutions);
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'trigger',
+			workflowData: workflow,
+		};
+		const executionId = await activeExecutions.add(data);
+
+		const job = mock<Job>({ id: '1', data: { executionId, workflowId: workflow.id } });
+		job.finished.mockReturnValue(new Promise(() => {}));
+		addJob.mockResolvedValueOnce(job);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution(executionId, workflow.id, data);
+
+		expect(activeExecutions.getRunningExecutionIds()).not.toContain(executionId);
 	});
 });
 
