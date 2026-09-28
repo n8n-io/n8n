@@ -61,6 +61,14 @@ export interface ExecutionStore {
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 
 	/**
+	 * End an execution on request, from any status that has not ended. Like
+	 * `finishExecution`, a compare-and-set that writes the status and the finish
+	 * time together. `queued` is included: a cancel can land before any worker
+	 * claims the run, and the claim then finds nothing to take.
+	 */
+	cancelExecution(id: string): Promise<boolean>;
+
+	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when
 	 * every step it still owes is suspended, `running` when one step can run.
 	 *
