@@ -23,6 +23,7 @@ import { createCredentials, getAllCredentials } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
 
 const BLOCKED = 'githubApi';
+const BLOCKED_IN_OTHER_PROJECT = 'slackApi';
 const ALLOWED = 'httpBasicAuth';
 
 beforeAll(async () => {
@@ -69,6 +70,23 @@ test('import:credentials skips blocked credentials and imports the rest', async 
 		0,
 		owner.id,
 	);
+	// Only the owning project denies it, so judging it in the target project would admit it.
+	await Container.get(TypeAvailabilityPolicyService).setEffectivePolicy(
+		CREDENTIAL_TYPES_KIND,
+		otherProject.id,
+		{
+			rules: [
+				{
+					id: 'deny-slack',
+					action: 'deny',
+					selector: { kind: 'name', value: BLOCKED_IN_OTHER_PROJECT },
+				},
+			],
+			defaultAction: 'allow',
+		},
+		0,
+		owner.id,
+	);
 
 	const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
 	const inputPath = path.join(directory, 'credentials.json');
@@ -77,7 +95,12 @@ test('import:credentials skips blocked credentials and imports the rest', async 
 		JSON.stringify([
 			{ id: 'new-github', name: 'new-github', type: BLOCKED, data: { accessToken: 'x' } },
 			{ id: 'stored-github', name: 'renamed', type: BLOCKED, data: { accessToken: 'x' } },
-			{ id: 'stored-basic', name: 'retyped', type: BLOCKED, data: { accessToken: 'x' } },
+			{
+				id: 'stored-basic',
+				name: 'retyped',
+				type: BLOCKED_IN_OTHER_PROJECT,
+				data: { accessToken: 'x' },
+			},
 			{ id: 'new-basic', name: 'new-basic', type: ALLOWED, data: { user: 'u', password: 'p' } },
 			{ name: 'no-id', type: ALLOWED, data: { user: 'u', password: 'p' } },
 		]),
