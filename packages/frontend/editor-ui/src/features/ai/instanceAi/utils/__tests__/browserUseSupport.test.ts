@@ -8,16 +8,31 @@ import {
 const CHROME_WINDOWS =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36';
 
+const SAFARI_MACOS =
+	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15';
+
 function setUserAgent(userAgent: string) {
 	Object.defineProperty(navigator, 'userAgent', { value: userAgent, configurable: true });
+}
+
+function setMaxTouchPoints(maxTouchPoints: number) {
+	Object.defineProperty(navigator, 'maxTouchPoints', { value: maxTouchPoints, configurable: true });
 }
 
 describe('browserUseSupport', () => {
 	beforeEach(() => {
 		setUserAgent(CHROME_WINDOWS);
+		setMaxTouchPoints(0);
 	});
 
 	describe('device support', () => {
+		it('returns false for an iPad in desktop mode', () => {
+			setUserAgent(SAFARI_MACOS);
+			setMaxTouchPoints(5);
+
+			expect(isBrowserUseSupportedOnDevice()).toBe(false);
+		});
+
 		it.each([
 			{ browser: 'Chrome on Windows', userAgent: CHROME_WINDOWS, enabled: true },
 			{

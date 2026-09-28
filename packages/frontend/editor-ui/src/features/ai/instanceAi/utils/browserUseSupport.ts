@@ -5,7 +5,9 @@ import Bowser from 'bowser';
  */
 export function isBrowserUseSupportedOnDevice(): boolean {
 	const { platform } = Bowser.parse(navigator.userAgent);
-	return platform.type !== 'mobile' && platform.type !== 'tablet';
+	// iPadOS in desktop mode sends a Mac user agent; real Macs have no touch points
+	const isIpadInDesktopMode = /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+	return platform.type !== 'mobile' && platform.type !== 'tablet' && !isIpadInDesktopMode;
 }
 
 /**
