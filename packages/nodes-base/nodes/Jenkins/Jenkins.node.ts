@@ -112,7 +112,7 @@ export class Jenkins implements INodeType {
 			},
 			{
 				displayName:
-					'Make sure the job is setup to support triggering with parameters. <a href="https://plugins.jenkins.io/parameterized-trigger/" target="_blank">More info</a>',
+					'Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a>',
 				name: 'triggerParamsNotice',
 				type: 'notice',
 				displayOptions: {
