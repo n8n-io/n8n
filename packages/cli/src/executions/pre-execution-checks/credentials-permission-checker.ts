@@ -1,4 +1,4 @@
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -73,7 +73,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUserId(
 			userId,
 			workflowCredIds,
 		);
@@ -97,7 +97,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return [];
 
-		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUserId(
 			userId,
 			workflowCredIds,
 		);
@@ -127,10 +127,15 @@ export class CredentialsPermissionChecker {
 		return credentialId;
 	}
 
-	/** The ids among `credentialIds` that `userId` personally cannot use. */
-	private async resolveInaccessibleCredentialIdsForUser(
+	/**
+	 * Id-based sibling of {@link resolveInaccessibleCredentialIdsForUser}, for a caller
+	 * that only has a user id and not an already-loaded `User` (e.g. a triggering user
+	 * looked up from a sub-workflow's parameter data).
+	 */
+	async resolveInaccessibleCredentialIdsForUserId(
 		userId: string,
 		credentialIds: string[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
@@ -141,7 +146,15 @@ export class CredentialsPermissionChecker {
 			// Cannot resolve the triggering user - fail closed.
 			return credentialIds;
 		}
+		return await this.resolveInaccessibleCredentialIdsForUser(user, credentialIds, options);
+	}
 
+	/** The ids among `credentialIds` that `user` personally cannot use. */
+	async resolveInaccessibleCredentialIdsForUser(
+		user: User,
+		credentialIds: string[],
+		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<string[]> {
 		const unavailableCredentials =
 			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
 		const unavailableIds = unavailableCredentials.map((c) => c.id);
@@ -153,17 +166,22 @@ export class CredentialsPermissionChecker {
 
 		// A user who may use any credential on the instance needs no further check for the rest —
 		// except a credential that no longer exists at all, which nobody can use, owner included.
-		if (hasGlobalScope(user, 'credential:use')) {
+		if (!ignoreGlobalUseScope && hasGlobalScope(user, 'credential:use')) {
 			const existingIds = new Set(await this.credentialsRepository.findExistingIds(remainingIds));
 			const deletedIds = remainingIds.filter((id) => !existingIds.has(id));
 			return [...unavailableIds, ...deletedIds];
 		}
 
-		const accessibleSet = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
-			remainingIds,
-			user,
-			['credential:read'],
-		);
+		const accessibleSet = ignoreGlobalUseScope
+			? await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+					remainingIds,
+					user,
+					['credential:read'],
+					{ ignoreGlobalOverride: true },
+				)
+			: await this.credentialsFinderService.findCredentialIdsWithScopeForUser(remainingIds, user, [
+					'credential:read',
+				]);
 		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
 		return [...unavailableIds, ...stillInaccessible];
@@ -298,6 +316,32 @@ export class CredentialsPermissionChecker {
 				return memberProjectIds?.some((id) => projectIdSet.has(id)) ?? false;
 			})
 			.map(([credentialId]) => credentialId);
+	}
+
+	/**
+	 * The ids of the credentials actively referenced by `nodes` — filtered to
+	 * the credential type actually selected on each node's current
+	 * configuration, same as `mapCredIdsToNodes` — deduplicated.
+	 *
+	 * Unlike `mapCredIdsToNodes`, this never throws on a credential reference
+	 * with no id: it is used on the read path for past executions (redaction),
+	 * where a malformed or legacy reference must be skipped, not treated as a
+	 * validation failure worth failing the request over.
+	 */
+	getCredentialIdsForNodes(nodes: INode[]): string[] {
+		const ids = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled || !node.credentials) continue;
+
+			const activeCredTypes = this.getActiveCredentialTypes(node);
+
+			for (const [credType, cred] of Object.entries(node.credentials)) {
+				if (!cred.id) continue;
+				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;
+				ids.add(cred.id);
+			}
+		}
+		return [...ids];
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {
