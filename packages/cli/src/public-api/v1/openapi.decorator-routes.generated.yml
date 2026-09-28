@@ -265,6 +265,9 @@ paths:
       $ref: ./handlers/settings/spec/paths/getSecurityPolicy.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateSecurityPolicy.generated.yml
+  /settings/sso/oidc:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOidcConfiguration.generated.yml
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml

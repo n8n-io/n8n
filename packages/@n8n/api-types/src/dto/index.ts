@@ -412,6 +412,10 @@ export {
 } from './roles/role-members-response.dto';
 
 export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export {
+	OidcConfigurationPublicDto,
+	oidcConfigurationPublicSchema,
+} from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
