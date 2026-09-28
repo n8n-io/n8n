@@ -1,0 +1,30 @@
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_1afdf26712d274::t_89ca14d3a9a862 423,425
+  s_1afdf26712d274::t_342a8a1c73b596 419-422,424,426-432
+  s_1afdf26712d274::t_5d4bec10031cb2 365-371,376-377,380-393
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.ts
+  s_1afdf26712d274::t_6c14042b406492 540,544-549
+  s_1afdf26712d274::t_7383133e75c41f 475
+  ai_agent 550
+  s_1afdf26712d274::t_7c69684a15b53a 28
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.test.ts
+  s_1afdf26712d274::t_d1fbc98668573b 591
+  s_1afdf26712d274::t_e1966e160913d6 618-623
+  s_1afdf26712d274::t_babcdaf8b08447 588-590,592-617,624-625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce6aefdf673baa100a1516f8e09623858b1711e8",
+  "prompts": {},
+  "sessions": {
+    "s_1afdf26712d274": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cd7f9fc-8b78-476b-a457-2884cc096ef0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
