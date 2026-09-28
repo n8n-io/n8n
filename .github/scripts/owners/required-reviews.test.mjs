@@ -284,6 +284,42 @@ describe('findLargeScaleChangeExemption', () => {
 		);
 	});
 
+	it('rejects the exemption when the label event is not available', async () => {
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+	});
+
+	it('rejects the exemption when the label event has no actor', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: null },
+		];
+		const isTeamMember = mock.fn(async () => true);
+		isTeamMemberImpl = isTeamMember;
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+		assert.equal(isTeamMember.mock.calls.length, 0);
+	});
+
+	it('ignores events for other labels', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+			{ event: 'labeled', label: { name: 'bug' }, actor: { login: 'outsider' } },
+			{ event: 'unlabeled', label: { name: 'bug' }, actor: { login: 'outsider' } },
+		];
+		isTeamMemberImpl = async (slug, username) =>
+			slug === LARGE_SCALE_CHANGES_TEAM && username === 'ana';
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			'ana',
+		);
+	});
+
 	it('uses the actor from the latest label application', async () => {
 		getPrEventsImpl = async () => [
 			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
