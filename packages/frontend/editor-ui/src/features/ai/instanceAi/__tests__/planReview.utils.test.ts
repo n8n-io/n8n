@@ -13,7 +13,7 @@ const PLANNED_TASK: PlannedTaskArg = {
 function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
 		toolCallId: 'tc-1',
-		toolName: 'create_plan',
+		toolName: 'plan_create',
 		args: {},
 		isLoading: true,
 		...overrides,
@@ -42,7 +42,7 @@ describe('resolvePlanTasks', () => {
 		expect(resolvePlanTasks(tc)).toEqual([PLANNED_TASK]);
 	});
 
-	// The create_plan suspend payload carries `tasks` only and never `planItems`,
+	// The plan_create suspend payload carries `tasks` only and never `planItems`,
 	// so args.tasks is the real-world source for a live plan-review card.
 	it('falls back to args.tasks when planItems is absent', () => {
 		const tc = makeToolCall({

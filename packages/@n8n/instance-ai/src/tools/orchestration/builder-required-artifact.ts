@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const REPORT_REQUIRED_ARTIFACT_TOOL_NAME = 'report_required_artifact';
+export const REPORT_REQUIRED_ARTIFACT_TOOL_NAME = 'required_artifact_report';
 
 const requiredWorkflowSchema = z.object({
 	type: z.literal('workflow'),

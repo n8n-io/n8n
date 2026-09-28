@@ -60,7 +60,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	 *  (approve, deny, approve-with-comment, always-allow) can target them. */
 	const approvalEnvelopeSchemas: Array<[string, ZodType]> = [
 		[
-			'shared approval envelope (build_workflow, data_tables, workspace, executions)',
+			'shared approval envelope (workflow_build, data_tables, workspace, executions)',
 			instanceAiApprovalResumeSchema,
 		],
 		['plan', planResumeSchema],
@@ -71,7 +71,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['ask_user', askUserResumeSchema],
+		['user_ask', askUserResumeSchema],
 		['filesystem gateway', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp_servers', mcpConnectResumeSchema],
@@ -112,7 +112,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['ask_user', askUserResumeSchema]],
+			targets: [['user_ask', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',

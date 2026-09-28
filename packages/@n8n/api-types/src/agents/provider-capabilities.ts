@@ -88,6 +88,16 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: { image: true, pdf: true, audio: false },
 	},
+	// Claude through OpenRouter's Messages endpoint — Anthropic thinking and
+	// prompt caching pass through. Attachments and provider tools stay as for
+	// `openrouter` until they are verified on this endpoint.
+	'openrouter-anthropic': {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	openai: {
 		thinking: 'reasoningEffort',
 		promptCaching: true,

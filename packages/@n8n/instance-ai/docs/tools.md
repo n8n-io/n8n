@@ -28,7 +28,7 @@ unchanged. Add locale translations for these keys; missing translations fall bac
 to English. The backend retains `message` for older clients and saved approvals
 that have no structured details.
 
-`build_workflow`, `workflows(action="publish")`,
+`workflow_build`, `workflows(action="publish")`,
 and `executions(action="run")` accept `approvalSummary`. The agent supplies one
 line in the user’s language that describes the concrete change or effect of the
 call, for example `Add a Slack notification after the payment check`. Live execution summaries
@@ -61,24 +61,24 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval_config` | 6 |
 | `n8n_docs` | 3 |
 | `agent_context` | 13 lookup types |
-| `build_workflow`, `ask_user`, `parse_file`, `search_models` | single-purpose |
+| `workflow_build`, `user_ask`, `file_parse`, `models_search` | single-purpose |
 
 ## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `create_plan`
+### `plan_create`
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, then calls `create_plan`, which the skill
+discovery with normal domain tools, then calls `plan_create`, which the skill
 loads through `dependencies.tools`, with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build_workflow` directly.
+use `workflow-builder`, workspace file tools, and `workflow_build` directly.
 The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
@@ -110,11 +110,11 @@ The plan is shown to the user for approval before execution starts.
 - On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
-- `build_workflow` → orchestrator follow-up run using the workflow-builder skill
+- `workflow_build` → orchestrator follow-up run using the workflow-builder skill
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data_tables` / `parse_file` tools. Single
+`data-table-manager` skill and the `data_tables` / `file_parse` tools. Single
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
@@ -168,7 +168,7 @@ Send a course correction to a running background task.
 sent, the task already completed, the task was not found, or delivery is not
 available.
 
-### `complete_checkpoint`
+### `checkpoint_complete`
 
 Close out a `checkpoint` planned task with its verdict. The tool is registered
 for the orchestrator and is intended only for checkpoint follow-up turns. The
@@ -184,7 +184,7 @@ task must exist, have kind `checkpoint`, and be in the `running` state.
 
 **Returns**: `{ result: string, ok: boolean }`
 
-### `get_session` *(conditional)*
+### `agent_session_get` *(conditional)*
 
 Read a resolved Agent preview session — title, session number and transcript.
 Registered only when the host provides both `agentPreviewSession` and
@@ -196,7 +196,7 @@ Registered only when the host provides both `agentPreviewSession` and
 
 **Returns**: `{ ok, title?, sessionNumber?, transcript?, error? }`
 
-### `verify_built_workflow` *(conditional)*
+### `workflow_verify` *(conditional)*
 
 Run a built workflow with per-execution pin data for verification (never
 persisted to the workflow). Destructive and user-action nodes — write
@@ -265,7 +265,7 @@ The reasons are `parameter-values-disabled`, `replay-failed`, and
 `execution-unavailable`. Skipped checks expose no parameter values or replay
 error details. Their dynamic fields remain unverified.
 
-### `report_verification_verdict` *(conditional)*
+### `verification_report` *(conditional)*
 
 Feed verification results into the deterministic workflow loop state machine.
 
@@ -280,7 +280,7 @@ Feed verification results into the deterministic workflow loop state machine.
 
 **Returns**: `{ guidance: string }` — next action based on loop state machine.
 
-### `apply_workflow_credentials` *(conditional)*
+### `workflow_credentials_apply` *(conditional)*
 
 Atomically apply real credentials to previously-mocked workflow nodes.
 
@@ -295,7 +295,7 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 The domain surface has up to twelve actions. Version actions are registered only
 when their backend methods are available. Use `get` to inspect a workflow. Use
-`get-as-code`, workspace edits, and `build_workflow` to change a workflow.
+`get-as-code`, workspace edits, and `workflow_build` to change a workflow.
 The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
 remain available to compiler, setup, validation, credential, and verification
 flows. They are not model-facing actions.
@@ -371,7 +371,7 @@ or a structured not-found response.
 Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
 existing workflow when no workspace source file is already available. Existing
 workflow modifications should write the returned code to a workspace source file
-and call `build_workflow` with both `filePath` and the real n8n `workflowId`
+and call `workflow_build` with both `filePath` and the real n8n `workflowId`
 once; subsequent repairs can reuse only `filePath`.
 
 | Field | Type | Required | Description |
@@ -381,7 +381,7 @@ once; subsequent repairs can reuse only `filePath`.
 
 **Returns**: `{ workflowId, name, code, error? }`.
 
-### `build_workflow`
+### `workflow_build`
 
 Compile, validate, and save a workspace workflow source file. Inline source and
 string patches are not accepted; edit the workspace file first and then call
@@ -430,7 +430,7 @@ had no main outputs. Changes to its inputs or rules leave that finding
 informational, including connecting an existing parked Switch. New or re-enabled
 Switches and removal of existing output branches remain blocking. These checks
 do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
-so `build_workflow` makes the final decision. Preserve unrelated nodes and report
+so `workflow_build` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 
 ### `workflows(action="delete")`
@@ -611,7 +611,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
 
-**Live test evidence**: `verify_built_workflow` always simulates destructive
+**Live test evidence**: `workflow_verify` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches
 every planned node of the latest build, with no saved pins and no injected
 trigger input, the run is recorded as a `verified` claim on the build outcome.
@@ -1122,7 +1122,7 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `search_models`
+## `models_search`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The `model-selection`
@@ -1292,7 +1292,7 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse_file` *(conditional)*
+## `file_parse` *(conditional)*
 
 Parse an attachment from the current user message. The registry adds this tool
 only when the current turn contains a parseable attachment.
@@ -1311,7 +1311,7 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `ask_user`
+## `user_ask`
 
 Suspend the run for one or more human decisions.
 
@@ -1332,7 +1332,7 @@ the same question again.
 
 ---
 
-## `save_user_preference` *(conditional)*
+## `user_preference_save` *(conditional)*
 
 Save a durable preference for the current user. Present only when saved AI
 preferences are enabled for the user (the adapter wires `aiPreferenceService`).
@@ -1397,18 +1397,18 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Agent Builder Tool
 
-### `build_agent` *(orchestration tool — requires the `agents` backend module)*
+### `agent_build` *(orchestration tool — requires the `agents` backend module)*
 
 Delegates agent building to the agents-module builder chat
 (`AgentsBuilderService`) running as an embedded sub-agent: one conversational
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
-and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
-`call_agent` target-tool approvals) and
-lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
+and tools drive the build, including its interactive tools (`user_questions_ask`,
+`credential_ask`, `embedding_credential_ask`, `channel_configure`, and
+`agent_call` target-tool approvals) and
+lifecycle tools (`agent_publish`, `agent_unpublish`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
-activate/make-live intents to `build_agent`; never tell the user to open the
+activate/make-live intents to `agent_build`; never tell the user to open the
 agent editor and click Publish. The builder also inherits the orchestrator's
 validated, approval-wrapped MCP connector tools so it can use the same external
 context while designing the agent; connector tools that conflict with a native
@@ -1420,7 +1420,7 @@ appears in the agents-module builder UI.
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
 | `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build_agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier agent_build results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated, agentId,
@@ -1534,7 +1534,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and user_ask answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1556,14 +1556,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, ask_user Q&A, and each turn's final
+user experienced it: their messages, user_ask Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); ask_user rows stay visible for their Q&A. Rows only
+text are escaped); user_ask rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, ask_user rows still awaiting an answer, unreadable content — are
+visible text, user_ask rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
@@ -1574,51 +1574,82 @@ thrown tool error — when the service is unavailable or a lookup fails.
 
 ## Tool Naming
 
-Every tool name is snake_case: `build_workflow`, `data_tables`, `ask_user`.
-This matches the tools the model sees from other sources: the `@n8n/agents`
-runtime (`load_skill`, `workspace_*`), the computer-use gateway (`browser_*`),
-the agent builder, and the providers' own server tools. The `action` values
-inside a tool keep their kebab-case form (`insert-rows`, `get-as-code`).
+Tool names are snake_case and read `domain_action`: the domain the tool acts
+on, then the verb. Examples are `workflow_build`, `workflow_verify`,
+`user_ask`, and `plan_create` in Instance AI, and `config_write`,
+`agent_publish`, and `credential_ask` in the agent builder. A tool that covers
+a whole domain through an `action` field keeps the domain name alone:
+`workflows`, `data_tables`, `executions`. The `action` values inside a tool
+keep their kebab-case form (`insert-rows`, `get-as-code`).
+
+The domain comes first so related tools sort and search together, and so a
+keyword search for the domain finds all of its tools.
 
 Tool names must be unique across the orchestrator and the agent builder,
-because the builder's tool calls render in the same timeline. For this reason
-the orchestrator's `create-tasks` became `create_plan`: the agent builder
-already has a `create_tasks` tool. Planned-task kinds and follow-up types (for
-example `build-workflow`) are stored data, not tool names, and keep their form.
+because the builder's tool calls render in the same timeline. That is why the
+orchestrator's plan tool is `plan_create` and the builder's scheduling tool is
+`tasks_create`. Planned-task kinds and follow-up types (for example
+`build-workflow`) are stored data, not tool names, and keep their form.
 
-Stored threads, saved approvals, and recorded traces keep the name that a tool
-had when it ran. `INSTANCE_AI_LEGACY_TOOL_NAMES` in `@n8n/api-types` maps each
-old name to the current one:
+Stored threads, builder sessions, saved approvals, and recorded traces keep the
+name that a tool had when it ran. Two maps in `@n8n/api-types` map each old
+name to the current one: `INSTANCE_AI_LEGACY_TOOL_NAMES` and
+`AGENT_BUILDER_LEGACY_TOOL_NAMES`. They stay apart because several old builder
+names (`search_nodes`, `list_credentials`, `publish_agent`) are also live tools
+on n8n's MCP server.
 
-- The orchestrator and the agent builder pass the map to
-  `Agent.toolNameAliases()`. The runtime renames old tool calls in the loaded
-  history before each model call, and a suspended call with an old name still
-  resumes.
-- The frontend reducer normalizes every tool name it receives, so the labels,
-  icons, and previews of old threads keep working.
+- The orchestrator and the agent builder each pass their map to
+  `Agent.toolNameAliases()`. Before each model call, the runtime renames old
+  tool calls in the loaded history. A suspended call with an old name still
+  resumes. An alias applies only when the agent has the new tool and has no
+  live tool with the old name.
+- The frontend reducer and `normalizeAgentTree` (for saved snapshots) rename
+  tool calls: the orchestrator's calls with the Instance AI map, child-agent
+  calls with the builder map. The Agents UI labels use the builder map.
 
 ## Deferred Loading
 
-The orchestrator sends the tools in `ALWAYS_LOADED_TOOL_NAMES` to the model.
-The other tools are deferred. How the model reaches a deferred tool depends on
-the provider:
+Tools are sent in a fixed order: eager tools sorted by name, then deferred
+tools sorted by name. The list does not change during a conversation, so the
+prompt prefix stays byte-identical and the cache holds. How the model reaches a
+deferred tool depends on the provider:
 
 | Provider | Mode | Cost of a deferred tool |
 |----------|------|-------------------------|
 | Anthropic, Claude on Vertex | Provider tool search (`tool_search_tool_bm25`) | One search inside the same response |
+| OpenRouter, Claude models | Provider tool search through OpenRouter's Messages endpoint (`openrouter-anthropic`) | One search inside the same response |
 | OpenAI Responses API, GPT-5.4 and later | Provider tool search (`tool_search`) | One search inside the same response |
-| All others, including OpenRouter | `search_tools` + `load_tool` | Two extra model calls |
+| All others, including OpenRouter non-Claude models | `search_tools` + `load_tool` | Two extra model calls |
 
 With provider tool search, the definitions of deferred tools stay out of the
-model's context until a search finds them. A found tool does not change the
-cached prompt prefix. Because a deferred tool is cheap in this mode,
-`getAlwaysLoadedToolNames({ nativeToolSearch: true })` defers more tools. It
-defers only tools that a skill loads through `dependencies.tools`. Tools that
-the model must use proactively stay loaded in both modes.
+model's context until a search finds them, and a found tool does not change
+the cached prefix. So `getAlwaysLoadedToolNames({ nativeToolSearch: true })`
+loads only a hot set of five tools (`workflows`, `workflow_build`,
+`workflow_verify`, `nodes`, `user_ask`) plus tools that are registered only
+when a thread needs them (`file_parse`, `onboarding_leave`). A tool that a skill
+loads stays deferred in this mode: moving it to the eager set would change the
+prefix. The model searches for it instead. With `search_tools` + `load_tool`,
+a deferred tool costs two model calls, so `ALWAYS_LOADED_TOOL_NAMES` keeps the
+larger set.
 
-OpenRouter supports tool search only on its Responses and Messages APIs. The
-OpenRouter provider in the AI SDK uses Chat Completions, so OpenRouter models
-use `search_tools` + `load_tool`.
+Because deferred tools are found by keyword search over names, descriptions,
+and parameter descriptions, open each description with plain words for what
+the tool does and for the terms a user would use.
+
+OpenRouter Claude models (`openrouter/anthropic/claude-*`, Claude 4 and later)
+are routed to `openrouter-anthropic`, which calls OpenRouter's
+Anthropic-compatible Messages endpoint. OpenRouter's Chat Completions endpoint
+rejects tool search. The route asks OpenRouter to prefer the Anthropic host,
+because each host keeps its own prompt cache. Other OpenRouter models still
+use Chat Completions: tool search for them needs the Responses API and the
+`openrouter:tool_search` server tool, which the AI SDK provider does not
+support yet.
+
+The orchestrator enables prompt caching (`resolveAIAPromptCaching`). With
+Anthropic this places breakpoints at the end of the system prompt, on the last
+eager tool, and at the end of the conversation. Check
+`ai.usage.inputTokenDetails.cacheReadTokens` in the LangSmith traces to confirm
+the cache holds.
 
 ## Tool Distribution
 
@@ -1629,7 +1660,7 @@ External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
-through `build_agent`. It does not receive the Instance AI domain registry. It
+through `agent_build`. It does not receive the Instance AI domain registry. It
 inherits the orchestrator's safe MCP connector tools.
 
 ---

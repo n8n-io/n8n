@@ -85,13 +85,13 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('retains a semantic config mutation marker from the tool result', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'update_skill'));
+		accumulator.observe(toolCallEvent('tc-1', 'skill_update'));
 		accumulator.observe(toolResultEvent('tc-1', { ok: true, configMutated: true }));
 
 		expect(accumulator.toSummary().toolCalls).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'update_skill',
+				toolName: 'skill_update',
 				succeeded: true,
 				configMutated: true,
 			},
@@ -118,7 +118,7 @@ describe('WorkSummaryAccumulator', () => {
 		const accumulator = new WorkSummaryAccumulator();
 		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
 		accumulator.observe(toolResultEvent('tc-1'));
-		accumulator.observe(toolCallEvent('tc-2', 'build_workflow'));
+		accumulator.observe(toolCallEvent('tc-2', 'workflow_build'));
 		accumulator.observe(toolErrorEvent('tc-2', 'Compilation error'));
 		accumulator.observe(toolCallEvent('tc-3', 'list-credentials'));
 		accumulator.observe(toolResultEvent('tc-3'));
@@ -153,7 +153,7 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('truncates long error summaries to 500 chars', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'build_workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflow_build'));
 		accumulator.observe(toolErrorEvent('tc-1', 'x'.repeat(1000)));
 
 		const summary = accumulator.toSummary();
@@ -163,10 +163,10 @@ describe('WorkSummaryAccumulator', () => {
 	it('de-duplicates by toolCallId (keeps latest outcome)', () => {
 		const accumulator = new WorkSummaryAccumulator();
 		// First attempt: fails
-		accumulator.observe(toolCallEvent('tc-1', 'build_workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflow_build'));
 		accumulator.observe(toolErrorEvent('tc-1', 'Failed'));
 		// Resumed stream replays the same toolCallId as succeeded
-		accumulator.observe(toolCallEvent('tc-1', 'build_workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflow_build'));
 		accumulator.observe(toolResultEvent('tc-1'));
 
 		const summary = accumulator.toSummary();

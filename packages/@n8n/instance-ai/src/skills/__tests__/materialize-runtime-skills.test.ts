@@ -188,7 +188,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		expect(executeCommand).not.toHaveBeenCalled();
 		expect(writes.get(skillPath)).toContain('data_tables');
-		expect(writes.get(skillPath)).toContain('parse_file');
+		expect(writes.get(skillPath)).toContain('file_parse');
 		expect(writes.get(referencePath)).toContain('Fast Routing');
 
 		const registry = jsonParse<{

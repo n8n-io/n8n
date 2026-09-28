@@ -666,7 +666,7 @@ describe('instanceAi.reducer', () => {
 	describe('preference-card', () => {
 		function stateWithSavedPreference(): InstanceAiReducerState {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'save_user_preference'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'user_preference_save'));
 			handleEvent(
 				state,
 				makeToolResultEvent('run-1', 'agent-root', 'tc-1', {
@@ -882,11 +882,11 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
 		});
 
-		test('returns planner render hint for create_plan', () => {
-			expect(getRenderHint('create_plan')).toBe('planner');
+		test('returns planner render hint for plan_create', () => {
+			expect(getRenderHint('plan_create')).toBe('planner');
 		});
 
-		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(
+		test.each(['skills_create', 'list_skills', 'read_skill', 'skill_update', 'load_skill'])(
 			'returns skill render hint for %s',
 			(toolName) => {
 				expect(getRenderHint(toolName)).toBe('skill');

@@ -12,7 +12,7 @@
 				"argsContainAny": ["list"]
 			}
 		],
-		"noneOf": ["create_plan", "build_workflow", "spawn_sub_agent:workflow-builder"]
+		"noneOf": ["plan_create", "workflow_build", "spawn_sub_agent:workflow-builder"]
 	},
 	"rationale": "Regression coverage for natural standalone data-table requests. A plain request to list existing Data Tables should load the data-table-manager skill and use the direct data_tables list action, without routing through planning, workflow-building, or background agents."
 }

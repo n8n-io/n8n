@@ -15,7 +15,7 @@ describe('MCP tool name validation', () => {
 
 		addSafeMcpTools(target, makeTools(['github_workflows', 'custom_plan']), {
 			source: 'external MCP',
-			claimedToolNames: createClaimedToolNames(['workflows', 'create_plan']),
+			claimedToolNames: createClaimedToolNames(['workflows', 'plan_create']),
 		});
 
 		expect(target.get('github_workflows')).toBeDefined();

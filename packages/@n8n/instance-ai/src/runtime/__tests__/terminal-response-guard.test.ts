@@ -47,7 +47,7 @@ function toolCall(): InstanceAiEvent {
 		type: 'tool-call',
 		runId,
 		agentId: rootAgentId,
-		payload: { toolCallId: 'tc-1', toolName: 'build_workflow', args: {} },
+		payload: { toolCallId: 'tc-1', toolName: 'workflow_build', args: {} },
 	};
 }
 

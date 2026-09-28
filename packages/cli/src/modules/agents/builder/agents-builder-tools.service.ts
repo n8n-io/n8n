@@ -118,7 +118,7 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
 	dynamicSelectorFollowUp:
 		'Load skill agent-builder-resource-locators, resolve a credential if missing, then call ' +
-		'get_resource_locator_options and write the returned parameterValue into nodeParameters.',
+		'resource_locator_options_get and write the returned parameterValue into nodeParameters.',
 };
 
 const createSkillInputSchema = z
@@ -579,7 +579,7 @@ export class AgentsBuilderToolsService {
 						.trim()
 						.min(1)
 						.optional()
-						.describe('Session ID from a previous call_agent result'),
+						.describe('Session ID from a previous agent_call result'),
 				}),
 			)
 			.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -762,7 +762,7 @@ export class AgentsBuilderToolsService {
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
 					'Requires baseConfigHash from the immediately preceding agent_context with type "config" result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
+					'config_write/config_patch success or from a stale response. ' +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'agent_context with type "config" again before any later inspection or mutation — or ' +
@@ -797,7 +797,7 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
 					'Requires baseConfigHash from the immediately preceding agent_context with type "config" result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
+					'config_write/config_patch success or from a stale response. ' +
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'agent_context with type "config" again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
@@ -852,7 +852,7 @@ export class AgentsBuilderToolsService {
 			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
-				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
+				'Read-only inspection of available credentials. Use credential_ask to let the user ' +
 					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
 					'into the config.',
 			),
@@ -868,7 +868,7 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
+					'the agent is (re)published via `agent_publish`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
 					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
 			)
 			.systemInstruction(
@@ -878,11 +878,11 @@ export class AgentsBuilderToolsService {
 					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
 					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
 					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
+					'stated assumptions listed in your summary; ask the user clarifying questions with user_questions_ask ' +
 					'only when even a reasonable assumption is impossible, before calling ' +
-					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
+					'tasks_create. A task can only use tools the agent already has: if any step in an objective ' +
 					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
-					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +
+					'config (config_patch/config_write) BEFORE calling tasks_create — otherwise the task will fail at ' +
 					'runtime. Batch every task you currently know how to write into one call.',
 			)
 			.input(
@@ -924,7 +924,7 @@ export class AgentsBuilderToolsService {
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
-						// task starts running once the agent is (re)published via publish_agent.
+						// task starts running once the agent is (re)published via agent_publish.
 						created = await this.agentTaskService.createTasks(
 							agentId,
 							projectId,
@@ -1035,7 +1035,7 @@ export class AgentsBuilderToolsService {
 					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
 					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
 					'duplicate-named skill rejects every skill in the call. This does NOT attach the skills to the ' +
-					'agent config; follow up with agent_context with type "config" and patch_config (or write_config) to add a ' +
+					'agent config; follow up with agent_context with type "config" and config_patch (or config_write) to add a ' +
 					'`{ type: "skill", id }` entry per skill to `skills`. Returns { ok: true, skills: [{ id, name }, ' +
 					'...] } (same order as input, bodies are not echoed back) or { ok: false, errors }.',
 			)
@@ -1093,7 +1093,7 @@ export class AgentsBuilderToolsService {
 					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
 					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
 					'This does NOT register the tool in the agent config — follow up with ' +
-					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'config_patch (or config_write) to add `{ type: "custom", id: "<tool name>" }` ' +
 					'to `tools`.' +
 					'Returns { ok: true, id, name } or { ok: false, errors }.',
 			)
@@ -1151,7 +1151,7 @@ export class AgentsBuilderToolsService {
 		credentialId: string,
 		user: User,
 	): Promise<{ applied: boolean }> {
-		// verify_mcp_server still reports a successful verification; the
+		// mcp_server_verify still reports a successful verification; the
 		// credential just is not written while a user is editing the agent.
 		if (await this.getEditorLockFailure(agentId)) {
 			return { applied: false };

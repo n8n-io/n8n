@@ -1563,7 +1563,7 @@ export interface InstanceAiContext {
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
-	 * context. Lets domain tools (e.g. build_workflow) emit explicit child runs
+	 * context. Lets domain tools (e.g. workflow_build) emit explicit child runs
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
@@ -1576,7 +1576,7 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
-	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave_onboarding`. */
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `onboarding_leave`. */
 	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
@@ -1605,20 +1605,20 @@ export interface InstanceAiContext {
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
 	/** Present only when saved preferences are enabled for this user; its
-	 *  absence hides the `save_user_preference` tool. */
+	 *  absence hides the `user_preference_save` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
 	/** Per-run inventory behind `mcp_servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
 	connectedMcpServices?: ConnectedMcpService[];
-	/** The target n8n Agent being built/edited via the build_agent sub-agent tool. */
+	/** The target n8n Agent being built/edited via the agent_build sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
-	/** Narrow builder delegate for the build_agent sub-agent tool (agents module active only). */
+	/** Narrow builder delegate for the agent_build sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends
 	 * a preview session to Instance AI (and rehydrated from thread metadata on
-	 * follow-up turns). Presence gates the `get_session` tool.
+	 * follow-up turns). Presence gates the `agent_session_get` tool.
 	 */
 	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
 
@@ -1701,7 +1701,7 @@ export interface InstanceAiContext {
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
-	 * build_workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * workflow_build on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
 	 * the same thread uses the persisted `workflows:update:<id>` session grant
 	 * written at create time — this in-memory set alone does not survive a new run.
@@ -1710,7 +1710,7 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse_file` and supply data to the parser.
+	 * persisted. Used to register `file_parse` and supply data to the parser.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
@@ -1739,7 +1739,7 @@ export interface InstanceAiContext {
 	 *  the model's API knowledge. */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
-	 * Runtime-only workflow build loop context. The direct `build_workflow` tool
+	 * Runtime-only workflow build loop context. The direct `workflow_build` tool
 	 * reports build outcomes here so planned build follow-ups and verification
 	 * tools can share the same work item without a detached builder sub-agent.
 	 */
@@ -1815,10 +1815,10 @@ export interface PlannedTask {
 	kind: PlannedTaskKind;
 	spec: string;
 	deps: string[];
-	/** Existing workflow ID for build_workflow tasks that modify an existing workflow. */
+	/** Existing workflow ID for workflow_build tasks that modify an existing workflow. */
 	workflowId?: string;
 	/**
-	 * True when the build_workflow task's final deliverable is intentionally a
+	 * True when the workflow_build task's final deliverable is intentionally a
 	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
 	 * larger main-workflow task should not set this.
 	 */
@@ -1924,7 +1924,7 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
-	/** Rewind a running build_workflow task after a scheduling race prevented
+	/** Rewind a running workflow_build task after a scheduling race prevented
 	 *  its orchestrator follow-up from starting. */
 	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
@@ -2256,11 +2256,11 @@ export interface OrchestrationContext {
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the create_plan guard
+	 *  background task. Set by the host, not by user text — the plan_create guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
 	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call complete_checkpoint. */
+	 *  The orchestrator should run the checkpoint's spec and call checkpoint_complete. */
 	isCheckpointFollowUp?: boolean;
 	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
 	 *  Used by the post-run deadlock fallback in the service. */

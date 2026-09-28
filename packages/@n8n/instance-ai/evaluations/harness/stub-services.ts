@@ -8,7 +8,7 @@
 // real node metadata — properties, type-definition source, discriminators
 // — rather than a stripped-down stub. Other services (workflows,
 // credentials, executions, data_tables) return minimal canned data — just
-// enough for the `build_workflow` tool path to succeed. The workflow JSON
+// enough for the `workflow_build` tool path to succeed. The workflow JSON
 // is captured via `workflowService.createFromWorkflowJSON` and exposed on
 // the capture array returned from `createStubServices`.
 // ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ import type {
 
 // Single version id reported for every stubbed workflow. The stub doesn't model
 // version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
-// must all report the same value — otherwise the build_workflow patch cache
+// must all report the same value — otherwise the workflow_build patch cache
 // always sees a version mismatch and the cache-hit path is never exercised.
 const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
 
@@ -232,7 +232,7 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		// `verify_built_workflow` invokes `executionService.run()` after the
+		// `workflow_verify` invokes `executionService.run()` after the
 		// eval has captured a built workflow JSON. The eval has no execution
 		// backend, so return a synthetic success to keep discovery runs focused
 		// on tool dispatch rather than workflow execution fidelity.

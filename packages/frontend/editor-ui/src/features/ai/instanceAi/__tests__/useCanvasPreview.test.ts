@@ -326,7 +326,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify_built_workflow',
+								toolName: 'workflow_verify',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -353,7 +353,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify_built_workflow',
+								toolName: 'workflow_verify',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -484,7 +484,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-new' },
 							}),
 						],
@@ -509,7 +509,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-historical' },
 							}),
 						],
@@ -535,7 +535,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -561,7 +561,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -669,7 +669,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -687,7 +687,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build_workflow',
+								toolName: 'workflow_build',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 							makeToolCall({
@@ -830,7 +830,7 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-open agent preview', () => {
-		test('auto-opens preview when an agent-builder sub-agent spawns, before any build_agent result', async () => {
+		test('auto-opens preview when an agent-builder sub-agent spawns, before any agent_build result', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
 
@@ -1303,7 +1303,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId,
-							toolName: 'build_workflow',
+							toolName: 'workflow_build',
 							result: { success: true, workflowId },
 						}),
 					],

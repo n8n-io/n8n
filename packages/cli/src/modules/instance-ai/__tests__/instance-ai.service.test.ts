@@ -3816,7 +3816,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
 			},
 		});
@@ -3844,7 +3844,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				outputs: expect.objectContaining({
 					message: 'Set up the slack channel',
 					pendingToolCallId: 'tool-call-1',
-					toolName: 'ask_user',
+					toolName: 'user_ask',
 					requestId: 'req-1',
 				}),
 			}),
@@ -3868,7 +3868,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		payload: {
 			requestId: 'req-1',
 			toolCallId: 'tool-call-1',
-			toolName: 'ask_user',
+			toolName: 'user_ask',
 			args: {},
 			severity: 'info',
 			message: 'Set up the slack channel',
@@ -3884,7 +3884,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
 			},
 			confirmationEvent: CARD_EVENT,
@@ -4139,7 +4139,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			suspension: {
 				toolCallId: 'tool-call-2',
 				requestId: 'req-2',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				suspendPayload: { message: 'Confirm the next step' },
 			},
 		});
@@ -6638,7 +6638,7 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 		content: [buildThreadContextBlock(['Ambient context.', block]), text].join('\n\n'),
 	});
 
-	const storedSave = (ok = true, toolName = 'save_user_preference'): AgentDbMessage => ({
+	const storedSave = (ok = true, toolName = 'user_preference_save'): AgentDbMessage => ({
 		id: 'save-message',
 		createdAt: new Date('2026-09-01T00:00:00.000Z'),
 		role: 'assistant',
@@ -6709,7 +6709,7 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 	);
 
 	it.each([
-		['failed save', false, 'save_user_preference'],
+		['failed save', false, 'user_preference_save'],
 		['unrelated tool', true, 'get_workflow'],
 	] as const)('does not refresh for a %s', async (_, ok, toolName) => {
 		const service = createService();

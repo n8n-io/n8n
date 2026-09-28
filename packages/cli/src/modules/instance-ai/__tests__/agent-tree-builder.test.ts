@@ -153,7 +153,7 @@ describe('buildAgentTreeFromEvents', () => {
 				payload: {
 					parentId: 'agent-001',
 					role: 'workflow-builder',
-					tools: ['build_workflow'],
+					tools: ['workflow_build'],
 				},
 			},
 			{
@@ -188,7 +188,7 @@ describe('buildAgentTreeFromEvents', () => {
 		expect(tree.children[0]).toMatchObject({
 			agentId: 'agent-002',
 			role: 'workflow-builder',
-			tools: ['build_workflow'],
+			tools: ['workflow_build'],
 			status: 'completed',
 			textContent: 'Building workflow...',
 			result: 'Done',
@@ -330,7 +330,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'agent-001',
-				payload: { toolCallId: 'tc-2', toolName: 'build_workflow', args: {} },
+				payload: { toolCallId: 'tc-2', toolName: 'workflow_build', args: {} },
 			},
 			{
 				type: 'run-finish',

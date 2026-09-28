@@ -113,7 +113,7 @@ describe('executeResumableStream', () => {
 					textChunk('Working...'),
 					suspensionChunk({
 						toolCallId: 'tool-call-1',
-						toolName: 'ask_user',
+						toolName: 'user_ask',
 						suspendPayload: {
 							requestId: 'request-1',
 							message: 'Need approval',
@@ -139,7 +139,7 @@ describe('executeResumableStream', () => {
 				suspension: {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
-					toolName: 'ask_user',
+					toolName: 'user_ask',
 					suspendPayload: { requestId: 'request-1', message: 'Need approval' },
 				},
 			}),
@@ -487,7 +487,7 @@ describe('executeResumableStream', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'tool-call-1',
-						toolName: 'create_plan',
+						toolName: 'plan_create',
 						input: {},
 					},
 					{

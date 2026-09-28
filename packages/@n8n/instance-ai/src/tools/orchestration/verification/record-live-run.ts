@@ -1,7 +1,7 @@
 /**
  * Live runs as verification evidence.
  *
- * `verify_built_workflow` always simulates nodes with side effects, so the live
+ * `workflow_verify` always simulates nodes with side effects, so the live
  * test it recommends runs through `executions(action="run")`. Without this, the
  * stored claim keeps the simulated verdict and the publish gate warns about a
  * path the user just saw succeed.

@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { aiPreferenceScopeSchema, instanceAiEventSchema } from '@n8n/api-types';
 
-export const SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
+export const SAVE_USER_PREFERENCE_TOOL_NAME = 'user_preference_save';
 
 /** True only for the fact the card endpoints return. The card moves on nothing else,
  *  so a 2xx body without it counts as a failure rather than a state change. */
@@ -58,7 +58,7 @@ export function isRejectedPreferenceResult(result: unknown): result is RejectedP
 	return 'reason' in result && typeof result.reason === 'string' && result.reason.length > 0;
 }
 
-/** A finished `save_user_preference` call, saved or refused. In flight has no card. */
+/** A finished `user_preference_save` call, saved or refused. In flight has no card. */
 export function isPreferenceWriteOutcome(tc: InstanceAiToolCallState): boolean {
 	if (tc.toolName !== SAVE_USER_PREFERENCE_TOOL_NAME || tc.isLoading) return false;
 	return (

@@ -108,7 +108,7 @@ describe('parseSuspension', () => {
 			type: 'tool-call-suspended',
 			runId: 'run-1',
 			toolCallId: 'tc-1',
-			toolName: 'ask_questions',
+			toolName: 'user_questions_ask',
 			suspendPayload: { requestId: 'req-1' },
 		};
 

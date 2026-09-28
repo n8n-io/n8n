@@ -62,7 +62,7 @@ describe('InstanceAiPromptSuggestions', () => {
 			[
 				{
 					promptKey: 'instanceAi.emptyState.suggestions.buildAgent.prompt',
-					suggestionId: 'build_agent',
+					suggestionId: 'agent_build',
 					suggestionKind: 'prompt',
 					position: 2,
 					prefillType: 'v1_opener',
@@ -98,7 +98,7 @@ describe('InstanceAiPromptSuggestions', () => {
 			[
 				{
 					promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
-					suggestionId: 'build_workflow',
+					suggestionId: 'workflow_build',
 					suggestionKind: 'prompt',
 					position: 1,
 					prefillType: 'v1_opener',

@@ -835,7 +835,7 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
-/** One question of the ask_user card (`inputType=questions`). */
+/** One question of the user_ask card (`inputType=questions`). */
 export const instanceAiQuestionSchema = z.object({
 	id: z.string(),
 	question: z.string(),
@@ -933,7 +933,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Workflow ID for setup cards and per-workflow edit approvals (build_workflow / workflows update)',
+			'Workflow ID for setup cards and per-workflow edit approvals (workflow_build / workflows update)',
 		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
@@ -1201,7 +1201,7 @@ export const setupItemsPayloadSchema = z.object({
 		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
-/** A later fact about a preference the `save_user_preference` tool saved in this run:
+/** A later fact about a preference the `user_preference_save` tool saved in this run:
  *  the user edited it or undid it from the card. Appended by the card endpoints, not
  *  by the tool, and only while the card is on the latest turn. An edit names the scope
  *  and project the row now has, so the card shows a move after a reload. */
@@ -2050,7 +2050,7 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
-	/** Full planned task details — updated by create_plan via tasks-update. */
+	/** Full planned task details — updated by plan_create via tasks-update. */
 	planItems?: PlannedTaskArg[];
 	/**
 	 * Latest setup-panel snapshot per workflow — updated by setup-items events
@@ -2334,7 +2334,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
 	executeMcpTool: 'require_approval',
-	// The save_user_preference tool writes first and lets the user edit or undo
+	// The user_preference_save tool writes first and lets the user edit or undo
 	// from the chat card, so there is no approval step for require_approval to
 	// gate. always_allow is the only workable default; blocked is the feature off.
 	createPreference: 'always_allow',
@@ -2696,12 +2696,12 @@ export type InstanceAiMcpConnectionToolsResponse =
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task_control') return 'tasks';
-	if (toolName === 'build_workflow' || toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'workflow_build' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'create_plan') return 'planner';
+	if (toolName === 'plan_create') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (
-		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+		['skills_create', 'list_skills', 'read_skill', 'skill_update', 'load_skill'].includes(toolName)
 	)
 		return 'skill';
 	return 'default';

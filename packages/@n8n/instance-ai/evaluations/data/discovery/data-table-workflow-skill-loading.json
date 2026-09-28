@@ -12,10 +12,10 @@
 				"argsContainAny": ["workflow-builder"]
 			},
 			{
-				"toolName": "build_workflow"
+				"toolName": "workflow_build"
 			}
 		],
-		"noneOf": ["create_plan"]
+		"noneOf": ["plan_create"]
 	},
 	"rationale": "Regression coverage for single-workflow build prompts that depend on Data Tables. The orchestrator should load both the data-table-manager skill and the workflow-builder skill, include workflow-local table requirements in the build, and avoid task planning or delegation.",
 	"timeoutMs": 180000

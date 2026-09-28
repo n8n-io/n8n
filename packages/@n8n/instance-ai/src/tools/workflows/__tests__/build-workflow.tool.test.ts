@@ -287,7 +287,7 @@ describe('createBuildWorkflowTool', () => {
 	describe('publish state', () => {
 		it('warns that a save to a published workflow is not live', async () => {
 			// No verification runs here. Without this, a trigger-only workflow or a
-			// repair that skips verify_built_workflow has no deterministic signal
+			// repair that skips workflow_verify has no deterministic signal
 			// that the fix is sitting in a draft.
 			const { context, filePath } = makeContext({});
 			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
@@ -500,7 +500,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
-		expect(result.postBuildFlow?.instructions).toContain('## After build_workflow succeeds');
+		expect(result.postBuildFlow?.instructions).toContain('## After workflow_build succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
@@ -2403,7 +2403,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call build_workflow again with the same filePath and omit workflowId',
+			'Call workflow_build again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();

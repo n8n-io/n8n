@@ -7,7 +7,7 @@ does not read feature flags.
 
 The initial profiles are `default@1` and `progressive@1`. The general system
 prompt is the same in both. The progressive profile changes the workflow
-skills and removes the planning skill and `create_plan` tool.
+skills and removes the planning skill and `plan_create` tool.
 
 `concise@1` (INS-1195) keeps every `default@1` policy and skill. It changes only
 the system prompt version, which selects a different `## Communication Style`

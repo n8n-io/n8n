@@ -166,8 +166,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workspace.create-folder.imperative',
 			'instanceAi.tools.workspace.delete-folder.imperative',
 			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
-			'instanceAi.tools.build_workflow.imperative',
-			'instanceAi.tools.build_workflow.imperativeWithResource',
+			'instanceAi.tools.workflow_build.imperative',
+			'instanceAi.tools.workflow_build.imperativeWithResource',
 			'instanceAi.tools.build-workflow-with-agent.imperative',
 		] satisfies BaseTextKey[]
 	).map((key) => [key, key]),
@@ -542,7 +542,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
-				<!-- Text input (ask_user) -->
+				<!-- Text input (user_ask) -->
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
@@ -611,7 +611,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
 
-				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<!-- Chat-channel setup (agent-builder channel_configure) — presence-based -->
 				<InstanceAiChannelSetup
 					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
 					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"

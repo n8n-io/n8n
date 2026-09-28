@@ -107,7 +107,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			const result = runExpectedToolsInvokedCheck(
 				slackOauthScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'research' }, { toolName: 'ask_user' }],
+					toolCalls: [{ toolName: 'research' }, { toolName: 'user_ask' }],
 				}),
 			);
 
@@ -193,22 +193,22 @@ describe('runExpectedToolsInvokedCheck', () => {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['create_plan'],
-				noneOfToolCalls: [{ toolName: 'ask_user', argsContainAny: ['credential'] }],
+				anyOf: ['plan_create'],
+				noneOfToolCalls: [{ toolName: 'user_ask', argsContainAny: ['credential'] }],
 			},
 		};
 
-		it('passes when ask_user is available to a spawned agent but is not called', () => {
+		it('passes when user_ask is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
 				planningScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'create_plan' }],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
+					toolCalls: [{ toolName: 'plan_create' }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'user_ask'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('ask_user');
+			expect(result.invokedTools).toContain('user_ask');
 		});
 
 		it('fails when the forbidden tool call happens with matching args', () => {
@@ -216,13 +216,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'create_plan' },
+						{ toolName: 'plan_create' },
 						{
-							toolName: 'ask_user',
+							toolName: 'user_ask',
 							args: { question: 'Which Google Calendar credential should I use?' },
 						},
 					],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'user_ask'] }],
 				}),
 			);
 
@@ -236,10 +236,10 @@ describe('runExpectedToolsInvokedCheck', () => {
 				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'create_plan' },
-						{ toolName: 'ask_user', args: { question: 'Which failure branch should run?' } },
+						{ toolName: 'plan_create' },
+						{ toolName: 'user_ask', args: { question: 'Which failure branch should run?' } },
 					],
-					agents: [{ role: 'delegate', tools: ['credentials', 'ask_user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'user_ask'] }],
 				}),
 			);
 

@@ -61,7 +61,7 @@ export const aiPreferenceContentSchema = z
 		AI_PREFERENCE_CONTENT_MAX_LENGTH,
 		`content cannot be longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters`,
 	)
-	// Written for a model to read: the `save_user_preference` tool validates its content
+	// Written for a model to read: the `user_preference_save` tool validates its content
 	// against this schema, so the limits travel with it and a model reads them before it
 	// writes instead of discovering them through a rejection.
 	.describe(

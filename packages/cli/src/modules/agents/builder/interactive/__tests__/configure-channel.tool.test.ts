@@ -17,7 +17,7 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	};
 }
 
-describe('configure_channel tool', () => {
+describe('channel_configure tool', () => {
 	const track: Mock = vi.fn();
 
 	beforeEach(() => {

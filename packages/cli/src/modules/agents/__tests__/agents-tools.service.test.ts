@@ -43,16 +43,16 @@ describe('AgentsToolsService', () => {
 	});
 
 	describe('getSharedTools()', () => {
-		it('returns search_nodes, get_node_types, and list_credentials', () => {
+		it('returns nodes_search, node_types_get, and credentials_list', () => {
 			const { service } = makeService();
 			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
-			expect(names).toEqual(['search_nodes', 'get_node_types', 'list_credentials']);
+			expect(names).toEqual(['nodes_search', 'node_types_get', 'credentials_list']);
 		});
 	});
 
-	describe('list_credentials handler', () => {
+	describe('credentials_list handler', () => {
 		function getListTool(service: AgentsToolsService, provider: CredentialProvider) {
-			return service.getSharedTools(provider, 'hint').find((t) => t.name === 'list_credentials')!;
+			return service.getSharedTools(provider, 'hint').find((t) => t.name === 'credentials_list')!;
 		}
 
 		it('returns all credentials when no types filter is provided', async () => {
@@ -105,11 +105,11 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('search_nodes handler', () => {
+	describe('nodes_search handler', () => {
 		function getSearchTool(service: AgentsToolsService) {
 			return service
 				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'search_nodes')!;
+				.find((t) => t.name === 'nodes_search')!;
 		}
 
 		it('delegates to the node catalog with the agent tool-node filter', async () => {
@@ -175,11 +175,11 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('get_node_types handler', () => {
+	describe('node_types_get handler', () => {
 		function getTypesTool(service: AgentsToolsService) {
 			return service
 				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'get_node_types')!;
+				.find((t) => t.name === 'node_types_get')!;
 		}
 
 		it('forwards string node IDs unchanged', async () => {

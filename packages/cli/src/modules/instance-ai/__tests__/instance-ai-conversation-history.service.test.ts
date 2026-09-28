@@ -348,7 +348,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits[0].excerpts).toEqual([]);
 		});
 
-		it('renders resolved ask_user answers as question/answer pairs', async () => {
+		it('renders resolved user_ask answers as question/answer pairs', async () => {
 			const repos = setup();
 			givenSearchHit(repos, {
 				candidates: [
@@ -367,7 +367,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits[0].matchedIn).toEqual(['user-answers']);
 		});
 
-		it('ignores ask_user calls that were never resolved', async () => {
+		it('ignores user_ask calls that were never resolved', async () => {
 			const repos = setup();
 			givenSearchHit(repos, {
 				candidates: [
@@ -743,7 +743,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(result.messages.map((message) => message.messageId)).toEqual(['m-text']);
 		});
 
-		it('renders ask_user answers, including custom text and skips', async () => {
+		it('renders user_ask answers, including custom text and skips', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
 			givenWindow(repository, {

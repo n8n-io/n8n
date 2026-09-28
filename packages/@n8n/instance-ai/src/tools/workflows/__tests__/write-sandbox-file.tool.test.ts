@@ -49,7 +49,7 @@ describe('createWriteSandboxFileTool', () => {
 	it('has the expected tool id and description', () => {
 		const tool = createWriteSandboxFileTool(workspace);
 
-		expect(tool.name).toBe('write_sandbox_file');
+		expect(tool.name).toBe('sandbox_file_write');
 		expect(tool.description).toContain('Write content to a file');
 	});
 

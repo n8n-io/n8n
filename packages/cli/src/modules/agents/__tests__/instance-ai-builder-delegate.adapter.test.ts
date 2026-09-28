@@ -356,7 +356,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				checkpointWith({
 					'call-1': {
 						toolCallId: 'call-1',
-						toolName: 'ask_questions',
+						toolName: 'user_questions_ask',
 						input: {},
 						suspended: true,
 						suspendPayload: { message: 'first' },
@@ -365,7 +365,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					},
 					'call-2': {
 						toolCallId: 'call-2',
-						toolName: 'ask_credential',
+						toolName: 'credential_ask',
 						input: {},
 						suspended: true,
 						suspendPayload: { message: 'second' },

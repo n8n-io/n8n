@@ -28,8 +28,8 @@ const nodeCredentialSchema = z.object({
 });
 
 const getResourceLocatorOptionsInputSchema = z.object({
-	nodeType: z.string().describe('Tool node type identifier from search_nodes'),
-	nodeTypeVersion: z.number().describe('Tool node type version from search_nodes'),
+	nodeType: z.string().describe('Tool node type identifier from nodes_search'),
+	nodeTypeVersion: z.number().describe('Tool node type version from nodes_search'),
 	parameterPath: z
 		.string()
 		.describe(
@@ -45,7 +45,7 @@ const getResourceLocatorOptionsInputSchema = z.object({
 		.record(nodeCredentialSchema)
 		.optional()
 		.describe(
-			'Node credentials map returned by ask_credential. Do not copy from list_credentials.',
+			'Node credentials map returned by credential_ask. Do not copy from credentials_list.',
 		),
 	filter: z.string().optional().describe('Optional search string to narrow the returned options'),
 	paginationToken: z
@@ -131,7 +131,7 @@ export async function resolveResourceLocatorOptions(
 			ok: false,
 			code: 'missing_credentials',
 			message:
-				'This parameter needs node credentials before live options can be fetched. Call ask_credential for one of the returned credential slots, then retry with the returned credentials map.',
+				'This parameter needs node credentials before live options can be fetched. Call credential_ask for one of the returned credential slots, then retry with the returned credentials map.',
 			credentialSlots,
 		};
 	}
@@ -246,7 +246,7 @@ export function buildGetResourceLocatorOptionsTool(
 		.description(
 			'Fetch live options for a node parameter that is configured through a resourceLocator, loadOptionsMethod, or loadOptions routing. ' +
 				'Use this for stable IDs such as Linear teamId, Slack channel, calendar, project, board, model, database, or table selectors before writing nodeParameters. ' +
-				'Call ask_credential first when the node needs credentials, then pass the returned credentials map. ' +
+				'Call credential_ask first when the node needs credentials, then pass the returned credentials map. ' +
 				'The response includes parameterValue for each result; write that exact value into nodeParameters instead of using $fromAI for stable resource IDs.',
 		)
 		.input(getResourceLocatorOptionsInputSchema)

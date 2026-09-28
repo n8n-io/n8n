@@ -481,7 +481,7 @@ export class InstanceAiAdapterService {
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the build_agent tool. */
+			 *  assistant can create one via the agent_build tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval_config service/tool not wired. */
@@ -501,11 +501,11 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
-			/** True while the thread runs the onboarding flow. Gates the `leave_onboarding` tool. */
+			/** True while the thread runs the onboarding flow. Gates the `onboarding_leave` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
+			 *  `user_preference_save` tool. */
 			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
@@ -640,7 +640,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build_agent sub-agent tool it powers) is simply absent from the
+	 * (and the agent_build sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {

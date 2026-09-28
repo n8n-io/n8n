@@ -677,7 +677,7 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
-	// ── Preference card (the save_user_preference result in the chat) ────────
+	// ── Preference card (the user_preference_save result in the chat) ────────
 	//
 	// The thread check is the ownership boundary. The row check is inside
 	// AiPreferenceService. The runId and the toolCallId are not verified against
@@ -991,7 +991,7 @@ export class InstanceAiController {
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
-	 * same client-minted id (the chat's build_agent tool), unlike the strict
+	 * same client-minted id (the chat's agent_build tool), unlike the strict
 	 * project-scoped agent create.
 	 */
 	@Post('/threads/:threadId/agent')
@@ -1296,7 +1296,7 @@ export class InstanceAiController {
 						)
 					: undefined;
 			// Bind the thread as the conversation that built these agents would have, or
-			// the live turn's first `build_agent` call is rejected as an unknown agentRef.
+			// the live turn's first `agent_build` call is rejected as an unknown agentRef.
 			// BEFORE the messages, and undoable: the catch restores the prior metadata,
 			// so a message failure can't leave a binding pointing at deleted agents, and
 			// a binding failure can't leave messages referencing them.

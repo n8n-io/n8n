@@ -5,17 +5,17 @@ description: >-
   once — export or copy data somewhere, a migration, a backfill, a cleanup —
   with no trigger, schedule, or reuse intent. The workflow is the vehicle, not
   the deliverable. Users rarely say "one-off"; infer it from the task's shape.
-  Load before building for such a request, or when a build_workflow result
+  Load before building for such a request, or when a workflow_build result
   contains postBuildFlow.reason "direct-one-off-build-succeeded". Do not load
   for automations the user will run again — that is the normal build +
   post-build-flow path.
 recommended_tools:
   - nodes
-  - build_workflow
+  - workflow_build
   - workflows
   - executions
-  - ask_user
-  - verify_built_workflow
+  - user_ask
+  - workflow_verify
 ---
 
 # One-Off Operations
@@ -102,7 +102,7 @@ cannot write to external services directly) — the intent changes the
    fire and only misleads. If the task genuinely needs an event source or a
    future run time, it is not a one-off — reclassify it as a reusable
    automation or a scheduled task and use the normal flow. Pass
-   `executionIntent: "one-off"` to `build_workflow`. This marks verification
+   `executionIntent: "one-off"` to `workflow_build`. This marks verification
    as optional in the build outcome — no verification follow-up is scheduled,
    and the completion criterion becomes a live run whose output you read back.
 2. **Setup** is unchanged: if the build outcome requires credential or value
@@ -130,7 +130,7 @@ cannot write to external services directly) — the intent changes the
 
 ## Optional pre-flight verification
 
-`verify_built_workflow` is available but **not required and never the
+`workflow_verify` is available but **not required and never the
 completion criterion** for a one-off. Offer it before the live run only when
 the wiring is complex (branching, merges, non-trivial transformations) or the
 user is cautious about touching real data.

@@ -43,7 +43,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 		if (task.kind === 'checkpoint') {
 			if (task.deps.length === 0) {
 				throw new PlanValidationError(
-					`Checkpoint task "${task.id}" must depend on at least one build_workflow task`,
+					`Checkpoint task "${task.id}" must depend on at least one workflow_build task`,
 				);
 			}
 			const dependsOnBuildWorkflow = task.deps.some(
@@ -51,7 +51,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 			);
 			if (!dependsOnBuildWorkflow) {
 				throw new PlanValidationError(
-					`Checkpoint task "${task.id}" must depend on at least one build_workflow task`,
+					`Checkpoint task "${task.id}" must depend on at least one workflow_build task`,
 				);
 			}
 		}

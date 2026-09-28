@@ -457,7 +457,7 @@ describe('EvalTestCaseSchema', () => {
 						type: 'llm',
 						role: 'assistant',
 						createdAt: '2026-06-29T09:00:00.000Z',
-						content: [{ type: 'tool-call', toolCallId: 'c1', toolName: 'build_workflow' }],
+						content: [{ type: 'tool-call', toolCallId: 'c1', toolName: 'workflow_build' }],
 					},
 				],
 			},
@@ -467,7 +467,7 @@ describe('EvalTestCaseSchema', () => {
 		// The tool-call block's own keys survive (`.passthrough()`), so the seeded
 		// history the agent reads isn't gutted.
 		expect(messages[1].content).toEqual([
-			{ type: 'tool-call', toolCallId: 'c1', toolName: 'build_workflow' },
+			{ type: 'tool-call', toolCallId: 'c1', toolName: 'workflow_build' },
 		]);
 	});
 

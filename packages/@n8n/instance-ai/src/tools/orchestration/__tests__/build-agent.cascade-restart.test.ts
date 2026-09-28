@@ -1,5 +1,5 @@
 /**
- * AGENT-354 — build_agent HITL cascade, end to end through REAL SDK mechanics.
+ * AGENT-354 — agent_build HITL cascade, end to end through REAL SDK mechanics.
  *
  * `build-agent.tool.test.ts` mocks `InstanceAiBuilderDelegate` and invokes the
  * handler directly with hand-built `ctx` objects — it never touches the AI
@@ -184,15 +184,15 @@ function toTurnStream(result: StreamResult): BuilderTurnStream {
 function createBuilderAgent(
 	checkpointStore: CheckpointStore,
 	model: MockLanguageModelV3,
-	onResume: (toolName: 'ask_questions' | 'call_agent', data: unknown) => void,
+	onResume: (toolName: 'user_questions_ask' | 'agent_call', data: unknown) => void,
 ): Agent {
-	const writeConfigTool = new Tool('write_config')
+	const writeConfigTool = new Tool('config_write')
 		.description('Persist the agent configuration')
 		.input(z.object({}))
 		.output(z.object({ ok: z.boolean(), configMutated: z.literal(true) }))
 		.handler(async () => await Promise.resolve({ ok: true, configMutated: true as const }));
 
-	const askQuestionsTool = new Tool('ask_questions')
+	const askQuestionsTool = new Tool('user_questions_ask')
 		.description('Ask the user clarifying questions; suspends until answered')
 		.input(z.object({}))
 		.suspend(questionsSuspendPayloadSchema)
@@ -209,11 +209,11 @@ function createBuilderAgent(
 					],
 				});
 			}
-			onResume('ask_questions', ctx.resumeData);
+			onResume('user_questions_ask', ctx.resumeData);
 			return { answered: true };
 		});
 
-	const callAgentTool = new Tool('call_agent')
+	const callAgentTool = new Tool('agent_call')
 		.description('Test the target agent')
 		.input(z.object({}))
 		.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -227,7 +227,7 @@ function createBuilderAgent(
 					args: { id: 'record-1' },
 				});
 			}
-			onResume('call_agent', ctx.resumeData);
+			onResume('agent_call', ctx.resumeData);
 			return { status: 'completed' };
 		});
 
@@ -248,7 +248,7 @@ function createBuilderAgent(
 function createBuilderDelegate(
 	store: InMemoryCheckpointStore,
 	model: MockLanguageModelV3,
-	onResume: (toolName: 'ask_questions' | 'call_agent', data: unknown) => void,
+	onResume: (toolName: 'user_questions_ask' | 'agent_call', data: unknown) => void,
 ): InstanceAiBuilderDelegate {
 	return {
 		createAgent: async (_name: string) =>
@@ -353,7 +353,7 @@ function createOrchestrationContext(params: {
 	return context;
 }
 
-describe('build_agent cascade restart (real SDK)', () => {
+describe('agent_build cascade restart (real SDK)', () => {
 	it('survives restarts across a builder question and a chained target approval', async () => {
 		const store = new InMemoryCheckpointStore();
 		const threadRecords = new Map<string, ThreadRecord>();
@@ -369,8 +369,8 @@ describe('build_agent cascade restart (real SDK)', () => {
 		const phase1Delegate = createBuilderDelegate(
 			store,
 			createScriptedModel([
-				makeToolCallTurn('b-tc-1', 'write_config', {}),
-				makeToolCallTurn('b-tc-2', 'ask_questions', {}),
+				makeToolCallTurn('b-tc-1', 'config_write', {}),
+				makeToolCallTurn('b-tc-2', 'user_questions_ask', {}),
 			]),
 			() => {
 				throw new Error('builder should not resume during phase 1');
@@ -458,9 +458,9 @@ describe('build_agent cascade restart (real SDK)', () => {
 		let observedBuilderResumeData: QuestionsResumeData | undefined;
 		const phase2Delegate = createBuilderDelegate(
 			store,
-			createScriptedModel([makeToolCallTurn('b-tc-3', 'call_agent', {})]),
+			createScriptedModel([makeToolCallTurn('b-tc-3', 'agent_call', {})]),
 			(toolName, data) => {
-				if (toolName === 'ask_questions') {
+				if (toolName === 'user_questions_ask') {
 					observedBuilderResumeData = questionsResumeSchema.parse(data);
 				}
 			},
@@ -512,7 +512,7 @@ describe('build_agent cascade restart (real SDK)', () => {
 			store,
 			createScriptedModel([makeTextTurn('The target action was declined.')]),
 			(toolName, data) => {
-				if (toolName === 'call_agent') {
+				if (toolName === 'agent_call') {
 					observedApprovalResumeData = APPROVAL_RESUME_SCHEMA.parse(data);
 				}
 			},

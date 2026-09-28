@@ -31,7 +31,7 @@ describe('tool-call-details', () => {
 		it('returns undefined for running tool calls', () => {
 			expect(
 				getToolCallDetails({
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					output: { nodes: ['Slack'] },
 					state: TOOL_CALL_STATE.RUNNING,
 				}),
@@ -41,7 +41,7 @@ describe('tool-call-details', () => {
 		it('does not expose generic string output', () => {
 			expect(
 				getToolCallDetails({
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					output: 'Found 3 nodes',
 					state: TOOL_CALL_STATE.DONE,
 				}),
@@ -51,7 +51,7 @@ describe('tool-call-details', () => {
 		it('does not expose generic object output as JSON', () => {
 			expect(
 				getToolCallDetails({
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					output: { nodes: ['Slack'] },
 					state: TOOL_CALL_STATE.DONE,
 				}),
@@ -61,7 +61,7 @@ describe('tool-call-details', () => {
 		it('does not expose generic error strings', () => {
 			expect(
 				getToolCallDetails({
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					output: 'Credential missing',
 					state: TOOL_CALL_STATE.ERROR,
 				}),
@@ -178,7 +178,7 @@ describe('tool-call-details', () => {
 		it('is false for generic tools even when output is present', () => {
 			expect(
 				isToolCallExpandable({
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					output: { nodes: ['Slack'] },
 					state: TOOL_CALL_STATE.DONE,
 				}),

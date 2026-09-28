@@ -34,7 +34,7 @@ describe('progressive workflow skill variants', () => {
 				expect(selectedEntry?.hash).not.toBe(entry.hash);
 			} else if (entry.id === 'planned-task-runtime') {
 				expect(selected?.instructions).toBe(original?.instructions);
-				expect(selected?.recommendedTools).not.toContain('create_plan');
+				expect(selected?.recommendedTools).not.toContain('plan_create');
 			} else {
 				expect(selected).toEqual(original);
 				expect(selectedEntry).toEqual(entry);

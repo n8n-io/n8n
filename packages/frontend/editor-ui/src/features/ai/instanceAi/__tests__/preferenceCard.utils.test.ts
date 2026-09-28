@@ -21,7 +21,7 @@ describe('resolvePreferenceCard', () => {
 	};
 	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
 		toolCallId: 'tc-1',
-		toolName: 'save_user_preference',
+		toolName: 'user_preference_save',
 		args: {},
 		isLoading: false,
 		result: saved,
@@ -115,7 +115,7 @@ describe('resolvePreferenceCard', () => {
 describe('resolvePreferenceRejection', () => {
 	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
 		toolCallId: 'tc-1',
-		toolName: 'save_user_preference',
+		toolName: 'user_preference_save',
 		args: { content: '  Keep replies short.  ', scope: 'user' },
 		isLoading: false,
 		result: { ok: false, reason: 'duplicate', message: 'Already saved.' },
@@ -187,7 +187,7 @@ describe('resolvePreferenceRejection', () => {
 describe('isPreferenceWriteOutcome', () => {
 	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
 		toolCallId: 'tc-1',
-		toolName: 'save_user_preference',
+		toolName: 'user_preference_save',
 		args: {},
 		isLoading: false,
 		...overrides,

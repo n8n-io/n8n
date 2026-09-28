@@ -1,19 +1,16 @@
 ---
 name: data-table-manager
-dependencies:
-  tools:
-    - data_tables
 description: >-
-  Load before calling data_tables or parse_file. Use for natural standalone
+  Load before calling data_tables or file_parse. Use for natural standalone
   requests like "what data tables do I have?", "show/list my tables", or "what
   columns are in this table?", and whenever the user asks to list, show,
   create, inspect, import, seed, query, update, clean up, rename columns in, or
   delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
   load before building or planning workflows that create or write to Data
-  Tables (then load workflow-builder before build_workflow).
+  Tables (then load workflow-builder before workflow_build).
 recommended_tools:
   - data_tables
-  - parse_file
+  - file_parse
 platforms:
   - daytona
 ---
@@ -23,10 +20,10 @@ platforms:
 ## Routing
 
 For workflow builds that create or write Data Tables, load this skill, then
-`workflow-builder`, before `build_workflow`.
+`workflow-builder`, before `workflow_build`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data_tables` and, for attachments, `parse_file`. Do not spawn another agent or
+`data_tables` and, for attachments, `file_parse`. Do not spawn another agent or
 create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
@@ -50,7 +47,7 @@ can target rows with narrow filters.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
 5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use create_plan for standalone table work.
+   never use plan_create for standalone table work.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.
@@ -83,7 +80,7 @@ can target rows with narrow filters.
 
 ## File Imports
 
-Use `parse_file` for attached CSV, TSV, JSON, and XLSX files.
+Use `file_parse` for attached CSV, TSV, JSON, and XLSX files.
 
 1. Preview first with `maxRows=20`, unless the user named the structure
    exactly.

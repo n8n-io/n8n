@@ -7,7 +7,7 @@ import { setActivePinia } from 'pinia';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 
 /**
- * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
+ * `ChannelSetupCard` owns the body + orchestration for the `channel_configure`
  * builder tool — see `InstanceAiChannelSetup.vue`'s own tests for how it maps
  * the `resolve` event emitted here onto its own transport.
  */

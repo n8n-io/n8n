@@ -1121,7 +1121,7 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('workflow')) {
 		return 'workflow';
 	}
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize_node_type') return 'node';
+	if (name === DOMAIN_TOOL_IDS.NODES || name === 'node_type_materialize') return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name.includes('research')) return 'research';
 	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_PLAN) {

@@ -175,7 +175,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(rows).toEqual([expect.objectContaining({ id: threadId })]);
 		});
 
-		it('matches ask_user answers but not plain assistant text', async () => {
+		it('matches user_ask answers but not plain assistant text', async () => {
 			const answered = await createThread({ title: 'Timezone setup' });
 			await createMessage({
 				threadId: answered,
@@ -651,7 +651,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(window.hasMoreBefore).toBe(true);
 		});
 
-		it('keeps ask_user rows visible in windows', async () => {
+		it('keeps user_ask rows visible in windows', async () => {
 			const askUserId = await createMessage({
 				threadId,
 				role: 'assistant',

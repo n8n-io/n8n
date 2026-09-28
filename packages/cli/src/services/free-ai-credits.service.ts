@@ -12,7 +12,7 @@ import { UserService } from '@/services/user.service';
 /**
  * Provisions the free OpenAI credits managed credential. Backs both the
  * `POST /ai/free-credits` route (browser-initiated claim) and the agent
- * builder's `resolve_llm` tool (server-initiated silent claim).
+ * builder's `llm_resolve` tool (server-initiated silent claim).
  */
 @Service()
 export class FreeAiCreditsService {

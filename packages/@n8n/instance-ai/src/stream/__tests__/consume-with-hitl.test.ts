@@ -70,7 +70,7 @@ describe('consumeStreamCascading', () => {
 						type: 'tool-call-suspended',
 						runId: 'agent-run-1',
 						toolCallId: 'tool-call-1',
-						toolName: 'ask_questions',
+						toolName: 'user_questions_ask',
 						suspendPayload: { requestId: 'req-1' },
 					},
 				]),

@@ -1,5 +1,5 @@
 /**
- * parse_file tool — parses attachments from the current user message.
+ * file_parse tool — parses attachments from the current user message.
  *
  * This is a thin wrapper over the structured-file and text extraction parsers.
  * Registered only when the current turn has parseable attachments.
@@ -154,7 +154,7 @@ function extractPlainTextContent(attachment: AttachmentInfo) {
 }
 
 export function createParseFileTool(context: InstanceAiContext) {
-	return new Tool('parse_file')
+	return new Tool('file_parse')
 		.description(
 			'Parse parseable user attachments from the current message. ' +
 				'For CSV, TSV, JSON, and XLSX, returns column metadata (with normalized names and inferred types) and paginated rows. ' +

@@ -563,7 +563,7 @@ interface SeedToolCall {
 	output?: Record<string, unknown>;
 }
 
-/** Maps a seeded tool-call to its special transcript step (ask_user/plan/setup),
+/** Maps a seeded tool-call to its special transcript step (user_ask/plan/setup),
  *  mirroring the live SSE transcript. Returns null to fall through. */
 type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
@@ -614,7 +614,7 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
-// A HITL confirmation other than ask_user/setup-card (plan-review, resource decision, …):
+// A HITL confirmation other than user_ask/setup-card (plan-review, resource decision, …):
 // the request is in the resume block's input, the decision in its output.
 const interpretConfirmation: SeedStepInterpreter = (call) => {
 	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
@@ -671,7 +671,7 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `build_agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved `agent_build` call, ordered by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.

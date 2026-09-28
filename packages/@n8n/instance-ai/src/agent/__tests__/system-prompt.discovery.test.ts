@@ -185,7 +185,7 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	// INS-749: n8n_docs is always loaded now, so telling the orchestrator to
 	// discover it via search_tools is both wrong and a nudge away from the tool
 	// it should reach for first on n8n questions.
-	describe('n8n_docs is presented as already available, not as something to discover', () => {
+	describe('n8n_docs is preferred over web search for n8n questions', () => {
 		// The Tool Discovery section only renders with tool search on, which is where
 		// the stale "search for n8n docs" example lived.
 		const toolSearchOptions = { ...browserCapableOptions, toolSearchEnabled: true };
@@ -201,7 +201,7 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			const prompt = getSystemPrompt(toolSearchOptions);
 
 			expect(prompt).toMatch(/prefer[^.]{0,60}n8n_docs/i);
-			expect(prompt).toMatch(/n8n_docs[^.]{0,120}already (loaded|available)/i);
+			expect(prompt).toMatch(/n8n_docs[^.]{0,120}over web search/i);
 		});
 	});
 

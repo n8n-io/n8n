@@ -229,16 +229,16 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('ask_user routing', () => {
+	describe('user_ask routing', () => {
 		const questions = [
 			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
 		];
 
-		it('renders ask_user from confirmation-request and skips the tool-call twin', () => {
+		it('renders user_ask from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask_user', args: { questions } } }),
+					evt('tool-call', { payload: { toolName: 'user_ask', args: { questions } } }),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -268,7 +268,7 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask_user', args: { questions } } }),
+					evt('tool-call', { payload: { toolName: 'user_ask', args: { questions } } }),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -286,7 +286,7 @@ describe('buildTranscriptFromEvents', () => {
 					RUN_START,
 					evt('tool-call', {
 						payload: {
-							toolName: 'create_plan',
+							toolName: 'plan_create',
 							args: { tasks: [{ title: 'Fetch posts', description: 'GET /posts' }] },
 						},
 					}),
@@ -392,14 +392,14 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', toolName: 'create_plan' },
+						payload: { requestId: 'r1', toolName: 'plan_create' },
 					}),
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
 			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
-				toolName: 'create_plan',
+				toolName: 'plan_create',
 				resumeReason: 'approval',
 				approved: false,
 			});

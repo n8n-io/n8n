@@ -34,6 +34,7 @@ import {
 	type InstanceContextInjection,
 	type InstanceContextReach,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	normalizeInstanceAiToolName,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
@@ -1992,8 +1993,8 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			// Runs holding an inline HITL confirmation (`create_plan`,
-			// sub-agent `ask_user`) sit in `activeRuns` because the orchestrator
+			// Runs holding an inline HITL confirmation (`plan_create`,
+			// sub-agent `user_ask`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2559,7 +2560,7 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
-		// The frontend writes the exit to thread metadata when the agent calls `leave_onboarding` or
+		// The frontend writes the exit to thread metadata when the agent calls `onboarding_leave` or
 		// starts a build, so a thread that left gets the tool no more.
 		const thread = await memory.getThread(threadId);
 		const onboardingThread =
@@ -2917,7 +2918,7 @@ export class InstanceAiService {
 	/**
 	 * Hydrate the thread-persisted preview-session reference (if any) and wire
 	 * the on-demand transcript resolver. Must run before createInstanceAgent so
-	 * createOrchestrationTools can register get_session on follow-up turns.
+	 * createOrchestrationTools can register agent_session_get on follow-up turns.
 	 */
 	private async bindAgentPreviewSession(
 		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
@@ -3781,7 +3782,7 @@ export class InstanceAiService {
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): Promise<void> {
 		// Split the message's attachments by kind once, here at the agent
-		// boundary: files feed the parse_file / content-block path, workflow
+		// boundary: files feed the file_parse / content-block path, workflow
 		// references feed a context block the agent resolves with its tools.
 		// Downstream logic stays single-kind.
 		const fileAttachments = (attachments ?? []).filter(
@@ -4030,7 +4031,7 @@ export class InstanceAiService {
 				};
 			}
 
-			// Thread file attachments into the domain context so parse_file can access them
+			// Thread file attachments into the domain context so file_parse can access them
 			if (fileAttachments.length > 0) {
 				context.currentUserAttachments = fileAttachments;
 			}
@@ -4203,7 +4204,7 @@ export class InstanceAiService {
 
 			const messageBody =
 				!message && hasParseableAttachment
-					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse_file and provide a concise summary.\n\n${attachmentManifest}`
+					? `The user attached file(s) without a message. Inspect the first parseable attachment with file_parse and provide a concise summary.\n\n${attachmentManifest}`
 					: attachmentManifest
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
@@ -4868,7 +4869,7 @@ export class InstanceAiService {
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
-			//      complete_checkpoint, mark the task failed so the scheduler
+			//      checkpoint_complete, mark the task failed so the scheduler
 			//      can transition to awaiting_replan. Runs even on a stop: the
 			//      cancelled run's context is the only thing that knows about
 			//      this follow-up, so skipping it strands the task at `running`.
@@ -4924,7 +4925,7 @@ export class InstanceAiService {
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then
-				// call `complete_checkpoint`.
+				// call `checkpoint_complete`.
 				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
 					threadId,
 					checkpointTaskId,
@@ -5473,7 +5474,7 @@ export class InstanceAiService {
 				savedSinceLastBlock ||= m.content.some(
 					(part) =>
 						part.type === 'tool-call' &&
-						part.toolName === 'save_user_preference' &&
+						normalizeInstanceAiToolName(part.toolName) === 'user_preference_save' &&
 						part.state === 'resolved' &&
 						isRecord(part.output) &&
 						part.output.ok === true,

@@ -6,7 +6,7 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 describe('summariseToolCall', () => {
 	it('returns undefined for non-interactive tool names', () => {
-		expect(summariseToolCall('search_nodes', { foo: 'bar' })).toBeUndefined();
+		expect(summariseToolCall('nodes_search', { foo: 'bar' })).toBeUndefined();
 	});
 
 	it('returns undefined when output is missing', () => {

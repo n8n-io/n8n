@@ -230,7 +230,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of ask_user / setup-card. Used (with the absence of
+ *  suspend and resume halves of user_ask / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
@@ -553,7 +553,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
  *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
- *  Post-#32545 the builder builds from a workspace file (`build_workflow {filePath}`,
+ *  Post-#32545 the builder builds from a workspace file (`workflow_build {filePath}`,
  *  no inline code), so the source is that file replayed from the workspace ops; inline
  *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
  *  workflows. */

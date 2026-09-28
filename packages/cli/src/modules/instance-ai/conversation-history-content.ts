@@ -13,4 +13,4 @@ export const TOOL_CALL_PART_TYPES: readonly string[] = [
 
 // Type-tied to the package's id, so a rename fails `pnpm typecheck` while this
 // module stays free of runtime imports from the package.
-export const ASK_USER_TOOL_NAME: typeof ASK_USER_TOOL_ID = 'ask_user';
+export const ASK_USER_TOOL_NAME: typeof ASK_USER_TOOL_ID = 'user_ask';

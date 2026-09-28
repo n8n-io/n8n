@@ -1,3 +1,4 @@
+import { normalizeAgentBuilderToolName } from '@n8n/api-types';
 import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 
 export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webSearch';
@@ -20,33 +21,33 @@ function isMemoryNotedOutput(output: unknown): boolean {
 
 const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	read_config: 'instanceAi.tools.read_config',
-	write_config: 'instanceAi.tools.write_config',
-	patch_config: 'instanceAi.tools.patch_config',
-	build_custom_tool: 'instanceAi.tools.build_custom_tool',
-	create_skills: 'instanceAi.tools.create_skills',
+	config_write: 'instanceAi.tools.config_write',
+	config_patch: 'instanceAi.tools.config_patch',
+	custom_tool_build: 'instanceAi.tools.custom_tool_build',
+	skills_create: 'instanceAi.tools.skills_create',
 	list_skills: 'instanceAi.tools.list_skills',
 	read_skill: 'instanceAi.tools.read_skill',
-	update_skill: 'instanceAi.tools.update_skill',
-	create_tasks: 'instanceAi.tools.create_tasks',
+	skill_update: 'instanceAi.tools.skill_update',
+	tasks_create: 'instanceAi.tools.tasks_create',
 	list_tasks: 'instanceAi.tools.list_tasks',
-	update_task: 'instanceAi.tools.update_task',
-	get_resource_locator_options: 'instanceAi.tools.get_resource_locator_options',
+	task_update: 'instanceAi.tools.task_update',
+	resource_locator_options_get: 'instanceAi.tools.resource_locator_options_get',
 	list_workflows: 'instanceAi.tools.list_workflows',
 	list_integration_types: 'instanceAi.tools.list_integration_types',
 	list_sub_agents: 'instanceAi.tools.list_sub_agents',
-	publish_agent: 'instanceAi.tools.publish_agent',
-	unpublish_agent: 'instanceAi.tools.unpublish_agent',
+	agent_publish: 'instanceAi.tools.agent_publish',
+	agent_unpublish: 'instanceAi.tools.agent_unpublish',
 	resolve_integration: 'instanceAi.tools.resolve_integration',
-	resolve_llm: 'instanceAi.tools.resolve_llm',
+	llm_resolve: 'instanceAi.tools.llm_resolve',
 	search_mcp_servers: 'instanceAi.tools.search_mcp_servers',
-	verify_mcp_server: 'instanceAi.tools.verify_mcp_server',
-	ask_questions: 'instanceAi.tools.ask_questions',
-	ask_credential: 'instanceAi.tools.ask_credential',
-	ask_embedding_credential: 'instanceAi.tools.ask_embedding_credential',
-	configure_channel: 'instanceAi.tools.configure_channel',
-	search_nodes: 'instanceAi.tools.search_nodes',
-	get_node_types: 'instanceAi.tools.get_node_types',
-	list_credentials: 'instanceAi.tools.list_credentials',
+	mcp_server_verify: 'instanceAi.tools.mcp_server_verify',
+	user_questions_ask: 'instanceAi.tools.user_questions_ask',
+	credential_ask: 'instanceAi.tools.credential_ask',
+	embedding_credential_ask: 'instanceAi.tools.embedding_credential_ask',
+	channel_configure: 'instanceAi.tools.channel_configure',
+	nodes_search: 'instanceAi.tools.nodes_search',
+	node_types_get: 'instanceAi.tools.node_types_get',
+	credentials_list: 'instanceAi.tools.credentials_list',
 };
 
 export function getToolNameTranslationKey(
@@ -62,8 +63,10 @@ export function getToolNameTranslationKey(
 	if (trimmed === FLAG_MEMORY_TOOL_NAME && isMemoryNotedOutput(output)) {
 		return FLAG_MEMORY_TOOL_NAME_KEY;
 	}
-	if (trimmed in BUILDER_TOOL_TRANSLATION_KEYS) {
-		return BUILDER_TOOL_TRANSLATION_KEYS[trimmed];
+	// Builder sessions saved before the rename carry the old tool names.
+	const builderToolName = normalizeAgentBuilderToolName(trimmed);
+	if (builderToolName in BUILDER_TOOL_TRANSLATION_KEYS) {
+		return BUILDER_TOOL_TRANSLATION_KEYS[builderToolName];
 	}
 
 	return WEB_SEARCH_TOOL_NAME_PATTERN.test(trimmed) ? WEB_SEARCH_TOOL_NAME_KEY : undefined;

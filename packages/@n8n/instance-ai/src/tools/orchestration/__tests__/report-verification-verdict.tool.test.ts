@@ -53,7 +53,7 @@ const baseInput = {
 	summary: 'Workflow ran successfully',
 };
 
-describe('report_verification_verdict tool', () => {
+describe('verification_report tool', () => {
 	it('returns error when reportVerificationVerdict callback is not available', async () => {
 		const context = createMockContext({ workflowTaskService: undefined });
 		const tool = createReportVerificationVerdictTool(context);
@@ -157,7 +157,7 @@ describe('report_verification_verdict tool', () => {
 		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('verify_built_workflow');
+		expect((result as { guidance: string }).guidance).toContain('workflow_verify');
 	});
 
 	it('returns patch guidance when needs_patch produces patch action', async () => {
@@ -374,7 +374,7 @@ describe('report_verification_verdict tool', () => {
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
 		expect((result as { guidance: string }).guidance).toContain('workflow-builder');
-		expect((result as { guidance: string }).guidance).toContain('build_workflow');
+		expect((result as { guidance: string }).guidance).toContain('workflow_build');
 		expect((result as { guidance: string }).guidance).toContain('workflowId "wf-123"');
 		expect((result as { guidance: string }).guidance).toContain('filePath');
 	});

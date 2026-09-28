@@ -123,7 +123,7 @@ function questionEvent(
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				args: {},
 				severity: 'info',
 				message: 'Please answer',
@@ -143,7 +143,7 @@ function planReviewEvent(requestId: string): CapturedEvent {
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'create_plan',
+				toolName: 'plan_create',
 				args: {},
 				severity: 'info',
 				message: 'Approve plan?',
@@ -335,7 +335,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.modes[0]).toBe('confirmation');
 	});
 
-	it('routes ask_user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
+	it('routes user_ask questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'answer_questions',
@@ -1950,7 +1950,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 				data: {
 					payload: {
 						toolCallId: 'build',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						result: {
 							success: true,
 							workflowId: 'wf-primary',

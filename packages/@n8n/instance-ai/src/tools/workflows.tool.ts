@@ -215,7 +215,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with build_workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with workflow_build. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -273,7 +273,7 @@ const setupAction = z.object({
 				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
 				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
 				'lands on credential creation; existing credentials of the type stay listed in case they ' +
-				'change their mind. Pass the same list you passed to build_workflow.',
+				'change their mind. Pass the same list you passed to workflow_build.',
 		),
 	reopenSkipped: z
 		.array(z.string())
@@ -773,13 +773,13 @@ async function getPinnedNodesReport(
 
 const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	written:
-		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call build_workflow with this filePath. Do not rewrite the whole file.',
+		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call workflow_build with this filePath. Do not rewrite the whole file.',
 	refreshed:
-		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then build_workflow.',
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then workflow_build.',
 	current:
-		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call build_workflow with this filePath.',
+		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_build with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with build_workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it with workflow_build to save them, or delete the file and call get-as-code again to start from the saved workflow.',
 };
 
 /**
@@ -811,7 +811,7 @@ async function handleGetAsCode(
 	const toCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
 		// and carrying the ids through is what keeps node identity stable. Positions stay
-		// out: build_workflow restores the saved layout by id, so a position in the file
+		// out: workflow_build restores the saved layout by id, so a position in the file
 		// is only an invitation to edit layout.
 		const body = generateWorkflowCode({
 			workflow: json,

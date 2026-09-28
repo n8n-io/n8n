@@ -38,7 +38,7 @@ describe('task_control tool', () => {
 		expect(tool.description).toContain('update-checklist');
 		expect(tool.description).toContain('lightweight visible checklists');
 		expect(tool.description).toContain('do not need scheduler-driven execution');
-		expect(tool.description).toContain('create_plan');
+		expect(tool.description).toContain('plan_create');
 	});
 
 	// ── update-checklist ────────────────────────────────────────────────────

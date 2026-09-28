@@ -46,7 +46,7 @@ const STORED_TEXT = 'Keep replies short.';
 function toolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
 		toolCallId: 'tc-1',
-		toolName: 'save_user_preference',
+		toolName: 'user_preference_save',
 		args: {},
 		isLoading: false,
 		result: {

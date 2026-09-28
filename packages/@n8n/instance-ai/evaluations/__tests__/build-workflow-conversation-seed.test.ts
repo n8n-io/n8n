@@ -70,7 +70,7 @@ function inlineSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						state: 'resolved',
 						input: {},
 						output: { success: true, workflowId: SEED_WF_ID },

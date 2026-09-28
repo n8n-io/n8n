@@ -20,7 +20,7 @@ export interface VerifyMcpServerDeps {
 	proxyFetch: CustomFetch;
 	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
-	 *  mcpServers entry so the builder can skip agent_context → patch_config. */
+	 *  mcpServers entry so the builder can skip agent_context → config_patch. */
 	applyCredentialToMcpServer?: (
 		serverName: string,
 		credentialId: string,
@@ -97,7 +97,7 @@ const verifyMcpServerInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Credential id returned by ask_credential. Required when authentication is not "none"',
+			'Credential id returned by credential_ask. Required when authentication is not "none"',
 		),
 	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
@@ -123,8 +123,8 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'When a credential is provided and a matching mcpServers entry already exists, ' +
 				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId }) — no agent_context/patch_config follow-up. ' +
-				'Call this after ask_credential when authentication is not "none".',
+				'({ credentialApplied: true, configMutated: true, agentId }) — no agent_context/config_patch follow-up. ' +
+				'Call this after credential_ask when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {

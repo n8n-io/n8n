@@ -10,7 +10,7 @@ then use IDs and narrow filters.
 - **Explain a table**: `list` if needed -> `schema` -> optional small `query`.
 - **Create from requirements**: `list` -> design schema -> `create`.
 - **Seed rows**: `list` -> `schema` -> `insert-rows` in batches of 100.
-- **Import attachment**: `parse_file` preview -> `list` -> create/schema ->
+- **Import attachment**: `file_parse` preview -> `list` -> create/schema ->
   `insert-rows` batches.
 - **Rename a column**: `list` -> `schema` -> `rename-column` with `columnId`.
 - **Change rows**: `list` -> `schema` -> `query` count/sample ->
@@ -132,11 +132,11 @@ Create a designed table:
 Import a CSV into a new table:
 
 ```text
-1. parse_file { attachmentIndex: 0, maxRows: 20 }
+1. file_parse { attachmentIndex: 0, maxRows: 20 }
 2. data_tables list
 3. data_tables create with chosen column names/types
 4. data_tables insert-rows, max 100 rows
-5. parse_file next page with startRow=nextStartRow; repeat up to safety limit
+5. file_parse next page with startRow=nextStartRow; repeat up to safety limit
 ```
 
 Import into an existing table:
@@ -144,7 +144,7 @@ Import into an existing table:
 ```text
 1. data_tables list
 2. data_tables schema with dataTableId; projectId is optional when dataTableId is present
-3. parse_file preview
+3. file_parse preview
 4. Map source columns to existing schema names
 5. insert-rows in batches of 100
 ```

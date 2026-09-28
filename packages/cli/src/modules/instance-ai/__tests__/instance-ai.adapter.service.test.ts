@@ -2827,10 +2827,10 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	// The agent reads a workflow with `get-as-code`, edits the file and saves it with
-	// `build_workflow`, which writes the parsed nodes over the saved ones. A field this
+	// `workflow_build`, which writes the parsed nodes over the saved ones. A field this
 	// read path drops is therefore not just missing from the code — it is erased from the
 	// user's workflow on the next save.
-	it('keeps every node-level setting through a get-as-code / build_workflow round trip', async () => {
+	it('keeps every node-level setting through a get-as-code / workflow_build round trip', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
 			allowSendingParameterValues: true,
 		});

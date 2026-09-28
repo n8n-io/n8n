@@ -132,8 +132,8 @@ const MAX_DEBUG_EVENTS = 1000;
 export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
-	['leave_onboarding', 'left'],
-	['build_workflow', 'build'],
+	['onboarding_leave', 'left'],
+	['workflow_build', 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -174,7 +174,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave_onboarding` or `build_workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`onboarding_leave` or `workflow_build`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -960,7 +960,7 @@ export function createThreadRuntime(
 
 	/**
 	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build_workflow:` key would auto-approve later foreign edits.
+	 * generic `workflow_build:` key would auto-approve later foreign edits.
 	 */
 	function buildAlwaysAllowKey(
 		toolName: string,
@@ -986,11 +986,11 @@ export function createThreadRuntime(
 			if (!workflowId || !nodeName) return null;
 			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
-		// Editing a workflow (build_workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build_workflow
+		// Editing a workflow (workflow_build save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound workflow_build
 		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
 		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build_workflow') {
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'workflow_build') {
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}

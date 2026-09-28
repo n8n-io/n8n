@@ -296,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -362,7 +362,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -482,7 +482,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'build-agent-call',
-				toolName: 'build_agent',
+				toolName: 'agent_build',
 				input: { agentRef: 'support-agent' },
 				suspendPayload: {
 					type: 'approval',
@@ -500,7 +500,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'approval-1',
 				toolCallId: 'build-agent-call',
-				toolName: 'build_agent',
+				toolName: 'agent_build',
 				args: { agentRef: 'support-agent' },
 				severity: 'warning',
 				message: 'Confirmation required',
@@ -574,7 +574,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'configure_channel',
+				toolName: 'channel_configure',
 				suspendPayload: {
 					requestId: 'request-1',
 					severity: 'info',
@@ -590,7 +590,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'configure_channel',
+				toolName: 'channel_configure',
 				args: {},
 				severity: 'info',
 				message: 'Set up the slack channel',

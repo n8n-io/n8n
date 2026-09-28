@@ -48,7 +48,11 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
-	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
+	if (
+		provider === 'anthropic' ||
+		provider === 'google-vertex-anthropic' ||
+		provider === 'openrouter-anthropic'
+	) {
 		agent.thinking(provider, { mode: 'adaptive', effort: 'medium' });
 		return;
 	}

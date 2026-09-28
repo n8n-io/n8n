@@ -66,10 +66,10 @@ function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
 	if (!sourceFilePath) {
-		return 'edit the workspace source file, then call `build_workflow` with that filePath';
+		return 'edit the workspace source file, then call `workflow_build` with that filePath';
 	}
 
-	return `edit workspace source file "${sourceFilePath}", then call \`build_workflow\` with filePath "${sourceFilePath}"`;
+	return `edit workspace source file "${sourceFilePath}", then call \`workflow_build\` with filePath "${sourceFilePath}"`;
 }
 
 export function formatWorkflowLoopGuidance(
@@ -100,7 +100,7 @@ export function formatWorkflowLoopGuidance(
 						'it lists the remaining credentials and values in the setup panel and returns them to you. ' +
 						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
 						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
-						'Do not call `credentials(action="setup")` or `apply_workflow_credentials`, and do not tell the user to open the editor or canvas.'
+						'Do not call `credentials(action="setup")` or `workflow_credentials_apply`, and do not tell the user to open the editor or canvas.'
 					);
 				}
 				return (
@@ -108,7 +108,7 @@ export function formatWorkflowLoopGuidance(
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the n8n Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
-					'Do not call `credentials(action="setup")` or `apply_workflow_credentials` — `workflows(action="setup")` handles everything.'
+					'Do not call `credentials(action="setup")` or `workflow_credentials_apply` — `workflows(action="setup")` handles everything.'
 				);
 			}
 			// Only a verified draft earns the publish question. Below `verified` the
@@ -126,13 +126,13 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`VERIFY: Inspect the persisted workflow ${action.workflowId}: read the bound workspace source file you just built, or call \`workflows(action="get-as-code", workflowId)\` when you need to check for outside changes — it refreshes the file when the saved workflow changed and returns a node index. If it reports status "conflict", the file has unbuilt edits: build or discard them and call it again before trusting the index. Compare the relevant lines to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
-				`Use \`verify_built_workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
+				`Use \`workflow_verify\` with workflowId "${action.workflowId ?? 'unknown'}"` +
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
 				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
 				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
 				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
-				`Then call \`report_verification_verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
+				`Then call \`verification_report\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
@@ -140,7 +140,7 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
 				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
-				`Use workflowId "${action.workflowId}" on the first build_workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
+				`Use workflowId "${action.workflowId}" on the first workflow_build call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
 				`Apply this structural repair in the source file: ${action.failureDetails}`
 			);
 		case 'patch':
@@ -149,7 +149,7 @@ export function formatWorkflowLoopGuidance(
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
 				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
-				`Use workflowId "${action.workflowId}" on the first build_workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
+				`Use workflowId "${action.workflowId}" on the first workflow_build call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
 			);
 	}
 }

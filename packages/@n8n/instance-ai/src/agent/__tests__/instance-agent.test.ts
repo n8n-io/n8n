@@ -9,6 +9,7 @@ const mockAgentInstances: Array<{
 	skills: Mock;
 	checkpoint: Mock;
 	toolNameAliases: Mock;
+	promptCaching: Mock;
 	memory: Mock;
 	telemetry: Mock;
 	workspace: Mock;
@@ -33,6 +34,7 @@ vi.mock('@n8n/agents', () => ({
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.toolNameAliases = vi.fn().mockReturnThis();
+		this.promptCaching = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
@@ -61,11 +63,11 @@ vi.mock('../../tools', () => ({
 			conversationHistoryService?: unknown;
 			currentUserAttachments?: unknown[];
 		}) => {
-			const names = ['workflows', 'research', 'n8n_docs', 'nodes', 'executions', 'build_workflow'];
+			const names = ['workflows', 'research', 'n8n_docs', 'nodes', 'executions', 'workflow_build'];
 			if (context.evaluationConfigService) names.push('eval_config');
 			if (context.mcpService) names.push('mcp_servers');
 			if (context.conversationHistoryService) names.push('conversation_history');
-			if (context.currentUserAttachments?.length) names.push('parse_file');
+			if (context.currentUserAttachments?.length) names.push('file_parse');
 			return new Set(names);
 		},
 	),
@@ -77,15 +79,15 @@ vi.mock('../../tools', () => ({
 				['n8n_docs', mockBuiltTool(`n8n_docs-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
-				['build_workflow', mockBuiltTool(`build_workflow-${context.runLabel ?? 'unknown'}`)],
+				['workflow_build', mockBuiltTool(`workflow_build-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['create_plan', mockBuiltTool(`create_plan-${context.runId}`)],
-				['complete_checkpoint', mockBuiltTool(`complete_checkpoint-${context.runId}`)],
-				['verify_built_workflow', mockBuiltTool(`verify_built_workflow-${context.runId}`)],
+				['plan_create', mockBuiltTool(`plan_create-${context.runId}`)],
+				['checkpoint_complete', mockBuiltTool(`checkpoint_complete-${context.runId}`)],
+				['workflow_verify', mockBuiltTool(`workflow_verify-${context.runId}`)],
 			]),
 	),
 }));
@@ -200,16 +202,16 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create_plan-run-1']).toBeUndefined();
-		expect(deferredTools['create_plan-run-1']).toMatchObject({ name: 'create_plan-run-1' });
+		expect(attachedTools['plan_create-run-1']).toBeUndefined();
+		expect(deferredTools['plan_create-run-1']).toMatchObject({ name: 'plan_create-run-1' });
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build_workflow-run-1']).toMatchObject({
-			name: 'build_workflow-run-1',
+		expect(attachedTools['workflow_build-run-1']).toMatchObject({
+			name: 'workflow_build-run-1',
 		});
 		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
-		expect(attachedTools['verify_built_workflow-run-1']).toMatchObject({
-			name: 'verify_built_workflow-run-1',
+		expect(attachedTools['workflow_verify-run-1']).toMatchObject({
+			name: 'workflow_verify-run-1',
 		});
 		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
@@ -238,14 +240,14 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['create_plan', 'nodes']),
+				disabledToolNames: new Set(['plan_create', 'nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(getDeferredTools()).not.toHaveProperty('create_plan-profile');
+		expect(getDeferredTools()).not.toHaveProperty('plan_create-profile');
 		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
-		expect(getAttachedTools()).toHaveProperty('build_workflow-profile');
+		expect(getAttachedTools()).toHaveProperty('workflow_build-profile');
 	});
 
 	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
@@ -305,10 +307,10 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['complete_checkpoint-checkpoint-run']).toMatchObject({
-			name: 'complete_checkpoint-checkpoint-run',
+		expect(attachedTools['checkpoint_complete-checkpoint-run']).toMatchObject({
+			name: 'checkpoint_complete-checkpoint-run',
 		});
-		expect(deferredTools['complete_checkpoint-checkpoint-run']).toBeUndefined();
+		expect(deferredTools['checkpoint_complete-checkpoint-run']).toBeUndefined();
 	});
 
 	it('keeps workflow-builder skill tool names always loaded', async () => {
@@ -330,7 +332,7 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		for (const toolName of ['build_workflow', 'nodes', 'executions']) {
+		for (const toolName of ['workflow_build', 'nodes', 'executions']) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
 			expect(deferredTools[scopedName]).toBeUndefined();
@@ -620,7 +622,7 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances.at(-1)?.toolNameAliases).toHaveBeenCalledWith(
-			expect.objectContaining({ 'build-workflow': 'build_workflow' }),
+			expect.objectContaining({ 'build-workflow': 'workflow_build' }),
 		);
 	});
 
@@ -897,7 +899,7 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(
 				new Map([
 					['eval_config', mockBuiltTool('eval_config')],
-					['parse_file', mockBuiltTool('parse_file')],
+					['file_parse', mockBuiltTool('file_parse')],
 					['mcp_servers', mockBuiltTool('mcp_servers')],
 				]),
 			),
@@ -905,7 +907,7 @@ describe('createInstanceAgent', () => {
 
 		const deferredTools = getDeferredTools();
 		expect(deferredTools['eval_config']).toBeUndefined();
-		expect(deferredTools.parse_file).toBeUndefined();
+		expect(deferredTools.file_parse).toBeUndefined();
 		expect(deferredTools['mcp_servers']).toBeUndefined();
 		expect(orchestrationContext.mcpTools).toBeUndefined();
 	});

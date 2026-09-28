@@ -49,7 +49,7 @@ function withDefaultIds(
 ): InteractionQuestion[] {
 	const explicitIds = questions.map((q) => q.id).filter((id): id is string => id !== undefined);
 	if (new Set(explicitIds).size !== explicitIds.length) {
-		throw new UserError('ask_questions: question ids must be unique');
+		throw new UserError('user_questions_ask: question ids must be unique');
 	}
 
 	const usedIds = new Set(explicitIds);

@@ -18,7 +18,7 @@ with wrong or empty values.
 ## When the user reports it still fails
 
 Re-run the failing path with `executions(action="run")` (or
-`verify_built_workflow`) and inspect the real result before responding. Do not
+`workflow_verify`) and inspect the real result before responding. Do not
 restate that the workflow is "fixed", "verified", or "working", and do not
 attribute the reported failure to a test-harness artifact, stale state, or "it
 works in production" without a re-run against the failing path. Treat live

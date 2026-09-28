@@ -194,7 +194,7 @@ function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps
 
 /**
  * Validate input, then auto-resolve every credential slot using the same
- * rules as ask_credential (matching channel credential first, then a single
+ * rules as credential_ask (matching channel credential first, then a single
  * existing credential of the type). Slots that cannot be auto-resolved
  * become a phase. Phase order is fixed: questions, then credentials, then
  * one channel phase per requested channel — channels always run last after
@@ -446,10 +446,10 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'`channels` with a returned `type` from agent_context integrations, one entry per channel ' +
 				'to configure; do not infer channel names. Each channel card persists the configuration ' +
 				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
-				'configure_channel again for a channel handled by ' +
+				'channel_configure again for a channel handled by ' +
 				'this flow. Returns { completed, answers, credentials, ' +
 				'channels } (plus configMutated/agentId refresh metadata when completed): resolve the ' +
-				'model answer with resolve_llm, copy returned credential ids into the config, and verify ' +
+				'model answer with llm_resolve, copy returned credential ids into the config, and verify ' +
 				'MCP servers with them. Auto-resolves credential slots that match an existing single ' +
 				'credential or configured channel credential.',
 		)

@@ -160,7 +160,7 @@ vi.mock('../planned-tasks/planned-task-permissions', () => ({
 }));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
-	buildAttachmentManifest: () => '[ATTACHMENTS] parse_file [/ATTACHMENTS]',
+	buildAttachmentManifest: () => '[ATTACHMENTS] file_parse [/ATTACHMENTS]',
 	isStructuredAttachment: () => true,
 	isParseableAttachment: () => true,
 }));
@@ -317,7 +317,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		const classified = entrypoint.classifyAttachments([]);
 		expect(classified[0]).toMatchObject({ index: 0, parseable: true, format: 'csv' });
-		expect(entrypoint.buildAttachmentManifest(classified)).toContain('parse_file');
+		expect(entrypoint.buildAttachmentManifest(classified)).toContain('file_parse');
 		expect(entrypoint.isStructuredAttachment({} as never)).toBe(true);
 		expect(entrypoint.isParseableAttachment({} as never)).toBe(true);
 		expect(entrypoint.getParseableAttachmentMimeTypes()).toContain('text/csv');

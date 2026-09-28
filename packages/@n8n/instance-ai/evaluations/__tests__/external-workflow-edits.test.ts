@@ -16,7 +16,7 @@ function buildEvent(workflowId: string, success = true): CapturedEvent {
 			type: 'tool-result',
 			payload: {
 				toolCallId: `call-${workflowId}-${String(success)}`,
-				toolName: 'build_workflow',
+				toolName: 'workflow_build',
 				result: { workflowId, success },
 			},
 		},

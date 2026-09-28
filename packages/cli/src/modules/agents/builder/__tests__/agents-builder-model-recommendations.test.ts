@@ -122,23 +122,23 @@ describe('builder model recommendations', () => {
 		expect(skill?.description).toContain('designing, creating, or editing target-agent behavior');
 		expect(skill?.description).toContain('without calling it a skill');
 		expect(skill?.recommendedTools).toEqual(
-			expect.arrayContaining(['agent_context', 'update_skill', 'create_skills']),
+			expect.arrayContaining(['agent_context', 'skill_update', 'skills_create']),
 		);
 		expect(skill?.allowedTools).toEqual(
-			expect.arrayContaining(['agent_context', 'update_skill', 'create_skills']),
+			expect.arrayContaining(['agent_context', 'skill_update', 'skills_create']),
 		);
 		expect(skill?.instructions).toContain(
 			'Call `agent_context({ type: "skills" })` once and compare its metadata with the attached ids',
 		);
 		expect(skill?.instructions).toContain('preserving its id and existing config reference');
 		expect(skill?.instructions).toContain(
-			'Only call `create_skills` when no attached skill owns the capability',
+			'Only call `skills_create` when no attached skill owns the capability',
 		);
 
 		const listIndex = skill?.instructions.indexOf('Call `agent_context({ type: "skills" })`') ?? -1;
 		const readIndex =
 			skill?.instructions.indexOf('Call `agent_context({ type: "skill", skillId: "<id>" })`') ?? -1;
-		const updateIndex = skill?.instructions.indexOf('Call `update_skill`') ?? -1;
+		const updateIndex = skill?.instructions.indexOf('Call `skill_update`') ?? -1;
 		expect(listIndex).toBeGreaterThan(-1);
 		expect(readIndex).toBeGreaterThan(listIndex);
 		expect(updateIndex).toBeGreaterThan(readIndex);

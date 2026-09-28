@@ -798,7 +798,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'toolu_plan',
-							toolName: 'create_plan',
+							toolName: 'plan_create',
 							input: {},
 							state: 'resolved',
 							output: { result: 'Plan approved and 2 tasks dispatched.' },
@@ -842,7 +842,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'toolu_complete',
-							toolName: 'complete_checkpoint',
+							toolName: 'checkpoint_complete',
 							input: { taskId: 'chk-1', status: 'succeeded' },
 							state: 'resolved',
 							output: { ok: true },
@@ -1036,7 +1036,7 @@ describe('confirmation expiration helpers', () => {
 				reasoning: '',
 				toolCalls: requestIds.map((requestId, idx) => ({
 					toolCallId: `tc-${idx}`,
-					toolName: 'create_plan',
+					toolName: 'plan_create',
 					args: {},
 					isLoading: true,
 					confirmation: {
@@ -1056,7 +1056,7 @@ describe('confirmation expiration helpers', () => {
 						toolCalls: [
 							{
 								toolCallId: 'tc-sub',
-								toolName: 'ask_user',
+								toolName: 'user_ask',
 								args: {},
 								isLoading: true,
 								confirmation: {
@@ -1127,7 +1127,7 @@ describe('confirmation expiration helpers', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-0',
-						toolName: 'create_plan',
+						toolName: 'plan_create',
 						args: {},
 						isLoading: overrides.isLoading ?? true,
 						...(overrides.confirmationStatus

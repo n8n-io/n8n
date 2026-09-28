@@ -417,7 +417,7 @@ const setupAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The workflow these credentials are for, when one exists (e.g. the id returned by build_workflow). Lets the setup panel list them against that workflow.',
+			'The workflow these credentials are for, when one exists (e.g. the id returned by workflow_build). Lets the setup panel list them against that workflow.',
 		),
 	requireUserSelection: z
 		.boolean()

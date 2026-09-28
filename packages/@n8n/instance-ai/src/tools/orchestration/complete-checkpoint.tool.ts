@@ -1,9 +1,9 @@
 /**
- * complete_checkpoint tool — called by the orchestrator to settle a planned-task
+ * checkpoint_complete tool — called by the orchestrator to settle a planned-task
  * checkpoint.
  *
  * The service enqueues an internal follow-up run carrying a checkpoint's spec.
- * The orchestrator executes the spec using its normal tools (verify_built_workflow,
+ * The orchestrator executes the spec using its normal tools (workflow_verify,
  * executions(action="run"), etc.) and then MUST call this tool exactly once to
  * report the outcome. The service's post-run deadlock fallback guarantees
  * progress even if the orchestrator forgets.
@@ -89,7 +89,7 @@ async function rejectIfSetupStillRequired(
 			ok: false,
 			result:
 				'Error: checkpoint cannot be completed yet because workflow setup is still required, ' +
-				'but the workflow context is unavailable. Call workflows(action="setup") before complete_checkpoint.',
+				'but the workflow context is unavailable. Call workflows(action="setup") before checkpoint_complete.',
 		};
 	}
 
@@ -133,7 +133,7 @@ async function rejectIfSetupStillRequired(
 					ok: false,
 					result:
 						`Error: workflow setup is still required for workflow "${workflowId}". ` +
-						`Call workflows(action="setup", workflowId="${workflowId}") before complete_checkpoint.` +
+						`Call workflows(action="setup", workflowId="${workflowId}") before checkpoint_complete.` +
 						suffix,
 				};
 			}
@@ -143,7 +143,7 @@ async function rejectIfSetupStillRequired(
 				result:
 					`Error: workflow setup could not be checked for workflow "${workflowId}": ` +
 					`${error instanceof Error ? error.message : String(error)}. ` +
-					`Call workflows(action="setup", workflowId="${workflowId}") before complete_checkpoint.`,
+					`Call workflows(action="setup", workflowId="${workflowId}") before checkpoint_complete.`,
 			};
 		}
 	}
@@ -162,7 +162,7 @@ async function rejectIfSetupStillRequired(
 }
 
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
-	return new Tool('complete_checkpoint')
+	return new Tool('checkpoint_complete')
 		.description(
 			'Report the outcome of a planned-task checkpoint you just executed. Only call in checkpoint follow-up turns. ' +
 				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
@@ -223,7 +223,7 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 					result:
 						`Error: task "${input.taskId}" is not a checkpoint ` +
 						`(actual kind: ${settleResult.actual?.kind ?? 'unknown'}). ` +
-						'complete_checkpoint can only settle checkpoint tasks.',
+						'checkpoint_complete can only settle checkpoint tasks.',
 				};
 			}
 			return {

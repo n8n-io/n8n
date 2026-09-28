@@ -1681,13 +1681,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask_user', createAskUserTool()]]),
+			createToolRegistry([['user_ask', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask_user');
+		const wrappedAskUser = wrappedTools.get('user_ask');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask_user tool is not executable');
+			throw new Error('Wrapped user_ask tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -1966,13 +1966,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask_user', createAskUserTool()]]),
+			createToolRegistry([['user_ask', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask_user');
+		const wrappedAskUser = wrappedTools.get('user_ask');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask_user tool is not executable');
+			throw new Error('Wrapped user_ask tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {

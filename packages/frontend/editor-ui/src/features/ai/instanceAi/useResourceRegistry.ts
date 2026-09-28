@@ -92,7 +92,7 @@ type PendingAgentTargetMetadata = {
  * optional fields provided by the new call win; fields it omits are preserved
  * from the existing entry. Callers are responsible for resolving `name` using
  * the existing entry as a fallback so partial updates (e.g. a patch
- * `build_workflow` call that carries only a `workflowId`) don't regress a
+ * `workflow_build` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
 function recordProduced(
@@ -146,11 +146,11 @@ function entryFromListItem(
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set([
-	'build_workflow',
+	'workflow_build',
 	'build-workflow-with-agent',
-	'build_agent',
+	'agent_build',
 	'submit-workflow',
-	'apply_workflow_credentials',
+	'workflow_credentials_apply',
 	'workflows',
 	'credentials',
 	'data_tables',
@@ -212,7 +212,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build_workflow / build-workflow-with-agent / submit-workflow:
+	// workflow_build / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {
@@ -267,12 +267,12 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// build_agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// agent_build: { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
 	if (
-		tc.toolName === 'build_agent' &&
+		tc.toolName === 'agent_build' &&
 		typeof result.agentId === 'string' &&
 		(result.agentChange === 'created' ||
 			result.agentChange === 'updated' ||
@@ -358,7 +358,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 /**
  * Register the agent's `targetResource` as a produced artifact when it carries
  * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first build_workflow
+ * workflow). Surfacing this at spawn time — before the first workflow_build
  * tool result arrives — lets the artifacts panel show the workflow as soon as
  * the sub-agent starts, instead of waiting for the first edit.
  */
@@ -371,7 +371,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
 		// New events report the target before the result is known. Only the
-		// build_agent result can confirm that this Agent changed.
+		// agent_build result can confirm that this Agent changed.
 		if (node.activity !== undefined && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);

@@ -586,7 +586,7 @@ describe('AgentChatController SSE done payload', () => {
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'user_questions_ask',
 			};
 		});
 		const writes: string[] = [];
@@ -1078,7 +1078,7 @@ describe('AgentChatController production n8n Chat', () => {
 				yield {
 					type: 'tool-call-suspended',
 					toolCallId: 'call-1',
-					toolName: 'ask_questions',
+					toolName: 'user_questions_ask',
 					runId: 'run-1',
 					suspendPayload: { type: 'questions', questions: [] },
 				};

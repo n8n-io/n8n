@@ -7,6 +7,7 @@ import {
 } from '@n8n/agents';
 import { INSTANCE_AI_LEGACY_TOOL_NAMES } from '@n8n/api-types';
 
+import { resolveAIAPromptCaching } from './aia-model-defaults';
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
@@ -99,7 +100,7 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Thread the trace handle in so domain tools (e.g. build_workflow) can emit
+	// Thread the trace handle in so domain tools (e.g. workflow_build) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = {
@@ -257,6 +258,10 @@ export async function createInstanceAgent(
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}
+	// Adds the last-tool and conversation cache breakpoints next to the system
+	// prompt's own marker, and a stable OpenAI prompt cache key.
+	const promptCaching = resolveAIAPromptCaching(modelId);
+	if (promptCaching) agent.promptCaching(promptCaching);
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}

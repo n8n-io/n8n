@@ -185,7 +185,7 @@ describe('transcript rendering', () => {
 		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
 	});
 
-	it('surfaces a skipped ask_user answer so it is not mistaken for unanswered', () => {
+	it('surfaces a skipped user_ask answer so it is not mistaken for unanswered', () => {
 		const result: WorkflowTestCaseResult = {
 			testCase: TEST_CASE,
 			workflowBuildSuccess: true,
@@ -212,7 +212,7 @@ describe('transcript rendering', () => {
 		};
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('👤 (skipped)');
-		expect(html).toContain('ask_user (with answers)');
+		expect(html).toContain('user_ask (with answers)');
 		expect(html).toContain('<code>single</code>');
 	});
 });

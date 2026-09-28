@@ -10,19 +10,19 @@ export const DOMAIN_TOOL_IDS = {
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n_docs',
 	NODES: 'nodes',
-	SEARCH_MODELS: 'search_models',
-	ASK_USER: 'ask_user',
-	LEAVE_ONBOARDING: 'leave_onboarding',
-	BUILD_WORKFLOW: 'build_workflow',
-	PARSE_FILE: 'parse_file',
+	SEARCH_MODELS: 'models_search',
+	ASK_USER: 'user_ask',
+	LEAVE_ONBOARDING: 'onboarding_leave',
+	BUILD_WORKFLOW: 'workflow_build',
+	PARSE_FILE: 'file_parse',
 	AGENT_CONTEXT: 'agent_context',
 	MCP_SERVERS: 'mcp_servers',
 	CONVERSATION_HISTORY: 'conversation_history',
 	ACTIVITY: 'activity',
-	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SAVE_USER_PREFERENCE: 'user_preference_save',
 } as const;
 
-/** Trace-only chain-typed child run emitted by `build_workflow` with the
+/** Trace-only chain-typed child run emitted by `workflow_build` with the
  *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
  *  the eval harness (`langsmith-seed.ts`) so seed reconstruction can skip the
  *  SDK re-parse; excluded by name from rebuilt transcripts. */
@@ -33,18 +33,18 @@ export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 
 export const ORCHESTRATION_TOOL_IDS = {
-	CREATE_PLAN: 'create_plan',
+	CREATE_PLAN: 'plan_create',
 	TASK_CONTROL: 'task_control',
-	COMPLETE_CHECKPOINT: 'complete_checkpoint',
-	VERIFY_BUILT_WORKFLOW: 'verify_built_workflow',
-	REPORT_VERIFICATION_VERDICT: 'report_verification_verdict',
-	APPLY_WORKFLOW_CREDENTIALS: 'apply_workflow_credentials',
-	BUILD_AGENT: 'build_agent',
-	GET_SESSION: 'get_session',
+	COMPLETE_CHECKPOINT: 'checkpoint_complete',
+	VERIFY_BUILT_WORKFLOW: 'workflow_verify',
+	REPORT_VERIFICATION_VERDICT: 'verification_report',
+	APPLY_WORKFLOW_CREDENTIALS: 'workflow_credentials_apply',
+	BUILD_AGENT: 'agent_build',
+	GET_SESSION: 'agent_session_get',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
-	WRITE_FILE: 'write_sandbox_file',
+	WRITE_FILE: 'sandbox_file_write',
 } as const;
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
@@ -91,32 +91,41 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
-	// build_agent is the primary route for agent-anchored intents; deferring it
+	// agent_build is the primary route for agent-anchored intents; deferring it
 	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
 	// on every agent build.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
 ]);
 
 /**
- * Tools that stay loaded under `search_tools` / `load_tool` but can be deferred
- * when the provider runs tool search. There a deferred tool costs one search
- * inside the same response instead of two extra model calls, and finding it
- * does not rewrite the cached prompt. Each tool here is loaded by the skill
- * that uses it (`dependencies.tools`), so the common path never searches.
+ * The hot set sent eagerly when the provider runs tool search. Everything else
+ * is deferred: a deferred tool then costs one search inside the same response,
+ * not two extra model calls, and finding it does not rewrite the cached prompt.
+ * These are the tools almost every build turn calls.
  */
-const NATIVE_SEARCH_DEFERRABLE_TOOL_NAMES = new Set<string>([
-	// Large action union; the data-table-manager skill loads it. Tools that must
-	// be used proactively (conversation_history, save_user_preference) stay
-	// loaded: a deferred tool is only found by a model that already wants it.
-	DOMAIN_TOOL_IDS.DATA_TABLES,
+const NATIVE_SEARCH_HOT_TOOL_NAMES = new Set<string>([
+	DOMAIN_TOOL_IDS.WORKFLOWS,
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	DOMAIN_TOOL_IDS.NODES,
+	DOMAIN_TOOL_IDS.ASK_USER,
+]);
+
+/**
+ * Registered only when the thread needs them, so they cost nothing elsewhere
+ * and are always loaded where they exist.
+ */
+const SITUATIONAL_TOOL_NAMES = new Set<string>([
+	// Only on onboarding threads. The user's "let me out" must not need a search.
+	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
+	// Only when the user attached a parseable file.
+	DOMAIN_TOOL_IDS.PARSE_FILE,
 ]);
 
 /** Tools sent eagerly to the model. The rest are deferred behind tool search. */
 export function getAlwaysLoadedToolNames(options: { nativeToolSearch: boolean }): Set<string> {
 	if (!options.nativeToolSearch) return ALWAYS_LOADED_TOOL_NAMES;
-	return new Set(
-		[...ALWAYS_LOADED_TOOL_NAMES].filter((name) => !NATIVE_SEARCH_DEFERRABLE_TOOL_NAMES.has(name)),
-	);
+	return new Set([...NATIVE_SEARCH_HOT_TOOL_NAMES, ...SITUATIONAL_TOOL_NAMES]);
 }
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

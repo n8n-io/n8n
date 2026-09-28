@@ -78,7 +78,7 @@ describe('createParseFileTool', () => {
 	it('has the expected tool id', () => {
 		const context = createMockContext();
 		const tool = createParseFileTool(context);
-		expect(tool.name).toBe('parse_file');
+		expect(tool.name).toBe('file_parse');
 	});
 
 	it('requires data-table-manager before tabular Data Table imports', () => {

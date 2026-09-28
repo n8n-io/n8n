@@ -141,7 +141,7 @@ describe('reconstructSeedFromThread', () => {
 		const buildTool: FakeRun = {
 			id: 'tool1',
 			run_type: 'tool',
-			name: 'build_workflow',
+			name: 'workflow_build',
 			start_time: t(5),
 			inputs: { code: 'workflow().addNode(...)' },
 			outputs: { success: true, workflowId: 'WF-ORIGINAL-123', workflowName: 'Otter Digest' },
@@ -158,7 +158,7 @@ describe('reconstructSeedFromThread', () => {
 		const toolBlock = (assistant.content as Array<Record<string, unknown>>).find(
 			(b) => b.type === 'tool-call',
 		);
-		expect(toolBlock).toMatchObject({ toolName: 'build_workflow', state: 'resolved' });
+		expect(toolBlock).toMatchObject({ toolName: 'workflow_build', state: 'resolved' });
 
 		expect(result.seed.workflows).toHaveLength(1);
 		expect(result.seed.workflows[0]).toMatchObject({ id: 'WF-ORIGINAL-123', name: 'Otter Digest' });
@@ -233,7 +233,7 @@ describe('reconstructSeedFromThread', () => {
 		const earlyBuild: FakeRun = {
 			id: 'tool1',
 			run_type: 'tool',
-			name: 'build_workflow',
+			name: 'workflow_build',
 			start_time: t(5),
 			inputs: { code: 'v1' },
 			outputs: { success: true, workflowId: 'WF1' },
@@ -265,7 +265,7 @@ describe('reconstructSeedFromThread', () => {
 		const postBoundaryBuild: FakeRun = {
 			id: 'tool9',
 			run_type: 'tool',
-			name: 'build_workflow',
+			name: 'workflow_build',
 			start_time: t(31),
 			inputs: { code: 'post' },
 			outputs: { success: true, workflowId: 'WF-LIVE' },
@@ -317,7 +317,7 @@ describe('reconstructSeedFromThread', () => {
 		const build: FakeRun = {
 			id: 'tool1',
 			run_type: 'tool',
-			name: 'build_workflow',
+			name: 'workflow_build',
 			start_time: t(5),
 			inputs: { filePath: 'src/workflows/main.workflow.ts' },
 			outputs: { success: true, workflowId: 'WF1' },
@@ -364,12 +364,12 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.liveTurn).toBe('Real follow-up');
 	});
 
-	it('collapses an ask_user suspend+resume pair to one block carrying the answer', async () => {
+	it('collapses an user_ask suspend+resume pair to one block carrying the answer', async () => {
 		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
 		const suspend: FakeRun = {
 			id: 'tool-suspend',
 			run_type: 'tool',
-			name: 'ask_user',
+			name: 'user_ask',
 			start_time: t(3),
 			inputs: { questions },
 			// Suspend: a re-statement of the pending request, no answer.
@@ -379,7 +379,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'ask_user',
+			name: 'user_ask',
 			start_time: t(6),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -396,7 +396,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'user_ask');
 		expect(askBlocks).toHaveLength(1); // suspend dropped, resume kept — no duplication
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -443,7 +443,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'ask_user',
+			name: 'user_ask',
 			start_time: t(4),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -454,7 +454,7 @@ describe('reconstructSeedFromThread', () => {
 		const lateSuspend: FakeRun = {
 			id: 'tool-suspend-late',
 			run_type: 'tool',
-			name: 'ask_user',
+			name: 'user_ask',
 			start_time: t(7),
 			inputs: { questions },
 			outputs: { payload: { inputType: 'questions', requestId: 'req1', questions } },
@@ -470,7 +470,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'user_ask');
 		expect(askBlocks).toHaveLength(1);
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -492,7 +492,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{
 					success: true,
@@ -522,7 +522,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 				{ path: FILE, replacements: [{ old_str: 'GOOD', new_str: 'BAD' }] },
 				{ success: false },
 			),
-			tool('b1', 4, 'build_workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 4, 'workflow_build', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'change'),
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
@@ -551,7 +551,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 				path: FILE,
 				replacements: [{ old_str: 'NOT_IN_REPLAY', new_str: 'X' }],
 			}),
-			tool('b1', 5, 'build_workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 5, 'workflow_build', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'change'),
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
@@ -567,7 +567,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 				content: 'scratch',
 			}),
 			tool('w1', 3, 'workspace_write_file', { path: FILE, content: 'REAL' }),
-			tool('b1', 4, 'build_workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 4, 'workflow_build', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'change'),
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
@@ -589,7 +589,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 					{ old_str: 'NOT_PRESENT', new_str: 'Y' },
 				],
 			}),
-			tool('b1', 4, 'build_workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 4, 'workflow_build', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'change'),
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
@@ -621,7 +621,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', workflowName: 'Main', sourceHash: 'h1' },
 			),
@@ -649,7 +649,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -657,7 +657,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b2',
 				6,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h2' },
 			),
@@ -688,7 +688,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -708,7 +708,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -743,7 +743,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -777,7 +777,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -810,7 +810,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool(
 				'b1',
 				4,
-				'build_workflow',
+				'workflow_build',
 				{ filePath: FILE, name: 'Main' },
 				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
 			),
@@ -827,7 +827,7 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 	it('excludes a workflow deleted before the boundary and not rebuilt', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
-			tool('b1', 4, 'build_workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 4, 'workflow_build', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
 			// The user said "delete everything" → the entity is removed and never rebuilt,
 			// so it must not be restored into the seed.
 			tool('d1', 6, 'workflows[delete]', { action: 'delete', workflowId: 'WF1' }),
@@ -840,9 +840,9 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 	it('keeps a workflow rebuilt after an earlier delete (latest build wins)', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
-			tool('b1', 3, 'build_workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 3, 'workflow_build', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
 			tool('d1', 5, 'workflows[delete]', { action: 'delete', workflowId: 'WF1' }),
-			tool('b2', 7, 'build_workflow', { code: 'v2' }, { success: true, workflowId: 'WF1' }),
+			tool('b2', 7, 'workflow_build', { code: 'v2' }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'Change'),
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
@@ -853,7 +853,7 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 	it('ignores a failed delete — the workflow stays in the seed', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
-			tool('b1', 3, 'build_workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 3, 'workflow_build', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
 			tool(
 				'd1',
 				5,
@@ -870,7 +870,7 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 	it('keeps a workflow when the delete only suspended for confirmation (no success)', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
-			tool('b1', 3, 'build_workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 3, 'workflow_build', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
 			// HITL: the delete suspended awaiting confirmation; its output is the confirmation
 			// request (no success field), not a completed delete — the workflow still exists.
 			tool(
@@ -889,7 +889,7 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 	it('ignores a delete-shaped input from a non-workflows tool', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
-			tool('b1', 3, 'build_workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('b1', 3, 'workflow_build', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
 			// Same delete-shaped input + success as a real workflow delete, but a different
 			// tool — the match is gated to `workflows`, so it must not evict the seed workflow.
 			tool('d1', 5, 'data_tables[delete-rows]', { action: 'delete', workflowId: 'WF1' }),

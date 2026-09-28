@@ -39,7 +39,7 @@ export function askUserContent(
 			{
 				type: 'tool-call',
 				toolCallId: 'call-1',
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				state: options.state ?? 'resolved',
 				output: { answered: true, answers },
 			},

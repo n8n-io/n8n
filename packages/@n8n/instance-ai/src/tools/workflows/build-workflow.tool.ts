@@ -182,7 +182,7 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Real n8n workflow id from a prior build_workflow or workflows() tool result, used to bind this file on the first update. ' +
+				'Real n8n workflow id from a prior workflow_build or workflows() tool result, used to bind this file on the first update. ' +
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
@@ -266,7 +266,7 @@ function formatFolderPlacementFailure(failure: FolderResolutionFailure): string 
 			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
 			: '';
 	const retry =
-		' Re-run `build_workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
+		' Re-run `workflow_build` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
 	switch (failure.reason) {
 		case 'ambiguous':
 			return `Folder "${failure.requested}" matches more than one folder, so the workflow was NOT created.${candidates}${retry}`;
@@ -615,7 +615,7 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
-	return new Tool('build_workflow')
+	return new Tool('workflow_build')
 		.description(
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
@@ -655,7 +655,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 			} catch (error) {
 				const guidance =
-					'Call build_workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
+					'Call workflow_build again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
 				return {
 					success: false,
 					filePath: input.filePath,
@@ -884,7 +884,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const remediation = createCodeFixableRemediation({
 						reason: 'workflow_source_write_failed',
 						guidance:
-							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call build_workflow again with the same filePath.',
+							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call workflow_build again with the same filePath.',
 					});
 					trackWorkflowSourceBuild(context, {
 						result: 'failure',
@@ -917,7 +917,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
 					guidance:
-						'The workflow source file could not be read. Write it with `workspace_write_file`, then call build_workflow again with the same filePath.',
+						'The workflow source file could not be read. Write it with `workspace_write_file`, then call workflow_build again with the same filePath.',
 				});
 				trackWorkflowSourceBuild(context, {
 					result: 'failure',
@@ -1111,7 +1111,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
-						'Edit the workspace source file using the validation diagnostics, then call build_workflow again with the same filePath.',
+						'Edit the workspace source file using the validation diagnostics, then call workflow_build again with the same filePath.',
 					summary: 'Workflow source failed validation.',
 					binding,
 					sourceHash,
@@ -1134,7 +1134,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_name_missing',
 					guidance:
-						'Add a workflow name in the workspace source file or pass the name parameter, then call build_workflow again with the same filePath.',
+						'Add a workflow name in the workspace source file or pass the name parameter, then call workflow_build again with the same filePath.',
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1227,7 +1227,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'chat_model_validation_failed',
 					guidance:
-						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build_workflow again.',
+						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call workflow_build again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
 					binding,
 					sourceHash,
@@ -1320,7 +1320,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: 'workflow_grouping_decision_missing';
 
 					const guidance =
-						'Edit the workspace source file so the stages form valid node groups, then call build_workflow again with the same filePath. ' +
+						'Edit the workspace source file so the stages form valid node groups, then call workflow_build again with the same filePath. ' +
 						(groupWasDropped
 							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
 							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
@@ -1499,12 +1499,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: { outputs: { workflowId: saved.id, sourceHash, truncated: true } },
 						);
 						context.logger.debug(
-							`[build_workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
+							`[workflow_build] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
 						);
 					} catch (error) {
 						// Best-effort: tracing must never break a build.
 						context.logger.debug(
-							`[build_workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
+							`[workflow_build] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
 						);
 					}
 					const outcome = withDeterministicRouting({

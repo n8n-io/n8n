@@ -95,7 +95,7 @@ function extractUserTurnText(event: CapturedEvent): string | undefined {
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Each tool can emit two events for one logical interaction (e.g. ask_user
+// Each tool can emit two events for one logical interaction (e.g. user_ask
 // fires both a tool-call and a confirmation-request). To render it once,
 // only the variant carrying the richer payload handles it; the other is
 // skipped. This relies on both events arriving in the same turn — which
@@ -202,10 +202,10 @@ function interpretToolCall(
 	const toolName = getString(payload, 'toolName') ?? '';
 	const args = getRecord(payload, 'args') ?? {};
 
-	// ask_user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask_user') return null;
+	// user_ask is rendered from the confirmation-request (which has the answers).
+	if (toolName === 'user_ask') return null;
 
-	if (toolName === 'create_plan') {
+	if (toolName === 'plan_create') {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
 		if (tasks.length > 0) return { kind: 'plan', tasks };
 		// Empty plan: fall through and render as a plain tool-call so the call

@@ -146,19 +146,19 @@ describe('resolveConfirmation', () => {
 	it('keeps an approve approved even when resumeWith claims refusal', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { ask_user: { decision: 'approve', resumeWith: { approved: false } } },
+				confirmations: { user_ask: { decision: 'approve', resumeWith: { approved: false } } },
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({ approved: true });
+		expect(resolveConfirmation(suspension('user_ask'), policy)).toEqual({ approved: true });
 	});
 
 	it('carries resumeWith when no responder recognises the payload', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } } },
+				confirmations: { user_ask: { decision: 'approve', resumeWith: { answer: 'yes' } } },
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('user_ask'), policy)).toEqual({
 			approved: true,
 			answer: 'yes',
 		});
@@ -186,7 +186,7 @@ describe('unmatchedConfirmations', () => {
 
 	it('exempts a bare approve, which only asks for the default', () => {
 		const approveOnly = buildConfirmationPolicy(
-			scenario({ confirmations: { ask_user: 'approve' } }),
+			scenario({ confirmations: { user_ask: 'approve' } }),
 		);
 		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
 	});

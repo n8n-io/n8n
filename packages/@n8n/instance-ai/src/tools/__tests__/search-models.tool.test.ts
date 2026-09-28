@@ -7,7 +7,7 @@ import { createSearchModelsTool } from '../search-models.tool';
 
 vi.mock('@n8n/agents/catalog', () => ({ fetchProviderCatalog: vi.fn() }));
 
-describe('search_models tool', () => {
+describe('models_search tool', () => {
 	// INS-539: Keep external catalog results marked as untrusted.
 	it('declares catalog output as untrusted', () => {
 		expect(createSearchModelsTool().outputTrust).toBe('untrusted');
@@ -38,7 +38,7 @@ describe('search_models tool', () => {
 		expect(input.success).toBe(true);
 		if (!input.success) throw new Error('Expected valid tool input');
 		const result = searchModelsOutputSchema.parse(await executeTool(tool, input.data));
-		expect(tool.name).toBe('search_models');
+		expect(tool.name).toBe('models_search');
 		expect(result.models).toHaveLength(10);
 		expect(result.hasMore).toBe(true);
 		expect(result.credentialAccess).toBe('not_checked');

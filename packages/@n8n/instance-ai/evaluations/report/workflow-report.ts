@@ -395,7 +395,7 @@ function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 	const count = (toolName: string): number =>
 		toolCalls.filter((call) => call.toolName === toolName).length;
 	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
-	const verifyCalls = toolCalls.filter((call) => call.toolName === 'verify_built_workflow');
+	const verifyCalls = toolCalls.filter((call) => call.toolName === 'workflow_verify');
 
 	const summaries = [
 		count('nodes') > 0 ? `${String(count('nodes'))} node-research call(s)` : '',
@@ -1032,8 +1032,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				.join('');
 			const summary =
 				answerByQId.size > 0
-					? '❓ ask_user (with answers)'
-					: `❓ ask_user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+					? '❓ user_ask (with answers)'
+					: `❓ user_ask (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
@@ -1316,7 +1316,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			(call) => call.toolName === 'nodes',
 		);
 		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			['build_workflow', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
+			['workflow_build', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
 		);
 		const validationCalls = result.buildTrace.toolCalls.filter(
 			(call) => call.toolName === 'submit-workflow',
@@ -1325,7 +1325,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			(call) => call.toolName === 'credentials',
 		);
 		const verificationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'verify_built_workflow',
+			(call) => call.toolName === 'workflow_verify',
 		);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()

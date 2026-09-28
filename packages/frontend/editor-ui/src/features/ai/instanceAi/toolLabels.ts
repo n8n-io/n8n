@@ -14,10 +14,10 @@ const TOOL_SEARCH_TOOLS = new Set([
 ]);
 
 const SKILL_TOOLS = new Set([
-	'create_skills',
+	'skills_create',
 	'list_skills',
 	'read_skill',
-	'update_skill',
+	'skill_update',
 	'load_skill',
 ]);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
@@ -114,20 +114,20 @@ function extractSkillScriptPath(command: string): string | undefined {
 function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
 	switch (operation) {
 		case 'editing':
-			return 'instanceAi.tools.build_agent.editing';
+			return 'instanceAi.tools.agent_build.editing';
 		case 'exploring':
-			return 'instanceAi.tools.build_agent.exploring';
+			return 'instanceAi.tools.agent_build.exploring';
 		case 'testing':
-			return 'instanceAi.tools.build_agent.testing';
+			return 'instanceAi.tools.agent_build.testing';
 		case 'publishing':
-			return 'instanceAi.tools.build_agent.publishing';
+			return 'instanceAi.tools.agent_build.publishing';
 		default:
 			return undefined;
 	}
 }
 
 export function getToolIcon(toolName: string): IconName {
-	if (toolName === 'complete_checkpoint') return 'circle-check';
+	if (toolName === 'checkpoint_complete') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n_docs') return 'book-open';
@@ -140,8 +140,8 @@ export function getToolIcon(toolName: string): IconName {
 		toolName === 'executions' ||
 		toolName === 'nodes' ||
 		toolName === 'templates' ||
-		toolName === 'search_nodes' ||
-		toolName === 'get_node_types'
+		toolName === 'nodes_search' ||
+		toolName === 'node_types_get'
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
@@ -153,7 +153,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (
 		toolName.includes('workflow') ||
 		toolName === 'submit-workflow' ||
-		toolName === 'materialize_node_type'
+		toolName === 'node_type_materialize'
 	) {
 		return 'workflow';
 	}
@@ -171,7 +171,7 @@ export function useToolLabel() {
 
 	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
 		if (TOOL_SEARCH_TOOLS.has(toolName)) return i18n.baseText('instanceAi.tools.toolSearch');
-		if (toolName === 'build_agent') {
+		if (toolName === 'agent_build') {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
 		}

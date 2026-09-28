@@ -34,15 +34,15 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 	return context;
 }
 
-describe('save_user_preference tool', () => {
+describe('user_preference_save tool', () => {
 	it('carries the agreed description verbatim', () => {
 		const tool = createSaveUserPreferenceTool(makeContext());
 		expect(tool.description).toBe(DESCRIPTION);
 		expect(SAVE_USER_PREFERENCE_DESCRIPTION).toBe(DESCRIPTION);
 	});
 
-	it('is named save_user_preference', () => {
-		expect(createSaveUserPreferenceTool(makeContext()).name).toBe('save_user_preference');
+	it('is named user_preference_save', () => {
+		expect(createSaveUserPreferenceTool(makeContext()).name).toBe('user_preference_save');
 	});
 
 	it('throws an UnexpectedError when the tool runs without the preference service', async () => {

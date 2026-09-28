@@ -290,7 +290,7 @@ async function runToolWithCtx(
 	return await executeTool<BuildAgentOutput>(tool, input, ctx);
 }
 
-describe('build_agent tool', () => {
+describe('agent_build tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(getSessionAgentByRef).mockReset().mockResolvedValue(undefined);
@@ -670,7 +670,7 @@ describe('build_agent tool', () => {
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
 					[
-						toolCallChunk('call-1', 'patch_config'),
+						toolCallChunk('call-1', 'config_patch'),
 						toolResultChunk('call-1', { configMutated: true }),
 					],
 					'Updated the config.',
@@ -695,11 +695,11 @@ describe('build_agent tool', () => {
 
 		it('reads nothing when tracing is off — there is nowhere to emit', async () => {
 			// Tracing is disabled on most instances, and the read costs a scope
-			// check plus two queries on every non-create build_agent turn.
+			// check plus two queries on every non-create agent_build turn.
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
-					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					[toolCallChunk('call-1', 'config_patch'), toolResultChunk('call-1')],
 					'Updated the config.',
 				),
 			);
@@ -743,7 +743,7 @@ describe('build_agent tool', () => {
 	});
 
 	describe('configUpdated', () => {
-		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
+		it.each(['config_write', 'config_patch', 'agent_publish', 'agent_unpublish'])(
 			'is true when the work summary has a succeeded %s call',
 			async (toolName) => {
 				const { context, delegate } = makeContext();
@@ -772,7 +772,7 @@ describe('build_agent tool', () => {
 			},
 		);
 
-		it('is true when update_skill returns the config mutation marker', async () => {
+		it('is true when skill_update returns the config mutation marker', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
@@ -781,7 +781,7 @@ describe('build_agent tool', () => {
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
 					[
-						toolCallChunk('call-1', 'update_skill'),
+						toolCallChunk('call-1', 'skill_update'),
 						toolResultChunk('call-1', { ok: true, configMutated: true }),
 					],
 					'Updated the skill.',
@@ -793,7 +793,7 @@ describe('build_agent tool', () => {
 			expect(result.configUpdated).toBe(true);
 		});
 
-		it('is false when update_skill soft-fails without the config mutation marker', async () => {
+		it('is false when skill_update soft-fails without the config mutation marker', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
@@ -802,7 +802,7 @@ describe('build_agent tool', () => {
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
 					[
-						toolCallChunk('call-1', 'update_skill'),
+						toolCallChunk('call-1', 'skill_update'),
 						toolResultChunk('call-1', {
 							ok: false,
 							errors: [{ message: 'Skill not found' }],
@@ -914,7 +914,7 @@ describe('build_agent tool', () => {
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Existing Agent');
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
-				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+				suspendingStream('user_questions_ask', askQuestionsSuspendPayload()),
 			);
 
 			await runToolWithCtx(
@@ -989,7 +989,7 @@ describe('build_agent tool', () => {
 			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
-					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					[toolCallChunk('call-1', 'config_patch'), toolResultChunk('call-1')],
 					'Renamed.',
 				),
 			);
@@ -1071,7 +1071,7 @@ describe('build_agent tool', () => {
 			});
 			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
-				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+				suspendingStream('user_questions_ask', askQuestionsSuspendPayload()),
 			);
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 
@@ -1523,10 +1523,10 @@ describe('build_agent tool', () => {
 
 	describe('interactive suspension cascade', () => {
 		it.each([
-			['ask_questions', askQuestionsSuspendPayload],
-			['ask_credential', askCredentialSuspendPayload],
-			['configure_channel', configureChannelSuspendPayload],
-			['call_agent', targetApprovalSuspendPayload],
+			['user_questions_ask', askQuestionsSuspendPayload],
+			['credential_ask', askCredentialSuspendPayload],
+			['channel_configure', configureChannelSuspendPayload],
+			['agent_call', targetApprovalSuspendPayload],
 		] as const)(
 			'cascades a %s suspension into ctx.suspend, passing the shared-contract payload through with a re-minted requestId and builderCheckpoint ref',
 			async (toolName, buildPayload) => {
@@ -1564,7 +1564,7 @@ describe('build_agent tool', () => {
 			},
 		);
 
-		it('carries configUpdated: true in the builderCheckpoint when a write_config succeeded before the suspension', async () => {
+		it('carries configUpdated: true in the builderCheckpoint when a config_write succeeded before the suspension', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
@@ -1573,13 +1573,13 @@ describe('build_agent tool', () => {
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
 					[
-						toolCallChunk('call-1', 'write_config'),
+						toolCallChunk('call-1', 'config_write'),
 						toolResultChunk('call-1', { configMutated: true }),
 						{
 							type: 'tool-call-suspended',
 							runId: 'builder-run-1',
 							toolCallId: 'builder-call-1',
-							toolName: 'ask_questions',
+							toolName: 'user_questions_ask',
 							suspendPayload: askQuestionsSuspendPayload(),
 						},
 					],
@@ -1601,7 +1601,7 @@ describe('build_agent tool', () => {
 				projectId: 'proj-1',
 			});
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
-				suspendingStream('ask_questions', { foo: 'bar' }),
+				suspendingStream('user_questions_ask', { foo: 'bar' }),
 			);
 			const suspend: Mock = vi.fn();
 
@@ -1966,7 +1966,7 @@ describe('build_agent tool', () => {
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
 			]);
 			vi.mocked(delegate.resumeBuild).mockResolvedValue(
-				suspendingStream('ask_credential', askCredentialSuspendPayload(), {
+				suspendingStream('credential_ask', askCredentialSuspendPayload(), {
 					runId: 'builder-run-2',
 					toolCallId: 'builder-call-2',
 				}),
@@ -2267,7 +2267,7 @@ describe('build_agent tool', () => {
 							type: 'tool-call-suspended',
 							runId: 'builder-run-1',
 							toolCallId: 'builder-call-1',
-							toolName: 'ask_questions',
+							toolName: 'user_questions_ask',
 							suspendPayload: askQuestionsSuspendPayload(),
 						},
 					],
@@ -2519,7 +2519,7 @@ describe('build_agent tool', () => {
 				projectId: 'proj-1',
 			});
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
-				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+				suspendingStream('user_questions_ask', askQuestionsSuspendPayload()),
 			);
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 
@@ -2617,7 +2617,7 @@ describe('build_agent tool', () => {
 			});
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
-					[toolCallChunk('call-1', 'write_config'), toolResultChunk('call-1')],
+					[toolCallChunk('call-1', 'config_write'), toolResultChunk('call-1')],
 					'Updated.',
 				),
 			);

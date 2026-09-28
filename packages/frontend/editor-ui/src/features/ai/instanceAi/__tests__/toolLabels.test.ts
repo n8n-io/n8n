@@ -8,13 +8,13 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
-				'instanceAi.tools.build_agent': 'Working with agent',
-				'instanceAi.tools.build_agent.exploring': 'Exploring agent',
+				'instanceAi.tools.agent_build': 'Working with agent',
+				'instanceAi.tools.agent_build.exploring': 'Exploring agent',
 				'instanceAi.tools.agent_context': 'Exploring agent context',
 				'instanceAi.tools.agent_context.config': 'Reading agent config',
 				'instanceAi.tools.agent_context.sessions': 'Checking agent sessions',
-				'instanceAi.tools.get_node_types': 'Reading node schema',
-				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.node_types_get': 'Reading node schema',
+				'instanceAi.tools.credentials_list': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
@@ -63,8 +63,8 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for complete_checkpoint', () => {
-		expect(getToolIcon('complete_checkpoint')).toBe('circle-check');
+	test('returns circle-check for checkpoint_complete', () => {
+		expect(getToolIcon('checkpoint_complete')).toBe('circle-check');
 	});
 
 	test('returns default icon for removed delegate tool', () => {
@@ -88,10 +88,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
-		expect(getToolIcon('search_nodes')).toBe('workflow');
-		expect(getToolIcon('get_node_types')).toBe('workflow');
+		expect(getToolIcon('nodes_search')).toBe('workflow');
+		expect(getToolIcon('node_types_get')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
-		expect(getToolIcon('materialize_node_type')).toBe('workflow');
+		expect(getToolIcon('node_type_materialize')).toBe('workflow');
 	});
 
 	test('returns search for research tools', () => {
@@ -122,10 +122,10 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns book-open for skill tools', () => {
-		expect(getToolIcon('create_skills')).toBe('book-open');
+		expect(getToolIcon('skills_create')).toBe('book-open');
 		expect(getToolIcon('list_skills')).toBe('book-open');
 		expect(getToolIcon('read_skill')).toBe('book-open');
-		expect(getToolIcon('update_skill')).toBe('book-open');
+		expect(getToolIcon('skill_update')).toBe('book-open');
 		expect(getToolIcon('load_skill')).toBe('book-open');
 	});
 
@@ -151,9 +151,9 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('read_config')).toBe('Reading agent config');
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
-		expect(getToolLabel('build_agent')).toBe('Working with agent');
-		expect(getToolLabel('build_agent', { operation: 'exploring' })).toBe('Exploring agent');
-		expect(getToolLabel('build_agent', { operation: 'creating' })).toBe('Working with agent');
+		expect(getToolLabel('agent_build')).toBe('Working with agent');
+		expect(getToolLabel('agent_build', { operation: 'exploring' })).toBe('Exploring agent');
+		expect(getToolLabel('agent_build', { operation: 'creating' })).toBe('Working with agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
@@ -177,8 +177,8 @@ describe('useToolLabel', () => {
 	test('getToolLabel humanizes builder tools via i18n keys for the stable tool IDs', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
-		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
-		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
+		expect(getToolLabel('node_types_get')).toBe('Reading node schema');
+		expect(getToolLabel('credentials_list')).toBe('Inspecting credentials');
 		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
 	});
 

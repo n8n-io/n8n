@@ -112,7 +112,7 @@ describe('buildAgentOutcome phantom-id handling', () => {
 	}
 
 	it('drops phantom ids (404) so a real workflow becomes workflowsCreated[0]', async () => {
-		// An agent-invented id echoed by a failed build_workflow bind, then the real save.
+		// An agent-invented id echoed by a failed workflow_build bind, then the real save.
 		const client = clientWith({ 'real-id': workflow('real-id') });
 
 		const outcome = await buildAgentOutcome(client, outcomeWithIds(['pokemon-digest', 'real-id']));

@@ -722,7 +722,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
-		// default) before the first message, so every build_workflow call inside
+		// default) before the first message, so every workflow_build call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
 		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
@@ -1198,7 +1198,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		// Same for a restored agent, without which a live turn that never calls
-		// `build_agent` would grade against no agent at all — so a seeded agent alone
+		// `agent_build` would grade against no agent at all — so a seeded agent alone
 		// marks the case agent-anchored.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),

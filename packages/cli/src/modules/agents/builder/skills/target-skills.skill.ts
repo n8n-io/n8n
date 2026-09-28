@@ -14,18 +14,18 @@ export function targetSkillsSkill(): RuntimeSkill {
 			'Use when designing, creating, or editing target-agent behavior that belongs in focused load-on-demand skills, including when the user describes a function without calling it a skill; not for builder guidance or universal target-agent instructions.',
 		recommendedTools: [
 			'agent_context',
-			'update_skill',
-			'create_skills',
-			'ask_questions',
-			'patch_config',
+			'skill_update',
+			'skills_create',
+			'user_questions_ask',
+			'config_patch',
 		],
 		allowedTools: [
 			'agent_context',
-			'update_skill',
-			'create_skills',
-			'ask_questions',
-			'patch_config',
-			'write_config',
+			'skill_update',
+			'skills_create',
+			'user_questions_ask',
+			'config_patch',
+			'config_write',
 		],
 		instructions: `\
 ## Purpose
@@ -67,7 +67,7 @@ write a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. Use
-\`ask_questions\` only when even a reasonable assumption is impossible — never
+\`user_questions_ask\` only when even a reasonable assumption is impossible — never
 during an initial build: mark the task \`blocked\` instead, per the Initial
 Build rules in your system prompt. Never create a placeholder or vague
 skill.
@@ -85,7 +85,7 @@ skill.
 - Call \`agent_context({ type: "skill", skillId: "<id>" })\` only for the relevant attached skill. Its default response
   includes reference paths and sizes but omits reference content; request
   specific \`referencePaths\` only when that content is needed.
-- Call \`update_skill\` for an existing capability, changing only the supplied
+- Call \`skill_update\` for an existing capability, changing only the supplied
   fields and preserving its id and existing config reference. Pass the
   \`skillHash\` from the \`agent_context({ type: "skill", skillId: "<id>" })\` result you based the change on as
   \`baseSkillHash\`; on a stale skill error, read the skill again and retry once.
@@ -93,22 +93,22 @@ skill.
   restriction or for \`references\` to remove all references; do not pass empty
   arrays. When replacing \`references\`, first read the content of every existing
   reference that must be preserved, because the field is replaced as a whole.
-- Only call \`create_skills\` when no attached skill owns the capability. Fill the
+- Only call \`skills_create\` when no attached skill owns the capability. Fill the
   domain detail you need, deriving missing detail from the goal as stated
   assumptions so each description and applicable body section is concrete.
 - Write each skill's \`description\` as the routing contract and \`instructions\`
   using the template above. Put all "when to use" / "when not to use" guidance
   in the description, never in the body (the body is invisible until the skill
   loads).
-- For new skills, call \`create_skills\` once with a \`skills\` array containing every skill you
+- For new skills, call \`skills_create\` once with a \`skills\` array containing every skill you
   currently know how to write — do not spread multiple fully-specified skills
   across separate calls. A single skill is still a one-item array.
-- \`create_skills\` stores the skill bodies only; it does not attach them. The
+- \`skills_create\` stores the skill bodies only; it does not attach them. The
   batch is all-or-nothing: an invalid or duplicate-named skill rejects the
   whole call.
 - After it returns an id per new skill, call \`agent_context({ type: "config" })\` again for a fresh
   config and hash.
-- Use \`patch_config\` or \`write_config\` to add a \`{ "type": "skill", "id": "<returned id>" }\`
+- Use \`config_patch\` or \`config_write\` to add a \`{ "type": "skill", "id": "<returned id>" }\`
   entry per skill to \`skills\`.
 
 ## Extended fields
@@ -126,7 +126,7 @@ skill.
   \`references/intake-checklist.md\`".
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
-  linked files to \`create_skills\` or \`update_skill\`.
+  linked files to \`skills_create\` or \`skill_update\`.
 
 ## Rules
 
@@ -141,13 +141,13 @@ skill.
 
 ## Gotchas
 
-- \`create_skills\` does not attach any skill to the target agent config.
-- \`update_skill\` edits the existing body in place and needs no config patch.
+- \`skills_create\` does not attach any skill to the target agent config.
+- \`skill_update\` edits the existing body in place and needs no config patch.
 - A skill that is useful for every request probably belongs in instructions, not in \`skills\`.
 - A vague description creates a vague skill, even if the body is excellent.
 - Do not create placeholder or vague skills; derive missing domain details from
   the stated goal as assumptions instead.
-- Do not call \`create_skills\` once per skill when several are ready — batch them
+- Do not call \`skills_create\` once per skill when several are ready — batch them
   into one call so the whole set is stored in a single round trip.
 
 ## Verify

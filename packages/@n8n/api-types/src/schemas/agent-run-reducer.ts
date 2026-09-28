@@ -19,7 +19,10 @@
  * parse yields a state whose index and tree no longer share objects.
  */
 
-import { normalizeInstanceAiToolName } from '../constants/instance-ai-tool-names';
+import {
+	normalizeAgentBuilderToolName,
+	normalizeInstanceAiToolName,
+} from '../constants/instance-ai-tool-names';
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
@@ -78,6 +81,17 @@ function createNode(agentId: string, role: string): InstanceAiAgentNode {
 		children: [],
 		timeline: [],
 	};
+}
+
+/**
+ * Current name for a tool call from a saved or live run. The orchestrator is
+ * the root agent; child agents (the embedded agent builder) use the builder's
+ * names. The maps stay apart because some old builder names are live MCP tools.
+ */
+function normalizeToolName(state: AgentRunState, agentId: string, toolName: string): string {
+	return agentId === state.rootAgentId
+		? normalizeInstanceAiToolName(toolName)
+		: normalizeAgentBuilderToolName(toolName);
 }
 
 export function createInitialState(rootAgentId = 'agent-001'): AgentRunState {
@@ -161,10 +175,18 @@ export function normalizeLegacyReasoningTimeline(node: InstanceAiAgentNode): voi
 }
 
 /** Walk an agent tree and normalize legacy reasoning on every node. */
-export function normalizeAgentTree(tree: InstanceAiAgentNode): void {
+export function normalizeAgentTree(tree: InstanceAiAgentNode, isRoot = true): void {
 	normalizeLegacyReasoningTimeline(tree);
+	// Saved trees keep the name a tool had when it ran. The root is the
+	// orchestrator; child agents use the agent builder's names.
+	const normalizeName = isRoot ? normalizeInstanceAiToolName : normalizeAgentBuilderToolName;
+	// Optional-chained: adopted trees are not schema-validated.
+	for (const toolCall of tree?.toolCalls ?? []) {
+		if (typeof toolCall?.toolName === 'string')
+			toolCall.toolName = normalizeName(toolCall.toolName);
+	}
 	for (const child of tree.children) {
-		normalizeAgentTree(child);
+		normalizeAgentTree(child, false);
 	}
 }
 
@@ -259,10 +281,12 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: normalizeInstanceAiToolName(event.payload.toolName),
+					toolName: normalizeToolName(state, event.agentId, event.payload.toolName),
 					args: {},
 					isLoading: true,
-					renderHint: getRenderHint(normalizeInstanceAiToolName(event.payload.toolName)),
+					renderHint: getRenderHint(
+						normalizeToolName(state, event.agentId, event.payload.toolName),
+					),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
@@ -354,10 +378,12 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: normalizeInstanceAiToolName(event.payload.toolName),
+					toolName: normalizeToolName(state, event.agentId, event.payload.toolName),
 					args: event.payload.args,
 					isLoading: true,
-					renderHint: getRenderHint(normalizeInstanceAiToolName(event.payload.toolName)),
+					renderHint: getRenderHint(
+						normalizeToolName(state, event.agentId, event.payload.toolName),
+					),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
@@ -536,7 +562,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
-		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// A later fact about a preference the `user_preference_save` tool saved: the user
 		// edited it or undid it from the card. It folds onto the tool call so the card
 		// renders the current state after a reload, without asking the database.
 		case 'preference-card': {

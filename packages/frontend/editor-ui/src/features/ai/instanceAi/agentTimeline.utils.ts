@@ -7,9 +7,9 @@ import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAg
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
- *  `leave_onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  `onboarding_leave` ends the turn right after the model's reply: hiding it keeps
  *  that reply a user-facing final message instead of narration before a tool call. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave_onboarding']);
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'onboarding_leave']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -71,7 +71,7 @@ type ToolCallKind =
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
- * child agent section represents them. In-thread builds (`build_workflow`)
+ * child agent section represents them. In-thread builds (`workflow_build`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
@@ -143,7 +143,7 @@ export function buildTimelineBlocks(
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
-					tc.toolName === 'build_agent' &&
+					tc.toolName === 'agent_build' &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
@@ -227,7 +227,7 @@ export function buildTimelineBlocks(
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
 		if (
-			tc.toolName === 'build_agent' &&
+			tc.toolName === 'agent_build' &&
 			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 		) {
 			return;
@@ -353,9 +353,9 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
 
-		// Workflow artifacts from build_workflow / submit-workflow
+		// Workflow artifacts from workflow_build / submit-workflow
 		if (
-			(tc.toolName === 'build_workflow' || tc.toolName === 'submit-workflow') &&
+			(tc.toolName === 'workflow_build' || tc.toolName === 'submit-workflow') &&
 			typeof result.workflowId === 'string' &&
 			!seenIds.has(result.workflowId)
 		) {

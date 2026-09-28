@@ -6,8 +6,8 @@
  * and may appear in checkpoints. Prefer clearer descriptions and UI i18n
  * labels over renaming existing IDs.
  *
- * The interactive tools (`ask_credential`, `ask_embedding_credential`,
- * `ask_questions`, `configure_channel`) are NOT listed here — their names live
+ * The interactive tools (`credential_ask`, `embedding_credential_ask`,
+ * `user_questions_ask`, `channel_configure`) are NOT listed here — their names live
  * in `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
  * alongside the suspend/resume schemas they share with instance AI's FE cards.
  */
@@ -15,20 +15,20 @@ export const BUILDER_TOOLS = {
 	// WRITE_CONFIG / PATCH_CONFIG / PUBLISH_AGENT / UNPUBLISH_AGENT values must
 	// match `CONFIG_MUTATION_TOOL_NAMES` in `@n8n/api-types`
 	// (agents/agent-interaction.schema.ts).
-	WRITE_CONFIG: 'write_config',
-	PATCH_CONFIG: 'patch_config',
-	BUILD_CUSTOM_TOOL: 'build_custom_tool',
-	CREATE_SKILLS: 'create_skills',
-	UPDATE_SKILL: 'update_skill',
-	CREATE_TASKS: 'create_tasks',
-	UPDATE_TASK: 'update_task',
-	FINISH_SETUP: 'finish_setup',
-	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
-	CALL_AGENT: 'call_agent',
-	PUBLISH_AGENT: 'publish_agent',
-	UNPUBLISH_AGENT: 'unpublish_agent',
-	RESOLVE_LLM: 'resolve_llm',
-	VERIFY_MCP_SERVER: 'verify_mcp_server',
+	WRITE_CONFIG: 'config_write',
+	PATCH_CONFIG: 'config_patch',
+	BUILD_CUSTOM_TOOL: 'custom_tool_build',
+	CREATE_SKILLS: 'skills_create',
+	UPDATE_SKILL: 'skill_update',
+	CREATE_TASKS: 'tasks_create',
+	UPDATE_TASK: 'task_update',
+	FINISH_SETUP: 'setup_finish',
+	GET_RESOURCE_LOCATOR_OPTIONS: 'resource_locator_options_get',
+	CALL_AGENT: 'agent_call',
+	PUBLISH_AGENT: 'agent_publish',
+	UNPUBLISH_AGENT: 'agent_unpublish',
+	RESOLVE_LLM: 'llm_resolve',
+	VERIFY_MCP_SERVER: 'mcp_server_verify',
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];

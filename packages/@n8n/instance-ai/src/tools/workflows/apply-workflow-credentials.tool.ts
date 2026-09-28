@@ -27,7 +27,7 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 });
 
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
-	return new Tool('apply_workflow_credentials')
+	return new Tool('workflow_credentials_apply')
 		.description(
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
 				'Only updates nodes that were mocked — never overwrites existing real credentials.',
@@ -108,7 +108,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 
 			// Refresh the simulation plan so the next verification executes the
 			// now-credentialed nodes instead of replaying the build-time mock.
-			// Best-effort: verify_built_workflow reconciles again on its own.
+			// Best-effort: workflow_verify reconciles again on its own.
 			try {
 				const availableCredentials = await buildCredentialMap(
 					context.domainContext.credentialService,

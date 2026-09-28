@@ -61,7 +61,7 @@ vi.mock('@n8n/i18n', () => {
 		translations: {
 			'agents.chat.toolNames.webSearch': 'Web search',
 			'agents.chat.toolNames.flagMemory': 'Memory noted',
-			'instanceAi.tools.search_nodes': 'Search nodes',
+			'instanceAi.tools.nodes_search': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
 			'agents.chat.difficulty.medium': 'Medium',
 			'agents.chat.difficulty.high': 'High',
@@ -116,12 +116,12 @@ describe('AgentChatToolSteps', () => {
 	])('sets grouped tool-call loading for a %s child to %s', (state, expectedLoading) => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'nodes_search',
 				toolCallId: 'tc-active',
 				state,
 			},
 			{
-				tool: 'search_nodes',
+				tool: 'nodes_search',
 				toolCallId: 'tc-done',
 				state: TOOL_CALL_STATE.DONE,
 			},
@@ -154,7 +154,7 @@ describe('AgentChatToolSteps', () => {
 	it('makes generic tool steps with output data expandable', async () => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'nodes_search',
 				toolCallId: 'tc-1',
 				state: TOOL_CALL_STATE.DONE,
 				output: { nodes: ['Slack'] },
@@ -172,7 +172,7 @@ describe('AgentChatToolSteps', () => {
 	it('does not make generic tool steps without data expandable', () => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'nodes_search',
 				toolCallId: 'tc-2',
 				state: TOOL_CALL_STATE.DONE,
 			},
@@ -221,7 +221,7 @@ describe('AgentChatToolSteps', () => {
 
 	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
 		const errored: ToolCall = {
-			tool: 'search_nodes',
+			tool: 'nodes_search',
 			toolCallId: 'tc-err',
 			state: TOOL_CALL_STATE.ERROR,
 			output: 'Repeated failure',
@@ -251,7 +251,7 @@ describe('AgentChatToolSteps', () => {
 			[
 				errored,
 				{
-					tool: 'list_credentials',
+					tool: 'credentials_list',
 					toolCallId: 'tc-err-2',
 					state: TOOL_CALL_STATE.ERROR,
 					output: '  Repeated failure  ',
@@ -281,7 +281,7 @@ describe('AgentChatToolSteps', () => {
 				[
 					{
 						toolCallId: 'tc-err',
-						toolName: 'search_nodes',
+						toolName: 'nodes_search',
 						toolDisplayName: 'Search nodes',
 						error: 'Repeated failure',
 						startedAt: 1_000,
@@ -289,7 +289,7 @@ describe('AgentChatToolSteps', () => {
 					},
 					{
 						toolCallId: 'tc-err-2',
-						toolName: 'list_credentials',
+						toolName: 'credentials_list',
 						toolDisplayName: 'List credentials',
 						error: 'Repeated failure',
 					},
@@ -307,7 +307,7 @@ describe('AgentChatToolSteps', () => {
 	it('shows a generic error when the failed tool output is empty', () => {
 		const wrapper = mountSteps([
 			{
-				tool: 'search_nodes',
+				tool: 'nodes_search',
 				toolCallId: 'tc-err',
 				state: TOOL_CALL_STATE.ERROR,
 				output: {},
@@ -324,13 +324,13 @@ describe('AgentChatToolSteps', () => {
 		const wrapper = mountSteps(
 			[
 				{
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					toolCallId: 'tc-ok',
 					state: TOOL_CALL_STATE.DONE,
 					output: { nodes: ['Slack'] },
 				},
 				{
-					tool: 'search_nodes',
+					tool: 'nodes_search',
 					toolCallId: 'tc-err',
 					state: TOOL_CALL_STATE.ERROR,
 					output: 'Tool failed',
@@ -445,7 +445,7 @@ describe('AgentChatToolSteps', () => {
 					reasoningSegments: [],
 					steps: [
 						{ toolCallId: 'child-tc-1', toolName: 'web_search', running: true },
-						{ toolCallId: 'child-tc-2', toolName: 'search_nodes', running: false },
+						{ toolCallId: 'child-tc-2', toolName: 'nodes_search', running: false },
 					],
 				},
 			},

@@ -1,3 +1,4 @@
+import { routeOpenRouterClaudeModel } from '@n8n/agents';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
@@ -76,7 +77,9 @@ export class InstanceAiModelService {
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
-		return await this.settingsService.resolveModelConfig(user);
+		// OpenRouter Claude models use OpenRouter's Messages endpoint, which
+		// supports provider tool search. Chat Completions rejects it.
+		return routeOpenRouterClaudeModel(await this.settingsService.resolveModelConfig(user));
 	}
 
 	/**

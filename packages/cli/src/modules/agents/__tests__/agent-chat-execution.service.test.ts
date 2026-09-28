@@ -45,7 +45,7 @@ const checkpoint = mock<SerializableAgentState>({
 	pendingToolCalls: {
 		question: {
 			toolCallId: 'question',
-			toolName: 'ask_questions',
+			toolName: 'user_questions_ask',
 			input: {},
 			suspended: true,
 			suspendPayload: {},

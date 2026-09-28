@@ -18,7 +18,7 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 describe('rebuildInteractiveFromHistory', () => {
 	it('returns undefined for non-interactive tool names', () => {
 		const result = rebuildInteractiveFromHistory({
-			tool: 'write_config',
+			tool: 'config_write',
 			toolCallId: 'call-3',
 			input: { json: '{}' },
 			state: 'done',
@@ -382,7 +382,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'search_nodes',
+						toolName: 'nodes_search',
 						toolCallId: 'tc-2',
 						input: { query: 'Slack' },
 						state: 'resolved',
@@ -555,7 +555,7 @@ describe('isGroupable', () => {
 			id: 'm2',
 			role: 'assistant',
 			content: '',
-			toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
+			toolCalls: [{ tool: 'nodes_search', toolCallId: 'c2', state: 'done' }],
 			status: 'success',
 		});
 		expect(groupable).toBe(true);
@@ -585,7 +585,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				id: 'm2',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
+				toolCalls: [{ tool: 'nodes_search', toolCallId: 'c2', state: 'done' }],
 				status: 'success',
 			},
 			// Third grouped turn: an open approval card

@@ -9,30 +9,30 @@ export function targetTasksSkill(): RuntimeSkill {
 		description:
 			'Use when the user wants to create or change something the target agent runs on a recurring schedule (a "task"). Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
 		recommendedTools: [
-			'create_tasks',
+			'tasks_create',
 			'agent_context',
-			'update_task',
-			'ask_questions',
-			'patch_config',
-			'publish_agent',
+			'task_update',
+			'user_questions_ask',
+			'config_patch',
+			'agent_publish',
 		],
 		allowedTools: [
-			'create_tasks',
+			'tasks_create',
 			'agent_context',
-			'update_task',
-			'ask_questions',
-			'patch_config',
-			'write_config',
-			'search_nodes',
-			'get_node_types',
-			'ask_credential',
-			'publish_agent',
+			'task_update',
+			'user_questions_ask',
+			'config_patch',
+			'config_write',
+			'nodes_search',
+			'node_types_get',
+			'credential_ask',
+			'agent_publish',
 		],
 		instructions: `\
 ## Purpose
 
-Use this to create recurring scheduled tasks with \`create_tasks\`, discover
-them with \`agent_context({ type: "tasks" })\`, and edit their saved bodies with \`update_task\`.
+Use this to create recurring scheduled tasks with \`tasks_create\`, discover
+them with \`agent_context({ type: "tasks" })\`, and edit their saved bodies with \`task_update\`.
 A task = a name + an objective (what the agent does each run) + a cron schedule,
 stored as a \`{ type: "task", id, enabled }\` ref in the agent config
 (\`config.tasks\`) plus a saved body. The config is the source of truth for
@@ -59,7 +59,7 @@ ${TASK_OBJECTIVE_TEMPLATE}
 
 ## Fill the template with assumptions (required)
 
-Do NOT call \`create_tasks\`, or replace an objective with \`update_task\`, until
+Do NOT call \`tasks_create\`, or replace an objective with \`task_update\`, until
 BOTH of these are true for it:
 
 1. You can fill EVERY section of the objective template above with concrete,
@@ -73,7 +73,7 @@ BOTH of these are true for it:
    the user did not specify a cadence, pick a sensible default and state it
    as an assumption.
 
-Use \`ask_questions\` only when even a reasonable assumption is impossible —
+Use \`user_questions_ask\` only when even a reasonable assumption is impossible —
 never during an initial build: mark the task \`blocked\` instead, per the
 Initial Build rules in your system prompt. Never create a placeholder or
 "refine-it-later" task.
@@ -81,7 +81,7 @@ Initial Build rules in your system prompt. Never create a placeholder or
 ## Workflow
 
 - For an existing task, call \`agent_context({ type: "tasks" })\` to resolve its current id and body.
-  Then call \`update_task\` with only the fields the user asked to change. Never
+  Then call \`task_update\` with only the fields the user asked to change. Never
   rewrite the objective for a name-only or schedule-only edit.
 - For each new or replacement objective, fill every template section with
   run-specific details. Do not duplicate Agent Instructions or Skill bodies;
@@ -100,12 +100,12 @@ Initial Build rules in your system prompt. Never create a placeholder or
 - Set \`timezone\` to the IANA zone whenever the user names a timezone or a
   location ("9am in Tokyo" -> "Asia/Tokyo"); omit it to run on the instance
   timezone.
-- Call \`create_tasks\` once with a \`tasks\` array containing every task you
+- Call \`tasks_create\` once with a \`tasks\` array containing every task you
   currently know how to write — do not spread multiple fully-specified tasks
   across separate calls. A single task is still a one-item array.
 - On \`{ ok: false, errors }\` (for example an invalid cron), fix the input and
   retry the failed operation. An invalid task rejects the whole
-  \`create_tasks\` batch.
+  \`tasks_create\` batch.
 
 ## Rules
 
@@ -113,21 +113,21 @@ Initial Build rules in your system prompt. Never create a placeholder or
   without repeating universal instructions or reusable skill procedures.
 - Use a short, descriptive name per task.
 - One task = one objective + one schedule. Include multiple tasks in the same
-  \`create_tasks\` call for multiple recurring jobs.
+  \`tasks_create\` call for multiple recurring jobs.
 
 ## Gotchas
 
-- \`create_tasks\` adds a \`{ type: "task", id, enabled }\` ref per task to
+- \`tasks_create\` adds a \`{ type: "task", id, enabled }\` ref per task to
   \`config.tasks\` and creates each task body. Tasks are enabled by default and
-  only start running once the agent is (re)published via \`publish_agent\`; tell
-  the user this when relevant, and call \`publish_agent\` when they ask to publish
+  only start running once the agent is (re)published via \`agent_publish\`; tell
+  the user this when relevant, and call \`agent_publish\` when they ask to publish
   or make the agent live.
-- \`update_task\` preserves the task id and config ref. Its draft changes affect
+- \`task_update\` preserves the task id and config ref. Its draft changes affect
   scheduled runs after the agent is (re)published.
-- To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
+- To disable or remove a task, edit \`config.tasks\` with \`config_patch\` (set
   \`enabled: false\`, or drop the ref). Changes take effect on the next
-  \`publish_agent\`.
-- \`create_tasks\` does not add config tools. This does not mean a scheduled
+  \`agent_publish\`.
+- \`tasks_create\` does not add config tools. This does not mean a scheduled
   message needs a messaging node: configured integrations supply their generated
   action tools at runtime even when the task has no inbound conversation.
 - A proactive or scheduled send through a connected chat platform is not a
@@ -136,7 +136,7 @@ Initial Build rules in your system prompt. Never create a placeholder or
 - Never claim that a task requires a same-platform messaging node solely because
   it starts without an inbound conversation. If such a redundant tool already
   exists and the integration covers its action, remove it.
-- Do not call \`create_tasks\` once per task when several are ready; batch them
+- Do not call \`tasks_create\` once per task when several are ready; batch them
   into one call so the whole set is stored in a single round trip.`,
 	};
 }

@@ -890,7 +890,9 @@ export {
 	isMoonshotaiKimiK3ModelId,
 } from './constants/instance-ai-models';
 export {
+	AGENT_BUILDER_LEGACY_TOOL_NAMES,
 	INSTANCE_AI_LEGACY_TOOL_NAMES,
+	normalizeAgentBuilderToolName,
 	normalizeInstanceAiToolName,
 } from './constants/instance-ai-tool-names';
 export {

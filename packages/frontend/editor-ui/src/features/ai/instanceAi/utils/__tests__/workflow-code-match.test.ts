@@ -23,8 +23,8 @@ function makeSnapshot(
 }
 
 describe('workflow-code-match', () => {
-	it('identifies build_workflow as a workflow code tool', () => {
-		expect(isWorkflowCodeToolName('build_workflow')).toBe(true);
+	it('identifies workflow_build as a workflow code tool', () => {
+		expect(isWorkflowCodeToolName('workflow_build')).toBe(true);
 		expect(isWorkflowCodeToolName('search_nodes')).toBe(false);
 	});
 
@@ -41,7 +41,7 @@ describe('workflow-code-match', () => {
 					toolResults: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'build_workflow',
+							toolName: 'workflow_build',
 							output: { success: true, workflowId: 'wf-1' },
 						},
 					],
@@ -63,7 +63,7 @@ describe('workflow-code-match', () => {
 					toolResults: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'build_workflow',
+							toolName: 'workflow_build',
 							output: { success: true, workflowId: 'wf-1' },
 						},
 					],
@@ -75,7 +75,7 @@ describe('workflow-code-match', () => {
 					toolResults: [
 						{
 							toolCallId: 'tc-2',
-							toolName: 'build_workflow',
+							toolName: 'workflow_build',
 							output: { success: false },
 						},
 					],

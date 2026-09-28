@@ -114,6 +114,21 @@ describe('InstanceAiModelService', () => {
 			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
 		});
 
+		it('routes OpenRouter Claude models to the OpenRouter Messages endpoint', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsService.resolveModelConfig.mockResolvedValue({
+				id: 'openrouter/anthropic/claude-sonnet-4.6',
+				url: '',
+				apiKey: 'key',
+			} as never);
+
+			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toEqual({
+				id: 'openrouter-anthropic/claude-sonnet-4-6',
+				url: '',
+				apiKey: 'key',
+			});
+		});
+
 		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			const client = createClient();

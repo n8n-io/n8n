@@ -310,8 +310,8 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'A fresh agent may already have a model and credential persisted by the system at creation ' +
 				'(a sensible default was auto-selected). Before calling this tool on a fresh agent, call ' +
 				'agent_context with type "config" first: if model and credential are already set, keep them, mention the choice ' +
-				'in your summary as changeable, and do not call resolve_llm. Only when model is empty call ' +
-				'resolve_llm once, silently, before the first config write to detect existing credentials — ' +
+				'in your summary as changeable, and do not call llm_resolve. Only when model is empty call ' +
+				'llm_resolve once, silently, before the first config write to detect existing credentials — ' +
 				'with provider/model when the user named them, otherwise without arguments. ' +
 				'Also call it whenever the user names or changes a provider or model. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
@@ -320,11 +320,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
 				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
 				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
-				'ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
+				'user_questions_ask instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +
-				'finish_setup call, then call resolve_llm again with the answer. For a model ' +
+				'setup_finish call, then call llm_resolve again with the answer. For a model ' +
 				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to an OpenAI model the new key can reach (normally ' +
@@ -359,7 +359,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.string()
 					.optional()
 					.describe(
-						'Credential id picked by the user from an earlier ambiguous resolve_llm result.',
+						'Credential id picked by the user from an earlier ambiguous llm_resolve result.',
 					),
 				useGatewayCredits: z
 					.boolean()

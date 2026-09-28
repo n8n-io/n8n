@@ -33,8 +33,8 @@ graph TB
     subgraph Orchestrator ["Orchestrator Agent"]
         Service --> Factory[Agent Factory]
         Factory --> OrcAgent[Orchestrator]
-        OrcAgent --> CreateTasks[create_plan]
-        OrcAgent --> BuildTool[build_workflow]
+        OrcAgent --> CreateTasks[plan_create]
+        OrcAgent --> BuildTool[workflow_build]
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
@@ -90,7 +90,7 @@ The system implements the four pillars of the deep agent pattern:
 The orchestrator loads the `planning` skill to externalize its execution
 strategy for work that needs dependency coordination: multiple workflows, shared
 artifacts, cross-workflow data contracts, or ambiguous business process design.
-After normal discovery, it calls `create_plan` to persist the task graph for
+After normal discovery, it calls `plan_create` to persist the task graph for
 user approval. Clear single-workflow builds, including new and one-off
 workflows, go directly to the builder and do not create a plan merely to obtain
 verification.
@@ -100,7 +100,7 @@ Plans are stored in thread-scoped storage.
 ### 2. Orchestrator-Led Execution
 
 Work runs in the orchestrator itself: workflow building via the
-`workflow-builder` skill and `build_workflow`, data-table operations, web
+`workflow-builder` skill and `workflow_build`, data-table operations, web
 research, credential setup with Computer Use, config-based evaluations, and MCP tools.
 
 ### 3. Observational Memory
@@ -118,8 +118,8 @@ tool usage guidelines.
 
 ```mermaid
 graph TD
-    O[Orchestrator Agent] -->|planning skill + load create_plan| S3[Planned Tasks]
-    O -->|workflow-builder skill| T10[build_workflow]
+    O[Orchestrator Agent] -->|planning skill + load plan_create| S3[Planned Tasks]
+    O -->|workflow-builder skill| T10[workflow_build]
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
@@ -141,15 +141,15 @@ graph TD
 **Orchestrator** handles directly:
 - Read-only queries (`workflows`, `executions`, `credentials` read actions)
 - Execution triggers (`executions(action="run")`)
-- Planning (`planning` skill + deferred `create_plan`)
-- Workflow building (`workflow-builder` skill + workspace files + `build_workflow`)
-- Verification and credential application (verify_built_workflow, apply_workflow_credentials)
-- Data-table work (`data-table-manager` skill + `data_tables` / `parse_file`)
+- Planning (`planning` skill + deferred `plan_create`)
+- Workflow building (`workflow-builder` skill + workspace files + `workflow_build`)
+- Verification and credential application (workflow_verify, workflow_credentials_apply)
+- Data-table work (`data-table-manager` skill + `data_tables` / `file_parse`)
 - Config-based evaluations (`config-evals` skill + `eval_config`)
 
-**Planned tasks** (`planning` skill + `create_plan`):
+**Planned tasks** (`planning` skill + `plan_create`):
 - Dependency-aware task graphs with parallel execution
-- `build_workflow` tasks run as orchestrator follow-ups with the workflow-builder skill
+- `workflow_build` tasks run as orchestrator follow-ups with the workflow-builder skill
 - `checkpoint` tasks run as orchestrator follow-ups for semantic or cross-workflow validation
 - User approves the plan before execution starts
 - Workflow runtime verification is tracked separately as a workflow-loop
@@ -163,7 +163,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent support** (`agent/`) — shared protocol for embedded specialist agents
-- **Orchestration tools** (`tools/orchestration/`) — `create_plan`, `task_control`, `complete_checkpoint`, `verify_built_workflow`, `report_verification_verdict`, `apply_workflow_credentials`, `build_agent`, `get_session`
+- **Orchestration tools** (`tools/orchestration/`) — `plan_create`, `task_control`, `checkpoint_complete`, `workflow_verify`, `verification_report`, `workflow_credentials_apply`, `agent_build`, `agent_session_get`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -321,17 +321,17 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 
 ### Planned Task System
 
-The `planning` skill guides discovery and `create_plan` creates
+The `planning` skill guides discovery and `plan_create` creates
 dependency-aware task graphs for multi-step work. Each task has a `kind` that
 determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build_workflow` | Orchestrator follow-up with workflow-builder skill | `nodes`, workspace file tools, `build_workflow`, etc. |
+| `workflow_build` | Orchestrator follow-up with workflow-builder skill | `nodes`, workspace file tools, `workflow_build`, etc. |
 | `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the
-`data-table-manager` skill and uses `data_tables` / `parse_file` directly. A
+`data-table-manager` skill and uses `data_tables` / `file_parse` directly. A
 single workflow with a workflow-local table can use the direct builder path;
 planning is reserved for shared schema work or real dependency coordination.
 
@@ -358,12 +358,12 @@ builder outcome. The service uses this obligation as the completion gate for bot
 direct and planned workflow builds:
 
 - `ready_to_verify` schedules an internal workflow-verification follow-up.
-- `verified` reuses structured `verify_built_workflow` evidence.
+- `verified` reuses structured `workflow_verify` evidence.
 - `needs_setup` routes to `workflows(action="setup")`.
 - `not_verifiable` is a warning/manual-test completion state, not "verified".
 - `blocked` carries the build or verification blocker.
 
-The `report_verification_verdict` tool feeds results into the state machine,
+The `verification_report` tool feeds results into the state machine,
 which returns guidance for the next action. Same failure signature twice triggers
 a terminal state to prevent infinite loops.
 
@@ -372,17 +372,17 @@ a terminal state to prevent infinite loops.
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
-  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask_user`, `workflows`,
-  `executions`, `credentials`, `data_tables`, `nodes`, `build_workflow`,
-  `research`, and `n8n_docs`. `verify_built_workflow`, `parse_file`, `agents`,
-  `build_agent`, and `mcp_servers` are also direct when their required runtime
+  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `user_ask`, `workflows`,
+  `executions`, `credentials`, `data_tables`, `nodes`, `workflow_build`,
+  `research`, and `n8n_docs`. `workflow_verify`, `file_parse`, `agents`,
+  `agent_build`, and `mcp_servers` are also direct when their required runtime
   context or feature is available.
-- **Deferred tools**: everything else, including `create_plan` and the rest
-  of the orchestration surface. Anthropic and OpenAI (GPT-5.4 and later) models
-  find them with the provider's own tool search. Other providers find them with
-  `search_tools` and activate them with `load_tool`. With provider tool search,
-  `data_tables` is also deferred, because the data-table-manager skill loads it.
-  See `docs/tools.md` (Deferred Loading)
+- **Deferred tools**: everything else, including `plan_create` and the rest
+  of the orchestration surface. Anthropic models (direct, on Vertex, and Claude
+  through OpenRouter) and OpenAI GPT-5.4 and later find them with the
+  provider's own tool search. With provider tool search, only a hot set of five
+  tools stays loaded. Other providers find deferred tools with `search_tools`
+  and activate them with `load_tool`. See `docs/tools.md` (Deferred Loading)
 
 Two entries in the always-loaded set are pinned for reasons worth knowing before
 changing the list. `n8n_docs` sits next to `research` because the research tool

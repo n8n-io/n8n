@@ -69,7 +69,7 @@ export class InstanceAiConversationHistoryRepository {
 	constructor(private readonly dataSource: DataSource) {}
 
 	/**
-	 * Threads of one user in one project whose title, user messages, or ask_user
+	 * Threads of one user in one project whose title, user messages, or user_ask
 	 * answers match the query, most recently updated first. No total: the caller
 	 * verifies these rows and drops the false positives, so any count taken here
 	 * would be wrong by the time it is read.

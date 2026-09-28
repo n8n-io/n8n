@@ -11,8 +11,8 @@ import {
 describe('formatToolNameForDisplay', () => {
 	it('formats snake_case builder tool names as readable labels', () => {
 		expect(formatToolNameForDisplay('create_skill')).toBe('Create skill');
-		expect(formatToolNameForDisplay('resolve_llm')).toBe('Resolve LLM');
-		expect(formatToolNameForDisplay('build_custom_tool')).toBe('Build custom tool');
+		expect(formatToolNameForDisplay('llm_resolve')).toBe('Resolve LLM');
+		expect(formatToolNameForDisplay('custom_tool_build')).toBe('Build custom tool');
 		expect(formatToolNameForDisplay('update_memory')).toBe('Update memory');
 	});
 
@@ -39,12 +39,12 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('resolve_integration')).toBe(
 			'instanceAi.tools.resolve_integration',
 		);
-		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
-		expect(getToolNameTranslationKey('list_credentials')).toBe('instanceAi.tools.list_credentials');
+		expect(getToolNameTranslationKey('node_types_get')).toBe('instanceAi.tools.node_types_get');
+		expect(getToolNameTranslationKey('credentials_list')).toBe('instanceAi.tools.credentials_list');
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
 		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
 		expect(getToolNameTranslationKey('read_skill')).toBe('instanceAi.tools.read_skill');
-		expect(getToolNameTranslationKey('update_skill')).toBe('instanceAi.tools.update_skill');
+		expect(getToolNameTranslationKey('skill_update')).toBe('instanceAi.tools.skill_update');
 	});
 
 	it('returns an empty string for missing or blank names', () => {
@@ -53,7 +53,7 @@ describe('formatToolNameForDisplay', () => {
 	});
 
 	it('falls back to a humanized tool name when a translation key is missing', () => {
-		expect(resolveToolNameForDisplay('search_nodes', { baseText: (key) => key })).toBe(
+		expect(resolveToolNameForDisplay('nodes_search', { baseText: (key) => key })).toBe(
 			'Search nodes',
 		);
 	});

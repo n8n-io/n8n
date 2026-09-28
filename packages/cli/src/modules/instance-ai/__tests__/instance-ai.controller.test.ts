@@ -710,7 +710,7 @@ describe('InstanceAiController', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						args: {},
 						isLoading: true,
 						confirmation: { requestId: 'req-1', severity: 'info', message: 'Create workflow?' },

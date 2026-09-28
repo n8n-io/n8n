@@ -124,7 +124,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					args: { name: '' },
 					result: { workflowId: 'wf-1', workflowName: '' },
 				}),
@@ -152,11 +152,11 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)).toEqual([]);
 	});
 
-	test('returns workflow artifact from build_workflow tool call', () => {
+	test('returns workflow artifact from workflow_build tool call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
@@ -189,7 +189,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					args: { name: 'Name From Args' },
 					result: { workflowId: 'wf-4' },
 				}),
@@ -202,7 +202,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-5' },
 				}),
 			],
@@ -262,7 +262,7 @@ describe('extractArtifacts', () => {
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
 				}),
 			],
@@ -277,7 +277,7 @@ describe('extractArtifacts', () => {
 			agentId: 'child-1',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-child', workflowName: 'Child WF' },
 				}),
 			],
@@ -286,7 +286,7 @@ describe('extractArtifacts', () => {
 			children: [child],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-parent', workflowName: 'Parent WF' },
 				}),
 			],
@@ -301,7 +301,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: undefined,
 				}),
 			],
@@ -425,14 +425,14 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
 	});
 
-	test('the reply before a leave_onboarding call stays user-facing and the call is hidden', () => {
+	test('the reply before a onboarding_leave call stays user-facing and the call is hidden', () => {
 		const blocks = blocksOf(
 			[
 				reasoning('r1'),
 				text('Explore the app and come back with a task.', 'r1'),
 				toolEntry('tc-leave', 'r1'),
 			],
-			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave_onboarding' })],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'onboarding_leave' })],
 		);
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
@@ -618,11 +618,11 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
-	test('in-thread build_workflow renders as a trace row; agent-delegated builds stay hidden', () => {
+	test('in-thread workflow_build renders as a trace row; agent-delegated builds stay hidden', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
 			[
-				makeToolCall({ toolCallId: 'tc-build', toolName: 'build_workflow', renderHint: 'builder' }),
+				makeToolCall({ toolCallId: 'tc-build', toolName: 'workflow_build', renderHint: 'builder' }),
 				makeToolCall({
 					toolCallId: 'tc-delegated',
 					toolName: 'build-workflow-with-agent',
@@ -637,7 +637,7 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
-	test('hides build_agent trace when a builder child exists in the same response', () => {
+	test('hides agent_build trace when a builder child exists in the same response', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',
 			agentId,
@@ -654,7 +654,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 				}),
 			],
 			'completed',
@@ -664,13 +664,13 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks).toEqual([{ type: 'child', key: 'child-1', child: builderChild }]);
 	});
 
-	test('keeps build_agent trace when no builder child exists', () => {
+	test('keeps agent_build trace when no builder child exists', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build-agent', 'r1')],
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 				}),
 			],
 		);
@@ -694,7 +694,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-build-agent',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 				}),
 			],
 			'completed',
@@ -841,10 +841,10 @@ describe('buildTimelineBlocks', () => {
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
 
-	describe('save_user_preference', () => {
+	describe('user_preference_save', () => {
 		const base: Partial<InstanceAiToolCallState> = {
 			toolCallId: 'tc-1',
-			toolName: 'save_user_preference',
+			toolName: 'user_preference_save',
 		};
 
 		test('renders a preference block once the result is a saved preference', () => {

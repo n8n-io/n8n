@@ -30,7 +30,7 @@ function makeSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						state: 'resolved',
 						input: { workflowId: WF_ID },
 						output: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
@@ -49,7 +49,7 @@ function makeSeed(): ConversationSeed {
 
 const AGENT_ID = 'AgEnT12345678901';
 
-/** A seed whose history built an agent: the `build_agent` result carries the id,
+/** A seed whose history built an agent: the `agent_build` result carries the id,
  *  and a skill body carries the agent's name in prose. */
 function makeAgentSeed(): ConversationSeed {
 	return {
@@ -62,7 +62,7 @@ function makeAgentSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-agent',
-						toolName: 'build_agent',
+						toolName: 'agent_build',
 						state: 'resolved',
 						input: { name: 'Support Triage', message: 'Build a triage agent' },
 						output: { ok: true, agentId: AGENT_ID, agentRef: 'support-triage' },
@@ -169,7 +169,7 @@ describe('ConversationSeedSchema message envelope', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-1',
-							toolName: 'build_workflow',
+							toolName: 'workflow_build',
 							state: 'resolved',
 							input: { name: 'Digest' },
 							output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -184,7 +184,7 @@ describe('ConversationSeedSchema message envelope', () => {
 		expect(only.messageGroupId).toBe('mg-1');
 		expect(only.content?.[0]).toMatchObject({
 			toolCallId: 'tc-1',
-			toolName: 'build_workflow',
+			toolName: 'workflow_build',
 			state: 'resolved',
 			input: { name: 'Digest' },
 			output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -454,10 +454,10 @@ describe('remapSeedArtifactIds', () => {
 		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
 
-	it('rewrites the agent id everywhere it appears, including inside a build_agent result', () => {
+	it('rewrites the agent id everywhere it appears, including inside a agent_build result', () => {
 		// The seeded history is how the live turn knows which agent it already built.
 		// A missed reference leaves the history pointing at an agent that was never
-		// restored, and `build_agent` creates a second one instead of editing it.
+		// restored, and `agent_build` creates a second one instead of editing it.
 		const seed = makeAgentSeed();
 
 		const remapped = remapSeedArtifactIds(seed);
@@ -557,14 +557,14 @@ describe('transcriptPrefixFromSeed', () => {
 			{ kind: 'agent-text', text: 'Built it.' },
 			{
 				kind: 'tool-call',
-				toolName: 'build_workflow',
+				toolName: 'workflow_build',
 				args: { workflowId: WF_ID },
 				result: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
 			},
 		]);
 	});
 
-	it('renders a seeded ask_user block as an ask_user step with the chosen answers', () => {
+	it('renders a seeded user_ask block as an user_ask step with the chosen answers', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -573,7 +573,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'ask_user',
+						toolName: 'user_ask',
 						state: 'resolved',
 						input: {
 							introMessage: 'A couple of questions',
@@ -632,7 +632,7 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded confirmation block (not ask_user/setup) as a confirmation step', () => {
+	it('renders a seeded confirmation block (not user_ask/setup) as a confirmation step', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -733,7 +733,7 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded create_plan block as a plan step', () => {
+	it('renders a seeded plan_create block as a plan step', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -742,7 +742,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'create_plan',
+						toolName: 'plan_create',
 						state: 'resolved',
 						input: { tasks: [{ title: 'Add trigger', description: 'schedule' }] },
 						output: {},
@@ -785,7 +785,7 @@ describe('activeSeedAgentId', () => {
 				{
 					type: 'tool-call',
 					toolCallId: `tc-${agentId}`,
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					state: 'resolved',
 					output: { ok: true, agentId },
 				},

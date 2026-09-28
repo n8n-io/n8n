@@ -4,7 +4,7 @@ Instance AI uses a remote sandbox workspace to build workflows from
 `@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
 off the n8n host. Workflow building is unavailable when sandboxing is disabled.
 
-Agent building is separate. `build_agent` delegates to
+Agent building is separate. `agent_build` delegates to
 `AgentsBuilderService` in the agents module and does not use the Instance AI
 sandbox.
 
@@ -135,7 +135,7 @@ thread.
 
 ## Workflow Build Path
 
-The `build_workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+The `workflow_build` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
 (`.json`) from the runtime workspace. The conventional filenames are
 `.workflow.ts` and `.workflow.json`.
 

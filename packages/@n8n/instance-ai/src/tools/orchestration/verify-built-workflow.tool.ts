@@ -96,7 +96,7 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches are never verified. To cover every branch, call verify once per " +
-				"trigger. Trigger names come from build_workflow's `triggerNodes` or " +
+				"trigger. Trigger names come from workflow_build's `triggerNodes` or " +
 				'workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
 				'and never build a throwaway copy — to reach a branch; use this instead.',
 		),
@@ -207,7 +207,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
-	return new Tool('verify_built_workflow')
+	return new Tool('workflow_verify')
 		.description(
 			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +

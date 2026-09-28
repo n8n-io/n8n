@@ -102,7 +102,7 @@ export interface ScopedConversationHistory extends InstanceAiConversationHistory
 	getPastConversationsSection(): Promise<string | undefined>;
 }
 
-/** A resolved ask_user question with its answer rendered for reading. */
+/** A resolved user_ask question with its answer rendered for reading. */
 interface QuestionAndAnswer {
 	question: string;
 	answer: string;
@@ -532,7 +532,7 @@ function buildHit(
 }
 
 /**
- * A stored row as the agent reads it: user messages, ask_user answers, and each
+ * A stored row as the agent reads it: user messages, user_ask answers, and each
  * turn's final text-only reply. Dropped: unreadable content, internal
  * auto-follow-ups, rows with nothing to read, and mid-turn assistant rows (the
  * loop only continues on tool calls, so a row carrying them is narration, not

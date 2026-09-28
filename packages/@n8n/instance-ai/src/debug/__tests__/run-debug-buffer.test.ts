@@ -179,14 +179,14 @@ describe('RunDebugBuffer', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						input: { code: 'full workflow code payload' },
 					},
 				],
 				toolResults: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						output: { success: true, workflowId: 'wf-1' },
 					},
 				],
@@ -205,14 +205,14 @@ describe('RunDebugBuffer', () => {
 		expect(sanitized.toolCalls).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build_workflow',
+				toolName: 'workflow_build',
 				input: { code: 'full workflow code payload' },
 			},
 		]);
 		expect(sanitized.toolResults).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build_workflow',
+				toolName: 'workflow_build',
 				output: { success: true, workflowId: 'wf-1' },
 			},
 		]);

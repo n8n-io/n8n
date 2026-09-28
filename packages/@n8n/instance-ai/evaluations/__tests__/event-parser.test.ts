@@ -16,7 +16,7 @@ describe('saved workflow names', () => {
 			type: 'tool-result',
 			data: {
 				payload: {
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success, workflowId: id, workflowName },
 				},
 			},
@@ -101,7 +101,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-call',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						args: { name: 'Test' },
 					},
 				},
@@ -113,7 +113,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build_workflow',
+						toolName: 'workflow_build',
 						result: { workflowId: 'wf-123' },
 					},
 				},
@@ -122,7 +122,7 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.toolCalls).toHaveLength(1);
-		expect(result.toolCalls[0].toolName).toBe('build_workflow');
+		expect(result.toolCalls[0].toolName).toBe('workflow_build');
 		expect(result.toolCalls[0].durationMs).toBe(500);
 		expect(result.workflowIds).toContain('wf-123');
 	});
@@ -336,7 +336,7 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-err', toolName: 'build_workflow', args: {} },
+					payload: { toolCallId: 'tc-err', toolName: 'workflow_build', args: {} },
 				},
 			},
 			{
@@ -413,7 +413,7 @@ describe('extractOutcomeFromEvents', () => {
 			data: { type: 'tool-result', payload: { toolCallId, result } },
 		});
 		const events: CapturedEvent[] = [
-			// build_agent sub-agent announces the created agent via targetResource.
+			// agent_build sub-agent announces the created agent via targetResource.
 			spawn('a1', { type: 'agent', id: 'agent-1', projectId: 'p1', name: 'Support' }),
 			// eval_config create → ref is the owning workflow id from the args.
 			call('tc-2', 'eval_config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
@@ -468,7 +468,7 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'build_workflow', args: {} },
+					payload: { toolCallId: 'tc-1', toolName: 'workflow_build', args: {} },
 				},
 			},
 			{
@@ -776,14 +776,14 @@ describe('buildConversationMetrics', () => {
 		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
 	});
 
-	it('counts replan_after_error when a tool-error is followed by create_plan', () => {
+	it('counts replan_after_error when a tool-error is followed by plan_create', () => {
 		const events: CapturedEvent[] = [
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{
 				timestamp: 3,
 				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'create_plan' } },
+				data: { type: 'tool-call', payload: { toolName: 'plan_create' } },
 			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];
@@ -850,7 +850,7 @@ describe('seededTurnCounters', () => {
 		expect(counter.toolCallCount).toBe(1);
 	});
 
-	it('dual-counts ask_user as a tool call and a questions confirmation (mirrors live)', () => {
+	it('dual-counts user_ask as a tool call and a questions confirmation (mirrors live)', () => {
 		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);

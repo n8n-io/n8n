@@ -383,8 +383,8 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it('registers all standard tools returned by the tools service', async () => {
 		const { service, user, credentialProvider, credentialService } = setup({
-			json: [fakeTool('resolve_llm')],
-			shared: [fakeTool('agent_context'), fakeTool('ask_credential')],
+			json: [fakeTool('llm_resolve')],
+			shared: [fakeTool('agent_context'), fakeTool('credential_ask')],
 		});
 
 		await drain(
@@ -400,7 +400,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['resolve_llm', 'agent_context', 'ask_credential']),
+			expect.arrayContaining(['llm_resolve', 'agent_context', 'credential_ask']),
 		);
 	});
 

@@ -26,7 +26,7 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set(['build_workflow', 'submit-workflow', 'patch-workflow']);
+const WORKFLOW_TOOLS = new Set(['workflow_build', 'submit-workflow', 'patch-workflow']);
 
 // Retired standalone tool names, kept so captures from older backends still parse.
 const EXECUTION_TOOL_LEGACY = 'run-workflow';
@@ -156,7 +156,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
 
-				// The build_agent sub-agent announces the created agent via targetResource.
+				// The agent_build sub-agent announces the created agent via targetResource.
 				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
@@ -241,7 +241,7 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build_agent
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. The agent_build
  * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
  * signal (its tool result carries no id). Deduped by type+id.
  */
@@ -358,7 +358,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set(['create_plan']);
+const PLAN_RECOVERY_TOOL_NAMES = new Set(['plan_create']);
 
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);

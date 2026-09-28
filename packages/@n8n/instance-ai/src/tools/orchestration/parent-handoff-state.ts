@@ -81,10 +81,10 @@ export async function hydrateUserDecisions(
 
 /**
  * Upsert a batch of decisions in one pass, then persist once.
- * The caller (ask_user tool) enforces ask-once per question; the upsert is
+ * The caller (user_ask tool) enforces ask-once per question; the upsert is
  * last-wins by normalized question, so a re-ask that the user dismisses would
  * overwrite a prior real answer with `(skipped)`. That is acceptable only
- * because the ask_user tool description forbids re-asking — do not call this
+ * because the user_ask tool description forbids re-asking — do not call this
  * for a question that may already hold a real answer unless overwriting it is
  * the intent.
  */

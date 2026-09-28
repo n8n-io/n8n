@@ -235,8 +235,8 @@ test.describe(
 			}
 		});
 
-		// Skipped: the replay recording predates the create_plan load_tool
-		// deferral (#33815), so the recorded direct create_plan call fails as an
+		// Skipped: the replay recording predates the plan_create load_tool
+		// deferral (#33815), so the recorded direct plan_create call fails as an
 		// unloaded tool and the approval panel never appears. Unskip once the
 		// recordings are updated (#34055 or a re-record).
 		test.skip(
@@ -307,7 +307,7 @@ test.describe(
 		);
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build_workflow with a workflowId before the update is saved.
+		// converge on workflow_build with a workflowId before the update is saved.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,

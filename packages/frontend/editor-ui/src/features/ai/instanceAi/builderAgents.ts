@@ -126,7 +126,7 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 		if (e.type === 'tool-call') {
 			const toolCall = toolCallsById[e.toolCallId];
 			return !(
-				toolCall?.toolName === 'build_agent' &&
+				toolCall?.toolName === 'agent_build' &&
 				e.responseId !== undefined &&
 				activeBuilderChildResponseIds.has(e.responseId)
 			);

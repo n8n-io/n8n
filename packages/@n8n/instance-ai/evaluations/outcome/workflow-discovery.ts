@@ -12,7 +12,7 @@ import { collectArtifactRefIds } from './collect-refs';
 // Tool names whose results contain workflow IDs
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set(['build_workflow', 'submit-workflow', 'patch-workflow']);
+const WORKFLOW_TOOLS = new Set(['workflow_build', 'submit-workflow', 'patch-workflow']);
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior
@@ -108,7 +108,7 @@ export async function buildAgentOutcome(
 	}
 
 	// Fetch workflow details. Candidate ids come from tool results and agent
-	// trees, which echo agent-INVENTED ids too (e.g. a failed build_workflow
+	// trees, which echo agent-INVENTED ids too (e.g. a failed workflow_build
 	// bind to a made-up id) — a 404/403 means no workflow ever carried the id,
 	// so drop it instead of recording a stub: a stub at index 0 becomes
 	// build.workflowId and every scenario then executes a nonexistent workflow.
@@ -180,7 +180,7 @@ export async function buildAgentOutcome(
 // extractWorkflowIdsFromMessages
 //
 // Extracts workflow IDs from agent tree targetResource fields AND from
-// tool call results (build_workflow, submit-workflow, etc.).
+// tool call results (workflow_build, submit-workflow, etc.).
 // Thread-scoped -- avoids cross-run workflow attribution.
 // ---------------------------------------------------------------------------
 

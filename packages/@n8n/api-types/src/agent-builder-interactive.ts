@@ -8,8 +8,8 @@ import { z } from 'zod';
  * by it. There is no separate `interactionType` field — the tool name IS the
  * interaction kind.
  */
-export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
-export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
+export const ASK_CREDENTIAL_TOOL_NAME = 'credential_ask' as const;
+export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'embedding_credential_ask' as const;
 /**
  * Frontend-only discriminator for generic approval cards.
  *
@@ -19,7 +19,7 @@ export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as 
 export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 // ---------------------------------------------------------------------------
-// ask_credential
+// credential_ask
 // ---------------------------------------------------------------------------
 
 export const askCredentialInputSchema = z.object({
@@ -38,7 +38,7 @@ export const askCredentialInputSchema = z.object({
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
 
 /**
- * Suspend/resume for `ask_credential` and `ask_embedding_credential` now use
+ * Suspend/resume for `credential_ask` and `embedding_credential_ask` now use
  * the shared instance-AI-compatible contract (`agents/agent-interaction.schema.ts`)
  * instead of a builder-only shape — see that module for the full suspend
  * payload (`credentialSuspendPayloadSchema`).

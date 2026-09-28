@@ -2,12 +2,12 @@
 name: progressive-building
 dependencies:
   tools:
-    - build_workflow
-    - verify_built_workflow
+    - workflow_build
+    - workflow_verify
     - workflows
     - executions
 description: >-
-  Load before build_workflow and before scoping or planning new workflows and
+  Load before workflow_build and before scoping or planning new workflows and
   feature additions, including requests spanning multiple workflows. Implement
   one increment per user message. Finish setup and inspect a successful real
   execution before offering another increment. Then wait for the next user
@@ -52,7 +52,7 @@ Ask a single-choice question if several named services are equally central.
 Otherwise state a reasonable starting assumption. Do not offer a multi-select
 list that adds services or triggers to the first version.
 
-The `planning` skill and `create_plan` tool are unavailable in this mode.
+The `planning` skill and `plan_create` tool are unavailable in this mode.
 Keep additional workflows as later roadmap items.
 
 ## Build, set up, and run

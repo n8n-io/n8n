@@ -5,7 +5,7 @@
 		"mcp": { "registry": ["slack", "notion"], "connected": [] }
 	},
 	"expectedToolInvocations": {
-		"allOfToolCalls": [{ "toolName": "build_workflow" }],
+		"allOfToolCalls": [{ "toolName": "workflow_build" }],
 		"noneOfToolCalls": [
 			{ "toolName": "mcp_servers", "args": { "action": "search" } },
 			{ "toolName": "mcp_servers", "args": { "action": "connect" } }

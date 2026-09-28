@@ -50,11 +50,11 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toBeUndefined();
 	});
 
-	test('returns undefined for loading build_workflow call', () => {
+	test('returns undefined for loading workflow_build call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					isLoading: true,
 					result: undefined,
 				}),
@@ -63,11 +63,11 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toBeUndefined();
 	});
 
-	test('returns undefined for failed build_workflow call', () => {
+	test('returns undefined for failed workflow_build call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: false, errors: ['compile error'] },
 				}),
 			],
@@ -75,12 +75,12 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toBeUndefined();
 	});
 
-	test('returns workflowId and toolCallId from successful build_workflow call', () => {
+	test('returns workflowId and toolCallId from successful workflow_build call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-build-1',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-123' },
 				}),
 			],
@@ -112,12 +112,12 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-old' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-new' },
 				}),
 			],
@@ -133,12 +133,12 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-same' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-same' },
 				}),
 			],
@@ -154,7 +154,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-child' },
 				}),
 			],
@@ -172,7 +172,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-child' },
 				}),
 			],
@@ -182,7 +182,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-parent',
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-parent' },
 				}),
 			],
@@ -338,7 +338,7 @@ describe('getLatestAgentArtifactResult', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { name: 'Existing Agent' },
 					result: { ok: true, agentChange: 'none', configUpdated: false },
 				}),
@@ -359,7 +359,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-nested-build',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a step' },
 					result: { ok: true, configUpdated: true },
 				}),
@@ -391,7 +391,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'build me an agent', name: 'New Agent' },
 					result: { ok: true, builderReply: 'Created it' },
 				}),
@@ -411,7 +411,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-mutate',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a skill' },
 					result: { ok: true, configUpdated: true },
 				}),
@@ -433,7 +433,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-mutate-fail',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a skill' },
 					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
 				}),
@@ -455,7 +455,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-reply',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'what does this agent do?' },
 					result: { ok: true, builderReply: 'It triages your inbox.' },
 				}),
@@ -472,7 +472,7 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-mutate',
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a skill' },
 					result: { ok: true, configUpdated: true },
 				}),
@@ -489,13 +489,13 @@ describe('getLatestAgentConfigMutation', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-write',
-					toolName: 'write_config',
+					toolName: 'config_write',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-patch',
-					toolName: 'patch_config',
+					toolName: 'config_patch',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
@@ -510,13 +510,13 @@ describe('getLatestAgentConfigMutation', () => {
 
 	test('ignores loading calls and results without the configMutated marker', () => {
 		const inFlight = makeAgentNode({
-			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
+			toolCalls: [makeToolCall({ toolName: 'config_write', isLoading: true })],
 		});
 		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
 
 		const unstamped = makeAgentNode({
 			toolCalls: [
-				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: true } }),
+				makeToolCall({ toolName: 'config_write', isLoading: false, result: { ok: true } }),
 				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
 			],
 		});
@@ -529,7 +529,7 @@ describe('getLatestAgentConfigMutation', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-nested',
-					toolName: 'patch_config',
+					toolName: 'config_patch',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
@@ -553,7 +553,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -890,11 +890,11 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
-	test('extracts successful verify_built_workflow result', () => {
+	test('extracts successful workflow_verify result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'verify_built_workflow',
+					toolName: 'workflow_verify',
 					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
@@ -904,11 +904,11 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
-	test('extracts simulated node names from a verify_built_workflow result', () => {
+	test('extracts simulated node names from a workflow_verify result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'verify_built_workflow',
+					toolName: 'workflow_verify',
 					args: { workflowId: 'wf-1' },
 					result: {
 						executionId: 'exec-1',
@@ -930,13 +930,13 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'verify_built_workflow',
+					toolName: 'workflow_verify',
 					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'verify_built_workflow',
+					toolName: 'workflow_verify',
 					args: { workflowId: 'wf-2' },
 					result: {
 						executionId: 'exec-2',
@@ -1187,7 +1187,7 @@ describe('getLatestWorkflowUpdateResult', () => {
 describe('isAgentEditingWorkflow', () => {
 	test('locks an announced workflow while its first build has no result yet', () => {
 		const call = makeToolCall({
-			toolName: 'build_workflow',
+			toolName: 'workflow_build',
 			args: { filePath: 'workflow.ts' },
 			isLoading: true,
 			startedAt: '2026-09-15T08:00:00.000Z',
@@ -1216,7 +1216,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'active',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -1229,7 +1229,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'completed',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -1266,11 +1266,11 @@ describe('isAgentEditingWorkflow', () => {
 
 	test('locks while a build/setup/verification tool call is in flight on the workflow', () => {
 		for (const toolName of [
-			'build_workflow',
+			'workflow_build',
 			'build-workflow-with-agent',
-			'apply_workflow_credentials',
+			'workflow_credentials_apply',
 			'setup-workflow',
-			'verify_built_workflow',
+			'workflow_verify',
 		]) {
 			const node = makeAgentNode({
 				toolCalls: [makeToolCall({ toolName, isLoading: true, args: { workflowId: 'wf-1' } })],
@@ -1341,7 +1341,7 @@ describe('isAgentEditingWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_workflow',
+					toolName: 'workflow_build',
 					isLoading: true,
 					args: { workflowId: 'wf-other' },
 				}),
@@ -1392,13 +1392,13 @@ describe('isAgentEditingAgent', () => {
 		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
 	});
 
-	test('locks while an active agent run has a successful build_agent result for the agent', () => {
+	test('locks while an active agent run has a successful agent_build result for the agent', () => {
 		const node = makeAgentNode({
 			status: 'active',
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a skill' },
 					result: { ok: true, configUpdated: true },
 				}),
@@ -1413,7 +1413,7 @@ describe('isAgentEditingAgent', () => {
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build_agent',
+					toolName: 'agent_build',
 					args: { message: 'add a skill' },
 					result: { ok: true, configUpdated: true },
 				}),

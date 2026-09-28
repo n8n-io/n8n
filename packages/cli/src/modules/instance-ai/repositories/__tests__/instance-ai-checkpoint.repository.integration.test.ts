@@ -20,7 +20,7 @@ function makeState(toolCallId: string): SerializableAgentState {
 		pendingToolCalls: {
 			[toolCallId]: {
 				toolCallId,
-				toolName: 'ask_user',
+				toolName: 'user_ask',
 				input: {},
 				suspended: true,
 				suspendPayload: {},

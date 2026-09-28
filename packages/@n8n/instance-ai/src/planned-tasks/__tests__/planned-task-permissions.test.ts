@@ -1,7 +1,7 @@
 import { PLANNED_TASK_PERMISSION_OVERRIDES } from '../planned-task-permissions';
 
 describe('PLANNED_TASK_PERMISSION_OVERRIDES', () => {
-	describe('build_workflow', () => {
+	describe('workflow_build', () => {
 		it('should auto-approve workflow and data-table work owned by the builder task', () => {
 			expect(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow']).toMatchObject({
 				createWorkflow: 'always_allow',
