@@ -16,7 +16,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OauthService } from '@/oauth/oauth.service';
@@ -39,7 +39,7 @@ const discoveryTimeoutMs = 10_000;
 type ResolvedCredential = {
 	credential: CredentialsEntity;
 	data: ICredentialDataDecryptedObject;
-	projectId: string | null;
+	projectId: string;
 };
 
 type PreparedDiscovery = {
@@ -119,7 +119,7 @@ export class McpConnectionDiscoveryService {
 		logger: Logger,
 		private readonly registryService: McpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly credentialsService: CredentialsService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
@@ -254,14 +254,22 @@ export class McpConnectionDiscoveryService {
 			}
 		}
 
-		const data = await this.credentialsService.decrypt(readableCredential, true);
+		const projectId =
+			readableCredential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
+			readableCredential.shared?.[0]?.projectId;
+		if (!projectId) throw new BadRequestError('Credential has no owning project');
+
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({ projectId, userId: user.id });
+		const data = await this.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: readableCredential.id, name: readableCredential.name },
+			readableCredential.type,
+			'internal',
+		);
 		if (!isObjectLiteral(data) || Object.keys(data).length === 0) {
 			throw new BadRequestError('Credential could not be resolved');
 		}
-		const projectId =
-			readableCredential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
-			readableCredential.shared?.[0]?.projectId ??
-			null;
 		return { credential: readableCredential, data, projectId };
 	}
 
