@@ -865,6 +865,61 @@ describe('VaultProvider', () => {
 			}
 		});
 
+		it('does not schedule another login when disconnected during reauthentication', async () => {
+			vi.useFakeTimers();
+			const firstToken = batchTokenLookupResponse(
+				'batch-token',
+				new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+			);
+			const nextToken = batchTokenLookupResponse(
+				'replacement-token',
+				new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+			);
+			let provider: VaultProvider;
+			const ctx = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'batch-token' } },
+					},
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'replacement-token' } },
+					},
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
+					{
+						method: 'GET',
+						pathname: '/v1/auth/token/lookup-self',
+						get body() {
+							void provider.disconnect();
+							return nextToken;
+						},
+					},
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: [] } } },
+				],
+				appRoleSettings,
+			);
+			provider = ctx.provider;
+			try {
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+
+				expect(
+					ctx.httpRequest.mock.calls.filter(([options]) => options.method === 'POST'),
+				).toHaveLength(2);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				await provider.disconnect();
+				vi.useRealTimers();
+			}
+		});
+
 		it('keeps one renewal timer across reconnects and drops it once the token is not renewable', async () => {
 			const renewable = {
 				data: {

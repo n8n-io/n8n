@@ -353,7 +353,9 @@ export class VaultProvider extends SecretsProvider {
 
 			// Setup token refresh
 			[this.#tokenInfo] = await this.getTokenInfo();
-			this.setupTokenRefresh();
+			if (!this.refreshAbort.signal.aborted) {
+				this.setupTokenRefresh();
+			}
 		} catch (error) {
 			if (!this.isVaultAuthFailure(error)) {
 				this.logOperationFailure('Failed to connect Vault provider', {
