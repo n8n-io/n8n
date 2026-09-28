@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nHoverCard, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -310,12 +310,16 @@ async function handleCopyLink(tab: ArtifactTab) {
 							v-else-if="isHoveredSummaryLoading"
 							:class="[$style.hoverCardMeta, $style.placeholder, $style.placeholderMeta]"
 							data-test-id="instance-ai-tab-hover-card-placeholder"
-						/>
+						>
+							<N8nLoading variant="custom" :class="$style.placeholderSkeleton" />
+						</span>
 					</div>
 					<span
 						v-if="isHoveredSummaryLoading"
 						:class="[$style.statusTag, $style.placeholder, $style.placeholderTag]"
-					/>
+					>
+						<N8nLoading variant="custom" :class="$style.placeholderSkeleton" />
+					</span>
 					<span
 						v-else-if="hoveredStatus"
 						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredStatus.published }]"
@@ -495,13 +499,22 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .placeholder {
-	border-radius: var(--radius);
-	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+	position: relative;
 
 	// Keeps the line box of the text it replaces, so the card does not resize.
 	&::before {
 		content: '\00a0';
 	}
+
+	// The skeleton draws the shape, so hide the background of the tag it replaces.
+	&.statusTag {
+		background-color: transparent;
+	}
+}
+
+.placeholderSkeleton {
+	position: absolute;
+	inset: 0;
 }
 
 .placeholderMeta {
