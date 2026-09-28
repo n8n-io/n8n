@@ -51,7 +51,7 @@ const workflowNodeWritePublicSchema = z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })
 			.strict()
 			.optional(),
-		// Accepted but ignored, this is an internal editor-only marker for credential-only HTTP Request nodes
+		// Accepted but ignored, this is an internal editor-produced marker for credential-only HTTP Request nodes
 		extendsCredential: z.string().optional(),
 		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
