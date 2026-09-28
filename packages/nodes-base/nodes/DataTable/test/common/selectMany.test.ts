@@ -44,6 +44,7 @@ describe('selectMany utils', () => {
 
 		mockExecuteFunctions = {
 			getNode: vi.fn().mockReturnValue(node),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(undefined),
 			getNodeParameter: vi.fn().mockImplementation((field) => {
 				switch (field) {
 					case DATA_TABLE_ID_FIELD:
@@ -148,6 +149,93 @@ describe('selectMany utils', () => {
 				);
 			},
 		);
+
+		it('should finish when repeated count increases stop', async () => {
+			const rows = Array.from({ length: 1003 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 1001 })
+				.mockResolvedValueOnce({ data: rows.slice(1000, 1001), count: 1002 })
+				.mockResolvedValueOnce({ data: rows.slice(1001, 1002), count: 1003 })
+				.mockResolvedValueOnce({ data: rows.slice(1002), count: 1003 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(4);
+			for (const [index, skip] of [0, 1000, 1001, 1002].entries()) {
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					index + 1,
+					expect.objectContaining({ skip, take: index === 0 ? 1000 : 1 }),
+				);
+			}
+		});
+
+		it('should stop requesting pages after cancellation while the count keeps increasing', async () => {
+			const controller = new AbortController();
+			vi.mocked(mockExecuteFunctions.getExecutionCancelSignal).mockReturnValue(controller.signal);
+			const rows = Array.from({ length: 1002 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 1001 })
+				.mockResolvedValueOnce({ data: rows.slice(1000, 1001), count: 1002 })
+				.mockImplementationOnce(async () => {
+					controller.abort();
+					return { data: rows.slice(1001), count: 1003 };
+				});
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(3);
+		});
+
+		it('should not request rows when execution is already cancelled', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			vi.mocked(mockExecuteFunctions.getExecutionCancelSignal).mockReturnValue(controller.signal);
+			getManyRowsAndCount.mockRejectedValue(new Error('Unexpected page request'));
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual([]);
+			expect(getManyRowsAndCount).not.toHaveBeenCalled();
+		});
+
+		it('should stop when the count falls below the number of collected rows', async () => {
+			const rows = Array.from({ length: 2000 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 2345 })
+				.mockResolvedValueOnce({ data: rows.slice(1000), count: 1500 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+		});
+
+		it('should continue when a short first page reports more matching rows', async () => {
+			const rows = [{ id: 1 }, { id: 2 }, { id: 3 }];
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 2), count: 3 })
+				.mockResolvedValueOnce({ data: rows.slice(2), count: 3 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+			expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ skip: 2, take: 1 }),
+			);
+		});
 
 		it('should return a nonempty final page when the count decreases', async () => {
 			const rows = Array.from({ length: 1499 }, (_, id) => ({ id }));

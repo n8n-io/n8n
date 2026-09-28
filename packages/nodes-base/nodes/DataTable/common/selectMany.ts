@@ -199,8 +199,9 @@ export async function executeSelectMany(
 
 	let skip = 0;
 	let take = PAGE_SIZE;
+	const abortSignal = ctx.getExecutionCancelSignal();
 
-	while (true) {
+	while (!abortSignal?.aborted) {
 		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
