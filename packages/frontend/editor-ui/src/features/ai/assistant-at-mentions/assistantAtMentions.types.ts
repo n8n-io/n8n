@@ -1,9 +1,40 @@
 import type { Ref } from 'vue';
 import type { InstanceAiResourceAttachment } from '@n8n/api-types';
 
+import type { ArtifactOrigin } from '@/features/ai/instanceAi/useResourceRegistry';
+
 export type AssistantMentionKind = 'workflow' | 'node' | 'group';
 
 export type AssistantMentionSourceId = 'artifacts' | 'workflows';
+
+export type AssistantMentionTriggerSource = 'typed' | 'button';
+
+/**
+ * Why the picker closed. `selected` is the only outcome that is not a dismissal.
+ * `closed_menu` covers Escape, a click outside and focus loss, which the menu
+ * reports as one close; `unavailable` is mentions turning off while the picker
+ * was open, e.g. a send starting or the project changing.
+ */
+export type AssistantMentionCloseReason =
+	| 'selected'
+	| 'closed_menu'
+	| 'deleted_trigger'
+	| 'moved_caret'
+	| 'unavailable';
+
+export interface AssistantMentionCloseInfo {
+	source: AssistantMentionTriggerSource;
+	reason: AssistantMentionCloseReason;
+}
+
+/** What the picker showed when it closed. Counts cover top-level rows only. */
+export interface AssistantMentionPickerOpenMetrics {
+	mode: 'browse' | 'search';
+	queryLength: number;
+	resultCount: number;
+	ambiguousResultCount: number;
+	submenuOpenCount: number;
+}
 
 export interface AssistantMentionItem {
 	key: string;
@@ -16,6 +47,9 @@ export interface AssistantMentionItem {
 	workflowName: string;
 	groupId?: string;
 	groupName?: string;
+	nodeTypeName?: string;
+	nodeTypeVersion?: number;
+	nodeCount?: number;
 	description?: string;
 	hasChildren?: boolean;
 	children?: AssistantMentionItem[];
@@ -36,6 +70,8 @@ export interface MentionSourceProvider {
 export interface WorkflowArtifactReference {
 	id: string;
 	name: string;
+	/** How the artifact entered the thread. Telemetry only; absent when the host does not know. */
+	origin?: ArtifactOrigin;
 }
 
 export interface WorkflowArtifactIndexNode {
@@ -75,7 +111,25 @@ export interface AssistantMentionSelection {
 	item: AssistantMentionItem;
 	attachment: InstanceAiResourceAttachment;
 	truncated: boolean;
+	telemetry?: {
+		mode: 'browse' | 'search';
+		resultPosition: number;
+		queryLength: number;
+	};
 }
+
+/**
+ * Mentions attached to a message, by kind plus a total. Keyed by `AssistantMentionKind`
+ * so a new kind must be counted here too, and sent to telemetry as one object.
+ */
+export type AssistantMentionCounts = Record<AssistantMentionKind, number> & { total: number };
+
+export const EMPTY_ASSISTANT_MENTION_COUNTS: AssistantMentionCounts = {
+	total: 0,
+	workflow: 0,
+	node: 0,
+	group: 0,
+};
 
 export interface AssistantMentionArtifactReference {
 	referenceId: string;

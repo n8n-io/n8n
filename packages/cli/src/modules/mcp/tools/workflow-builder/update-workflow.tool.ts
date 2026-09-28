@@ -16,7 +16,7 @@ import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metr
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,

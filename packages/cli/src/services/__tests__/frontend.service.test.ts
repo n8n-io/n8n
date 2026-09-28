@@ -16,7 +16,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -688,6 +688,22 @@ describe('FrontendService', () => {
 
 			// Restore default
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
+		});
+
+		it('reports granular credential sharing off unless the env flag is set', async () => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
+		});
+
+		it('reports granular credential sharing on when the env flag is set', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {

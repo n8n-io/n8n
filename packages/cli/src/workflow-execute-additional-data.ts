@@ -70,7 +70,7 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -573,16 +573,35 @@ async function startExecution(
 
 	let data;
 	try {
-		if (isInlineSubworkflow && additionalData.userId) {
+		// The original mode of the whole run tree: a sub-workflow's own
+		// `WorkflowExecute` always runs as 'integrated'. Same pattern as
+		// `credentials-helper`.
+		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
+
+		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
 			// never vetted against that user (they live only in the parameter JSON),
 			// so validate them against the user rather than the parent's project.
+			//
+			// Gated on the run being user-initiated, not merely on a user being
+			// present. Triggered runs now carry the publishing user for attribution,
+			// and that must not silently swap this project check for a user check —
+			// an ordinary project credential has to keep working on a schedule even
+			// if the publisher's own access to it has since changed.
 			await Container.get(CredentialsPermissionChecker).checkForUser(
 				additionalData.userId,
 				workflowData.nodes,
 			);
 		} else {
-			await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+			// A stored sub-workflow is checked against its own project, as before. The
+			// acting user rides along only for what that project does not carry: a
+			// credential reachable personally has to stay runnable by the person it
+			// belongs to, one level down as much as at the top.
+			await Container.get(CredentialsPermissionChecker).check(
+				workflowData.id,
+				workflowData.nodes,
+				additionalData.userId,
+			);
 		}
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
@@ -595,11 +614,12 @@ async function startExecution(
 		// different webhooks
 		const workflowSettings = workflowData.settings;
 		const additionalDataIntegrated = await getBase({
-			// Inline sub-workflows carry no project, so the triggering user must be
-			// preserved for nested inline calls to be validated against that user too.
-			// Stored sub-workflows run under their own project scope, so their userId
-			// stays unset (their credentials are validated against the project instead).
-			userId: isInlineSubworkflow ? additionalData.userId : undefined,
+			// The acting user crosses the boundary in both cases. Dropping it on a
+			// stored sub-workflow skipped the user check for any inline sub-workflow
+			// nested inside one: the inline branch below tests `additionalData.userId`,
+			// so an empty user sent it to the project check instead — and an inline
+			// sub-workflow has no project of its own to check against.
+			userId: additionalData.userId,
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
@@ -778,6 +798,23 @@ export function sendDataToUI(
  * param currentNodeParameters - The parameters of the currently executing node
  * param executionTimeoutTimestamp - The timestamp (in ms) when the execution should time out
  */
+/**
+ * Whether a person asked for this run. Anything outside this set either carries
+ * no user at all, or carries the publishing user that `WorkflowPublisherService`
+ * attaches for attribution — and a stand-in for "who owns this workflow" must
+ * not be read as "who asked for this".
+ *
+ * Deliberately broader than {@link isManualOrChatExecution}: a retry and an
+ * evaluation are started by a real user too, and both carried a `userId` long
+ * before any of this existed.
+ */
+function isUserInitiated(executionMode: WorkflowExecuteMode | undefined): boolean {
+	if (!executionMode) return false;
+	return (['manual', 'chat', 'retry', 'evaluation'] as WorkflowExecuteMode[]).includes(
+		executionMode,
+	);
+}
+
 export async function getBase({
 	userId,
 	workflowId,

@@ -6,7 +6,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';

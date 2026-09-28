@@ -67,11 +67,9 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 
-const props = defineProps<{
-	threadId: string;
-	mentionsEnabled?: boolean;
-}>();
+const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -83,6 +81,7 @@ const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
 const recentWorkflowsStore = useRecentWorkflowsStore();
+const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 
@@ -187,6 +186,10 @@ const currentThreadTitle = computed<string | undefined>(() =>
 		thread.messages,
 	),
 );
+
+// An onboarding thread hides the header and the artifacts panel until the user leaves the
+// onboarding. The header keeps its space, so the chat does not move to the top edge.
+const isOnboardingChromeHidden = computed(() => store.isOnboardingChromeHidden(props.threadId));
 
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
@@ -405,6 +408,7 @@ const canShowArtifactsPanel = computed(
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
+		!isOnboardingChromeHidden.value &&
 		!preview.isPreviewVisible.value &&
 		(isArtifactsPanelInLayout.value
 			? !isArtifactsPanelDismissedInLayout.value
@@ -751,7 +755,10 @@ function handleNewThreadClick() {
 			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
-			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
+			<div
+				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
+				data-test-id="instance-ai-builder-chat-header"
+			>
 				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
 					<template #title>
 						<N8nHeading
@@ -859,7 +866,7 @@ function handleNewThreadClick() {
 				<InstanceAiConversation
 					ref="conversation"
 					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
-					:mentions-enabled="props.mentionsEnabled"
+					:mentions-enabled="mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
@@ -1039,6 +1046,10 @@ function handleNewThreadClick() {
 
 .builderChatHeader {
 	flex-shrink: 0;
+}
+
+.chromeHidden {
+	visibility: hidden;
 }
 
 .chatArea {

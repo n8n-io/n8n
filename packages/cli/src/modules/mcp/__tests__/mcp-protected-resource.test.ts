@@ -15,7 +15,7 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 

@@ -1,17 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
-	);
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
-	const { WorkflowEditorLockedError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
-	);
-	const { FolderResolutionError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/folder-resolution.error.js'
-	);
+	const {
+		WorkflowSaveConflictError,
+		WorkflowNotFoundError,
+		WorkflowEditorLockedError,
+		FolderResolutionError,
+	} = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
@@ -67,6 +61,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -76,6 +72,8 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -1812,9 +1810,11 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error';
-import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
-import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
+import {
+	WorkflowEditorLockedError,
+	WorkflowNotFoundError,
+	WorkflowSaveConflictError,
+} from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -6985,8 +6985,10 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
@@ -6999,9 +7001,11 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
+			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
@@ -7058,16 +7062,31 @@ describe('resolveExperimentGates', () => {
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 		});
 	});
+
+	it.each([CANVAS_NODE_CONTEXT_FLAG, AI_ASSISTANT_AT_MENTIONS_FLAG])(
+		'enables node context with %s',
+		async (flag) => {
+			stubContainer({ [flag]: true });
+
+			await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+				nodeContextEnabled: true,
+			});
+		},
+	);
 
 	it('disables experiment gates for control variants', async () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+			[CANVAS_NODE_CONTEXT_FLAG]: false,
+			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
@@ -7077,9 +7096,11 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7109,6 +7130,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('does not open the concise style gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_CONCISE_STYLE_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			conciseStyleEnabled: false,
+		});
+	});
+
 	// The preferences flag is multivariate too, so a boolean `true` must not
 	// open the gate.
 	it('does not open the AI preferences gate on a boolean true', async () => {
@@ -7127,8 +7156,10 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7144,8 +7175,10 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
@@ -7523,22 +7556,6 @@ describe('createContext — builder delegate wiring', () => {
 			adoptOnCollision: true,
 		});
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
-	});
-
-	it('passes listAgents through to the underlying delegate unchanged', async () => {
-		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
-		const delegate = mock<InstanceAiBuilderDelegate>();
-		const agents = [
-			{ agentId: 'agent-1', name: 'Agent', published: true, updatedAt: '2026-07-14T00:00:00.000Z' },
-		];
-		delegate.listAgents.mockResolvedValue(agents);
-		mockBuilderModuleActive(delegate);
-
-		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
-		const result = await context.builderDelegate?.listAgents();
-
-		expect(result).toEqual(agents);
-		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
 	});
 });
 

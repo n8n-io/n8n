@@ -452,6 +452,18 @@ export const agentSpawnedTargetResourceSchema = z.object({
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 
+export const agentActivitySchema = z.enum([
+	'creating',
+	'editing',
+	'exploring',
+	'testing',
+	'publishing',
+	'working',
+]);
+export type InstanceAiAgentActivity = z.infer<typeof agentActivitySchema>;
+export const agentChangeSchema = z.enum(['created', 'updated', 'none']);
+export type InstanceAiAgentChange = z.infer<typeof agentChangeSchema>;
+
 export const agentSpawnedPayloadSchema = z.object({
 	parentId: z.string().describe("Orchestrator's agentId"),
 	role: z.string().describe('Free-form role description'),
@@ -459,6 +471,7 @@ export const agentSpawnedPayloadSchema = z.object({
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
 	// Display metadata — enriched identity for the UI
 	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
+	activity: agentActivitySchema.optional().describe('Current activity for the Agent card'),
 	title: z.string().optional().describe('Short display title, e.g. "Building workflow"'),
 	subtitle: z
 		.string()
@@ -473,6 +486,7 @@ export const agentSpawnedPayloadSchema = z.object({
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
+	agentChange: agentChangeSchema.optional().describe('Whether this sub-agent changed its Agent'),
 	error: z.string().optional(),
 	/**
 	 * Terminal state of the sub-agent. Optional: events written before this
@@ -821,6 +835,26 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** One question of the ask-user card (`inputType=questions`). */
+export const instanceAiQuestionSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: z.enum(['single', 'multi', 'text']),
+	options: z.array(z.string()).optional(),
+	/** Hides Skip and blocks Next until the question has an answer. */
+	required: z.boolean().optional(),
+	/** Label of the built-in free-text row; the card shows "Something else" without it. */
+	freeTextLabel: z.string().optional(),
+	/**
+	 * Options that follow an earlier `single` question of the same card: the option selected for
+	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.
+	 */
+	optionsByAnswer: z
+		.object({ questionId: z.string(), options: z.record(z.string(), z.array(z.string())) })
+		.optional(),
+});
+export type InstanceAiQuestion = z.infer<typeof instanceAiQuestionSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -864,14 +898,7 @@ export const confirmationRequestPayloadSchema = z.object({
 				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
-		.array(
-			z.object({
-				id: z.string(),
-				question: z.string(),
-				type: z.enum(['single', 'multi', 'text']),
-				options: z.array(z.string()).optional(),
-			}),
-		)
+		.array(instanceAiQuestionSchema)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
 	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
@@ -1629,6 +1656,43 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
+/** Identifies a resource that a thread tab shows. */
+export const instanceAiThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
+	type: true,
+	id: true,
+});
+export type InstanceAiThreadTabRef = z.infer<typeof instanceAiThreadTabRefSchema>;
+
+/** One open tab. The name lets the tab render before the resource details load. */
+export const instanceAiThreadTabSchema = instanceAiThreadTabRefSchema.extend({
+	name: z.string().max(255),
+	projectId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
+
+/**
+ * The tabs a user has open in a thread. `tabs` is in display order.
+ * `closedTabs` holds the artifacts the user closed, so they do not reopen when
+ * the thread loads again.
+ */
+export const instanceAiThreadTabsStateSchema = z.object({
+	tabs: z.array(instanceAiThreadTabSchema).max(100),
+	closedTabs: z.array(instanceAiThreadTabRefSchema).max(500),
+	activeTab: instanceAiThreadTabRefSchema.nullable(),
+	/**
+	 * Whether the preview panel is open. Without it, the active tab does not
+	 * tell if the user can see that tab. Optional, so a state saved before this
+	 * field existed stays valid.
+	 */
+	previewOpen: z.boolean().optional(),
+});
+export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
+
+export interface InstanceAiThreadTabsResponse {
+	/** `null` when the user has not changed the tabs of this thread yet. */
+	state: InstanceAiThreadTabsState | null;
+}
+
 /**
  * Build style for a run. `progressive` makes the agent build a minimal working
  * slice first, gate increments on real executions, and extend on actual
@@ -1699,6 +1763,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1716,6 +1781,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'onboarding',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',
@@ -1957,6 +2023,10 @@ export interface InstanceAiAgentNode {
 	taskId?: string;
 	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
+	/** Current activity for the Agent card. */
+	activity?: InstanceAiAgentActivity;
+	/** Whether this sub-agent changed its Agent. */
+	agentChange?: InstanceAiAgentChange;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */
@@ -2716,6 +2786,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
+/** Enables workflow, node, and canvas group mentions in the n8n Assistant */
+export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
+
 /** Enables the conversation-history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
@@ -2723,6 +2796,14 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+/**
+ * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
+ * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
+ * instance and takes precedence over this flag.
+ */
+export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
+export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
