@@ -1496,6 +1496,7 @@ describe('AgentExecutionRepository', () => {
 				{ sessionNumber: 5, source: null, expected: 'preview' },
 				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
 				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
+				{ sessionNumber: 8, source: 'n8n_chat_production', expected: 'n8n_chat_production' },
 			];
 			const expectedIds = new Map<AgentSessionOrigin, string[]>();
 
@@ -1531,6 +1532,33 @@ describe('AgentExecutionRepository', () => {
 				);
 				expect(new Set(result.threads.map(({ id }) => id))).toEqual(new Set(ids));
 			}
+		});
+
+		it('keeps only the sessions owned by the requesting user with scope=mine', async () => {
+			const owner = await createMember();
+			const other = await createMember();
+			const mine = await createThread({ sessionNumber: 1, ownerId: owner.id });
+			const theirs = await createThread({ sessionNumber: 2, ownerId: other.id });
+			const unowned = await createThread({ sessionNumber: 3 });
+			for (const thread of [mine, theirs, unowned]) {
+				await createExecution({ threadId: thread.id, source: 'n8n_chat_production' });
+			}
+			const list = async (filters: AgentSessionQueryFilters) =>
+				(
+					await threadRepo.findByProjectIdPaginated(
+						projectId,
+						agentId,
+						owner.id,
+						20,
+						undefined,
+						filters,
+					)
+				).threads.map(({ id }) => id);
+
+			expect(await list({ origin: 'n8n_chat_production', scope: 'mine' })).toEqual([mine.id]);
+			expect(new Set(await list({ origin: 'n8n_chat_production' }))).toEqual(
+				new Set([mine.id, theirs.id, unowned.id]),
+			);
 		});
 
 		it('applies inclusive date and status filters before cursor pagination', async () => {
