@@ -100,10 +100,12 @@ describe('AddAgentQueueMessageReferences migration', () => {
 		context = createTestMigrationContext(dataSource);
 		const queueInput = {
 			threadId,
-			source: 'chat',
 			messageId: removedMessageId,
-			payload: '{"kind":"preview","userId":"owner"}',
+			payload: '{"kind":"preview"}',
 		};
+		expect(
+			await context.queryRunner.hasColumn(`${context.tablePrefix}agent_message_queue`, 'source'),
+		).toBe(false);
 		await expect(
 			insert('agent_message_queue', { ...queueInput, messageId: null }),
 		).rejects.toThrow();
@@ -131,6 +133,15 @@ describe('AddAgentQueueMessageReferences migration', () => {
 		await dataSource.undoLastMigration({ transaction: 'each' });
 		context = createTestMigrationContext(dataSource);
 		expect(await rows('agents_messages')).toEqual(messages);
+		const revertedTable = await context.queryRunner.getTable(
+			`${context.tablePrefix}agent_message_queue`,
+		);
+		expect(revertedTable?.findColumnByName('source')).toMatchObject({
+			type: context.isPostgres ? 'character varying' : 'varchar',
+			length: '32',
+			isNullable: false,
+			...(context.isPostgres ? { comment: 'Preview or integration source' } : {}),
+		});
 		expect(
 			await context.queryRunner.hasTable(`${context.tablePrefix}agent_execution_message_links`),
 		).toBe(true);
@@ -148,6 +159,7 @@ describe('AddAgentQueueMessageReferences migration', () => {
 		expect(await rows('agents_messages')).toEqual(messages);
 		await insert('agent_message_queue', { ...queueInput, messageId });
 		const [reappliedQueueItem] = await rows('agent_message_queue');
+		expect(reappliedQueueItem).not.toHaveProperty('source');
 		expect(BigInt(String(reappliedQueueItem.id))).toBeGreaterThan(
 			BigInt(String(revertedQueueItem.id)),
 		);

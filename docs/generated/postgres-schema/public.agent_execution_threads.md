@@ -136,7 +136,6 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
-  varchar_32_ source
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

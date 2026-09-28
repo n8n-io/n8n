@@ -9,7 +9,6 @@
 | id | bigint |  | false |  |  | Acceptance order; IDs are not reused |
 | messageId | varchar(36) |  | false |  | [public.agents_messages](public.agents_messages.md) | Canonical input created when the queue accepts it |
 | payload | json |  | false |  |  | Dispatch, authorization, and reply context. Input is stored on the message |
-| source | varchar(32) |  | false |  |  | Preview or integration source |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -25,7 +24,6 @@
 | agent_message_queue_id_not_null | n | NOT NULL id |
 | agent_message_queue_messageId_not_null | n | NOT NULL "messageId" |
 | agent_message_queue_payload_not_null | n | NOT NULL payload |
-| agent_message_queue_source_not_null | n | NOT NULL source |
 | agent_message_queue_threadId_not_null | n | NOT NULL "threadId" |
 | agent_message_queue_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -54,7 +52,6 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
-  varchar_32_ source
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

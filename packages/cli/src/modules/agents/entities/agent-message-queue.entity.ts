@@ -34,9 +34,6 @@ export class AgentMessageQueue extends WithTimestamps {
 	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
-	@Column({ type: 'varchar', length: 32, comment: 'Preview or integration source' })
-	source: string;
-
 	@ManyToOne(() => AgentMessageEntity, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'messageId', foreignKeyConstraintName: 'FK_agent_message_queue_messageId' })
 	message: Relation<AgentMessageEntity>;

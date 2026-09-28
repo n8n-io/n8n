@@ -37,8 +37,16 @@ export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
-	| Omit<QueuedPreviewMessage, keyof QueuedMessageInput>
-	| Omit<QueuedIntegrationMessage, keyof QueuedMessageInput | 'modelMessage' | 'author'>;
+	| { kind: 'preview' }
+	| (Omit<
+			QueuedIntegrationMessage,
+			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'
+	  > & {
+			messageContext: Omit<
+				IntegrationMessageContext,
+				'platform' | 'integrationConnectionId' | 'messageId'
+			>;
+	  });
 
 /** A committed execution reservation. Runtime preparation must reuse it. */
 export interface AgentExecutionAdmission {

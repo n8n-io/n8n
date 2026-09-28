@@ -192,8 +192,12 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
-		const prepared = await this.prepareThread(params, ctx);
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,

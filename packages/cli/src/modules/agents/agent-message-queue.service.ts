@@ -25,13 +25,15 @@ import type {
 	AgentExecutionAdmission,
 	AgentQueuedMessage,
 	AgentQueueDispatch,
+	QueuedIntegrationMessage,
+	QueuedPreviewMessage,
 } from './types/agent-queued-message';
 import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
 
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
-	payload: AgentQueuedMessage;
+	payload: Omit<QueuedPreviewMessage, 'userId'> | QueuedIntegrationMessage;
 	thread: AgentExecutionThread;
 	/** Admission identifies the committed execution that the turn pipeline must reuse. */
 	admission: AgentExecutionAdmission;
@@ -103,27 +105,39 @@ export class AgentMessageQueueService {
 	): Promise<AgentMessageQueue> {
 		const { message, resourceId, attachments = [], ...dispatch } = payload;
 		const [content] = buildInboundUserMessage(message, attachments);
-		let queueDispatch: AgentQueueDispatch = dispatch;
+		let queueDispatch: AgentQueueDispatch = { kind: 'preview' };
 		let modelContent: Message | undefined;
 		let author: AgentMessageAuthor | undefined;
 		let origin: AgentMessageOrigin = { source };
 		if (dispatch.kind === 'integration') {
-			const { modelMessage, author: inputAuthor, ...integrationDispatch } = dispatch;
-			queueDispatch = integrationDispatch;
+			const {
+				modelMessage,
+				author: inputAuthor,
+				platformThreadId,
+				messageContext: fullContext,
+				...integrationDispatch
+			} = dispatch;
+			const {
+				platform: _platform,
+				integrationConnectionId,
+				messageId,
+				...messageContext
+			} = fullContext;
+			queueDispatch = { ...integrationDispatch, messageContext };
 			[modelContent] = buildInboundUserMessage(modelMessage, attachments);
 			author = inputAuthor;
 			origin = {
 				source,
-				integrationConnectionId: dispatch.messageContext.integrationConnectionId,
-				platformMessageId: dispatch.messageContext.messageId,
-				platformThreadId: dispatch.platformThreadId,
+				integrationConnectionId,
+				platformMessageId: messageId,
+				platformThreadId,
 			};
 		}
 		const input = await this.messages.createInput(
 			{ threadId, resourceId, content, modelContent, author, origin },
 			ctx,
 		);
-		return await this.repository.enqueue(threadId, source, input.id, queueDispatch, ctx);
+		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
 	}
 
 	async listPending(input: {
@@ -241,9 +255,15 @@ export class AgentMessageQueueService {
 			if (!item || !(await canConsume(item, thread, ctx))) return null;
 			const payload = this.restoreInput(item);
 			const recording = this.recordingFor(item, thread, payload);
+			await this.threadRepository.bumpUpdatedAt(threadId, ctx);
 			// Reservation creates the running execution and links it to this item in one transaction.
 			// Runtime work starts only after the transaction commits.
-			const reservation = await this.executionService.reserveExecution(recording, new Date(), ctx);
+			const reservation = await this.executionService.reserveExecution(
+				recording,
+				new Date(),
+				ctx,
+				thread,
+			);
 			return { item, thread, payload, recording, reservation };
 		});
 		if (!claimed) return null;
@@ -306,7 +326,7 @@ export class AgentMessageQueueService {
 	private recordingFor(
 		item: AgentMessageQueue,
 		thread: AgentExecutionThread,
-		payload: AgentQueuedMessage,
+		payload: ClaimedAgentMessage['payload'],
 	): StartExecutionParams {
 		return {
 			threadId: thread.id,
@@ -318,22 +338,32 @@ export class AgentMessageQueueService {
 			queueItemId: item.id,
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
-			source: item.source,
+			source: item.message.origin?.source ?? undefined,
 			attachments: payload.attachments,
 			author: payload.kind === 'integration' ? payload.author : undefined,
 		};
 	}
 
-	private restoreInput(item: AgentMessageQueue): AgentQueuedMessage {
+	private restoreInput(item: AgentMessageQueue): ClaimedAgentMessage['payload'] {
 		const input = {
 			...readInboundUserMessage(item.message.content),
 			resourceId: item.message.resourceId,
 		};
 		if (item.payload.kind === 'preview') return { ...item.payload, ...input };
 		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
+		const { origin } = item.message;
+		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)
+			throw new UnexpectedError('Queued integration input has incomplete origin');
 		return {
 			...item.payload,
 			...input,
+			platformThreadId: origin.platformThreadId,
+			messageContext: {
+				...item.payload.messageContext,
+				platform: origin.source,
+				integrationConnectionId: origin.integrationConnectionId,
+				...(origin.platformMessageId !== undefined ? { messageId: origin.platformMessageId } : {}),
+			},
 			author: item.message.author,
 			modelMessage: readInboundUserMessage(item.message.modelContent ?? item.message.content)
 				.message,

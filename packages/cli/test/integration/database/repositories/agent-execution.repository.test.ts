@@ -11,7 +11,7 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import type { OperationContext, User } from '@n8n/db';
+import { UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -57,6 +57,7 @@ import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-alread
 import {
 	EXECUTION_METADATA_KEY,
 	type AgentExecutionAdmission,
+	type QueuedIntegrationMessage,
 } from '@/modules/agents/types/agent-queued-message';
 import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
@@ -1242,17 +1243,23 @@ describe('AgentExecutionRepository', () => {
 			expect(stored).toMatchObject({
 				id: first.id,
 				createdAt: first.createdAt,
-				source: first.source,
-				payload: first.payload,
+				payload: { kind: 'preview' },
 				messageId: first.messageId,
 			});
+			expect(stored.payload).toEqual({ kind: 'preview' });
 			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 				first.id,
 				second.id,
 			]);
 			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
 			const claimed = await claim(services, threadId);
-			expect(claimed.payload.message).toBe('updated');
+			expect(claimed.payload).toEqual({
+				kind: 'preview',
+				message: 'updated',
+				resourceId: data.payload.resourceId,
+				attachments: data.payload.attachments,
+			});
+			expect(claimed.thread.ownerId).toBe(owner.id);
 			expect(claimed.admission.inputMessageIds).toEqual([first.messageId]);
 			expect(
 				await services.messageRepository.findOneByOrFail({ id: first.messageId }),
@@ -1345,7 +1352,7 @@ describe('AgentExecutionRepository', () => {
 				.spyOn(local.queueRepository, 'enqueue')
 				.mockImplementationOnce(async (...args) => {
 					const item = await insert(...args);
-					inserted.resolve(args[4]);
+					inserted.resolve(args[3]);
 					await release.promise;
 					return item;
 				});
@@ -1429,6 +1436,30 @@ describe('AgentExecutionRepository', () => {
 				messageId: accepted.messageId,
 			});
 			await finish(services, await claim(services, threadId));
+		});
+
+		it('settles accepted Preview input after its session owner is deleted', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const queued = await services.queue.enqueue(input(threadId, 'pending', 'new'));
+			await Container.get(UserRepository).delete(owner.id);
+
+			const active = await claim(services, threadId);
+			expect(active.thread.ownerId).toBeNull();
+			await services.queue.recordFailure(active, new Error('Owner deleted'));
+			await services.queue.settle(threadId, active.admission.executionId);
+
+			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
+			expect(await repository.findOneByOrFail({ id: active.admission.executionId })).toMatchObject({
+				status: 'error',
+				error: 'Owner deleted',
+			});
+			expect(
+				await services.messageRepository.findOneByOrFail({ id: queued.messageId }),
+			).toMatchObject({
+				content: buildInboundUserMessage('pending', [])[0],
+				modelContextAt: null,
+			});
 		});
 
 		it('enforces active-slot uniqueness and prevents execution deletion from requeuing a message', async () => {
@@ -1657,7 +1688,11 @@ describe('AgentExecutionRepository', () => {
 		}
 	});
 
-	it.each(['direct', 'queued'] as const)('preserves %s canonical input', async (path) => {
+	it.each([
+		['direct', 'message-42'],
+		['queued', 'message-42'],
+		['queued', undefined],
+	] as const)('preserves %s canonical input (%s)', async (path, platformMessageId) => {
 		const thread = await createThread();
 		const threadId = thread.id;
 		const resourceId = 'user-1';
@@ -1704,58 +1739,85 @@ describe('AgentExecutionRepository', () => {
 			source: 'slack',
 			messageOrigin: {
 				integrationConnectionId: 'slack:credential',
-				platformMessageId: 'message-42',
+				...(platformMessageId !== undefined ? { platformMessageId } : {}),
 			},
 		};
 		let admission: AgentExecutionAdmission;
 		if (path === 'direct') {
 			admission = await services.executionService.startExecutionRecording(params, new Date());
 		} else {
+			const payload: QueuedIntegrationMessage = {
+				kind: 'integration',
+				message: params.userMessage,
+				resourceId,
+				attachments,
+				modelMessage: '[Ada]: Original input',
+				author: params.author,
+				credentialId: 'credential',
+				platformThreadId: 'slack:channel:thread',
+				sender: {
+					userId: 'author-1',
+					userName: 'ada',
+					fullName: 'Ada',
+					isBot: false,
+					isMe: false,
+				},
+				messageContext: {
+					integrationConnectionId: 'slack:credential',
+					...(platformMessageId !== undefined ? { messageId: platformMessageId } : {}),
+					platform: 'slack',
+					target: { type: 'thread', threadId: 'slack:channel:thread' },
+					replyTarget: { type: 'thread', threadId: 'slack:channel:reply' },
+					replyMessageId: 'reply-41',
+					updatedAt: '2026-06-01T12:00:00.000Z',
+				},
+				contextConversation: { threadId: 'integration-context', resourceId: 'integration-user' },
+				forceBuffered: true,
+			};
 			const queued = await services.queue.enqueue({
 				agentId,
 				projectId,
 				threadId,
 				sessionMode: 'existing',
 				source: 'slack',
-				payload: {
-					kind: 'integration',
-					message: params.userMessage,
-					resourceId,
-					attachments,
-					modelMessage: '[Ada]: Original input',
-					author: params.author,
-					credentialId: 'credential',
-					platformThreadId: 'slack:channel:thread',
-					sender: {
-						userId: 'author-1',
-						userName: 'ada',
-						fullName: 'Ada',
-						isBot: false,
-						isMe: false,
-					},
-					messageContext: {
-						integrationConnectionId: 'slack:credential',
-						messageId: 'message-42',
-						platform: 'slack',
-						target: { type: 'thread', threadId: 'slack:channel:thread' },
-						updatedAt: new Date().toISOString(),
-					},
-					contextConversation: { threadId, resourceId },
-				},
+				payload,
 			});
-			for (const field of ['message', 'resourceId', 'attachments', 'author', 'modelMessage']) {
+			for (const field of [
+				'message',
+				'resourceId',
+				'attachments',
+				'author',
+				'modelMessage',
+				'platformThreadId',
+				'messageContext.platform',
+				'messageContext.integrationConnectionId',
+				'messageContext.messageId',
+			]) {
 				expect(queued.payload).not.toHaveProperty(field);
 			}
 			expect((await memory.getMessages(threadId)).map(({ id }) => id)).not.toContain(
 				queued.messageId,
 			);
+			const origin = {
+				source: 'slack',
+				...params.messageOrigin,
+				platformThreadId: payload.platformThreadId,
+			};
+			for (const invalidOrigin of [
+				null,
+				{ ...origin, source: null },
+				{ ...origin, integrationConnectionId: undefined },
+				{ ...origin, platformThreadId: undefined },
+			]) {
+				await services.messageRepository.update(queued.messageId, { origin: invalidOrigin });
+				await expect(services.queue.claimNext(threadId, async () => true)).rejects.toThrow(
+					'Queued integration input has incomplete origin',
+				);
+			}
+			await services.messageRepository.update(queued.messageId, { origin });
 			const claimed = await services.queue.claimNext(threadId, async () => true);
-			expect(claimed?.payload).toMatchObject({
-				message: params.userMessage,
-				modelMessage: '[Ada]: Original input',
-				attachments,
-				author: params.author,
-			});
+			expect(claimed?.payload).toStrictEqual(payload);
+			expect(claimed?.recording.source).toBe('slack');
 			admission = claimed!.admission;
 			expect(admission.inputMessageIds).toEqual([queued.messageId]);
 		}

@@ -15,14 +15,13 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 
 	async enqueue(
 		threadId: string,
-		source: string,
 		messageId: string,
 		payload: AgentQueueDispatch,
 		ctx: OperationContext,
 	) {
 		const repository = this.managerFor(ctx).getRepository(AgentMessageQueue);
 		return await repository.save(
-			repository.create({ threadId, source, messageId, payload, executionId: null }),
+			repository.create({ threadId, messageId, payload, executionId: null }),
 		);
 	}
 

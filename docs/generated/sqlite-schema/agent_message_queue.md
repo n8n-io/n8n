@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(128) NOT NULL, "source" varchar(32) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL
+CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(128) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL
 				CONSTRAINT "FK_agent_message_queue_messageId"
 				REFERENCES "agents_messages" ("id") ON DELETE CASCADE, CONSTRAINT "FK_a74f9154a59430986112d70cb16" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION)
 ```
@@ -22,7 +22,6 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | id | INTEGER |  | false |  |  |  |
 | messageId | varchar(36) |  | false |  | [agents_messages](agents_messages.md) |  |
 | payload | TEXT |  | false |  |  |  |
-| source | varchar(32) |  | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -59,7 +58,6 @@ erDiagram
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload
-  varchar_32_ source
   varchar_128_ threadId FK
   datetime_3_ updatedAt
 }

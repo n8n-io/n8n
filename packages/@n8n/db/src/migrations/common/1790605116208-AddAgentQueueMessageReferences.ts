@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			schemaBuilder: { addColumns, addForeignKey, createIndex, column },
+			schemaBuilder: { addColumns, dropColumns, addForeignKey, createIndex, column },
 			escape,
 			runQuery,
 		} = ctx;
@@ -14,7 +14,11 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 				ADD COLUMN ${escape.columnName('messageId')} varchar(36) NOT NULL
 				CONSTRAINT ${escape.columnName('FK_agent_message_queue_messageId')}
 				REFERENCES ${escape.tableName('agents_messages')} (${escape.columnName('id')}) ON DELETE CASCADE`);
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('agent_message_queue')} DROP COLUMN ${escape.columnName('source')}`,
+			);
 		} else {
+			await dropColumns('agent_message_queue', ['source'], { recreatesOnSqlite: true });
 			await addColumns(
 				'agent_message_queue',
 				[
@@ -39,7 +43,7 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 
 	async down(ctx: MigrationContext) {
 		const {
-			schemaBuilder: { dropIndex, dropForeignKey, dropColumns },
+			schemaBuilder: { dropIndex, dropForeignKey, dropColumns, addColumns, column },
 			escape,
 			runQuery,
 		} = ctx;
@@ -49,6 +53,9 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 			await runQuery(
 				`ALTER TABLE ${escape.tableName('agent_message_queue')} DROP COLUMN ${escape.columnName('messageId')}`,
 			);
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('agent_message_queue')} ADD COLUMN ${escape.columnName('source')} varchar(32) NOT NULL`,
+			);
 		} else {
 			await dropForeignKey(
 				'agent_message_queue',
@@ -57,6 +64,11 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 				'FK_agent_message_queue_messageId',
 			);
 			await dropColumns('agent_message_queue', ['messageId'], { recreatesOnSqlite: true });
+			await addColumns(
+				'agent_message_queue',
+				[column('source').varchar(32).notNull.comment('Preview or integration source')],
+				{ recreatesOnSqlite: true },
+			);
 			await runQuery(`COMMENT ON COLUMN ${escape.tableName('agent_message_queue')}.${escape.columnName('payload')}
 				IS 'Input, attachment references, identity, and reply context'`);
 		}
