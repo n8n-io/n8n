@@ -17,7 +17,7 @@ import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
@@ -530,7 +530,8 @@ export class PromotionsService {
 		}
 
 		if (movedWorkflowIds.length > 0) {
-			throw new UnprocessableRequestError(
+			// Mirror the import engine, which rejects a move-shaped change with 409.
+			throw new ConflictError(
 				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
 			);
 		}

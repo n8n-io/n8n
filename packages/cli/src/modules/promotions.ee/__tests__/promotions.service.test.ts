@@ -1529,7 +1529,7 @@ describe('PromotionsService', () => {
 				await expect(
 					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'moved'] }),
 				).rejects.toMatchObject({
-					httpStatusCode: 422,
+					httpStatusCode: 409,
 					message:
 						'These workflows moved to another project: moved. A selective apply cannot move them. Apply all projects instead.',
 				});
