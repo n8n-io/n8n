@@ -483,7 +483,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		]);
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 
-		const { getAllByText, getByTestId } = renderComponent({
+		const { getByRole, getByTestId } = renderComponent({
 			global: {
 				stubs: {
 					ToolsConnectionModal: false,
@@ -492,22 +492,21 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			},
 		});
 		await flushPromises();
-		const readPermissionInput = () =>
-			getByTestId('tools-connection-permission-read').querySelector('input')!;
-		await fireEvent.click(readPermissionInput());
-		await fireEvent.click(getAllByText('Block')[0]);
+		const readPermissionButton = () => getByTestId('tools-connection-permission-read');
+		await fireEvent.click(readPermissionButton());
+		await fireEvent.click(getByRole('menuitem', { name: 'Block' }));
 
 		isLocked.value = true;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connecting')).toBeVisible();
-		expect(readPermissionInput()).toHaveValue('Block');
+		expect(readPermissionButton()).toHaveTextContent('Block');
 
 		isLocked.value = false;
 		await nextTick();
 
 		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeVisible();
-		expect(readPermissionInput()).toHaveValue('Block');
+		expect(readPermissionButton()).toHaveTextContent('Block');
 		expect(() => getByTestId('tools-connection-settings-tab-settings')).toThrow();
 		expect(() => getByTestId('tools-connection-settings-back')).toThrow();
 	});
