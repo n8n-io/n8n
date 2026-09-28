@@ -1015,6 +1015,11 @@ describe('ScalingService', () => {
 
 			await expect(wait).resolves.toBeUndefined();
 			expect(poolSettled).toBe(false);
+
+			// Drop the pending pool wait so its recheck timer does not outlive the test
+			poolJob.isActive.mockResolvedValue(false);
+			poolJob.remove.mockResolvedValue();
+			await scalingService.stopJob(poolJob);
 		});
 
 		it('should resolve from the DB when the execution row is gone', async () => {

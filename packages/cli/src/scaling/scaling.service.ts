@@ -8,7 +8,7 @@ import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 import type { ExecutionStatus, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -678,7 +678,8 @@ export class ScalingService {
 					);
 
 					{
-						const error = new Error(msg.errorMsg);
+						// The worker already reported the underlying error, so this copy is only a handled signal
+						const error = new OperationalError(msg.errorMsg);
 						const settled = this.settleJobWait(msg.executionId, error);
 						// A fast failure can arrive before the enqueuing main starts to wait
 						if (!settled && this.activeExecutions.has(msg.executionId)) {
@@ -706,7 +707,7 @@ export class ScalingService {
 
 		// Failures such as a stall are reported only by Bull, not by the worker
 		queue.on('global:failed', (jobId: JobId, failedReason: string) => {
-			this.settleJobWaitByJobKey(queue.name, jobId, new Error(failedReason));
+			this.settleJobWaitByJobKey(queue.name, jobId, new OperationalError(failedReason));
 		});
 		queue.on('global:completed', (jobId: JobId) => this.settleJobWaitByJobKey(queue.name, jobId));
 
