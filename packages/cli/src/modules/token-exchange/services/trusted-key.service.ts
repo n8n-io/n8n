@@ -331,7 +331,7 @@ export class TrustedKeyService {
 	 */
 	async refreshDueSources(signal: AbortSignal): Promise<void> {
 		this.logger.debug('Refreshing due sources');
-		// A failed source has the newest `updatedAt`, so the next run tries it last.
+		// A source whose key fetch failed has the newest `updatedAt`, so the next run tries it last.
 		const sources = await this.trustedKeySourceRepository.find({ order: { updatedAt: 'ASC' } });
 		const now = Date.now();
 		for (const source of sources) {

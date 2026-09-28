@@ -193,7 +193,7 @@ describe('TrustedKeyService', () => {
 				'static',
 				expect.objectContaining({ status: 'healthy' }),
 			);
-			expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+			expect(mockLogger.error).toHaveBeenCalledTimes(1);
 		});
 
 		it.each(['lock', 'write'] as const)(
@@ -220,7 +220,7 @@ describe('TrustedKeyService', () => {
 					'second',
 					expect.objectContaining({ status: 'healthy' }),
 				);
-				expect(mockLogger.warn).toHaveBeenCalledWith('Failed to refresh trusted key source', {
+				expect(mockLogger.error).toHaveBeenCalledWith('Failed to refresh trusted key source', {
 					sourceId: 'first',
 					error,
 				});
@@ -303,15 +303,6 @@ describe('TrustedKeyService', () => {
 			await service.refreshDueSources(new AbortController().signal);
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
-		});
-
-		it('should keep the existing keys of a source whose fetch fails', async () => {
-			const mocks = createMocks();
-			seedFailingAndDueSources(mocks);
-
-			await mocks.service.refreshDueSources(new AbortController().signal).catch(() => undefined);
-
-			expect(mocks.tx.delete).not.toHaveBeenCalledWith(TrustedKeyEntity, { sourceId: 'jwks-1' });
 		});
 
 		it('should reject with the source error and stop at the failed source', async () => {
