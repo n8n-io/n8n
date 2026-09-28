@@ -48,7 +48,7 @@ describe('AtlassianServiceAccountApi Credential', () => {
 	it('should have correct static properties', () => {
 		expect(credential.name).toBe('atlassianServiceAccountApi');
 		expect(credential.displayName).toBe('Atlassian Service Account');
-		expect(credential.documentationUrl).toBe('atlassianserviceaccount');
+		expect(credential.documentationUrl).toBe('jira');
 		expect(credential.icon).toBe('file:icons/Atlassian.svg');
 
 		const accessToken = credential.properties.find(

@@ -23,23 +23,12 @@ const handleError = (error: unknown) => {
 };
 
 type DataTableColumnsHandlers = {
-	listDataTableColumns: PublicAPIEndpoint<DataTableRequest.ListColumns>;
 	createDataTableColumn: PublicAPIEndpoint<DataTableRequest.CreateColumn>;
 	deleteDataTableColumn: PublicAPIEndpoint<DataTableRequest.DeleteColumn>;
 	updateDataTableColumn: PublicAPIEndpoint<DataTableRequest.UpdateColumn>;
 };
 
 const dataTableColumnsHandlers: DataTableColumnsHandlers = {
-	listDataTableColumns: [
-		publicApiScope('dataTableColumn:read'),
-		projectScope('dataTable:readColumn', 'dataTable'),
-		async (req, res) => {
-			const { dataTableId } = req.params;
-			const projectId = await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
-			return res.json(await Container.get(DataTableService).getColumns(dataTableId, projectId));
-		},
-	],
-
 	createDataTableColumn: [
 		publicApiScope('dataTableColumn:create'),
 		projectScope('dataTable:writeColumn', 'dataTable'),

@@ -79,8 +79,6 @@ tags:
     description: Operations about workflows
 
 paths:
-  /audit:
-    $ref: './handlers/audit/spec/paths/audit.yml'
   /settings/ldap:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
@@ -89,8 +87,6 @@ paths:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
     $ref: './handlers/otel/spec/paths/settings.otel.test-trace.yml'
-  /settings/sso/oidc:
-    $ref: './handlers/sso-oidc/spec/paths/settings.sso.oidc.yml'
   /settings/sso/saml:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /workflows/{id}/{versionId}:

@@ -11,7 +11,7 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentRepository } from '../../repositories/agent.repository';

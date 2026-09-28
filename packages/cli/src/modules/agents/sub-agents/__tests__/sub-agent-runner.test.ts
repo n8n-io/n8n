@@ -134,7 +134,13 @@ describe('SubAgentRunner', () => {
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
@@ -179,7 +185,13 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.run(spawnRequest, {
 			parentAgentId,
@@ -213,16 +225,31 @@ describe('SubAgentRunner', () => {
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [
+						{
+							type: 'text',
+							text: expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
+						},
+					],
+				},
+			],
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
-		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
+		const [input] = childAgent.stream.mock.calls[0][0] as Array<{
+			content: Array<{ text: string }>;
+		}>;
+		const childPrompt = input.content[0].text;
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
 		expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -311,7 +338,7 @@ describe('SubAgentRunner', () => {
 
 		expect(result.threadId).toBe('pre-minted-thread');
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: expect.objectContaining({ threadId: 'pre-minted-thread' }),
 			}),
@@ -396,12 +423,13 @@ describe('SubAgentRunner', () => {
 		);
 
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: {
 					resourceId: 'draft-chat:user-1',
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
@@ -424,10 +452,13 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({ sandboxPrincipalHash: principalHash }),
 		);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: expect.objectContaining({
-					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nExecutionId: 'agent-execution-1',
+					},
 				}),
 			}),
 		);
@@ -438,7 +469,10 @@ describe('SubAgentRunner', () => {
 				threadId: result.threadId,
 				resourceId: result.threadId,
 				delegated: true,
-				hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				hostMetadata: {
+					...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					n8nExecutionId: 'agent-execution-1',
+				},
 			},
 			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
 			pendingToolCalls: {},
@@ -542,12 +576,13 @@ describe('SubAgentRunner', () => {
 			}),
 		);
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
 					threadId: result.threadId,
 					delegated: true,
+					hostMetadata: { n8nExecutionId: 'agent-execution-1' },
 				},
 			}),
 		);
@@ -922,7 +957,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(run).resolves.toMatchObject({ status: 'failed' });
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 	});
@@ -946,7 +981,7 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
+			expect.any(Array),
 			expect.objectContaining({
 				telemetry: {
 					...parentTelemetry,

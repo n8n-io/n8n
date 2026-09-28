@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
@@ -40,6 +41,31 @@ export class WorkflowPublisherService {
 	 * activation" — an unpublished or stale workflow must not inherit the
 	 * identity of whoever published something else.
 	 */
+	/**
+	 * Who a stored execution acts as when it is started again — a wait resume, or
+	 * recovery after a restart. A manual run recorded its user in `manualData`; a
+	 * triggered one is attributed to the publisher of the version it is running,
+	 * which is the same answer it had when it first started.
+	 *
+	 * Restarts rebuild {@link IWorkflowExecutionDataProcess} from the stored row,
+	 * and the acting user is not a stored field, so it has to be derived again or
+	 * the run comes back without an identity.
+	 */
+	async findActingUserIdForRestart(execution: {
+		workflowData: Pick<IWorkflowBase, 'id' | 'versionId'>;
+		data: Pick<IRunExecutionData, 'manualData'>;
+	}): Promise<string | undefined> {
+		const manualUserId = execution.data.manualData?.userId;
+		if (manualUserId) return manualUserId;
+
+		if (!execution.workflowData.id) return undefined;
+
+		return await this.findPublisherUserId(
+			execution.workflowData.id,
+			execution.workflowData.versionId,
+		);
+	}
+
 	async findPublisherUserId(
 		workflowId: string,
 		executedVersionId: string | null | undefined,

@@ -13,7 +13,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

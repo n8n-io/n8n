@@ -89,16 +89,29 @@ function selectTurnExecutions(
 	let anchorIndex = executions.findIndex((execution) => execution.id === executionId);
 	if (anchorIndex === -1) return null;
 
-	while (anchorIndex > 0 && executions[anchorIndex].userMessage === null) {
+	while (
+		anchorIndex > 0 &&
+		continuesExecution(executions[anchorIndex - 1], executions[anchorIndex])
+	) {
 		anchorIndex--;
 	}
 
 	const selected = [executions[anchorIndex]];
 	for (let i = anchorIndex + 1; i < executions.length; i++) {
-		if (executions[i].userMessage !== null) break;
+		if (!continuesExecution(executions[i - 1], executions[i])) break;
 		selected.push(executions[i]);
 	}
 	return selected;
+}
+
+function continuesExecution(previous: AgentExecution, current: AgentExecution): boolean {
+	if (current.inputMessageIds !== undefined) {
+		return (
+			current.inputMessageIds.length > 0 &&
+			current.inputMessageIds[0] === previous.inputMessageIds?.[0]
+		);
+	}
+	return current.userMessage === null;
 }
 
 /**
