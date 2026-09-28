@@ -2079,6 +2079,25 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		testWithAPIKey('get', '/data-tables/123/columns', 'abcXYZ'),
 	);
 
+	test('should reject listing without dataTableColumn:read', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-columns-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}/columns`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.get('/data-tables/not-a-nanoid/columns');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should list columns for a data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'columns-test',
@@ -2099,6 +2118,8 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		expect(response.body[0]).toHaveProperty('type');
 		expect(response.body[0]).toHaveProperty('index');
 		expect(response.body[0]).toHaveProperty('dataTableId', dataTable.id);
+		expect(response.body[0]).toHaveProperty('createdAt');
+		expect(response.body[0]).toHaveProperty('updatedAt');
 	});
 
 	test('should return 404 for non-existing data table', async () => {

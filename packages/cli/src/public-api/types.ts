@@ -159,8 +159,6 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
 
 	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
