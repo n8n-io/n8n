@@ -560,7 +560,11 @@ describe('Folders', () => {
 		foldersStore.totalWorkflowCount = 2;
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			{ ...TEST_WORKFLOW_RESOURCE, updatedAt: null } as unknown as WorkflowListResource,
-			{ ...TEST_FOLDER_RESOURCE, createdAt: null, updatedAt: null } as unknown as WorkflowListResource,
+			{
+				...TEST_FOLDER_RESOURCE,
+				createdAt: null,
+				updatedAt: null,
+			} as unknown as WorkflowListResource,
 		]);
 		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
 
