@@ -1,4 +1,5 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
 	SlackAgentAppManifest,
 	SlackApiErrorMeta,
@@ -204,6 +205,7 @@ export class SlackMethodsService {
 		user: User,
 		accessToken: string,
 		session: SlackAppSetupSession,
+		modifiedBy?: AgentActor,
 	): Promise<string> {
 		const credentialData = {
 			name: this.credentialName(session.teamName, agent.name),
@@ -234,6 +236,7 @@ export class SlackMethodsService {
 				agent,
 				user,
 				integration,
+				...(modifiedBy ? { modifiedBy } : {}),
 			});
 		} catch (error) {
 			await this.deleteUnreferencedCredential(agent.id, credential.id, user);

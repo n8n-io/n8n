@@ -127,6 +127,7 @@ describe('Slack setup services', () => {
 		deleteManagedAppForCredential: (
 			options: AgentIntegrationRemovalContext,
 		) => ReturnType<SlackManagedSetupService['deleteAppForCredential']>;
+		isManagedBotCredential: SlackManagedSetupService['isManagedBotCredential'];
 	};
 
 	beforeEach(() => {
@@ -216,6 +217,8 @@ describe('Slack setup services', () => {
 			updateManagedAppSettings: async (options) => await managedService.updateAppSettings(options),
 			deleteManagedAppForCredential: async (options) =>
 				await managedService.deleteAppForCredential(options),
+			isManagedBotCredential: async (credentialId, requestUser) =>
+				await managedService.isManagedBotCredential(credentialId, requestUser),
 		};
 	});
 
@@ -809,12 +812,16 @@ describe('Slack setup services', () => {
 				managerCredentialId: 'manager',
 				workspaceId: 'T123',
 				user,
+				modifiedBy: 'mcp',
 			}),
 		).resolves.toEqual({
 			status: 'connected',
 			appId: 'A123',
 			credentialId: 'bot-credential',
 		});
+		expect(integrationManagementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ modifiedBy: 'mcp' }),
+		);
 
 		const manifestParams = fetchParams(requestMock, 0);
 		const manifest = JSON.parse(manifestParams.get('manifest') ?? '') as {
@@ -1547,5 +1554,41 @@ describe('Slack setup services', () => {
 
 		expect(requestMock).not.toHaveBeenCalled();
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
+	});
+
+	it('reports a bot credential as managed when n8n created its Slack app', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'bot-credential',
+			name: 'Slack bot',
+			type: 'slackApi',
+		} as CredentialsEntity);
+		credentialsService.decrypt.mockResolvedValue({
+			accessToken: 'xoxb-token',
+			managedAppId: 'A123',
+		});
+
+		await expect(service.isManagedBotCredential('bot-credential', user)).resolves.toBe(true);
+	});
+
+	it('reports a bot credential as unmanaged when it has no managed app', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'bot-credential',
+			name: 'Slack bot',
+			type: 'slackApi',
+		} as CredentialsEntity);
+		credentialsService.decrypt.mockResolvedValue({ accessToken: 'xoxb-token', managedAppId: '' });
+
+		await expect(service.isManagedBotCredential('bot-credential', user)).resolves.toBe(false);
+	});
+
+	it('reports a credential of another type as unmanaged without decrypting it', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'other',
+			name: 'Telegram',
+			type: 'telegramApi',
+		} as CredentialsEntity);
+
+		await expect(service.isManagedBotCredential('other', user)).resolves.toBe(false);
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 });

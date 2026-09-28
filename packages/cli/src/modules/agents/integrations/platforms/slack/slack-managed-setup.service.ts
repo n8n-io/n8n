@@ -1,4 +1,5 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
 	CreateSlackManagerCredentialResponse,
 	InstallSlackManagedAppResponse,
@@ -64,6 +65,7 @@ export interface GetManagedSetupStateOptions {
 export interface InstallManagedSlackAppOptions extends GetManagedSetupStateOptions {
 	managerCredentialId: string;
 	workspaceId: string;
+	modifiedBy?: AgentActor;
 }
 
 export interface FinalizeSlackManagerCredentialOptions extends GetManagedSetupStateOptions {
@@ -363,6 +365,21 @@ export class SlackManagedSetupService {
 			bot.managedAppId,
 			updatedManifest,
 		);
+	}
+
+	/**
+	 * True when n8n created the Slack app behind this bot credential through
+	 * managed setup, so the app already sends its events to the agent.
+	 */
+	async isManagedBotCredential(credentialId: string, user: User): Promise<boolean> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential || credential.type !== SLACK_CREDENTIAL_TYPE) return false;
+		const data = await this.credentialsService.decrypt(credential, true);
+		return !!stringProperty(data, 'managedAppId');
 	}
 
 	async deleteAppForCredential(
@@ -751,6 +768,7 @@ export class SlackManagedSetupService {
 			options.user,
 			botAccessToken,
 			session,
+			options.modifiedBy,
 		);
 		return { status: 'connected', appId: session.appId, credentialId };
 	}
