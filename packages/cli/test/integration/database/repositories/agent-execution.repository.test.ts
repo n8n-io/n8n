@@ -1777,7 +1777,7 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	describe('session filters', () => {
-		it('filters all composite statuses using the latest execution and recovered failures', async () => {
+		it('filters session status from the latest execution', async () => {
 			const running = await createThread({ sessionNumber: 1 });
 			const succeeded = await createThread({ sessionNumber: 2 });
 			const recovered = await createThread({ sessionNumber: 3 });
@@ -1822,8 +1822,8 @@ describe('AgentExecutionRepository', () => {
 				).threads.map(({ id }) => id);
 
 			expect(await idsFor('running')).toEqual([running.id]);
-			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
-			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
+			expect(new Set(await idsFor('succeeded'))).toEqual(new Set([succeeded.id, recovered.id]));
+			expect(await idsFor('error')).toEqual([errored.id]);
 
 			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
 			expect(latestStatuses.get(running.id)).toBe('running');

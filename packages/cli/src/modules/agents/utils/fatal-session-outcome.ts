@@ -39,3 +39,17 @@ export function applyFatalSessionOutcome(record: MessageRecord): MessageRecord {
 	}
 	return record;
 }
+
+/**
+ * Whether a stored execution error came from `applyFatalSessionOutcome`.
+ * Chat history does not show these as error bubbles, because the live stream
+ * does not show them.
+ */
+export function isFatalSessionOutcomeError(
+	error: string,
+	timeline: TimelineEvent[] | null,
+): boolean {
+	return (
+		error === MAX_ITERATIONS_STOPPED_MESSAGE || error === markedSessionFailureReason(timeline ?? [])
+	);
+}
