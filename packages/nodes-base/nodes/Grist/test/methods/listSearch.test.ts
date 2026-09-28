@@ -31,6 +31,7 @@ describe('Grist Node', () => {
 					'https://grist.example.com/api/orgs/1/workspaces',
 					'https://grist.example.com/api/orgs/2/workspaces',
 				]);
+				expect(request.mock.calls[0][0].qs).toEqual({ merged: 1 });
 				expect(result.results).toEqual([
 					{ name: 'Apple', value: 'docA', url: 'https://grist.example.com/doc/docA' },
 					{ name: 'Mango', value: 'docM', url: 'https://grist.example.com/doc/docM' },
@@ -82,6 +83,42 @@ describe('Grist Node', () => {
 				const result = await searchDocs.call(createLoadOptionsFunctions({}, request));
 
 				expect(result.results).toEqual([]);
+			});
+
+			describe('links to the site of each document', () => {
+				beforeEach(() => {
+					request
+						.mockReset()
+						.mockResolvedValueOnce([
+							{ id: 0, domain: 'docs' },
+							{ id: 2, domain: 'acme' },
+						])
+						.mockResolvedValueOnce([{ docs: [{ id: 'docA', name: 'Apple' }] }])
+						.mockResolvedValueOnce([{ docs: [{ id: 'docM', name: 'Mango' }] }]);
+				});
+
+				const hosted = ['https://docs.getgrist.com', 'https://acme.getgrist.com'];
+				const selfHosted = ['https://grist.example.com/o/docs', 'https://grist.example.com/o/acme'];
+
+				it.each([
+					['the hosted API', { url: 'https://api.getgrist.com' }, hosted],
+					['a hosted team site', { url: 'https://other.getgrist.com' }, hosted],
+					['no URL', {}, hosted],
+					['a self-hosted server', { url: 'https://grist.example.com' }, selfHosted],
+					['a self-hosted team site', { url: 'https://grist.example.com/o/other' }, selfHosted],
+				])(
+					'should link each document to its site, given %s',
+					async (_, credential, [personal, team]) => {
+						const gristApi = { apiKey: 'API_KEY', ...credential };
+
+						const result = await searchDocs.call(createLoadOptionsFunctions({}, request, gristApi));
+
+						expect(result.results).toEqual([
+							{ name: 'Apple', value: 'docA', url: `${personal}/doc/docA` },
+							{ name: 'Mango', value: 'docM', url: `${team}/doc/docM` },
+						]);
+					},
+				);
 			});
 
 			it('should filter documents by name, ignoring case', async () => {

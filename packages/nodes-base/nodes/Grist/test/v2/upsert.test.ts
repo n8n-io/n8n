@@ -10,7 +10,6 @@ describe('Grist Node', () => {
 			workflowFiles: ['upsert.workflow.json'],
 			nock: {
 				baseUrl,
-				// The node without a value to match on makes no request.
 				mocks: [
 					columnsRequest(),
 					{
@@ -27,6 +26,8 @@ describe('Grist Node', () => {
 						},
 						responseBody: { recordIds: [[3, 4]] },
 					},
+					// The node without a value to match on reads the columns, but sends no write.
+					columnsRequest(),
 				],
 			},
 		});
