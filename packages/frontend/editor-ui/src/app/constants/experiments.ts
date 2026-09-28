@@ -158,6 +158,12 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
  */
 export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
+	'119_surface_assistant_on_workflow_error',
+);
+// EOF Experiment cleanup
+
 export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -198,4 +204,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	MCP_JSON_NUDGE_EXPERIMENT.name,
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	// EOF Experiment cleanup
 ];
