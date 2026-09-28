@@ -103,6 +103,11 @@ request. A check can compare it with `workflow` to judge only what the save adds
 Deadlines are tight on the two points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
 
+A one-off CLI command registers no check unless it calls
+`BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
+`execute` and `execute-batch` call it. `import:entities` does not: it restores
+the policy tables in the same run.
+
 ## Contexts
 
 Each point hands its check a different context. The types are in

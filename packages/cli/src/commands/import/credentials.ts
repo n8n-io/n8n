@@ -102,6 +102,12 @@ type SkippedCredential = { id?: string; name?: string; violations: string[] };
 	flagsSchema,
 })
 export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
