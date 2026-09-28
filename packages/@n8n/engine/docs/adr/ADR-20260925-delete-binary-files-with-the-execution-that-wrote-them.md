@@ -59,8 +59,8 @@ The four binary data modes differ.
    prunable executions and triggers the (idempotent) deletion of their files before it deletes the
    rows.
 3.  **The host performs the deletion.** The DP stays unaware of the store. A new callback is added
-   to `ExternalDependencies`, that receives a list of `(workflowId, executionId)` pairs and deletes
-   the files at those locations. In integrated mode, `packages/cli` implements it with
+   to `ExternalDependencies`, that receives the `(workflowId, executionId)` pair of one execution
+   and deletes the files at that location. In integrated mode, `packages/cli` implements it with
    `BinaryDataService.deleteMany()` and `FileLocation.ofExecution()`, the same call the v1 hard
    delete makes. The callback is optional, since a host that runs no v1 nodes writes no files and
    can leave it out. Every other host supplies it with a `BinaryDataService` for the store its nodes
@@ -88,7 +88,7 @@ sequenceDiagram
     participant Store as BinaryDataService
     participant DB as DP database
     Job->>DB: select prunable executions
-    Job->>Host: delete files for [(workflowId, executionId)]
+    Job->>Host: delete files of (workflowId, executionId), one call per execution
     Host->>Store: deleteMany(FileLocation.ofExecution(...))
     Store-->>Host: ok
     Host-->>Job: ok
