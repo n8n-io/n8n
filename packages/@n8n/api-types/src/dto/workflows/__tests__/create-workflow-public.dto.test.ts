@@ -73,7 +73,7 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('keeps node.extendsCredential, its value matches nodeCredentialType, nothing else on the node marks it as the app-picker variant', () => {
+	test('accepts node.extendsCredential but ignores it', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...validPayload,
 			nodes: [{ ...validPayload.nodes[0], extendsCredential: 'datadogApi' }],
@@ -81,7 +81,7 @@ describe('CreateWorkflowPublicDto', () => {
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.nodes[0].extendsCredential).toBe('datadogApi');
+			expect(result.data.nodes[0]).not.toHaveProperty('extendsCredential');
 		}
 	});
 
