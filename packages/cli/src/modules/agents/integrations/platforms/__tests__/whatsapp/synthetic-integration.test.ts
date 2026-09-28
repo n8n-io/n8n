@@ -22,7 +22,6 @@ vi.mock('../../../esm-loader', () => ({
 	loadChatSdk: async () => await import('chat'),
 	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
 	loadWhatsAppAdapter: async () => await import('@chat-adapter/whatsapp'),
-	loadChatAdapterShared: async () => await import('@chat-adapter/shared'),
 }));
 
 const buttons = (count: number): SuspendComponent[] =>
@@ -256,6 +255,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			try {
 				const threadId = whatsAppThreadId(fixtures);
 				const promise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+
+				// The first attempt fails immediately; the retry must wait for the
+				// base backoff (1s) before trying again — advancing by less than
+				// that must not have produced a second attempt yet, proving the
+				// wrapper actually waits instead of panic-retrying.
+				await vi.advanceTimersByTimeAsync(500);
+				expect(ctx.apiCalls).toHaveLength(1);
+
 				await vi.runAllTimersAsync();
 
 				await expect(promise).resolves.toBeDefined();

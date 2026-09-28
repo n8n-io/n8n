@@ -192,6 +192,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
+	channelRateLimitGuard: ChannelRateLimitGuard;
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
@@ -208,6 +209,10 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	integration: AgentIntegrationConfig;
 	componentMapper?: ComponentMapper;
 	stream?: StreamChunk[];
+	// Shared with the integration impl when its adapter also needs to record or
+	// check the connection cooldown itself (e.g. WhatsApp's automatic replies —
+	// see `withWhatsAppRateLimitBackoff`), so both paths agree on one connection's state.
+	channelRateLimitGuard?: ChannelRateLimitGuard;
 }): ReplayContextSetup<TChat> {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
@@ -261,10 +266,11 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	chatIntegrationService.getChatInstanceForTools.mockResolvedValue(params.chat);
+	const channelRateLimitGuard = params.channelRateLimitGuard ?? new ChannelRateLimitGuard();
 	const actionExecutor = new ChatIntegrationActionExecutor(
 		chatIntegrationService,
 		registry,
-		new ChannelRateLimitGuard(),
+		channelRateLimitGuard,
 	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 
@@ -272,6 +278,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		chat: params.chat,
 		agentExecutor,
 		actionExecutor,
+		channelRateLimitGuard,
 		descriptor,
 		integration: params.integration,
 		messageContextStore,

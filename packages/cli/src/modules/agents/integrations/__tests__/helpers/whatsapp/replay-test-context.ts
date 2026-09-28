@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
+import { ChannelRateLimitGuard } from '../../../channel-rate-limit.guard';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
@@ -104,11 +105,14 @@ export function whatsAppThreadId(
 	return `whatsapp:${fixtures.phoneNumberId}:${fixtures.contact.wa_id}`;
 }
 
-export function createWhatsAppIntegration(): WhatsAppIntegration {
+export function createWhatsAppIntegration(
+	channelRateLimitGuard = new ChannelRateLimitGuard(),
+): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+		channelRateLimitGuard,
 	);
 }
 
@@ -149,7 +153,7 @@ function installWhatsAppApiStub(
 					status: 400,
 				};
 			}
-			if (failuresLeft > 0) {
+			if (failuresLeft > 0 && method === 'messages') {
 				failuresLeft--;
 				return {
 					apiCall: { method, body },
@@ -184,7 +188,12 @@ export async function createWhatsAppReplayContext(
 ): Promise<WhatsAppReplayContext> {
 	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
 
-	const integrationImpl = createWhatsAppIntegration();
+	// Shared with `createReplayContextSetup` below so the adapter's own guard
+	// checks (automatic replies) and the action executor's (respond, send_dm)
+	// agree on one connection's cooldown state, mirroring how DI hands both the
+	// same singleton in production.
+	const channelRateLimitGuard = new ChannelRateLimitGuard();
+	const integrationImpl = createWhatsAppIntegration(channelRateLimitGuard);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',
 		credentialId: 'cred-whatsapp',
@@ -230,6 +239,7 @@ export async function createWhatsAppReplayContext(
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
+		channelRateLimitGuard,
 	});
 
 	// No identity bootstrap call here — WhatsApp derives its bot user ID from

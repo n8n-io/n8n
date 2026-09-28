@@ -14,7 +14,6 @@ import type {
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import type { AdapterError } from '@chat-adapter/shared';
 import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
 
 import { AgentRepository } from '../../repositories/agent.repository';
@@ -26,11 +25,14 @@ import {
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
+import { channelRateLimitMessage } from '../channel-rate-limit';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { componentTextToString, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
-import { loadChatAdapterShared, loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
+import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import { buildIntegrationConnectionId } from '../integration-tool-factory';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -65,7 +67,7 @@ const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
  * only add to the same behaviour Meta is penalising.
  * @see https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes
  */
-const WHATSAPP_RATE_LIMIT_ERROR_CODES = new Set([130429, 131056, 80007]);
+const WHATSAPP_RATE_LIMIT_ERROR_CODES = new Set([130429, 131048, 131056, 80007]);
 
 const WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS = 4;
 const WHATSAPP_RATE_LIMIT_BACKOFF_BASE_MS = 1_000;
@@ -165,6 +167,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {
 		super();
 	}
@@ -219,13 +222,18 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// the adapter does need.
 		this.extractBusinessAccountId(ctx.credential);
 
-		const [{ WhatsAppAdapter: AdapterClass }, sdk, chatAdapterShared] = await Promise.all([
+		const [{ WhatsAppAdapter: AdapterClass }, sdk] = await Promise.all([
 			loadWhatsAppAdapter(),
 			loadChatSdk(),
-			loadChatAdapterShared(),
 		]);
 		const logger = this.logger;
-		const { AdapterError } = chatAdapterShared;
+		const channelRateLimitGuard = this.channelRateLimitGuard;
+		// Automatic agent replies post through this adapter directly, bypassing
+		// the shared action executor (see module doc), so this is the one place
+		// that must record and check the cross-turn cooldown itself — otherwise
+		// a persistent limit would let every later reply start its own full
+		// retry cycle against an already-limited number instead of failing fast.
+		const connectionId = buildIntegrationConnectionId(ctx.integration);
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
 		// and the rate-limit backoff (see module doc). Every outbound send
@@ -240,8 +248,8 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				await assertCustomerServiceWindowOpen(this.chat, sdk, threadId, logger);
 				return await withWhatsAppRateLimitBackoff(
 					async () => await super.postMessage(threadId, message),
-					AdapterError,
 					logger,
+					{ guard: channelRateLimitGuard, connectionId },
 				);
 			}
 
@@ -253,8 +261,8 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				await assertCustomerServiceWindowOpen(this.chat, sdk, threadId, logger);
 				return await withWhatsAppRateLimitBackoff(
 					async () => await super.stream(threadId, textStream, options),
-					AdapterError,
 					logger,
+					{ guard: channelRateLimitGuard, connectionId },
 				);
 			}
 		}
@@ -430,9 +438,18 @@ function parseWhatsAppApiError(message: string): WhatsAppApiErrorDetails | undef
  * {@link WHATSAPP_RATE_LIMIT_ERROR_CODES}), false for anything else —
  * including a template rejected for negative feedback (code 131051), which
  * is a real content problem, not a rate limit, and must not be retried.
+ *
+ * Checks `error.name` rather than `error instanceof AdapterError`: the class
+ * is dynamically ESM-imported (see `esm-loader.ts`), and nothing guarantees
+ * that reference is the identical `AdapterError` the `@chat-adapter/whatsapp`
+ * package throws internally — a subtly different import path for the same
+ * published module (e.g. under test, where a mock replaces the loader) can
+ * resolve a distinct module instance whose class fails `instanceof` against
+ * this one even though it is, in every way that matters, the same error.
+ * `name` is a plain string set in the constructor, so it survives that.
  */
-function isWhatsAppRateLimitError(error: unknown, AdapterErrorClass: typeof AdapterError): boolean {
-	if (!(error instanceof AdapterErrorClass)) return false;
+function isWhatsAppRateLimitError(error: unknown): boolean {
+	if (!(error instanceof Error) || error.name !== 'AdapterError') return false;
 	const details = parseWhatsAppApiError(error.message);
 	if (!details) return false;
 	return (
@@ -460,24 +477,34 @@ interface HttpStatusCarryingError {
  * hammering a rate-limited number is exactly the behaviour that got it
  * rate-limited. Any other error, or the last attempt, is rethrown as-is.
  *
- * A rate limit that never clears within these attempts surfaces as an
- * `OperationalError` shaped so the shared `ChannelRateLimitGuard` (see
- * `channel-rate-limit.ts`) recognises it as a 429 and starts its own
- * cross-turn cooldown for this connection — the same "stop hammering it and
- * fail gracefully" behaviour every other channel already gets, layered on
- * top of the short local backoff above for the common, momentary case.
+ * Automatic agent replies post through this wrapper directly (see
+ * {@link WhatsAppIntegration.createAdapter}), bypassing the shared action
+ * executor that would otherwise consult `ChannelRateLimitGuard` on its own.
+ * So this checks and records that same guard itself: a connection already
+ * cooling down fails immediately instead of running a fresh retry cycle, and
+ * a rate limit that never clears within these attempts both surfaces as an
+ * `OperationalError` shaped as a 429 and starts the cooldown for later calls
+ * — the same "stop hammering it and fail gracefully" behaviour every other
+ * channel already gets, layered on top of the short local backoff above for
+ * the common, momentary case.
  */
 async function withWhatsAppRateLimitBackoff<T>(
 	send: () => Promise<T>,
-	AdapterErrorClass: typeof AdapterError,
 	logger: Logger,
+	rateLimit: { guard: ChannelRateLimitGuard; connectionId: string },
 ): Promise<T> {
+	if (rateLimit.guard.isBlocked(rateLimit.connectionId)) {
+		throw Object.assign(new OperationalError(channelRateLimitMessage('whatsapp')), {
+			response: { status: 429 },
+		} satisfies HttpStatusCarryingError);
+	}
 	for (let attempt = 1; ; attempt++) {
 		try {
 			return await send();
 		} catch (error) {
-			if (!isWhatsAppRateLimitError(error, AdapterErrorClass)) throw error;
+			if (!isWhatsAppRateLimitError(error)) throw error;
 			if (attempt >= WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS) {
+				rateLimit.guard.record(rateLimit.connectionId);
 				throw Object.assign(
 					new OperationalError(
 						'WhatsApp is rate-limiting messages to this number, likely because of its Meta ' +
