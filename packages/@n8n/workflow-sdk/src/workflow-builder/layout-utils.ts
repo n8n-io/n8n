@@ -601,6 +601,40 @@ export function resolveStickyGeometry(
 		return { x: position[0], y: position[1], width, height };
 	};
 
+	/** Every non-sticky node on the canvas, keyed by name. */
+	const nodeBoxByName = new Map<string, BoundingBox>();
+	for (const nodeName of nodes.keys()) {
+		if (nodes.get(nodeName)?.instance.type === STICKY_NODE_TYPE) continue;
+		const box = boxOfNode(nodeName);
+		if (box) nodeBoxByName.set(nodeName, box);
+	}
+
+	/**
+	 * How far a note may grow upward before it swallows a node it does not document.
+	 *
+	 * The band opens upward, so on a branching canvas a lower branch's note can
+	 * reach over a node belonging to the branch above it. That note would then look
+	 * like it documents that node, and the node would be drawn over its text. Stop
+	 * at the lowest such node instead.
+	 */
+	const bandCeilingFor = (
+		box: BoundingBox,
+		anchorNames: Set<string>,
+		anchorTop: number,
+	): number => {
+		let ceiling = Number.POSITIVE_INFINITY;
+		for (const [nodeName, nodeBox] of nodeBoxByName) {
+			if (anchorNames.has(nodeName)) continue;
+			const overlapsHorizontally =
+				nodeBox.x < box.x + box.width && box.x < nodeBox.x + nodeBox.width;
+			if (!overlapsHorizontally) continue;
+			const nodeBottom = nodeBox.y + nodeBox.height;
+			if (nodeBottom > anchorTop) continue;
+			ceiling = Math.min(ceiling, anchorTop - STICKY_PADDING - nodeBottom - NODE_Y_SPACING);
+		}
+		return ceiling;
+	};
+
 	const resolved = stickyNames.flatMap((name) => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return [];
@@ -608,13 +642,16 @@ export function resolveStickyGeometry(
 		const { instance } = graphNode;
 		const explicitPosition = instance.config?.position;
 
-		const anchorBoxes = isAnchoredStickyNote(instance)
-			? instance.stickyAnchorIds
-					.map((id) => nameById.get(id))
-					.filter((anchorName): anchorName is string => anchorName !== undefined)
-					.map(boxOfNode)
-					.filter((box): box is BoundingBox => box !== undefined)
-			: [];
+		const anchorNames = new Set(
+			isAnchoredStickyNote(instance)
+				? instance.stickyAnchorIds
+						.map((id) => nameById.get(id))
+						.filter((anchorName): anchorName is string => anchorName !== undefined)
+				: [],
+		);
+		const anchorBoxes = [...anchorNames]
+			.map(boxOfNode)
+			.filter((box): box is BoundingBox => box !== undefined);
 
 		// Whatever the caller declared wins, dimension by dimension; the anchors and
 		// the note's own text only fill in what is missing.
@@ -628,9 +665,15 @@ export function resolveStickyGeometry(
 		// fit is not scrollable — the canvas clips it.
 		const baseBox = wrappingBoxFor(anchorBoxes);
 		const wrapWidth = ownWidth ? declared.width : baseBox?.width;
-		const wrappingBox = ownHeight
-			? baseBox
-			: wrappingBoxFor(anchorBoxes, textBandFor(content, wrapWidth ?? declared.width));
+		let wrappingBox = baseBox;
+		if (!ownHeight && baseBox) {
+			const anchorTop = Math.min(...anchorBoxes.map((box) => box.y));
+			const wanted = textBandFor(content, wrapWidth ?? declared.width);
+			const ceiling = bandCeilingFor(baseBox, anchorNames, anchorTop);
+			// Never shrink below the flat band this used to reserve.
+			const band = Math.max(STICKY_HEADER_HEIGHT, Math.min(wanted, ceiling));
+			wrappingBox = wrappingBoxFor(anchorBoxes, band);
+		}
 
 		// Only notes that wrap anchors are sized here. A free note keeps the
 		// StickyNote defaults: giving it a size would write width and height into

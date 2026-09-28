@@ -428,6 +428,43 @@ describe('sticky note placement with tidyUp', () => {
 			}
 		});
 
+		it('does not reach over a node on another branch', () => {
+			// The band opens upward, so on a branching canvas the note for the lower
+			// path can grow across a node on the path above it. It would then look
+			// like it documents that node, and the node would cover its text.
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Start' },
+			});
+			const upper = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Upper branch' },
+			});
+			const lower = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Lower branch' },
+			});
+
+			const json = workflow('wf', 'Test')
+				.add(start.to(upper))
+				.add(start.to(lower))
+				.add(
+					sticky(
+						'## Lower\nNothing is written and no message is sent. The caller gets a 400 back and is expected to fix the payload and retry.',
+						[lower],
+						{ name: 'Lower note' },
+					),
+				)
+				.toJSON({ tidyUp: true });
+
+			const box = stickyBox(json, 'Lower note');
+			expect(contains(box, nodeBox(json, 'Lower branch'))).toBe(true);
+			expect(contains(box, nodeBox(json, 'Upper branch'))).toBe(false);
+		});
+
 		it('settles after the first layout instead of growing each time', () => {
 			// The size it emits becomes a declared size on the way back in, so a second
 			// pass must not grow the note again.
