@@ -32,33 +32,37 @@ describe('describeRejectionReason', () => {
 		expect(describeRejectionReason({ message: 'boom' })).toBe('Error: boom');
 	});
 
-	it('should list the keys of a plain object without its values', () => {
+	it('should describe a plain object by its type name only', () => {
 		const result = describeRejectionReason({
 			headers: { authorization: 'Bearer abc' },
 			body: 'secret-value',
 		});
 
-		expect(result).toBe('Object with keys [headers, body]');
+		expect(result).toBe('Object');
 		expect(result).not.toContain('Bearer abc');
 		expect(result).not.toContain('secret-value');
+		expect(result).not.toContain('headers');
+		expect(result).not.toContain('body');
 	});
 
-	it('should list the keys of an array without its elements', () => {
+	it('should describe an array by its type name and length only', () => {
 		const result = describeRejectionReason(['first-element', 'second-element']);
 
-		expect(result).toBe('Array with keys [0, 1]');
+		expect(result).toBe('Array of length 2');
 		expect(result).not.toContain('first-element');
 		expect(result).not.toContain('second-element');
 	});
 
-	it('should list only the first ten keys of an object with more keys', () => {
-		const reason = Object.fromEntries(
-			Array.from({ length: 12 }, (_, index) => [`key${index}`, index]),
-		);
+	it('should describe a large buffer by its type name and length', () => {
+		expect(describeRejectionReason(Buffer.alloc(1e6))).toBe('Buffer of length 1000000');
+	});
 
-		expect(describeRejectionReason(reason)).toBe(
-			'Object with keys [key0, key1, key2, key3, key4, key5, key6, key7, key8, key9, ...]',
-		);
+	it('should describe a class instance by its constructor name', () => {
+		class MyClass {
+			value = 'secret-value';
+		}
+
+		expect(describeRejectionReason(new MyClass())).toBe('MyClass');
 	});
 
 	it.each([

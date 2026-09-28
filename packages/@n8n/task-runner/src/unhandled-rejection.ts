@@ -1,7 +1,6 @@
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 const MAX_REASON_LENGTH = 1000;
-const MAX_LISTED_KEYS = 10;
 const LOG_PREFIX = 'Unhandled promise rejection in task runner, continuing.';
 
 function describeKind(reason: object): string {
@@ -23,10 +22,14 @@ function describeObject(reason: object): string {
 		return `${name}: ${reason.message}`;
 	}
 
-	const keys = Object.keys(reason);
-	const listed = keys.slice(0, MAX_LISTED_KEYS).join(', ');
-	const more = keys.length > MAX_LISTED_KEYS ? ', ...' : '';
-	return `${describeKind(reason)} with keys [${listed}${more}]`;
+	const kind = describeKind(reason);
+	if (Array.isArray(reason)) {
+		return `${kind} of length ${reason.length}`;
+	}
+	if (ArrayBuffer.isView(reason) && 'length' in reason && typeof reason.length === 'number') {
+		return `${kind} of length ${reason.length}`;
+	}
+	return kind;
 }
 
 export function describeRejectionReason(reason: unknown): string {
