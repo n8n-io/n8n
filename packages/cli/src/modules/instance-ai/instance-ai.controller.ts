@@ -1018,6 +1018,7 @@ export class InstanceAiController {
 			tabs: payload.tabs,
 			closedTabs: payload.closedTabs,
 			activeTab: payload.activeTab,
+			...(payload.previewOpen !== undefined ? { previewOpen: payload.previewOpen } : {}),
 		};
 		await this.threadTabsService.saveState(threadId, req.user.id, state);
 		return { state };

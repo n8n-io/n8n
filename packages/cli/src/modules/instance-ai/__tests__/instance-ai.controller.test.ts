@@ -2217,6 +2217,19 @@ describe('InstanceAiController', () => {
 			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, tabsState);
 		});
 
+		it('should save whether the preview is open', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto({ ...tabsState, previewOpen: false });
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: { ...tabsState, previewOpen: false } });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, {
+				...tabsState,
+				previewOpen: false,
+			});
+		});
+
 		it('should reject tabs of a thread that belongs to another user', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 

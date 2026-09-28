@@ -30,6 +30,17 @@ describe('InstanceAiThreadTabsService', () => {
 		expect(repository.findState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
 	});
 
+	it('returns stored tabs that were saved before previewOpen existed, and keeps previewOpen when present', async () => {
+		repository.findState.mockResolvedValue(state);
+		await expect(service.getState(THREAD_ID, USER_ID)).resolves.toEqual(state);
+
+		repository.findState.mockResolvedValue({ ...state, previewOpen: true });
+		await expect(service.getState(THREAD_ID, USER_ID)).resolves.toEqual({
+			...state,
+			previewOpen: true,
+		});
+	});
+
 	it('returns null when no tabs are stored', async () => {
 		repository.findState.mockResolvedValue(null);
 
