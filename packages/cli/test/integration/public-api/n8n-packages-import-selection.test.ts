@@ -119,7 +119,7 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(await workflowRepository.findOneBy({ id: 'WFB' })).toBeNull();
 	});
 
-	it('archives a target workflow named in deletedWorkflowIds and returns 200', async () => {
+	it('deletes a target workflow named in deletedWorkflowIds and returns 200', async () => {
 		const project = await createTeamProject('Target', owner);
 		const victim = await createWorkflow({ name: 'Victim' }, project);
 		const tarBuffer = await buildProjectPackage(project.id);
@@ -138,11 +138,11 @@ describe('POST /n8n-packages/import-selection', () => {
 			status: 'created',
 		});
 		expect(response.body.removedWorkflows).toEqual([
-			expect.objectContaining({ workflowId: victim.id, deletion: 'archived' }),
+			expect.objectContaining({ workflowId: victim.id, deletion: 'deleted' }),
 		]);
 
 		const workflowRepository = Container.get(WorkflowRepository);
-		expect((await workflowRepository.findOneBy({ id: victim.id }))?.isArchived).toBe(true);
+		expect(await workflowRepository.findOneBy({ id: victim.id })).toBeNull();
 		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
 	});
 
