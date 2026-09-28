@@ -28,13 +28,16 @@ export const executionResponseSchema = z.discriminatedUnion('type', [
 		type: z.literal('ended'),
 		executionId: z.string().min(1),
 		workflowId: z.string().min(1),
-		status: z.enum(['completed', 'failed']),
-		lastStep: z.object({
-			nodeId: z.string().min(1),
-			nodeName: z.string().min(1),
-			status: z.enum(SETTLED_STEP_STATUSES),
-			outputs: z.array(jsonValueSchema).nullable(),
-			error: z.object({ name: z.string(), message: z.string() }).optional(),
-		}),
+		status: z.enum(['completed', 'failed', 'cancelled']),
+		// `null` for a cancelled run: a cancel ends the run without a step settling.
+		lastStep: z
+			.object({
+				nodeId: z.string().min(1),
+				nodeName: z.string().min(1),
+				status: z.enum(SETTLED_STEP_STATUSES),
+				outputs: z.array(jsonValueSchema).nullable(),
+				error: z.object({ name: z.string(), message: z.string() }).optional(),
+			})
+			.nullable(),
 	}),
 ]);

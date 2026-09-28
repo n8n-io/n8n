@@ -19,6 +19,12 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts a cancelled run, which no step settled', () => {
+		const response = ended({ status: 'cancelled', lastStep: null });
+
+		expect(executionResponseSchema.parse(response)).toEqual(response);
+	});
+
 	it('accepts an undeliverable response', () => {
 		expect(
 			executionResponseSchema.parse({
