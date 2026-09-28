@@ -1,0 +1,241 @@
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,57,202-209
+packages/cli/src/modules/preference-mining/__tests__/preference-mining-recall.test.ts
+  s_be11e6ac04be6e::t_1081457652ea3f 51
+  s_be11e6ac04be6e::t_506460c7246308 1-9,22,27,32,39-49,53-56
+  s_be11e6ac04be6e::t_288c4344d40f4e 10-21,23-26,28-31,33-38,50,52
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_be11e6ac04be6e::t_29d160cc24f1f1 1,30-36,139-152,155-156,165-167,174-212,224-225,230-234,275,285-288,293-298,305
+  s_be11e6ac04be6e::t_4de413786bdeb9 153-154,157-164,168-173,215-223,226-229,282-284,289-292,306-308
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_be11e6ac04be6e::t_58a77286a6ed47 360-363
+packages/cli/src/modules/preference-mining/database/preference-mining-run.entity.ts
+  s_be11e6ac04be6e::t_f30a7ec6cdcedc 2,16,23
+  s_be11e6ac04be6e::t_d368baf4b725e1 1,3-15,17-22,24-30
+packages/modules/preference-mining/frontend/src/usePreferenceMining.ts
+  s_be11e6ac04be6e::t_055f52880de167 109-110,180-185
+  s_be11e6ac04be6e::t_eb118b919e2400 6,41-43,55,95-96,105-108,111,121-122,125,130,132,137-161,171-179,186,190,210-211,227,311-315
+  s_be11e6ac04be6e::t_01535f516cc6f7 162-170
+  s_be11e6ac04be6e::t_e352263390d521 29-33
+  s_be11e6ac04be6e::t_01d987941ccbf4 36,65-67,201,306
+packages/cli/src/modules/preference-mining/database/preference-mining.repository.ts
+  s_be11e6ac04be6e::t_0509cf16384e0c 1,7-10,13,19-24
+  s_be11e6ac04be6e::t_cec89a9f354da8 15
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_be11e6ac04be6e::t_9514358d8d5ad1 237-238,283-284
+  s_be11e6ac04be6e::t_d7a2443b5e53b9 179,218,229-230,244,257-259
+packages/cli/src/modules/workflow-index/preference-mining/node-preference-miner.ts
+  s_be11e6ac04be6e::t_e0645f27006f85 183-184
+  s_be11e6ac04be6e::t_899a76058ccdbb 1,36,52,89,99,170
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_be11e6ac04be6e::t_4de413786bdeb9 91-96,108-110,159-164,169-175,177-186,193-202,204-210
+  s_be11e6ac04be6e::t_0e7476bc1f526d 6-7,51,112,115,120,137,143-158,165-168,176,187-192,203,211
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_be11e6ac04be6e::t_41f1b4c6c67222 18,446,452,461-464,472,486,496,508,548-549,565,1162-1163,1175,1179-1183
+  s_be11e6ac04be6e::t_58a77286a6ed47 545-546
+  s_be11e6ac04be6e::t_abaaa1fc7881b0 1178
+  s_be11e6ac04be6e::t_a0aabdabdada2a 574-576,582
+  s_be11e6ac04be6e::t_4de413786bdeb9 447-451,453-460,504-507,509-511,560-564,1166-1168,1176-1177
+packages/cli/src/modules/workflow-index/__tests__/workflow-index.service.test.ts
+  s_be11e6ac04be6e::t_9514358d8d5ad1 140-143,145,150-153,155,384-387,389,394-397,399,404-407,409,448-451,453
+packages/cli/scripts/preference-mining/README.md
+  s_be11e6ac04be6e::t_f86bf1b24513bd 100,107-114
+  s_be11e6ac04be6e::t_f1975f160d0a26 146-149
+  s_be11e6ac04be6e::t_096f34bd50b65f 71-79,83-99,134-145,150-164,222,229
+  s_be11e6ac04be6e::t_efac63d98dba80 80-82,101-106,115-133,176-178
+packages/cli/src/modules/preference-mining/preference-discovery.ts
+  s_be11e6ac04be6e::t_b94d1dfa6d7150 17,93,97,197-204,239,242,266-280,286-290,318-319,321-322,324-328,331-339,341-343,355-360,363,367,520
+  s_be11e6ac04be6e::t_77a7c0457e629a 283
+  s_be11e6ac04be6e::t_fc4f0b51952a05 370-372,534-536
+  s_be11e6ac04be6e::t_d2f8f28959f2da 63-65,174,217-229,395-397,409-411
+  s_be11e6ac04be6e::t_2ef840fefe5c63 9-11,13-16,18-33,62,66,76,78-82,85,90-92,94,96,99-113,115-118,120-122,124,126-127,129-132,138,151-155,162-163,170-173,187-193,195-196,205-215,230-231,233-236,238,323,393-394,398-399,401,446-447,449-456,458-460,462-464,486-490,494-501,503-507,509,511,513,515,529-530,538,567-568,597
+  s_be11e6ac04be6e::t_e0645f27006f85 175-186
+  s_be11e6ac04be6e::t_83a3b513ac9c4c 8,232,516-517,531-533,537
+  s_be11e6ac04be6e::t_8637aa630b466f 320,344-345,465,467-472,480,491-492,539-566,571,580,583-586,591-596
+  s_be11e6ac04be6e::t_c11c3b5affbf8d 216,237,362,512
+  s_be11e6ac04be6e::t_49bf28fbe7ca19 481
+  s_be11e6ac04be6e::t_cac2785aa92aaf 1-7,368
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 41-61,67-75,385-392,572-579,587-590
+  s_be11e6ac04be6e::t_416cd8e9b1e88d 256-257
+  s_be11e6ac04be6e::t_1a6cb94d7b9198 369,373
+  s_be11e6ac04be6e::t_bc352395d1d25c 482-483,485,582
+  s_be11e6ac04be6e::t_4ece2914b09180 86-89,98,119,340,402,448,466,473-479,493,569-570,581
+  s_be11e6ac04be6e::t_589b6e3a46d52f 34-40,281-282,284-285,291-317,329-330,346-354
+  s_be11e6ac04be6e::t_5d98db9f0a7c28 83-84,95,114,123,125,128,133-135,137,139-141,143-150,156-161,164-167,169,194,240-241,243-253,255,258-265,361,364-366,374-378,380-384,403-408,412-414,416-425,428-429,431-432,434-438,442,444-445,510,518-519,521-528
+  s_be11e6ac04be6e::t_f30a7ec6cdcedc 484
+packages/modules/preference-mining/frontend/src/PreferenceMiningView.vue
+  s_be11e6ac04be6e::t_e352263390d521 21-22,28,69-74,77,99-117,233-236
+  s_be11e6ac04be6e::t_68c26635eec3db 46-50,76,128-129,131,193-194,196-198,283-315,608-618,672-692,927-935
+  s_be11e6ac04be6e::t_9ec8bb1a632673 84,92,845-847
+  s_be11e6ac04be6e::t_ab650d601e05f0 318
+  s_be11e6ac04be6e::t_da07af34a1129f 224-226
+  s_be11e6ac04be6e::t_3a5346b9cb9de9 317,319-356,358-370,372-377,390-392,401,408-424,426-469,471-483,485-487,490-496,531-605,629,631-651,659-663,893-918,1091-1093,1096-1101,1105-1107,1110,1114,1118-1121,1124,1127,1130,1133,1137
+  s_be11e6ac04be6e::t_01d987941ccbf4 41,80,82,141-143,168-175,178
+  s_be11e6ac04be6e::t_98941f7c8c1980 498,652,828
+  s_be11e6ac04be6e::t_79690855e92918 945,975,997-998,1087-1090,1094-1095,1102-1104,1108-1109,1111-1113,1115-1117,1122-1123,1125-1126,1128-1129,1131-1132,1134-1136,1151-1155
+  s_be11e6ac04be6e::t_438c508da28405 227-231
+packages/@n8n/instance-ai/src/index.ts
+  s_be11e6ac04be6e::t_f095725706e7d4 45-50
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_be11e6ac04be6e::t_4a9c5f28637e01 23-26
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be11e6ac04be6e::t_a490850a73fc73 1200,1203,1210-1211
+  s_be11e6ac04be6e::t_4de413786bdeb9 485-486,507-515,526-527,1003-1011,1018-1020,1027-1040,1042-1050,1112-1113,1196-1199,1263-1268
+  s_be11e6ac04be6e::t_10b5613be1c1f1 914-915,999-1002,1012-1017,1021-1026,1041,1051-1061,1063-1072,1074-1077,1079-1102,1104-1106,1115-1132,1269
+  s_be11e6ac04be6e::t_5d98db9f0a7c28 1133-1134,1136-1141,1395,1494,1841
+  s_be11e6ac04be6e::t_75b3eb33e7aa0a 488,529
+  s_be11e6ac04be6e::t_d7a2443b5e53b9 451,458,1103
+  s_be11e6ac04be6e::t_0945c7bccc3e44 501,503-506,516-518,522,530,1078,1107,1109-1110,1114
+  s_be11e6ac04be6e::t_f1975f160d0a26 484,487,502,528,531,556,1062,1073,1108,1111,1135
+  s_be11e6ac04be6e::t_abaaa1fc7881b0 3885-3887,3889,3913-3915,3932-3933,3948
+  s_be11e6ac04be6e::t_e32c6c8c966a69 3931,3935-3939,3942-3947,3949-3950,3952
+  s_be11e6ac04be6e::t_b94d1dfa6d7150 3940-3941
+  s_be11e6ac04be6e::t_d2f8f28959f2da 5218-5224
+packages/cli/src/modules/workflow-index/preference-mining/lab-types.ts
+  s_be11e6ac04be6e::t_cec89a9f354da8 17,19,49
+docs/generated/sqlite-schema/preference_mining_run.md
+  ai_agent 1-91
+packages/@n8n/instance-ai/skills/preference-discovery/SKILL.md
+  s_be11e6ac04be6e::t_a0aabdabdada2a 37,49,53,76
+  s_be11e6ac04be6e::t_4ece2914b09180 80-83,85-88
+  s_be11e6ac04be6e::t_58a77286a6ed47 1-3,5-27,31-33,38,48,54-56,60-61,66-75,79,84,89,95-101,108-111
+  s_be11e6ac04be6e::t_d4d24050dc432e 4,28-30,34-36,39-47,50-52,57-59,62-65,77-78,102-107
+  s_be11e6ac04be6e::t_7bb00036e2b71e 90-94
+packages/@n8n/api-types/src/preference-mining.ts
+  s_be11e6ac04be6e::t_1f174dfa331abc 46,51,59-60,83
+  s_be11e6ac04be6e::t_7fc743b1260db3 12-14,18-24,26
+  s_be11e6ac04be6e::t_0add2a88060661 41-45,54-56,122-127,168-171,200-212
+  s_be11e6ac04be6e::t_851e40ab948925 175-179,181
+  s_be11e6ac04be6e::t_01d987941ccbf4 174
+  s_be11e6ac04be6e::t_bc352395d1d25c 25
+  s_be11e6ac04be6e::t_5d98db9f0a7c28 131-136,138
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_be11e6ac04be6e::t_9ec8bb1a632673 8945,8949,8997
+  s_be11e6ac04be6e::t_3dbda1a9909db6 8876-8883
+  s_be11e6ac04be6e::t_ab650d601e05f0 8943-8944,9018
+  s_be11e6ac04be6e::t_79690855e92918 8885,8888,8906-8907,8928-8929,8942,8946,8948,8956-8957,8961,8989-8991,9010-9017,9019-9027
+  s_be11e6ac04be6e::t_68c26635eec3db 8947,9008
+packages/modules/preference-mining/frontend/src/PreferenceList.vue
+  s_be11e6ac04be6e::t_ab650d601e05f0 59-61
+  s_be11e6ac04be6e::t_fd0c01f64a207d 87-89
+  s_be11e6ac04be6e::t_01d987941ccbf4 21
+packages/@n8n/instance-ai/docs/configuration.md
+  s_be11e6ac04be6e::t_f1975f160d0a26 52-54
+packages/cli/src/modules/preference-mining/database/preference-mining-run.repository.ts
+  s_be11e6ac04be6e::t_d368baf4b725e1 1-11,18,28,30-38,54-56
+  s_be11e6ac04be6e::t_288c4344d40f4e 12-17,19-27,29
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 39-48,50-53
+  s_be11e6ac04be6e::t_d689a29e38cfa0 49
+packages/cli/src/modules/preference-mining/preference-mining.module.ts
+  s_be11e6ac04be6e::t_d368baf4b725e1 6,10-12
+  s_be11e6ac04be6e::t_288c4344d40f4e 7-9
+packages/@n8n/api-types/src/index.ts
+  s_be11e6ac04be6e::t_29d160cc24f1f1 872
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_be11e6ac04be6e::t_f1975f160d0a26 2675,2685-2686
+  s_be11e6ac04be6e::t_4ab48d25cf403b 2679-2681
+packages/cli/src/modules/workflow-index/preference-mining/preference-lab.ts
+  s_be11e6ac04be6e::t_cec89a9f354da8 26-28,513-515,584-586
+  s_be11e6ac04be6e::t_e02aacd06f9f96 596,601
+  s_be11e6ac04be6e::t_01d987941ccbf4 536-538
+  s_be11e6ac04be6e::t_4ece2914b09180 582
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_be11e6ac04be6e::t_e32c6c8c966a69 61-68,118-119,125,251-255,386-387,389,403
+  s_be11e6ac04be6e::t_9ec8bb1a632673 120-122,124,406-408,410,415-417
+packages/cli/src/modules/preference-mining/preference-mining.controller.ts
+  s_be11e6ac04be6e::t_c0354aed12b47d 7,38-43
+  s_be11e6ac04be6e::t_4a9c5f28637e01 36-37,48-49
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 1-5
+packages/modules/preference-mining/frontend/src/preference-mining.api.ts
+  s_be11e6ac04be6e::t_055f52880de167 15-18
+  s_be11e6ac04be6e::t_fd0c01f64a207d 5,14
+packages/@n8n/instance-ai/src/types.ts
+  s_be11e6ac04be6e::t_d2f8f28959f2da 37
+  s_be11e6ac04be6e::t_e0645f27006f85 140-150
+  s_be11e6ac04be6e::t_e32c6c8c966a69 1279,1290-1291,1293
+  s_be11e6ac04be6e::t_0e7476bc1f526d 30-32,457-459,505-507,750-758
+packages/cli/src/modules/preference-mining/__tests__/preference-discovery.test.ts
+  s_be11e6ac04be6e::t_e837e3b64a1f0e 1-2,4-41,45-54,58-69,71-85,91-93,112-120,130-135,140-141,147-149,156-157,184-185,219-220,225-229,236,240,248,250-252,254-256,258-259,261-263,291-297,301-303,307-308
+  s_be11e6ac04be6e::t_dc12fe28152be6 264-272,274-280,282-290
+  s_be11e6ac04be6e::t_4b59c0c0c7ccab 3,94-111,150,158-165,176,183,249,257,273
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 200-213
+  s_be11e6ac04be6e::t_589b6e3a46d52f 42-44,86-90,121-129,136-137,139,142-146,221-222,224,230-235,237-239,241-242,244-247,298-299,304-306
+  s_be11e6ac04be6e::t_bc352395d1d25c 55-57,70,138,154-155,186-199,214-218,223,243,253,260,281,300
+  s_be11e6ac04be6e::t_cac2785aa92aaf 151-153,166-175,177-182
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-folder-scoped-listing.integration.test.ts
+  s_be11e6ac04be6e::t_589b6e3a46d52f 67-69,81-83
+  s_be11e6ac04be6e::t_77a7c0457e629a 73-75
+  s_be11e6ac04be6e::t_e837e3b64a1f0e 66,70-72,76-80,84-86
+packages/cli/src/modules/workflow-index/workflow-index.service.ts
+  s_be11e6ac04be6e::t_29d160cc24f1f1 280,288-293
+packages/cli/src/modules/workflow-index/preference-mining/folder-usage.ts
+  s_be11e6ac04be6e::t_e02aacd06f9f96 1-26,29-33,36-39,41-43,45-47
+  s_be11e6ac04be6e::t_fd263d9a46a8d4 34-35
+packages/@n8n/instance-ai/src/tools/folder-scope.schema.ts
+  s_be11e6ac04be6e::t_1630c61fe99d51 1-16
+packages/@n8n/api-types/src/instance-ai-usage.ts
+  s_be11e6ac04be6e::t_29d160cc24f1f1 1-39
+packages/@n8n/db/src/entities/workflow-dependency-entity.ts
+  s_be11e6ac04be6e::t_29d160cc24f1f1 19-20
+packages/cli/src/modules/preference-mining/preference-mining.service.ts
+  s_be11e6ac04be6e::t_01d987941ccbf4 264
+  s_be11e6ac04be6e::t_9ee4d0369ddc96 303
+  s_be11e6ac04be6e::t_9245241cad99d9 13,88,380
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 154-155,417-421
+  s_be11e6ac04be6e::t_06f67602e7d859 2,375,381-384,428-430
+  s_be11e6ac04be6e::t_4a9c5f28637e01 221
+  s_be11e6ac04be6e::t_a42fede19acd8a 8,19,56,69-70,134-135,141-147,151-153,156-157,160-181,185,219,272,402,407,411,413-416,422
+  s_be11e6ac04be6e::t_f86bf1b24513bd 263
+  s_be11e6ac04be6e::t_d4bd937a0d1a2a 21,75-80,84-85,302,304-315,326-327,340-341
+  s_be11e6ac04be6e::t_9ec8bb1a632673 389-391
+  s_be11e6ac04be6e::t_851e40ab948925 257-258,316-323,325
+packages/@n8n/instance-ai/src/tools/preference-discovery.tools.ts
+  s_be11e6ac04be6e::t_d2f8f28959f2da 1-2,15
+  s_be11e6ac04be6e::t_7fc743b1260db3 3-14,16-22
+packages/cli/src/modules/preference-mining/__tests__/preference-mining-history.integration.test.ts
+  s_be11e6ac04be6e::t_288c4344d40f4e 22-29,31-34,47-48,54-62,71-73
+  s_be11e6ac04be6e::t_506460c7246308 1-21,30,35-46,49-53,63-70,74-111
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,77,337-343
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_be11e6ac04be6e::t_a57d2b3d671fee 3037
+  s_be11e6ac04be6e::t_c09abf8f6ce3ce 2344,2843-2845,2858-2860,2875-2877,2898,2910,3120,3184,3298,3311,3319,3344,3362,3460,4322,4329
+  s_be11e6ac04be6e::t_15f095f951b48f 3034,3117-3119,3128
+packages/cli/src/modules/preference-mining/preference-mining-data.service.ts
+  s_be11e6ac04be6e::t_0509cf16384e0c 267,284-290
+  s_be11e6ac04be6e::t_cec89a9f354da8 91-100,146,265-266
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_be11e6ac04be6e::t_58a77286a6ed47 75-77
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_be11e6ac04be6e::t_f095725706e7d4 626
+  s_be11e6ac04be6e::t_4de413786bdeb9 488-494,587-591,607-614
+  s_be11e6ac04be6e::t_1630c61fe99d51 80-81,136,144,149,182,191-192,394,596-597,618-619
+  s_be11e6ac04be6e::t_58a77286a6ed47 582-584
+packages/@n8n/db/src/migrations/common/1790344708470-CreatePreferenceMiningRuns.ts
+  s_be11e6ac04be6e::t_72a7b801dfd5d7 13
+  s_be11e6ac04be6e::t_d685ef467ec109 1-3,16-17,20-21
+  s_be11e6ac04be6e::t_d368baf4b725e1 4-12,14-15,18-19
+docs/generated/sqlite-schema/README.md
+  ai_agent 101,294-295,1294-1301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56b03878798ffa1b7d0b91351cb97f16cf9c432a",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be11e6ac04be6e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ce17-5ae0-7140-9249-3230aa1458a6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

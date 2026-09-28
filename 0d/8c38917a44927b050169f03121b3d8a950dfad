@@ -1,0 +1,40 @@
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_088272d4812bff::t_5265afec91fe0e 580-582
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_088272d4812bff::t_6e828ad80a124a 27-29
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_088272d4812bff::t_b57a5c6e917d62 30-31
+  s_088272d4812bff::t_48e3dda1406194 166-168
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_088272d4812bff::t_d642f33730e7c9 20,142,444-453,473-475,477
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_088272d4812bff::t_286642a7639183 15,83,105-107,134,147,615,632,666,679,706,714,724,727,737,749-752,754,759-760,764,773
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_088272d4812bff::t_1864251d81f641 528,542-556,558-560
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_088272d4812bff::t_d8d67594481e56 100-101
+  s_088272d4812bff::t_5eee69ef73d54d 84-91
+packages/cli/src/modules/insights/insights.service.ts
+  s_088272d4812bff::t_78fa053f78de8b 308-310
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_088272d4812bff::t_646f1728699345 282-284,292-293
+  s_088272d4812bff::t_1b30f726c6cdc6 14
+  s_088272d4812bff::t_42cbc68107fe35 65
+  s_088272d4812bff::t_8ffc6b89dfed99 258-264,267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d8c38917a44927b050169f03121b3d8a950dfad",
+  "prompts": {},
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
