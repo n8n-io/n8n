@@ -36,6 +36,8 @@ export function collectFailures(report) {
 			file,
 			line: entry.span?.line,
 			url: entry.url,
+			// A remapped URL is checked at its new address. The report shows the URL from the code.
+			sourceUrl: entry.remap?.original?.url ?? entry.url,
 			code: entry.status?.code ?? null,
 			text: entry.status?.text ?? '',
 		})),
@@ -66,7 +68,9 @@ export function classify({ url, code, text }) {
 }
 
 export function isBrowserPass({ status, title }) {
-	return status > 0 && status < 400 && !/\b404\b|not found/i.test(title);
+	return (
+		status > 0 && status < 400 && !/\b404\b|not found/i.test(title) && !CHALLENGE_TITLE.test(title)
+	);
 }
 
 /** Returns the commit time of a `git blame --porcelain` line in ms, or null if the commit is at the edge of the fetched history. */
@@ -145,7 +149,7 @@ function formatReport(broken) {
 	const byUrl = Map.groupBy(broken, (f) => f.url);
 	return [...byUrl].map(([url, list]) => {
 		const where = list.map((f) => `${f.file}:${f.line}`).join(', ');
-		return `- ${url} (${list[0].text || list[0].code}) in ${where}`;
+		return `- ${list[0].sourceUrl} (${list[0].text || list[0].code}) in ${where}`;
 	});
 }
 
@@ -153,7 +157,12 @@ async function main() {
 	const [reportPath] = process.argv.slice(2);
 	if (!reportPath) throw new Error('Usage: check-report.mjs <lychee-report.json>');
 
-	const failures = collectFailures(JSON.parse(await readFile(reportPath, 'utf8')));
+	const report = JSON.parse(await readFile(reportPath, 'utf8'));
+	// An empty or unexpected report means lychee checked nothing, not that every link works.
+	if (!('error_map' in report) || !report.total) {
+		throw new Error(`Lychee report has no checked links: ${reportPath}`);
+	}
+	const failures = collectFailures(report);
 	const toBrowser = [
 		...new Set(failures.filter((f) => classify(f) === 'browser').map((f) => f.url)),
 	];

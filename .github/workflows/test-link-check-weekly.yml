@@ -40,14 +40,16 @@ jobs:
           tar -xzf lychee.tar.gz --strip-components=1 -C /usr/local/bin lychee-x86_64-unknown-linux-gnu/lychee
           lychee --version
 
-      # Lychee exits non-zero when it finds failures. The next step decides which failures are broken links.
+      # The next step decides which failures are broken links.
       - name: Run lychee
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git grep -lE "https?://|documentationUrl = '|DOCS_DOMAIN" -- 'packages/**/*.ts' 'packages/**/*.vue' 'packages/**/*.json' 'packages/**/*.mjs' 'packages/**/*.js' \
             | lychee --config .github/scripts/link-check/lychee.toml --files-from - --output lychee-report.json \
-            2> >(grep -v 'No files found for this input source' >&2) || true
+            2> >(grep -v 'No files found for this input source' >&2) || status=$?
+          # Lychee exits 2 when it finds failing links. Any other failure stops the job.
+          if [ "${status:-0}" -ne 0 ] && [ "${status:-0}" -ne 2 ]; then exit "$status"; fi
 
       - name: Check report
         run: node .github/scripts/link-check/check-report.mjs lychee-report.json
@@ -77,4 +79,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#team-nodes' \
-            --text "Weekly link check found broken links - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --text "Weekly link check failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

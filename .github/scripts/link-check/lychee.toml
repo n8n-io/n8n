@@ -1,4 +1,4 @@
-# Weekly link check for product code. See .github/workflows/link-check-weekly.yml.
+# Weekly link check for product code. See .github/workflows/test-link-check-weekly.yml.
 # Run from the repository root:
 #   git grep -lE "https?://|documentationUrl = '|DOCS_DOMAIN" -- 'packages/**/*.'{ts,vue,json,mjs,js} \
 #     | lychee --config .github/scripts/link-check/lychee.toml --files-from -

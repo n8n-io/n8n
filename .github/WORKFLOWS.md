@@ -601,7 +601,6 @@ Push to master
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
-| Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
@@ -611,6 +610,7 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in product code |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 

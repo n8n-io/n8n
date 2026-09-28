@@ -20,11 +20,24 @@ test('collectFailures reuses the first reason for cached entries', () => {
 		timeout_map: { 'c.ts': [entry('https://slow.com/', { text: 'Timeout' })] },
 	};
 
-	assert.deepEqual(collectFailures(report), [
-		{ file: 'a.ts', line: 1, url: 'https://x.com/#a', code: null, text: 'Cannot find fragment' },
-		{ file: 'b.ts', line: 7, url: 'https://x.com/#a', code: null, text: 'Cannot find fragment' },
-		{ file: 'c.ts', line: 1, url: 'https://slow.com/', code: null, text: 'Timeout' },
-	]);
+	assert.deepEqual(
+		collectFailures(report).map(({ file, line, text }) => ({ file, line, text })),
+		[
+			{ file: 'a.ts', line: 1, text: 'Cannot find fragment' },
+			{ file: 'b.ts', line: 7, text: 'Cannot find fragment' },
+			{ file: 'c.ts', line: 1, text: 'Timeout' },
+		],
+	);
+});
+
+test('collectFailures keeps the URL from the code for remapped links', () => {
+	const remapped = {
+		...entry('https://registry.npmjs.org/x', { code: 404, text: 'Not Found' }),
+		remap: { original: { url: 'https://www.npmjs.com/package/x' } },
+	};
+	const [failure] = collectFailures({ error_map: { 'a.ts': [remapped] } });
+	assert.equal(failure.url, 'https://registry.npmjs.org/x');
+	assert.equal(failure.sourceUrl, 'https://www.npmjs.com/package/x');
 });
 
 test('classify counts missing anchors only on docs.n8n.io', () => {
@@ -52,6 +65,7 @@ test('classify treats other failures as broken', () => {
 test('isBrowserPass rejects error statuses and not-found pages', () => {
 	assert.equal(isBrowserPass({ status: 200, title: 'Convert string - Stack Overflow' }), true);
 	assert.equal(isBrowserPass({ status: 403, title: 'Just a moment...' }), false);
+	assert.equal(isBrowserPass({ status: 200, title: 'Just a moment...' }), false);
 	assert.equal(isBrowserPass({ status: 200, title: 'Page not found' }), false);
 	assert.equal(isBrowserPass({ status: 200, title: '404 Error | Salesforce Developers' }), false);
 	assert.equal(isBrowserPass({ status: 0, title: '' }), false);
