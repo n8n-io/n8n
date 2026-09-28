@@ -246,6 +246,7 @@ export class AgentChatBridge {
 		const actionToolNamePattern = new RegExp(`^${integration.type}(_\\d+)?_action$`);
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
+			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
