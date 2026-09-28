@@ -43,9 +43,8 @@ export function useCalloutHelpers() {
 		templateId: string,
 		options: {
 			telemetry: {
-				source: 'ndv' | 'nodeCreator' | 'modal' | 'templates';
+				source: 'ndv' | 'nodeCreator' | 'modal';
 				nodeType?: string;
-				section?: string;
 			};
 		},
 	) => {

@@ -164,7 +164,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/consistent-type-exports': 'error',
 
 			/**
-			 * https://typescript-eslint.io/rules/member-delimiter-style/
+			 * https://eslint.style/rules/member-delimiter-style
 			 */
 			'@stylistic/member-delimiter-style': [
 				'error',
