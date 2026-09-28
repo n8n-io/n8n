@@ -109,6 +109,24 @@ ruleTester.run<string, []>('valid-node-categories', ValidNodeCategoriesRule, {
 			errors: [{ messageId: 'missingAiSubcategory' }],
 		},
 		{
+			name: 'JSON codex with an empty AI subcategory list',
+			filename,
+			code: codex(['AI'], { AI: [] }),
+			errors: [{ messageId: 'missingAiSubcategory' }],
+		},
+		{
+			name: 'inline codex with an empty AI subcategory list',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex(['AI'], { AI: [] }),
+			errors: [{ messageId: 'missingAiSubcategory' }],
+		},
+		{
+			name: 'JSON codex with a non-string AI subcategory',
+			filename,
+			code: '{ "categories": ["AI"], "subcategories": { "AI": [12] } }',
+			errors: [{ messageId: 'invalidAiSubcategoryType' }],
+		},
+		{
 			name: 'JSON codex with an AI subcategory but no AI category',
 			filename,
 			code: codex(['Development'], { AI: ['Agents'] }),

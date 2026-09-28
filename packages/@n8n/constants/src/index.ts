@@ -6,6 +6,7 @@ export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
+export * from './node-categories';
 export * from './scheduler';
 export * from './uuid';
 
