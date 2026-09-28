@@ -1119,11 +1119,14 @@ export class SourceControlImportService {
 				// its stored data can't be read.
 				let cleared: PolicyCleared<'contentImport'>;
 				try {
-					cleared = await this.policyEnforcementService.enforceContentImport({
-						credential: { id: credential.id ?? null, type },
-						projectId: targetOwnerProject.id,
-						transport: 'source-control',
-					});
+					cleared = await this.policyEnforcementService.enforceContentImport(
+						{
+							credential: { id: credential.id ?? null, type },
+							projectId: targetOwnerProject.id,
+							transport: 'source-control',
+						},
+						{ kind: 'user', user: { id: userId } },
+					);
 				} catch (error) {
 					if (!(error instanceof PolicyViolationError)) throw error;
 

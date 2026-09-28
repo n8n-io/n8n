@@ -2833,11 +2833,14 @@ describe('SourceControlImportService', () => {
 
 				await service.importCredentialsFromWorkFolder(candidates, mockUserId);
 
-				expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-					credential: { id: mockCredentialData.id, type: mockCredentialData.type },
-					projectId: mockPersonalProject.id,
-					transport: 'source-control',
-				});
+				expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+					{
+						credential: { id: mockCredentialData.id, type: mockCredentialData.type },
+						projectId: mockPersonalProject.id,
+						transport: 'source-control',
+					},
+					{ kind: 'user', user: { id: mockUserId } },
+				);
 			});
 
 			// The clearance is checked at the write, so enforcing after the upsert would seal
