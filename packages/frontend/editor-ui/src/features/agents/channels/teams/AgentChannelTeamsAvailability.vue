@@ -6,8 +6,8 @@
  * manifest fields: changing one produces a new app package either way.
  */
 import { computed, ref } from 'vue';
-import { N8nCollapsiblePanel, N8nIcon, N8nSwitch2, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { N8nCollapsiblePanel, N8nSwitch2, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 export interface TeamsAvailability {
 	teamChannels: boolean;
@@ -24,10 +24,9 @@ const props = withDefaults(defineProps<{ startCollapsed?: boolean }>(), {
 
 const i18n = useI18n();
 
-// Local, because `startCollapsed` is only where the panels begin: bound
+// Local, because `startCollapsed` is only where the panel begins: bound
 // straight to the panel, the open state it emits has nothing to apply it.
-const whereOpen = ref(!props.startCollapsed);
-const readingOpen = ref(!props.startCollapsed);
+const open = ref(!props.startCollapsed);
 
 function set(patch: Partial<TeamsAvailability>) {
 	const next = { ...value.value, ...patch };
@@ -38,171 +37,92 @@ function set(patch: Partial<TeamsAvailability>) {
 	value.value = next;
 }
 
-/** Collapsed panels still have to say what they are set to. */
-const whereSummary = computed(() =>
-	[
-		i18n.baseText('agents.channels.teams.setup.availability.directChat'),
-		...(value.value.teamChannels
-			? [i18n.baseText('agents.channels.teams.setup.availability.teamChannels')]
-			: []),
-		...(value.value.groupChats
-			? [i18n.baseText('agents.channels.teams.setup.availability.groupChats')]
-			: []),
-	].join(', '),
-);
+const K = 'agents.channels.teams.setup.availability';
 
-const readingSummary = computed(() => {
-	const reads = [
-		...(value.value.readAllChannelMessages
-			? [i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')]
-			: []),
-		...(value.value.readAllGroupMessages
-			? [i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')]
-			: []),
-	];
-	return reads.length > 0
-		? reads.join(', ')
-		: i18n.baseText('agents.channels.teams.setup.availability.readingSummaryNone');
-});
+// A read permission is offered only under its surface, which it depends on.
+const rows = computed(() => [
+	{
+		key: 'teamChannels' as const,
+		label: `${K}.teamChannels` as const,
+		hint: `${K}.teamChannelsHint` as const,
+		testId: 'teams-scope-channels',
+		nested: false,
+		shown: true,
+	},
+	{
+		key: 'readAllChannelMessages' as const,
+		label: `${K}.readAllChannelMessages` as const,
+		hint: `${K}.readAllChannelMessagesHint` as const,
+		testId: 'teams-read-channels',
+		nested: true,
+		shown: value.value.teamChannels,
+	},
+	{
+		key: 'groupChats' as const,
+		label: `${K}.groupChats` as const,
+		hint: `${K}.groupChatsHint` as const,
+		testId: 'teams-scope-groups',
+		nested: false,
+		shown: true,
+	},
+	{
+		key: 'readAllGroupMessages' as const,
+		label: `${K}.readAllGroupMessages` as const,
+		hint: `${K}.readAllGroupMessagesHint` as const,
+		testId: 'teams-read-groups',
+		nested: true,
+		shown: value.value.groupChats,
+	},
+]);
+
+/** A collapsed panel still has to say what it is set to. */
+const summary = computed(() =>
+	[
+		`${K}.directChat`,
+		value.value.teamChannels && `${K}.teamChannels`,
+		value.value.readAllChannelMessages && `${K}.readsChannels`,
+		value.value.groupChats && `${K}.groupChats`,
+		value.value.readAllGroupMessages && `${K}.readsGroupChats`,
+	]
+		.filter((key): key is BaseTextKey => Boolean(key))
+		.map((key) => i18n.baseText(key))
+		.join(' · '),
+);
 </script>
 
 <template>
-	<div :class="$style.panels">
-		<N8nCollapsiblePanel v-model="whereOpen" :class="$style.panel">
-			<template #title>
-				<span :class="$style.panelTitle">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.setup.availability.whereTitle') }}
-					</N8nText>
-					<N8nText size="small" :class="$style.hint" data-testid="teams-where-summary">
-						{{ whereSummary }}
-					</N8nText>
-				</span>
-			</template>
-
-			<div :class="$style.panelBody">
-				<div :class="$style.row" data-testid="teams-scope-direct">
-					<div :class="$style.rowText">
-						<N8nText size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.directChat') }}
-						</N8nText>
-						<N8nText size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
-						</N8nText>
-					</div>
-					<!-- Fixed, so a tick rather than a control that cannot move. -->
-					<N8nIcon icon="check" size="small" :class="$style.fixed" />
-				</div>
-
-				<div :class="$style.row">
-					<div :class="$style.rowText">
-						<N8nText size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannels') }}
-						</N8nText>
-						<N8nText size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint') }}
-						</N8nText>
-					</div>
-					<N8nSwitch2
-						:model-value="value.teamChannels"
-						:aria-label="i18n.baseText('agents.channels.teams.setup.availability.teamChannels')"
-						data-testid="teams-scope-channels"
-						@update:model-value="set({ teamChannels: $event })"
-					/>
-				</div>
-
-				<div :class="$style.row">
-					<div :class="$style.rowText">
-						<N8nText size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.groupChats') }}
-						</N8nText>
-						<N8nText size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
-						</N8nText>
-					</div>
-					<N8nSwitch2
-						:model-value="value.groupChats"
-						:aria-label="i18n.baseText('agents.channels.teams.setup.availability.groupChats')"
-						data-testid="teams-scope-groups"
-						@update:model-value="set({ groupChats: $event })"
-					/>
-				</div>
-			</div>
-		</N8nCollapsiblePanel>
-
-		<N8nCollapsiblePanel v-model="readingOpen" :class="$style.panel">
-			<template #title>
-				<span :class="$style.panelTitle">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.setup.availability.readingTitle') }}
-					</N8nText>
-					<N8nText size="small" :class="$style.hint" data-testid="teams-reading-summary">
-						{{ readingSummary }}
-					</N8nText>
-				</span>
-			</template>
-
-			<div :class="$style.panelBody">
-				<N8nText size="small" :class="$style.hint">
-					{{ i18n.baseText('agents.channels.teams.setup.availability.readingNote') }}
+	<N8nCollapsiblePanel v-model="open" :class="$style.panel">
+		<template #title>
+			<span :class="$style.panelTitle">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.teams.setup.availability.whereTitle') }}
 				</N8nText>
+				<N8nText size="small" :class="$style.hint" data-testid="teams-where-summary">
+					{{ summary }}
+				</N8nText>
+			</span>
+		</template>
 
-				<div :class="$style.row">
+		<div :class="$style.panelBody">
+			<template v-for="row in rows" :key="row.key">
+				<div v-if="row.shown" :class="[$style.row, { [$style.nested]: row.nested }]">
 					<div :class="$style.rowText">
-						<N8nText size="small" :class="{ [$style.hint]: !value.teamChannels }">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages') }}
-						</N8nText>
-						<N8nText size="small" :class="$style.hint">
-							{{
-								i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessagesHint')
-							}}
-						</N8nText>
+						<N8nText size="small">{{ i18n.baseText(row.label) }}</N8nText>
+						<N8nText size="small" :class="$style.hint">{{ i18n.baseText(row.hint) }}</N8nText>
 					</div>
 					<N8nSwitch2
-						:model-value="value.readAllChannelMessages"
-						:disabled="!value.teamChannels"
-						:aria-label="
-							i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')
-						"
-						data-testid="teams-read-channels"
-						@update:model-value="set({ readAllChannelMessages: $event })"
+						:model-value="value[row.key]"
+						:aria-label="i18n.baseText(row.label)"
+						:data-testid="row.testId"
+						@update:model-value="set({ [row.key]: $event })"
 					/>
 				</div>
-
-				<div :class="$style.row">
-					<div :class="$style.rowText">
-						<N8nText size="small" :class="{ [$style.hint]: !value.groupChats }">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages') }}
-						</N8nText>
-						<N8nText size="small" :class="$style.hint">
-							{{
-								i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessagesHint')
-							}}
-						</N8nText>
-					</div>
-					<N8nSwitch2
-						:model-value="value.readAllGroupMessages"
-						:disabled="!value.groupChats"
-						:aria-label="
-							i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
-						"
-						data-testid="teams-read-groups"
-						@update:model-value="set({ readAllGroupMessages: $event })"
-					/>
-				</div>
-			</div>
-		</N8nCollapsiblePanel>
-	</div>
+			</template>
+		</div>
+	</N8nCollapsiblePanel>
 </template>
 
 <style module lang="scss">
-.panels {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	width: 100%;
-}
-
 .panel {
 	width: 100%;
 	border: var(--border);
@@ -244,8 +164,7 @@ const readingSummary = computed(() => {
 	color: var(--text-color--subtler);
 }
 
-.fixed {
-	color: var(--text-color--subtler);
-	flex-shrink: 0;
+.nested {
+	padding-left: var(--spacing--md);
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval } from '@n8n/api-types';
+import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -33,12 +33,14 @@ interface Props {
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
+	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -632,6 +634,7 @@ watch(
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:personalisation="personalisation"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"
