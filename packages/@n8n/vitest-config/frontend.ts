@@ -40,9 +40,10 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// every frontend package inherits it instead of rediscovering the failure.
 			passWithNoTests: true,
 			setupFiles: ['./src/__tests__/setup.ts'],
-			// Inline so vitest maps the `vitest` import inside it to the running instance.
-			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
-			server: { deps: { inline: ['vitest-mock-extended'] } },
+			// Inline so vitest maps the `vitest` import inside them to the running instance.
+			// Externalized, pnpm can link them to a second vitest copy. Vitest 5 bundles
+			// `expect` into `vitest`, so a second copy breaks snapshots and `.rejects`.
+			server: { deps: { inline: ['vitest-mock-extended', '@testing-library/jest-dom'] } },
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {
