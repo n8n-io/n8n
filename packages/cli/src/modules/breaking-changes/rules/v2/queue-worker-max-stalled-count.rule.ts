@@ -20,7 +20,7 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 			category: BreakingChangeCategory.environment,
 			severity: 'low',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#remove-queue_worker_max_stalled_count',
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-queueworkermaxstalledcount',
 		};
 	}
 
