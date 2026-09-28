@@ -334,18 +334,6 @@ export const baseConfig = tseslint.config(
 			'no-unused-vars': 'off',
 			'@typescript-eslint/no-unused-vars': 'off',
 
-			/**
-			 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
-			 */
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector: 'TSEnumDeclaration:not([const=true])',
-					message:
-						'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
-				},
-			],
-
 			// ----------------------------------
 			//         no-unused-imports
 			// ----------------------------------

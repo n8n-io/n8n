@@ -166,20 +166,13 @@ export class RedisInstanceStorage implements InstanceStorage {
 	}
 
 	async cleanupStaleMembers(): Promise<number> {
-		try {
-			const removed: unknown = await this.redisClient.eval(
-				CLEANUP_SCRIPT,
-				1,
-				this.membershipSetKey(),
-			);
+		const removed: unknown = await this.redisClient.eval(
+			CLEANUP_SCRIPT,
+			1,
+			this.membershipSetKey(),
+		);
 
-			return typeof removed === 'number' ? removed : 0;
-		} catch (error) {
-			this.logger.warn('Failed to cleanup stale members', {
-				error: ensureError(error).message,
-			});
-			return 0;
-		}
+		return typeof removed === 'number' ? removed : 0;
 	}
 
 	async destroy(): Promise<void> {

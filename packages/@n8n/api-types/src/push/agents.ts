@@ -1,3 +1,5 @@
+import type { AgentActor } from '../agents/types';
+
 export type AgentExecutionUpdated = {
 	type: 'agentExecutionUpdated';
 	data: {
@@ -22,6 +24,8 @@ export type AgentUpdated = {
 	data: {
 		projectId: string;
 		agentId: string;
+		/** Older senders can omit the writing surface. */
+		source?: AgentActor;
 	};
 };
 

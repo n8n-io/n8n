@@ -14,6 +14,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
@@ -184,7 +186,8 @@ export class LmChatOpenRouter implements INodeType {
 				default: 'openai/gpt-4.1-mini',
 				builderHint: {
 					propertyHint:
-						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro-preview). Avoid openai/gpt-4o, anthropic/claude-3.x, and other pre-2026 models.',
+						"Use the exact provider-prefixed ID returned by OpenRouter. Do not construct an OpenRouter ID from another provider's model name. " +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -396,10 +399,14 @@ export class LmChatOpenRouter implements INodeType {
 			baseURL: credentials.url,
 			fetch: createOpenRouterFetch(globalThis.fetch),
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

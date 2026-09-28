@@ -22,6 +22,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		annotationTag: {},
 		user: {},
 		credential: {},
+		credentialTypePolicy: {},
 		variable: {},
 		projectVariable: {},
 		sourceControl: {},

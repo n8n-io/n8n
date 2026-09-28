@@ -5,16 +5,15 @@ import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 
-import InstanceAiSidebar from '@/features/ai/instanceAi/components/InstanceAiSidebar.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { getAppBuilderTargetFromThreadMetadata } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
-import { AppThreadScopeKey, provideSidebarState } from '@/features/ai/instanceAi/instanceAiLayout';
 import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import InstanceAiThreadView from '@/features/ai/instanceAi/InstanceAiThreadView.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { APP_DETAILS, APP_NEW, PROJECT_APPS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
+import { AppThreadScopeKey } from '@/features/apps/composables/useAppThreadScope';
 
 const props = defineProps<{
 	projectId: string;
@@ -30,8 +29,6 @@ const appsStore = useAppsStore();
 const instanceAiStore = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const { createAppArtifactThread } = useInstanceAiHandoff();
-
-const { handleResize: handleSidebarResize } = provideSidebarState();
 
 const app = ref<App | null>(null);
 const threadId = ref<string | null>(null);
@@ -191,7 +188,6 @@ watch(requestedThreadId, async (requested) => {
 
 <template>
 	<div :class="$style.container" data-test-id="app-builder-view">
-		<InstanceAiSidebar v-if="props.appId" :app-scope="appScope" @resize="handleSidebarResize" />
 		<InstanceAiThreadView v-if="threadId" :key="threadId" :thread-id="threadId" />
 	</div>
 </template>

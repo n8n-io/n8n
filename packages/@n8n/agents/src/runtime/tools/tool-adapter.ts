@@ -117,6 +117,15 @@ export async function executeTool(
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
 
+	// Anchor programmatic skill activations to the calling tool's result by
+	// default, so the skill body rides on that result (kept out of `system`)
+	// instead of forcing a full prompt-prefix rewrite. An explicit anchor wins.
+	const baseLoadSkill = executionContext.loadSkill;
+	const loadSkill: ToolExecutionContext['loadSkill'] = baseLoadSkill
+		? async (skillId, anchor) =>
+				await baseLoadSkill(skillId, anchor ?? (toolCallId ? { toolCallId } : undefined))
+		: undefined;
+
 	if (builtTool.suspendSchema) {
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
@@ -139,7 +148,7 @@ export async function executeTool(
 			toolCallId,
 			toolName: builtTool.name,
 			runId: executionContext.runId,
-			...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
+			...(loadSkill ? { loadSkill } : {}),
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
 			abortSignal: executionContext.abortSignal,
@@ -156,7 +165,7 @@ export async function executeTool(
 		toolCallId,
 		toolName: builtTool.name,
 		runId: executionContext.runId,
-		...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
+		...(loadSkill ? { loadSkill } : {}),
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,

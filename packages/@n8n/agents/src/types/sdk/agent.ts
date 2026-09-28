@@ -336,6 +336,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** Merge these host metadata keys after the resume claim succeeds. Requires persistence. */
+	hostMetadata?: JSONObject;
 	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
 	onResumeClaimed?: () => void | Promise<void>;
 }

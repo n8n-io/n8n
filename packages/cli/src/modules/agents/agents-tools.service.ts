@@ -1,6 +1,9 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
+import type {
+	CodeBuilderSearchResult,
+	NodeRequest as CatalogNodeRequest,
+} from '@n8n/ai-utilities/node-catalog';
 import { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
@@ -16,13 +19,7 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-tran
 
 type NodeRequest =
 	| string
-	| {
-			nodeId: string;
-			version?: number;
-			resource?: string;
-			operation?: string;
-			mode?: string;
-	  };
+	| (Omit<Exclude<CatalogNodeRequest, string>, 'version'> & { version?: number });
 
 /**
  * Nodes the agent runtime can execute directly. Triggers are workflow entry
@@ -66,7 +63,7 @@ const searchNodesInputSchema = z.object({
 const nodeVersionSchema = z
 	.number()
 	.describe(
-		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+		'Tool node type version from search_nodes or agent-context integration results with kind "node"',
 	);
 
 const getNodeTypesInputSchema = z.object({
@@ -85,7 +82,7 @@ const getNodeTypesInputSchema = z.object({
 		)
 		.min(1)
 		.describe(
-			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+			'Tool node IDs from search_nodes or agent-context integration results with kind "node"; e.g., ["n8n-nodes-base.gmailTool"]',
 		),
 });
 
@@ -145,7 +142,7 @@ export class AgentsToolsService {
 		return new Tool('get_node_types')
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
-					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'discovery results (search_nodes or agent-context integrations with kind "node"). Returns ' +
 					'parameter definitions needed to configure a node for execution. Use the tool node ' +
 					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
 					'resource/operation/mode.',
@@ -203,15 +200,7 @@ export class AgentsToolsService {
  * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
  * builder tool's wire format); adapt at the boundary.
  */
-function normalizeNodeRequestForCatalog(req: NodeRequest):
-	| string
-	| {
-			nodeId: string;
-			version?: string;
-			resource?: string;
-			operation?: string;
-			mode?: string;
-	  } {
+function normalizeNodeRequestForCatalog(req: NodeRequest): CatalogNodeRequest {
 	if (typeof req === 'string') return req;
 	const { version, ...rest } = req;
 	return version === undefined ? rest : { ...rest, version: String(version) };

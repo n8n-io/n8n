@@ -13,6 +13,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -24,6 +25,7 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/')
@@ -123,5 +125,15 @@ export class AgentsController {
 		}
 
 		return { success: true };
+	}
+
+	@Get('/:agentId/collaboration/write-lock')
+	@ProjectScope('agent:read')
+	async getWriteLock(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
 	}
 }

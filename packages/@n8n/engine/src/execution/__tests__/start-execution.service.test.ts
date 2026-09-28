@@ -29,6 +29,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
 }
@@ -48,7 +49,7 @@ describe('StartExecutionService', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
@@ -61,7 +62,7 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
@@ -101,7 +102,7 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(store.createExecution).toHaveBeenCalledWith(
@@ -121,7 +122,7 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(validateGraph).toHaveBeenCalledExactlyOnceWith(sampleGraph);
@@ -145,7 +146,7 @@ describe('StartExecutionService', () => {
 				graph: sampleGraph,
 				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			}),
 		).rejects.toBe(rejection);
 
@@ -167,7 +168,7 @@ describe('StartExecutionService', () => {
 				graph: sampleGraph,
 				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			}),
 		).rejects.toBeInstanceOf(AdmittanceRejectedError);
 

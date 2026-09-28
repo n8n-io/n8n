@@ -441,6 +441,21 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('uses an explicit setup workflow even when the global editor has no saved workflow', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = { id: 'project-1' } as Project;
+		workflowDocumentStoreRef.value = null;
+		renderComponent(
+			{
+				props: { node: httpNode, standalone: true, workflowId: 'wf-setup', projectId: 'project-1' },
+			},
+			{ merge: true },
+		);
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf-setup',
+		});
+	});
+
 	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = null;
@@ -1621,6 +1636,7 @@ describe('NodeCredentials', () => {
 				hideAskAssistant: true,
 				appendToBody: true,
 				workflowId: '1',
+				contextNode: httpNode,
 			});
 		});
 	});
@@ -3277,7 +3293,10 @@ describe('NodeCredentials', () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
-			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+			authorizeMock.mockResolvedValueOnce(true);
+			const { emitted } = renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi' },
+			});
 
 			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
 
@@ -3285,6 +3304,8 @@ describe('NodeCredentials', () => {
 				expect.objectContaining({ id: 'private-cred-id' }),
 			);
 			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
+			expect(emitted('connectionStarted')).toEqual([['private-cred-id']]);
+			await waitFor(() => expect(emitted('connectionCompleted')).toEqual([['private-cred-id']]));
 		});
 
 		it('connects via OAuth even when the user has edit rights (single flow for all)', async () => {

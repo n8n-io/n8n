@@ -8,7 +8,6 @@ import { UserError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -33,7 +32,6 @@ let agentRepository: AgentRepository;
 let agentHistoryRepository: AgentHistoryRepository;
 let orchestrator: AgentExecutionOrchestratorService;
 let executeForChatPublished: MockInstance;
-let hasSuspendedRun: MockInstance;
 
 const CHAT = '/apps/help/api/agents/support/chat';
 const RESUME = '/apps/help/api/agents/support/chat/resume';
@@ -110,8 +108,6 @@ const parkRun = async (threadId: string, runId: string) => {
 		},
 	} as unknown as SerializableAgentState;
 	await Container.get(N8NCheckpointStorage).save(runId, state, AGENT_ID);
-	// The execution row only rules a thread out; the checkpoint above is the authority.
-	hasSuspendedRun.mockResolvedValue(true);
 };
 
 beforeAll(async () => {
@@ -131,9 +127,6 @@ beforeEach(async () => {
 	executeForChatPublished = vi
 		.spyOn(orchestrator, 'executeForChatPublished')
 		.mockImplementation(() => reply('Hello from Support'));
-	hasSuspendedRun = vi
-		.spyOn(Container.get(AgentExecutionService), 'hasSuspendedRun')
-		.mockResolvedValue(false);
 });
 
 afterEach(() => {

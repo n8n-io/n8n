@@ -19,7 +19,6 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
-import omit from 'lodash/omit';
 import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import {
 	isNodeWithWorkflowSelector,
@@ -199,62 +198,70 @@ export class EnterpriseWorkflowService {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,
 		 * since these can be 2 possibilities:
-		 * - Same ID already exist: it's a read only node and therefore cannot be changed
+		 * - It matches exactly one previous node: it's a read only node and therefore cannot be changed
 		 * - It's a new node which indicates tampering and therefore must fail saving
 		 */
 
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
-		const nodesWithCredentialsUserDoesNotHaveAccessTo = this.getNodesWithInaccessibleCreds(
-			newWorkflowVersion,
-			allowedCredentialIds,
+		const nodesWithCredentialsUserDoesNotHaveAccessTo = new Set(
+			this.getNodesWithInaccessibleCreds(newWorkflowVersion, allowedCredentialIds),
 		);
 
 		// If there are no nodes with credentials the user does not have access to we can skip the rest
-		if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+		if (nodesWithCredentialsUserDoesNotHaveAccessTo.size === 0) {
 			return newWorkflowVersion;
 		}
 
-		const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+		// Node ids are meant to be unique. Edge case: where stored data still repeats one, match the
+		// first node.
+		const previousNodesById = new Map<string, INode>();
+		for (const node of previousWorkflowVersion.nodes) {
+			if (!previousNodesById.has(node.id)) previousNodesById.set(node.id, node);
+		}
 
-		// If it's a new node we can't allow it to be saved
-		// since it uses creds the node doesn't have access
-		const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
-			!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+		const submittedIdCounts = new Map<string, number>();
+		for (const node of newWorkflowVersion.nodes) {
+			submittedIdCounts.set(node.id, (submittedIdCounts.get(node.id) ?? 0) + 1);
+		}
 
-		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
-			if (isTamperingAttempt(node.id)) {
+		newWorkflowVersion.nodes = newWorkflowVersion.nodes.map((node) => {
+			if (!nodesWithCredentialsUserDoesNotHaveAccessTo.has(node)) return node;
+
+			// Only a node we can prove is the stored one may keep credentials the user cannot
+			// access. A missing id means the node is new; a repeated id makes the match
+			// ambiguous, and an ambiguous match is not a proof, so no claimant is trusted.
+			const previousNode = previousNodesById.get(node.id);
+			const idClaimedOnce = submittedIdCounts.get(node.id) === 1;
+
+			if (!previousNode || !idClaimedOnce) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
-				// Node is new, so this is probably a tampering attempt. Throw an error
 				throw new NodeOperationError(
 					node,
 					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
 				);
 			}
-			// Replace the node with the previous version of the node
-			// Since it cannot be modified (read only node)
-			const nodeIdx = newWorkflowVersion.nodes.findIndex(
-				(newWorkflowNode) => newWorkflowNode.id === node.id,
-			);
 
 			this.logger.debug('Replacing node with previous version when saving updated workflow', {
 				nodeType: node.type,
 				nodeName: node.name,
 				nodeId: node.id,
 			});
-			const previousNodeVersion = previousWorkflowVersion.nodes.find(
-				(previousNode) => previousNode.id === node.id,
-			);
+
+			// Replace the whole node. Patching the previous fields over the submitted node
+			// would keep every field the previous node does not have.
 			// Allow changing only name, position and disabled status for read-only nodes
-			Object.assign(
-				newWorkflowVersion.nodes[nodeIdx],
-				omit(previousNodeVersion, ['name', 'position', 'disabled']),
-			);
+			const restoredNode = { ...previousNode };
+			if ('name' in node) restoredNode.name = node.name;
+			if ('position' in node) restoredNode.position = node.position;
+			if ('disabled' in node) restoredNode.disabled = node.disabled;
+			else delete restoredNode.disabled;
+			return restoredNode;
 		});
 
 		return newWorkflowVersion;

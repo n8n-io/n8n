@@ -12,6 +12,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -21,6 +22,7 @@ import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
 
 const projectId = 'project-1';
+const parentAgentId = 'parent-agent-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -71,6 +73,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('forwards inline sub-agent runtime options into delegate tool metadata', () => {
 		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -87,6 +90,26 @@ describe('createN8nDelegateSubAgentTool', () => {
 			true,
 		);
 		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new UserError('terminal'))).toBe(false);
+		expect(
+			inlineOptions?.shouldRetrySubAgentResumeError?.(
+				new AgentExecutionRecordingError({
+					phase: 'create',
+					cause: new Error('database unavailable'),
+				}),
+			),
+		).toBe(true);
+		for (const executionStarted of [false, true]) {
+			expect(
+				inlineOptions?.shouldRetrySubAgentResumeError?.(
+					new AgentExecutionRecordingError({
+						phase: 'finalize',
+						executionId: 'execution-1',
+						executionStarted,
+						cause: new Error('database unavailable'),
+					}),
+				),
+			).toBe(false);
+		}
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {
@@ -96,6 +119,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -147,6 +171,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('forwards the parent persistence scope to the runner', async () => {
 		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -178,6 +203,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -205,6 +231,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('omits telemetry from the runner context when the parent run has none', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -223,6 +250,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('selects a configured n8n agent source by subAgentId', async () => {
 		const selectedSource: SubAgentSource = { agentId: 'agent-2' };
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: {
 				'agent-2': selectedSource,
@@ -255,6 +283,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('returns a failed tool output when the foreground runner throws', async () => {
 		runner.run.mockRejectedValue(new Error('child failed'));
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -322,6 +351,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -407,6 +437,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	])('finishes a configured child resume when the $name error is terminal', async ({ error }) => {
 		runner.resumeForeground.mockRejectedValue(error);
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
@@ -456,6 +487,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 	it('routes configured child cancellation without resuming the child', async () => {
 		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,

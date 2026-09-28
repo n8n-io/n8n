@@ -313,6 +313,8 @@ export class SchedulerConfig {
 	 * side (for example during a rolling deploy), the older instances still run
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
+	 *
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;

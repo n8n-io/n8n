@@ -146,6 +146,7 @@ export class RolesPublicController {
 			userId: req.user.id,
 			roleSlug: role.slug,
 			scopes: role.scopes,
+			source: 'public-api',
 		});
 
 		return toRolePublicDto({ ...role, roleType: createRole.roleType });

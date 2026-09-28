@@ -118,7 +118,7 @@ function onDocumentVisibilityChange() {
 
 async function onRefreshData() {
 	try {
-		await executionsStore.fetchExecutions();
+		await executionsStore.refreshExecutions();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
 	}

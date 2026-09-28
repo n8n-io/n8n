@@ -11,7 +11,7 @@ import { UserError } from 'n8n-workflow';
 import {
 	type FlushableResponse,
 	initSseStream,
-	pumpChunks,
+	emitChunkEvents,
 } from '@/modules/agents/agent-sse-stream';
 import { UrlService } from '@/services/url.service';
 
@@ -101,7 +101,11 @@ export class AppAgentRuntimeController {
 			if (!res.writableEnded && !res.destroyed) write(event);
 		};
 		try {
-			const suspended = await pumpChunks(this.scrubErrors(turn.stream), send);
+			let suspended = false;
+			for await (const chunk of this.scrubErrors(turn.stream)) {
+				emitChunkEvents(chunk, send);
+				suspended ||= chunk.type === 'tool-call-suspended';
+			}
 			if (!suspended) send({ type: 'done', sessionId: turn.sessionId });
 		} catch (error) {
 			send({ type: 'error', message: this.messageForVisitor(error) });

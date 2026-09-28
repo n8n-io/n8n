@@ -3,6 +3,8 @@
 // seeding). Pure — no network — so the create/update/unchanged partitioning is
 // unit-testable against in-memory suite state.
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { LangTracerUpdateCaseBody } from './client';
 import { normalizeExportedCase } from './normalize';
 import { unsupportedPushReason, type LangTracerCreateCaseBody } from './to-exported';
@@ -139,6 +141,10 @@ function projectComparable(src: unknown): Record<string, unknown> {
 			out[key] = seedWithoutMessageIds(value);
 			continue;
 		}
+		if (key === 'executionScenarios') {
+			out[key] = scenariosWithoutEmptyRows(value);
+			continue;
+		}
 		out[key] = value;
 	}
 	return out;
@@ -146,11 +152,18 @@ function projectComparable(src: unknown): Record<string, unknown> {
 
 /** Drop message `id`s from a seed before comparing: shorthand expansion mints a
  *  new one per parse, so keeping them would make a shorthand-authored case differ
- *  from its stored export forever. Everything else the author wrote — role,
- *  content, `createdAt`, workflows, data tables — still compares. */
+ *  from its stored export forever. Empty slots go too: the loader defaults every
+ *  seed array to `[]`, while the push omits an empty `folders` (the write API has
+ *  no such key) and a stored export may lack any empty slot, so `[]` and absent
+ *  must read as the same seed. Everything else the author wrote — role, content,
+ *  `createdAt`, workflows, data tables — still compares. */
 function seedWithoutMessageIds(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
-	const seed: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+	const seed: Record<string, unknown> = {};
+	for (const [key, slot] of Object.entries(value as Record<string, unknown>)) {
+		if (Array.isArray(slot) && slot.length === 0) continue;
+		seed[key] = slot;
+	}
 	const messages: unknown = seed.messages;
 	if (!Array.isArray(messages)) return seed;
 	seed.messages = (messages as unknown[]).map((message) => {
@@ -159,6 +172,20 @@ function seedWithoutMessageIds(value: unknown): unknown {
 		return rest;
 	});
 	return seed;
+}
+
+/** lang-tracer stores a seed table's empty `rows` as absent, so `[]` must compare equal to it. */
+function scenariosWithoutEmptyRows(value: unknown): unknown {
+	if (!Array.isArray(value)) return value;
+	return value.map((scenario: unknown) => {
+		if (!isRecord(scenario) || !Array.isArray(scenario.seedDataTables)) return scenario;
+		const seedDataTables = scenario.seedDataTables.map((table: unknown) => {
+			if (!isRecord(table) || !Array.isArray(table.rows) || table.rows.length > 0) return table;
+			const { rows, ...rest } = table;
+			return rest;
+		});
+		return { ...scenario, seedDataTables };
+	});
 }
 
 /** Stable JSON with sorted object keys, so field/scenario ordering never affects equality. */

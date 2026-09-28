@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AgentBuilderPage } from './AgentBuilderPage';
 import { AgentSessionsPage } from './AgentSessionsPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CanvasPage } from './CanvasPage';
@@ -81,6 +82,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly agentBuilder: AgentBuilderPage;
 	readonly agentSessions: AgentSessionsPage;
 	readonly canvas: CanvasPage;
 	readonly chatHubChat: ChatHubChatPage;
@@ -163,11 +165,15 @@ export class n8nPage {
 
 	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
+		// The fallback helper carries no options, so it applies no stack workflow
+		// settings and its engine v2 routing check stays quiet. Pass a helper, or
+		// use `start.newTab()`, for a page that creates or runs workflows.
 		this.api = api ?? new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.agentBuilder = new AgentBuilderPage(page);
 		this.agentSessions = new AgentSessionsPage(page);
 		this.canvas = new CanvasPage(page);
 		this.chatHubChat = new ChatHubChatPage(page);

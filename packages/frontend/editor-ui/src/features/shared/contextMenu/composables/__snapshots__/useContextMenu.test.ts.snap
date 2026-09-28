@@ -58,6 +58,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -164,6 +165,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "label": "Change color",
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -310,6 +312,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -456,6 +459,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -562,6 +566,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "label": "Change color",
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -720,6 +725,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -878,6 +884,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -1036,6 +1043,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -1194,6 +1202,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy",
     "shortcut": {
@@ -1305,6 +1314,7 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     },
   },
   {
+    "disabled": false,
     "id": "copy",
     "label": "Copy 2 nodes",
     "shortcut": {

@@ -44,4 +44,17 @@ export class McpConfig {
 	 */
 	@Env('N8N_MCP_BASE_URL', baseUrlSchema)
 	baseUrl: string = '';
+
+	/**
+	 * Whether the workflow-builder tools may offer verified community nodes that
+	 * are not installed on this instance, and install them on request.
+	 *
+	 * When off, `search_nodes` and `get_node_types` report installed nodes only
+	 * and `install_community_node` is not registered at all. Installing still
+	 * additionally requires the MCP client to hold the `communityPackage:install`
+	 * scope and the user to hold that global scope, so turning this on does not
+	 * by itself grant any client the ability to install packages.
+	 */
+	@Env('N8N_MCP_COMMUNITY_NODE_DISCOVERY_ENABLED')
+	communityNodeDiscoveryEnabled: boolean = true;
 }

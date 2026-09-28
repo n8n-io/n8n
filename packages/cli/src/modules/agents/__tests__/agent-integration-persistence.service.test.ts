@@ -136,6 +136,10 @@ describe('AgentIntegrationPersistenceService', () => {
 				displayIcon: 'slack',
 				credentialTypes: ['slackApi'],
 				builderGuidance: { capabilities: ['respond'] },
+				actionToolDefinitions: [
+					{ name: 'respond' },
+					{ name: 'send_channel_message', sensitive: true },
+				],
 			},
 		] as never);
 
@@ -148,6 +152,12 @@ describe('AgentIntegrationPersistenceService', () => {
 				capabilities: ['respond'],
 				useIntegrationWhen: undefined,
 				useNodeToolWhen: undefined,
+				// The channel approval control offers these, pre-selecting the
+				// sensitive ones, so it never duplicates the action list.
+				approvableActions: [
+					{ name: 'respond', sensitive: false },
+					{ name: 'send_channel_message', sensitive: true },
+				],
 			},
 		]);
 		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();

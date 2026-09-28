@@ -16,7 +16,8 @@ export type RedisResult = ServiceResult<RedisMeta>;
 
 export const redis: Service<RedisResult> = {
 	description: 'Redis',
-	shouldStart: (ctx) => ctx.isQueueMode,
+	// A remote data plane carries execution responses to the main over Redis.
+	shouldStart: (ctx) => ctx.isQueueMode || ctx.config.engine === 'container',
 
 	async start(network: StartedNetwork, projectName: string): Promise<RedisResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();

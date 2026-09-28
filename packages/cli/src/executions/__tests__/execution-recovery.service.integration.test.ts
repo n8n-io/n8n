@@ -78,7 +78,7 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock()),
+			new ExecutionCrashService(executionRepository, mock(), mock(), instanceSettings),
 		);
 	});
 

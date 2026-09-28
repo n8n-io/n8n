@@ -14,6 +14,8 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'ChannelMessage.Read.All',
 		'OnlineMeetings.ReadWrite',
 		'ChannelMessage.ReadWrite',
+		'TeamworkTag.Read',
+		'TeamsActivity.Send',
 	];
 
 	// Shared OAuth2 configuration
@@ -72,7 +74,16 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send',
+		);
+	});
+
+	it('asks for the default scopes unless the user turned on custom scopes', () => {
+		const scopeProperty = microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'scope');
+
+		// This expression, not `enabledScopes`, is what the authorize URL is built from.
+		expect(scopeProperty?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send"}}',
 		);
 	});
 
@@ -91,6 +102,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(authUri).toContain('ChannelMessage.Read.All');
 			expect(authUri).toContain('OnlineMeetings.ReadWrite');
 			expect(authUri).toContain('ChannelMessage.ReadWrite');
+			expect(authUri).toContain('TeamsActivity.Send');
 			expect(authUri).toContain(`client_id=${clientId}`);
 			expect(authUri).toContain('response_type=code');
 		});
@@ -110,6 +122,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(token.data.scope).toContain('ChannelMessage.Read.All');
 			expect(token.data.scope).toContain('OnlineMeetings.ReadWrite');
 			expect(token.data.scope).toContain('ChannelMessage.ReadWrite');
+			expect(token.data.scope).toContain('TeamsActivity.Send');
 		});
 	});
 

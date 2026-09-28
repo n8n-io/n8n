@@ -1,6 +1,9 @@
 import { Z } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
+	ApiKeyScope,
 	ApiResponse,
 	Body,
 	ControllerRegistryMetadata,
@@ -8,6 +11,8 @@ import {
 	Get,
 	Param,
 	Post,
+	ProjectScope,
+	RequiresUserQuota,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -16,7 +21,9 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,
@@ -25,6 +32,8 @@ import {
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
@@ -236,6 +245,71 @@ describe('PublicApiControllerRegistry', () => {
 		});
 	});
 
+	describe('path parameter validation order', () => {
+		const widgetIdSchema = z.string().regex(/^(?!0+$)\d+$/, 'must be a positive integer');
+
+		function registerScopedRoute() {
+			@Service()
+			class ScopedWidgetsPublicController {
+				@Get('/:widgetId')
+				@ProjectScope('workflow:read')
+				@ApiResponse(200)
+				get(
+					_req: express.Request,
+					_res: express.Response,
+					@Param('widgetId', widgetIdSchema) widgetId: string,
+				) {
+					return { widgetId };
+				}
+			}
+			markPublicApiController(ScopedWidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('rejects a malformed parameter with 400 before the scope check looks it up', async () => {
+			// A scope check resolves access by looking the id up, and reports an id it cannot find as
+			// a 404. Validation runs first, so the status does not depend on the caller's access.
+			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
+			registerScopedRoute();
+
+			const response = await request(activate()).get('/api/v1/widgets/abc').expect(400);
+
+			expect(response.body.message).toBe('request/params/widgetId must be a positive integer');
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('runs the scope check once the parameter is valid', async () => {
+			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
+			registerScopedRoute();
+
+			await request(activate()).get('/api/v1/widgets/12').expect(404);
+
+			expect(userHasScopes).toHaveBeenCalled();
+		});
+
+		it('refuses a valid parameter when the scope check denies access', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			registerScopedRoute();
+
+			await request(activate()).get('/api/v1/widgets/12').expect(403);
+		});
+
+		it('hands the parsed value to the handler when the scope check passes', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			registerScopedRoute();
+
+			const response = await request(activate()).get('/api/v1/widgets/12').expect(200);
+
+			expect(response.body).toEqual({ widgetId: '12' });
+		});
+
+		it('keeps 401 ahead of parameter validation for an unauthenticated caller', async () => {
+			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			registerScopedRoute();
+
+			await request(activate()).get('/api/v1/widgets/abc').expect(401);
+		});
+	});
+
 	describe('request media type', () => {
 		function registerOptionalBodyRoute() {
 			@Service()
@@ -387,6 +461,106 @@ describe('PublicApiControllerRegistry', () => {
 				.set('Content-Type', 'application/json; Foo=BAR')
 				.send({ name: 'a' })
 				.expect(200);
+		});
+	});
+
+	describe('@RequiresUserQuota', () => {
+		const licenseState = mock<LicenseState>();
+
+		beforeEach(() => {
+			Container.set(LicenseState, licenseState);
+		});
+
+		function registerGatedRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@RequiresUserQuota()
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('runs the handler when the instance is within its users quota', async () => {
+			licenseState.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
+			registerGatedRoute();
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(response.body).toEqual({ ok: true });
+		});
+
+		it('returns 403 with the legacy license message when over quota, without running the handler', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+			const handler = vi.fn(() => ({ ok: true }));
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@RequiresUserQuota()
+				method() {
+					return handler();
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(403);
+
+			expect(response.body).toEqual({
+				message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+			});
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('leaves a route without the decorator unaffected when over quota', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(response.body).toEqual({ ok: true });
+		});
+
+		it('returns the scope Forbidden response when both @ApiKeyScope and @RequiresUserQuota fail', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+				req.user = authenticatedUser;
+				req.tokenGrant = {
+					scopes: [],
+					apiKeyScopes: ['workflow:read'],
+					subject: authenticatedUser,
+				};
+				return true;
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@ApiKeyScope('workflow:create')
+				@RequiresUserQuota()
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(403);
+
+			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 	});
 });

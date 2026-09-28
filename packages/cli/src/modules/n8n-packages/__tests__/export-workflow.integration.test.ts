@@ -66,7 +66,9 @@ function workflowJson(entries: UnpackedEntry[], target: string) {
 function workflowMetadataJson(entries: UnpackedEntry[], target: string) {
 	const file = entries.find((entry) => entry.name === `${target}/workflow-metadata.json`);
 	if (!file) throw new Error(`missing ${target}/workflow-metadata.json`);
-	return jsonParse<{ publishedVersionId: string | null }>(file.content.toString());
+	return jsonParse<{ versionId: string; publishedVersionId: string | null }>(
+		file.content.toString(),
+	);
 }
 
 const nodeNames = (workflow: Record<string, unknown>) =>
@@ -128,7 +130,7 @@ describe('workflow package export', () => {
 			expect(serialized.nodes).toHaveLength(1);
 		});
 
-		it('writes the published version beside the workflow, and the archived flag inside it', async () => {
+		it('writes the version ids beside the workflow, and the archived flag inside it', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const workflow = await createWorkflow({ name: 'My Workflow' }, project);
@@ -136,9 +138,13 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportSingleWorkflow(owner, workflow.id);
 			const target = manifest.workflows![0].target;
 
+			expect(workflowJson(entries, target)).not.toHaveProperty('versionId');
 			expect(workflowJson(entries, target)).not.toHaveProperty('publishedVersionId');
 			expect(workflowJson(entries, target).isArchived).toBe(false);
-			expect(workflowMetadataJson(entries, target)).toEqual({ publishedVersionId: null });
+			expect(workflowMetadataJson(entries, target)).toEqual({
+				versionId: workflow.versionId,
+				publishedVersionId: null,
+			});
 		});
 
 		it('emits the same workflow.json after the workflow is published', async () => {
@@ -154,6 +160,7 @@ describe('workflow package export', () => {
 
 			expect(workflowFile(after.entries, target)).toBe(workflowFile(before.entries, target));
 			expect(workflowMetadataJson(after.entries, target)).toEqual({
+				versionId: workflow.versionId,
 				publishedVersionId: workflow.versionId,
 			});
 		});
@@ -942,9 +949,11 @@ describe('workflow package export', () => {
 			const target = manifest.workflows![0].target;
 			const exported = workflowJson(entries, target);
 			expect(nodeNames(exported)).toEqual(['v3']);
-			expect(exported.versionId).toBe(versionIds[2]);
 			// The metadata file still names the live version, which this package does not carry.
-			expect(workflowMetadataJson(entries, target).publishedVersionId).toBe(versionIds[1]);
+			expect(workflowMetadataJson(entries, target)).toEqual({
+				versionId: versionIds[2],
+				publishedVersionId: versionIds[1],
+			});
 		});
 
 		it('exports the published version rather than the draft', async () => {
@@ -968,8 +977,10 @@ describe('workflow package export', () => {
 			const target = manifest.workflows![0].target;
 			const exported = workflowJson(entries, target);
 			expect(nodeNames(exported)).toEqual(['v1']);
-			expect(exported.versionId).toBe(versionIds[0]);
-			expect(workflowMetadataJson(entries, target).publishedVersionId).toBe(versionIds[0]);
+			expect(workflowMetadataJson(entries, target)).toEqual({
+				versionId: versionIds[0],
+				publishedVersionId: versionIds[0],
+			});
 			// Workflow history carries no settings, so they always come from the draft.
 			expect(exported.settings).toEqual({ executionOrder: 'v1', timezone: 'Europe/Berlin' });
 		});

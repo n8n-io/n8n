@@ -1,4 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { effectScope, nextTick } from 'vue';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
 import {
@@ -189,6 +190,28 @@ describe('useInstanceAiStore - runtime registry', () => {
 
 		expect(disposeSpy).toHaveBeenCalledOnce();
 		expect(store.getRuntime('thread-1')).toBeUndefined();
+	});
+
+	it('keeps the runtime watchers alive after the creating scope stops', async () => {
+		const store = useInstanceAiStore();
+		// The thread view creates the runtime in setup. A Suspense duplicate of the
+		// view is discarded before it mounts, which stops that component scope.
+		const creatorScope = effectScope();
+		const runtime = creatorScope.run(() => store.getOrCreateRuntime('thread-1'));
+		creatorScope.stop();
+
+		runtime?.messages.push({
+			id: 'm1',
+			role: 'user',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			attachments: [{ type: 'workflow', id: 'wf-1', name: 'My workflow' }],
+		});
+		await nextTick();
+
+		expect(runtime?.producedArtifacts.get('wf-1')?.name).toBe('My workflow');
 	});
 
 	it('syncs a thread into the sidebar list', async () => {

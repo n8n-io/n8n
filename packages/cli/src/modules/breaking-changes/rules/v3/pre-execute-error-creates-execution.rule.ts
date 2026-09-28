@@ -1,6 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -27,7 +28,7 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (!this.executionsConfig.preExecuteErrorCreatesExecution) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

@@ -34,6 +34,7 @@ import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsEntity,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
@@ -461,10 +462,42 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 // ---------------------------------------------------------------------------
 
 describe('credentialService.list — scoping', () => {
+	const describedCredential = mock<CredentialsEntity>({
+		id: 'described',
+		name: 'Postgres account',
+		type: 'postgres',
+		description: 'x'.repeat(512),
+		data: 'encrypted-test-value',
+	});
+
+	it.each([
+		{ label: 'unscoped', boundProjectId: undefined, options: {} },
+		{ label: 'workflow', boundProjectId: undefined, options: { workflowId: 'wf-1' } },
+		{ label: 'project', boundProjectId: undefined, options: { projectId: 'proj-1' } },
+		{ label: 'bound project', boundProjectId: 'bound-project', options: { projectId: 'other' } },
+	])('returns full description metadata for a $label list', async ({ boundProjectId, options }) => {
+		credentialsService.getMany.mockResolvedValue([describedCredential]);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			describedCredential,
+		] as never);
+		const ctx = service.createContext(user, { projectId: boundProjectId });
+
+		const result = await ctx.credentialService.list(options);
+
+		expect(result).toEqual([
+			{
+				id: 'described',
+				name: 'Postgres account',
+				type: 'postgres',
+				description: 'x'.repeat(512),
+			},
+		]);
+	});
+
 	it('uses getCredentialsAUserCanUseInAWorkflow when workflowId is provided', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
-			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'Notion', type: 'notionApi', description: null },
 		] as never);
 
 		const ctx = service.createContext(user);
@@ -475,12 +508,14 @@ describe('credentialService.list — scoping', () => {
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
 		// type filter applied post-fetch
-		expect(result).toEqual([{ id: 'c1', name: 'Slack Shared', type: 'slackApi' }]);
+		expect(result).toEqual([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi', description: null },
+		]);
 	});
 
 	it('uses getCredentialsAUserCanUseInAWorkflow when projectId is provided', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi', description: null },
 		] as never);
 
 		const ctx = service.createContext(user);
@@ -494,7 +529,7 @@ describe('credentialService.list — scoping', () => {
 
 	it('falls back to getMany (broad) when neither workflowId nor projectId is provided', async () => {
 		credentialsService.getMany.mockResolvedValue([
-			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
 		] as never);
 
 		const ctx = service.createContext(user);
@@ -509,7 +544,7 @@ describe('credentialService.list — scoping', () => {
 
 	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi', description: null },
 		] as never);
 
 		const ctx = service.createContext(user, { projectId: 'bound-project' });
@@ -532,22 +567,37 @@ describe('credentialService.list — scoping', () => {
 describe('credentialService.list — eval allowlist', () => {
 	it('filters the listed credentials to the allowlisted IDs', async () => {
 		credentialsService.getMany.mockResolvedValue([
-			{ id: 'c1', name: 'Slack', type: 'slackApi' },
-			{ id: 'c2', name: 'Notion', type: 'notionApi' },
-			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'Notion', type: 'notionApi', description: null },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user, { credentialIdAllowlist: ['c1', 'c3'] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => ['c1', 'c3'] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([
-			{ id: 'c1', name: 'Slack', type: 'slackApi' },
-			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi', description: null },
 		]);
 	});
 
+	it('reads the allowlist on every call, so a credential allowlisted mid-run is listed', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi', description: null },
+		] as never);
+		const allowlist = ['c1'];
+
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => allowlist });
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1']);
+
+		// The harness creates a credential on a setup card and re-sends the whole list.
+		allowlist.push('c2');
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1', 'c2']);
+	});
+
 	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
-		const ctx = service.createContext(user, { credentialIdAllowlist: [] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => [] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([]);
@@ -557,8 +607,8 @@ describe('credentialService.list — eval allowlist', () => {
 
 	it('does not filter the list when no allowlist is set', async () => {
 		const all = [
-			{ id: 'c1', name: 'Slack', type: 'slackApi' },
-			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'Notion', type: 'notionApi', description: null },
 		];
 		credentialsService.getMany.mockResolvedValue(all as never);
 
@@ -574,18 +624,44 @@ describe('credentialService.list — eval allowlist', () => {
 // ---------------------------------------------------------------------------
 
 describe('credentialService.get — credential ownership revalidation', () => {
+	it('returns the full description without credential data', async () => {
+		credentialsService.getOne.mockResolvedValue({
+			id: 'described',
+			name: 'Postgres account',
+			type: 'postgres',
+			description: 'x'.repeat(512),
+			data: { password: 'test-secret' },
+		} as never);
+		const ctx = service.createContext(user);
+
+		const result = await ctx.credentialService.get('described');
+
+		expect(result).toEqual({
+			id: 'described',
+			name: 'Postgres account',
+			type: 'postgres',
+			description: 'x'.repeat(512),
+		});
+	});
+
 	it('forwards the credential ID to credentialsService.getOne with the bound user', async () => {
 		credentialsService.getOne.mockResolvedValue({
 			id: 'cred-mine',
 			name: 'My Slack',
 			type: 'slackApi',
+			description: null,
 		} as never);
 
 		const ctx = service.createContext(user);
 		const result = await ctx.credentialService.get('cred-mine');
 
 		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
-		expect(result).toEqual({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+		expect(result).toEqual({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+			description: null,
+		});
 	});
 
 	it('propagates the NotFoundError when the user cannot access the credential', async () => {

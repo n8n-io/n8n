@@ -196,10 +196,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: timeout ?? 10000,
 		baseURL,
 		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL, {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				baseURL,
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				this.helpers.getSecureEgressFilter(),
+			),
 		},
 		defaultHeaders,
 	});

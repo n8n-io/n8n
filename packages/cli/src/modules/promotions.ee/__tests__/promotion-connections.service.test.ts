@@ -14,6 +14,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionConnection } from '../database/entities/promotion-connection.entity';
+import type { PromotionConfig } from '../database/entities/promotion-config.entity';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
 import type { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
@@ -70,6 +71,21 @@ describe('PromotionConnectionsService', () => {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		}) as PromotionConnection;
+
+	const promoteConfig = () =>
+		({
+			id: 'cfgPromote',
+			connectionId: 'conn1',
+			name: 'Promote',
+			direction: 'promote',
+			settings: {
+				schemaVersion: 1,
+				baseBranchName: 'main',
+				createBranchOnPromotion: false,
+			},
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		}) as PromotionConfig;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -133,6 +149,99 @@ describe('PromotionConnectionsService', () => {
 		for (const configId of ['cfgApply', 'cfgPromote']) {
 			await expect(stat(workingDirectory.paths(configId).rootFolder)).rejects.toThrow();
 		}
+	});
+
+	describe('checkout state', () => {
+		it('reports a config with no checkout as disconnected', async () => {
+			configRepository.findByConnectionIds.mockResolvedValue([promoteConfig()]);
+			gitService.hasCheckout.mockResolvedValue(false);
+
+			const result = await service.findOne('conn1');
+
+			expect(result.configs.promote?.checkout).toEqual({
+				hasCheckout: false,
+				matchesConfig: false,
+			});
+		});
+
+		it('reports a checkout from the current remote and branch as connected', async () => {
+			const config = promoteConfig();
+			configRepository.findByConnectionIds.mockResolvedValue([config]);
+			gitService.hasCheckout.mockResolvedValue(true);
+			await mkdir(workingDirectory.paths(config.id).repositoryFolder, { recursive: true });
+			await workingDirectory.writeDescriptor({
+				schemaVersion: 1,
+				connectionId: 'conn1',
+				configId: config.id,
+				remoteUrl: 'git@github.com:o/r.git',
+				checkoutBranchName: 'main',
+			});
+
+			const result = await service.findOne('conn1');
+
+			expect(result.configs.promote?.checkout).toEqual({
+				hasCheckout: true,
+				matchesConfig: true,
+			});
+		});
+
+		it('normalizes the stored target the same way an operation does', async () => {
+			const config = promoteConfig();
+			connectionRepository.findByIdWithProvider.mockResolvedValue({
+				...connection(),
+				target: { schemaVersion: 1, remoteUrl: '  git@github.com:o/r.git  ' },
+			} as PromotionConnection);
+			configRepository.findByConnectionIds.mockResolvedValue([config]);
+			gitService.hasCheckout.mockResolvedValue(true);
+			await mkdir(workingDirectory.paths(config.id).repositoryFolder, { recursive: true });
+			// A clone writes the descriptor from the resolved (trimmed) remote URL.
+			await workingDirectory.writeDescriptor({
+				schemaVersion: 1,
+				connectionId: 'conn1',
+				configId: config.id,
+				remoteUrl: 'git@github.com:o/r.git',
+				checkoutBranchName: 'main',
+			});
+
+			const result = await service.findOne('conn1');
+
+			expect(result.configs.promote?.checkout).toEqual({
+				hasCheckout: true,
+				matchesConfig: true,
+			});
+		});
+
+		it.each([
+			{
+				changedField: 'branch',
+				remoteUrl: 'git@github.com:o/r.git',
+				checkoutBranchName: 'release',
+			},
+			{
+				changedField: 'remote',
+				remoteUrl: 'git@github.com:o/other.git',
+				checkoutBranchName: 'main',
+			},
+		])('reports a checkout as stale when its $changedField changed', async (descriptor) => {
+			const config = promoteConfig();
+			configRepository.findByConnectionIds.mockResolvedValue([config]);
+			gitService.hasCheckout.mockResolvedValue(true);
+			await mkdir(workingDirectory.paths(config.id).repositoryFolder, { recursive: true });
+			await workingDirectory.writeDescriptor({
+				schemaVersion: 1,
+				connectionId: 'conn1',
+				configId: config.id,
+				remoteUrl: descriptor.remoteUrl,
+				checkoutBranchName: descriptor.checkoutBranchName,
+			});
+
+			const result = await service.findOne('conn1');
+
+			expect(result.configs.promote?.checkout).toEqual({
+				hasCheckout: true,
+				matchesConfig: false,
+			});
+		});
 	});
 
 	describe('project links', () => {

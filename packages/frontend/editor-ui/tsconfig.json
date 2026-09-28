@@ -25,6 +25,12 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
+			"@n8n/frontend-module-type-availability-policies": [
+				"../../modules/type-availability-policies/frontend/src/index.ts"
+			],
+			"@n8n/frontend-module-type-availability-policies/*": [
+				"../../modules/type-availability-policies/frontend/src/*"
+			],
 			"@n8n/frontend-module-insights": ["../../modules/insights/frontend/src/index.ts"],
 			"@n8n/frontend-module-insights/*": ["../../modules/insights/frontend/src/*"],
 			"@n8n/frontend-module-instance-registry": [

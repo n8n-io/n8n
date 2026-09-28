@@ -122,6 +122,23 @@ describe('Posthog store', () => {
 			expect(window.posthog?.init).not.toHaveBeenCalled();
 		});
 
+		it('should keep serverside flags and payloads if posthog is not enabled', async () => {
+			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
+			setCurrentUser();
+			const posthog = usePostHog();
+			posthog.init({ test: 'variant', enabled_flag: true }, { test: 'payload' });
+
+			expect(window.posthog?.init).not.toHaveBeenCalled();
+			expect(posthog.getVariant('test')).toBe('variant');
+			expect(posthog.isFeatureEnabled('enabled_flag')).toBe(true);
+			expect(posthog.getFeatureFlagPayload('test')).toBe('payload');
+			expect(posthog.hasPendingFeatureFlags()).toBe(false);
+			expect(await posthog.waitForFeatureFlags()).toEqual({
+				test: 'variant',
+				enabled_flag: true,
+			});
+		});
+
 		it('should not init if user is not logged in', () => {
 			setSettings();
 			const posthog = usePostHog();

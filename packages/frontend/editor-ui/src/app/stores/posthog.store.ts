@@ -183,6 +183,17 @@ export const usePostHog = defineStore('posthog', () => {
 		evaluatedFeatureFlags?: FeatureFlags,
 		evaluatedFeatureFlagPayloads?: FeatureFlagPayloads,
 	) => {
+		const hasServerFlags =
+			evaluatedFeatureFlags !== undefined && Object.keys(evaluatedFeatureFlags).length > 0;
+
+		// Server-evaluated flags include env-var overrides, so they must be
+		// available even when PostHog is disabled and the SDK never loads.
+		if (hasServerFlags) {
+			featureFlags.value = evaluatedFeatureFlags;
+			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
+			resolveFeatureFlagsWaiters(featureFlags.value);
+		}
+
 		if (!window.posthog) {
 			return;
 		}
@@ -213,7 +224,7 @@ export const usePostHog = defineStore('posthog', () => {
 			}),
 		};
 
-		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
+		if (hasServerFlags) {
 			options.bootstrap = {
 				distinctID: distinctId,
 				// The bootstrapped id is a logged-in user, not a device. Without this the
@@ -247,13 +258,9 @@ export const usePostHog = defineStore('posthog', () => {
 			});
 		}
 
-		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
-			featureFlags.value = evaluatedFeatureFlags;
-			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
-			resolveFeatureFlagsWaiters(featureFlags.value);
-
+		if (hasServerFlags) {
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			trackExperimentsDebounced(featureFlags.value);
+			trackExperimentsDebounced(evaluatedFeatureFlags);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			pendingFeatureFlagsEvaluation.value = true;

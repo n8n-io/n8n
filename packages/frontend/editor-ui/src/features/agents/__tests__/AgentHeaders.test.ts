@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
 
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
 
 vi.mock('@n8n/i18n', () => ({
@@ -138,5 +139,49 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(closeButton.attributes('data-size')).toBe('medium');
 		expect(closeButton.attributes('data-icon-only')).toBeDefined();
 		expect(closeButton.find('[data-icon="x"]').exists()).toBe(true);
+	});
+});
+
+describe('AgentPreviewHeader', () => {
+	function mountPreviewHeader() {
+		return mount(AgentPreviewHeader, {
+			props: {
+				agentName: 'Darwin',
+				agentHref: '/projects/project-1/agents/agent-1',
+				sessionTitle: 'Alpha',
+				sessionOptions: [
+					{ id: 'week', title: 'Week session', updatedAt: new Date().toISOString() },
+				],
+				hasTrace: false,
+				isDeletingSession: false,
+				canDeleteSession: true,
+			},
+			global: {
+				stubs: {
+					AgentSessionHistoryDropdown: {
+						name: 'AgentSessionHistoryDropdown',
+						template: '<div><slot name="trigger" /></div>',
+						props: ['sessionOptions', 'canDeleteSession', 'isDeletingSession'],
+						emits: ['select', 'delete'],
+					},
+				},
+			},
+		});
+	}
+
+	it('forwards history props and events', () => {
+		const wrapper = mountPreviewHeader();
+		const history = wrapper.findComponent({ name: 'AgentSessionHistoryDropdown' });
+
+		expect(history.props()).toMatchObject({
+			sessionOptions: [expect.objectContaining({ id: 'week', title: 'Week session' })],
+			canDeleteSession: true,
+			isDeletingSession: false,
+		});
+		history.vm.$emit('select', 'week');
+		history.vm.$emit('delete', 'week');
+
+		expect(wrapper.emitted('session-select')).toEqual([['week']]);
+		expect(wrapper.emitted('delete-session')).toEqual([['week']]);
 	});
 });

@@ -1,7 +1,7 @@
 import { isAbsolute } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { buildRunnerArgs } from './test-scoped-runner.js';
+import { buildRunnerArgs, resolveExitCode } from './test-scoped-runner.js';
 
 const rootDir = '/repo/root';
 
@@ -36,5 +36,28 @@ describe('buildRunnerArgs', () => {
 		expect(buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--coverage'])).toEqual(
 			['run', '--coverage'],
 		);
+	});
+});
+
+describe('resolveExitCode', () => {
+	it('passes a normal exit status through unchanged', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(resolveExitCode({ status: 0, signal: null })).toBe(0);
+		expect(resolveExitCode({ status: 1, signal: null })).toBe(1);
+		expect(error).not.toHaveBeenCalled();
+	});
+
+	it('reports the spawn error when vitest does not start', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const enoent = new Error('spawnSync vitest ENOENT');
+		expect(resolveExitCode({ status: null, signal: null, error: enoent })).toBe(1);
+		expect(error).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
+		expect(error).not.toHaveBeenCalledWith(expect.stringContaining('signal'));
+	});
+
+	it('names the signal and fails when vitest exits without a status', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(resolveExitCode({ status: null, signal: 'SIGKILL' })).toBe(1);
+		expect(error).toHaveBeenCalledWith(expect.stringContaining('SIGKILL'));
 	});
 });

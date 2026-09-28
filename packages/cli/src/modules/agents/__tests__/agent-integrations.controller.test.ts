@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
-import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -13,6 +12,8 @@ import type { AgentChannelStatusReporter } from '../integrations/agent-channel-s
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -27,7 +28,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
-	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -35,7 +36,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
-	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -48,14 +49,14 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
-			agentUpdateBroadcaster,
+			collaborationService,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
-		agentUpdateBroadcaster,
+		collaborationService,
 	};
 }
 
@@ -96,6 +97,7 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: agent.projectId },
 				user,
 				body: integration,
+				headers: { 'push-ref': 'sender-1' },
 			} as never,
 			undefined as never,
 			agent.id,
@@ -104,7 +106,7 @@ describe('AgentIntegrationsController integration management', () => {
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
 		expect(managementService.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ agent, user, integration }),
+			expect.objectContaining({ agent, user, integration, pushRef: 'sender-1' }),
 		);
 		expect(result).toEqual({ status: 'connected' });
 	});
@@ -193,13 +195,9 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('delegates disconnect without platform-specific cleanup', async () => {
-		const { controller, managementService, agentRepository, agentUpdateBroadcaster } =
-			makeController();
+		const { controller, managementService, agentRepository } = makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		managementService.disconnect.mockImplementation(async (options) => {
-			options.onPersisted?.();
-			return { savedAgent: agent };
-		});
+		managementService.disconnect.mockResolvedValue({ savedAgent: agent });
 
 		const result = await controller.disconnectIntegration(
 			{
@@ -218,13 +216,69 @@ describe('AgentIntegrationsController integration management', () => {
 				user,
 				type: 'slack',
 				credentialId: 'credential-1',
+				pushRef: 'sender-1',
 			}),
 		);
-		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-			{ projectId: agent.projectId, agentId: agent.id },
-			'sender-1',
-		);
 		expect(result).toEqual({ status: 'disconnected' });
+	});
+
+	it('validates the write lock before connecting an integration', async () => {
+		const { controller, collaborationService, agentRepository, managementService } =
+			makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			agent.projectId,
+			agent.id,
+			'connect integration for',
+		);
+	});
+
+	it('propagates a LockedError from validateAgentWriteLock on connect', async () => {
+		const { controller, collaborationService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		collaborationService.validateAgentWriteLock.mockRejectedValue(
+			new LockedError(
+				'Cannot connect integration for agent - another user currently has write access',
+			),
+		);
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: agent.projectId },
+					user,
+					body: integration,
+					headers: { 'push-ref': 'push-ref-1' },
+				} as never,
+				undefined as never,
+				agent.id,
+				integration as never,
+			),
+		).rejects.toThrow(LockedError);
 	});
 
 	it('returns a platform webhook rejection without looking up a handler', async () => {

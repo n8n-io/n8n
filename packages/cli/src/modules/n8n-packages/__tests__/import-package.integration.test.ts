@@ -53,9 +53,9 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 	WIRE_VERSION_ID,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
 	Partial<ImportPackageRequest>;
@@ -71,7 +71,7 @@ async function importPackage(params: ImportPackageParams) {
  * by `connections` does not exist in `nodes`. `validateWorkflowStructure`
  * rejects this during the pipeline's pre-pass.
  */
-const brokenWorkflow = (id: string, name: string): SerializedWorkflow =>
+const brokenWorkflow = (id: string, name: string): PackageWorkflow =>
 	serializedWorkflow({
 		id,
 		name,

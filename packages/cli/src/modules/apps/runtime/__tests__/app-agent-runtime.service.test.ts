@@ -4,7 +4,6 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import type { AgentsService } from '@/modules/agents/agents.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -54,7 +53,6 @@ describe('AppAgentRuntimeService', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
 	let agentsService: ReturnType<typeof mock<AgentsService>>;
 	let orchestrator: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
-	let agentExecutionService: ReturnType<typeof mock<AgentExecutionService>>;
 	let checkpointStorage: ReturnType<typeof mock<N8NCheckpointStorage>>;
 	let messageContextService: ReturnType<typeof mock<IntegrationMessageContextService>>;
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
@@ -64,21 +62,18 @@ describe('AppAgentRuntimeService', () => {
 		appRepository = mock<AppRepository>();
 		agentsService = mock<AgentsService>();
 		orchestrator = mock<AgentExecutionOrchestratorService>();
-		agentExecutionService = mock<AgentExecutionService>();
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		messageContextService = mock<IntegrationMessageContextService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		moduleRegistry.isActive.mockReturnValue(true);
 		appRepository.findByNamespace.mockResolvedValue(app());
 		agentsService.findById.mockResolvedValue(agent());
-		agentExecutionService.hasSuspendedRun.mockResolvedValue(false);
 		orchestrator.executeForChatPublished.mockReturnValue(chunks());
 		orchestrator.resumeForChat.mockReturnValue(chunks());
 		service = new AppAgentRuntimeService(
 			appRepository,
 			agentsService,
 			orchestrator,
-			agentExecutionService,
 			checkpointStorage,
 			messageContextService,
 			moduleRegistry,
@@ -170,7 +165,6 @@ describe('AppAgentRuntimeService', () => {
 		});
 
 		it('answers 409 run_in_progress while a run is parked on the session', async () => {
-			agentExecutionService.hasSuspendedRun.mockResolvedValue(true);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
 
 			expect(await failure(service.chat('help', 'support', chatBody))).toMatchObject({
@@ -179,12 +173,6 @@ describe('AppAgentRuntimeService', () => {
 			});
 			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith('agent-1', THREAD_ID);
 			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
-		});
-
-		it('does not read checkpoints for a session that never parked a run', async () => {
-			await service.chat('help', 'support', chatBody);
-
-			expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
 		});
 
 		it('runs the published version on the session thread as an anonymous project session', async () => {
@@ -244,8 +232,6 @@ describe('AppAgentRuntimeService', () => {
 		});
 
 		it('does not gate a resume on a parked run', async () => {
-			agentExecutionService.hasSuspendedRun.mockResolvedValue(true);
-
 			await service.resume('help', 'support', resumeBody, new AbortController().signal);
 
 			expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
@@ -277,12 +263,16 @@ describe('AppAgentRuntimeService', () => {
 				threadId: THREAD_ID,
 				projectId: 'proj-1',
 				agentId: 'agent-1',
+				userId: RESOURCE_ID,
 			});
 		});
 
 		it('reads history for an unpublished agent', async () => {
 			agentsService.findById.mockResolvedValue(agent({ activeVersionId: null }));
-			orchestrator.getConversationHistory.mockResolvedValue([]);
+			orchestrator.getConversationHistory.mockResolvedValue({
+				messages: [],
+				activeExecutionId: null,
+			});
 
 			await expect(service.messages('help', 'support', { sessionId: SESSION_ID })).resolves.toEqual(
 				{ messages: [], openSuspensions: [] },

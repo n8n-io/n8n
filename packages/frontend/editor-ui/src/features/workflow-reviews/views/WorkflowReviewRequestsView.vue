@@ -14,7 +14,7 @@ import {
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { useResizablePanel } from '@n8n/design-system';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH } from '@/app/constants/localStorage';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -68,17 +68,21 @@ const route = useRoute();
 const router = useRouter();
 
 const contentRef = ref<HTMLElement | null>(null);
-const {
-	size: sidebarWidth,
-	onResize: onSidebarResize,
-	onResizeEnd: onSidebarResizeEnd,
-} = useResizablePanel(LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH, {
+const sidebarResizer = useResizablePanel({
 	container: contentRef,
-	position: 'left',
-	defaultSize: (containerWidth) => Math.min(Math.max(containerWidth * 0.25, 240), 400),
-	minSize: 240,
-	maxSize: (containerWidth) => Math.min(containerWidth * 0.5, 640),
+	width: {
+		localStorageKey: LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH,
+		defaultSize: function getDefaultWidth(size) {
+			return Math.min(Math.max(size * 0.25, 240), 400);
+		},
+		minSize: 240,
+		maxSize: function getMaxWidth(size) {
+			return Math.min(size * 0.5, 640);
+		},
+		snap: true,
+	},
 });
+const sidebarWidth = sidebarResizer.width;
 
 function firstParam(value: string | string[] | undefined): string | null {
 	const param = Array.isArray(value) ? value[0] : value;
@@ -319,11 +323,9 @@ onUnmounted(() => {
 			<N8nResizeWrapper
 				:class="$style.sidebarResizer"
 				:style="{ width: `${sidebarWidth}px` }"
-				:width="sidebarWidth"
+				:resizer="sidebarResizer"
 				:supported-directions="['right']"
 				data-test-id="workflow-reviews-sidebar-resizer"
-				@resize="onSidebarResize"
-				@resizeend="onSidebarResizeEnd"
 			>
 				<WorkflowReviewRequestsSidebar
 					:sections="sidebarSections"

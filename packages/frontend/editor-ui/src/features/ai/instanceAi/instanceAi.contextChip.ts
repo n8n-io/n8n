@@ -29,8 +29,14 @@ export type AppPreviewDiagnosticsContextChip = ContextChipBase & {
 	count: number;
 };
 
+export type WorkflowArtifactContextChip = ContextChipBase & {
+	type: 'workflow-artifact';
+	workflowId: string;
+};
+
 export type ContextChip =
 	| AgentArtifactContextChip
 	| AppArtifactContextChip
 	| AgentPreviewSessionContextChip
-	| AppPreviewDiagnosticsContextChip;
+	| AppPreviewDiagnosticsContextChip
+	| WorkflowArtifactContextChip;

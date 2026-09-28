@@ -42,10 +42,13 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { toPolicyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { getNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import type { NodeTypeAvailability } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
@@ -256,6 +259,52 @@ export function searchNodes(
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
 }
+/** Restriction lookups for node creator items, with credential-only nodes following HTTP Request. */
+export function getNodeItemRestriction(nodeTypeName: string): NodeTypeAvailability | null {
+	return getNodeTypeRestriction(toPolicyNodeType(nodeTypeName));
+}
+
+export function isNodeItemRestricted(nodeTypeName: string): boolean {
+	return getNodeItemRestriction(nodeTypeName) !== null;
+}
+
+type IsRestricted = (nodeTypeName: string) => boolean;
+
+/** Browse lists: drop restricted nodes and any section that ends up empty. */
+export function withoutRestrictedNodes(
+	items: INodeCreateElement[],
+	isRestricted: IsRestricted,
+): INodeCreateElement[] {
+	return items.flatMap((item): INodeCreateElement[] => {
+		if (item.type === 'node' && isRestricted(item.key)) return [];
+		if (item.type === 'section') {
+			const children = withoutRestrictedNodes(item.children, isRestricted);
+			return children.length > 0 ? [{ ...item, children }] : [];
+		}
+		return [item];
+	});
+}
+
+/**
+ * Search lists: keep restricted nodes findable, but after every usable match. Both partitions
+ * keep their rank order. Sections stay in place and sink their own children.
+ */
+export function sinkRestrictedNodesLast(
+	items: INodeCreateElement[],
+	isRestricted: IsRestricted,
+): INodeCreateElement[] {
+	const isRestrictedNode = (item: INodeCreateElement) =>
+		item.type === 'node' && isRestricted(item.key);
+	const available = items
+		.filter((item) => !isRestrictedNode(item))
+		.map((item) =>
+			item.type === 'section'
+				? { ...item, children: sinkRestrictedNodesLast(item.children, isRestricted) }
+				: item,
+		);
+	return [...available, ...items.filter(isRestrictedNode)];
+}
+
 export function isAINode(node: INodeCreateElement) {
 	const isNode = node.type === 'node';
 	if (!isNode) return false;

@@ -1,6 +1,7 @@
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	IExecutionContext,
 	IDataObject,
 	INode,
 	INodeType,
@@ -48,7 +49,10 @@ describe('PollContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		executionContext: undefined,
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const activation: WorkflowActivateMode = 'init';
 
@@ -100,7 +104,7 @@ describe('PollContext', () => {
 			expect(credentials).toEqual({ secret: 'token' });
 		});
 
-		it('should surface the node to the credentials helper', async () => {
+		it('should identify credentials requested by a polling trigger', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
 			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
@@ -115,6 +119,35 @@ describe('PollContext', () => {
 				expect.objectContaining({ node }),
 				false,
 				undefined,
+				{ credentialUsage: 'trigger' },
+			);
+		});
+
+		it("should preserve the entry point's execution context", async () => {
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'manual',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalDataWithContext = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			additionalDataWithContext.executionContext = executionContext;
+			const context = new PollContext(workflow, node, additionalDataWithContext, mode, activation);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await context.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.objectContaining({ executionContext }),
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+				{ credentialUsage: 'trigger' },
 			);
 		});
 	});

@@ -360,6 +360,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 				'project-1',
 				expect.stringContaining('fal.ai API Key'),
+				{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 				{ source: 'credential_edit', origin: 'internal' },
 				undefined,
 				undefined,

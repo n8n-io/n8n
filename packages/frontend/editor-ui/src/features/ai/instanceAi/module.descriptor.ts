@@ -105,6 +105,7 @@ export const InstanceAiModule = defineFrontendModule({
 								message: i18n.baseText('instanceAi.launch.templateById.message', {
 									interpolate: { id: templateId },
 								}),
+								authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
 							},
 							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
 						);

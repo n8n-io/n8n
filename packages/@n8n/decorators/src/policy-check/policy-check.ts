@@ -16,6 +16,7 @@ export const ENFORCEMENT_POINTS = [
 	'workflowPublish',
 	'workflowStart',
 	'workflowTransfer',
+	'credentialSave',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -76,6 +77,32 @@ export type WorkflowTransferContext = {
 	readonly workflow: PolicedWorkflow;
 	/** The project the workflow is moving *into* — that's whose policy applies. */
 	readonly targetProjectId: string | null;
+};
+
+/**
+ * The credential as a policy check sees it: its id and its type, nothing else.
+ *
+ * A check never needs the name or the data, and a type this narrow keeps the secret out of
+ * the policy layer altogether.
+ */
+export type PolicedCredential = {
+	/** `null` for a new credential — it has no id until it's saved. */
+	readonly id: string | null;
+	readonly type: string;
+};
+
+export type CredentialSaveContext = {
+	readonly credential: PolicedCredential;
+	/**
+	 * The stored credential this save replaces, or `null` for a new one.
+	 *
+	 * Loaded from the database by the host, never taken from the request. A check compares the
+	 * two types so an edit that keeps a now-blocked type is grandfathered, while a switch to a
+	 * blocked type is not.
+	 */
+	readonly storedCredential: PolicedCredential | null;
+	/** The owning project; `null` for an instance-scoped credential. */
+	readonly projectId: string | null;
 };
 
 export type CredentialDecryptContext = {
@@ -184,6 +211,7 @@ export interface RegisteredPolicyCheck {
 		ctx: WorkflowTransferContext,
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
+	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -208,6 +236,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	workflowPublish: 'onWorkflowPublish',
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
+	credentialSave: 'onCredentialSave',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

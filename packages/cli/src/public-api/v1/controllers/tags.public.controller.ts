@@ -3,6 +3,8 @@ import {
 	ListTagsQueryDto,
 	TagListPublicDto,
 	TagPublicDto,
+	UpdateTagPublicDto,
+	UpdatedTagPublicDto,
 	tagIdParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
@@ -14,10 +16,12 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -108,6 +112,68 @@ export class TagsPublicController {
 		} catch {
 			throw new NotFoundError('Not Found');
 		}
+
+		return toTagPublicDto(tag);
+	}
+
+	@Put('/:tagId')
+	@ApiKeyScope('tag:update')
+	@ApiSummary('Update a tag')
+	@ApiDescription('Update a tag.')
+	@ApiTags(tags)
+	@ApiResponse(200, UpdatedTagPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async updateTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('tagId', tagIdParamSchema) tagId: string,
+		@Body body: UpdateTagPublicDto,
+	): Promise<UpdatedTagPublicDto> {
+		try {
+			await this.tagService.getById(tagId);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tag = this.tagService.toEntity({ id: tagId, name: body.name.trim() });
+
+		let updatedTag: TagEntity;
+		try {
+			updatedTag = await this.tagService.save(tag, 'update');
+		} catch {
+			throw new ConflictError('Tag already exists');
+		}
+
+		return {
+			id: updatedTag.id,
+			name: updatedTag.name,
+			...(updatedTag.createdAt ? { createdAt: updatedTag.createdAt.toISOString() } : {}),
+			...(updatedTag.updatedAt ? { updatedAt: updatedTag.updatedAt.toISOString() } : {}),
+		};
+	}
+
+	@Delete('/:tagId')
+	@ApiKeyScope('tag:delete')
+	@ApiSummary('Delete a tag')
+	@ApiDescription('Deletes a tag.')
+	@ApiTags(tags)
+	@ApiResponse(200, TagPublicDto)
+	@ApiErrorResponse(404)
+	async deleteTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('tagId', tagIdParamSchema) tagId: string,
+	): Promise<TagPublicDto> {
+		let tag: TagEntity;
+
+		try {
+			tag = await this.tagService.getById(tagId);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		await this.tagService.delete(tagId);
 
 		return toTagPublicDto(tag);
 	}

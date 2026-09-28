@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { throwIfChatUnsupported } from './sharedGuard';
 import { chatRLC } from '../../descriptions';
 import { readTextParameter } from '../../helpers/parameters';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
@@ -78,8 +77,6 @@ export async function runMessageAction(
 	i: number,
 	action: ChatMessageAction,
 ) {
-	throwIfChatUnsupported.call(this);
-
 	const chatId = readTextParameter.call(this, 'chatId', i, true);
 	const messageId = readTextParameter.call(this, 'messageId', i);
 	const messagePath = buildTeamsPath.call(this, [

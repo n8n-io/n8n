@@ -2,7 +2,9 @@
 import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
+import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
 const props = defineProps<{
@@ -10,6 +12,7 @@ const props = defineProps<{
 	attachment?: InstanceAiAttachment;
 	isRemovable?: boolean;
 }>();
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	remove: [file: File];
@@ -102,47 +105,39 @@ onBeforeUnmount(() => {
 		@update:attachment="emit('update:attachment', $event)"
 		@remove-all="emit('remove-resource')"
 	/>
-	<div
+	<InstanceAiResourceChip
 		v-else-if="workflowAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="workflow" size="small" />
-		<span :class="$style.resourceName">{{ workflowAttachment.name ?? 'Workflow' }}</span>
-		<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
-	</div>
-	<div
+		:label="workflowAttachment.name ?? 'Workflow'"
+		icon="workflow"
+		:trailing-icon="workflowAttachment.executionId ? 'play' : undefined"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
+		test-id="attachment-preview-resource"
+		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
+	/>
+	<InstanceAiResourceChip
 		v-else-if="agentAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="robot" size="small" />
-		<span :class="$style.resourceName">{{ agentAttachment.name ?? 'Agent' }}</span>
-	</div>
-	<div
+		:label="agentAttachment.name ?? 'Agent'"
+		icon="robot"
+		test-id="attachment-preview-resource"
+	/>
+	<InstanceAiResourceChip
 		v-else-if="appAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="app-window" size="small" />
-		<span :class="$style.resourceName">{{ appAttachment.name }}</span>
-	</div>
-	<div
+		:label="appAttachment.name"
+		icon="app-window"
+		test-id="attachment-preview-resource"
+	/>
+	<InstanceAiResourceChip
 		v-else-if="elementAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="mouse-pointer" size="small" />
-		<span :class="$style.resourceName" :title="elementChipLabel">{{ elementChipLabel }}</span>
-		<button
-			v-if="isRemovable"
-			:class="$style.removeChipBtn"
-			data-test-id="attachment-preview-remove"
-			@click.stop="emit('remove-resource')"
-		>
-			<N8nIcon icon="x" size="xsmall" />
-		</button>
-	</div>
+		:label="elementChipLabel"
+		icon="mouse-pointer"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('generic.close')"
+		test-id="attachment-preview-resource"
+		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
+	/>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
 			<N8nIcon icon="spinner" color="primary" spin size="small" />
@@ -166,46 +161,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-.resourceChip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	max-width: 220px;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--color--foreground--tint-2);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
-}
-
-.removeChipBtn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	padding: 0;
-	cursor: pointer;
-	border-radius: var(--radius--sm);
-	color: var(--color--text--shade-1);
-
-	&:hover,
-	&:focus-visible {
-		color: var(--color--text);
-		background: var(--color--foreground);
-	}
-}
-
-.resourceName {
-	// `min-width: 0` lets the flex item shrink below its content so the ellipsis
-	// kicks in within the chip's max-width instead of overflowing.
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .thumbnailWrapper {
 	position: relative;
 	width: 80px;

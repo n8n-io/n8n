@@ -3,17 +3,68 @@ import type { INodeProperties } from 'n8n-workflow';
 import { JOB_RUN_DEFAULT_TIMEOUT_SECONDS } from '../../constants';
 
 const showForRun = { resource: ['job'], operation: ['run'] };
+const showForRunPicker = { resource: ['job'], operation: ['getRun', 'getRunOutput'] };
+const showForJobPicker = { resource: ['job'], operation: ['getJob', 'run'] };
 
 export const jobParameters: INodeProperties[] = [
+	{
+		displayName: 'Run',
+		name: 'runId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The job run to read',
+		displayOptions: {
+			show: showForRunPicker,
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getRuns',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. 41847992357943',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+$',
+							errorMessage: 'Must be a numeric run ID',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'e.g. https://adb-xxx.azuredatabricks.net/jobs/281874479417551/runs/41847992357943',
+				extractValue: {
+					type: 'regex',
+					regex:
+						'https://[^/]+/(?:jobs/[0-9]+/runs|\\?o=[0-9]+#job/[0-9]+/run|#job/[0-9]+/run)/([0-9]+)',
+				},
+			},
+		],
+	},
 	{
 		displayName: 'Job',
 		name: 'jobId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		description: 'The job to run',
+		description: 'The job to work with',
 		displayOptions: {
-			show: showForRun,
+			show: showForJobPicker,
 		},
 		modes: [
 			{

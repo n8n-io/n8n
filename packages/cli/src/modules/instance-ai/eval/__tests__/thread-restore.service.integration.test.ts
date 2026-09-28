@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import {
@@ -15,6 +16,7 @@ import { DataTableValidationError } from '@/modules/data-table/errors/data-table
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { FolderService } from '@/services/folder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -53,6 +55,8 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 
@@ -136,6 +140,8 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 
@@ -232,6 +238,8 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 

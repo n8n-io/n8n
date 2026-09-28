@@ -30,8 +30,7 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput()
 			.waitFor({ state: 'visible', timeout: 10_000 })
 			.catch(async () => {
-				const aiMenuItem = this.page.getByRole('menuitem', { name: 'n8n Assistant' });
-				await aiMenuItem.click({ timeout: 10_000 });
+				await this.getNewThreadButton().click({ timeout: 10_000 });
 				await this.enableInstanceAiIfPrompted();
 			});
 		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
@@ -119,13 +118,14 @@ export class InstanceAiPage extends BasePage {
 		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
 	}
 
+	getNewThreadButton(): Locator {
+		return this.page
+			.getByTestId('project-instance-ai-menu-item')
+			.getByRole('menuitem', { name: 'Assistant', exact: true });
+	}
+
 	/**
-	 * Expand the chat-history sidebar if it isn't already open. The sidebar
-	 * starts collapsed by default, so any test that needs to query thread
-	 * items must open it first. Idempotent — does nothing if already open.
-	 *
-	 * Waits for the thread-list to become visible so callers can immediately
-	 * query thread items without racing the 200ms slide-in transition.
+	 * Open the chat-history popover if needed and wait until its list is queryable.
 	 */
 	async openSidebar(): Promise<void> {
 		const threadList = this.page.getByTestId('instance-ai-thread-list');
@@ -138,7 +138,11 @@ export class InstanceAiPage extends BasePage {
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
-		return this.container.getByRole('textbox');
+		return this.container.getByRole('textbox').or(this.container.getByRole('combobox'));
+	}
+
+	getComposer(): Locator {
+		return this.container.getByTestId('instance-ai-composer');
 	}
 
 	getSendButton(): Locator {
@@ -214,6 +218,80 @@ export class InstanceAiPage extends BasePage {
 		return this.getContainer().locator(
 			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
 		);
+	}
+
+	getMentionButton(): Locator {
+		return this.container.getByTestId('instance-ai-mention-button');
+	}
+
+	getMentionMenu(): Locator {
+		return this.page.getByTestId('instance-ai-mention-menu-content');
+	}
+
+	getMentionMenuItem(name: string | RegExp): Locator {
+		return this.page.getByRole('menuitem', { name });
+	}
+
+	async highlightMentionWithKeyboard(name: string | RegExp): Promise<void> {
+		const item = this.getMentionMenuItem(name);
+		await item.waitFor({ state: 'visible' });
+		const input = this.getChatInput();
+		for (let index = 0; index < 20; index++) {
+			if ((await item.getAttribute('data-virtual-highlighted')) !== null) {
+				return;
+			}
+			await input.press('ArrowDown');
+		}
+
+		throw new Error(`Could not highlight mention menu item: ${String(name)}`);
+	}
+
+	async selectMentionWithKeyboard(name: string | RegExp): Promise<void> {
+		await this.highlightMentionWithKeyboard(name);
+		await this.getChatInput().press('Enter');
+	}
+
+	async openHighlightedMentionSubmenu(): Promise<void> {
+		await this.getChatInput().press('ArrowRight');
+	}
+
+	getComposerWorkflowChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('attachment-preview-resource').filter({ hasText: name });
+	}
+
+	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
+		return this.getComposerWorkflowChip(name).getByRole('button', {
+			name: 'Remove workflow context',
+		});
+	}
+
+	getComposerNodeChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('nodes-chip-node').filter({ hasText: name });
+	}
+
+	getComposerGroupChip(name: string | RegExp): Locator {
+		return this.container.getByTestId('nodes-chip-group').filter({ hasText: name });
+	}
+
+	getUserMessageByText(text: string | RegExp): Locator {
+		return this.getUserMessages().filter({ hasText: text });
+	}
+
+	getWorkflowChipInMessage(message: Locator, name: string | RegExp): Locator {
+		return message.getByTestId('attachment-preview-resource').filter({ hasText: name });
+	}
+
+	getNodeChipInMessage(message: Locator, name: string | RegExp): Locator {
+		return message.getByRole('group', { name });
+	}
+
+	async reloadThread(): Promise<void> {
+		await this.page.reload();
+		await this.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
+	}
+
+	getCurrentPath(): string {
+		return new URL(this.page.url()).pathname;
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────

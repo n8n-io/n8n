@@ -1,67 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createOAuthClient, createWorkflow } from './mcp.test.utils';
-
-const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
-	mockWorkflowDocumentStore: {
-		allNodes: [],
-		workflowTriggerNodes: [],
-		name: '',
-		settings: {},
-		mergeSettings: vi.fn(),
-		getPinDataSnapshot: vi.fn().mockReturnValue({}),
-		getNodeByName: vi.fn().mockReturnValue(null),
-	},
-}));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
-	createWorkflowDocumentId: (id: string) => id,
-}));
+// There is no shell in a module test, so stub the capability the store calls.
+const syncWorkflowMcpAccess = vi.fn<(workflowIds: string[], availableInMCP: boolean) => void>();
 
 describe('mcp.store', () => {
 	let store: ReturnType<typeof useMCPStore>;
-	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		store = useMCPStore();
-		workflowsListStore = useWorkflowsListStore();
+		capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	describe('fetchWorkflowsAvailableForMCP', () => {
 		it('returns paginated workflows and total count', async () => {
 			const workflow = createWorkflow({ id: 'wf-1' });
-			const fetchSpy = vi
-				.spyOn(workflowsListStore, 'fetchWorkflowsPageWithCount')
-				.mockResolvedValue({
-					data: [workflow],
-					count: 11,
-				});
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchMcpExposedWorkflows').mockResolvedValue({
+				data: [workflow],
+				count: 11,
+			});
 
 			await expect(store.fetchWorkflowsAvailableForMCP(2, 25)).resolves.toEqual({
 				data: [workflow],
 				count: 11,
 			});
-			expect(fetchSpy).toHaveBeenCalledWith(
-				undefined,
-				2,
-				25,
-				'updatedAt:desc',
-				{ isArchived: false, availableInMCP: true },
-				false,
-				false,
-			);
+			expect(fetchSpy).toHaveBeenCalledWith({}, { skip: 25, take: 25 });
 		});
 	});
 
@@ -99,15 +78,7 @@ describe('mcp.store', () => {
 	});
 
 	describe('toggleWorkflowMcpAccess', () => {
-		it('patches the list store entry when the backend confirms the update', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
+		it('syncs the confirmed workflow into the shell stores', async () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
@@ -119,59 +90,10 @@ describe('mcp.store', () => {
 
 			await store.toggleWorkflowMcpAccess('wf-1', true);
 
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
-		});
-
-		it('creates a settings object on list entries that have none', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf',
-					// No `settings` object on this entry — simulates legacy
-					// workflows or sparse list responses.
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
-			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
-				updatedCount: 1,
-				updatedIds: ['wf-1'],
-				unchangedCount: 0,
-				unchangedIds: [],
-				skippedCount: 0,
-				failedCount: 0,
-			});
-
-			await store.toggleWorkflowMcpAccess('wf-1', true);
-
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
-		});
-
-		it('merges settings into the active workflow document when toggling its own id', async () => {
-			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
-				updatedCount: 1,
-				updatedIds: ['wf-current'],
-				unchangedCount: 0,
-				unchangedIds: [],
-				skippedCount: 0,
-				failedCount: 0,
-			});
-
-			await store.toggleWorkflowMcpAccess('wf-current', true);
-
-			expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({
-				availableInMCP: true,
-			});
+			expect(syncWorkflowMcpAccess).toHaveBeenCalledWith(['wf-1'], true);
 		});
 
 		it('throws when the backend silently skipped the workflow', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
 				updatedIds: [],
@@ -185,26 +107,152 @@ describe('mcp.store', () => {
 				/could not be updated/i,
 			);
 
-			// Local store must remain untouched when the backend rejected the change.
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
-			expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
+			// Local state must remain untouched when the backend rejected the change.
+			expect(syncWorkflowMcpAccess).not.toHaveBeenCalled();
 		});
 
 		it('propagates network errors without patching local state', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockRejectedValue(new Error('network'));
 
 			await expect(store.toggleWorkflowMcpAccess('wf-1', true)).rejects.toThrow('network');
 
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
-			expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
+			expect(syncWorkflowMcpAccess).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('fetchOAuthClientsPreview', () => {
+		it("fetches the user's own first clients regardless of the list's ownership and filters", async () => {
+			const client = createOAuthClient();
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [client],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+				scopeTools: { 'workflow:read': ['list_workflows'] },
+			});
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsFilters = {
+				search: 'claude',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last7',
+			};
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 3 });
+			expect(store.oauthClientsPreview).toEqual([client]);
+			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+			expect(store.oauthClientScopeTools).toEqual({ 'workflow:read': ['list_workflows'] });
+		});
+
+		it('discards a stale preview response superseded by a newer one', async () => {
+			let resolveStale!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const stale = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>((resolve) => {
+				resolveStale = resolve;
+			});
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(stale)
+				.mockResolvedValueOnce({
+					data: [createOAuthClient({ id: 'new' })],
+					count: 1,
+					totals: { mine: 1 },
+				});
+
+			const staleCall = store.fetchOAuthClientsPreview(); // in flight
+			await store.fetchOAuthClientsPreview(); // newer request commits 'new'
+			resolveStale({
+				data: [createOAuthClient({ id: 'stale' })],
+				count: 1,
+				totals: { mine: 99 },
+			});
+			await staleCall;
+
+			expect(store.oauthClientsPreview.map((client) => client.id)).toEqual(['new']);
+			expect(store.oauthClientTotals).toEqual({ mine: 1 });
+		});
+
+		it("does not let a slow preview overwrite the list's newer totals and scope tools", async () => {
+			let resolvePreview!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const preview = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>(
+				(resolve) => {
+					resolvePreview = resolve;
+				},
+			);
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(preview)
+				.mockResolvedValueOnce({
+					data: [],
+					count: 0,
+					totals: { mine: 2, all: 5 },
+					scopeTools: { 'workflow:read': ['search_workflows'] },
+				});
+
+			const previewCall = store.fetchOAuthClientsPreview(); // in flight
+			await store.getAllOAuthClients(); // newer list fetch commits its metadata
+			resolvePreview({
+				data: [createOAuthClient()],
+				count: 1,
+				totals: { mine: 1, all: 4 },
+				scopeTools: { 'workflow:read': ['stale'] },
+			});
+			await previewCall;
+
+			// The preview rows are still applied (no newer preview exists)...
+			expect(store.oauthClientsPreview).toHaveLength(1);
+			// ...but the instance-wide metadata keeps the newer list response.
+			expect(store.oauthClientTotals).toEqual({ mine: 2, all: 5 });
+			expect(store.oauthClientScopeTools).toEqual({ 'workflow:read': ['search_workflows'] });
+		});
+
+		it('clears the cached preview', async () => {
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient()],
+				count: 1,
+				totals: { mine: 1 },
+			});
+			await store.fetchOAuthClientsPreview();
+			expect(store.oauthClientsPreview).toHaveLength(1);
+
+			store.clearOAuthClientsPreview();
+
+			expect(store.oauthClientsPreview).toEqual([]);
+		});
+
+		it('keeps a fetch that was in flight when the preview was cleared from repopulating it', async () => {
+			let resolveInFlight!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockReturnValue(
+				new Promise((resolve) => {
+					resolveInFlight = resolve;
+				}),
+			);
+
+			const inFlight = store.fetchOAuthClientsPreview();
+			store.clearOAuthClientsPreview(); // e.g. the overview unmounted
+			resolveInFlight({ data: [createOAuthClient()], count: 1, totals: { mine: 1 } });
+			await inFlight;
+
+			expect(store.oauthClientsPreview).toEqual([]);
+		});
+
+		it("leaves the clients page's list state untouched", async () => {
+			const listed = createOAuthClient({ id: 'listed' });
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient({ id: 'previewed' })],
+				count: 1,
+				totals: { mine: 1 },
+			});
+			store.oauthClients = [listed];
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsCount = 40;
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(store.oauthClients).toEqual([listed]);
+			expect(store.oauthClientsOwnership).toBe('all');
+			expect(store.oauthClientsPage).toBe(2);
+			expect(store.oauthClientsCount).toBe(40);
 		});
 	});
 
@@ -355,6 +403,15 @@ describe('mcp.store', () => {
 			});
 		});
 
+		it("skips the list refetch when the caller doesn't show the list", async () => {
+			vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({ success: true, message: 'ok' });
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients');
+
+			await store.removeOAuthClient('client-1', undefined, { refreshList: false });
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+
 		it('ignores a stale in-flight list response superseded by a newer request', async () => {
 			let resolveStale!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
 			const stale = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>((resolve) => {
@@ -385,25 +442,7 @@ describe('mcp.store', () => {
 	});
 
 	describe('toggleWorkflowsMcpAccess (bulk)', () => {
-		it('applies the new value only to workflows the backend confirmed', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf-1',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-				'wf-2': {
-					id: 'wf-2',
-					name: 'wf-2',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-				'wf-3': {
-					id: 'wf-3',
-					name: 'wf-3',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
+		it('syncs only the workflows the backend confirmed', async () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
@@ -420,10 +459,8 @@ describe('mcp.store', () => {
 
 			expect(response.updatedIds).toEqual(['wf-1']);
 			expect(response.unchangedIds).toEqual(['wf-2']);
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
-			expect(workflowsListStore.workflowsById['wf-2'].settings?.availableInMCP).toBe(true);
-			// Skipped workflow remains untouched.
-			expect(workflowsListStore.workflowsById['wf-3'].settings?.availableInMCP).toBe(false);
+			// The skipped workflow is left out of the sync.
+			expect(syncWorkflowMcpAccess).toHaveBeenCalledWith(['wf-1', 'wf-2'], true);
 		});
 
 		it('does not throw when none of the targeted workflows were updated', async () => {
@@ -476,15 +513,7 @@ describe('mcp.store', () => {
 			expect(spy).toHaveBeenCalledWith({}, { folderId: 'folder-1' }, true);
 		});
 
-		it('does not patch local stores when the response omits updatedIds (scope mode)', async () => {
-			workflowsListStore.workflowsById = {
-				'wf-1': {
-					id: 'wf-1',
-					name: 'wf-1',
-					settings: { availableInMCP: false, executionOrder: 'v1' },
-				},
-			} as unknown as typeof workflowsListStore.workflowsById;
-
+		it('does not sync when the response omits updatedIds (scope mode)', async () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 5,
 				unchangedCount: 0,
@@ -496,7 +525,7 @@ describe('mcp.store', () => {
 				store.toggleWorkflowsMcpAccess({ projectId: 'project-1' }, true),
 			).resolves.toEqual({ updatedCount: 5, unchangedCount: 0, skippedCount: 0, failedCount: 0 });
 
-			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
+			expect(syncWorkflowMcpAccess).not.toHaveBeenCalled();
 		});
 
 		it('surfaces partial failures from the backend via failedCount', async () => {

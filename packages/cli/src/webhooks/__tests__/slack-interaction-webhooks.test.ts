@@ -257,6 +257,19 @@ describe('SlackInteractionWebhooks', () => {
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
 	});
 
+	it('responds 404 without resuming when the resumed node has no id', async () => {
+		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingExecutionWithNode(''));
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
 	it('resolves the node id from lastNodeExecuted and routes into the shared resume', async () => {
 		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);

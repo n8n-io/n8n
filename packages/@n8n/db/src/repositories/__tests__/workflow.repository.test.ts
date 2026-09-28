@@ -240,6 +240,37 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('applyIdsFilter', () => {
+		it('should filter by the requested workflow ids', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], {
+				filter: { ids: ['workflow-1', 'workflow-2'] },
+			});
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: ['workflow-1', 'workflow-2'] },
+			);
+		});
+
+		it('should return no workflows for an empty ids filter', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], { filter: { ids: [] } });
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: [''] },
+			);
+		});
+
+		it('should return no workflows for a malformed ids filter', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], { filter: { ids: [1] } });
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: [''] },
+			);
+		});
+	});
+
 	describe('getMany', () => {
 		it('should apply multiple filters together', async () => {
 			const workflowIds = ['workflow1', 'workflow2'];

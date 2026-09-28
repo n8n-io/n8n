@@ -54,7 +54,7 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 				}
 			} else {
 				// Check in expressions
-				const nodeJson = JSON.stringify(node.parameters);
+				const nodeJson = JSON.stringify(node.parameters ?? {});
 				if (processEnvPattern.test(nodeJson) && !affectedNodes.some((n) => n.nodeId === node.id)) {
 					affectedNodes.push({ nodeId: node.id, nodeName: node.name });
 				}

@@ -10,19 +10,16 @@ import { Tool } from '@n8n/agents';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { InstanceAiWorkflowService, OrchestrationContext } from '../../types';
-import {
-	analyzeVerificationResult,
-	buildNodePreviews,
-	getTriggerMainFlowScope,
-} from './verification/analyze-result';
+import type { OrchestrationContext } from '../../types';
+import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
-import type { VerificationPublishState } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
+	handleBlockedVerification,
 	persistVerificationOutcome,
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
+import { resolvePublishState } from './verification/publish-state';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import {
@@ -32,6 +29,8 @@ import {
 	skippedParameterCheckSchema,
 } from './verification/resolved-parameter-warnings';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
+import { checkToolSimulationSupport } from './verification/tool-simulation-preflight';
+import { createVerificationGraph, getTriggerMainFlowScope } from '../workflows/verification-graph';
 import { describeClaimLiveState } from '../../workflow-loop/render-claim';
 import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import {
@@ -63,35 +62,6 @@ function formatLiveStateNote(claim: VerificationClaim | undefined): string | und
 	return claim.level === 'verified'
 		? `${fact} Publishing is what makes this change live — ask the user whether to do it.`
 		: fact;
-}
-
-/**
- * Version pair behind `claim.liveState`. The executed version has to come from
- * the execution record: the workflow head moves when anybody saves, so
- * substituting it would let the claim describe a version this run never ran.
- * Without that record there is no publish state — an unknown run version must
- * not become `live-current`, which reads as "production is proven".
- */
-async function resolvePublishState(args: {
-	workflowService: InstanceAiWorkflowService;
-	workflowId: string;
-	executedVersionId: string | null | undefined;
-	logger: OrchestrationContext['logger'];
-}): Promise<VerificationPublishState | undefined> {
-	const { workflowService, workflowId, executedVersionId, logger } = args;
-
-	if (!executedVersionId) return undefined;
-
-	try {
-		const head = await workflowService.getWorkflowHead(workflowId);
-		return { activeVersionId: head.activeVersionId, draftVersionId: executedVersionId };
-	} catch (error) {
-		logger.warn('Failed to read publish state for the verification claim', {
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return undefined;
-	}
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({
@@ -286,8 +256,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				.getAsWorkflowJSON(workflowId)
 				.catch(() => undefined);
 			if (
+				workflow &&
+				Array.isArray(workflow.nodes) &&
 				resolvedInput.triggerNodeName !== undefined &&
-				!workflow?.nodes.some(
+				!workflow.nodes.some(
 					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
 				)
 			) {
@@ -296,6 +268,40 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					resolvedWorkItemId: resolvedInput.workItemId,
 					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
 				};
+			}
+			// WorkflowJSON omits saved pins. The summary supplies names without their payloads.
+			let workflowPinnedNodeNames: string[] | undefined;
+			try {
+				const workflowPins = workflow
+					? await target.domainContext.workflowService.getPinnedDataSummary?.(workflowId)
+					: undefined;
+				workflowPinnedNodeNames = workflowPins?.map(({ nodeName }) => nodeName);
+			} catch {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					reason: 'verification_pin_summary_unavailable',
+					guidance:
+						'Verification was not run because saved pinned data could not be inspected. Retry verification.',
+				});
+			}
+			const blocker = checkToolSimulationSupport({
+				workflow,
+				workflowPinnedNodeNames,
+				plan: buildOutcome.nodeSimulationPlan,
+				prepared,
+				triggerNodeName: resolvedInput.triggerNodeName,
+			});
+			if (blocker) {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					...blocker,
+				});
 			}
 			const chatModelRecovery = workflow
 				? await collectChatModelRecoveryContext(
@@ -312,7 +318,9 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				: undefined;
 			const verificationScope =
 				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
-					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
+					? createVerificationGraph(workflow).withTools(
+							getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName),
+						)
 					: undefined;
 			const previousProgress = await workflowTaskService.startVerification(
 				resolvedInput.workItemId,

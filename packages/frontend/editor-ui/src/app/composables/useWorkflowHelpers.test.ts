@@ -1380,6 +1380,88 @@ describe(resolveParameter, () => {
 			expect(result?.params).toBeDefined();
 		});
 	});
+
+	describe('bare identifier resolution', () => {
+		const resolveExpression = async (
+			expression: string,
+			additionalKeys: Record<string, string> = {},
+		) => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
+
+			const result = await resolveParameter(
+				{ value: expression },
+				workflowDocumentStore.documentId,
+				{
+					localResolve: true,
+					additionalKeys,
+					nodeName: 'n0',
+				},
+			);
+
+			return result?.value;
+		};
+
+		// Each name is a real jsdom global, so resolving against the realm instead of the data
+		// context would surface it.
+		it.each([
+			[
+				'a let binding in a nested block',
+				'crypto',
+				"(() => { { let crypto = 'block scoped'; } return crypto; })()",
+			],
+			[
+				'a function declaration in a block',
+				'performance',
+				"(() => { { function performance() { return 'block scoped'; } } return performance; })()",
+			],
+			[
+				'a generator declaration in a block',
+				'localStorage',
+				'(() => { { function* localStorage() {} } return localStorage; })()',
+			],
+			[
+				'an async function declaration in a block',
+				'navigator',
+				'(() => { { async function navigator() {} } return navigator; })()',
+			],
+			[
+				'a let binding enclosing a block with a function declaration of the same name',
+				'history',
+				"(() => { { let history = 'outer block'; { function history() {} } } return history; })()",
+			],
+			[
+				'a lexical for-head binding enclosing the loop body',
+				'screen',
+				'(() => { for (let screen = 0; screen < 1; screen++) { let step = screen; } return screen; })()',
+			],
+		])(
+			'should read %s from the data context once out of its declaring block',
+			async (_shape, name, body) => {
+				const expression = `={{ ${body} }}`;
+
+				await expect(resolveExpression(expression, { [name]: 'from data context' })).resolves.toBe(
+					'from data context',
+				);
+
+				await expect(resolveExpression(expression)).resolves.toBeUndefined();
+			},
+		);
+
+		it('should keep a function declared at function-body level callable in that body', async () => {
+			const result = await resolveExpression(
+				"={{ (() => { function location() { return 'local function'; } return location(); })() }}",
+				{ location: 'from data context' },
+			);
+
+			expect(result).toBe('local function');
+		});
+	});
 });
 
 describe('resolveRequiredParameters', () => {

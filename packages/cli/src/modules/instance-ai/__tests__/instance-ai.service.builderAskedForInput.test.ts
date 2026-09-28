@@ -23,6 +23,10 @@ vi.mock('@n8n/instance-ai', async () => {
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 

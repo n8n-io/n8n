@@ -7,6 +7,7 @@ import {
 	type AgentCapabilityTool,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
+	type AgentModelCredentialConfig,
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
@@ -22,9 +23,9 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
@@ -38,6 +39,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
 	type AgentSummary,
+	type AgentListResult,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
@@ -47,7 +49,7 @@ type CreateAgentOptions = {
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
-	defaultModel?: { model: string; credential: string };
+	defaultModel?: AgentModelCredentialConfig;
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
@@ -124,31 +126,11 @@ export class AgentsService {
 			user,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
-		const defaultConfig: AgentJsonConfig = {
-			name,
-			model: '',
-			instructions: '',
-			...(defaultModel ?? {}),
-			tools: [],
-			skills: [],
-			// Seeded at birth so every agent has a distinct tile, and so the builder
-			// sees an existing icon name when it reads the config — without one it
-			// invents its own, which the icon tile cannot render.
-			personalisation: {
-				icon: DEFAULT_AGENT_PERSONALISATION.icon,
-				gradient: getRandomAgentPersonalisationGradient(),
-			},
-		};
-
-		// A user-driven duplicate seeds a full config. Mirror the `updateConfig`
-		// write path: sanitize the config, then blank any credential the
-		// duplicating user cannot use in this project. Eval seeding (no `user`)
-		// inserts the config as-is, as before.
-		const { schemaConfig, integrations } = schema
-			? user
-				? await this.prepareDuplicateConfig(schema, projectId, user)
-				: decomposeJsonConfig(schema)
-			: decomposeJsonConfig(defaultConfig);
+		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
+			schema,
+			user,
+			defaultModel,
+		});
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
@@ -166,16 +148,10 @@ export class AgentsService {
 		try {
 			saved = await this.agentRepository.save(agent);
 		} catch (error) {
-			if (!id || !isUniqueConstraintError(error)) throw error;
-			// Never disclose whether the id exists in another project.
-			const conflict = new ConflictError('An agent with this id already exists');
-			if (!adoptOnCollision) throw conflict;
-			// Returned as it stands: the winner may already have configured it, and
-			// this call's `name`/`schema` describe a draft that never existed.
-			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
-			if (!existing) throw conflict;
-			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
-			return { agent: existing, adopted: true };
+			return {
+				agent: await this.adoptExistingAgent(id, projectId, adoptOnCollision, error),
+				adopted: true,
+			};
 		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
@@ -233,7 +209,7 @@ export class AgentsService {
 	async findByProjectIdPaginated(
 		projectId: string,
 		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
 	}
 
@@ -248,8 +224,12 @@ export class AgentsService {
 	 * the full `AgentJsonConfig`.
 	 */
 	async getCapabilitySummary(agentId: string, projectId: string): Promise<AgentCapabilitySummary> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const schema = entity.schema;
 
@@ -260,28 +240,7 @@ export class AgentsService {
 			type: integration.type,
 		}));
 
-		const tools = (schema?.tools ?? []).flatMap<AgentCapabilityTool>((tool) => {
-			switch (tool.type) {
-				case 'custom':
-					return [{ type: 'custom', name: entity.tools[tool.id]?.descriptor?.name ?? tool.id }];
-				case 'workflow':
-					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
-				case 'node':
-					return [
-						{
-							type: 'node',
-							name: tool.name,
-							nodeType: tool.node?.nodeType,
-							nodeTypeVersion: tool.node?.nodeTypeVersion,
-						},
-					];
-				default:
-					// Unknown tool type from an unvalidated persisted config (import,
-					// history restore, version skew): drop it rather than emit an
-					// `undefined` chip the card would choke on.
-					return [];
-			}
-		});
+		const tools = this.getCapabilityTools(entity);
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
@@ -290,17 +249,7 @@ export class AgentsService {
 			name: entity.skills[skill.id]?.name ?? skill.id,
 		}));
 
-		const taskRefs = schema?.tasks ?? [];
-		let taskNamesById: Record<string, string> = {};
-		if (taskRefs.length > 0) {
-			const taskBodies = await this.agentTaskRepository.findByAgentId(agentId);
-			taskNamesById = Object.fromEntries(taskBodies.map((task) => [task.id, task.name]));
-		}
-		const tasks = taskRefs.map((task) => ({
-			id: task.id,
-			name: taskNamesById[task.id] ?? task.id,
-			enabled: task.enabled,
-		}));
+		const tasks = await this.getCapabilityTasks(entity);
 
 		return {
 			id: entity.id,
@@ -355,10 +304,7 @@ export class AgentsService {
 		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
 	}
 
-	async findByUserPaginated(
-		userId: string,
-		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
+	async findByUserPaginated(userId: string, options: ListAgentsQueryDto): Promise<AgentListResult> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
@@ -390,25 +336,11 @@ export class AgentsService {
 			return false;
 		}
 
-		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId);
-		} catch (error) {
-			this.logger.warn('Failed to delete knowledge files on agent delete', {
-				agentId,
-				error: error instanceof Error ? error.message : error,
-			});
-		}
+		await this.deleteKnowledgeFiles(projectId, agentId);
 
 		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
 
-		try {
-			await this.agentChatAttachmentService.deleteByAgent(agentId);
-		} catch (error) {
-			this.logger.warn('Failed to delete chat attachments on agent delete', {
-				agentId,
-				error: error instanceof Error ? error.message : error,
-			});
-		}
+		await this.deleteChatAttachments(agentId);
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
@@ -425,6 +357,120 @@ export class AgentsService {
 
 		this.eventService.emit('agent-deleted', { agentId, projectId });
 
+		await this.stopDeletedAgentTasks(agentId);
+
+		await this.clearDeletedAgentTestChats(agentId);
+
+		this.logger.debug('Deleted SDK agent', { agentId, projectId });
+
+		return true;
+	}
+
+	private async prepareInitialConfig(
+		projectId: string,
+		name: string,
+		{ schema, user, defaultModel }: CreateAgentOptions,
+	): Promise<ReturnType<typeof decomposeJsonConfig>> {
+		const defaultConfig: AgentJsonConfig = {
+			name,
+			model: '',
+			instructions: '',
+			...(defaultModel ?? {}),
+			tools: [],
+			skills: [],
+			// Seeded at birth so every agent has a distinct tile, and so the builder
+			// sees an existing icon name when it reads the config — without one it
+			// invents its own, which the icon tile cannot render.
+			personalisation: {
+				icon: DEFAULT_AGENT_PERSONALISATION.icon,
+				gradient: getRandomAgentPersonalisationGradient(),
+			},
+		};
+		if (!schema) return decomposeJsonConfig(defaultConfig);
+		if (!user) return decomposeJsonConfig(schema);
+		return await this.prepareDuplicateConfig(schema, projectId, user);
+	}
+
+	private async adoptExistingAgent(
+		id: string | undefined,
+		projectId: string,
+		adoptOnCollision: boolean,
+		error: unknown,
+	): Promise<Agent> {
+		if (!id || !isUniqueConstraintError(error)) throw error;
+		// Never disclose whether the id exists in another project.
+		const conflict = new ConflictError('An agent with this id already exists');
+		if (!adoptOnCollision) throw conflict;
+		// Returned as it stands: the winner may already have configured it, and
+		// this call's `name`/`schema` describe a draft that never existed.
+		const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
+		if (!existing) throw conflict;
+		this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
+		return existing;
+	}
+
+	private getCapabilityTools(entity: Agent): AgentCapabilityTool[] {
+		return (entity.schema?.tools ?? []).flatMap<AgentCapabilityTool>((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return [{ type: 'custom', name: entity.tools[tool.id]?.descriptor?.name ?? tool.id }];
+				case 'workflow':
+					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
+				case 'node':
+					return [
+						{
+							type: 'node',
+							name: tool.name,
+							nodeType: tool.node?.nodeType,
+							nodeTypeVersion: tool.node?.nodeTypeVersion,
+						},
+					];
+				default:
+					// Unknown tool type from an unvalidated persisted config (import,
+					// history restore, version skew): drop it rather than emit an
+					// `undefined` chip the card would choke on.
+					return [];
+			}
+		});
+	}
+
+	private async getCapabilityTasks(entity: Agent): Promise<AgentCapabilitySummary['tasks']> {
+		const taskRefs = entity.schema?.tasks ?? [];
+		let taskNamesById: Record<string, string> = {};
+		if (taskRefs.length > 0) {
+			const taskBodies = await this.agentTaskRepository.findByAgentId(entity.id);
+			taskNamesById = Object.fromEntries(taskBodies.map((task) => [task.id, task.name]));
+		}
+		return taskRefs.map((task) => ({
+			id: task.id,
+			name: taskNamesById[task.id] ?? task.id,
+			enabled: task.enabled,
+		}));
+	}
+
+	private async deleteKnowledgeFiles(projectId: string, agentId: string): Promise<void> {
+		try {
+			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete knowledge files on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+	}
+
+	private async deleteChatAttachments(agentId: string): Promise<void> {
+		try {
+			await this.agentChatAttachmentService.deleteByAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete chat attachments on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+	}
+
+	private async stopDeletedAgentTasks(agentId: string): Promise<void> {
 		try {
 			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
@@ -434,7 +480,9 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
+	}
 
+	private async clearDeletedAgentTestChats(agentId: string): Promise<void> {
 		try {
 			await this.testChatService.clearAllTestChatMessages(agentId);
 		} catch (error) {
@@ -443,9 +491,5 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
-
-		this.logger.debug('Deleted SDK agent', { agentId, projectId });
-
-		return true;
 	}
 }

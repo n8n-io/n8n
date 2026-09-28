@@ -337,6 +337,25 @@ describe('getLatestAgentBuilderTarget', () => {
 });
 
 describe('getLatestAgentArtifactResult', () => {
+	test('returns no artifact for an explicit unchanged result', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { name: 'Existing Agent' },
+					result: { ok: true, agentChange: 'none', configUpdated: false },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}),
+		).toBeUndefined();
+	});
+
 	test('uses parent agent target for nested agent mutations', () => {
 		const nestedAgentBuilder = makeAgentNode({
 			agentId: 'nested-builder',
@@ -1169,6 +1188,32 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('locks an announced workflow while its first build has no result yet', () => {
+		const call = makeToolCall({
+			toolName: 'build-workflow',
+			args: { filePath: 'workflow.ts' },
+			isLoading: true,
+			startedAt: '2026-09-15T08:00:00.000Z',
+		});
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [call],
+			setupItemsByWorkflowId: { 'wf-other': [], 'wf-1': [] },
+			latestSetupAnnouncement: {
+				workflowId: 'wf-1',
+				agentId: 'agent-1',
+				timestamp: '2026-09-15T08:00:01.000Z',
+			},
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
+		call.startedAt = '2026-09-15T08:01:00.000Z';
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+		call.startedAt = '2026-09-15T08:00:00.000Z';
+		call.isLoading = false;
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while an active agent run has already built the workflow', () => {
 		const node = makeAgentNode({
 			status: 'active',

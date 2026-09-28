@@ -58,5 +58,25 @@ export function runTestScoped(options: TestScopedOptions): number {
 	// Pass cwd explicitly so an override via --package-dir is honoured
 	// (otherwise spawnSync inherits the caller's cwd and vitest would
 	// resolve config + tests from the wrong project).
-	return spawnSync('vitest', args, { stdio: 'inherit', cwd: options.packageDir }).status ?? 1;
+	const result = spawnSync('vitest', args, { stdio: 'inherit', cwd: options.packageDir });
+	return resolveExitCode(result);
+}
+
+// A signal-killed vitest has no status and prints no summary, so name the signal.
+// A spawn failure has no status either; with inherited stdio, only `error` reports it.
+export function resolveExitCode(result: {
+	status: number | null;
+	signal: NodeJS.Signals | null;
+	error?: Error;
+}): number {
+	if (result.status !== null) return result.status;
+	if (result.error) {
+		console.error(`[janitor:test-scoped] vitest failed to start: ${result.error.message}`);
+		return 1;
+	}
+	console.error(
+		`[janitor:test-scoped] vitest exited without a status (signal: ${result.signal ?? 'unknown'}). ` +
+			'The process was killed before it could report results; check the runner for memory pressure.',
+	);
+	return 1;
 }

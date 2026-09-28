@@ -1,4 +1,4 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -77,6 +77,32 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	const credentialContext = shallowReactive(new Map<string, InstanceAiSetupItem>());
+	watch(
+		[() => toValue(options.workflowId), eventItems],
+		([id, items], [previousId]) => {
+			if (id !== previousId) credentialContext.clear();
+			// Later snapshots can omit the recipe while the workflow still needs the credential.
+			for (const item of items) {
+				if (item.kind === 'credential') {
+					credentialContext.set(
+						item.id,
+						completeCredentialContext(item, credentialContext.get(item.id)),
+					);
+				}
+			}
+		},
+		{ immediate: true, flush: 'sync' },
+	);
+
+	watch(
+		[eventItems, isAgentBuilding],
+		([items, building]) => {
+			// The SDK saves resolved credentials before announcing setup, while its tool is still active.
+			if (building && items.length > 0) void derivation.refreshWorkflow({ force: true });
+		},
+		{ immediate: true, flush: 'sync' },
+	);
 
 	/**
 	 * Reconciliation: while the agent edits the workflow, its events are the
@@ -96,13 +122,19 @@ export function useSetupPanelState(options: {
 			const derivedById = new Map(
 				derivation.derivedCredentialItems.value.map((item) => [item.id, item]),
 			);
-			return eventItems.value.map((event) => {
-				const item = completeCredentialContext(event, derivedById.get(event.id));
+			const announcedIds = new Set(eventItems.value.map((item) => item.id));
+			const stillRequired = derivation.derivedCredentialItems.value.filter(
+				(item) => credentialContext.has(item.id) && !announcedIds.has(item.id),
+			);
+			return [...eventItems.value, ...stillRequired].map((event) => {
+				const item = completeCredentialContext(
+					completeCredentialContext(event, derivedById.get(event.id)),
+					credentialContext.get(event.id),
+				);
 				return { item, isDone: derivation.isItemDone(item) };
 			});
 		}
 		const derived = derivation.derivedItems.value;
-		const eventsById = new Map(eventItems.value.map((item) => [item.id, item]));
 		const derivedIds = new Set(derived.map((item) => item.id));
 		// Parameter rows the agent announced that settled before this session's
 		// derivation ever saw them raise issues (e.g. resolved mid-build, then a
@@ -115,17 +147,21 @@ export function useSetupPanelState(options: {
 				item.kind === 'parameters' && !derivedIds.has(item.id) && derivation.isItemDone(item),
 		);
 		return [...derived, ...settledEventItems].map((derivedItem) => {
-			const item = completeCredentialContext(derivedItem, eventsById.get(derivedItem.id));
+			const item = completeCredentialContext(derivedItem, credentialContext.get(derivedItem.id));
 			return { item, isDone: derivation.isItemDone(item) };
 		});
 	});
 
 	return {
+		credentialsAvailable: derivation.credentialsAvailable,
+		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
 		rows,
 		rowSource,
 		isAgentBuilding,
 		getNodeByName: derivation.getNodeByName,
 		workflowProjectId: derivation.workflowProjectId,
 		refreshWorkflow: derivation.refreshWorkflow,
+		isItemDone: derivation.isItemDone,
+		isCredentialConfigured: derivation.isCredentialConfigured,
 	};
 }

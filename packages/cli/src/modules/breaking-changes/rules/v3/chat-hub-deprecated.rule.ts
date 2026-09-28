@@ -1,6 +1,7 @@
 import { SettingsRepository } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -36,7 +37,7 @@ export class ChatHubDeprecatedRule implements IBreakingChangeInstanceRule {
 		const setting = await this.settingsRepository.findByKey(CHAT_ENABLED_KEY);
 
 		if (setting?.value !== 'true') {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

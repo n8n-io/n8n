@@ -1,0 +1,78 @@
+{
+	"name": "Databricks Job Get Run Output Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "getRunOutput",
+				"runId": {
+					"mode": "id",
+					"value": "41847992357943"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "job-get-run-output-001",
+			"name": "Get Run Output",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Run Output": [
+			{
+				"json": {
+					"run_id": 41847992357943,
+					"job_id": 281874479417551,
+					"task_key": "main",
+					"task_run_id": 41847992357944,
+					"truncated": false,
+					"metadata": {
+						"run_id": 41847992357944,
+						"task_key": "main",
+						"status": {
+							"state": "TERMINATED",
+							"termination_details": {
+								"code": "SUCCESS"
+							}
+						}
+					},
+					"notebook_output": {
+						"result": "done",
+						"truncated": false
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Run Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

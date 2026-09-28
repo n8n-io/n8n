@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { useResizablePanel } from '@n8n/design-system';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import {
 	LOGS_PANEL_STATE,
@@ -23,35 +23,54 @@ export function useLogsPanelLayout(
 	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
 
-	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
+	const resizer = useResizablePanel({
 		container: document.body,
-		position: 'bottom',
-		snap: false,
-		defaultSize: (size) => size * 0.3,
-		minSize: 160,
-		maxSize: (size) => size * 0.75,
-		allowCollapse: true,
+		height: {
+			localStorageKey: LOCAL_STORAGE_PANEL_HEIGHT,
+			defaultSize: function getDefaultHeight(size) {
+				return size * 0.3;
+			},
+			minSize: 160,
+			maxSize: function getMaxHeight(size) {
+				return size * 0.75;
+			},
+			allowCollapse: true,
+		},
 	});
 
-	const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_PANEL_WIDTH, {
+	const chatPanelResizer = useResizablePanel({
 		container,
-		defaultSize: (size) => Math.min(800, size * 0.3),
-		minSize: 240,
-		maxSize: (size) => size * 0.8,
+		width: {
+			localStorageKey: LOCAL_STORAGE_PANEL_WIDTH,
+			defaultSize: function getDefaultWidth(size) {
+				return Math.min(800, size * 0.3);
+			},
+			minSize: 240,
+			maxSize: function getMaxWidth(size) {
+				return size * 0.8;
+			},
+			snap: true,
+		},
 	});
 
-	const overviewPanelResizer = useResizablePanel(LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH, {
+	const overviewPanelResizer = useResizablePanel({
 		container: logsContainer,
-		defaultSize: (size) => Math.min(240, size * 0.2),
-		minSize: 80,
-		maxSize: 500,
-		allowFullSize: true,
+		width: {
+			localStorageKey: LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
+			defaultSize: function getDefaultWidth(size) {
+				return Math.min(240, size * 0.2);
+			},
+			minSize: 80,
+			maxSize: 500,
+			allowFullSize: true,
+			snap: true,
+		},
 	});
 
 	const isOpen = computed(() =>
 		logsStore.isOpen
 			? !resizer.isCollapsed.value
-			: resizer.isResizing.value && resizer.size.value > 0,
+			: resizer.isResizing.value && resizer.height.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
 	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
@@ -95,6 +114,7 @@ export function useLogsPanelLayout(
 	}
 
 	function handleResizeEnd() {
+		if (!resizer.isResizing.value) return;
 		if (!logsStore.isOpen && !resizer.isCollapsed.value) {
 			handleToggleOpen(true);
 		}
@@ -102,12 +122,10 @@ export function useLogsPanelLayout(
 		if (resizer.isCollapsed.value) {
 			handleToggleOpen(false);
 		}
-
-		resizer.onResizeEnd();
 	}
 
 	watch(
-		[() => logsStore.state, resizer.size, isPoppedOut],
+		[() => logsStore.state, resizer.height, isPoppedOut],
 		([state, height]) => {
 			const updatedHeight =
 				state === LOGS_PANEL_STATE.FLOATING
@@ -133,9 +151,9 @@ export function useLogsPanelLayout(
 	onBeforeUnmount(() => logsStore.setHeight(0));
 
 	return {
-		height: resizer.size,
-		chatPanelWidth: chatPanelResizer.size,
-		overviewPanelWidth: overviewPanelResizer.size,
+		height: resizer.height,
+		chatPanelWidth: chatPanelResizer.width,
+		overviewPanelWidth: overviewPanelResizer.width,
 		canPopOut,
 		isOpen,
 		isCollapsingDetailsPanel,
@@ -144,11 +162,9 @@ export function useLogsPanelLayout(
 		popOutWindow,
 		onToggleOpen: handleToggleOpen,
 		onPopOut: handlePopOut,
-		onResize: resizer.onResize,
+		resizer,
+		chatPanelResizer,
+		overviewPanelResizer,
 		onResizeEnd: handleResizeEnd,
-		onChatPanelResize: chatPanelResizer.onResize,
-		onChatPanelResizeEnd: chatPanelResizer.onResizeEnd,
-		onOverviewPanelResize: overviewPanelResizer.onResize,
-		onOverviewPanelResizeEnd: overviewPanelResizer.onResizeEnd,
 	};
 }

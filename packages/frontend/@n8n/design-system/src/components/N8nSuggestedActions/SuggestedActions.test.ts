@@ -42,10 +42,6 @@ const stubs = {
 	},
 	N8nIcon: true,
 	N8nHeading: { template: '<h4><slot /></h4>' },
-	N8nTag: {
-		props: ['text'],
-		template: '<span>{{ text }}</span>',
-	},
 	N8nCallout: {
 		props: ['theme'],
 		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
@@ -54,6 +50,27 @@ const stubs = {
 };
 
 describe('N8nSuggestedActions', () => {
+	it('renders a count badge and updates its active state', async function testCountBadge() {
+		const { getByText, container, rerender } = render(N8nSuggestedActions, {
+			props: {
+				actions: [{ ...mockActions[0], completed: true }, mockActions[1]],
+				open: false,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		const badge = getByText('1 / 2').closest('.n8n-badge');
+		expect(badge).toBeVisible();
+		expect(badge?.tagName).toBe('SPAN');
+		expect(badge).not.toHaveClass('activeTrigger');
+		expect(container.querySelector('.n8n-tag')).not.toBeInTheDocument();
+
+		await rerender({ open: true });
+
+		expect(badge).toHaveClass('activeTrigger');
+	});
+
 	it('renders the suggested actions count', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {

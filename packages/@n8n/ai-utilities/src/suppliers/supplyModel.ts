@@ -30,10 +30,14 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 
 	const timeout = model.timeout;
 	clientConfiguration.fetchOptions = {
-		dispatcher: getProxyAgent(model.baseUrl, {
-			headersTimeout: timeout,
-			bodyTimeout: timeout,
-		}),
+		dispatcher: getProxyAgent(
+			model.baseUrl,
+			{
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			},
+			ctx.helpers.getSecureEgressFilter(),
+		),
 	};
 
 	const openAiModel = new ChatOpenAI({

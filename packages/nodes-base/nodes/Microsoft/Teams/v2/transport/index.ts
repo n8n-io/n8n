@@ -12,9 +12,10 @@ import {
 	validateMicrosoftGraphId,
 } from '@utils/microsoft/transport';
 
-// Thin facade over the shared Microsoft Graph transport kernel. The export
-// surface is unchanged so operations, listSearch and the Trigger keep
-// importing from this path.
+import { TEAMS_FORBIDDEN_HINTS } from './forbiddenHints';
+
+// Thin facade over the shared Microsoft Graph transport kernel: operations,
+// listSearch and the Trigger all import the transport from this path.
 export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
@@ -31,7 +32,10 @@ const {
 	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
-} = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
+} = createMicrosoftGraphTransport({
+	defaultCredentialType: 'microsoftTeamsOAuth2Api',
+	forbiddenHints: TEAMS_FORBIDDEN_HINTS,
+});
 
 export {
 	getTeamsCredentialType,

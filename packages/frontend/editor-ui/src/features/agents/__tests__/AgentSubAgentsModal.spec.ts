@@ -11,15 +11,18 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
 				'agents.builder.subAgents.modal.title': 'Sub-agents',
-				'agents.builder.subAgents.modal.description': 'Select published agents',
 				'agents.builder.subAgents.modal.selectAgent': `Select ${options?.interpolate?.name ?? ''}`,
-				'agents.builder.subAgents.modal.empty.title': 'No agents to add',
+				'agents.builder.subAgents.modal.empty.title': 'No sub-agents available',
 				'agents.builder.subAgents.modal.empty.description': 'Published agents show here',
 				'agents.builder.subAgents.modal.search.placeholder': 'Search agents',
 				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
 				'agents.builder.subAgents.modal.noResults.description': 'Try another search term.',
-				'agents.builder.subAgents.modal.add': 'Add agent',
-				'agents.builder.subAgents.modal.remove': 'Remove sub agent',
+				'agents.builder.subAgents.modal.add': 'Add sub-agent',
+				'agents.builder.subAgents.modal.added': 'Added',
+				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
+				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
+				'projects.header.create.agent': 'Create agent',
+				'projectRoles.agent:create.tooltip': 'Create new agents',
 				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
 				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
 				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
@@ -33,15 +36,66 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ closeModal: closeModalMock }),
+	useUIStore: () => ({
+		closeModal: closeModalMock,
+		modalsById: { agentSubAgentsModal: { open: true } },
+	}),
 }));
 
-vi.mock('@/app/components/Modal.vue', () => ({
+vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
+	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
+}));
+
+vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 	default: {
-		name: 'Modal',
-		props: ['name', 'width', 'customClass'],
-		template:
-			'<section><header><slot name="header" /></header><main><slot name="content" /></main><footer><slot name="footer" /></footer></section>',
+		name: 'ToolsConnectionModal',
+		props: [
+			'items',
+			'categories',
+			'detailItem',
+			'searchPlaceholder',
+			'emptyMessage',
+			'noResultsMessage',
+			'createAction',
+			'connectLabel',
+			'connectAriaLabel',
+			'connectedLabel',
+		],
+		emits: ['connect', 'open-detail', 'create'],
+		template: `
+			<div>
+				<button
+					v-if="createAction"
+					data-testid="agent-sub-agents-modal-create"
+					@click="$emit('create')"
+				>
+					<span>{{ createAction.label }}</span>
+					<span data-testid="agent-sub-agents-modal-create-description">{{ createAction.description }}</span>
+				</button>
+				<div
+					v-if="items.length === 0"
+					data-testid="agent-sub-agents-modal-empty"
+				>{{ emptyMessage }}</div>
+				<div
+					v-for="item in items"
+					:key="item.id"
+					data-testid="agent-sub-agents-modal-row"
+				>
+					<span>{{ item.title }}</span>
+					<button
+						v-if="item.status === 'connected'"
+						data-testid="agent-sub-agents-modal-added"
+						@click="$emit('open-detail', item)"
+					>{{ connectedLabel(item) }}</button>
+					<button
+						v-else
+						:aria-label="connectAriaLabel(item)"
+						data-testid="agent-sub-agents-modal-add"
+						@click="$emit('connect', item)"
+					>{{ connectLabel(item) }}</button>
+				</div>
+			</div>
+		`,
 	},
 }));
 
@@ -69,10 +123,11 @@ vi.mock('@n8n/design-system', () => ({
 			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	N8nMarkdownEditor: {
-		props: ['modelValue'],
+		name: 'N8nMarkdownEditor',
+		props: ['modelValue', 'showToolbar'],
 		emits: ['update:modelValue'],
 		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
@@ -100,18 +155,26 @@ describe('AgentSubAgentsModal', () => {
 
 		const addButtons = wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]');
 		expect(addButtons).toHaveLength(2);
-		expect(addButtons[0].text()).toBe('Add agent');
+		expect(addButtons[0].text()).toBe('Add sub-agent');
+		expect(addButtons[1].attributes('aria-label')).toBe('Add Research Agent as a sub-agent');
 
 		await addButtons[1].trigger('click');
 
 		expect(wrapper.find('h2').text()).toBe('Research Agent');
+		expect(
+			wrapper
+				.get('[data-testid="agent-sub-agents-modal-use-when"]')
+				.attributes('data-show-toolbar'),
+		).toBe('floating');
 		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
 		expect(confirmButton.attributes('disabled')).toBeUndefined();
 
 		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('a'.repeat(513));
 		expect(
 			wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').attributes('disabled'),
-		).toBeDefined();
+		).toBeUndefined();
+		await confirmButton.trigger('click');
+		expect(onConfirm).not.toHaveBeenCalled();
 
 		await wrapper
 			.find('[data-testid="agent-sub-agents-modal-use-when"]')
@@ -148,7 +211,49 @@ describe('AgentSubAgentsModal', () => {
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
 	});
 
-	it('filters available agents by name before configuring one', async () => {
+	it('keeps an added sub-agent visible and opens its existing configuration', async () => {
+		const onConfirm = vi.fn();
+		const onRemove = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{
+							id: 'agent-2',
+							name: 'Billing Agent',
+							added: true,
+							useWhen: 'Use for invoice questions.',
+						},
+					],
+					onConfirm,
+					onRemove,
+				},
+			},
+		});
+
+		const addedButton = wrapper.find('[data-testid="agent-sub-agents-modal-added"]');
+		expect(addedButton.text()).toBe('Added');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+
+		await addedButton.trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Billing Agent');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').element).toHaveProperty(
+			'value',
+			'Use for invoice questions.',
+		);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-remove"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			agentId: 'agent-2',
+			useWhen: 'Use for invoice questions.',
+		});
+	});
+
+	it('passes the agents and asset-specific copy to the shared picker', async () => {
 		const wrapper = mount(AgentSubAgentsModal, {
 			props: {
 				modalName: 'agentSubAgentsModal',
@@ -162,28 +267,16 @@ describe('AgentSubAgentsModal', () => {
 			},
 		});
 
-		const searchInput = wrapper.find('[data-testid="agent-sub-agents-modal-search"]');
-		expect(searchInput.exists()).toBe(true);
+		const picker = wrapper.getComponent({ name: 'ToolsConnectionModal' });
+		expect(picker.props('searchPlaceholder')).toBe('Search agents');
+		expect(picker.props('emptyMessage')).toBe('No sub-agents available');
+		expect(picker.props('noResultsMessage')).toBe('No matching agents');
+		expect(picker.props('items')).toEqual([
+			expect.objectContaining({ agentId: 'agent-2', title: 'Billing Agent' }),
+			expect.objectContaining({ agentId: 'agent-3', title: 'Research Agent' }),
+		]);
 
-		await searchInput.setValue(' bill ');
-
-		let rows = wrapper.findAll('[data-testid="agent-sub-agents-modal-row"]');
-		expect(rows).toHaveLength(1);
-		expect(rows[0].text()).toContain('Billing Agent');
-		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(1);
-
-		await searchInput.setValue('unknown');
-
-		expect(wrapper.find('[data-testid="agent-sub-agents-modal-no-results"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-sub-agents-modal-empty"]').exists()).toBe(false);
-		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(0);
-
-		await searchInput.setValue('RESEARCH');
-		rows = wrapper.findAll('[data-testid="agent-sub-agents-modal-row"]');
-		expect(rows).toHaveLength(1);
-		expect(rows[0].text()).toContain('Research Agent');
-
-		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
+		await wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')[1].trigger('click');
 
 		expect(wrapper.find('h2').text()).toBe('Research Agent');
 	});
@@ -202,7 +295,7 @@ describe('AgentSubAgentsModal', () => {
 		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
 		expect(wrapper.find('h2').text()).toBe('Billing Agent');
 
-		await wrapper.find('[data-testid="agent-sub-agents-modal-back"]').trigger('click');
+		await wrapper.find('[data-testid="agent-modal-back"]').trigger('click');
 
 		expect(wrapper.find('h2').text()).toBe('Sub-agents');
 		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(1);
@@ -224,7 +317,7 @@ describe('AgentSubAgentsModal', () => {
 		});
 
 		expect(wrapper.find('h2').text()).toBe('Billing Agent');
-		expect(wrapper.find('[data-testid="agent-sub-agents-modal-back"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-modal-back"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').element).toHaveProperty(
 			'value',
 			'Use for invoice questions.',
@@ -288,6 +381,35 @@ describe('AgentSubAgentsModal', () => {
 		});
 
 		expect(wrapper.find('[data-testid="agent-sub-agents-modal-empty"]').exists()).toBe(true);
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-empty"]').text()).toBe(
+			'No sub-agents available',
+		);
 		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+	});
+
+	it('shows the create agent subtitle and opens agent creation', async () => {
+		const onCreateAgent = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [],
+					onCreateAgent,
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create"]').text()).toContain(
+			'Create agent',
+		);
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create-description"]').text()).toBe(
+			'Create new agents',
+		);
+
+		await wrapper.get('[data-testid="agent-sub-agents-modal-create"]').trigger('click');
+
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+		expect(onCreateAgent).toHaveBeenCalledOnce();
 	});
 });

@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 // Upper bound on distinct workflows traversed per status check. Bounds the number of sequential
@@ -312,6 +313,18 @@ export class CredentialResolverWorkflowService {
 			credentialResolverId,
 			options.resolverCache,
 		);
+
+		// The effective resolver can come from workflow settings rather than the credential
+		// itself, so it is not necessarily one that may receive this identity. Report it the
+		// same way as an absent resolver: there is no resolver that can serve this caller.
+		if (carriesN8nIdentity(options.credentialContext) && !resolverInstance.resolveOwningUserId) {
+			return {
+				credentialId: credential.id,
+				credentialName: credential.name,
+				status: 'resolver_missing' as const,
+				credentialType: credential.type,
+			};
+		}
 
 		try {
 			await resolverInstance.getSecret(credential.id, options.credentialContext, {

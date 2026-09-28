@@ -4,6 +4,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
@@ -30,27 +31,31 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadSearchModelsTool = lazyMod(
+	() => require('./search-models.tool') as typeof import('./search-models.tool'),
+);
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
 );
 const loadActivityTool = lazyMod(
 	() => require('./activity.tool') as typeof import('./activity.tool'),
 );
+const loadSaveUserPreferenceTool = lazyMod(
+	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
-const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
 const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
 const loadAppBlueprintTool = lazyMod(
 	() => require('./app-blueprint.tool') as typeof import('./app-blueprint.tool'),
 );
+const loadAgentContextTool = lazyMod(
+	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
+);
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
-);
-const loadListAgentCapabilitiesTool = lazyMod(
-	() =>
-		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -109,7 +114,8 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
@@ -158,6 +164,27 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.APP_BLUEPRINT,
 			() => loadAppBlueprintTool().createAppBlueprintTool(),
+		]);
+	}
+
+	if (context.agentContextService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
+			() =>
+				loadAgentContextTool().createAgentContextTool({
+					reader: context.agentContextService!,
+					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
+					logger: context.logger,
+				}),
+		]);
+	}
+
+	// Presence is the gate, as with activity: the adapter wires `aiPreferenceService`
+	// only when saved preferences are enabled for this user.
+	if (context.aiPreferenceService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
 		]);
 	}
 
@@ -223,11 +250,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
-		tools.push([
-			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
-			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
-		]);
-		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

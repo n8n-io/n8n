@@ -11,7 +11,6 @@ import { Service } from '@n8n/di';
 import { z } from 'zod';
 
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
@@ -51,7 +50,6 @@ export class AppAgentRuntimeService {
 		private readonly appRepository: AppRepository,
 		private readonly agentsService: AgentsService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly agentExecutionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly messageContextService: IntegrationMessageContextService,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -65,7 +63,7 @@ export class AppAgentRuntimeService {
 
 		// A parked run must be answered first; the app can read the pending card
 		// back through `messages`.
-		if (await this.findOpenCheckpoint(bound.agentId, threadId)) {
+		if (await this.checkpointStorage.findSuspendedForThread(bound.agentId, threadId)) {
 			throw new AppRuntimeError(
 				409,
 				'run_in_progress',
@@ -134,16 +132,19 @@ export class AppAgentRuntimeService {
 	): Promise<AgentChatMessagesResponse> {
 		const bound = await this.resolve(namespace, key, 'history');
 		const { sessionId } = parseInput(messagesQuerySchema.safeParse(query));
-		const { threadId } = this.memoryScope(bound, sessionId);
+		const { threadId, resourceId } = this.memoryScope(bound, sessionId);
 
 		// `getConversationHistory` checks the thread belongs to this agent and project.
+		// App runs are project-scoped threads; a visitor has no n8n user, so the session's
+		// memory resource stands in and never matches a user-scoped (preview) thread.
 		const history = await this.orchestrator.getConversationHistory({
 			threadId,
 			projectId: bound.projectId,
 			agentId: bound.agentId,
+			userId: resourceId,
 		});
-		const checkpoint = await this.findOpenCheckpoint(bound.agentId, threadId);
-		return withOpenSuspensions(history ?? [], checkpoint, {
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(bound.agentId, threadId);
+		return withOpenSuspensions(history?.messages ?? [], checkpoint, {
 			appendInactiveCheckpointMessages: false,
 		});
 	}
@@ -223,12 +224,6 @@ export class AppAgentRuntimeService {
 
 	private principalHash(projectId: string, threadId: string) {
 		return hashAgentSandboxPrincipal({ type: 'project-session', projectId, sessionId: threadId });
-	}
-
-	/** The execution row only rules a thread out; the checkpoint says whether a run is parked right now. */
-	private async findOpenCheckpoint(agentId: string, threadId: string) {
-		if (!(await this.agentExecutionService.hasSuspendedRun(threadId))) return null;
-		return await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 	}
 }
 

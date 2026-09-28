@@ -53,6 +53,7 @@ import {
 } from '@/__tests__/mocks';
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -83,7 +84,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { isVNode, nextTick, reactive, ref } from 'vue';
+import { isVNode, nextTick, reactive, ref, shallowRef } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -104,6 +105,14 @@ const mockRoute = reactive({
 });
 
 const mockRouterReplace = vi.fn();
+
+// This file turns every PostHog flag on, so the group rules need their own
+// switches: most of these tests describe the strict rules.
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
@@ -253,6 +262,11 @@ describe('useCanvasOperations', () => {
 		) as WritableDocumentStore;
 
 		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
+		mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+			(name) => ({ name, available: true }),
+		);
 
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
 		// Tests that need custom behavior can override via vi.spyOn.
@@ -2891,6 +2905,35 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
+		it('leaves the group alone when the boundary rule already accepts the connection', () => {
+			allowMultipleBoundaryNodes.value = true;
+			const toast = useToast();
+			const nodeA = createGroupedNode('a', 'A');
+			const nodeB = createGroupedNode('b', 'B');
+			const nodeC = createGroupedNode('c', 'C');
+			const nodeD = createGroupedNode('d', 'D');
+			// B and C both feed D and neither feeds the other, so the drawn edge gives
+			// the group a second entry node rather than an edge into its middle.
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id, nodeD.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
+				nodes: [nodeA, nodeB, nodeC, nodeD],
+				connections: createConnectionsBySource(
+					workflowConnection(nodeA, nodeB),
+					workflowConnection(nodeB, nodeD),
+					workflowConnection(nodeC, nodeD),
+				),
+				groups: [group],
+			});
+			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(nodeA, nodeC));
+
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
+			expectConnectionAdded(nodeA, nodeC);
+			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
 		it('records the auto-extend and the connection in one bulk when tracking history', () => {
 			const historyStore = mockedStore(useHistoryStore);
 			const nodeA = createGroupedNode('a', 'A');
@@ -4658,6 +4701,22 @@ describe('useCanvasOperations', () => {
 
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+		});
+
+		it('should not copy a selection that contains a restricted node type', async () => {
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			const { copyNodes } = useCanvasOperations();
+			const copied = await copyNodes(['1', '2']);
+
+			expect(copied).toBe(false);
+			expect(useClipboard().copy).not.toHaveBeenCalled();
 		});
 
 		it('should include nodeGroups when all group members are copied', async () => {

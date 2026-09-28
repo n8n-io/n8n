@@ -3,6 +3,7 @@ import { SettingsRepository } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import { EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING } from '@n8n/permissions';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -34,12 +35,12 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 	async detect(): Promise<InstanceDetectionReport> {
 		// Project-scoped external secrets apply only on licensed instances.
 		if (!this.licenseState.isExternalSecretsLicensed()) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		// The toggle already matching the v3 default means no behaviour change.
 		if (await this.isSystemRolesEnabled()) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

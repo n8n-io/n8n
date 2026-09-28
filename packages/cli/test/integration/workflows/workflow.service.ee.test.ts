@@ -3,9 +3,11 @@ import {
 	CredentialsEntity,
 	CredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Telemetry } from '@/telemetry';
@@ -59,6 +61,28 @@ describe('EnterpriseWorkflowService', () => {
 			credentialEntity.id = credentialId;
 			return credentialEntity;
 		}
+
+		const STORED_NODE_ID = '4673f869-f2dc-4a33-b053-ca3193bc5226';
+
+		const inaccessibleCredential = {
+			test: { id: FIRST_CREDENTIAL_ID, name: 'First fake credential' },
+		};
+
+		const makeNode = (overrides: Partial<INode>): INode => ({
+			id: STORED_NODE_ID,
+			name: 'Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		});
+
+		const workflowWithNodes = (nodes: INode[]) => {
+			const workflow = new WorkflowEntity();
+			workflow.nodes = nodes;
+			return workflow;
+		};
 
 		it('Should throw error saving a workflow using credential without access', () => {
 			const newWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
@@ -116,6 +140,59 @@ describe('EnterpriseWorkflowService', () => {
 			expect(() => {
 				service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
 			}).toThrow();
+		});
+
+		it('Should reject a repeated node id when both claimants use the credential', () => {
+			const previousWorkflowVersion = workflowWithNodes([
+				makeNode({ id: STORED_NODE_ID, name: 'First', credentials: inaccessibleCredential }),
+			]);
+			const newWorkflowVersion = workflowWithNodes([
+				makeNode({ id: STORED_NODE_ID, name: 'First', credentials: inaccessibleCredential }),
+				makeNode({
+					id: STORED_NODE_ID,
+					name: 'Second',
+					credentials: inaccessibleCredential,
+					parameters: { url: 'https://example.com/' },
+				}),
+			]);
+
+			expect(() => {
+				service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
+			}).toThrow();
+		});
+
+		// Only one claimant is checked here, so the id count has to cover every submitted node.
+		it('Should reject a repeated node id when only one claimant uses the credential', () => {
+			const previousWorkflowVersion = workflowWithNodes([
+				makeNode({ id: STORED_NODE_ID, name: 'First', credentials: inaccessibleCredential }),
+			]);
+			const newWorkflowVersion = workflowWithNodes([
+				makeNode({ id: STORED_NODE_ID, name: 'First' }),
+				makeNode({
+					id: STORED_NODE_ID,
+					name: 'Second',
+					credentials: inaccessibleCredential,
+					parameters: { url: 'https://example.com/' },
+				}),
+			]);
+
+			expect(() => {
+				service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
+			}).toThrow();
+		});
+
+		it('Should not keep submitted fields that the stored node does not have', () => {
+			const storedNode = makeNode({ id: STORED_NODE_ID, credentials: inaccessibleCredential });
+			delete (storedNode as Partial<INode>).parameters;
+
+			const previousWorkflowVersion = workflowWithNodes([storedNode]);
+			const newWorkflowVersion = workflowWithNodes([
+				{ ...storedNode, parameters: { url: 'https://example.com/' } },
+			]);
+
+			service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
+
+			expect(newWorkflowVersion.nodes[0].parameters).toBeUndefined();
 		});
 	});
 

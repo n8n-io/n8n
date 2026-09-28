@@ -1,7 +1,7 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
-import { buildHitlCallbackReference } from 'n8n-core';
+import { buildHitlCallbackReference, isTelegramInteractionRequest } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -173,6 +173,56 @@ describe('TelegramInteractionWebhooks', () => {
 		);
 	});
 
+	it('flags the request as arriving on this route before routing into the shared resume', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const req = makeReq(reference);
+		const res = makeRes();
+
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { resultData: { lastNodeExecuted: 'Telegram', error: undefined } },
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					active: true,
+					settings: {},
+					staticData: {},
+					connections: {},
+					nodes: [
+						{
+							name: 'Telegram',
+							id: 'node-1',
+							type: 'n8n-nodes-base.telegram',
+							typeVersion: 1.2,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						},
+					],
+				},
+			}),
+		);
+
+		expect(isTelegramInteractionRequest(req)).toBe(false);
+
+		await svc.executeWebhook(req, res);
+
+		const [{ req: routedReq }] = getWebhookExecutionData.mock.calls[0] as [
+			{ req: WaitingWebhookRequest },
+		];
+		expect(isTelegramInteractionRequest(routedReq)).toBe(true);
+	});
+
+	it('does not flag a request that never reaches the resume step', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', 'a-different-secret');
+		const req = makeReq(reference);
+
+		await svc.executeWebhook(req, makeRes());
+
+		expect(isTelegramInteractionRequest(req)).toBe(false);
+	});
+
 	it('responds 404 and does not resume when lastNodeExecuted cannot be found in the workflow', async () => {
 		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
@@ -191,6 +241,44 @@ describe('TelegramInteractionWebhooks', () => {
 					staticData: {},
 					connections: {},
 					nodes: [],
+				},
+			}),
+		);
+
+		const result = await svc.executeWebhook(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(getWebhookExecutionData).not.toHaveBeenCalled();
+	});
+
+	it('responds 404 and does not resume when the resumed node has no id', async () => {
+		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const req = makeReq(reference);
+		const res = makeRes();
+
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { resultData: { lastNodeExecuted: 'Telegram', error: undefined } },
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					active: true,
+					settings: {},
+					staticData: {},
+					connections: {},
+					nodes: [
+						{
+							name: 'Telegram',
+							id: '',
+							type: 'n8n-nodes-base.telegram',
+							typeVersion: 1.2,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						},
+					],
 				},
 			}),
 		);

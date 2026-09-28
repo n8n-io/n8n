@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -12,9 +12,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import InstanceAiSidebar from './components/InstanceAiSidebar.vue';
 import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
-import { provideSidebarState } from './instanceAiLayout';
 import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
 
 const store = useInstanceAiStore();
@@ -68,23 +66,10 @@ watch(setupCompletionState, (setupCompleted) => {
 claimDocumentTitle();
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
-// --- Sidebar collapse & resize ---
-// Resets when the user navigates away from the AI chat namespace (see onBeforeRouteLeave below).
-const { collapsed: sidebarCollapsed, handleResize: handleSidebarResize } = provideSidebarState();
-
 function handleOnboardingCompleted() {
 	onboardingCompletionPending.value = false;
 	onboardingActive.value = false;
 }
-
-// Reset to collapsed when leaving the AI chat namespace, so the next entry
-// starts collapsed by default. Refreshes (which don't trigger the guard) keep
-// the user's current open/closed state.
-onBeforeRouteLeave((to) => {
-	if (!isInstanceAiChatRoute(to.name)) {
-		sidebarCollapsed.value = true;
-	}
-});
 
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 	if (
@@ -176,9 +161,7 @@ onUnmounted(() => {
 	<div :class="$style.container" data-test-id="instance-ai-container">
 		<InstanceAiOnboardingView v-if="showOnboarding" @completed="handleOnboardingCompleted" />
 		<template v-else>
-			<InstanceAiSidebar @resize="handleSidebarResize" />
-
-			<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
+			<!-- Inner route — empty, thread, or conversation history -->
 			<RouterView v-slot="{ Component }">
 				<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
 			</RouterView>
@@ -193,5 +176,8 @@ onUnmounted(() => {
 	width: 100%;
 	min-width: 0;
 	overflow: hidden;
+
+	/** Sets background to be the page background in InstanceAiHeader **/
+	--n8n-ia-header--background: transparent;
 }
 </style>

@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
@@ -2273,6 +2275,83 @@ describe('InstanceAiSettingsService', () => {
 				}),
 				['key'],
 			);
+		});
+	});
+
+	describe('executeNode permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		const persistPermissions = async (permissions: Record<string, string>) => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ permissions }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+		};
+
+		it('defaults to require_approval', async () => {
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('persists and reflects an update', async () => {
+			const result = await service.updateAdminSettings({
+				permissions: { executeNode: 'always_allow' },
+			});
+
+			expect(result.permissions.executeNode).toBe('always_allow');
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"executeNode":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+
+		it('inherits a blocked runWorkflow from settings saved before the scope existed', async () => {
+			await persistPermissions({ runWorkflow: 'blocked' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('blocked');
+		});
+
+		it('does not inherit an always_allow runWorkflow', async () => {
+			await persistPermissions({ runWorkflow: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('keeps an explicitly persisted value over the runWorkflow fallback', async () => {
+			await persistPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+		});
+	});
+
+	describe('createPreference permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('fills createPreference with its default when a persisted row predates the key', async () => {
+			// Reuse the existing persisted-settings fixture pattern in this file: a
+			// stored permissions object that omits `createPreference`.
+			const persisted: Partial<InstanceAiPermissions> = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
+			delete persisted.createPreference;
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ permissions: persisted }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(service.getPermissions().createPreference).toBe('always_allow');
 		});
 	});
 

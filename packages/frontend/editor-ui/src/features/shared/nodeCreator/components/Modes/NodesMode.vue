@@ -34,6 +34,8 @@ import {
 	getRootSearchCallouts,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
+	isNodeItemRestricted,
+	sinkRestrictedNodesLast,
 } from '../../nodeCreator.utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -80,7 +82,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
-	return filterAndSearchNodes(
+	const hits = filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
 		{
@@ -89,11 +91,15 @@ const moreFromCommunity = computed(() => {
 			aiConnectionType: activeViewStack.value.connectionType,
 		},
 	);
+	return sinkRestrictedNodesLast(hits, isNodeItemRestricted);
 });
 
 const isSearchResultEmpty = computed(() => {
+	// The pinned MCP client is a placeholder, not a result — unless it is restricted, in which
+	// case it is an ordinary search hit.
 	const hasNodeResults = (activeViewStack.value.items ?? []).some(
-		(item) => !isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE,
+		(item) =>
+			!isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE || isNodeItemRestricted(item.key),
 	);
 	return (
 		!hasNodeResults &&
@@ -120,6 +126,10 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
+	// Insertion itself is refused in getAddedNodesAndConnections; this keeps a restricted
+	// node from opening its actions view.
+	if (item.type === 'node' && isNodeItemRestricted(item.key)) return;
+
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -377,6 +387,8 @@ registerKeyHook('MainViewArrowLeft', {
 				<NoResults
 					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
+					:suggest-webhook="!isNodeItemRestricted(WEBHOOK_NODE_TYPE)"
+					:suggest-http-request="!isNodeItemRestricted(HTTP_REQUEST_NODE_TYPE)"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>

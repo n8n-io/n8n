@@ -13,7 +13,12 @@ import {
 } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { toolRegistryValues } from '../tool-registry';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	mergeTraceRunInputs,
+	modelIdTraceMetadata,
+	setTraceModelId,
+} from '../tracing/langsmith-tracing';
 import type {
 	InstanceAiToolRegistry,
 	InstanceAiTraceContext,
@@ -101,12 +106,13 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		workspace: options.workspace,
 		runtimeSkills: options.runtimeSkills,
 	});
+	setTraceModelId(options.tracing, modelId);
 	const telemetry = options.tracing?.getTelemetry?.({
 		agentRole: role,
 		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
 		executionMode:
 			options.tracing.traceKind === 'background_subagent' ? 'background_subagent' : 'background',
-		metadata: { agent_id: options.agentId },
+		metadata: { agent_id: options.agentId, ...modelIdTraceMetadata(modelId) },
 	});
 	if (telemetry) {
 		agent.telemetry(telemetry);

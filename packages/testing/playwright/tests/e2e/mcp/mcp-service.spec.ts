@@ -1,6 +1,18 @@
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
+import type { ApiHelpers } from '../../../services/api-helper';
+
+async function activateAndWaitForPublishedVersion(
+	api: ApiHelpers,
+	workflowId: string,
+	versionId: string,
+) {
+	await api.workflows.activate(workflowId, versionId);
+	await expect
+		.poll(async () => await api.workflows.getPublicationStatus(workflowId), { timeout: 10_000 })
+		.toMatchObject({ status: 'published', liveVersionId: versionId });
+}
 
 /**
  * E2E tests for the Internal MCP Service (/mcp-server/http).
@@ -294,7 +306,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
@@ -334,7 +346,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-webhook.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(
@@ -360,7 +372,7 @@ test.describe(
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await activateAndWaitForPublishedVersion(api, workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
 

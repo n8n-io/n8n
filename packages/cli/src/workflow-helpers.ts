@@ -23,6 +23,7 @@ import {
 	type IWorkflowSettings,
 	type RelatedExecution,
 	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -166,13 +167,16 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	rules: NodeGroupRuleOptions = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+		...rules,
 	});
+
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
@@ -482,16 +486,17 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns whether the parent's stack was patched: `false` when the child carried no usable
+ * result, or the parent was not in a state that can take one
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return false;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -499,14 +504,27 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return false;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return false;
+	}
+
+	// The parent may have moved on to a later wait since this child was spawned, and that wait
+	// belongs to whichever children it parked on. A child left over from an earlier wait would
+	// otherwise overwrite the node's input and resume the parent past the wait it is sitting in.
+	// A parent parked by an older build carries no ids, so an untagged stack entry takes any child.
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -569,6 +587,8 @@ export async function updateParentExecutionWithChildResults(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+
+	return true;
 }
 
 /**

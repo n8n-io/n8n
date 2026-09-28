@@ -2,22 +2,23 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import type { ModelChoice } from './model-lookup.types';
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
+import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 
 export type LiveModelLookupResult =
 	| {
 			status: 'success';
-			models: Array<{ name: string; value: string }>;
+			models: ModelChoice[];
 			policy: ModelCatalogPolicy;
 	  }
 	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
@@ -58,7 +59,7 @@ export class BuilderModelLiveLookupService {
 		credentialType: string,
 		provider: string,
 		options?: ModelLookupOptions,
-	): Promise<Array<{ name: string; value: string }>> {
+	): Promise<ModelChoice[]> {
 		const result = await this.lookup(
 			user,
 			projectId,
@@ -98,7 +99,10 @@ export class BuilderModelLiveLookupService {
 			return this.getEvalModelCatalog(credentialType, provider, 'curated');
 		}
 
-		const credentialData = await this.decryptWithExpressions(usable, projectId, user);
+		const credentialData = await decryptAgentCredential(this.credentialsHelper, usable, {
+			projectId,
+			userId: user.id,
+		});
 
 		return await this.discoverModels(provider, credentialData);
 	}
@@ -119,34 +123,6 @@ export class BuilderModelLiveLookupService {
 			models: [{ name: model, value: model }],
 			policy,
 		};
-	}
-
-	/**
-	 * Decrypt the way node execution does, so credential defaults are applied and
-	 * expressions resolved. A base URL computed from sibling fields (region,
-	 * workspace) is otherwise absent or still literal expression text.
-	 *
-	 * There is no workflow or execution here, so `additionalData` comes from
-	 * `getBase()` and the mode is `internal` — which skips dynamic-credential
-	 * resolution, leaving a per-user credential on its static stored data. Same
-	 * as `AgentsCredentialProvider`.
-	 */
-	private async decryptWithExpressions(
-		credential: { id: string; name: string; type: string },
-		projectId: string,
-		user: User,
-	): Promise<ICredentialDataDecryptedObject> {
-		// Imported lazily: pulls in the execution stack, and model lookup is not on
-		// every request.
-		const { getBase } = await import('@/workflow-execute-additional-data.js');
-		const additionalData = await getBase({ userId: user.id, projectId });
-
-		return await this.credentialsHelper.getDecrypted(
-			additionalData,
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			'internal',
-		);
 	}
 
 	/**
@@ -243,12 +219,12 @@ export class BuilderModelLiveLookupService {
 			typeof credentialData.headerValue === 'string'
 		) {
 			const normalizedName = credentialData.headerName.toLowerCase();
-			const headerName =
-				normalizedName === 'authorization'
-					? 'Authorization'
-					: normalizedName === 'openai-organization'
-						? 'OpenAI-Organization'
-						: credentialData.headerName;
+			let headerName = credentialData.headerName;
+			if (normalizedName === 'authorization') {
+				headerName = 'Authorization';
+			} else if (normalizedName === 'openai-organization') {
+				headerName = 'OpenAI-Organization';
+			}
 			headers[headerName] = credentialData.headerValue;
 		}
 

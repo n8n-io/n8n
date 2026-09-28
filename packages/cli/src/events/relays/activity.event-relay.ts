@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { ActivityLogConfig } from '@n8n/config';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -13,6 +14,7 @@ import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import { PostHogClient } from '@/posthog';
 
 /** Carried by nearly every core node type. Dropping it buys room inside the `data` budget. */
 const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
@@ -52,7 +54,8 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly activityLogConfig: ActivityLogConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly postHogClient: PostHogClient,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -60,8 +63,10 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
-		// Checked once, so a disabled instance registers no listeners and pays nothing per event.
-		if (!this.activityLogConfig.enabled) return;
+		// Skip listeners when no local or remote control can enable recording.
+		if (!this.globalConfig.diagnostics.enabled && !this.overrideEnablesFlag()) {
+			return;
+		}
 
 		this.setupListeners(
 			this.guarded({
@@ -78,6 +83,38 @@ export class ActivityEventRelay extends EventRelay {
 				'credentials-deleted': async (e) => await this.onCredentialDeleted(e),
 			}),
 		);
+	}
+
+	/** Whether an explicit override turns the flag on. Its value decides, not its presence. */
+	private overrideEnablesFlag(): boolean {
+		const override = this.globalConfig.featureFlags.override[INSTANCE_ACTIVITY_CONTEXT_FLAG];
+		const value = typeof override === 'object' ? override.value : override;
+		return value === true;
+	}
+
+	/** The active instance gate check. All events in a burst share it. */
+	private gateCheck?: Promise<boolean>;
+
+	/** Checks the instance gate and fails closed when its value is unreadable. */
+	private async shouldRecord(): Promise<boolean> {
+		if (this.gateCheck) return await this.gateCheck;
+
+		const check = this.readGate().finally(() => {
+			this.gateCheck = undefined;
+		});
+		this.gateCheck = check;
+		return await check;
+	}
+
+	private async readGate(): Promise<boolean> {
+		try {
+			return (
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	/**
@@ -98,6 +135,7 @@ export class ActivityEventRelay extends EventRelay {
 			event,
 			async (payload: RelayEventMap[EventNames]) => {
 				try {
+					if (!(await this.shouldRecord())) return;
 					await handle(payload);
 				} catch (error) {
 					this.logger.warn('Failed to record activity for an event', { event, error });
@@ -217,7 +255,7 @@ export class ActivityEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		versionId,
-		versionName,
+		versionName: updatedVersionName,
 	}: RelayEventMap['workflow-version-updated']) {
 		await this.record({
 			category: 'workflow',
@@ -227,9 +265,7 @@ export class ActivityEventRelay extends EventRelay {
 			resourceType: 'workflow',
 			resourceId: workflowId,
 			resourceName: workflowName,
-			// The name is unbounded user input. Left whole it can push `data` past the budget, and an
-			// over-budget payload is replaced entirely — which would take `versionId` with it.
-			data: { versionId, ...(versionName ? { versionName: clip(versionName) } : {}) },
+			data: { versionId, ...versionName(updatedVersionName) },
 		});
 	}
 

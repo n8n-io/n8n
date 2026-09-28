@@ -20,6 +20,12 @@ describe('Subscriber', () => {
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
 	const globalConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n' } });
 
+	function getHandler(event: string) {
+		const call = client.on.mock.calls.find(([e]) => e === event);
+		expect(call).toBeDefined();
+		return call![1] as () => void;
+	}
+
 	describe('constructor', () => {
 		it('should init Redis client in scaling mode', () => {
 			const subscriber = new Subscriber(
@@ -79,6 +85,149 @@ describe('Subscriber', () => {
 			await subscriber.subscribe(commandChannel);
 
 			expect(client.subscribe).toHaveBeenCalledWith('n8n:n8n.commands', expect.any(Function));
+		});
+	});
+
+	describe('reconnect', () => {
+		beforeEach(() => {
+			client.on.mockClear();
+			client.subscribe.mockClear();
+		});
+
+		it('should resubscribe to all channels when the client recovers from a lost connection', async () => {
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				mock(),
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+			client.subscribe.mockClear();
+
+			getHandler('close')();
+			getHandler('ready')();
+			await vi.waitFor(() => expect(client.subscribe).toHaveBeenCalledTimes(2));
+
+			expect(client.subscribe).toHaveBeenCalledWith('n8n:n8n.commands', expect.any(Function));
+			expect(client.subscribe).toHaveBeenCalledWith(
+				'n8n:n8n.worker-response',
+				expect.any(Function),
+			);
+		});
+
+		it('should retry on the next ready when resubscribing fails', async () => {
+			const scopedLogger = mock<Logger>();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+			const subscriber = new Subscriber(
+				logger,
+				mock(),
+				mock(),
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			client.subscribe.mockClear();
+			client.subscribe.mockRejectedValueOnce(new Error('write ECONNRESET'));
+
+			getHandler('close')();
+			getHandler('ready')();
+			await vi.waitFor(() =>
+				expect(scopedLogger.error).toHaveBeenCalledWith(
+					'Failed to resubscribe to pubsub channels after Redis reconnect',
+					expect.any(Object),
+				),
+			);
+
+			getHandler('ready')();
+			await vi.waitFor(() => expect(client.subscribe).toHaveBeenCalledTimes(2));
+		});
+
+		it('should not resubscribe on the initial ready', async () => {
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				mock(),
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			client.subscribe.mockClear();
+
+			getHandler('ready')();
+			await Promise.resolve();
+
+			expect(client.subscribe).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('liveness', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			client.subscribe.mockReset();
+			client.disconnect.mockClear();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		async function subscribedSubscriber() {
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				mock(),
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+			await subscriber.subscribe(subscriber.getCommandChannel());
+			await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+			client.subscribe.mockReset();
+			return subscriber;
+		}
+
+		it('should re-issue SUBSCRIBE for all channels periodically', async () => {
+			const subscriber = await subscribedSubscriber();
+			client.subscribe.mockResolvedValue(2);
+
+			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
+
+			expect(client.subscribe).toHaveBeenCalledTimes(1);
+			expect(client.subscribe).toHaveBeenCalledWith('n8n:n8n.commands', 'n8n:n8n.worker-response');
+			expect(client.disconnect).not.toHaveBeenCalled();
+			subscriber.shutdown();
+		});
+
+		it('should drop the connection when SUBSCRIBE gets no reply in time', async () => {
+			const subscriber = await subscribedSubscriber();
+			client.subscribe.mockReturnValue(new Promise(() => {}));
+
+			await vi.advanceTimersByTimeAsync(30_000 + 10_000);
+
+			expect(client.subscribe).toHaveBeenCalledTimes(1);
+			expect(client.disconnect).toHaveBeenCalledWith(true);
+			subscriber.shutdown();
+		});
+
+		it('should not check before any channel was requested', async () => {
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				mock(),
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(client.subscribe).not.toHaveBeenCalled();
+			subscriber.shutdown();
 		});
 	});
 

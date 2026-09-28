@@ -16,8 +16,7 @@ describe('McpRegistryRefreshTask', () => {
 		expect(task.name).toBe('mcp-registry-refresh');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 8 * 3600 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
 		expect(task.retryDelaySeconds).toBeUndefined();
 	});
 

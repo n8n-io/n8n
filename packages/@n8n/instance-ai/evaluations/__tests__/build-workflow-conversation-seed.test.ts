@@ -55,6 +55,7 @@ const silentLogger: EvalLogger = {
 };
 
 const SEED_WF_ID = 'wKk3RmT9xQ2bVn7L';
+const SEED_AGENT_ID = 'AgentMcpRepairSeed01';
 
 function inlineSeed(): ConversationSeed {
 	return {
@@ -79,14 +80,38 @@ function inlineSeed(): ConversationSeed {
 		workflows: [{ id: SEED_WF_ID, name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
 		projects: [],
+	};
+}
+
+function inlineAgentSeed(): ConversationSeed {
+	return {
+		messages: [],
+		workflows: [],
+		dataTables: [],
+		folders: [],
+		projects: [],
+		agents: [
+			{
+				id: SEED_AGENT_ID,
+				config: {
+					name: 'Notion research',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Research company notes.',
+				},
+			},
+		],
 	};
 }
 
 function makeClient(
 	restoreThread: ReturnType<typeof vi.fn>,
 	overrides: Partial<
-		Record<'listWorkflows' | 'deleteWorkflow' | 'sendMessage', ReturnType<typeof vi.fn>>
+		Record<
+			'listWorkflows' | 'deleteWorkflow' | 'sendMessage' | 'listFolders' | 'deleteFolderTree',
+			ReturnType<typeof vi.fn>
+		>
 	> = {},
 ): N8nClient {
 	return {
@@ -97,6 +122,8 @@ function makeClient(
 		getThreadMessages: vi.fn().mockResolvedValue({ messages: [] }),
 		listWorkflows: overrides.listWorkflows ?? vi.fn().mockResolvedValue([]),
 		deleteWorkflow: overrides.deleteWorkflow ?? vi.fn().mockResolvedValue(undefined),
+		listFolders: overrides.listFolders ?? vi.fn().mockResolvedValue([]),
+		deleteFolderTree: overrides.deleteFolderTree ?? vi.fn().mockResolvedValue(0),
 		restoreThread,
 	} as unknown as N8nClient;
 }
@@ -117,6 +144,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 
 		const build = await buildWorkflow({
@@ -168,6 +196,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 
 		await buildWorkflow({
@@ -244,6 +273,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 
 		const build = await buildWorkflow({
@@ -277,6 +307,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 
 		const build = await buildWorkflow({
@@ -303,6 +334,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 		await buildWorkflow({
 			client: makeClient(restoreThread, { sendMessage }),
@@ -332,6 +364,63 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(attachments?.[0].name).toBe(workflows[0].name);
 	});
 
+	it('sends an attached seeded Agent with its remapped id, name, and project', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi.fn(async (...args: unknown[]) => {
+			const agents = args[4];
+			if (!Array.isArray(agents)) throw new Error('Expected seed Agents.');
+			const agentIds = agents.map((agent) => {
+				if (typeof agent !== 'object' || agent === null || !('id' in agent)) {
+					throw new Error('Expected a seeded Agent id.');
+				}
+				return String(agent.id);
+			});
+			return {
+				restored: 0,
+				workflowIds: [],
+				dataTableIds: [],
+				agentIds,
+				folderIds: [],
+			};
+		});
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			conversation: [
+				{
+					role: 'user' as const,
+					text: 'work out why this Agent cannot use Notion',
+					attach: { agent: SEED_AGENT_ID },
+				},
+			],
+			seed: { mode: 'inline' as const, ...inlineAgentSeed() },
+		});
+
+		const [, , attachments] = sendMessage.mock.calls[0] as [
+			string,
+			string,
+			Array<{ type: string; id: string; name: string; projectId: string }> | undefined,
+		];
+		const agents = (
+			restoreThread.mock.calls[0] as [unknown, unknown, unknown, unknown, unknown[]]
+		)[4];
+		const restoredAgent = agents[0];
+		if (typeof restoredAgent !== 'object' || restoredAgent === null || !('id' in restoredAgent)) {
+			throw new Error('Expected a restored Agent.');
+		}
+
+		expect(attachments).toEqual([
+			{
+				type: 'agent',
+				id: restoredAgent.id,
+				name: 'Notion research',
+				projectId: 'project-1',
+			},
+		]);
+		expect(attachments?.[0].id).not.toBe(SEED_AGENT_ID);
+	});
+
 	// The API carries the attachment out of band, so the graded transcript would show a
 	// faithful hand-off (`text: ''` + attach) as a bare empty message: an anomaly to the
 	// judge, and an EMPTY prompt for the prompt-aware checks (userTurnsAsText drops
@@ -343,6 +432,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 		vi.mocked(recordUserTurn).mockClear();
 
@@ -376,6 +466,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 		proxyScripts.length = 0;
 
@@ -406,6 +497,7 @@ describe('buildWorkflow with an inline seed', () => {
 			workflowIds: ['restored-wf-1'],
 			dataTableIds: [],
 			agentIds: [],
+			folderIds: [],
 		});
 
 		const result = await buildWorkflow({
@@ -421,6 +513,35 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(result.error).toMatch(/attaches seeded workflow "never-declared"/);
 	});
 
+	it('fails loudly when the attached seeded Agent is missing from the restore', async () => {
+		// The schema refuses an `attach` the seed does not declare, so a miss here means
+		// the restore/remap lost it. Running on would test an unattached conversation.
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 0,
+			workflowIds: [],
+			dataTableIds: [],
+			agentIds: [],
+			folderIds: [],
+		});
+
+		const result = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage: vi.fn().mockResolvedValue({ runId: 'r' }) }),
+			...baseConfig,
+			conversation: [
+				{
+					role: 'user' as const,
+					text: 'why can this Agent not use Notion?',
+					attach: { agent: SEED_AGENT_ID },
+				},
+			],
+			seed: { mode: 'inline' as const, ...inlineAgentSeed() },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.seedingFailed).toBe(true);
+		expect(result.error).toMatch(/attaches seeded Agent "AgentMcpRepairSeed01"/);
+	});
+
 	it('sends no attachments when the opening turn declares none', async () => {
 		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
 		await buildWorkflow({
@@ -430,6 +551,7 @@ describe('buildWorkflow with an inline seed', () => {
 					workflowIds: [],
 					dataTableIds: [],
 					agentIds: [],
+					folderIds: [],
 				}),
 				{ sendMessage },
 			),
@@ -471,6 +593,7 @@ describe('buildWorkflow with scenario seed data tables', () => {
 					workflowIds: [],
 					dataTableIds: ['dt-real-1'],
 					agentIds: [],
+					folderIds: [],
 				}),
 			);
 			client.seedDataTableRows = vi
@@ -559,5 +682,152 @@ describe('buildWorkflow with scenario seed data tables', () => {
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
 		// Tracked for cleanup by id, so the rename can't orphan it.
 		expect(build.createdDataTableIds).toContain('dt-real-1');
+	});
+});
+
+describe('buildWorkflow with seeded folders', () => {
+	const FOLDER_ID = 'odwFolder0001';
+
+	/** A restore response that created the one seed folder as `real-odw`. */
+	const restoredWithFolder = (over: Record<string, unknown> = {}) =>
+		vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+			folderIds: ['real-odw'],
+			...over,
+		});
+
+	function folderSeed(): ConversationSeed {
+		return {
+			...inlineSeed(),
+			folders: [{ id: FOLDER_ID, name: 'ODW' }],
+			workflows: [
+				{
+					id: SEED_WF_ID,
+					name: 'Batch loop',
+					nodes: [],
+					connections: {},
+					parentFolderId: FOLDER_ID,
+				},
+			],
+		};
+	}
+
+	it('sends the folders with the restore and tracks the created root ids for cleanup', async () => {
+		const restoreThread = restoredWithFolder();
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...folderSeed() },
+		});
+
+		expect(build.success).toBe(true);
+		const options = restoreThread.mock.calls[0][5] as { folders: Array<{ id: string }> };
+		expect(options.folders).toEqual([{ id: FOLDER_ID, name: 'ODW' }]);
+		// The folder reference survives the workflow id remap untouched.
+		const workflows = restoreThread.mock.calls[0][2] as Array<{ parentFolderId?: string }>;
+		expect(workflows[0].parentFolderId).toBe(FOLDER_ID);
+		expect(build.createdFolderIds).toEqual(['real-odw']);
+	});
+
+	it('keeps only the root folders for cleanup, paired by position with the seed', async () => {
+		const restoreThread = restoredWithFolder({ folderIds: ['real-odw', 'real-archive'] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			seed: {
+				mode: 'inline' as const,
+				...folderSeed(),
+				folders: [
+					{ id: FOLDER_ID, name: 'ODW' },
+					{ id: 'odwArchive001', name: 'Archive', parentFolderId: FOLDER_ID },
+				],
+			},
+		});
+
+		// The folder delete cascades to subfolders, so the child needs no delete.
+		expect(build.createdFolderIds).toEqual(['real-odw']);
+	});
+
+	it('evicts a pre-run root folder of the same name before the restore, never a live sibling', async () => {
+		const restoreThread = restoredWithFolder();
+		// `stale-odw` predates the run; `sibling-odw` is the previous iteration's
+		// live folder, created during the run. Only the first may go: the tree delete
+		// takes the workflows inside, which would dismantle the sibling's fixture.
+		const listFolders = vi.fn().mockResolvedValue([
+			{ id: 'stale-odw', name: 'ODW', parentFolderId: null },
+			{ id: 'sibling-odw', name: 'ODW', parentFolderId: null },
+			{ id: 'unrelated', name: 'Finance', parentFolderId: null },
+		]);
+		const deleteFolderTree = vi.fn().mockResolvedValue(2);
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { listFolders, deleteFolderTree }),
+			...baseConfig,
+			preRunFolderIds: new Set(['stale-odw', 'unrelated']),
+			seed: { mode: 'inline' as const, ...folderSeed() },
+		});
+
+		expect(deleteFolderTree).toHaveBeenCalledExactlyOnceWith('project-1', 'stale-odw');
+		expect(deleteFolderTree.mock.invocationCallOrder[0]).toBeLessThan(
+			restoreThread.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still restores when the folder listing for the eviction fails', async () => {
+		// The eviction is best-effort: a failed list (or project lookup inside it) is
+		// logged, and the restore still runs.
+		const restoreThread = restoredWithFolder();
+		const listFolders = vi.fn().mockRejectedValue(new Error('folders down'));
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread, { listFolders }),
+			...baseConfig,
+			preRunFolderIds: new Set(['stale-odw']),
+			seed: { mode: 'inline' as const, ...folderSeed() },
+		});
+
+		expect(restoreThread).toHaveBeenCalledTimes(1);
+		expect(build.seedingFailed).not.toBe(true);
+	});
+
+	it('evicts nothing without a pre-run snapshot', async () => {
+		const restoreThread = restoredWithFolder();
+		const listFolders = vi
+			.fn()
+			.mockResolvedValue([{ id: 'stale-odw', name: 'ODW', parentFolderId: null }]);
+		const deleteFolderTree = vi.fn().mockResolvedValue(0);
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { listFolders, deleteFolderTree }),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...folderSeed() },
+		});
+
+		expect(deleteFolderTree).not.toHaveBeenCalled();
+	});
+
+	it('restores a folders-only seed, which has nothing else thread-scoped', async () => {
+		const restoreThread = restoredWithFolder({ restored: 0, workflowIds: [] });
+
+		await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			seed: {
+				mode: 'inline' as const,
+				messages: [],
+				workflows: [],
+				dataTables: [],
+				agents: [],
+				folders: [{ id: FOLDER_ID, name: 'ODW' }],
+				projects: [],
+			},
+		});
+
+		expect(restoreThread).toHaveBeenCalledTimes(1);
 	});
 });

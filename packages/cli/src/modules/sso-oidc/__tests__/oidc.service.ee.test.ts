@@ -394,6 +394,37 @@ describe('OidcService', () => {
 		});
 	});
 
+	describe('state redirect target', () => {
+		beforeEach(() => {
+			vi.mocked(jwtService.sign).mockImplementation((payload) => JSON.stringify(payload));
+			vi.mocked(jwtService.verify).mockImplementation((token) => JSON.parse(token));
+		});
+
+		it('round-trips the in-app destination through the signed state', () => {
+			const { signed } = oidcService.generateState(false, '/workflow/abc?tab=1');
+
+			expect(oidcService.verifyState(signed)).toEqual({
+				state: expect.stringMatching(/^n8n_state:/),
+				redirectUrl: '/workflow/abc?tab=1',
+			});
+		});
+
+		it('omits the destination for the home page', () => {
+			const { signed } = oidcService.generateState(false, '/');
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
+		});
+
+		it('ignores a destination that is not a string', () => {
+			const signed = JSON.stringify({
+				state: 'n8n_state:5d3a3f6e-1d2b-4c8a-9e1f-0a1b2c3d4e5f',
+				redirectUrl: 42,
+			});
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
+		});
+	});
+
 	describe('loginUser', () => {
 		it('throws an error if authorizationCodeGrant throws an error', async () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');

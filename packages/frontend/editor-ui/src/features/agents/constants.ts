@@ -1,11 +1,12 @@
-export const AGENTS_LIST_VIEW = 'AgentsListView';
-export const NEW_AGENT_VIEW = 'NewAgentView';
-export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
-export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const AGENT_VIEW = 'AgentView';
-export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
-export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
-export const PROJECT_AGENTS = 'ProjectAgents';
+export {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	PROJECT_AGENTS,
+} from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
 
@@ -50,3 +51,13 @@ export {
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
 export const NEW_SESSION_PARAM = 'newSession';
 export const OPEN_PREVIEW_PARAM = 'openPreview';
+/** Query-string key holding the embedded n8n Assistant panel's active thread id. */
+export const ASSISTANT_THREAD_PARAM = 'assistantThread';
+
+/**
+ * History-state key for the agent id minted at the click. Carried to the
+ * builder so the "clicked" and "created" telemetry events share a join key
+ * even though no agent exists yet. Kept out of the URL so a hand-authored
+ * query cannot force the builder to adopt an arbitrary id.
+ */
+export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';

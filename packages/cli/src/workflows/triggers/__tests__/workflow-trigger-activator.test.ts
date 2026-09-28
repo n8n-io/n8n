@@ -688,6 +688,76 @@ describe('WorkflowTriggerActivator', () => {
 		});
 	});
 
+	describe('deregisterUnresolvableNodes', () => {
+		test('clears webhook rows by node name and registrations by node id, without resolving node types', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const gone = (id: string, name: string) => ({
+				id,
+				name,
+				type: 'n8n-nodes-gone.trigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			});
+
+			await activator.deregisterUnresolvableNodes(
+				'wf-1',
+				[gone('x', 'Gone Trigger'), gone('y', 'Gone Webhook')],
+				abort,
+			);
+
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Gone Trigger',
+				'Gone Webhook',
+			]);
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+				'wf-1',
+				'x',
+				abort.onDetached,
+			);
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+				'wf-1',
+				'y',
+				abort.onDetached,
+			);
+		});
+
+		test('waits for every deregistration to settle before rethrowing a failure', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			const pending = createDeferredPromise();
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(async (_workflowId, nodeId) => {
+				if (nodeId === 'x') throw new Error('x failed');
+				await pending.promise;
+			});
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const gone = (id: string) => ({
+				id,
+				name: id,
+				type: 'n8n-nodes-gone.trigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			});
+
+			let settled = false;
+			const run = activator
+				.deregisterUnresolvableNodes('wf-1', [gone('x'), gone('y')], abort)
+				.catch((error: Error) => error)
+				.finally(() => {
+					settled = true;
+				});
+			await flushPromises();
+
+			expect(settled).toBe(false);
+
+			pending.resolve();
+			await expect(run).resolves.toEqual(expect.objectContaining({ message: 'x failed' }));
+		});
+	});
+
 	describe('deactivate teardown failures', () => {
 		function buildDeactivationSetup(deregisterError: Error) {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(

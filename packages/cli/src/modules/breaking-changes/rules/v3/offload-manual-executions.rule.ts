@@ -1,6 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -30,7 +31,7 @@ export class OffloadManualExecutionsRule implements IBreakingChangeInstanceRule 
 			this.executionsConfig.mode === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true';
 
-		if (!isAffected) return { isAffected: false, instanceIssues: [], recommendations: [] };
+		if (!isAffected) return NOT_AFFECTED_INSTANCE;
 
 		return {
 			isAffected: true,

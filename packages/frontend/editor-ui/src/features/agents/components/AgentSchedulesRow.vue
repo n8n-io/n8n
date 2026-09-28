@@ -7,6 +7,7 @@ import { computed, onMounted, ref, toRef, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
+import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
 import AgentChipButton from './AgentChipButton.vue';
 
 const props = withDefaults(
@@ -16,6 +17,7 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished: boolean;
+		isRunnable?: boolean;
 		reloadKey?: number;
 		/** No agent row exists yet, so an unsaved agent has no tasks to load. */
 		agentUnsaved?: boolean;
@@ -25,6 +27,7 @@ const props = withDefaults(
 	{
 		taskRefs: () => [],
 		disabled: false,
+		isRunnable: false,
 		validationIssues: () => [],
 	},
 );
@@ -32,6 +35,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 }>();
 
 const i18n = useI18n();
@@ -115,18 +119,34 @@ function openTaskModal(task: TaskRow | null) {
 			ensureAgentPersisted: props.ensureAgentPersisted,
 			task,
 			isPublished: props.isPublished,
+			isRunnable: props.isRunnable,
+			validationIssues: props.validationIssues,
 			taskState: task
 				? {
 						enabled: task.enabled,
 					}
 				: undefined,
 			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
+			onPreview: (instructions: string) => emit('preview-task', instructions),
 			onSaved: () => {
 				void reloadTasks();
 				emit('tasks-changed');
 			},
 		},
 	});
+}
+
+function taskScheduleTooltip(task: TaskRow): string {
+	const timezone = task.timezone ?? rootStore.timezone;
+	const description = getNextScheduleOccurrence(task.cronExpression, timezone)
+		? describeSchedule(task.cronExpression)
+		: null;
+
+	if (!description) {
+		return i18n.baseText('agents.builder.tasks.schedule.invalidDescription' as BaseTextKey);
+	}
+
+	return description;
 }
 
 onMounted(reloadTasks);
@@ -150,17 +170,19 @@ watch(
 
 		<div :class="$style.chips">
 			<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
-				<AgentChipButton
-					icon="clipboard-list"
-					:invalid="task.invalid"
-					:invalid-reasons="task.invalidReasons"
-					:disabled="props.disabled"
-					:class="$style.scheduleChip"
-					data-testid="agent-capabilities-task-row"
-					@click="openTaskModal(task)"
-				>
-					{{ task.name }}
-				</AgentChipButton>
+				<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
+					<AgentChipButton
+						icon="clipboard-list"
+						:invalid="task.invalid"
+						:invalid-reasons="task.invalidReasons"
+						:disabled="props.disabled"
+						:class="$style.scheduleChip"
+						data-testid="agent-capabilities-task-row"
+						@click="openTaskModal(task)"
+					>
+						{{ task.name }}
+					</AgentChipButton>
+				</N8nTooltip>
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
@@ -240,6 +262,12 @@ watch(
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
+
+	/** TODO: Consider making this style a generic N8nButton style. DS-652 **/
+	&:hover {
+		--button--color: var(--text-color);
+		background-color: transparent;
+	}
 }
 
 .error {

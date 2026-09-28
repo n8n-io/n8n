@@ -53,10 +53,6 @@ const renderView = createComponentRenderer(AppBuilderView, {
 	props: { projectId: 'proj-1', appId: 'app-1' },
 	global: {
 		stubs: {
-			InstanceAiSidebar: {
-				props: ['appScope'],
-				template: '<div data-test-id="thread-list-stub" :data-app-id="appScope?.appId" />',
-			},
 			InstanceAiThreadView: {
 				props: ['threadId'],
 				template: '<div data-test-id="thread-view-stub" :data-thread-id="threadId" />',
@@ -160,10 +156,10 @@ describe('AppBuilderView', () => {
 	});
 
 	describe('without an app (new-app page)', () => {
-		it('starts a plain project thread, hides the sidebar and puts the thread in the URL', async () => {
+		it('starts a plain project thread and puts the thread in the URL', async () => {
 			instanceAiStore.syncThread.mockResolvedValue(undefined);
 			instanceAiStore.threads = [];
-			const { getByTestId, queryByTestId } = renderView({
+			const { getByTestId } = renderView({
 				props: { projectId: 'proj-1', appId: undefined },
 			});
 
@@ -175,21 +171,11 @@ describe('AppBuilderView', () => {
 				origin: 'internal',
 			});
 			expect(appsStore.getApp).not.toHaveBeenCalled();
-			expect(queryByTestId('thread-list-stub')).toBeNull();
 			expect(routerReplace).toHaveBeenCalledWith({
 				name: APP_NEW,
 				params: { projectId: 'proj-1' },
 				query: { thread: 't-unbound' },
 			});
 		});
-	});
-
-	it('scopes the thread list to the app', async () => {
-		appsStore.fetchThreads.mockResolvedValue([appThread('t-old', '2026-04-01T00:00:00.000Z')]);
-		const { getByTestId } = renderView();
-
-		await waitFor(() =>
-			expect(getByTestId('thread-list-stub')).toHaveAttribute('data-app-id', 'app-1'),
-		);
 	});
 });

@@ -50,7 +50,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
 		stubs: {
-			InstanceAiSidebar: { template: '<div data-test-id="thread-list-stub" />' },
 			InstanceAiOnboardingView: {
 				emits: ['completed'],
 				template: '<button data-test-id="onboarding-view-stub" @click="$emit(\'completed\')" />',
@@ -133,6 +132,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -163,6 +163,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -188,6 +189,7 @@ describe('InstanceAiView', () => {
 		appSettingsStore.moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,

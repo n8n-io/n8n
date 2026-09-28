@@ -27,6 +27,7 @@ packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
+packages/@n8n/backend-services/                         @n8n-io/catalysts
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -41,7 +42,7 @@ packages/@n8n/db/                                       @n8n-io/catalysts
 packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
 packages/@n8n/crdt/                                     @n8n-io/catalysts
 packages/@n8n/extension-sdk/                            @n8n-io/catalysts
-packages/@n8n/eslint-config/                            @n8n-io/qa-dx
+packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
@@ -235,6 +236,11 @@ packages/@n8n/client-oauth2/                            @n8n-io/iam
 
 packages/extensions/insights/                           @n8n-io/ligo
 
+# Governance & Observability
+
+packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
+packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
+
 # CI/CD
 
 .github/                                       					@n8n-io/qa-dx
@@ -260,7 +266,4 @@ packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
 packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required

@@ -47,9 +47,12 @@ function createHarness(
 	const available = ref(workflowAvailable);
 	const derived = ref(derivedItems);
 	const doneIds = ref(new Set<string>());
+	const refreshing = ref(false);
+	const refreshWorkflow = vi.fn().mockResolvedValue(undefined);
 
 	vi.mocked(isAgentEditingWorkflow).mockImplementation(() => editing.value);
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
+		credentialsAvailable: computed(() => true),
 		isWorkflowAvailable: computed(() => available.value),
 		workflowProjectId: computed(() => undefined),
 		derivedItems: computed(() => derived.value),
@@ -57,8 +60,10 @@ function createHarness(
 			derived.value.filter((item) => item.kind === 'credential'),
 		),
 		isItemDone: (item: InstanceAiSetupItem) => doneIds.value.has(item.id),
+		isCredentialConfigured: vi.fn().mockReturnValue(false),
+		isRefreshingWorkflow: refreshing,
 		getNodeByName: vi.fn(),
-		refreshWorkflow: vi.fn().mockResolvedValue(undefined),
+		refreshWorkflow,
 	});
 
 	const thread: SetupPanelThreadSource = reactive({
@@ -67,7 +72,7 @@ function createHarness(
 	});
 
 	const state = useSetupPanelState({ thread, workflowId: () => workflowId });
-	return { state, editing, available, doneIds, derived };
+	return { state, editing, available, doneIds, derived, refreshing, refreshWorkflow, thread };
 }
 
 describe('useSetupPanelState', () => {
@@ -137,6 +142,32 @@ describe('useSetupPanelState', () => {
 		expect(state.rows.value).toEqual([]);
 	});
 
+	it('keeps a recipe omitted from a later snapshot only while its workflow node remains', () => {
+		const item: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:Fetch notes`,
+			kind: 'credential',
+			credentialType: 'httpTemplatedCustomAuth',
+			nodeBindings: [{ nodeName: 'Fetch notes' }],
+		};
+		const setupHint = {
+			template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+			placeholders: [{ name: 'api_key', title: 'API key' }],
+			suggestedName: 'Notes service',
+		};
+		const { state, thread, derived } = createHarness({
+			agentEditing: true,
+			workflowAvailable: true,
+			eventItems: [{ ...item, setupHint }],
+			derivedItems: [item],
+		});
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [item];
+		expect(state.rows.value[0].item).toMatchObject({ setupHint });
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [];
+		expect(state.rows.value[0].item).toMatchObject({ setupHint });
+		derived.value = [];
+		expect(state.rows.value).toEqual([]);
+	});
+
 	it('does not share a generic credential recipe or binding with another node', () => {
 		const announcement: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:First service`,
@@ -201,6 +232,19 @@ describe('useSetupPanelState', () => {
 
 		editing.value = false;
 		expect(toValue(options?.paused)).toBe(false);
+	});
+
+	it('refreshes announced snapshots during a build', () => {
+		const { state, thread, refreshing, refreshWorkflow } = createHarness({ agentEditing: true });
+		expect(refreshWorkflow).toHaveBeenCalledExactlyOnceWith({ force: true });
+		refreshing.value = true;
+		expect(state.isRefreshingWorkflow.value).toBe(true);
+		refreshing.value = false;
+		expect(state.isRefreshingWorkflow.value).toBe(false);
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [
+			{ ...eventItem, nodeBindings: [{ nodeName: 'Slack' }] },
+		];
+		expect(refreshWorkflow).toHaveBeenCalledTimes(2);
 	});
 
 	it('reads no event items for a workflowId matching a prototype property', () => {

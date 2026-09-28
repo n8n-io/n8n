@@ -32,7 +32,7 @@ tool and act on the result; do not ask for chat approval beforehand.
 | `name`         | always                  | e.g. `"Correctness"` |
 | `preset`       | always                  | `correctness` or `helpfulness` |
 | `credentialId` | always                  | credential id for the judge model; also determines the provider |
-| `model`        | always                  | e.g. `gpt-4o` |
+| `model`        | always                  | model ID supported by the judge credential |
 | `outputType`   | defaults to `numeric`   | `numeric` or `boolean` |
 | `actualAnswer` | always                  | expression for the produced answer, e.g. `={{ $json.output }}` |
 | `expectedAnswer` | `correctness` preset  | expression for ground truth, e.g. `={{ $json.expected_output }}` |
@@ -72,7 +72,7 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
        name: "Correctness",
        preset: "correctness",
        credentialId: "<cred_id>",   // provider is derived from this credential
-       model: "gpt-4o",
+       model: "<model_id>",
        actualAnswer: "={{ $json.output }}",
        expectedAnswer: "={{ $json.expected_output }}"
      }]
@@ -98,7 +98,7 @@ eval-config(
     name: "Helpfulness",
     preset: "helpfulness",
     credentialId: "<cred_id>",   // provider is derived from this credential
-    model: "claude-sonnet-4-5",
+    model: "<model_id>",
     userQuery: "={{ $json.input }}",
     actualAnswer: "={{ $json.output }}"
   }]

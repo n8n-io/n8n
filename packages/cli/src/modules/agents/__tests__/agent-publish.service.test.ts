@@ -449,7 +449,10 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
-		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith({ projectId, agentId }, undefined);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId, agentId, source: 'builder' },
+			undefined,
+		);
 		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(agent, [], integrations);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,

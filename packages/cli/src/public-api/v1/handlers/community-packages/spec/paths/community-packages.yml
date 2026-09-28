@@ -26,22 +26,3 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
   security:
     - ApiKeyAuth: []
-get:
-  x-eov-operation-id: getInstalledPackages
-  x-required-scope: communityPackage:list
-  x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
-  tags:
-    - CommunityPackage
-  summary: List installed community packages
-  description: Retrieve all installed community packages with pending update info.
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/communityPackageList.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-  security:
-    - ApiKeyAuth: []
