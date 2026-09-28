@@ -54,29 +54,40 @@ The four binary data modes differ.
 1.  **Each execution owns its files.** For v2, a binary file only belongs to the execution (no other
    refs to it), so when the execution is deleted, its files need to be deleted accordingly. There
    should be no separate per-file bookkeeping.
-2.  **The DP decides when to delete.** The DP owns the lifetime of a v2 execution, so its retention
+2.  **Ownership passes to the execution when the run starts.** The call that hands a run to the DP
+   is `startExecution`. Before it, the CP owns every file the start node wrote, under the temporary
+   path or under the execution path, and deletes them when the run does not start: a refused
+   payload, a failed dispatch, or a start rejected after a rename. After it, the files belong to the
+   execution, and the retention job of CAT-2939 decides when they go. From then on no file is
+   distinguished by the process that wrote it: a webhook file the CP renamed and a file a step
+   wrote on the DP are deleted by the same call, because both are under the execution path. This
+   holds because CP and DP actions on files do not depend on the deployment model: both planes
+   write to and delete from the same store. With `filesystem` the operator should mount one shared
+   network volume on every host, and every process points at the same mount path. Without that
+   mount the two planes see different disks, and no rule in this document holds.
+3.  **The DP decides when to delete.** The DP owns the lifetime of a v2 execution, so its retention
    job (CAT-2939) is the only component that knows when an execution is pruned. The job selects the
    prunable executions and triggers the (idempotent) deletion of their files before it deletes the
    rows.
-3.  **The host performs the deletion.** The DP stays unaware of the store. A new callback is added
+4.  **The host performs the deletion.** The DP stays unaware of the store. A new callback is added
    to `ExternalDependencies`, that receives the `(workflowId, executionId)` pair of one execution
    and deletes the files at that location. In integrated mode, `packages/cli` implements it with
    `BinaryDataService.deleteMany()` and `FileLocation.ofExecution()`, the same call the v1 hard
    delete makes. The callback is optional, since a host that runs no v1 nodes writes no files and
    can leave it out. Every other host supplies it with a `BinaryDataService` for the store its nodes
    write to.
-4.  **At least once, and idempotent.** The job deletes the rows of an execution only after the
+5.  **At least once, and idempotent.** The job deletes the rows of an execution only after the
    callback has returned for it. When the callback throws, the job logs the error, keeps the rows,
    and retries that execution on its next run. A repeat call is safe: prefix deletion in the
    filesystem byte store removes the directory with `force`, so a missing directory is not an error.
    This is stricter than v1, which logs a failed hard delete and does not retry the files, because
    v2 has no CP row to retry from.
-5.  **Per mode.** `filesystem` runs the same call as v1 and deletes the directory of the run. `s3`
+6.  **Per mode.** `filesystem` runs the same call as v1 and deletes the directory of the run. `s3`
    and `azure` run the same call, but it deletes nothing today, so those modes depend on bucket
    lifecycle rules as in v1. `database` deletes the rows of the run through the database manager.
    The `database` mode is supported in integrated mode only. An out-of-process DP in `database` mode
    waits for the decision on binary data access from an out-of-process DP.
-6.  **Files written before this is implemented** stay in the store until an operator deletes them.
+7.  **Files written before this is implemented** stay in the store until an operator deletes them.
    Engine v2 is behind a module flag and is in its internal release phase, so no migration or sweep
    is planned.
 
@@ -129,11 +140,17 @@ sequenceDiagram
 4.  Files written by v2 runs before the callback exists are not deleted. This is accepted for the
    internal release.
 5.  A webhook or trigger node runs before the execution id exists. In v1 the file it stores is
-   written under a temporary execution id and renamed after the run. On v2 the execution id is
-   created before the node runs and set on `additionalData`, so the file is written under its
-   final path from the start and no rename is needed. That change is not covered here and belongs
-   to the follow-up ticket that accepts files on v2.
-6.  The retention note in ADR-20260904 ("Retention is unsolved") stays open for the workflow
+   written under a temporary execution id and renamed after the run. On v2 a webhook run can
+   create the id before the node runs and set it on `additionalData`, so the file is written under
+   its final path from the start. A trigger node runs on its own schedule, so its file is already
+   under the temporary path when the control plane receives its items, and the control plane
+   renames it at dispatch, before the run starts. Both changes are not covered here and belong to
+   the follow-up ticket that accepts files on v2.
+6.  Files under the temporary path that no run claimed are the CP's to delete. Every refusal path
+   deletes what the node stored, as the payload guard does today. A crash between the write and the
+   dispatch leaves files that nothing deletes. No sweep for those exists today, in v1 or v2.
+   CAT-4756 tracks it.
+7.  The retention note in ADR-20260904 ("Retention is unsolved") stays open for the workflow
    snapshot. This decision covers binary files only.
 
 ## Links
