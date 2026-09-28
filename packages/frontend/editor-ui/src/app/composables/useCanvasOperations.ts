@@ -983,7 +983,10 @@ export function useCanvasOperations() {
 	function replaceGroupedNodeConnections(
 		previousNode: INodeUi,
 		newNode: INodeUi,
-		{ trackHistory = false } = {},
+		{
+			trackHistory = false,
+			additionalGroupNodeIds = [],
+		}: { trackHistory?: boolean; additionalGroupNodeIds?: string[] } = {},
 	): boolean {
 		const group = workflowDocumentStore.value.getGroupForNode(previousNode.id);
 		if (!group) return false;
@@ -1018,6 +1021,7 @@ export function useCanvasOperations() {
 			nodeIds,
 			connectionsToRemove,
 			connectionsToAdd,
+			additionalGroupNodeIds,
 			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
 		});
 		if (!isReplacementAllowed) return false;
@@ -3692,10 +3696,10 @@ export function useCanvasOperations() {
 		return true;
 	}
 
-	async function cutNodes(ids: string[]) {
+	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
 		if (!(await copyNodes(ids))) return;
 
-		deleteNodes(ids);
+		deleteNodes(ids, { deleteWholeGroupIds });
 	}
 
 	async function openExecution(executionId: string, nodeId?: string) {
@@ -3821,7 +3825,11 @@ export function useCanvasOperations() {
 	function replaceNode(
 		previousId: string,
 		newId: string,
-		{ trackHistory = true, trackBulk = true } = {},
+		{
+			trackHistory = true,
+			trackBulk = true,
+			additionalGroupNodeIds = [],
+		}: { trackHistory?: boolean; trackBulk?: boolean; additionalGroupNodeIds?: string[] } = {},
 	) {
 		const previousNode = workflowDocumentStore.value.getNodeById(previousId);
 		const newNode = workflowDocumentStore.value.getNodeById(newId);
@@ -3841,6 +3849,7 @@ export function useCanvasOperations() {
 		if (previousGroup) {
 			const didReplaceConnections = replaceGroupedNodeConnections(previousNode, newNode, {
 				trackHistory,
+				additionalGroupNodeIds,
 			});
 			if (!didReplaceConnections) {
 				if (trackHistory && trackBulk) {
@@ -3909,26 +3918,6 @@ export function useCanvasOperations() {
 			addedNodesByInputIndex,
 		});
 
-		let replacementGroupId: string | undefined;
-		if (addedNodes.length > 0 && options.replaceNodeId) {
-			// Auto-added helpers can follow the node that the user selected, so they
-			// must not become the replacement target.
-			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
-			const replacementNode =
-				replacementNodeIndex === -1
-					? addedNodes.at(-1)
-					: addedNodesByInputIndex.get(replacementNodeIndex);
-			if (replacementNode) {
-				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
-					trackHistory,
-					trackBulk: false,
-				});
-				if (didReplace) {
-					replacementGroupId = workflowDocumentStore.value.getGroupForNode(replacementNode.id)?.id;
-				}
-			}
-		}
-
 		const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
 			const fromNode = addedNodesByInputIndex.get(from.nodeIndex);
 			const toNode = addedNodesByInputIndex.get(to.nodeIndex);
@@ -3965,6 +3954,30 @@ export function useCanvasOperations() {
 		});
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
+
+		let replacementGroupId: string | undefined;
+		if (addedNodes.length > 0 && options.replaceNodeId) {
+			// Auto-added helpers can follow the node that the user selected, so they
+			// must not become the replacement target.
+			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
+			const replacementNode =
+				replacementNodeIndex === -1
+					? addedNodes.at(-1)
+					: addedNodesByInputIndex.get(replacementNodeIndex);
+			if (replacementNode) {
+				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
+					trackHistory,
+					trackBulk: false,
+					// The batch connections are already part of the candidate graph. Let
+					// grouped replacement validate the whole batch as one unit before the
+					// remaining batch nodes are added to the group below.
+					additionalGroupNodeIds: addedNodes.map((node) => node.id),
+				});
+				if (didReplace) {
+					replacementGroupId = workflowDocumentStore.value.getGroupForNode(replacementNode.id)?.id;
+				}
+			}
+		}
 
 		if (replacementGroupId) {
 			const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);

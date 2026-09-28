@@ -1721,6 +1721,53 @@ describe('Canvas', () => {
 	});
 
 	describe('group selection reconciliation', () => {
+		it('replaces the node clicked inside a fully selected regular group', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const memberA = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const memberB = createCanvasNodeElement({
+				id: 'b',
+				label: 'Node B',
+				position: { x: 300, y: 100 },
+			});
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a', 'b'] }),
+						memberA,
+						memberB,
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(3),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode(`group:${group.id}`)!,
+				vueFlow.findNode('a')!,
+				vueFlow.findNode('b')!,
+			]);
+			await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(3));
+
+			await fireEvent.click(rendered.container.querySelector('[data-id="b"]')!);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['b']),
+			);
+			await fireEvent.keyDown(document, { key: 'r' });
+			await fireEvent.keyUp(document, { key: 'r' });
+
+			expect(rendered.emitted()['replace:node']).toEqual([['b']]);
+		});
+
 		it('folds the selection into the group when one is created around fully selected nodes', async () => {
 			workflowDocumentStore.setScopes(['workflow:update']);
 			workflowDocumentStore.setNodes([
@@ -1957,6 +2004,21 @@ describe('Canvas', () => {
 			await fireEvent.click(getByTestId('context-menu-item-copy'));
 
 			expect(emitted()['copy:nodes']).toEqual([[['a', 'b']]]);
+		});
+
+		it('passes explicitly selected groups through the cut action', async () => {
+			const { group, groupNode, emitted } = await renderWithGroup();
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'x', ctrlKey: true, metaKey: true });
+			await fireEvent.keyUp(document, { key: 'x', ctrlKey: true, metaKey: true });
+
+			const cutEvent = emitted()['cut:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = cutEvent ?? [];
+			expect(ids).toEqual(['a', 'b']);
+			expect(deleteWholeGroupIds).toEqual([group.id]);
 		});
 
 		it('opens the group context menu on a read-only canvas, like node menus, with mutating items disabled', async () => {

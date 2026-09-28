@@ -317,6 +317,8 @@ export interface CanvasNodeHandleInjectionData {
 
 export type ConnectStartEvent = {
 	event?: MouseEvent | undefined;
+	/** True when a collapsed empty group's left input started the drag. */
+	isEmptyGroupTargetStart?: boolean;
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };

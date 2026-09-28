@@ -37,6 +37,7 @@ import type {
 } from '../canvas.types';
 import {
 	CanvasNodeRenderType,
+	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	isCanvasGroupNode,
 	parseCanvasGroupNodeId,
@@ -156,7 +157,7 @@ const emit = defineEmits<{
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
-	'cut:nodes': [ids: string[]];
+	'cut:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'delete:connection': [connection: Connection];
 	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
@@ -581,7 +582,7 @@ const keyMap = computed(() => {
 
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
-		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids, getDeleteWholeGroupIds())),
 		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
@@ -613,7 +614,10 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		},
 		c: () => emit('start-chat'),
-		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		r: () => {
+			const id = getReplaceTargetId();
+			if (id) emit('replace:node', id);
+		},
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
@@ -692,6 +696,7 @@ async function onAddNodesToChat(
 }
 
 const lastSelectedNode = ref<GraphNode>();
+const lastInteractedNode = ref<{ id: string; documentId: string }>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
 		if (isCanvasGroupNode(node)) return false;
@@ -1159,17 +1164,20 @@ function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
 	// Expand selected groups to their member nodes before deletion.
 	if (ids.length > 0) {
-		const deleteWholeGroupIds = selectedNodesAndGroups.value
-			.filter(isCanvasGroupNode)
-			.map((node) => parseCanvasGroupNodeId(node.id))
-			.filter(
-				(groupId) =>
-					groupId &&
-					(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
-			)
-			.filter(isPresent);
-		emit('delete:nodes', ids, deleteWholeGroupIds);
+		emit('delete:nodes', ids, getDeleteWholeGroupIds());
 	}
+}
+
+function getDeleteWholeGroupIds() {
+	return selectedNodesAndGroups.value
+		.filter(isCanvasGroupNode)
+		.map((node) => parseCanvasGroupNodeId(node.id))
+		.filter(
+			(groupId) =>
+				groupId &&
+				(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
+		)
+		.filter(isPresent);
 }
 
 // Last header-click toggle, for double-click suppression in onNodeClick.
@@ -1195,6 +1203,11 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		}
 		return;
 	}
+
+	lastInteractedNode.value = {
+		id: node.id,
+		documentId: workflowDocumentStore.value.documentId,
+	};
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -1381,7 +1394,13 @@ function normalizeEmptyGroupConnectionStart(handle: ConnectStartEvent): ConnectS
 	return {
 		...handle,
 		nodeId: group.nodeId,
-		handleId: createCanvasConnectionHandleString({ mode: 'outputs' }),
+		isEmptyGroupTargetStart: handle.handleType === 'target',
+		// Preserve the side the user started from. A left/input drag should add
+		// a node into the group's input, not turn into an output replacement.
+		handleId: createCanvasConnectionHandleString({
+			mode:
+				handle.handleType === 'target' ? CanvasConnectionMode.Input : CanvasConnectionMode.Output,
+		}),
 	};
 }
 
@@ -1499,6 +1518,26 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 			emitFn(lastSelectedNode.value.id);
 		}
 	};
+}
+
+function getReplaceTargetId(): string | undefined {
+	const lastInteractedNodeId =
+		lastInteractedNode.value?.documentId === workflowDocumentStore.value.documentId
+			? lastInteractedNode.value.id
+			: undefined;
+
+	if (
+		lastInteractedNodeId &&
+		selectedNodes.value.some((node) => node.id === lastInteractedNodeId)
+	) {
+		return lastInteractedNodeId;
+	}
+
+	if (selectedNodes.value.length === 1) {
+		return selectedNodes.value[0].id;
+	}
+
+	return lastSelectedNode.value?.id;
 }
 
 /**
@@ -1672,13 +1711,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete': {
-			const deleteWholeGroupIds = new Set(
-				selectedNodesAndGroups.value
-					.filter(isCanvasGroupNode)
-					.map((node) => parseCanvasGroupNodeId(node.id))
-					.filter((groupId) => groupId && explicitlySelectedGroupIds.value.has(groupId))
-					.filter(isPresent),
-			);
+			const deleteWholeGroupIds = new Set(getDeleteWholeGroupIds());
 			if (groupId) deleteWholeGroupIds.add(groupId);
 
 			return emit('delete:nodes', nodeIds, [...deleteWholeGroupIds]);
@@ -1703,8 +1736,13 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
-		case 'replace':
-			return emit('replace:node', nodeIds[0]);
+		case 'replace': {
+			const contextTarget = contextMenu.target.value;
+			const targetNodeId =
+				contextTarget && contextTarget.source !== 'group' ? contextTarget.nodeId : nodeIds[0];
+			if (targetNodeId) return emit('replace:node', targetNodeId);
+			return;
+		}
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':

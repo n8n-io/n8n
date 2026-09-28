@@ -11,6 +11,7 @@ import CanvasHandleNonMainInput from './render-types/CanvasHandleNonMainInput.vu
 import CanvasHandleNonMainOutput from './render-types/CanvasHandleNonMainOutput.vue';
 import { CanvasNodeHandleKey } from '@/app/constants';
 import { useCanvasNode } from '../../../composables/useCanvasNode';
+import { useCanvas } from '../../../composables/useCanvas';
 
 const props = defineProps<
 	CanvasElementPortWithRenderData & {
@@ -40,6 +41,8 @@ defineOptions({
 
 const style = useCssModule();
 
+const { connectingHandle } = useCanvas();
+
 const handleType = computed(() =>
 	props.mode === CanvasConnectionMode.Input ? 'target' : 'source',
 );
@@ -54,6 +57,10 @@ const connectionsLimitReached = computed(() => {
 	return props.maxConnections && props.connectionsCount >= props.maxConnections;
 });
 
+const isEmptyGroupInputDrag = computed(() => {
+	return connectingHandle.value?.isEmptyGroupTargetStart === true;
+});
+
 const isConnectableStart = computed(() => {
 	if (connectionsLimitReached.value) return false;
 
@@ -63,7 +70,11 @@ const isConnectableStart = computed(() => {
 const isConnectableEnd = computed(() => {
 	if (connectionsLimitReached.value) return false;
 
-	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionTypes.Main;
+	return (
+		props.mode === CanvasConnectionMode.Input ||
+		props.type !== NodeConnectionTypes.Main ||
+		(props.mode === CanvasConnectionMode.Output && isEmptyGroupInputDrag.value)
+	);
 });
 
 const isConnected = computed(() => props.connectionsCount > 0);

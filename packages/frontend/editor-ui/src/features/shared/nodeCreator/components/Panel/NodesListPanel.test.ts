@@ -365,6 +365,43 @@ describe('NodesListPanel', () => {
 
 			expect(screen.getByText('Group')).toBeInTheDocument();
 		});
+
+		it('keeps Group hidden while navigating in replacement mode', async () => {
+			getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+
+			await fireEvent.click(screen.getByText('Action in an app'));
+			await nextTick();
+			await fireEvent.click(document.querySelector('.backButton')!);
+			await waitFor(() => expect(screen.getByTestId('node-creator-search-bar')).toBeVisible());
+			expect(useNodeCreatorStore().openingContext).toBe('replacement');
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+		});
+
+		it('clears replacement context when the panel is closed', async () => {
+			const { unmount } = getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			const nodeCreatorStore = useNodeCreatorStore();
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
+
+			unmount();
+			expect(nodeCreatorStore.openingContext).toBeNull();
+		});
 	});
 
 	// Reproduces ADO-5590 (GH #33955): typing in the node-creator search field
