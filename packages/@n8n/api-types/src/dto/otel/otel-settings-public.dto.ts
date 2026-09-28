@@ -12,10 +12,7 @@ import { Z } from '../../zod-class';
 export class OtelSettingsPublicDto extends Z.class(
 	{
 		enabled: z.boolean().openapi(docs.enabled),
-		exporterProtocol: z
-			.string()
-			.optional()
-			.openapi({ ...docs.exporterProtocol, enum: [...OTLP_PROTOCOLS] }),
+		exporterProtocol: z.string().openapi({ ...docs.exporterProtocol, enum: [...OTLP_PROTOCOLS] }),
 		exporterEndpoint: z.string().openapi(docs.exporterEndpoint),
 		exporterTracingPath: z.string().openapi(docs.exporterTracingPath),
 		exporterServiceName: z.string().openapi(docs.exporterServiceName),

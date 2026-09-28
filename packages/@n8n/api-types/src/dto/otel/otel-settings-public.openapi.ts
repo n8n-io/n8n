@@ -4,7 +4,7 @@ export const otelSettingsPublicDescription =
 	'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a ' +
 	'full replacement: every field must be provided, except `exporterProtocol`, which defaults to ' +
 	'`http/protobuf` when omitted. Fields managed declaratively via environment variables are ' +
-	'returned with their effective value and ignored on write.';
+	'returned with their effective value. A write can repeat these values, but changing them returns 409.';
 
 export const otelSettingsPublicFieldDocs = {
 	enabled: { description: 'Whether OpenTelemetry tracing is enabled.', example: true },
