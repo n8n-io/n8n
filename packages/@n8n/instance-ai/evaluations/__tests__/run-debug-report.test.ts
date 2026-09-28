@@ -87,6 +87,65 @@ describe('run debug report', () => {
 		expect(html).toContain('Kimi system prompt');
 	});
 
+	it('renders step settings, sorted tools, usage rows, and the cache break', () => {
+		const instructions = {
+			role: 'system',
+			content: 'system prompt',
+			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+		};
+		const stepTools = [
+			{ type: 'function', name: 'small_tool', description: 'x' },
+			{ type: 'function', name: 'large_tool', description: 'x'.repeat(2_000) },
+		];
+		const cachedStep = (
+			stepNumber: number,
+			cacheReadTokens: number,
+			cacheWriteTokens: number,
+			timestamp: string,
+		) => ({
+			stepNumber,
+			input: { instructions, stepTools, modelId: 'claude-sonnet' },
+			output: {
+				finishReason: 'tool-calls',
+				usage: {
+					inputTokens: cacheReadTokens + cacheWriteTokens + 3,
+					inputTokenDetails: { noCacheTokens: 3, cacheReadTokens, cacheWriteTokens },
+					outputTokens: 40,
+					totalTokens: cacheReadTokens + cacheWriteTokens + 43,
+				},
+				response: { timestamp },
+			},
+		});
+
+		const html = generateRunDebugReport([
+			resultWithRunDebug([
+				{
+					threadId: 'thread-1',
+					runId: 'run-1',
+					startedAt: 1_700_000_000_000,
+					label: 'Build a Slack notifier',
+					steps: [
+						cachedStep(0, 0, 30_000, '2026-01-01T00:00:00.000Z'),
+						cachedStep(1, 0, 30_000, '2026-01-01T00:06:00.000Z'),
+					],
+					workflowCode: [],
+				},
+			]),
+		]);
+
+		expect(html).toContain('model: claude-sonnet');
+		expect(html.indexOf('<code>large_tool</code>')).toBeLessThan(
+			html.indexOf('<code>small_tool</code>'),
+		);
+		expect(html).toContain('<table class="usage-table">');
+		expect(html).toContain('<th scope="row">input</th><td class="usage-tokens">30,003</td>');
+		expect(html).toContain('cache write 30,000');
+		expect(html.match(/class="chip chip-cache-break"/g)).toHaveLength(1);
+		expect(html).toContain(
+			'30,000 of the 30,000 tokens cached by the previous step were not read from cache. Likely cause: more than 5 minutes passed, so the cache expired.',
+		);
+	});
+
 	it('uses stable anchor ids from file slugs', () => {
 		const result = resultWithRunDebug([]);
 		expect(getTestCaseAnchorId(result, 0)).toBe('tc-slack-notifier');

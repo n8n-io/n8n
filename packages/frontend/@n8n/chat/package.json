@@ -62,6 +62,7 @@
     "@types/markdown-it": "catalog:",
     "@types/markdown-it-link-attributes": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vitest/coverage-istanbul": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
     "unplugin-icons": "^0.19.0",

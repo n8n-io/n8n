@@ -28,6 +28,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	isCredentialAgentIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -456,7 +457,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			listChatIntegrationTypes: () =>
@@ -513,7 +517,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			track,

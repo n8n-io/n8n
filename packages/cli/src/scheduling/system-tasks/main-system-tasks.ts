@@ -15,12 +15,16 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 	const { WorkflowHistoryCompactionTrimTask } = await import(
 		'@/services/pruning/workflow-history-compaction-trim.task.js'
 	);
+	const { PendingAuthorizationCleanupTask } = await import(
+		'@/credentials/pending-authorization-cleanup.task.js'
+	);
 
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
 		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
+		PendingAuthorizationCleanupTask,
 	];
 
 	if (globalConfig.executions.pruneData) {

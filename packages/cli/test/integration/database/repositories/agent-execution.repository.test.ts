@@ -38,6 +38,9 @@ import {
 import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
+import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
+import { executionsToMessagesDto } from '@/modules/agents/utils/execution-to-message-mapper';
+import { formatPreviewSessionContext } from '@/modules/agents/builder/format-preview-context';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
@@ -46,6 +49,9 @@ import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
 } from '@/modules/agents/agent-message-queue.service';
+import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
+import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
+import { AgentExecutionMessageLink } from '@/modules/agents/entities/agent-execution-message-link.entity';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
 import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
@@ -73,6 +79,7 @@ const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filenam
 ) as typeof import('@n8n/db/dist/services/typeorm-transaction');
 
 describe('AgentExecutionRepository', () => {
+	const viewerId = uuid();
 	let repository: AgentExecutionRepository;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
@@ -119,6 +126,7 @@ describe('AgentExecutionRepository', () => {
 		await repository.delete({});
 		await threadRepo.delete({});
 		await agentRepo.delete({});
+		await Container.get(AgentThreadRepository).delete({});
 	});
 
 	afterAll(async () => {
@@ -151,6 +159,10 @@ describe('AgentExecutionRepository', () => {
 			threads,
 			queueRepository,
 		);
+		const messageRepository = new AgentMessageRepository(
+			connection ?? repository.manager.connection,
+			txRunner,
+		);
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
@@ -169,6 +181,7 @@ describe('AgentExecutionRepository', () => {
 			checkpointStorage,
 			txRunner,
 			queueRepository,
+			messageRepository,
 		);
 		const queue = new AgentMessageQueueService(
 			txRunner,
@@ -178,6 +191,8 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			checkpointStorage,
 			connection ? new AgentRepository(connection) : agentRepo,
+			attachmentService,
+			mock<AgentExecutionUpdateBroadcaster>(),
 		);
 		return {
 			txRunner,
@@ -186,6 +201,7 @@ describe('AgentExecutionRepository', () => {
 			queueRepository,
 			checkpointStorage,
 			executionService,
+			messageRepository,
 			attachmentService,
 			executionLogStore,
 			turns: new AgentTurnExecutionService(
@@ -327,7 +343,11 @@ describe('AgentExecutionRepository', () => {
 										input: '{}',
 									},
 								]
-							: []),
+							: [
+									{ type: 'text-start' as const, id: 'answer' },
+									{ type: 'text-delta' as const, id: 'answer', delta: 'Done' },
+									{ type: 'text-end' as const, id: 'answer' },
+								]),
 						{
 							type: 'finish',
 							finishReason: { unified: first ? 'tool-calls' : 'stop', raw: undefined },
@@ -356,8 +376,9 @@ describe('AgentExecutionRepository', () => {
 				.instructions('Use the approval tool.')
 				.model(model)
 				.tool(tool)
+				.memory(Container.get(N8nMemory).getImplementation(agentId))
 				.checkpoint(store);
-		return { action, makeAgent };
+		return { action, makeAgent, model };
 	}
 
 	async function startSuspendedApprovalRun(user?: User, approvals = 1) {
@@ -372,9 +393,10 @@ describe('AgentExecutionRepository', () => {
 			agentName: 'Test Agent',
 			projectId,
 			userMessage: 'Start',
+			resourceId: user ? `draft-chat:${user.id}` : 'user-1',
 		};
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
-		const { action, makeAgent } = createApprovalAgentFactory(threadId, user?.id, approvals);
+		const { action, makeAgent, model } = createApprovalAgentFactory(threadId, user?.id, approvals);
 		const common = {
 			toolRegistry: new Map(),
 			mcpServerAttributions: new Map(),
@@ -418,6 +440,7 @@ describe('AgentExecutionRepository', () => {
 
 		return {
 			action,
+			model,
 			executionService,
 			checkpointRepo,
 			common,
@@ -688,6 +711,7 @@ describe('AgentExecutionRepository', () => {
 			agentName: 'Test Agent',
 			projectId,
 			userMessage: 'Continue',
+			resourceId: 'user-1',
 			sessionMode: 'existing' as const,
 		};
 		const recorder = new ExecutionRecorder();
@@ -711,7 +735,7 @@ describe('AgentExecutionRepository', () => {
 			await competing.started;
 			await waitForPeerLock(ctx);
 			releaseAdmission.resolve();
-			const executionId = await start;
+			const { executionId } = await start;
 			await rejected;
 
 			expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
@@ -774,6 +798,7 @@ describe('AgentExecutionRepository', () => {
 							agentName: 'Test Agent',
 							projectId,
 							userMessage: 'Continue',
+							resourceId: 'user-1',
 							sessionMode: 'existing',
 						},
 					}),
@@ -859,11 +884,78 @@ describe('AgentExecutionRepository', () => {
 		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
 		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
 		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
+		const links = await repository.manager.find(AgentExecutionMessageLink, {
+			order: { position: 'ASC' },
+		});
+		const inputs = links.filter(({ direction }) => direction === 'input');
+		expect(inputs).toHaveLength(2);
+		expect(new Set(inputs.map(({ messageId }) => messageId)).size).toBe(1);
+		const outputs = links.filter(({ direction }) => direction === 'output');
+		const sharedOutput = outputs.find(({ executionId }) => executionId === executions[0].id);
+		expect(sharedOutput).toBeDefined();
+		expect(outputs).toContainEqual(
+			expect.objectContaining({
+				executionId: executions[1].id,
+				messageId: sharedOutput?.messageId,
+				position: 0,
+			}),
+		);
+		const detail = await fixture.executionService.getThreadDetail(
+			fixture.threadId,
+			projectId,
+			agentId,
+			viewerId,
+		);
+		expect(detail?.executions.map(({ inputMessageIds }) => inputMessageIds)).toEqual([
+			[inputs[0].messageId],
+			[inputs[0].messageId],
+		]);
+		expect(
+			executionsToMessagesDto(detail!.executions).filter(({ role }) => role === 'user'),
+		).toHaveLength(1);
+		const context = formatPreviewSessionContext(
+			detail!.thread,
+			detail!.executions,
+			executions[1].id,
+		);
+		expect(context).toContain('scope: single turn, turns: 2');
+		expect(context?.match(/User: Start/g)).toHaveLength(1);
+		expect(
+			fixture.model.doStreamCalls[0].prompt.filter(({ role }) => role === 'user'),
+		).toHaveLength(1);
 
 		expect(await fixture.checkpointRepo.findByRunId(fixture.suspension.runId)).toMatchObject({
 			expired: true,
 			state: null,
 		});
+	});
+
+	it('resumes a legacy checkpoint without creating message references or duplicating input history', async () => {
+		const fixture = await startSuspendedApprovalRun();
+		const [legacy] = await repository.findByThreadIdOrdered(fixture.threadId);
+		// Pre-migration executions and checkpoints have no exact message links.
+		await repository.update(legacy.id, { userMessage: 'Start' });
+		await repository.manager.delete(AgentExecutionMessageLink, { executionId: legacy.id });
+		const { outcomes } = await resumeApprovalFromSeparateConnections(fixture);
+		expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+		expect(fixture.action).toHaveBeenCalledOnce();
+		expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
+		const detail = await fixture.executionService.getThreadDetail(
+			fixture.threadId,
+			projectId,
+			agentId,
+			viewerId,
+		);
+		expect(detail?.executions.map(({ inputMessageIds }) => inputMessageIds)).toEqual([
+			undefined,
+			undefined,
+		]);
+		expect(
+			executionsToMessagesDto(detail!.executions).filter(({ role }) => role === 'user'),
+		).toMatchObject([{ id: `${legacy.id}:user`, content: [{ type: 'text', text: 'Start' }] }]);
+		expect(
+			formatPreviewSessionContext(detail!.thread, detail!.executions, detail!.executions[1].id),
+		).toContain('scope: single turn, turns: 2');
 	});
 
 	it.each([false, true])(
@@ -960,9 +1052,10 @@ describe('AgentExecutionRepository', () => {
 			agentName: 'Test Agent',
 			projectId,
 			userMessage: 'Run',
+			resourceId: 'user-1',
 		};
 		const recorder = new ExecutionRecorder();
-		const executionId = await turns.startExecution(params, recorder.startedAt);
+		const { executionId } = await turns.startExecution(params, recorder.startedAt);
 		const timeline: TimelineEvent[] = [{ type: 'text', content: 'Saved output', timestamp: 1 }];
 		executionService.recordTimelineSnapshot({ ...params, executionId, timeline });
 		await vi.waitFor(async () =>
@@ -1058,6 +1151,157 @@ describe('AgentExecutionRepository', () => {
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
 
+		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			await services.queue.enqueue(input(threadId, 'active', 'new'));
+			const active = await claim(services, threadId);
+			const pendingInput = input(threadId, 'pending');
+			pendingInput.payload.attachments = [
+				{ id: 'pending-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const pending = await services.queue.enqueue(pendingInput);
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				pending.id,
+			]);
+			await expect(
+				services.queue.removePending({ ...target, queueId: active.item.id }),
+			).rejects.toThrow('already started');
+			await expect(
+				services.queue.removePending({ ...target, userId: 'other-user', queueId: pending.id }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.listPending({ ...target, agentId: 'other-agent' }),
+			).rejects.toThrow('Session not found');
+			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			await services.queue.removePending({ ...target, queueId: pending.id });
+			expect(await services.queue.listPending(target)).toEqual({ items: [] });
+			expect(services.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
+			expect((await repository.findOneByOrFail({ id: active.admission.executionId })).status).toBe(
+				'running',
+			);
+			await finish(services, active);
+		});
+
+		it('edits pending text without changing identity, attachments, or queue position', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const data = input(threadId, 'original', 'new');
+			data.payload.attachments = [
+				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const first = await services.queue.enqueue(data);
+			const second = await services.queue.enqueue(input(threadId, 'second'));
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				queueId: first.id,
+				message: 'updated',
+			};
+			await expect(
+				services.queue.updatePending({ ...target, userId: 'other-user' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, agentId: 'other-agent' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, queueId: second.id, message: ' ' }),
+			).rejects.toThrow('message or attachment');
+			await services.queue.updatePending({ ...target, message: ' ' });
+			expect((await services.queue.listPending(target)).items[0]).toMatchObject({
+				message: '',
+				attachments: data.payload.attachments,
+			});
+			await services.queue.updatePending(target);
+			const stored = await services.queueRepository.findOneByOrFail({ id: first.id });
+			expect(stored).toMatchObject({
+				id: first.id,
+				createdAt: first.createdAt,
+				source: first.source,
+				payload: { ...first.payload, message: 'updated' },
+			});
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				first.id,
+				second.id,
+			]);
+			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			const claimed = await claim(services, threadId);
+			expect(claimed.item.payload.message).toBe('updated');
+			await finish(services, claimed);
+			await expect(services.queue.updatePending(target)).rejects.toThrow(
+				'Queued message not found',
+			);
+		});
+
+		it.each([
+			['claim', 'remove'],
+			['remove', 'remove'],
+			['claim', 'edit'],
+			['edit', 'edit'],
+		] as const)(
+			'serializes concurrent connections when %s wins the claim-versus-%s race',
+			async (winner, operation) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				const item = await local.queue.enqueue(input(threadId, 'first', 'new'));
+				const target = { projectId, agentId, threadId, userId: owner.id, queueId: item.id };
+				const acquired = createDeferredPromise();
+				const release = createDeferredPromise();
+				const lock = local.threads.lockById.bind(local.threads);
+				vi.spyOn(local.threads, 'lockById').mockImplementationOnce(async (...args) => {
+					const thread = await lock(...args);
+					acquired.resolve();
+					await release.promise;
+					return thread;
+				});
+				const observe = observePeerTransaction();
+				const mutate = async (services: ReturnType<typeof recordingServices>) =>
+					operation === 'edit'
+						? await services.queue.updatePending({ ...target, message: 'edited' })
+						: await services.queue.removePending(target);
+				const first =
+					winner === 'claim' ? local.queue.claimNext(threadId, async () => true) : mutate(local);
+				await acquired.promise;
+				const second =
+					winner === 'claim' ? mutate(remote) : remote.queue.claimNext(threadId, async () => true);
+				const results = Promise.allSettled([first, second]);
+				try {
+					await observe.started;
+				} finally {
+					release.resolve();
+					observe.restore();
+				}
+				const settled = await results;
+				expect(settled[0].status).toBe('fulfilled');
+				if (winner === 'claim') {
+					expect(settled[1]).toMatchObject({
+						status: 'rejected',
+						reason: { message: 'This message has already started' },
+					});
+					const claimed = await first;
+					if (!claimed) throw new Error('Expected a claim');
+					expect(await local.queueRepository.findOneByOrFail({ id: item.id })).toMatchObject({
+						threadId,
+						executionId: claimed.admission.executionId,
+					});
+					await finish(local, claimed);
+				} else if (operation === 'edit') {
+					const claimed = await second;
+					if (!claimed) throw new Error('Expected a claim');
+					expect(claimed.item.payload.message).toBe('edited');
+					await finish(remote, claimed);
+				} else {
+					expect(settled[1]).toEqual({ status: 'fulfilled', value: null });
+					expect(await repository.countBy({ threadId })).toBe(0);
+				}
+				expect(await local.queueRepository.countBy({ threadId })).toBe(0);
+			},
+		);
+
 		it('serializes acceptance and claims across connections while other sessions progress', async () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
@@ -1102,6 +1346,7 @@ describe('AgentExecutionRepository', () => {
 			expect(claims.filter(({ item }) => item !== null)).toHaveLength(1);
 			expect(winner.item.item.id).toBe(first.id);
 			expect(await repository.countBy({ threadId, status: 'running' })).toBe(1);
+			expect(await local.messageRepository.countBy({ threadId })).toBe(1);
 			await expect(
 				local.executionService.startExecutionRecording(winner.item.recording, new Date()),
 			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
@@ -1142,6 +1387,9 @@ describe('AgentExecutionRepository', () => {
 				.mockResolvedValueOnce(false);
 			await expect(claim(services, threadId)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 			failedLink.mockRestore();
+			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
+			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
+			expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
 			expect(await repository.countBy({ threadId })).toBe(0);
 			expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
 				executionId: null,
@@ -1186,7 +1434,9 @@ describe('AgentExecutionRepository', () => {
 			await expect(finish(remote, active)).rejects.toThrow('no longer running');
 			await finish(local, next);
 			expect(
-				(await repository.findByThreadIdOrdered(threadId)).map(({ userMessage, status }) => ({
+				(
+					await local.executionService.getThreadDetail(threadId, projectId, agentId, owner.id)
+				)?.executions.map(({ userMessage, status }) => ({
 					userMessage,
 					status,
 				})),
@@ -1230,10 +1480,11 @@ describe('AgentExecutionRepository', () => {
 				}
 				expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
 				expect(await remote.queueRepository.findDeliveryState(active.item.id)).not.toBeNull();
-				const resumedId = await remote.executionService.startExecutionRecording(
+				const admission = await remote.executionService.startExecutionRecording(
 					{ ...active.recording, userMessage: null, resumeRunId: runId },
 					new Date(),
 				);
+				const resumedId = admission.executionId;
 				await local.queue.settle(threadId, active.admission.executionId);
 				expect(await local.queueRepository.findDeliveryState(active.item.id)).toMatchObject({
 					executionId: resumedId,
@@ -1256,7 +1507,7 @@ describe('AgentExecutionRepository', () => {
 				await remote.checkpointStorage.getStorage(agentId).delete(runId, resumedState);
 				await finish(remote, {
 					...active,
-					admission: { executionId: resumedId, startedAt: new Date() },
+					admission,
 				});
 				const next = await claim(local, threadId);
 				expect(next.item.id).toBe(pending.id);
@@ -1335,6 +1586,373 @@ describe('AgentExecutionRepository', () => {
 			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
 		});
 	});
+
+	it('loads inputs across a large execution ID lookup', async () => {
+		const thread = await createThread();
+		const { messageRepository } = recordingServices();
+		const executionIds: string[] = [];
+		const expected = new Map<string, string>();
+		for (let position = 0; position < 2; position++) {
+			const execution = await createExecution({ threadId: thread.id });
+			const messageId = await messageRepository.createExecutionInput(
+				{
+					executionId: execution.id,
+					threadId: thread.id,
+					resourceId: 'user-1',
+					content: { role: 'user', content: [{ type: 'text', text: 'Input' }] },
+					origin: { source: 'chat' },
+				},
+				{},
+			);
+			executionIds.push(execution.id);
+			expected.set(execution.id, messageId);
+		}
+		executionIds.splice(1, 0, ...Array.from({ length: 33_000 }, () => uuid()));
+
+		const inputs = await messageRepository.findExecutionInputs(executionIds);
+
+		expect(inputs.size).toBe(2);
+		for (const [executionId, messageId] of expected) {
+			expect(inputs.get(executionId)?.map(({ id }) => id)).toEqual([messageId]);
+		}
+	});
+
+	it('keeps canonical input through enrichment, runtime persistence, mixed history, and session deletion', async () => {
+		const thread = await createThread();
+		const threadId = thread.id;
+		const resourceId = 'user-1';
+		const memory = Container.get(N8nMemory).getImplementation(agentId);
+		const services = recordingServices(memory);
+		const legacy = await createExecution({
+			threadId,
+			userMessage: 'Legacy question',
+			createdAt: new Date('2026-01-01'),
+			timeline: [{ type: 'text', content: 'Legacy answer', timestamp: 1 }],
+		});
+		await memory.saveThread({ id: threadId, resourceId });
+		await memory.saveMessages({
+			threadId,
+			resourceId,
+			messages: [
+				{
+					id: uuid(),
+					createdAt: new Date('2026-01-01'),
+					role: 'user',
+					content: [{ type: 'text', text: 'Legacy question' }],
+				},
+			],
+		});
+		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const attachments = [
+			{
+				id: attachment.id,
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				sizeBytes: attachment.fileSizeBytes,
+			},
+		];
+		const params = {
+			access: { accessScope: 'project' as const, ownerId: null },
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			threadId,
+			resourceId,
+			userMessage: 'Original input',
+			author: { id: 'author-1', name: 'Ada' },
+			attachments,
+			source: 'slack',
+			messageOrigin: {
+				integrationConnectionId: 'slack:credential',
+				platformMessageId: 'message-42',
+			},
+		};
+		const admission = await services.executionService.startExecutionRecording(params, new Date());
+		const [id] = admission.inputMessageIds;
+		const canonical = await services.messageRepository.findOneByOrFail({ id });
+		expect(canonical).toMatchObject({
+			content: buildInboundUserMessage(params.userMessage, attachments)[0],
+			author: params.author,
+			modelContextAt: null,
+			modelContent: null,
+			origin: { source: 'slack', ...params.messageOrigin },
+		});
+		expect(
+			(await memory.getMessages(threadId)).map(({ id: messageId }) => messageId),
+		).not.toContain(id);
+		expect(await repository.findOneByOrFail({ id: admission.executionId })).toMatchObject({
+			userMessage: null,
+			author: null,
+			attachments: null,
+		});
+		const { makeAgent, model } = createApprovalAgentFactory(threadId, undefined, 0);
+		const agent = makeAgent(services.checkpointStorage.getStorage(agentId));
+		try {
+			await collect(
+				services.turns.execute({
+					agentInstance: agent,
+					toolRegistry: new Map(),
+					mcpServerAttributions: new Map(),
+					context: params,
+					admittedExecution: admission,
+					prepare: async () => ({
+						type: 'start',
+						input: buildInboundUserMessage('[Ada]: Original input', attachments),
+						options: { persistence: { threadId, resourceId } },
+						recording: params,
+					}),
+				}),
+			);
+		} finally {
+			await agent.close();
+		}
+		const stored = await services.messageRepository.findOneByOrFail({ id });
+		expect(stored).toMatchObject({
+			content: canonical.content,
+			author: canonical.author,
+			origin: canonical.origin,
+			createdAt: canonical.createdAt,
+		});
+		expect(stored.modelContent).not.toEqual(canonical.content);
+		expect(stored.modelContextAt).toBeInstanceOf(Date);
+		const prompt = JSON.stringify(model.doStreamCalls[0].prompt);
+		expect(prompt.match(/Original input/g)).toHaveLength(1);
+		expect(prompt).toContain('Legacy question');
+		const runtimeMessages = await memory.getMessages(threadId);
+		expect(runtimeMessages.filter((message) => message.id === id)).toHaveLength(1);
+		const input = runtimeMessages.find((message) => message.id === id)!;
+		const observed = await memory.getMessagesForObservationScope(threadId, {
+			since: { sinceCreatedAt: input.createdAt, sinceMessageId: input.id },
+		});
+		expect(observed).toHaveLength(1);
+		expect(observed[0]).toMatchObject({
+			role: 'assistant',
+			content: [{ type: 'text', text: 'Done' }],
+		});
+		expect(await memory.getMessages(threadId, { before: input.createdAt, limit: 1 })).toHaveLength(
+			1,
+		);
+		const detail = await services.executionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			viewerId,
+		);
+		expect(detail?.executions[1]).toMatchObject({
+			userMessage: 'Original input',
+			author: params.author,
+			attachments,
+			inputMessageIds: [id],
+		});
+		const history = executionsToMessagesDto(detail!.executions);
+		expect(history.map(({ id: messageId }) => messageId)).toEqual([
+			`${legacy.id}:user`,
+			`${legacy.id}:assistant`,
+			id,
+			`${admission.executionId}:assistant`,
+		]);
+		expect(history[3].content).toContainEqual({ type: 'text', text: 'Done' });
+		expect(formatPreviewSessionContext(detail!.thread, detail!.executions)).toContain(
+			'User: Original input',
+		);
+		expect(
+			await services.executionService.getThreadDetail(
+				threadId,
+				'another-project',
+				agentId,
+				viewerId,
+			),
+		).toBeNull();
+
+		await memory.saveThread({ id: 'builder-without-session', resourceId });
+		await memory.saveMessages({
+			threadId: 'builder-without-session',
+			resourceId,
+			messages: [
+				{
+					id: uuid(),
+					createdAt: new Date(),
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Builder output' }],
+				},
+			],
+		});
+		expect(
+			await services.executionService.deleteThread(projectId, agentId, threadId, viewerId),
+		).toBe(true);
+		expect(await services.messageRepository.countBy({ threadId })).toBe(0);
+		expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
+		expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
+			[attachment.binaryDataId],
+			{ threadId },
+		);
+		expect(await memory.getMessages('builder-without-session')).toHaveLength(1);
+	});
+
+	it('keeps output membership and positions on repeated saves and hides internal input', async () => {
+		const threadId = uuid();
+		const resourceId = 'user-1';
+		const memory = Container.get(N8nMemory).getImplementation(agentId);
+		const { executionService, messageRepository } = recordingServices(memory);
+		const params = {
+			access: { accessScope: 'project' as const, ownerId: null },
+			agentId,
+			agentName: 'Test Agent',
+			projectId,
+			threadId,
+			resourceId,
+			userMessage: 'Internal result',
+			hideUserMessageFromTranscript: true,
+		};
+		const admission = await executionService.startExecutionRecording(params, new Date());
+		const [inputId] = admission.inputMessageIds;
+		const input = {
+			...buildInboundUserMessage(params.userMessage, [])[0],
+			id: inputId,
+			createdAt: new Date(),
+		};
+		// Output messages can have the user role. Reserved IDs identify the input.
+		const output = { ...input, id: uuid(), content: [{ type: 'text' as const, text: 'Output' }] };
+		// ID order must not change output order.
+		const later = {
+			...output,
+			id: '00000000-0000-4000-8000-000000000002',
+			content: [{ type: 'text' as const, text: 'Later' }],
+		};
+		const latest = {
+			...output,
+			id: '00000000-0000-4000-8000-000000000001',
+			content: [{ type: 'text' as const, text: 'Latest' }],
+		};
+		const scope = {
+			threadId,
+			resourceId,
+			hostMetadata: { [EXECUTION_METADATA_KEY]: admission.executionId },
+		};
+		await memory.saveMessages({ ...scope, messages: [input, output] });
+		await memory.saveMessages({ ...scope, messages: [later, latest, output, input] });
+		expect((await messageRepository.findOneByOrFail({ id: inputId })).modelContent).toBeNull();
+		const links = await repository.manager.find(AgentExecutionMessageLink, {
+			where: { executionId: admission.executionId },
+			order: { direction: 'ASC', position: 'ASC' },
+		});
+		expect(
+			links.map(({ messageId, direction, position }) => ({ messageId, direction, position })),
+		).toEqual([
+			{ messageId: inputId, direction: 'input', position: 0 },
+			{ messageId: output.id, direction: 'output', position: 0 },
+			{ messageId: later.id, direction: 'output', position: 1 },
+			{ messageId: latest.id, direction: 'output', position: 2 },
+		]);
+		const detail = await executionService.getThreadDetail(threadId, projectId, agentId, viewerId);
+		expect(detail?.executions[0]).toMatchObject({
+			inputMessageIds: [inputId],
+			inputMessages: [],
+			userMessage: null,
+		});
+		expect(await repository.findFirstUserMessageByThreadIds([threadId])).toEqual(new Map());
+		const recorder = new ExecutionRecorder();
+		recorder.record({ type: 'finish', finishReason: 'stop' });
+		await executionService.finalizeExecution(admission.executionId, {
+			...params,
+			record: recorder.getMessageRecord(),
+		});
+		await expect(
+			memory.saveMessages({ ...scope, messages: [{ ...output, content: [] }] }),
+		).rejects.toThrow('no longer owns');
+		expect((await messageRepository.findOneByOrFail({ id: output.id })).content).toMatchObject({
+			content: output.content,
+		});
+		const next = await executionService.startExecutionRecording(
+			{ ...params, userMessage: 'Visible input', hideUserMessageFromTranscript: false },
+			new Date(),
+		);
+		expect(await repository.findFirstUserMessageByThreadIds([threadId])).toEqual(
+			new Map([[threadId, 'Visible input']]),
+		);
+		await executionService.finalizeExecution(next.executionId, {
+			...params,
+			record: recorder.getMessageRecord(),
+		});
+	});
+
+	it.each(['startup', 'failure', 'rejection', 'cancellation'] as const)(
+		'retains original input and attachments after %s',
+		async (outcome) => {
+			const threadId = uuid();
+			const resourceId = 'user-1';
+			const memory = Container.get(N8nMemory).getImplementation(agentId);
+			const services = recordingServices(memory);
+			const attachments = [
+				{ id: 'attachment-1', fileName: 'image.png', mimeType: 'image/png', sizeBytes: 3 },
+			];
+			const params = {
+				access: { accessScope: 'project' as const, ownerId: null },
+				agentId,
+				agentName: 'Test Agent',
+				projectId,
+				threadId,
+				resourceId,
+				userMessage: 'Describe this image',
+				attachments,
+			};
+			if (outcome === 'startup') {
+				await services.turns.recordFailedStart(params, new Error('Startup failed'));
+			} else {
+				const controller = new AbortController();
+				const error =
+					outcome === 'rejection'
+						? Object.assign(new Error('Image dimensions exceed max allowed size: 8000 pixels'), {
+								statusCode: 400,
+							})
+						: new Error('Model unavailable');
+				const model = new MockLanguageModelV3({
+					doStream: async () => {
+						if (outcome === 'cancellation') controller.abort();
+						return { stream: convertArrayToReadableStream([{ type: 'error' as const, error }]) };
+					},
+				});
+				const agent = new RuntimeAgent('Test Agent')
+					.instructions('Describe the image.')
+					.model(model)
+					.memory(memory)
+					.fileStore({ load: async () => new Uint8Array([1, 2, 3]) });
+				try {
+					await collect(
+						services.turns.execute({
+							agentInstance: agent,
+							toolRegistry: new Map(),
+							mcpServerAttributions: new Map(),
+							context: params,
+							prepare: async () => ({
+								type: 'start',
+								input: buildInboundUserMessage('Enriched input', attachments),
+								options: { abortSignal: controller.signal, persistence: { threadId, resourceId } },
+								recording: params,
+							}),
+						}),
+					);
+				} finally {
+					await agent.close();
+				}
+			}
+			const [execution] = await repository.findByThreadIdOrdered(threadId);
+			const inputs = await services.messageRepository.findExecutionInputs([execution.id]);
+			expect(inputs.get(execution.id)).toHaveLength(1);
+			const [input] = inputs.get(execution.id)!;
+			expect(input.content).toEqual(buildInboundUserMessage(params.userMessage, attachments)[0]);
+			expect(
+				(await services.executionService.getThreadDetail(threadId, projectId, agentId, viewerId))
+					?.executions[0],
+			).toMatchObject({ userMessage: params.userMessage, attachments });
+			if (outcome === 'startup' || outcome === 'rejection') {
+				expect(input.modelContextAt).toBeNull();
+				expect(await memory.getMessages(threadId)).toEqual([]);
+			} else {
+				expect(input.modelContextAt).toBeInstanceOf(Date);
+			}
+		},
+	);
 
 	const createThread = async (overrides: Partial<AgentExecutionThread> = {}) => {
 		const thread = threadRepo.create({

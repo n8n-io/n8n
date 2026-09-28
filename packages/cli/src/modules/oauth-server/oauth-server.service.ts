@@ -30,7 +30,7 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';

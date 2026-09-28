@@ -20,7 +20,7 @@ import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });

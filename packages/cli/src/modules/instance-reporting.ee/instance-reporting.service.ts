@@ -39,6 +39,12 @@ class InstanceReportRejectedError extends OperationalError {
 	}
 }
 
+export class InstanceReportAlreadyCreatedError extends OperationalError {
+	constructor() {
+		super('Another process already created the instance report for today');
+	}
+}
+
 type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
 
 const SKIP_MESSAGES: Record<SkipReason, string> = {
@@ -46,9 +52,6 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 	'slot-passed': 'Giving up on the instance report because its slot has passed',
 	rejected: 'Giving up on the instance report because the receiver rejected its payload',
 };
-
-/** How long to wait before re-attempting a delivery that failed. */
-export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
  * How many missed days one report may carry.
@@ -120,7 +123,8 @@ export class InstanceReportingService {
 	 *
 	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
 	 *
-	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
+	 * @throws when delivery fails and a retry may succeed, or another process created
+	 * today's report, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
@@ -154,7 +158,10 @@ export class InstanceReportingService {
 				});
 			}
 
-			report = await this.reportRepository.createPending(await this.collectDataPoints(days));
+			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
+			if (!report) {
+				throw new InstanceReportAlreadyCreatedError();
+			}
 		}
 
 		const payload = {
@@ -230,23 +237,6 @@ export class InstanceReportingService {
 		await this.reportRepository.markSkipped(id);
 
 		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
-	}
-
-	/**
-	 * How long the scheduler must wait before attempting today's report again, or
-	 * `0` when it may attempt now.
-	 *
-	 * Derived from the report row, so the wait survives a restart. Without it, a
-	 * crash loop would attempt at once every time and spend the whole budget in
-	 * seconds.
-	 */
-	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findPending();
-		if (!pending?.lastAttemptAt) return 0;
-
-		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
-
-		return Math.max(0, RETRY_DELAY_MS - elapsed);
 	}
 
 	/**

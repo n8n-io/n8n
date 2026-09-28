@@ -287,16 +287,30 @@ describe('EngineV2Dispatcher', () => {
 			]);
 		});
 
+		// The check asks the acting user for a credential the project does not carry,
+		// so the dispatcher has to hand it over. Asserting the `undefined` case below
+		// alone would pass even if `data.userId` were dropped.
+		it('forwards the acting user to the credential check', async () => {
+			await dispatcher.start(runData({ userId: 'user-1' }));
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				'user-1',
+			);
+		});
+
 		it('checks credential permissions before converting', async () => {
 			const failure = new UserError('Node "X" uses invalid credential');
 			credentialsPermissionChecker.check.mockRejectedValueOnce(failure);
 
 			await expect(dispatcher.start(runData())).rejects.toThrow(failure);
 
-			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('wf-1', [
-				MANUAL_TRIGGER,
-				SET_NODE,
-			]);
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				undefined,
+			);
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
