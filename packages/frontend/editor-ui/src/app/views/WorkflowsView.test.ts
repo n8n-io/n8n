@@ -63,6 +63,10 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes: [
 		{
+			path: '/projects/:projectId/workflows',
+			component: { template: '<div></div>' },
+		},
+		{
 			path: '/:projectId?',
 			component: { template: '<div></div>' },
 		},
@@ -600,6 +604,93 @@ describe('Folders', () => {
 		await waitAllPromises();
 
 		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+	});
+
+	describe('personal project workflow list', () => {
+		const personalProject: Project = {
+			id: 'personal-project',
+			name: 'Personal',
+			icon: null,
+			type: 'personal',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			relations: [],
+			scopes: ['workflow:list', 'workflow:read'],
+			rolesManaged: false,
+		};
+		const validWorkflow: WorkflowListResource = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: 'valid-workflow',
+			name: 'Valid workflow',
+			homeProject: personalProject,
+		};
+
+		beforeEach(async () => {
+			await router.push('/projects/personal-project/workflows');
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = personalProject;
+			projectsStore.currentProject = personalProject;
+			foldersStore.totalWorkflowCount = 2;
+			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(2);
+			workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		});
+
+		it('renders a workflow returned for the personal project', async () => {
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([validWorkflow]);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				'personal-project',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				expect.any(Boolean),
+				false,
+			);
+			expect(getByTestId('workflow-card-name')).toHaveTextContent('Valid workflow');
+		});
+
+		it('renders other workflows when one has a null updatedAt (ADO-5592)', async () => {
+			// The API can return null when a workflow has updatedAt = 0.
+			const workflowWithoutUpdatedAt: WorkflowListResource = {
+				...validWorkflow,
+				id: 'workflow-without-updated-at',
+				name: 'Workflow without updatedAt',
+				updatedAt: null as unknown as string,
+			};
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+				workflowWithoutUpdatedAt,
+				validWorkflow,
+			]);
+			const renderErrors: unknown[] = [];
+
+			const { queryAllByTestId } = renderComponent({
+				pinia,
+				global: {
+					config: { errorHandler: (error: unknown) => renderErrors.push(error) },
+				},
+			});
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				'personal-project',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				expect.any(Boolean),
+				false,
+			);
+			expect(renderErrors).toEqual([]);
+			expect(
+				queryAllByTestId('workflow-card-name').some((card) =>
+					card.textContent?.includes('Valid workflow'),
+				),
+			).toBe(true);
+		});
 	});
 });
 
