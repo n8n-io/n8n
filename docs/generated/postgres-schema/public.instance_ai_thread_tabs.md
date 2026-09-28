@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| state | json |  | false |  |  | Tabs the user has open in the thread: { tabs, closedTabs, activeTab }. "tabs" is in display order. "closedTabs" holds closed artifacts so they do not reopen. |
+| state | json |  | false |  |  | Tabs the user has open in the thread: { tabs, closedTabs, activeTab, previewOpen }. "tabs" is in display order. "closedTabs" holds closed artifacts so they do not reopen. "previewOpen" tells if the preview panel is open. |
 | threadId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |

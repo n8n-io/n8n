@@ -1666,6 +1666,12 @@ export const instanceAiThreadTabsStateSchema = z.object({
 	tabs: z.array(instanceAiThreadTabSchema).max(100),
 	closedTabs: z.array(instanceAiThreadTabRefSchema).max(500),
 	activeTab: instanceAiThreadTabRefSchema.nullable(),
+	/**
+	 * Whether the preview panel is open. Without it, the active tab does not
+	 * tell if the user can see that tab. Optional, so a state saved before this
+	 * field existed stays valid.
+	 */
+	previewOpen: z.boolean().optional(),
 });
 export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
 

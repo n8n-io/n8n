@@ -9,8 +9,9 @@ export class CreateInstanceAiThreadTabsTable1790342771626 implements ReversibleM
 				column('threadId').uuid.primary,
 				column('userId').uuid.primary,
 				column('state').json.notNull.comment(
-					'Tabs the user has open in the thread: { tabs, closedTabs, activeTab }. ' +
-						'"tabs" is in display order. "closedTabs" holds closed artifacts so they do not reopen.',
+					'Tabs the user has open in the thread: { tabs, closedTabs, activeTab, previewOpen }. ' +
+						'"tabs" is in display order. "closedTabs" holds closed artifacts so they do not reopen. ' +
+						'"previewOpen" tells if the preview panel is open.',
 				),
 			)
 			.withIndexOn(['userId'])

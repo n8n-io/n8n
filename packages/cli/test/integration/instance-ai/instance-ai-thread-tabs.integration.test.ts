@@ -16,6 +16,7 @@ const firstState: InstanceAiThreadTabsState = {
 	],
 	closedTabs: [{ type: 'agent', id: 'agent-1' }],
 	activeTab: { type: 'workflow', id: 'wf-1' },
+	previewOpen: true,
 };
 
 const secondState: InstanceAiThreadTabsState = {
