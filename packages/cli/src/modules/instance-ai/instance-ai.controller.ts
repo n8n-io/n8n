@@ -83,6 +83,7 @@ import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.s
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
+import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -92,7 +93,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -107,6 +108,7 @@ export class InstanceAiController {
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
@@ -590,6 +592,22 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
+		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
+		// question as a finished synthetic run. The user's next chat message starts the first turn.
+		// Free text in the card starts that turn now, with the answers as the message, so the model
+		// check of `chat` applies; it runs before the card is consumed.
+		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
+			await this.requireModelConfigured();
+		}
+		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
+		if (card) {
+			const runId =
+				'firstMessage' in card
+					? this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
+					: card.runId;
+			return { ok: true, runId };
+		}
+
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
 			requestId,
@@ -913,14 +931,21 @@ export class InstanceAiController {
 			origin: payload.origin ?? ('internal' as const),
 			sourceContext: payload.sourceContext,
 		};
-
 		try {
-			return await this.memoryService.ensureThread(
-				req.user.id,
-				requestedThreadId,
-				payload.projectId,
-				launchMetadata,
-			);
+			// An onboarding thread opens with the greeting and the first question card in place.
+			return payload.source === 'onboarding'
+				? await this.onboarding.ensureThread(
+						req.user,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					)
+				: await this.memoryService.ensureThread(
+						req.user.id,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					);
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {
 				component: 'instance-ai-ensure-thread',

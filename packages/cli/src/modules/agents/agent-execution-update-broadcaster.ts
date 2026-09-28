@@ -77,6 +77,32 @@ export class AgentExecutionUpdateBroadcaster {
 		}
 	}
 
+	notifyQueueUpdated(threadId: string): void {
+		void this.broadcastQueueUpdated(threadId).catch((error: unknown) => {
+			this.logger.warn('Failed to broadcast agent queue update', { threadId, error });
+		});
+	}
+
+	private async broadcastQueueUpdated(threadId: string): Promise<void> {
+		const thread = await this.threadRepository.findOneBy({ id: threadId });
+		if (!thread || thread.accessScope !== 'user' || !thread.ownerId) return;
+		const data = { projectId: thread.projectId, agentId: thread.agentId, threadId };
+		const userIds = await this.getRecipients(thread);
+		if (userIds.length === 0) return;
+		this.push.sendToUsers({ type: 'agentMessageQueueUpdated', data }, userIds);
+		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({
+				command: 'relay-agent-message-queue-update',
+				payload: { data, userIds },
+			});
+		}
+	}
+
+	@OnPubSubEvent('relay-agent-message-queue-update', { instanceType: 'main' })
+	handleQueueRelay({ data, userIds }: PubSubCommandMap['relay-agent-message-queue-update']): void {
+		this.push.sendToUsers({ type: 'agentMessageQueueUpdated', data }, userIds);
+	}
+
 	private async getRecipients(thread: AgentExecutionThread): Promise<string[]> {
 		const userIds = await this.recipients.getProjectReaders(thread.projectId);
 		return userIds.filter((id) => threadBelongsTo(thread, thread.projectId, thread.agentId, id));

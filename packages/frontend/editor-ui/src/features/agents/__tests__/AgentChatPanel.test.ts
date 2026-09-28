@@ -4,7 +4,7 @@ import { computed, defineComponent, h, ref, nextTick } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentBackgroundJobDto } from '@n8n/api-types';
+import type { AgentChatQueueItem, AgentBackgroundJobDto } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -23,6 +23,12 @@ const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
+const isSubmittingMock = ref(false);
+const isLoadingHistoryMock = ref(false);
+const trackSubmittedMessageMock = vi.fn();
+const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
+const removeQueuedMessageMock = vi.fn();
+const updateQueuedMessageMock = vi.fn();
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
@@ -45,6 +51,7 @@ vi.mock('@n8n/i18n', () => {
 	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
+			'agents.chat.queue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -81,7 +88,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
-	N8nButton: { template: '<button><slot /></button>' },
+	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
+	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
@@ -91,12 +99,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
 	N8nText: { template: '<span><slot /></span>' },
-	N8nSendStopButton: {
-		name: 'N8nSendStopButton',
-		props: ['streaming', 'stopButtonTestId'],
-		emits: ['stop'],
-		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
-	},
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
 }));
@@ -149,7 +151,15 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 			name: 'ChatInputBase',
 			template:
 				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
-			props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
+			props: [
+				'modelValue',
+				'placeholder',
+				'isStreaming',
+				'showStopButton',
+				'canSubmit',
+				'disabled',
+				'maxLength',
+			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 			setup(_, { expose }) {
 				const input = ref<HTMLTextAreaElement>();
@@ -184,6 +194,12 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		return {
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
+			isSubmitting: isSubmittingMock,
+			isLoadingHistory: isLoadingHistoryMock,
+			queuedMessages: queuedMessagesMock,
+			removingQueueIds: ref(new Set()),
+			removeQueuedMessage: removeQueuedMessageMock,
+			updateQueuedMessage: updateQueuedMessageMock,
 			isCancelling: isCancellingMock,
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
@@ -200,7 +216,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackSubmittedMessage: vi.fn() }),
+	useAgentTelemetry: () => ({ trackSubmittedMessage: trackSubmittedMessageMock }),
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
@@ -219,8 +235,12 @@ vi.mock('../composables/agentTelemetry.utils', () => ({
 describe('AgentChatPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		updateQueuedMessageMock.mockReset().mockResolvedValue('updated');
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		isSubmittingMock.value = false;
+		isLoadingHistoryMock.value = false;
+		queuedMessagesMock.value = [];
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
 		fatalErrorMock.value = null;
@@ -261,6 +281,156 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
+		queuedMessagesMock.value = [
+			{ id: '1', message: 'Next message', createdAt: new Date().toISOString() },
+			{
+				id: '2',
+				message: '',
+				createdAt: new Date().toISOString(),
+				attachments: [
+					{ id: 'file-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+				],
+			},
+		];
+		backgroundJobsMock.value = [
+			{
+				id: 'job-1',
+				kind: 'subagent',
+				title: 'Research',
+				status: 'running',
+				startedAt: new Date().toISOString(),
+			},
+		];
+		isStreamingMock.value = true;
+		const wrapper = mountPanel({ backgroundJobsActive: true });
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(composer.find('[data-testid="agent-message-queue"]').exists()).toBe(true);
+		expect(composer.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.findAll('[data-testid="agent-queued-message"]').map((row) => row.text()),
+		).toEqual(['Next message', 'notes.txt']);
+		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
+			wrapper.html().indexOf('agent-message-queue'),
+		);
+		expect(messagesMock.value).toEqual([]);
+		const removeButtons = wrapper.findAll('[aria-label="agents.chat.queue.remove"]');
+		for (const button of removeButtons) {
+			expect(button.findComponent({ name: 'N8nIcon' }).props('icon')).toBe('trash-2');
+		}
+		await removeButtons[1].trigger('click');
+		expect(removeQueuedMessageMock).toHaveBeenCalledWith('2');
+		queuedMessagesMock.value = [];
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-message-queue"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('collapses only the third and later pending messages as the queue grows and shrinks', async () => {
+		const items = [1, 2, 3, 4].map((id) => ({
+			id: String(id),
+			message: `Message ${id}`,
+			createdAt: '2026-09-24T12:00:00.000Z',
+		}));
+		queuedMessagesMock.value = items.slice(0, 2);
+		const wrapper = mountPanel();
+		const queue = wrapper.get('[data-testid="agent-message-queue"]');
+		expect(queue.find('[aria-expanded]').exists()).toBe(false);
+
+		queuedMessagesMock.value = items.slice(0, 3);
+		await nextTick();
+		const toggle = queue.get('button[aria-expanded]');
+		expect(toggle.attributes('aria-expanded')).toBe('false');
+		expect(toggle.text()).toBe('1 message up next');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+
+		queuedMessagesMock.value = items;
+		await nextTick();
+		expect(toggle.text()).toBe('2 messages up next');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+		await toggle.trigger('click');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual([
+			'Message 1',
+			'Message 2',
+			'Message 3',
+			'Message 4',
+		]);
+		await toggle.trigger('click');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+
+		queuedMessagesMock.value = items.slice(1, 3);
+		await nextTick();
+		expect(queue.find('[aria-expanded]').exists()).toBe(false);
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 2', 'Message 3']);
+		wrapper.unmount();
+	});
+
+	it('edits queued text inline while preserving attachments and the composer draft', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				message: 'original',
+				createdAt: new Date().toISOString(),
+				attachments: [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 }],
+			},
+		];
+		const wrapper = mountPanel();
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		composer.vm.$emit('update:modelValue', 'next draft');
+		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+		let editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('changed');
+		await editor.trigger('keydown', { key: 'Escape' });
+		expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+		editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('updated text');
+		await editor.trigger('keydown', { key: 'Enter', shiftKey: true });
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await editor.trigger('keydown', { key: 'Enter', isComposing: true });
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await editor.trigger('keydown', { key: 'Enter' });
+		await flushPromises();
+		expect(updateQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1', 'updated text');
+		expect(composer.props('modelValue')).toBe('next draft');
+		expect(wrapper.get('[data-testid="agent-queued-message"]').text()).toContain('notes.txt');
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it.each(['notification', 'conflict'])(
+		'preserves edits when a message starts before saving (%s)',
+		async (source) => {
+			queuedMessagesMock.value = [
+				{ id: '1', message: 'original', createdAt: new Date().toISOString() },
+			];
+			const wrapper = mountPanel();
+			await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+			const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+			await editor.setValue('unsaved text');
+			if (source === 'notification') queuedMessagesMock.value = [];
+			else {
+				updateQueuedMessageMock.mockResolvedValueOnce('unavailable');
+				await editor.trigger('keydown', { key: 'Enter' });
+			}
+			await flushPromises();
+			expect(editor.element).toHaveProperty('value', 'unsaved text');
+			expect(editor.attributes('readonly')).toBeDefined();
+			expect(
+				wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.text()).toContain('agents.chat.queue.editUnavailable');
+			await wrapper.get('[aria-label="agents.chat.queue.cancelEdit"]').trigger('click');
+			expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
 
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());
@@ -380,7 +550,7 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 			backgroundJobsMock.value = [job, { ...job, id: 'job-2', title: 'Check tickets' }];
 			await flushPromises();
-			const panel = wrapper.get('[data-testid="chat-input"] [data-testid="agent-background-jobs"]');
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
 			const trigger = panel.get('button');
 			expect(trigger.text()).toContain('Running 2 background tasks');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
@@ -637,8 +807,7 @@ describe('AgentChatPanel', () => {
 
 	/**
 	 * A non-approval interactive card (`chat_action`) — these put the chat
-	 * input into cancel-and-steer mode rather than blocking it outright,
-	 * unlike an open approval card.
+	 * input into cancel-and-steer mode. Approval cards keep ordinary input queued.
 	 */
 	function openInteractiveMessage(): ChatMessage {
 		return {
@@ -690,25 +859,61 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
-	it('queues an outside message until the current stream finishes', async () => {
+	it('retains an outside prompt during initial loading and consumes it only after acceptance', async () => {
+		isLoadingHistoryMock.value = true;
+		isStreamingMock.value = true;
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel();
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(input.props('showStopButton')).toBe(false);
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Test this task');
+		await flushPromises();
+		expect(input.props('canSubmit')).toBe(false);
+		expect(input.props('showStopButton')).toBe(false);
+		expect(input.props('modelValue')).toBe('Test this task');
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		isLoadingHistoryMock.value = false;
+		await flushPromises();
+		expect(input.props('showStopButton')).toBe(false);
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Test this task',
+			undefined,
+			expect.any(Function),
+		);
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+		expect(input.props('modelValue')).toBe('');
+		expect(input.props('showStopButton')).toBe(true);
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
+		wrapper.unmount();
+	});
+
+	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);
 		isStreamingMock.value = true;
 		const wrapper = mountPanel();
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(input.props('showStopButton')).toBe(true);
 
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
 		).sendMessageFromOutside('Test these instructions');
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
-			'Test these instructions',
-		);
-		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(input.props('modelValue')).toBe('Test these instructions');
+		expect(input.props('showStopButton')).toBe(false);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
-
-		isStreamingMock.value = false;
-		await flushPromises();
 
 		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
 			'Test these instructions',
@@ -717,6 +922,7 @@ describe('AgentChatPanel', () => {
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
+		expect(input.props('showStopButton')).toBe(true);
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 		wrapper.unmount();
 		response.resolve('sent');
@@ -796,7 +1002,7 @@ describe('AgentChatPanel', () => {
 	it.each([
 		{ state: 'streaming', busy: isStreamingMock },
 		{ state: 'cancellation', busy: isCancellingMock },
-	])('keeps the draft when $state starts during telemetry preparation', async ({ busy }) => {
+	])('submits when $state starts during telemetry preparation', async ({ busy }) => {
 		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
 		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
 		const wrapper = mountPanel();
@@ -821,15 +1027,6 @@ describe('AgentChatPanel', () => {
 			config_version: 'test-version',
 		});
 		await flushPromises();
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(chatInput.props('modelValue')).toBe(draft);
-		expect(chatInput.props('canSubmit')).toBe(false);
-
-		busy.value = false;
-		await flushPromises();
-		expect(chatInput.props('canSubmit')).toBe(true);
-		chatInput.vm.$emit('submit');
-		await flushPromises();
 		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
 			draft.trim(),
 			[file],
@@ -841,7 +1038,7 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('keeps the draft while suspended-run cancellation is pending', async () => {
+	it('submits while suspended-run cancellation is pending', async () => {
 		isCancellingMock.value = true;
 		const wrapper = mountPanel();
 
@@ -853,7 +1050,11 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		expect(chatInput.props('modelValue')).toBe('keep this draft');
 		expect(chatInput.props('disabled')).toBe(false);
-		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'keep this draft',
+			undefined,
+			expect.any(Function),
+		);
 		wrapper.unmount();
 	});
 
@@ -862,7 +1063,7 @@ describe('AgentChatPanel', () => {
 		async (outcome) => {
 			const response = Promise.withResolvers<'sent' | 'busy'>();
 			sendMessageMock.mockImplementationOnce(() => {
-				isStreamingMock.value = true;
+				isSubmittingMock.value = true;
 				return response.promise;
 			});
 			const wrapper = mountPanel();
@@ -881,14 +1082,10 @@ describe('AgentChatPanel', () => {
 				{ id: 'snapshot', role: 'assistant', content: 'progress', status: 'streaming' },
 			];
 			if (outcome === 'sent') sendMessageMock.mock.lastCall?.[2]?.();
+			isSubmittingMock.value = false;
 			response.resolve(outcome);
 			await flushPromises();
 			expect(input.props('modelValue')).toBe('edited draft');
-			input.vm.$emit('submit');
-			await flushPromises();
-			expect(sendMessageMock).toHaveBeenCalledOnce();
-			isStreamingMock.value = false;
-			await flushPromises();
 			input.vm.$emit('submit');
 			await flushPromises();
 			expect(sendMessageMock).toHaveBeenLastCalledWith(
@@ -936,7 +1133,7 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
 			'keep this direction',
 		);
-		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 		isStreamingMock.value = true;
 		await nextTick();
 		isStreamingMock.value = false;
@@ -977,16 +1174,23 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('disabled')).toBe(false);
 	});
 
-	it('shows send and stop controls while an interactive question is unresolved', async () => {
+	it('switches between Stop and Send as a question reply changes', async () => {
 		messagesMock.value = [openInteractiveMessage()];
 
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('isStreaming')).toBe(false);
-		const stopButton = wrapper.find('[data-test-id="agent-chat-suspended-stop-button"]');
-		expect(stopButton.exists()).toBe(true);
-		await stopButton.trigger('click');
+		expect(chatInput.props('showStopButton')).toBe(true);
+		chatInput.vm.$emit('update:modelValue', 'My answer');
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(false);
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('update:modelValue', '  ');
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(true);
+		expect(chatInput.props('canSubmit')).toBe(false);
+		chatInput.vm.$emit('stop');
 		await flushPromises();
 		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
 	});
@@ -994,7 +1198,7 @@ describe('AgentChatPanel', () => {
 	/**
 	 * A workflow tool parked on a Wait node. It renders a card, but nobody is
 	 * being asked anything — the workflow resumes it — so the input must be
-	 * blocked rather than routed into cancel-and-steer.
+	 * queued rather than routed into cancel-and-steer.
 	 */
 	function openWaitMessage(): ChatMessage {
 		return {
@@ -1019,18 +1223,19 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
-	it('blocks the chat input while a waiting card is open', () => {
+	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
 
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('disabled')).toBe(true);
-		expect(chatInput.props('isStreaming')).toBe(true);
-		expect(chatInput.props('placeholder')).toBe('agents.chat.waiting.inputPlaceholder');
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('isStreaming')).toBe(false);
+		expect(chatInput.props('showStopButton')).toBe(true);
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
 	});
 
-	it('neither sends nor steers while a waiting card is open', async () => {
+	it('queues ordinary messages without steering a waiting card', async () => {
 		messagesMock.value = [openWaitMessage()];
 
 		const wrapper = mountPanel();
@@ -1040,7 +1245,7 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('any news?');
 		await flushPromises();
 
-		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(sendMessageMock).toHaveBeenCalledWith('any news?', undefined, expect.any(Function));
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
 	});
 
@@ -1143,7 +1348,7 @@ describe('AgentChatPanel', () => {
 
 	// The run is parked and would restart from a context with the pending tool
 	// call stripped out, so the model would call the same tool again.
-	it('blocks the chat input for a suspension with no card', () => {
+	it('allows queue submissions for a suspension with no card', () => {
 		messagesMock.value = [
 			{
 				id: 'assistant-1',
@@ -1158,10 +1363,10 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('disabled')).toBe(true);
+		expect(chatInput.props('disabled')).toBe(false);
 	});
 
-	it('keeps the stop control available for a non-card suspension', () => {
+	it('switches from Stop to Send for an attachment-only draft during a non-card suspension', async () => {
 		messagesMock.value = [
 			{
 				id: 'assistant-1',
@@ -1181,7 +1386,19 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('isStreaming')).toBe(false);
+		expect(chatInput.props('showStopButton')).toBe(true);
+		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		chatInput.vm.$emit('files-selected', [file]);
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(false);
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledWith('', [file], expect.any(Function));
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(true);
 	});
 
 	it('shows stop while tool calls are in-flight even when the stream ended (desync)', () => {
@@ -1206,7 +1423,8 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('isStreaming')).toBe(false);
+		expect(chatInput.props('showStopButton')).toBe(true);
 	});
 
 	it('does not apply a build-specific character limit', () => {

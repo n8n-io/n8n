@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
@@ -32,6 +33,7 @@ const props = defineProps<{
 const router = useRouter();
 
 const workflowSaving = useWorkflowSaving({ router });
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
@@ -124,6 +126,7 @@ const save = async (): Promise<void> => {
 			resetNodeIds: true,
 			requestNewId: true,
 			parentFolderId,
+			stripEmptyCanvasGroups: !emptyCanvasGroupsEnabled.value,
 		});
 
 		if (duplicatedWorkflowId) {

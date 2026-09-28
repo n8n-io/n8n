@@ -36,6 +36,7 @@ import type {
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import { withDefaults } from './with-defaults';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
 import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
 import { traceCreatedTasks } from '../observability/materializer-tracing';
@@ -128,22 +129,6 @@ export interface SchedulerDeps {
 
 	/** Host metrics; defaults to a no-op. */
 	metrics?: SchedulerMetrics;
-}
-
-/**
- * A plain `{ ...defaults, ...overrides }` would let an explicitly-undefined
- * override clobber a default (turning e.g. `leaseMs` into `NaN` downstream),
- * so undefined entries are treated as absent.
- */
-function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {}): T {
-	const merged = { ...defaults };
-	for (const key of Object.keys(overrides) as Array<keyof T>) {
-		const value = overrides[key];
-		if (value !== undefined) {
-			merged[key] = value;
-		}
-	}
-	return merged;
 }
 
 /**

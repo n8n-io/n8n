@@ -40,6 +40,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'sub-agent',
 	'schedule',
 	'workflow',
+	'n8n_chat_production',
 	'slack',
 	'telegram',
 	'linear',
@@ -259,6 +260,10 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 		return agentChatMessageSchema.parse(data);
 	}
 }
+
+export class AgentChatQueueUpdateDto extends Z.class({
+	message: z.string(),
+}) {}
 
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),

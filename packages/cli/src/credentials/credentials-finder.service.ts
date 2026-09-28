@@ -1,4 +1,4 @@
-import type { SharedCredentials, User } from '@n8n/db';
+import type { Project, SharedCredentials, User } from '@n8n/db';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -19,6 +19,22 @@ import { RoleService } from '@/services/role.service';
  */
 const VISIBILITY_SCOPES: ReadonlySet<Scope> = new Set(['credential:read', 'credential:list']);
 
+/**
+ * The scopes that answer "may this user use this credential".
+ */
+export const CREDENTIAL_USABILITY_SCOPES: Scope[] = ['credential:read'];
+
+/** A credential a user may not use, with enough to name it in an error. */
+export type UnusableCredential = {
+	id: string;
+	/** The stored name, or the id when the credential no longer exists. */
+	name: string;
+	/** False when no credential row has this id any more. */
+	exists: boolean;
+	/** The project that owns it, or `null` when it is gone or has no owner. */
+	ownerProject: Project | null;
+};
+
 @Service()
 export class CredentialsFinderService {
 	constructor(
@@ -33,7 +49,10 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isGlobal: true, usageScope: 'project' },
+			where: this.credentialsRepository.excludePendingAuthorization({
+				isGlobal: true,
+				usageScope: 'project',
+			}),
 			relations: { shared: true },
 		});
 	}
@@ -172,7 +191,7 @@ export class CredentialsFinderService {
 		}
 
 		const credentials = await this.credentialsRepository.find({
-			where,
+			where: this.credentialsRepository.excludePendingAuthorization(where),
 			relations: { shared: true },
 		});
 
@@ -316,11 +335,84 @@ export class CredentialsFinderService {
 	/**
 	 * Given a list of credential IDs, return only those the user can access with the given scopes.
 	 */
+	/**
+	 * Which of `credentialIds` this user may not use.
+	 *
+	 * The single question the execution checks and the publish gate both ask, so
+	 * they cannot drift apart. Answered with {@link CREDENTIAL_USABILITY_SCOPES},
+	 * and returning names and owning projects so the caller can say which
+	 * credential and who to ask.
+	 *
+	 * A credential that no longer exists counts as unusable — for the instance
+	 * owner too, since nobody can use a row that is gone.
+	 *
+	 * A `null` user cannot use anything — every id comes back, described as it is.
+	 *
+	 * @param ignoreGlobalUseScope - answer for this user's own access only, as if
+	 * they held no instance-wide `credential:use`. Redaction asks this way: an
+	 * Owner must not see execution data through a grant nobody else has.
+	 */
+	async findUnusableCredentialsForUser(
+		user: User | null,
+		credentialIds: string[],
+		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<UnusableCredential[]> {
+		if (credentialIds.length === 0) return [];
+
+		// A user we cannot resolve can use nothing, but the credentials are still
+		// described as they are: `exists` drives the publish gate's "no longer
+		// exists, update the node" wording, and a failed user lookup is no reason
+		// to send someone editing a node whose credential is fine.
+		if (!user) return await this.describeCredentials(credentialIds);
+
+		if (!ignoreGlobalUseScope && hasGlobalScope(user, 'credential:use')) {
+			const existingIds = new Set(await this.credentialsRepository.findExistingIds(credentialIds));
+			return await this.describeCredentials(credentialIds.filter((id) => !existingIds.has(id)));
+		}
+
+		const usableIds = await this.findCredentialIdsWithScopeForUser(
+			credentialIds,
+			user,
+			CREDENTIAL_USABILITY_SCOPES,
+			// Ask for this user's own access, ignoring an instance-wide grant, so the
+			// answer matches what a colleague with no elevated scopes would get.
+			ignoreGlobalUseScope ? { ignoreGlobalOverride: true } : {},
+		);
+
+		return await this.describeCredentials(credentialIds.filter((id) => !usableIds.has(id)));
+	}
+
+	/**
+	 * Names and owning projects for the given ids, for an error message. Public
+	 * for callers that already know the credentials are unusable and only need
+	 * them named — the stored name, because a node's remembered one goes stale
+	 * the moment the credential is renamed.
+	 */
+	async describeCredentials(credentialIds: string[]): Promise<UnusableCredential[]> {
+		if (credentialIds.length === 0) return [];
+
+		const [names, ownerProjects] = await Promise.all([
+			this.credentialsRepository.findNamesByIds(credentialIds),
+			this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds),
+		]);
+		const nameById = new Map(names.map((c) => [c.id, c.name]));
+
+		return credentialIds.map((id) => {
+			const name = nameById.get(id);
+			return {
+				id,
+				name: name ?? id,
+				exists: name !== undefined,
+				ownerProject: ownerProjects.get(id) ?? null,
+			};
+		});
+	}
+
 	async findCredentialIdsWithScopeForUser(
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { visibilityOnly?: boolean } = {},
+		options: { visibilityOnly?: boolean; ignoreGlobalOverride?: boolean } = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
@@ -329,7 +421,10 @@ export class CredentialsFinderService {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
+		if (
+			options.ignoreGlobalOverride ||
+			!this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+		) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -357,28 +452,30 @@ export class CredentialsFinderService {
 			}
 		}
 
-		// Also include global credentials if scopes allow read-only access
-		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
-			}
-		} else if (this.hasGlobalConnectAccess(scopes)) {
-			// Only end-user (resolvable) global credentials grant connect access.
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: {
-						id: In(chunk),
-						isGlobal: true,
-						usageScope: 'project',
-						isResolvable: true,
-					},
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
+		// Also include global credentials if scopes allow read-only access.
+		if (!options.ignoreGlobalOverride) {
+			if (this.hasGlobalReadOnlyAccess(scopes)) {
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
+			} else if (this.hasGlobalConnectAccess(scopes)) {
+				// Only end-user (resolvable) global credentials grant connect access.
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: {
+							id: In(chunk),
+							isGlobal: true,
+							usageScope: 'project',
+							isResolvable: true,
+						},
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
 			}
 		}
 
