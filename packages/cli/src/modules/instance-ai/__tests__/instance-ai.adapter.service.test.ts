@@ -1,17 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
-	);
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
-	const { WorkflowEditorLockedError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
-	);
-	const { FolderResolutionError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/folder-resolution.error.js'
-	);
+	const {
+		WorkflowSaveConflictError,
+		WorkflowNotFoundError,
+		WorkflowEditorLockedError,
+		FolderResolutionError,
+	} = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
@@ -1814,9 +1808,11 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error';
-import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
-import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
+import {
+	WorkflowEditorLockedError,
+	WorkflowNotFoundError,
+	WorkflowSaveConflictError,
+} from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
