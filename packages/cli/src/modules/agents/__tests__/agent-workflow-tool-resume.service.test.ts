@@ -12,6 +12,8 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -58,6 +60,8 @@ function setup() {
 		},
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const orchestratorService = mock<AgentExecutionOrchestratorService>();
+	const agentRepository = mock<AgentRepository>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -69,6 +73,8 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
+		orchestratorService,
+		agentRepository,
 	);
 	return {
 		service,
@@ -83,8 +89,41 @@ function setup() {
 		instanceSettings,
 		messageContextService,
 		backgroundJobService,
+		orchestratorService,
+		agentRepository,
 	};
 }
+
+describe('AgentWorkflowToolResumeService production n8n Chat', () => {
+	it('resumes the published runtime for the owning user', async () => {
+		const { service, userRepository, agentRepository, orchestratorService, agentTestRunService } =
+			setup();
+		userRepository.findOneBy.mockResolvedValue({ id: 'user-1' } as User);
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		orchestratorService.resumeForChat.mockImplementation(async function* () {});
+		await service.resume({ ...previewRun, publishedN8nChat: true }, 'success');
+		expect(agentTestRunService.resumeDraftRun).not.toHaveBeenCalled();
+		expect(orchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				usePublishedVersion: true,
+				source: 'n8n_chat_production',
+				user: expect.objectContaining({ id: 'user-1' }),
+				expectedMemory: {
+					threadId: previewRun.threadId,
+					resourceId: 'n8n-chat-production:user-1',
+				},
+			}),
+		);
+	});
+
+	it('does not resume an unpublished agent', async () => {
+		const { service, userRepository, agentRepository, orchestratorService } = setup();
+		userRepository.findOneBy.mockResolvedValue({ id: 'user-1' } as User);
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+		await service.resume({ ...previewRun, publishedN8nChat: true }, 'success');
+		expect(orchestratorService.resumeForChat).not.toHaveBeenCalled();
+	});
+});
 
 /** A `workflowExecuteAfter` context for a sub-execution carrying an agent marker. */
 function afterContext(
