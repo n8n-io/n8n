@@ -13,7 +13,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import {
