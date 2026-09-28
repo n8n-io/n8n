@@ -20,12 +20,6 @@ export default {
 			},
 			options: ['large', 'medium', 'small', 'mini'],
 		},
-		theme: {
-			control: {
-				type: 'select',
-			},
-			options: ['default', 'ghost'],
-		},
 		loading: {
 			control: {
 				type: 'boolean',
@@ -74,12 +68,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Default = Template.bind({});
-
-export const Ghost = Template.bind({});
-Ghost.args = {
-	theme: 'ghost',
-	placeholder: 'Select an option',
-};
 
 export const Filterable = Template.bind({});
 Filterable.args = {

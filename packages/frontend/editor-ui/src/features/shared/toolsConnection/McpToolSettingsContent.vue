@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nDialogFooter,
-	N8nIcon,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nDialogFooter, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { MODAL_CANCEL } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import McpDetailBody from './McpDetailBody.vue';
+import PermissionDropdown from './PermissionDropdown.vue';
 import type { McpServerConnectionItem, McpToolSettings } from './types';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -94,19 +87,6 @@ watch(
 	},
 );
 
-const permissionOptions: Array<{ value: McpToolPermission; label: string }> = [
-	{
-		value: 'always_allow',
-		label: i18n.baseText('tools.connection.permissions.alwaysAllow'),
-	},
-	{
-		value: 'require_approval',
-		label: i18n.baseText('tools.connection.permissions.requireApproval'),
-	},
-	{ value: 'blocked', label: i18n.baseText('tools.connection.permissions.blocked') },
-];
-const customPermissionLabel = i18n.baseText('tools.connection.permissions.custom');
-
 const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
 	read: {
 		title: 'tools.connection.permissions.read.title',
@@ -162,18 +142,6 @@ function updateTool(toolId: string, category: McpToolCategory, permission: McpTo
 	if (permission === categories.value[category]) delete next[toolId];
 	else next[toolId] = permission;
 	toolPermissions.value = next;
-}
-
-function isPermission(value: unknown): value is McpToolPermission {
-	return value === 'always_allow' || value === 'require_approval' || value === 'blocked';
-}
-
-function onCategoryChange(category: McpToolCategory, value: unknown) {
-	if (isPermission(value)) void updateCategory(category, value);
-}
-
-function onToolChange(toolId: string, category: McpToolCategory, value: unknown) {
-	if (isPermission(value)) updateTool(toolId, category, value);
 }
 
 function hasCategoryOverrides(category: McpToolCategory): boolean {
@@ -263,27 +231,14 @@ function handleRecovery() {
 								</div>
 								<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
 							</div>
-							<!-- Show "Custom" as selected value when there are overrides -->
-							<N8nSelect
+							<PermissionDropdown
 								:class="$style.permissionSelect"
-								:model-value="
-									hasCategoryOverrides(group.category)
-										? customPermissionLabel
-										: categories[group.category]
-								"
-								size="small"
-								theme="ghost"
+								:model-value="categories[group.category]"
+								:custom="hasCategoryOverrides(group.category)"
 								:disabled="arePermissionsDisabled"
 								:data-test-id="`tools-connection-permission-${group.category}`"
-								@update:model-value="onCategoryChange(group.category, $event)"
-							>
-								<N8nOption
-									v-for="option in permissionOptions"
-									:key="option.value"
-									:value="option.value"
-									:label="option.label"
-								/>
-							</N8nSelect>
+								@update:model-value="updateCategory(group.category, $event)"
+							/>
 							<N8nButton
 								variant="outline"
 								size="small"
@@ -316,20 +271,12 @@ function handleRecovery() {
 										{{ tool.description }}
 									</N8nText>
 								</div>
-								<N8nSelect
+								<PermissionDropdown
 									:class="$style.permissionSelect"
 									:model-value="toolPermissions[tool.id] ?? categories[group.category]"
-									size="small"
 									:disabled="arePermissionsDisabled"
-									@update:model-value="onToolChange(tool.id, group.category, $event)"
-								>
-									<N8nOption
-										v-for="option in permissionOptions"
-										:key="option.value"
-										:value="option.value"
-										:label="option.label"
-									/>
-								</N8nSelect>
+									@update:model-value="updateTool(tool.id, group.category, $event)"
+								/>
 							</div>
 						</div>
 					</div>
