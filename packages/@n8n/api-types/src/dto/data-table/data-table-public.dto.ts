@@ -63,10 +63,8 @@ export class UpdateDataTablePublicDto extends Z.class({
 	name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
 }) {}
 
-// The embedded column (above) omits `dataTableId` — it's redundant inside its own parent. The
-// standalone column-list response needs it, since a column here isn't nested under its table.
-const dataTableColumnFullPublicSchema = dataTableColumnPublicSchema.extend({
+const dataTableListColumnPublicSchema = dataTableColumnPublicSchema.extend({
 	dataTableId: z.string().openapi(dataTableColumnFieldDocs.dataTableId),
 });
 
-export class DataTableColumnListPublicDto extends Z.array(dataTableColumnFullPublicSchema) {}
+export class DataTableColumnListPublicDto extends Z.array(dataTableListColumnPublicSchema) {}

@@ -85,7 +85,6 @@ const toDataTablePublicDto = (dataTable: DataTable, sizeBytes: number): DataTabl
 	sizeBytes,
 });
 
-/** Allowlist mapper: the entity carries fields the public contract may or may not expose as-is. */
 const toDataTableColumnPublicDto = (
 	column: DataTableColumn,
 ): DataTableColumnListPublicDto[number] => ({
