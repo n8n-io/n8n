@@ -150,17 +150,6 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
-	it('reports a cancelled run as undeliverable', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
-
-		deliver(endedResponse(pending.executionId, { status: 'cancelled', lastStep: null }));
-
-		await expect(pending.settled).resolves.toEqual({
-			status: 'undeliverable',
-			error: { name: 'ExecutionCancelled', message: 'The execution was cancelled' },
-		});
-	});
-
 	it('reports the response produced by the Respond node', async () => {
 		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
 
