@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
+	ExecutionStatus,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -42,12 +43,12 @@ describe('workflow_step_execution table (integration)', () => {
 	}
 
 	/** Steps FK to an execution, so create a parent row first. */
-	async function createExecution(): Promise<string> {
+	async function createExecution(status: ExecutionStatus = 'running'): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
 			id: generateId(),
 			workflowId: 'wf-1',
-			status: 'running',
+			status,
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			workflow: {},
@@ -290,6 +291,30 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(created).toEqual([]);
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
 		expect(await stepRepo.count({ where: { executionId } })).toBe(1);
+	});
+
+	it('TypeOrmStepStore.claimStep refuses once the execution has ended', async () => {
+		const executionId = await createExecution('cancelled');
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		// a step:ready announced before the cancel, whose row the sweep has not reached
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'queued' });
+
+		expect(await store.claimStep(id)).toBeNull();
+		expect((await store.loadStep(id)).status).toBe('queued');
+	});
+
+	it('TypeOrmStepStore.createSteps creates nothing once the execution has ended', async () => {
+		const executionId = await createExecution('cancelled');
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		// a planner that read the execution as live just before the cancel
+		const created = await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'queued' },
+		]);
+
+		expect(created).toEqual([]);
+		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+		expect(await stepRepo.count({ where: { executionId } })).toBe(0);
 	});
 
 	it('TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {

@@ -3,7 +3,9 @@ import { In, type Repository } from '@n8n/typeorm';
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
+import { ExecutionNotFoundError } from '../execution/execution-store';
 import {
+	isLiveExecutionStatus,
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
 	type ResumeCause,
@@ -11,6 +13,7 @@ import {
 	type StepError,
 	type StepKey,
 	type StepKeyId,
+	type ExecutionStatus,
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
@@ -51,6 +54,7 @@ type ClaimedStepRow = {
 	resume_cause: ResumeCause | null;
 };
 type DueStepRow = { id: string; execution_id: string };
+type ExecutionStatusRow = { id: string; status: ExecutionStatus };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -86,13 +90,18 @@ export class TypeOrmStepStore implements StepStore {
 		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
-		// The execution-row lock serializes this insert with `failStep`, so rows
-		// land before the failure (its sweep cancels them) or not at all.
-		// Otherwise rows inserted after the sweep would stay `queued` forever.
+		// The execution-row lock serializes this insert with `failStep` and
+		// `cancelExecution`, so rows land before the execution ends (the sweep
+		// cancels them) or not at all. Otherwise rows inserted after the sweep
+		// would stay `queued` forever.
 		return await this.repo.manager.transaction(async (manager) => {
-			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
-				executionId,
-			]);
+			const [execution] = await manager.query<ExecutionStatusRow[]>(
+				'SELECT id, status FROM workflow_execution WHERE id = $1 FOR SHARE',
+				[executionId],
+			);
+			if (!execution) throw new ExecutionNotFoundError(executionId);
+			if (!isLiveExecutionStatus(execution.status)) return [];
+
 			const [failed] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_step_execution
 				 WHERE execution_id = $1 AND status = 'failed'
@@ -140,17 +149,17 @@ export class TypeOrmStepStore implements StepStore {
 		// out of `queued` and carries both. A deadline resume reads its captured
 		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
-		// The execution-row lock serializes the claim with `failStep`, so no
-		// step starts running once its execution has a failed step. Claims
-		// don't block each other (shared lock).
+		// The execution-row lock serializes the claim with `failStep` and
+		// `cancelExecution`, so no step starts running once its execution has a
+		// failed step or has ended. Claims don't block each other (shared lock).
 		return await this.repo.manager.transaction(async (manager) => {
-			const [execution] = await manager.query<Array<{ id: string }>>(
-				`SELECT id FROM workflow_execution
+			const [execution] = await manager.query<ExecutionStatusRow[]>(
+				`SELECT id, status FROM workflow_execution
 				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
 				 FOR SHARE`,
 				[id],
 			);
-			if (!execution) return null;
+			if (!execution || !isLiveExecutionStatus(execution.status)) return null;
 
 			const result = await manager
 				.createQueryBuilder()
