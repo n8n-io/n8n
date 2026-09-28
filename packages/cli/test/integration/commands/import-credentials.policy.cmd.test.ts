@@ -127,16 +127,17 @@ test('import:credentials skips blocked credentials and imports the rest', async 
 	).toEqual([
 		{ name: 'new-basic', type: ALLOWED },
 		{ name: 'no-id', type: ALLOWED },
+		// An import is judged on its own type, so an unchanged blocked type is not grandfathered.
+		{ name: 'old', type: BLOCKED },
 		{ name: 'old-basic', type: ALLOWED },
-		// An unchanged type is grandfathered, as in an edit on the server.
-		{ name: 'renamed', type: BLOCKED },
 	]);
 
 	const skipped = warn.mock.calls
 		.map(([message]) => message)
-		.filter((message) => message.startsWith('Skipped credential'));
+		.filter((message) => message.startsWith('Skipping credential'));
 	expect(skipped).toEqual([
-		expect.stringContaining('"new-github"'),
-		expect.stringContaining('"retyped"'),
+		expect.stringContaining('new-github'),
+		expect.stringContaining('stored-github'),
+		expect.stringContaining('stored-basic'),
 	]);
 });
