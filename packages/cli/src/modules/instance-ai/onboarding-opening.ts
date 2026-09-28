@@ -47,27 +47,29 @@ export const ONBOARDING_OPENING: OnboardingOpening = {
 			required: true,
 			options: ['Executive/Owner', 'Support', 'Product & Design', 'Sales', 'IT', 'Engineering', 'Marketing'],
 		},
-		// The apps the agent itself offered for each team in the September 2026 persona runs, frozen
-		// here so the card needs no model turn. Sales and Marketing share the list the agent offered
-		// for "Sales & Marketing". `options` shows for a free-text team. `{{team}}` becomes the team
-		// from the signup survey ("in your Sales work"). Without one the words close up ("in your
-		// work"): no survey team, "Other", or the team step in the card.
+		// Per team, the 3 tools most typical of that team in the Cloud onboarding data (tools with an
+		// n8n node only), then the 4 apps that lead every team: Google Sheets, Gmail, WhatsApp and
+		// Telegram. The team tools come first so the personalization shows. `options` shows when no
+		// team is known (a free-text team, the survey's "Other"): the 7 apps users without a team add
+		// most. The card's "Something else" row is the eighth option. `{{team}}` becomes the team from
+		// the signup survey ("in your Sales work"). Without one the words close up ("in your work"):
+		// no survey team, "Other", or the team step in the card.
 		{
 			id: 'apps',
 			question: 'Which apps do you use most in your {{team}} work?',
 			type: 'multi',
 			required: true,
-			options: ['Gmail', 'Google Sheets', 'Slack', 'Google Calendar', 'Google Drive', 'Notion', 'Microsoft Outlook', 'Microsoft Teams', 'HubSpot', 'Airtable'],
+			options: ['Google Sheets', 'Gmail', 'Telegram', 'Google Drive', 'WhatsApp', 'Slack', 'Airtable'],
 			optionsByAnswer: {
 				questionId: 'team',
 				options: {
-					'Executive/Owner': ['Gmail', 'Google Sheets', 'Google Calendar', 'Slack', 'QuickBooks', 'Stripe', 'HubSpot', 'Notion', 'Shopify', 'WhatsApp'],
-					Support: ['Zendesk', 'Intercom', 'Freshdesk', 'Gmail', 'Slack', 'Jira', 'HubSpot', 'Notion', 'Google Sheets', 'Salesforce'],
-					'Product & Design': ['Figma', 'Notion', 'Slack', 'Jira', 'Linear', 'Google Sheets', 'Miro', 'Confluence', 'Airtable', 'Trello'],
-					Sales: ['HubSpot', 'Salesforce', 'Gmail', 'Google Sheets', 'Slack', 'Mailchimp', 'LinkedIn', 'Notion', 'Google Calendar', 'Microsoft Outlook'],
-					IT: ['Slack', 'Microsoft Teams', 'Google Workspace', 'Microsoft 365', 'Jira', 'ServiceNow', 'Okta', 'PagerDuty', 'GitHub', 'AWS'],
-					Engineering: ['GitHub', 'GitLab', 'Jira', 'Linear', 'Slack', 'Google Sheets', 'Notion', 'AWS', 'PostgreSQL', 'PagerDuty'],
-					Marketing: ['HubSpot', 'Salesforce', 'Gmail', 'Google Sheets', 'Slack', 'Mailchimp', 'LinkedIn', 'Notion', 'Google Calendar', 'Microsoft Outlook'],
+					'Executive/Owner': ['Google Calendar', 'LinkedIn', 'Slack', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					Support: ['Zendesk', 'Intercom', 'Slack', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					'Product & Design': ['Linear', 'Notion', 'Supabase', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					Sales: ['HubSpot', 'Salesforce', 'LinkedIn', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					IT: ['Slack', 'Microsoft Teams', 'Jira', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					Engineering: ['GitHub', 'Jira', 'Linear', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
+					Marketing: ['Facebook', 'LinkedIn', 'YouTube', 'Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'],
 				},
 			},
 		},

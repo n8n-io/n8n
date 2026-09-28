@@ -12,6 +12,7 @@ import type { DurableEventLog } from '../event-bus/durable-event-log';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from '../onboarding';
+import { ONBOARDING_OPENING } from '../onboarding-opening';
 import type { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
 const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
@@ -170,5 +171,25 @@ describe('startsOnboardingFirstTurn', () => {
 		[false, 'free text on another card', 'req-1', freeTextAnswer],
 	])('returns %s for %s', (expected, _label, requestId, request) => {
 		expect(startsOnboardingFirstTurn(requestId, request)).toBe(expected);
+	});
+});
+
+describe('ONBOARDING_OPENING apps step', () => {
+	const team = ONBOARDING_OPENING.questions.find((question) => question.id === 'team');
+	const apps = ONBOARDING_OPENING.questions.find((question) => question.id === 'apps');
+	const universal = ['Google Sheets', 'Gmail', 'WhatsApp', 'Telegram'];
+
+	it('lists 7 apps for an unknown team', () => {
+		expect(apps?.options).toHaveLength(7);
+	});
+
+	it('lists 3 team tools and then the 4 universal apps for every team', () => {
+		const byTeam = apps?.optionsByAnswer?.options ?? {};
+		expect(Object.keys(byTeam).sort()).toEqual([...(team?.options ?? [])].sort());
+		for (const options of Object.values(byTeam)) {
+			expect(options).toHaveLength(7);
+			expect(new Set(options).size).toBe(7);
+			expect(options.slice(3)).toEqual(universal);
+		}
 	});
 });
