@@ -7,7 +7,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
-import { AgentExecutionMessage } from '../entities/agent-execution-message.entity';
+import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentMessageEntity, type AgentMessageOrigin } from '../entities/agent-message.entity';
 import { AgentResourceEntity } from '../entities/agent-resource.entity';
@@ -63,7 +63,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			modelContextAt: null,
 		});
 		await manager.save(message);
-		await manager.insert(AgentExecutionMessage, {
+		await manager.insert(AgentExecutionMessageLink, {
 			executionId: params.executionId,
 			messageId: message.id,
 			direction: 'input',
@@ -79,7 +79,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		ctx: OperationContext,
 	): Promise<string[]> {
 		const manager = this.managerFor(ctx);
-		const inputs = await manager.find(AgentExecutionMessage, {
+		const inputs = await manager.find(AgentExecutionMessageLink, {
 			where: { executionId: predecessorId, direction: 'input' },
 			order: { position: 'ASC' },
 		});
@@ -88,7 +88,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			throw new UnexpectedError('The preceding execution does not belong to this session');
 		}
 		await manager.insert(
-			AgentExecutionMessage,
+			AgentExecutionMessageLink,
 			inputs.map(({ messageId, position }) => ({
 				executionId,
 				messageId,
@@ -102,7 +102,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	async findExecutionInputs(executionIds: string[]): Promise<Map<string, AgentMessageEntity[]>> {
 		const inputs = new Map<string, AgentMessageEntity[]>();
 		for (const ids of chunkIds(executionIds)) {
-			const links = await this.manager.find(AgentExecutionMessage, {
+			const links = await this.manager.find(AgentExecutionMessageLink, {
 				where: { executionId: In(ids), direction: 'input' },
 				relations: { message: true },
 				order: { position: 'ASC' },
@@ -142,7 +142,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 					message,
 				]),
 			);
-			const inputLinks = await manager.findBy(AgentExecutionMessage, {
+			const inputLinks = await manager.findBy(AgentExecutionMessageLink, {
 				messageId: In(ids),
 				direction: 'input',
 			});
@@ -158,7 +158,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			);
 			await manager.save(messages);
 			if (!params.executionId) return;
-			const executionLinks = await manager.find(AgentExecutionMessage, {
+			const executionLinks = await manager.find(AgentExecutionMessageLink, {
 				where: { executionId: params.executionId },
 				order: { position: 'ASC' },
 			});
@@ -168,7 +168,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			const outputIds = new Set(outputs.map(({ messageId }) => messageId));
 			let position = (outputs.at(-1)?.position ?? -1) + 1;
 			const links: Array<
-				Pick<AgentExecutionMessage, 'executionId' | 'messageId' | 'direction' | 'position'>
+				Pick<AgentExecutionMessageLink, 'executionId' | 'messageId' | 'direction' | 'position'>
 			> = [];
 			for (const { id } of messages) {
 				if (inputIds.has(id) || outputIds.has(id)) continue;
@@ -180,7 +180,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 				});
 				outputIds.add(id);
 			}
-			if (links.length > 0) await manager.insert(AgentExecutionMessage, links);
+			if (links.length > 0) await manager.insert(AgentExecutionMessageLink, links);
 		});
 	}
 
@@ -220,7 +220,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	async discardRuntimeInput(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
 		await this.runInTransaction({}, async (manager) => {
-			const inputs = await manager.findBy(AgentExecutionMessage, {
+			const inputs = await manager.findBy(AgentExecutionMessageLink, {
 				messageId: In(ids),
 				direction: 'input',
 			});

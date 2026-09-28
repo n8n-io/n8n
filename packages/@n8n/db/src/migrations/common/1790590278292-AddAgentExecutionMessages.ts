@@ -15,7 +15,7 @@ export class AddAgentExecutionMessages1790590278292 implements ReversibleMigrati
 			`CREATE INDEX ${escape.indexName('agents_messages_model_context')}
 			ON ${escape.tableName('agents_messages')} (${escape.columnName('threadId')}, COALESCE(${escape.columnName('modelContextAt')}, ${escape.columnName('createdAt')}), ${escape.columnName('id')})`,
 		);
-		await createTable('agent_execution_messages')
+		await createTable('agent_execution_message_links')
 			.withColumns(
 				column('executionId')
 					.varchar(36)
@@ -87,7 +87,7 @@ export class AddAgentExecutionMessages1790590278292 implements ReversibleMigrati
 		escape,
 		runQuery,
 	}: MigrationContext) {
-		await dropTable('agent_execution_messages');
+		await dropTable('agent_execution_message_links');
 		await runQuery(`DROP INDEX ${escape.indexName('agents_messages_model_context')}`);
 		const columns = ['author', 'origin', 'modelContent', 'modelContextAt'];
 		if (isSqlite) {

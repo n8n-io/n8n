@@ -5,7 +5,7 @@ import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionMessage } from '../entities/agent-execution-message.entity';
+import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
@@ -133,7 +133,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		const input = `CASE WHEN input.messageId IS NULL THEN e.userMessage WHEN CAST(${hidden} AS TEXT) IN ('true', '1') THEN NULL ELSE ${originalText} END`;
 		const candidates = this.createQueryBuilder('e')
 			.leftJoin(
-				AgentExecutionMessage,
+				AgentExecutionMessageLink,
 				'input',
 				"input.executionId = e.id AND input.direction = 'input' AND input.position = 0",
 			)

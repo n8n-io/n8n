@@ -1,4 +1,4 @@
-# public.agent_execution_messages
+# public.agent_execution_message_links
 
 ## Columns
 
@@ -14,33 +14,33 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_execution_messages_direction | CHECK | CHECK (((direction)::text = ANY ((ARRAY['input'::character varying, 'output'::character varying])::text[]))) |
-| FK_697a82b4353f58c123158c0e313 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) ON DELETE CASCADE |
-| FK_bed773bffca0fccb28c0a69bc5f | FOREIGN KEY | FOREIGN KEY ("messageId") REFERENCES agents_messages(id) ON DELETE CASCADE |
-| PK_45f96d268b4d681b06a53401ff9 | PRIMARY KEY | PRIMARY KEY ("executionId", "messageId") |
-| agent_execution_messages_createdAt_not_null | n | NOT NULL "createdAt" |
-| agent_execution_messages_direction_not_null | n | NOT NULL direction |
-| agent_execution_messages_executionId_not_null | n | NOT NULL "executionId" |
-| agent_execution_messages_messageId_not_null | n | NOT NULL "messageId" |
-| agent_execution_messages_position_not_null | n | NOT NULL "position" |
+| CHK_agent_execution_message_links_direction | CHECK | CHECK (((direction)::text = ANY ((ARRAY['input'::character varying, 'output'::character varying])::text[]))) |
+| FK_be7d0a2fd1360c9fa09baf84f60 | FOREIGN KEY | FOREIGN KEY ("messageId") REFERENCES agents_messages(id) ON DELETE CASCADE |
+| FK_e78f470a036d01f9e395d53bb59 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) ON DELETE CASCADE |
+| PK_cf07f3f98aad61dbb08fac1cdb9 | PRIMARY KEY | PRIMARY KEY ("executionId", "messageId") |
+| agent_execution_message_links_createdAt_not_null | n | NOT NULL "createdAt" |
+| agent_execution_message_links_direction_not_null | n | NOT NULL direction |
+| agent_execution_message_links_executionId_not_null | n | NOT NULL "executionId" |
+| agent_execution_message_links_messageId_not_null | n | NOT NULL "messageId" |
+| agent_execution_message_links_position_not_null | n | NOT NULL "position" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_2d854a0343f0350c98f299d7b5 | CREATE UNIQUE INDEX "IDX_2d854a0343f0350c98f299d7b5" ON public.agent_execution_messages USING btree ("executionId", direction, "position") |
-| IDX_bed773bffca0fccb28c0a69bc5 | CREATE INDEX "IDX_bed773bffca0fccb28c0a69bc5" ON public.agent_execution_messages USING btree ("messageId") |
-| PK_45f96d268b4d681b06a53401ff9 | CREATE UNIQUE INDEX "PK_45f96d268b4d681b06a53401ff9" ON public.agent_execution_messages USING btree ("executionId", "messageId") |
+| IDX_10fe500ee8877351841799369b | CREATE UNIQUE INDEX "IDX_10fe500ee8877351841799369b" ON public.agent_execution_message_links USING btree ("executionId", direction, "position") |
+| IDX_be7d0a2fd1360c9fa09baf84f6 | CREATE INDEX "IDX_be7d0a2fd1360c9fa09baf84f6" ON public.agent_execution_message_links USING btree ("messageId") |
+| PK_cf07f3f98aad61dbb08fac1cdb9 | CREATE UNIQUE INDEX "PK_cf07f3f98aad61dbb08fac1cdb9" ON public.agent_execution_message_links USING btree ("executionId", "messageId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.agent_execution_messages" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
-"public.agent_execution_messages" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 
-"public.agent_execution_messages" {
+"public.agent_execution_message_links" {
   timestamp_3__with_time_zone createdAt
   varchar_6_ direction
   varchar_36_ executionId FK

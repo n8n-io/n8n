@@ -159,7 +159,7 @@ describe('AddAgentExecutionMessages migration', () => {
 		await context.queryRunner.release();
 		await runSingleMigration(MIGRATION_NAME);
 		context = createTestMigrationContext(dataSource);
-		expect(await rows('agent_execution_messages')).toEqual([]);
+		expect(await rows('agent_execution_message_links')).toEqual([]);
 		for (const message of messages) {
 			expect(await rows('agents_messages')).toContainEqual({
 				...message,
@@ -202,29 +202,31 @@ describe('AddAgentExecutionMessages migration', () => {
 			...timestamps,
 		});
 		const input = { executionId, messageId, direction: 'input', position: 0 };
-		await insert('agent_execution_messages', input);
-		await expect(insert('agent_execution_messages', { ...input, position: 1 })).rejects.toThrow();
+		await insert('agent_execution_message_links', input);
 		await expect(
-			insert('agent_execution_messages', { ...input, direction: 'output' }),
+			insert('agent_execution_message_links', { ...input, position: 1 }),
 		).rejects.toThrow();
 		await expect(
-			insert('agent_execution_messages', { ...input, messageId: outputId }),
+			insert('agent_execution_message_links', { ...input, direction: 'output' }),
 		).rejects.toThrow();
 		await expect(
-			insert('agent_execution_messages', { ...input, executionId: randomUUID() }),
+			insert('agent_execution_message_links', { ...input, messageId: outputId }),
 		).rejects.toThrow();
 		await expect(
-			insert('agent_execution_messages', { ...input, messageId: randomUUID(), position: 1 }),
+			insert('agent_execution_message_links', { ...input, executionId: randomUUID() }),
 		).rejects.toThrow();
 		await expect(
-			insert('agent_execution_messages', {
+			insert('agent_execution_message_links', { ...input, messageId: randomUUID(), position: 1 }),
+		).rejects.toThrow();
+		await expect(
+			insert('agent_execution_message_links', {
 				...input,
 				messageId: outputId,
 				direction: 'invalid',
 				position: 1,
 			}),
 		).rejects.toThrow();
-		await insert('agent_execution_messages', {
+		await insert('agent_execution_message_links', {
 			...input,
 			messageId: outputId,
 			direction: 'output',
@@ -233,7 +235,7 @@ describe('AddAgentExecutionMessages migration', () => {
 			`DELETE FROM ${context.escape.tableName('agents_messages')} WHERE ${context.escape.columnName('id')} = :id`,
 			{ id: outputId },
 		);
-		expect(await rows('agent_execution_messages')).toHaveLength(1);
+		expect(await rows('agent_execution_message_links')).toHaveLength(1);
 		const nextExecutionId = randomUUID();
 		await insert('agent_execution', {
 			id: nextExecutionId,
@@ -241,18 +243,18 @@ describe('AddAgentExecutionMessages migration', () => {
 			status: 'success',
 			...timestamps,
 		});
-		await insert('agent_execution_messages', { ...input, executionId: nextExecutionId });
+		await insert('agent_execution_message_links', { ...input, executionId: nextExecutionId });
 		await context.runQuery(
 			`DELETE FROM ${context.escape.tableName('agent_execution')} WHERE ${context.escape.columnName('id')} = :id`,
 			{ id: nextExecutionId },
 		);
-		expect(await rows('agent_execution_messages')).toHaveLength(1);
+		expect(await rows('agent_execution_message_links')).toHaveLength(1);
 
 		await context.queryRunner.release();
 		await dataSource.undoLastMigration({ transaction: 'each' });
 		context = createTestMigrationContext(dataSource);
 		expect(
-			await context.queryRunner.hasTable(`${context.tablePrefix}agent_execution_messages`),
+			await context.queryRunner.hasTable(`${context.tablePrefix}agent_execution_message_links`),
 		).toBe(false);
 		expect(new Set(await rows('agents_messages'))).toEqual(new Set(messages));
 		for (const [table, snapshot] of snapshots) {
@@ -262,6 +264,6 @@ describe('AddAgentExecutionMessages migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 		context = createTestMigrationContext(dataSource);
 		expect(await rows('agents_messages')).toHaveLength(2);
-		expect(await rows('agent_execution_messages')).toEqual([]);
+		expect(await rows('agent_execution_message_links')).toEqual([]);
 	});
 });

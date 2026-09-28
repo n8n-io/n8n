@@ -13,7 +13,7 @@
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_messages](public.agent_execution_messages.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -57,7 +57,7 @@
 ```mermaid
 erDiagram
 
-"public.agent_execution_messages" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
@@ -85,7 +85,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text userMessage
 }
-"public.agent_execution_messages" {
+"public.agent_execution_message_links" {
   timestamp_3__with_time_zone createdAt
   varchar_6_ direction
   varchar_36_ executionId FK

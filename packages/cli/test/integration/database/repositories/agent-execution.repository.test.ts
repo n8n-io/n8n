@@ -51,7 +51,7 @@ import {
 } from '@/modules/agents/agent-message-queue.service';
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
-import { AgentExecutionMessage } from '@/modules/agents/entities/agent-execution-message.entity';
+import { AgentExecutionMessageLink } from '@/modules/agents/entities/agent-execution-message-link.entity';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
 import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
@@ -884,7 +884,7 @@ describe('AgentExecutionRepository', () => {
 		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
 		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
 		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
-		const links = await repository.manager.find(AgentExecutionMessage, {
+		const links = await repository.manager.find(AgentExecutionMessageLink, {
 			order: { position: 'ASC' },
 		});
 		const inputs = links.filter(({ direction }) => direction === 'input');
@@ -935,11 +935,11 @@ describe('AgentExecutionRepository', () => {
 		const [legacy] = await repository.findByThreadIdOrdered(fixture.threadId);
 		// Pre-migration executions and checkpoints have no exact message links.
 		await repository.update(legacy.id, { userMessage: 'Start' });
-		await repository.manager.delete(AgentExecutionMessage, { executionId: legacy.id });
+		await repository.manager.delete(AgentExecutionMessageLink, { executionId: legacy.id });
 		const { outcomes } = await resumeApprovalFromSeparateConnections(fixture);
 		expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
 		expect(fixture.action).toHaveBeenCalledOnce();
-		expect(await repository.manager.count(AgentExecutionMessage)).toBe(0);
+		expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
 		const detail = await fixture.executionService.getThreadDetail(
 			fixture.threadId,
 			projectId,
@@ -1389,7 +1389,7 @@ describe('AgentExecutionRepository', () => {
 			failedLink.mockRestore();
 			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
 			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
-			expect(await repository.manager.count(AgentExecutionMessage)).toBe(0);
+			expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
 			expect(await repository.countBy({ threadId })).toBe(0);
 			expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
 				executionId: null,
@@ -1781,7 +1781,7 @@ describe('AgentExecutionRepository', () => {
 			await services.executionService.deleteThread(projectId, agentId, threadId, viewerId),
 		).toBe(true);
 		expect(await services.messageRepository.countBy({ threadId })).toBe(0);
-		expect(await repository.manager.count(AgentExecutionMessage)).toBe(0);
+		expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
 		expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
 			[attachment.binaryDataId],
 			{ threadId },
@@ -1822,7 +1822,7 @@ describe('AgentExecutionRepository', () => {
 		await memory.saveMessages({ ...scope, messages: [input, output] });
 		await memory.saveMessages({ ...scope, messages: [later, output, input] });
 		expect((await messageRepository.findOneByOrFail({ id: inputId })).modelContent).toBeNull();
-		const links = await repository.manager.find(AgentExecutionMessage, {
+		const links = await repository.manager.find(AgentExecutionMessageLink, {
 			where: { executionId: admission.executionId },
 			order: { direction: 'ASC', position: 'ASC' },
 		});

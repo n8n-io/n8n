@@ -7,7 +7,7 @@
 | author | json |  | true |  |  | Original message author supplied by the chat platform |
 | content | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_messages](public.agent_execution_messages.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) |  |  |
 | modelContent | json |  | true |  |  | Enriched model input when it differs from the original content |
 | modelContextAt | timestamp(3) with time zone |  | true |  |  | Runtime ordering timestamp. NULL inputs are excluded from model context |
 | origin | json |  | true |  |  | Source identifiers and transcript visibility. NULL for legacy or SDK-only messages |
@@ -46,7 +46,7 @@
 ```mermaid
 erDiagram
 
-"public.agent_execution_messages" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agents_memory_entry_candidates" }o--o| "public.agents_messages" : "FOREIGN KEY (#quot;sourceMessageId#quot;) REFERENCES agents_messages(id) ON DELETE SET NULL"
 "public.agents_messages" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 
@@ -64,7 +64,7 @@ erDiagram
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
-"public.agent_execution_messages" {
+"public.agent_execution_message_links" {
   timestamp_3__with_time_zone createdAt
   varchar_6_ direction
   varchar_36_ executionId FK

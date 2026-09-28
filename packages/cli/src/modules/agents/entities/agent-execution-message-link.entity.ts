@@ -5,10 +5,15 @@ import type { Relation } from '@n8n/typeorm';
 import { AgentExecution } from './agent-execution.entity';
 import { AgentMessageEntity } from './agent-message.entity';
 
-@Entity({ name: 'agent_execution_messages' })
+/**
+ * Stores ordered input and output references for an execution.
+ * Continuations can reuse messages. Separate links let the database enforce
+ * foreign keys and unique positions without copying message content.
+ */
+@Entity({ name: 'agent_execution_message_links' })
 @Index(['executionId', 'direction', 'position'], { unique: true })
 @Index(['messageId'])
-export class AgentExecutionMessage extends WithCreatedAt {
+export class AgentExecutionMessageLink extends WithCreatedAt {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	executionId: string;
 

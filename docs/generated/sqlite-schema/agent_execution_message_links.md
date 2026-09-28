@@ -1,4 +1,4 @@
-# agent_execution_messages
+# agent_execution_message_links
 
 ## Description
 
@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution_messages" ("executionId" varchar(36) NOT NULL, "messageId" varchar(36) NOT NULL, "direction" varchar(6) NOT NULL, "position" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_execution_messages_direction" CHECK ("direction" IN ('input', 'output')), CONSTRAINT "FK_697a82b4353f58c123158c0e313" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE CASCADE, CONSTRAINT "FK_bed773bffca0fccb28c0a69bc5f" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE, PRIMARY KEY ("executionId", "messageId"))
+CREATE TABLE "agent_execution_message_links" ("executionId" varchar(36) NOT NULL, "messageId" varchar(36) NOT NULL, "direction" varchar(6) NOT NULL, "position" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_execution_message_links_direction" CHECK ("direction" IN ('input', 'output')), CONSTRAINT "FK_e78f470a036d01f9e395d53bb59" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE CASCADE, CONSTRAINT "FK_be7d0a2fd1360c9fa09baf84f60" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE, PRIMARY KEY ("executionId", "messageId"))
 ```
 
 </details>
@@ -30,25 +30,25 @@ CREATE TABLE "agent_execution_messages" ("executionId" varchar(36) NOT NULL, "me
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | executionId | PRIMARY KEY | PRIMARY KEY (executionId) |
 | messageId | PRIMARY KEY | PRIMARY KEY (messageId) |
-| sqlite_autoindex_agent_execution_messages_1 | PRIMARY KEY | PRIMARY KEY (executionId, messageId) |
+| sqlite_autoindex_agent_execution_message_links_1 | PRIMARY KEY | PRIMARY KEY (executionId, messageId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_2d854a0343f0350c98f299d7b5 | CREATE UNIQUE INDEX "IDX_2d854a0343f0350c98f299d7b5" ON "agent_execution_messages" ("executionId", "direction", "position")  |
-| IDX_bed773bffca0fccb28c0a69bc5 | CREATE INDEX "IDX_bed773bffca0fccb28c0a69bc5" ON "agent_execution_messages" ("messageId")  |
-| sqlite_autoindex_agent_execution_messages_1 | PRIMARY KEY (executionId, messageId) |
+| IDX_10fe500ee8877351841799369b | CREATE UNIQUE INDEX "IDX_10fe500ee8877351841799369b" ON "agent_execution_message_links" ("executionId", "direction", "position")  |
+| IDX_be7d0a2fd1360c9fa09baf84f6 | CREATE INDEX "IDX_be7d0a2fd1360c9fa09baf84f6" ON "agent_execution_message_links" ("messageId")  |
+| sqlite_autoindex_agent_execution_message_links_1 | PRIMARY KEY (executionId, messageId) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"agent_execution_messages" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution_messages" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
-"agent_execution_messages" {
+"agent_execution_message_links" {
   datetime_3_ createdAt
   varchar_6_ direction
   varchar_36_ executionId PK
