@@ -4,6 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { McpRegistryDiscoveryResponse, McpRegistryServerResponse } from '@n8n/api-types';
 import type { McpToolSettings } from '@/features/shared/toolsConnection/types';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import {
 	type AgentRegistryMcpModalData,
@@ -96,6 +98,38 @@ describe('useAgentRegistryMcpConfig', () => {
 			}),
 		);
 
+		scope.stop();
+	});
+
+	it('rediscovers after the credential modal closes', async () => {
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				vi.fn(),
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+		discoverRegistry.mockClear();
+
+		const uiStore = useUIStore();
+		uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+		await flushPromises();
+
+		expect(discoverRegistry).toHaveBeenCalledOnce();
+		expect(discoverRegistry).toHaveBeenCalledWith('github', 'credential-1');
 		scope.stop();
 	});
 });

@@ -5,7 +5,8 @@ import type {
 } from '@n8n/api-types';
 import { computed, effectScope, onScopeDispose, ref, watch, type ComputedRef } from 'vue';
 
-import { useUIStore } from '@/app/stores/ui.store';
+import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
@@ -242,13 +243,18 @@ export function useAgentRegistryMcpConfig(
 	credentialListeners.run(() => {
 		listenForCredentialChanges({
 			store: credentialsStore,
-			onCredentialUpdated: (credential) => {
-				if (draftServer.value?.credential === credential.id) void discover();
-			},
 			onCredentialDeleted: (credentialId) => {
 				if (draftServer.value?.credential !== credentialId) return;
 				data.value?.onRemove?.();
 				onCredentialDeleted();
+			},
+		});
+		listenForModalChanges({
+			store: uiStore,
+			onModalClosed: (modalName) => {
+				if (modalName === CREDENTIAL_EDIT_MODAL_KEY && draftServer.value?.credential) {
+					void discover();
+				}
 			},
 		});
 	});
