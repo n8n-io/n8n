@@ -171,13 +171,11 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
+					<!-- Closed reviews take no new comments (the backend 409s) -->
+					<template v-if="review.state === 'open'" #composer>
+						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
+					</template>
 				</WorkflowReviewActivityFeed>
-
-				<!-- Closed reviews take no new comments (the backend 409s) -->
-				<WorkflowReviewCommentComposer
-					v-if="review.state === 'open'"
-					:can-comment="viewerCanComment"
-				/>
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
@@ -251,8 +249,7 @@ const tabOptions = computed(() => [
 	overflow: auto;
 }
 
-/* Separate from `.panel`: the feed brings its own scroll container, and the
-	composer must stay out of it. */
+/* Separate from `.panel`: the feed brings its own scroll container. */
 .activityPanel {
 	display: flex;
 	flex-direction: column;

@@ -237,7 +237,7 @@ describe('step execution (integration)', () => {
 		expect(step?.outputs).toBeNull();
 	});
 
-	it('suspends a step that declares a wait, leaving the execution running', async () => {
+	it('suspends a step that declares a wait, and reports the execution as waiting', async () => {
 		const waitGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -269,7 +269,7 @@ describe('step execution (integration)', () => {
 		});
 
 		// nothing settled the step, so the execution has no outcome to record
-		expect(execution.status).toBe('running');
+		expect(execution.status).toBe('waiting');
 		expect(execution.finishedAt).toBeNull();
 
 		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');

@@ -15,21 +15,10 @@ import {
 } from '../../shared/middlewares/global.middleware';
 
 type SsoOidcHandlers = {
-	getOidcConfiguration: PublicAPIEndpoint<SsoOidcRequest.Get>;
 	setOidcConfiguration: PublicAPIEndpoint<SsoOidcRequest.Set>;
 };
 
 const ssoOidcHandlers: SsoOidcHandlers = {
-	getOidcConfiguration: [
-		isLicensed('feat:oidc'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'oidc:manage' }),
-		async (_req, res) => {
-			const config = await Container.get(OidcService).loadConfig();
-
-			return res.json(toOidcConfigurationResponse(config));
-		},
-	],
-
 	setOidcConfiguration: [
 		isLicensed('feat:oidc'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'oidc:manage' }),

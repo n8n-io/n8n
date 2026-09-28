@@ -6,8 +6,7 @@ import type {
 	McpClientConnectedPeriod,
 	McpClientTypeFilter,
 } from '@n8n/api-types';
-import type { WorkflowListItem } from '@/Interface';
-import type { Agent } from '@/features/agents/agent.types';
+import type { McpAgent, McpWorkflow } from './mcp.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
@@ -134,7 +133,7 @@ export async function deleteOAuthClient(
 export async function fetchMcpEligibleWorkflows(
 	context: IRestApiContext,
 	options?: { take?: number; skip?: number; query?: string },
-): Promise<{ count: number; data: WorkflowListItem[] }> {
+): Promise<{ count: number; data: McpWorkflow[] }> {
 	const params: Record<string, string | number> = {};
 
 	if (options?.take !== undefined) {
@@ -147,7 +146,24 @@ export async function fetchMcpEligibleWorkflows(
 		params.filter = JSON.stringify({ query: options.query });
 	}
 
-	return await getFullApiResponse<WorkflowListItem[]>(context, 'GET', '/mcp/workflows', params);
+	return await getFullApiResponse<McpWorkflow[]>(context, 'GET', '/mcp/workflows', params);
+}
+
+/**
+ * Workflows already exposed to MCP, newest first. Uses the generic list endpoint:
+ * `/mcp/workflows` returns only workflows that are not exposed yet.
+ */
+export async function fetchMcpExposedWorkflows(
+	context: IRestApiContext,
+	options: { skip: number; take: number },
+): Promise<{ count: number; data: McpWorkflow[] }> {
+	return await getFullApiResponse<McpWorkflow[]>(context, 'GET', '/workflows', {
+		includeScopes: true,
+		filter: { isArchived: false, availableInMCP: true },
+		skip: options.skip,
+		take: options.take,
+		sortBy: 'updatedAt:desc',
+	});
 }
 
 /**
@@ -168,7 +184,7 @@ export async function toggleAgentsMcpAccessApi(
 export async function fetchMcpAgents(
 	context: IRestApiContext,
 	options?: { take?: number; skip?: number; query?: string; availableInMCP?: boolean },
-): Promise<{ count: number; data: Agent[] }> {
+): Promise<{ count: number; data: McpAgent[] }> {
 	const params: Record<string, string | number> = {};
 	const query = options?.query?.trim();
 	const filter = {
@@ -186,5 +202,5 @@ export async function fetchMcpAgents(
 		params.filter = JSON.stringify(filter);
 	}
 
-	return await getFullApiResponse<Agent[]>(context, 'GET', '/mcp/agents', params);
+	return await getFullApiResponse<McpAgent[]>(context, 'GET', '/mcp/agents', params);
 }
