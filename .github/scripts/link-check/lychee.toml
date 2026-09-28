@@ -56,8 +56,9 @@ exclude = [
 	'^https://www\.reddit\.com/.*\.json$',
 	# A URL prefix that the editor appends package names to.
 	'^https://www\.npmjs\.com/package/$',
-	# A Vercel bot checkpoint blocks GitHub runners, also in a browser.
+	# Bot checks block GitHub runners, also in a browser.
 	'^https://www\.contentful\.com/',
+	'^https://postgrest\.org/',
 	# Private to n8n employees.
 	'^https://n8nio\.slack\.com/',
 	'^https://github\.com/n8n-io/license-management',
