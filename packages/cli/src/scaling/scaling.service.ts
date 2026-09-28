@@ -522,8 +522,11 @@ export class ScalingService {
 					 * We track the result received via `job-finished` message,
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
+					 *
+					 * Bull broadcasts this message to every main and webhook process,
+					 * but only the process that enqueued the job ever pops the result.
 					 */
-					if (msg.version === 2) {
+					if (msg.version === 2 && this.activeExecutions.has(msg.executionId)) {
 						this.jobResults.set(msg.executionId, {
 							success: msg.success,
 							error: msg.error,
