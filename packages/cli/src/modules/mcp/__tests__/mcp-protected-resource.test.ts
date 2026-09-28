@@ -168,6 +168,15 @@ describe('McpProtectedResource', () => {
 			]);
 		});
 
+		it('advertises the preferences write scope with its three tools', async () => {
+			expect(resource.scopes).toContain('aiPreference:write');
+			expect((await resource.getScopeTools())['aiPreference:write']).toEqual([
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
+			]);
+		});
+
 		// The flag is per-user PostHog and unreachable from the descriptor, so the scope is
 		// offered to everyone; granting it yields no tool until the flag is on.
 		it('keeps advertising the preferences scope regardless of the builder', async () => {

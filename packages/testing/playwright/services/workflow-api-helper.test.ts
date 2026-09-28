@@ -137,3 +137,43 @@ describe('WorkflowApiHelper.runManually engine routing', () => {
 		});
 	});
 });
+
+describe('WorkflowApiHelper.assertLatestExecutionRoutedToEngine', () => {
+	function apiListing(executionIds: string[], options: ApiHelpers['options']) {
+		const get = vi.fn().mockResolvedValue({
+			ok: () => true,
+			json: async () => ({ data: { results: executionIds.map((id) => ({ id })) } }),
+		});
+		return { api: { request: { get }, options } as unknown as ApiHelpers, get };
+	}
+
+	test('rejects a legacy id on the latest execution when the stack routes to engine 2.0', async () => {
+		const { api, get } = apiListing(['1783'], { workflowSettings: { engineType: 'v2' } });
+
+		await expect(
+			new WorkflowApiHelper(api).assertLatestExecutionRoutedToEngine('wf-1'),
+		).rejects.toThrow(/1783[\s\S]*settings\.engineType/);
+
+		// The one-row limit is what makes the row the latest execution of that workflow.
+		const [url, { params }] = get.mock.calls[0] as [string, { params: URLSearchParams }];
+		expect(url).toBe('/rest/executions');
+		expect(params.get('filter')).toBe(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(params.get('limit')).toBe('1');
+	});
+
+	test('throws when the workflow has no execution to check', async () => {
+		const { api } = apiListing([], { workflowSettings: { engineType: 'v2' } });
+
+		await expect(
+			new WorkflowApiHelper(api).assertLatestExecutionRoutedToEngine('wf-1'),
+		).rejects.toThrow(/wf-1[\s\S]*no execution/);
+	});
+
+	test('does not read executions on a stack without engine 2.0', async () => {
+		const { api, get } = apiListing(['1783'], {});
+
+		await new WorkflowApiHelper(api).assertLatestExecutionRoutedToEngine('wf-1');
+
+		expect(get).not.toHaveBeenCalled();
+	});
+});

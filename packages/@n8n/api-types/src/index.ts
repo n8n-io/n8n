@@ -354,11 +354,6 @@ export {
 } from './schemas/secrets-provider.schema';
 
 export {
-	communityPackageResponseSchema,
-	type CommunityPackageResponse,
-} from './schemas/community-package.schema';
-
-export {
 	publicApiCredentialResponseSchema,
 	type PublicApiCredentialResponse,
 } from './schemas/credential-response.schema';
@@ -851,6 +846,10 @@ export {
 	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+} from './constants/canvas-feature-flags';
 export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,

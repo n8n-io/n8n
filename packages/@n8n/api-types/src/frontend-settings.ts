@@ -177,6 +177,8 @@ export interface FrontendSettings {
 		};
 	};
 	workflowsAutosaveDisabled: boolean;
+	workflowsGroupsWithTriggersEnabled: boolean;
+	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
@@ -195,6 +197,7 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
+		cloudUbbEnabled: boolean;
 	};
 	aiBuilder: {
 		enabled: boolean;

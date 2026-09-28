@@ -4,6 +4,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { N8nClient } from '../client';
 import PromotionConnectionApply from '../commands/promotion-connection/apply';
 import PromotionConnectionPromote from '../commands/promotion-connection/promote';
+import PromotionConnectionPromoteSelection from '../commands/promotion-connection/promote-selection';
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
 interface OperationInternals {
@@ -89,6 +90,66 @@ describe('promotion-connection apply command', () => {
 			'Applied release at commit def5678 to the instance.',
 			expect.anything(),
 			APPLY_RESULT,
+		);
+	});
+});
+
+describe('promotion-connection promote-selection command', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('sends the project id and workflow ids, and names the branch it pushed to', async () => {
+		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const internals = command as unknown as OperationInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { workflow: ['wf-1', 'wf-2'] },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		// `-w` values travel as the `workflowIds` array, with no message flag set.
+		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		// A selection can be deletions only, so the summary names the branch and
+		// commit instead of a workflow count that would read "0" for that case.
+		expect(succeed).toHaveBeenCalledWith(
+			'Promoted selection to main as commit abc1234.',
+			expect.anything(),
+			PROMOTE_RESULT,
+		);
+	});
+
+	it('passes the message flag as the commit message', async () => {
+		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const internals = command as unknown as OperationInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { workflow: ['wf-1'], message: 'Promote checkout flow' },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			['wf-1'],
+			'Promote checkout flow',
 		);
 	});
 });

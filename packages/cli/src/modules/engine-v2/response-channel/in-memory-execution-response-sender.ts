@@ -1,11 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse, ExecutionResponseSender, UndeliverableMessage } from '@n8n/engine';
-import { toResult } from '@n8n/utils/result';
+import type {
+	ExecutionResponse,
+	ExecutionResponseSender,
+	JsonValue,
+	ResponseEmitter,
+	UndeliverableMessage,
+} from '@n8n/engine';
+import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
 
 /** A response channel must be able to carry every frame this class produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;
+
+type FrameResult = { ok: true; frame: string } | { ok: false; frame: string; error: Error };
 
 export class InMemoryExecutionResponseSender implements ExecutionResponseSender {
 	private stopped = false;
@@ -16,17 +25,29 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		private readonly maxFrameBytes: number = MAX_FRAME_BYTES,
 	) {}
 
-	send(response: ExecutionResponse): void {
-		if (this.stopped) return;
+	send(response: ExecutionResponse): Result<void, Error> {
+		if (this.stopped) {
+			return createResultError(new UnexpectedError('The execution response sender has stopped.'));
+		}
 
-		this.channel.publish(response.executionId, this.toFrame(response));
+		const frameResult = this.toFrame(response);
+		this.channel.publish(response.executionId, frameResult.frame);
+
+		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
+	}
+
+	/** Gives one step a response sender without exposing execution routing. */
+	emitterFor(executionId: string): ResponseEmitter {
+		return {
+			send: (payload: JsonValue) => this.send({ type: 'response', executionId, payload }),
+		};
 	}
 
 	async stop(): Promise<void> {
 		this.stopped = true;
 	}
 
-	private toFrame(response: ExecutionResponse): string {
+	private toFrame(response: ExecutionResponse): FrameResult {
 		const serialized = toResult(() => JSON.stringify(response));
 		if (!serialized.ok) {
 			this.logger.warn('Could not serialize an execution response', {
@@ -51,14 +72,27 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 			});
 		}
 
-		return serialized.result;
+		return { ok: true, frame: serialized.result };
 	}
 
-	private undeliverableFrame(executionId: string, error: UndeliverableMessage['error']): string {
-		return JSON.stringify({
+	private undeliverableFrame(
+		executionId: string,
+		error: UndeliverableMessage['error'],
+	): FrameResult {
+		const frame = JSON.stringify({
 			type: 'undeliverable',
 			executionId,
 			error,
 		} satisfies UndeliverableMessage);
+
+		return {
+			ok: false,
+			frame,
+			error: new UnexpectedError(error.message, {
+				extra: {
+					code: error.code,
+				},
+			}),
+		};
 	}
 }

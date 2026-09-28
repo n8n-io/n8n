@@ -175,7 +175,11 @@ describe('router', () => {
 			const rbacStore = useRBACStore();
 			rbacStore.setGlobalScopes(['aiAssistant:manage']);
 
-			settingsStore.settings.aiAssistant = { enabled: assistantEnabled, setup: assistantEnabled };
+			settingsStore.settings.aiAssistant = {
+				enabled: assistantEnabled,
+				setup: assistantEnabled,
+				cloudUbbEnabled: false,
+			};
 			settingsStore.settings.aiBuilder = { enabled: builderEnabled, setup: builderEnabled };
 
 			await router.push(path);

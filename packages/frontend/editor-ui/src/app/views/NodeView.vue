@@ -219,7 +219,7 @@ const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
 
 // Initialize activity detection for collaboration
-useActivityDetection();
+useActivityDetection(collaborationStore);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,

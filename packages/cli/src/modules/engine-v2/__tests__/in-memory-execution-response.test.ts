@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
+import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
 import { InMemoryExecutionResponseChannel } from '../response-channel/in-memory-execution-response-channel';
 import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';
@@ -67,6 +68,36 @@ describe('in-memory execution responses', () => {
 				},
 			}),
 		);
+	});
+
+	it('stamps the execution ID on a response from a step', () => {
+		const channel = new InMemoryExecutionResponseChannel();
+		const publish = vi.spyOn(channel, 'publish');
+		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+
+		sender.emitterFor('exec-1').send({ ok: true });
+
+		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			JSON.stringify({ type: 'response', executionId: 'exec-1', payload: { ok: true } }),
+		);
+	});
+
+	it('delivers a base64 Buffer envelope unchanged', () => {
+		const channel = new InMemoryExecutionResponseChannel();
+		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const seen: ExecutionResponse[] = [];
+		receiver.receive('exec-1', (response) => seen.push(response));
+		const payload = {
+			body: { [ENCODED_BUFFER_KEY]: Buffer.from([0x00, 0xff, 0x10]).toString('base64') },
+			headers: { 'content-type': 'application/octet-stream' },
+			statusCode: 200,
+		};
+
+		sender.emitterFor('exec-1').send(payload);
+
+		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload }]);
 	});
 
 	it('validates a response before delivering it', () => {

@@ -115,6 +115,14 @@ describe('getAllowedToolNames', () => {
 		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
 	});
 
+	// The read tool does not ride along on the write grant: the consent screen shows them as
+	// two scopes, and a client that may write is expected to hold both.
+	it('resolves the preferences write scope to the save, update and undo tools only', () => {
+		expect(getAllowedToolNames(['aiPreference:write'])).toEqual(
+			new Set(['save_user_preference', 'update_user_preference', 'undo_user_preference']),
+		);
+	});
+
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
@@ -479,6 +487,59 @@ describe('McpService scope enforcement', () => {
 			});
 
 			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+	});
+
+	describe('preference write tools registration', () => {
+		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
+
+		it('registers the three write tools when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		it('registers none of them when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
+		});
+
+		it('registers them with the builder disabled, like the read tool', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		// A granted scope set is fixed at authorization, so a client that consented before the
+		// write scope existed cannot write until the user consents again.
+		it('keeps them out of reach of a grant that holds only the read scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:read'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('registers them, and not the read tool, for a write-only grant', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:write'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).not.toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).toContain(name);
 		});
 	});
 

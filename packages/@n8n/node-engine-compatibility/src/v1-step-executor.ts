@@ -17,6 +17,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
 	NodeRunResult,
@@ -61,6 +62,7 @@ export class V1StepExecutor implements IStepExecutor {
 		const additionalData = await this.deps.additionalDataFactory(
 			toAdditionalDataContext(request.context),
 		);
+		attachResponseHooks(additionalData, request);
 
 		const context = toV1ExecuteContext({
 			node,

@@ -399,6 +399,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.error = event.payload.error;
+				tc.interrupted = true;
 				tc.isLoading = false;
 				tc.completedAt = eventTimestamp(event);
 			}
@@ -539,12 +540,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
+				// An edit fact names a scope; an undo fact names none.
+				const namesScope = event.payload.scope !== undefined;
 				tc.preferenceCard = {
 					state: event.payload.state,
-					// An undo fact carries no content, so keep the last one a fact named. An
-					// edit then an undo must strike out the edited text, not the text the
-					// tool result still holds.
+					// An undo fact carries no content, scope or project, so keep the last ones a
+					// fact named. An edit then an undo must strike out the edited text, not the
+					// text the tool result still holds, and must still name where the row was.
 					content: event.payload.content ?? tc.preferenceCard?.content,
+					scope: event.payload.scope ?? tc.preferenceCard?.scope,
+					// A fact that names a scope also decides the project: `null` on a move out of
+					// a project must win over the project the last fact named, so `??` is wrong here.
+					projectId: namesScope ? (event.payload.projectId ?? null) : tc.preferenceCard?.projectId,
 				};
 			}
 			break;

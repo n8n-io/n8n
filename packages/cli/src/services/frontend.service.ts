@@ -297,12 +297,16 @@ export class FrontendService {
 				},
 			},
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
+			workflowsGroupsWithManyBoundariesEnabled:
+				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 				setup: false,
+				cloudUbbEnabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -574,6 +578,8 @@ export class FrontendService {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
+			this.settings.aiAssistant.cloudUbbEnabled =
+				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
 		if (isAiCreditsEnabled) {

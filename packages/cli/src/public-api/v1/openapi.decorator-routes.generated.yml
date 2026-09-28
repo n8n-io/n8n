@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /community-packages:
+    get:
+      $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
   /credential-type-policies/instance:
     get:
       $ref: ./handlers/credential-type-policies/spec/paths/getCredentialTypeInstancePolicy.generated.yml
@@ -204,6 +207,9 @@ paths:
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  /promotions/projects/{projectId}/promote:
+    post:
+      $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

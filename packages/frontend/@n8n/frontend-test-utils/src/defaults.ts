@@ -136,6 +136,8 @@ export const defaultSettings: FrontendSettings = {
 	workflowCallerPolicyDefaultOption: 'any',
 	excludeNodes: [],
 	workflowsAutosaveDisabled: false,
+	workflowsGroupsWithTriggersEnabled: false,
+	workflowsGroupsWithManyBoundariesEnabled: false,
 	variables: {
 		limit: -1,
 	},
@@ -166,6 +168,7 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 		setup: false,
+		cloudUbbEnabled: false,
 	},
 	aiCredits: {
 		enabled: false,

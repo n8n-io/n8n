@@ -1,4 +1,5 @@
 import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
@@ -261,6 +262,7 @@ export const stepRequest = (
 		iteration: 0,
 		callerContext: { hostMode: 'manual' },
 	},
+	respond: noopResponseEmitter,
 });
 
 export const testStepExecutor = (

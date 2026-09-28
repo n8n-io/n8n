@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { VariableModalOptions } from '@/features/settings/environments.ee/environments.types';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -436,14 +437,8 @@ const TrialIntroModal = defineAsyncComponent(
 		</ModalRoot>
 
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template
-				#default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any; projectId?: string } }"
-			>
-				<VariableModal
-					:mode="data?.mode ?? 'new'"
-					:variable="data?.variable"
-					:project-id="data?.projectId"
-				/>
+			<template #default="{ data }: { data: VariableModalOptions }">
+				<VariableModal v-bind="data" />
 			</template>
 		</ModalRoot>
 

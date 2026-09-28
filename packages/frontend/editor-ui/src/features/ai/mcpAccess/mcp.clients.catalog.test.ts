@@ -40,6 +40,13 @@ describe('getMcpClientCatalog', () => {
 		});
 	});
 
+	it('should prefill the server URL in the Mistral Vibe connector template link', () => {
+		const vibe = clients.find((client) => client.id === 'mistral-vibe');
+		const params = new URL(vibe!.addUrl!).searchParams;
+		expect(params.get('template')).toBe('n8n');
+		expect(params.get('server_url')).toBe(SERVER_URL);
+	});
+
 	it('should give every web client a connector URL and every CLI an install command', () => {
 		const web = catalog.find((group) => group.id === 'web')!;
 		for (const client of web.clients) expect(client.addUrl).toMatch(/^https:\/\//);

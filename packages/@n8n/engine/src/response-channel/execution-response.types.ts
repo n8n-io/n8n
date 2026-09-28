@@ -1,3 +1,4 @@
+import { createResultOk, type Result } from '@n8n/utils/result';
 import type { z } from 'zod';
 
 import type { executionResponseSchema } from './execution-response.schema';
@@ -28,3 +29,16 @@ export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliver
  * to look further.
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
+
+/** A message that a step produced a response */
+export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
+
+/** An emitter that allows the step execution to produce a response */
+export interface ResponseEmitter {
+	send(payload: unknown): Result<void, Error>;
+}
+
+/** For a step whose responses nobody wants. */
+export const noopResponseEmitter: ResponseEmitter = Object.freeze({
+	send: () => createResultOk(undefined),
+});
