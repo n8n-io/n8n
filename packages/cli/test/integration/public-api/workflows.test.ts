@@ -2202,6 +2202,20 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	// ADO-5929: The public create route must store the supplied workflow description.
+	test('should create workflow with a description', async () => {
+		const description = 'Sends a daily summary';
+		const response = await authMemberAgent
+			.post('/workflows')
+			.send({ ...mockPostWorkflowPayload(), description });
+
+		expect(response.statusCode, response.body.message).toBe(200);
+		expect(response.body.description).toBe(description);
+
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
+	});
+
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
