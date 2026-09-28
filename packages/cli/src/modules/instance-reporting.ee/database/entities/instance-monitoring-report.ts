@@ -1,5 +1,5 @@
 import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 /** One measurement in a report; the shape the receiver accepts. */
 export type InstanceReportDataPoint =
@@ -29,11 +29,18 @@ export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_
  * The retry state — {@link status}, {@link attempts} and {@link lastAttemptAt} —
  * lives here rather than in the scheduler's memory, so a restart resumes the
  * report's budget instead of granting a fresh one.
+ *
+ * At most one row is created per UTC day; see {@link reportDate}.
  */
 @Entity()
+@Index(['reportDate'], { unique: true, where: '"reportDate" IS NOT NULL' })
 export class InstanceMonitoringReport extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;
+
+	/** UTC day the report was created on, as `YYYY-MM-DD`; not a day it covers. */
+	@Column({ type: 'varchar', length: 10, nullable: true })
+	reportDate: string | null;
 
 	/** The data point array exactly as sent. */
 	@JsonColumn()
