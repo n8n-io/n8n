@@ -62,8 +62,6 @@ exclude = [
 	# Private to n8n employees.
 	'^https://n8nio\.slack\.com/',
 	'^https://github\.com/n8n-io/license-management',
-	# The API reference renders its anchors with JavaScript.
-	'^https://docs\.n8n\.io/api/api-reference/#',
 	# Attribution headers copied as-is from a third-party library.
 	'^http://(getsprink\.com|brett-zamir\.me)',
 	# The docs pages for these hidden nodes do not exist yet (DOC-2341).
