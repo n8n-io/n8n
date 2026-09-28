@@ -50,14 +50,6 @@ export type ResponseExpectation = z.infer<typeof responseExpectationSchema>;
 
 export type ResponseExpectationKind = ResponseExpectation['kind'];
 
-/** A step tried to respond, but the caller does not expect a step response. */
-export class ResponseNotExpectedError extends Error {
-	constructor(readonly kind: Exclude<ResponseExpectationKind, 'stepResponse'>) {
-		super(`The caller does not expect a step response (expectation: '${kind}')`);
-		this.name = 'ResponseNotExpectedError';
-	}
-}
-
 /** An emitter that allows the step execution to produce a response */
 export interface ResponseEmitter {
 	/**

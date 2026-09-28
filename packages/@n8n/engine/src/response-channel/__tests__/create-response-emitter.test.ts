@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createResponseEmitter } from '../create-response-emitter';
 import type { ExecutionResponseSender } from '../execution-response-sender';
-import { ResponseNotExpectedError } from '../execution-response.types';
+import { ResponseNotExpectedError } from '../response-not-expected.error';
 
 const newSender = (): ExecutionResponseSender => ({
 	send: vi.fn(() => ({ ok: true as const, result: undefined })),

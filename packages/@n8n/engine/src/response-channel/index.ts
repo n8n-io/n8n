@@ -6,7 +6,8 @@ export {
 	RESPONSE_EXPECTATION_KINDS,
 	responseExpectationSchema,
 } from './execution-response.schema';
-export { noopResponseEmitter, ResponseNotExpectedError } from './execution-response.types';
+export { noopResponseEmitter } from './execution-response.types';
+export { ResponseNotExpectedError } from './response-not-expected.error';
 export type {
 	EndedMessage,
 	ExecutionResponse,

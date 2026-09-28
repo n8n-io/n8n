@@ -68,7 +68,7 @@ export class StartExecutionService {
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
 			callerContext: request.callerContext,
-			responseExpectation: request.responseExpectation,
+			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

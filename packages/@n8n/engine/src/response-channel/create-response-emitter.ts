@@ -1,11 +1,8 @@
 import { createResultError, type Result } from '@n8n/utils/result';
 
 import type { ExecutionResponseSender } from './execution-response-sender';
-import {
-	ResponseNotExpectedError,
-	type ResponseEmitter,
-	type ResponseExpectation,
-} from './execution-response.types';
+import type { ResponseEmitter, ResponseExpectation } from './execution-response.types';
+import { ResponseNotExpectedError } from './response-not-expected.error';
 import type { JsonValue } from '../common';
 
 /**
