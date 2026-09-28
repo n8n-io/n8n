@@ -33,6 +33,7 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
@@ -434,6 +435,17 @@ export class ExecutionsPublicController {
 	}
 }
 
+function toPublicTracingContext(
+	tracingContext: unknown,
+): { traceparent: string; tracestate?: string } | null {
+	if (!isRecord(tracingContext)) return null;
+
+	const { traceparent, tracestate } = tracingContext;
+	if (typeof traceparent !== 'string' || traceparent.length === 0) return null;
+
+	return typeof tracestate === 'string' ? { traceparent, tracestate } : { traceparent };
+}
+
 function toBaseFields(execution: PublicExecution) {
 	return {
 		finished: execution.finished,
@@ -448,7 +460,7 @@ function toBaseFields(execution: PublicExecution) {
 		workflowId: execution.workflowId,
 		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
 		storedAt: execution.storedAt,
-		tracingContext: execution.tracingContext ?? null,
+		tracingContext: toPublicTracingContext(execution.tracingContext),
 		deduplicationKey: execution.deduplicationKey ?? null,
 		jsonSizeBytes: execution.jsonSizeBytes ?? 0,
 		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,

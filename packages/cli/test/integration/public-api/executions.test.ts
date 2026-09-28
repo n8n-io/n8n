@@ -139,6 +139,64 @@ describe('GET /executions/:id', () => {
 		expect(waitTill).toBeNull();
 	});
 
+	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+
+	test.each(['trigger', 'webhook', 'integrated'] as const)(
+		'should return a %s execution that carries a tracing context',
+		async (mode) => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{
+					finished: true,
+					status: 'success',
+					mode,
+					tracingContext: { traceparent },
+				},
+				workflow,
+			);
+
+			const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.mode).toBe(mode);
+			expect(response.body.tracingContext).toEqual({ traceparent });
+		},
+	);
+
+	test.each([
+		{
+			name: 'tracestate is null',
+			tracingContext: { traceparent, tracestate: null },
+			expected: { traceparent },
+		},
+		{
+			name: 'traceparent is missing',
+			tracingContext: {},
+			expected: null,
+		},
+	])(
+		'should return a webhook execution when the stored tracing context $name',
+		async ({ tracingContext, expected }) => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{
+					finished: true,
+					status: 'success',
+					mode: 'webhook',
+					tracingContext: tracingContext as unknown as ExecutionEntity['tracingContext'],
+				},
+				workflow,
+			);
+
+			const withoutData = await authOwnerAgent.get(`/executions/${execution.id}`);
+			const withData = await authOwnerAgent.get(`/executions/${execution.id}?includeData=true`);
+
+			expect(withoutData.statusCode).toBe(200);
+			expect(withData.statusCode).toBe(200);
+			expect(withoutData.body.tracingContext).toEqual(expected);
+		},
+	);
+
 	test('owner should be able to read executions of other users', async () => {
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
