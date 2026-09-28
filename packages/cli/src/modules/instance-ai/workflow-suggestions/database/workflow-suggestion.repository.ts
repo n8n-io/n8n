@@ -22,8 +22,16 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
 	}
 
-	async getSuggestion(id: string, ctx: OperationContext = {}) {
-		const suggestion = await this.managerFor(ctx).findOneBy(WorkflowSuggestion, { id });
+	async getSuggestion(
+		id: string,
+		scope: Pick<WorkflowSuggestion, 'workflowId' | 'projectId'>,
+		ctx: OperationContext = {},
+	) {
+		const suggestion = await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
+			id,
+			workflowId: scope.workflowId,
+			projectId: scope.projectId,
+		});
 		if (!suggestion) throw new NotFoundError('Suggestion not found.');
 		return suggestion;
 	}
@@ -55,13 +63,16 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 
 	async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
+		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
 		const workflow = await manager.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			...(manager.connection.options.type === 'postgres' && ctx.trx
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
+			// Allow transfer FK checks while the transfer holds the owner row.
+			...(lockRows ? { lock: { mode: 'for_no_key_update' as const } } : {}),
 		});
-		const owner = await manager.findOneBy(SharedWorkflow, { workflowId, role: 'workflow:owner' });
+		const owner = await manager.findOne(SharedWorkflow, {
+			where: { workflowId, role: 'workflow:owner' },
+			...(lockRows ? { lock: { mode: 'pessimistic_read' as const } } : {}),
+		});
 		return { workflow, projectId: owner?.projectId };
 	}
 

@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 
 import { WorkflowSuggestionsController } from '../workflow-suggestions.controller';
 
-it('requires project edit scope for every suggestion route', () => {
+it('requires workflow edit scope for every suggestion route', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		WorkflowSuggestionsController as never,
 	);

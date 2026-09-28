@@ -2,6 +2,7 @@ import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/a
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -38,11 +39,16 @@ export class WorkflowSuggestionCandidateService {
 			const allowed = await this.credentials.getCredentialsAUserCanUseInAWorkflow(user, {
 				workflowId,
 			});
-			Container.get(EnterpriseWorkflowService).validateWorkflowCredentialUsage(
-				candidate,
-				original,
-				allowed,
-			);
+			try {
+				Container.get(EnterpriseWorkflowService).validateWorkflowCredentialUsage(
+					candidate,
+					original,
+					allowed,
+				);
+			} catch (error) {
+				if (error instanceof NodeOperationError) throw new BadRequestError(error.message);
+				throw error;
+			}
 		}
 		WorkflowHelpers.addNodeIds(candidate);
 		WorkflowHelpers.resolveNodeWebhookIds(candidate, this.nodeTypes);

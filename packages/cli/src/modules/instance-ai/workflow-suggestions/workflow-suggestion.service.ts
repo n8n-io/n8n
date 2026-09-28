@@ -168,13 +168,16 @@ export class WorkflowSuggestionService {
 	async getProposal(
 		viewer: User,
 		projectId: string,
+		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionProposalDetail> {
 		this.requireEnabled();
-		const suggestion = await this.suggestions.getSuggestion(suggestionId);
-		if (suggestion.projectId !== projectId) throw new NotFoundError('Proposal not found.');
-		await this.requireEditor(viewer.id, suggestion.workflowId);
-		const current = await this.suggestions.readWorkflowTarget(suggestion.workflowId, {});
+		await this.requireEditor(viewer.id, workflowId);
+		const suggestion = await this.suggestions.getSuggestion(suggestionId, {
+			workflowId,
+			projectId,
+		});
+		const current = await this.suggestions.readWorkflowTarget(workflowId, {});
 		if (!current.workflow || current.projectId !== projectId) {
 			throw new NotFoundError('Proposal not found.');
 		}

@@ -3,18 +3,19 @@ import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/bac
 import {
 	type Project,
 	ProjectRepository,
+	SharedWorkflow,
+	SharedWorkflowRepository,
 	TransactionRunner,
 	type User,
 	UserRepository,
-	type WorkflowEntity,
+	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	wrapMigration,
 	postgresMigrations,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { DataSource, type EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
@@ -151,7 +152,7 @@ it('deletes closed proposals and their activity in bounded batches and keeps pen
 	await suggestions.cleanup(now);
 	expect(await suggestions.findOneBy({ id: second.id })).toBeNull();
 	expect(await suggestions.getActivity(second.id)).toHaveLength(0);
-	expect((await suggestions.getSuggestion(pending.id)).payload).toEqual(payload());
+	expect((await suggestions.getSuggestion(pending.id, pending)).payload).toEqual(payload());
 	expect(await suggestions.getActivity(pending.id)).toHaveLength(1);
 	expect(await suggestions.count()).toBe(1);
 });
@@ -165,7 +166,7 @@ it('keeps proposals and activity through the full closed retention period', asyn
 		closedAt: new Date(now.getTime() - 30 * 86400_000),
 	});
 	await suggestions.cleanup(now);
-	expect((await suggestions.getSuggestion(closed.id)).payload).toEqual(payload());
+	expect((await suggestions.getSuggestion(closed.id, closed)).payload).toEqual(payload());
 	expect(await suggestions.getActivity(closed.id)).toHaveLength(1);
 });
 
@@ -220,33 +221,87 @@ it('leaves workflow and history unchanged and reads current saves at the guarded
 	});
 });
 
-it('holds a concurrent workflow save until the suggestion transaction commits', async () => {
-	const locked = createDeferredPromise<boolean>();
-	const release = createDeferredPromise<boolean>();
-	const submission = tx.run({}, async (ctx) => {
-		await suggestions.readWorkflowTarget(workflow.id, ctx);
-		locked.resolve(true);
-		await release.promise;
-		return await suggestions.createPending(baseline(), payload(), ctx);
+describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL row locks', () => {
+	let peer: DataSource;
+
+	beforeAll(async () => {
+		// Use another pool so a busy application connection cannot make the test pass.
+		peer = await new DataSource({
+			...Container.get(DataSource).options,
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+		}).initialize();
 	});
-	await locked.promise;
-	let saved = false;
-	const save = Container.get(WorkflowRepository)
-		.update(workflow.id, { settings: { executionTimeout: 60 } })
-		.then(() => {
-			saved = true;
+	afterAll(async () => {
+		if (peer?.isInitialized) await peer.destroy();
+	});
+
+	async function assertWriteBlocked(write: (manager: EntityManager) => Promise<unknown>) {
+		const suggestion = await tx.run({}, async (ctx) => {
+			await suggestions.readWorkflowTarget(workflow.id, ctx);
+			await expect(
+				peer.transaction(async (manager) => {
+					await manager.query("SET LOCAL lock_timeout = '250ms'");
+					await write(manager);
+				}),
+			).rejects.toThrow('lock timeout');
+			return await suggestions.createPending(baseline(), payload(), ctx);
 		});
-	try {
-		// Give the second connection time to attempt its write while the first holds the row.
-		await new Promise((resolve) => setTimeout(resolve, 40));
-		expect(saved).toBe(false);
-	} finally {
-		release.resolve(true);
-		await submission;
-		await save;
+		await peer.transaction(write);
+		expect(suggestion.state).toBe('pending');
 	}
-	expect(saved).toBe(true);
-	expect((await submission).state).toBe('pending');
+
+	it('holds a workflow save until the suggestion transaction commits', async () => {
+		await assertWriteBlocked(
+			async (manager) =>
+				await manager.update(WorkflowEntity, workflow.id, {
+					settings: { executionTimeout: 60 },
+				}),
+		);
+	});
+
+	it('holds a transfer to an existing sharing until the suggestion transaction commits', async () => {
+		const destination = await createTeamProject();
+		await peer.manager.insert(SharedWorkflow, {
+			workflowId: workflow.id,
+			projectId: destination.id,
+			role: 'workflow:editor',
+		});
+		const sharings = Container.get(SharedWorkflowRepository);
+		await assertWriteBlocked(async (manager) => {
+			await sharings.makeOwner([workflow.id], destination.id, manager);
+			await sharings.deleteByIds([workflow.id], project.id, manager);
+		});
+	});
+
+	it('lets an earlier transfer finish before it reads the owner', async () => {
+		const destination = await createTeamProject();
+		const { read } = await peer.transaction(async (manager) => {
+			await manager.delete(SharedWorkflow, { workflowId: workflow.id, projectId: project.id });
+			const read = Promise.allSettled([
+				tx.run({}, async (ctx) => await suggestions.readWorkflowTarget(workflow.id, ctx)),
+			]);
+			await vi.waitFor(async () => {
+				const rows = await manager.query<Array<{ blocked: boolean }>>(
+					`SELECT EXISTS (
+						SELECT 1 FROM pg_stat_activity
+						WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))
+					) AS blocked`,
+				);
+				expect(rows).toEqual([{ blocked: true }]);
+			});
+			await manager.insert(SharedWorkflow, {
+				workflowId: workflow.id,
+				projectId: destination.id,
+				role: 'workflow:owner',
+			});
+			return { read };
+		});
+		const [result] = await read;
+		if (result.status === 'rejected') throw result.reason;
+		expect(result.value.projectId).not.toBe(project.id);
+	});
 });
 
 it('reverts and reapplies the suggestion schema', async () => {

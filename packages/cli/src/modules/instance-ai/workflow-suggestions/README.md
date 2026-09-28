@@ -23,7 +23,7 @@ The tests under `__tests__` include a sample fix against a published workflow. T
 
 ## Proposal detail
 
-`GET /projects/:projectId/workflow-suggestions/:suggestionId` returns a proposal and its activity. The caller must be an enabled user with current workflow read and edit access. Publish access is not required. The route checks both the proposal's original project and the workflow's current owner project.
+`GET /projects/:projectId/workflows/:workflowId/suggestions/:suggestionId` returns a proposal and its activity. The caller must be an enabled user with current workflow read and edit access, including access through sharing. Publish access is not required. The route checks both the proposal's original project and the workflow's current owner project.
 
 The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. Self-healing owns result details and actions, including the optional suggestion diff. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
 
@@ -35,4 +35,4 @@ A workflow transfer does not transfer its suggestions. Creation rejects a change
 
 The system task processes at most 100 records each hour. It retains pending suggestions. It deletes closed suggestions and their activity after 30 days. Reads do not extend retention. Workspace files, investigation reports, and execution evidence have separate retention policies.
 
-Creation rechecks the workflow baseline and records the suggestion and activity in one transaction. PostgreSQL locks the workflow row. SQLite uses its existing immediate write transaction. Permission and credential checks run just before the transaction. Apply must check them again.
+Creation rechecks the workflow baseline and records the suggestion and activity in one transaction. PostgreSQL locks the workflow and owner rows. SQLite uses its existing immediate write transaction. Permission and credential checks run just before the transaction. Apply must check them again.

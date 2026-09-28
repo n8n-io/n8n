@@ -285,28 +285,34 @@ it.each(['disabled', 'no edit access'] as const)(
 		await expect(
 			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
 		).rejects.toThrow('edit access');
-		await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow(
+		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 			'edit access',
 		);
 		expect(suggestions.createPending).not.toHaveBeenCalled();
+		expect(suggestions.getSuggestion).not.toHaveBeenCalled();
 	},
 );
 
 it('lets another current editor review without publish permission', async () => {
 	const viewer = mock<User>({ id: 'another-editor', disabled: false });
 	users.findByIdWithRole.mockResolvedValue(viewer);
-	const detail = await service.getProposal(viewer, 'project', suggestion.id);
+	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
+	expect(suggestions.getSuggestion).toHaveBeenCalledWith(suggestion.id, {
+		workflowId: workflow.id,
+		projectId: 'project',
+	});
 	expect(userHasScopes).toHaveBeenCalledWith(viewer, ['workflow:read', 'workflow:update'], false, {
 		workflowId: 'wf',
 	});
 });
 
-it('rejects review from a different project or after ownership changes', async () => {
-	await expect(service.getProposal(user, 'other', suggestion.id)).rejects.toThrow('not found');
+it('rejects review after ownership changes', async () => {
 	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'other' });
-	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not found');
+	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
+		'not found',
+	);
 });
 
 it('blocks operations when the Instance AI module is disabled', async () => {
@@ -317,5 +323,7 @@ it('blocks operations when the Instance AI module is disabled', async () => {
 		'not enabled',
 	);
 	await expect(service.createSuggestion(prepared)).rejects.toThrow('not enabled');
-	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not enabled');
+	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
+		'not enabled',
+	);
 });

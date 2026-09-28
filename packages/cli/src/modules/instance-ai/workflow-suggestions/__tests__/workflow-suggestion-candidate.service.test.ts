@@ -2,7 +2,7 @@ import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/a
 import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import type { INodeType } from 'n8n-workflow';
+import { NodeOperationError, type INodeType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -103,6 +103,27 @@ it('rejects a credential binding restriction', async () => {
 	expect(policies.enforceWorkflowSave).not.toHaveBeenCalled();
 });
 
+it('returns a validation error when credential access is unavailable', async () => {
+	license.isSharingLicensed.mockReturnValue(true);
+	enterprise.validateWorkflowCredentialUsage.mockImplementation(() => {
+		throw new NodeOperationError(graph.nodes[0], 'Credential access is required.');
+	});
+	await expect(service.prepare(user, 'wf', 'project', baseline, graph)).rejects.toMatchObject({
+		httpStatusCode: 400,
+		message: 'Credential access is required.',
+	});
+	expect(policies.enforceWorkflowSave).not.toHaveBeenCalled();
+});
+
+it('preserves unexpected credential validation errors', async () => {
+	license.isSharingLicensed.mockReturnValue(true);
+	const error = new Error('Credential validation failed.');
+	enterprise.validateWorkflowCredentialUsage.mockImplementation(() => {
+		throw error;
+	});
+	await expect(service.prepare(user, 'wf', 'project', baseline, graph)).rejects.toBe(error);
+});
+
 it('rejects a save policy violation', async () => {
 	policies.enforceWorkflowSave.mockRejectedValue(new Error('Save policy failed'));
 	await expect(service.prepare(user, 'wf', 'project', baseline, graph)).rejects.toThrow(
@@ -159,6 +180,7 @@ it.each([true, false])(
 );
 
 it('rejects an invalid graph before credential preparation', async () => {
+	license.isSharingLicensed.mockReturnValue(true);
 	await expect(
 		service.prepare(user, 'wf', 'project', baseline, {
 			nodes: [...graph.nodes, ...graph.nodes],
