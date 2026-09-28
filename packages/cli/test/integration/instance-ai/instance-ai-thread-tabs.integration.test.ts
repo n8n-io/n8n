@@ -1,6 +1,6 @@
 import type { InstanceAiThreadTabsState } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import { UserRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
@@ -95,5 +95,19 @@ describe('Instance AI thread tabs', () => {
 		await threadRepository.delete({ id: threadId });
 
 		await expect(tabsRepository.count()).resolves.toBe(0);
+	});
+
+	it('deletes the tabs of a user when the user is deleted', async () => {
+		// Threads are removed by an app event when a user is deleted, not by a
+		// foreign key, so the user cascade must clear the tabs on its own.
+		const deletedUser = await createMember();
+		await tabsRepository.saveState(threadId, deletedUser.id, firstState);
+		await tabsRepository.saveState(threadId, user.id, secondState);
+
+		await Container.get(UserRepository).delete({ id: deletedUser.id });
+
+		await expect(tabsRepository.findState(threadId, deletedUser.id)).resolves.toBeNull();
+		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual(secondState);
+		await expect(threadRepository.existsBy({ id: threadId })).resolves.toBe(true);
 	});
 });
