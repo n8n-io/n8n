@@ -17,11 +17,11 @@ const props = withDefaults(
 		modelValue: McpToolPermissions;
 		serverTitle: string;
 		status: ToolConnectionStatus;
-		supportsApproval?: boolean;
+		excludePermissions?: McpToolPermission[];
 	}>(),
 	{
 		actor: 'assistant',
-		supportsApproval: true,
+		excludePermissions: () => [],
 	},
 );
 
@@ -184,7 +184,7 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 						:model-value="categories[group.category]"
 						:custom="hasCategoryOverrides(group.category)"
 						:disabled="isCategoryDisabled(group.tools)"
-						:supports-approval="supportsApproval"
+						:exclude-permissions="excludePermissions"
 						:data-test-id="`tools-connection-permission-${group.category}`"
 						@update:model-value="updateCategory(group.category, $event)"
 					/>
@@ -222,7 +222,7 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 							:class="$style.permissionSelect"
 							:model-value="toolPermissions[tool.id] ?? categories[group.category]"
 							:disabled="arePermissionsDisabled"
-							:supports-approval="supportsApproval"
+							:exclude-permissions="excludePermissions"
 							@update:model-value="updateTool(tool.id, group.category, $event)"
 						/>
 					</div>

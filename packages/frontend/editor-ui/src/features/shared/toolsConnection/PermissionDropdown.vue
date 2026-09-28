@@ -14,13 +14,13 @@ const props = withDefaults(
 		modelValue: McpToolPermission;
 		custom?: boolean;
 		disabled?: boolean;
-		supportsApproval?: boolean;
+		excludePermissions?: McpToolPermission[];
 		dataTestId?: string;
 	}>(),
 	{
 		custom: false,
 		disabled: false,
-		supportsApproval: true,
+		excludePermissions: () => [],
 		dataTestId: undefined,
 	},
 );
@@ -31,11 +31,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const open = ref(false);
-const permissions = computed<McpToolPermission[]>(() => [
-	'always_allow',
-	...(props.supportsApproval ? (['require_approval'] satisfies McpToolPermission[]) : []),
-	'blocked',
-]);
+const permissions: McpToolPermission[] = ['always_allow', 'require_approval', 'blocked'];
 
 const labels = computed<Record<McpToolPermission, string>>(() => ({
 	always_allow: i18n.baseText('tools.connection.permissions.alwaysAllow'),
@@ -50,11 +46,13 @@ const selectedLabel = computed(() =>
 );
 
 const items = computed<Array<DropdownMenuItemProps<McpToolPermission>>>(() =>
-	permissions.value.map((id) => ({
-		id,
-		label: labels.value[id],
-		checked: !props.custom && id === props.modelValue,
-	})),
+	permissions
+		.filter((permission) => !props.excludePermissions.includes(permission))
+		.map((id) => ({
+			id,
+			label: labels.value[id],
+			checked: !props.custom && id === props.modelValue,
+		})),
 );
 </script>
 

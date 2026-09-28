@@ -34,7 +34,7 @@ design work.
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
 | Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
-| Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
+| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
 | Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
 | Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
@@ -63,6 +63,9 @@ block parent dismissal. The nested dialog owns Escape until it closes.
 Use the configured local name for schedules, skills, node tools, MCP servers,
 workflow tools, and vector stores. Give new items a valid default name. Show the
 pencil on hover. Keep the title clickable.
+
+Show the asset icon beside the configured local name in tool configuration
+modals. Use the same icon for direct edits and multi-step add flows.
 
 Do not show a second Name field in the body. Show title validation next to the
 title after the user selects Save.
@@ -153,7 +156,7 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
-- Confirm the title has no asset icon.
+- Confirm tool configuration titles show the asset icon.
 - Confirm an editable title replaces a duplicate Name field, including Skills.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.

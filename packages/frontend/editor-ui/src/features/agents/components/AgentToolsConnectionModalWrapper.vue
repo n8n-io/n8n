@@ -103,6 +103,7 @@ import { toToolIconSource } from '../utils/toolIconSource';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
+import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'app-action', 'workflows'];
@@ -1213,6 +1214,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 		@update:title="updateConfigTitle"
 		@back="backToPicker"
 	>
+		<template v-if="configData" #titlePrefix>
+			<AgentToolConfigTitleIcon :data="configData" />
+		</template>
 		<template v-if="configContent?.headerItem?.credentials?.length" #headerActions>
 			<AgentToolConfigCredentialPicker
 				ref="credentialPicker"

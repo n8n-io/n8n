@@ -17,6 +17,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
@@ -46,6 +47,11 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflow: vi.fn(),
+}));
+
+vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
+	discoverMcpConnection: vi.fn(),
+	fetchMcpRegistryCatalog: vi.fn().mockResolvedValue([]),
 }));
 
 const getWorkflowMock = vi.mocked(getWorkflow);
@@ -154,6 +160,7 @@ const AgentModalMultiStepStub = defineComponent({
 		<section v-if="open" data-test-id="agent-modal-multi-step" :data-step="step">
 			<header>
 				<button v-if="showBack" data-test-id="agent-modal-back" @click="$emit('back')" />
+				<slot name="titlePrefix" />
 				<span>{{ title }}</span>
 			</header>
 			<slot />
@@ -289,6 +296,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
 
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+
 		workflowsStore = mockedStore(useWorkflowsStore);
 		mockedStore(useProjectsStore).myProjects = [
 			{
@@ -402,15 +413,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('opens configuration as the next step and returns with Back', async () => {
-		render();
+		const { container } = render();
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
+		expect(container.querySelector('[data-testid="agent-tool-config-title-icon"]')).toBeNull();
 
 		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
 		emitConnect(slack!);
 		await flushPromises();
 
 		expect(multiStepAttrs.step).toBe('configure');
+		expect(container.querySelector('[data-testid="agent-tool-config-title-icon"]')).toBeVisible();
 		expect(getConfigData()).toMatchObject({
 			toolRef: { type: 'node', node: { nodeType: SLACK.name } },
 		});

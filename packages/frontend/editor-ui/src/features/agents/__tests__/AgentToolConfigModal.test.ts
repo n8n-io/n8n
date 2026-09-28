@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
@@ -242,6 +243,12 @@ describe('AgentToolConfigModal', () => {
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
 	});
 
+	it('shows the tool icon beside the modal title', () => {
+		const { container } = renderModal();
+
+		expect(getNativeTestId(container, 'agent-tool-config-title-icon')).toBeVisible();
+	});
+
 	it('does not open for a persisted node tool without node data', () => {
 		const invalidRef = {
 			type: 'node',
@@ -299,7 +306,12 @@ describe('AgentToolConfigModal', () => {
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
-	it('disables Save while a registry MCP connection is unavailable', () => {
+	it('uses the metadata node type icon and disables Save for an unavailable registry MCP', () => {
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'GitHub MCP',
+			name: '@n8n/mcp-registry.github',
+		});
 		const AgentToolConfigContent = defineComponent({
 			setup(_, { expose }) {
 				expose({
@@ -335,6 +347,7 @@ describe('AgentToolConfigModal', () => {
 			},
 		});
 
+		expect(nodeTypesStore.getNodeType).toHaveBeenCalledWith('@n8n/mcp-registry.github');
 		expect(getNativeTestId(container, 'agent-tool-config-save')).toBeDisabled();
 	});
 

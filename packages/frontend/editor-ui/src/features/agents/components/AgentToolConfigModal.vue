@@ -9,6 +9,7 @@ import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import AgentModal from './modals/AgentModal.vue';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
+import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -95,6 +96,9 @@ async function handleRemove() {
 		@update:open="onOpenChange"
 		@update:title="updateTitle"
 	>
+		<template #titlePrefix>
+			<AgentToolConfigTitleIcon :data="data" />
+		</template>
 		<template v-if="content?.headerItem?.credentials?.length" #headerActions>
 			<AgentToolConfigCredentialPicker
 				ref="credentialPicker"

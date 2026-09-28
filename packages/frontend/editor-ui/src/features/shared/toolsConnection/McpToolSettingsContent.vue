@@ -98,7 +98,7 @@ function handleSave() {
 				:available-tools="item.availableTools"
 				:server-title="item.title"
 				:status="item.status"
-				:supports-approval="supportsApproval"
+				:exclude-permissions="supportsApproval ? [] : ['require_approval']"
 			/>
 		</div>
 
