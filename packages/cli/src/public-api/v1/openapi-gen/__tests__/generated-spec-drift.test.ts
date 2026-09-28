@@ -28,6 +28,37 @@ describe('generated OpenAPI spec is up to date', () => {
 	);
 });
 
+describe('OpenTelemetry settings response', () => {
+	it('keeps the fields and documentation from the shared legacy schema', () => {
+		const legacy = parse(
+			fs.readFileSync(path.join(V1_DIR, 'handlers/otel/spec/schemas/otel-settings.yml'), 'utf8'),
+		) as OpenAPIV3.SchemaObject;
+		const operation = parse(
+			fs.readFileSync(
+				path.join(V1_DIR, 'handlers/settings/spec/paths/getOtelSettings.generated.yml'),
+				'utf8',
+			),
+		) as OpenAPIV3.OperationObject;
+		const response = operation.responses['200'] as OpenAPIV3.ResponseObject;
+		const generated = response.content?.['application/json'].schema as OpenAPIV3.SchemaObject;
+
+		expect(generated.description?.trim()).toBe(legacy.description?.trim());
+		expect(generated.additionalProperties).toBe(legacy.additionalProperties);
+		expect(generated.required).toEqual(legacy.required);
+		expect(Object.keys(generated.properties ?? {})).toEqual(Object.keys(legacy.properties ?? {}));
+
+		for (const [key, field] of Object.entries(legacy.properties ?? {})) {
+			const expected = field as OpenAPIV3.SchemaObject;
+			const actual = generated.properties?.[key] as OpenAPIV3.SchemaObject;
+			expect(actual.description?.trim()).toBe(expected.description?.trim());
+			expect({ ...actual, description: undefined }).toEqual({
+				...expected,
+				description: undefined,
+			});
+		}
+	});
+});
+
 describe('Apply response documentation', () => {
 	it.each(['applyPackage', 'continueApplyPackage'])(
 		'%s exposes all outcomes and the required gates',
