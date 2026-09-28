@@ -368,10 +368,12 @@ export class SlackManagedSetupService {
 	}
 
 	/**
-	 * True when n8n created the Slack app behind this bot credential through
-	 * managed setup, so the app already sends its events to the agent.
+	 * True when n8n built the Slack app behind this bot credential for this
+	 * Agent, so the app sends its events to the Agent's request URL. A credential
+	 * that n8n built for another Agent, or a credential from any other Slack app,
+	 * returns false.
 	 */
-	async isManagedBotCredential(credentialId: string, user: User): Promise<boolean> {
+	async isAppConfiguredForAgent(credentialId: string, agent: Agent, user: User): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
@@ -379,7 +381,42 @@ export class SlackManagedSetupService {
 		);
 		if (!credential || credential.type !== SLACK_CREDENTIAL_TYPE) return false;
 		const data = await this.credentialsService.decrypt(credential, true);
-		return !!stringProperty(data, 'managedAppId');
+		const agentId = stringProperty(data, 'agentId');
+		if (agentId) return agentId === agent.id;
+		return await this.managedAppSendsEventsTo(data, agent, user);
+	}
+
+	/**
+	 * Managed credentials made before n8n recorded the Agent ID only know their
+	 * app, so read the app's request URL from Slack instead.
+	 */
+	private async managedAppSendsEventsTo(
+		data: ICredentialDataDecryptedObject,
+		agent: Agent,
+		user: User,
+	): Promise<boolean> {
+		const managedAppId = stringProperty(data, 'managedAppId');
+		const managerCredentialId = stringProperty(data, 'managerCredentialId');
+		if (!managedAppId || !managerCredentialId) return false;
+		try {
+			const manager = await this.getManagerCredentialContext(
+				managerCredentialId,
+				agent.projectId,
+				user,
+			);
+			const manifest = await this.exportManagedAppManifest(manager, managedAppId);
+			const settings = childRecord(manifest, 'settings');
+			const eventSubscriptions = settings
+				? childRecord(settings, 'event_subscriptions')
+				: undefined;
+			return (
+				stringProperty(eventSubscriptions, 'request_url') ===
+				this.methods.webhookUrl(agent.projectId, agent.id)
+			);
+		} catch {
+			// The manager credential is gone or not usable here, so n8n cannot confirm the app.
+			return false;
+		}
 	}
 
 	async deleteAppForCredential(

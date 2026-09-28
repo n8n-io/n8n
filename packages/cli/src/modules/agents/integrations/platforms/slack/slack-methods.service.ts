@@ -213,6 +213,7 @@ export class SlackMethodsService {
 			data: {
 				accessToken,
 				signatureSecret: session.signingSecret,
+				agentId: session.agentId,
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -298,7 +299,7 @@ export class SlackMethodsService {
 		}
 	}
 
-	private webhookUrl(projectId: string, agentId: string): string {
+	webhookUrl(projectId: string, agentId: string): string {
 		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/slack`;
 	}
 

@@ -169,13 +169,16 @@ in that case, it connects immediately to the existing active snapshot.
 
 A Slack app sends events only to the request URL in its own configuration, so a Slack channel works
 only with a Slack app that points at this Agent. A slackApi credential made for another use, such as a
-Slack Trigger, passes every credential check but the Agent receives nothing. Connect Slack in this order:
+Slack Trigger or another Agent, passes every credential check but the Agent receives nothing. Connect
+Slack in this order:
 
 1. Call update_agent_integration with action=connect, type=slack, and no credentialId. Nothing changes.
    - status=workspace_selection_required lists managerCredentials with their workspaces. Ask the user
      which workspace to use and confirm that n8n may create a Slack app there.
    - code=slack_workspace_not_connected means no Slack workspace is connected to n8n yet. Give the
      user agentUrl and ask them to connect the workspace once through Add channel, then retry.
+   - code=slack_manager_reconnect_required means the listed Slack workspace credentials must be
+     reconnected. Give the user agentUrl and ask them to reconnect through Add channel, then retry.
    - code=slack_managed_setup_unavailable means this instance cannot create Slack apps. Relay
      slackApp.requestUrl and slackApp.manifest so the user can configure a Slack app, then connect
      with that app's slackApi credential.
@@ -184,8 +187,8 @@ Slack Trigger, passes every credential check but the Agent receives nothing. Con
    status=install_approval_required, give the user installUrl; n8n connects the channel after they
    approve the install. Call get_agent to confirm.
 
-When you connect with an explicit slackApi credential, the result has slackApp.managedByN8n. If it is
-false, n8n cannot check where the Slack app sends its events: relay the warning and
+When you connect with an explicit slackApi credential, the result has slackApp.configuredForAgent. It
+is true only when n8n built the Slack app for this Agent. If it is false, relay the warning and
 slackApp.requestUrl to the user instead of reporting the channel as ready.
 
 ## MCP servers

@@ -404,6 +404,12 @@ type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
 type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
 type VerifyMcpServerInput = z.infer<z.ZodObject<typeof verifyMcpServerInput>>;
 type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>>;
+
+/** Telemetry label for the connect flow that an update_agent_integration call takes. */
+function integrationSetupPath(input: UpdateIntegrationInput) {
+	if (input.action === 'disconnect' || input.credentialId) return 'credential';
+	return input.managerCredentialId || input.workspaceId ? 'managed_install' : 'managed_discovery';
+}
 type CallAgentInput = z.infer<z.ZodObject<typeof callAgentInput>>;
 
 type MutationResource = {
@@ -1066,6 +1072,7 @@ export class McpAgentToolsService {
 						agentId: input.agentId,
 						action: input.action,
 						type: input.type,
+						setup: integrationSetupPath(input),
 					},
 					async () => await this.updateIntegration(user, input),
 				),
@@ -1728,6 +1735,9 @@ export class McpAgentToolsService {
 	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const { credentialId } = input;
 		if (!credentialId) throw new UserError('credentialId is required to disconnect');
+		if (input.managerCredentialId || input.workspaceId) {
+			throw new UserError('managerCredentialId and workspaceId apply only to connect');
+		}
 		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user,
@@ -1816,16 +1826,22 @@ export class McpAgentToolsService {
 			};
 		}
 
-		const saved = await this.resolveAgent(user, agent.id);
-		const published = saved.activeVersionId !== null;
-		return {
+		const installed = {
 			ok: true,
 			agentId: agent.id,
 			integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
 			configured: true,
-			connected: published,
 			appId: result.appId,
-			slackApp: { managedByN8n: true },
+			slackApp: { configuredForAgent: true },
+		};
+		// The install is already saved, so skip the MCP access guard of resolveAgent:
+		// a concurrent change to that setting must not turn this result into an error.
+		const saved = await this.agentsService.findByIdForUser(agent.id, user);
+		if (!saved) return installed;
+		const published = saved.activeVersionId !== null;
+		return {
+			...installed,
+			connected: published,
 			published,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),

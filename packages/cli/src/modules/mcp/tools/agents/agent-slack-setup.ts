@@ -1,3 +1,5 @@
+import { isSlackManagerCredentialReady } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -10,19 +12,27 @@ export const SLACK_INTEGRATION_TYPE = 'slack';
 const CONNECT_WORKSPACE_STEP =
 	'Ask the user to open the Agent in n8n, choose Add channel, pick Slack, and connect their Slack workspace once. Then call update_agent_integration again without credentialId.';
 
+const RECONNECT_WORKSPACE_STEP =
+	'Ask the user to open the Agent in n8n, choose Add channel, pick Slack, and reconnect the listed Slack workspace credential. Then call update_agent_integration again without credentialId.';
+
+const UNVERIFIED_APP_WARNING =
+	'n8n did not build the Slack app behind this credential for this Agent, so the Agent may receive no events. This happens for an app made for another use, such as a Slack Trigger, or for an app that n8n built for another Agent. Make sure the app sends Event Subscriptions and Interactivity to slackApp.requestUrl, with Socket Mode off and the bot events in slackApp.manifest. To let n8n build a correct app, disconnect this credential and call update_agent_integration without credentialId.';
+
 /**
  * Slack setup steps for MCP clients.
  *
  * A Slack app sends events only to the request URL in its own configuration.
- * n8n sets that URL itself when it creates the app (managed setup). A bot
- * credential from any other Slack app, such as one made for a Slack Trigger,
- * passes every credential check but sends its events elsewhere.
+ * n8n sets that URL itself when it builds the app for an Agent. A bot
+ * credential from any other Slack app, such as one made for a Slack Trigger
+ * or for another Agent, passes every credential check but sends its events
+ * elsewhere.
  */
 @Service()
 export class McpAgentSlackSetup {
 	constructor(
 		private readonly managedSetup: SlackManagedSetupService,
 		private readonly manualSetup: SlackManualSetupService,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -52,8 +62,7 @@ export class McpAgentSlackSetup {
 		}
 
 		const managerCredentials = state.managerCredentials
-			.filter((manager) => manager.connected && !manager.reconnectRequired)
-			.filter((manager) => manager.workspaces.length > 0)
+			.filter((manager) => isSlackManagerCredentialReady(manager) && manager.workspaces.length > 0)
 			.map((manager) => ({
 				managerCredentialId: manager.id,
 				name: manager.name,
@@ -64,6 +73,21 @@ export class McpAgentSlackSetup {
 					...(workspace.botCredentialId ? { credentialId: workspace.botCredentialId } : {}),
 				})),
 			}));
+		if (managerCredentials.length === 0 && state.managerCredentials.length > 0) {
+			return {
+				ok: false,
+				code: 'slack_manager_reconnect_required',
+				agentId: agent.id,
+				configured: false,
+				error: 'The Slack workspace credentials in this project must be reconnected.',
+				managerCredentials: state.managerCredentials.map((manager) => ({
+					managerCredentialId: manager.id,
+					name: manager.name,
+				})),
+				agentUrl,
+				nextStep: RECONNECT_WORKSPACE_STEP,
+			};
+		}
 		if (managerCredentials.length === 0) {
 			return {
 				ok: false,
@@ -104,17 +128,27 @@ export class McpAgentSlackSetup {
 
 	/**
 	 * n8n cannot read a Slack app's request URL with a bot token, so for a
-	 * credential that n8n did not create, return what the app must be set to.
+	 * credential that n8n did not build for this Agent, return what the app must
+	 * be set to. The connect is already saved when this runs, so a failed check
+	 * reports the app as unverified instead of failing the tool call.
 	 */
 	async describeBotCredential(agent: Agent, user: User, credentialId: string) {
-		if (await this.managedSetup.isManagedBotCredential(credentialId, user)) {
-			return { slackApp: { managedByN8n: true } };
+		try {
+			if (await this.managedSetup.isAppConfiguredForAgent(credentialId, agent, user)) {
+				return { slackApp: { configuredForAgent: true } };
+			}
+			return {
+				slackApp: { configuredForAgent: false, ...(await this.appRequirements(agent)) },
+				warning: UNVERIFIED_APP_WARNING,
+			};
+		} catch (error) {
+			this.logger.warn('[McpAgentSlackSetup] Could not check the Slack app of a credential', {
+				agentId: agent.id,
+				credentialId,
+				error,
+			});
+			return { slackApp: { configuredForAgent: false }, warning: UNVERIFIED_APP_WARNING };
 		}
-		return {
-			slackApp: { managedByN8n: false, ...(await this.appRequirements(agent)) },
-			warning:
-				'n8n cannot check that this Slack app sends its events to the Agent. If the app was made for another use, such as a Slack Trigger, the Agent receives nothing. Make sure the app sends Event Subscriptions and Interactivity to slackApp.requestUrl, with Socket Mode off and the bot events in slackApp.manifest. To let n8n create a correctly configured app, disconnect this credential and call update_agent_integration without credentialId.',
-		};
 	}
 
 	private async appRequirements(agent: Agent) {

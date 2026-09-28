@@ -127,7 +127,7 @@ describe('Slack setup services', () => {
 		deleteManagedAppForCredential: (
 			options: AgentIntegrationRemovalContext,
 		) => ReturnType<SlackManagedSetupService['deleteAppForCredential']>;
-		isManagedBotCredential: SlackManagedSetupService['isManagedBotCredential'];
+		isAppConfiguredForAgent: (credentialId: string) => Promise<boolean>;
 	};
 
 	beforeEach(() => {
@@ -217,8 +217,8 @@ describe('Slack setup services', () => {
 			updateManagedAppSettings: async (options) => await managedService.updateAppSettings(options),
 			deleteManagedAppForCredential: async (options) =>
 				await managedService.deleteAppForCredential(options),
-			isManagedBotCredential: async (credentialId, requestUser) =>
-				await managedService.isManagedBotCredential(credentialId, requestUser),
+			isAppConfiguredForAgent: async (credentialId) =>
+				await managedService.isAppConfiguredForAgent(credentialId, agent as never, user),
 		};
 	});
 
@@ -425,6 +425,7 @@ describe('Slack setup services', () => {
 				data: {
 					accessToken: 'xoxb-installed-token',
 					signatureSecret: 'signing-secret',
+					agentId: 'agent-1',
 				},
 				projectId: 'project-1',
 			},
@@ -873,6 +874,7 @@ describe('Slack setup services', () => {
 				data: expect.objectContaining({
 					accessToken: 'xoxb-managed',
 					signatureSecret: 'signing-secret',
+					agentId: 'agent-1',
 					managedAppId: 'A123',
 					teamId: 'T123',
 					managerCredentialId: 'manager',
@@ -1133,6 +1135,7 @@ describe('Slack setup services', () => {
 				data: {
 					accessToken: 'xoxb-installed-token',
 					signatureSecret: 'signing-secret',
+					agentId: 'agent-1',
 					managedAppId: 'A123',
 					teamId: 'T456',
 					managerCredentialId: 'manager',
@@ -1556,39 +1559,121 @@ describe('Slack setup services', () => {
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
 	});
 
-	it('reports a bot credential as managed when n8n created its Slack app', async () => {
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+	describe('isAppConfiguredForAgent', () => {
+		const botCredential = {
 			id: 'bot-credential',
 			name: 'Slack bot',
 			type: 'slackApi',
-		} as CredentialsEntity);
-		credentialsService.decrypt.mockResolvedValue({
+		} as CredentialsEntity;
+		const managerCredential = {
+			id: 'manager',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+		} as CredentialsEntity;
+		const legacyBotData = {
 			accessToken: 'xoxb-token',
 			managedAppId: 'A123',
+			managerCredentialId: 'manager',
+		};
+		const agentRequestUrl =
+			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack';
+
+		function mockManagerCredential() {
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'manager', type: 'slackManagerOAuth2Api' },
+			] as never);
+			credentialsFinderService.findCredentialForUser
+				.mockResolvedValueOnce(botCredential)
+				.mockResolvedValueOnce(managerCredential);
+			credentialsService.decrypt.mockResolvedValueOnce(legacyBotData).mockResolvedValueOnce({
+				oauthTokenData: {
+					authed_user: {
+						access_token: 'xoxp-manager',
+						scope: 'app_configurations:read app_configurations:write managed_apps:install',
+					},
+				},
+			});
+		}
+
+		function exportedManifest(requestUrl: string) {
+			return slackResponse({
+				ok: true,
+				manifest: { settings: { event_subscriptions: { request_url: requestUrl } } },
+			});
+		}
+
+		it('returns true when n8n built the app for this Agent', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(botCredential);
+			credentialsService.decrypt.mockResolvedValue({
+				accessToken: 'xoxb-token',
+				agentId: 'agent-1',
+			});
+
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(true);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 
-		await expect(service.isManagedBotCredential('bot-credential', user)).resolves.toBe(true);
-	});
+		it('returns false when n8n built the app for another Agent', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(botCredential);
+			credentialsService.decrypt.mockResolvedValue({
+				...legacyBotData,
+				agentId: 'agent-deleted',
+			});
 
-	it('reports a bot credential as unmanaged when it has no managed app', async () => {
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({
-			id: 'bot-credential',
-			name: 'Slack bot',
-			type: 'slackApi',
-		} as CredentialsEntity);
-		credentialsService.decrypt.mockResolvedValue({ accessToken: 'xoxb-token', managedAppId: '' });
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(false);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
 
-		await expect(service.isManagedBotCredential('bot-credential', user)).resolves.toBe(false);
-	});
+		it('returns false for a credential that n8n did not build', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(botCredential);
+			credentialsService.decrypt.mockResolvedValue({ accessToken: 'xoxb-token' });
 
-	it('reports a credential of another type as unmanaged without decrypting it', async () => {
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({
-			id: 'other',
-			name: 'Telegram',
-			type: 'telegramApi',
-		} as CredentialsEntity);
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(false);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
 
-		await expect(service.isManagedBotCredential('other', user)).resolves.toBe(false);
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		it('returns false for a missing credential or one of another type', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(null);
+			await expect(service.isAppConfiguredForAgent('missing')).resolves.toBe(false);
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce({
+				...botCredential,
+				type: 'telegramApi',
+			} as CredentialsEntity);
+			await expect(service.isAppConfiguredForAgent('other')).resolves.toBe(false);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('reads the request URL from Slack for a managed app without an Agent ID', async () => {
+			mockManagerCredential();
+			requestMock.mockResolvedValueOnce(exportedManifest(agentRequestUrl));
+
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(true);
+			expect(requestMock.mock.calls[0]?.[0]).toMatchObject({
+				url: 'https://slack.com/api/apps.manifest.export',
+			});
+			expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
+		});
+
+		it('returns false when the managed app sends events to another Agent', async () => {
+			mockManagerCredential();
+			requestMock.mockResolvedValueOnce(
+				exportedManifest(
+					'https://hooks.example/rest/projects/project-1/agents/v2/agent-deleted/webhooks/slack',
+				),
+			);
+
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(false);
+		});
+
+		it('returns false when the manager credential cannot be used in this project', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(botCredential);
+			credentialsService.decrypt.mockResolvedValue(legacyBotData);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(false);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
 	});
 });
