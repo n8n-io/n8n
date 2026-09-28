@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
@@ -103,7 +102,6 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
-const uiStore = useUIStore();
 const isLoading = ref(true);
 const hasCustomTelemetryTagErrors = ref(false);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -835,10 +833,6 @@ const onExecutionLogicModeChange = (value: string) => {
 };
 
 onMounted(async () => {
-	const focusMcp = uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY].data?.focus === 'mcp';
-	if (focusMcp) {
-		uiStore.setModalData({ name: WORKFLOW_SETTINGS_MODAL_KEY, data: {} });
-	}
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
@@ -972,12 +966,6 @@ onMounted(async () => {
 
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
-	if (focusMcp && isMCPEnabled.value) {
-		await nextTick();
-		document
-			.querySelector('[data-test-id="workflow-settings-available-in-mcp"]')
-			?.scrollIntoView({ block: 'center' });
-	}
 
 	void externalHooks.run('workflowSettings.dialogVisibleChanged', {
 		dialogVisible: true,

@@ -8,8 +8,7 @@ import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -215,29 +214,6 @@ describe('WorkflowSettingsVue', () => {
 		const { getByTestId } = createComponent({ pinia });
 		await flushPromises();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
-	});
-
-	it('scrolls to the MCP access control when opened from its deep link', async () => {
-		settingsStore.moduleSettings = {
-			mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
-		};
-		useUIStore().openModalWithData({
-			name: WORKFLOW_SETTINGS_MODAL_KEY,
-			data: { focus: 'mcp' },
-		});
-		const scrollIntoView = vi.fn();
-		Element.prototype.scrollIntoView = scrollIntoView;
-
-		try {
-			const { getAllByTestId } = createComponent({ pinia });
-			await flushPromises();
-
-			expect(getAllByTestId('workflow-settings-available-in-mcp')).toHaveLength(2);
-			expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
-			expect(useUIStore().modalsById[WORKFLOW_SETTINGS_MODAL_KEY].data).toEqual({});
-		} finally {
-			Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
-		}
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {

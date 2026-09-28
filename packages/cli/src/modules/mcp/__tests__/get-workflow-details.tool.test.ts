@@ -110,38 +110,7 @@ describe('get-workflow-details MCP tool', () => {
 			});
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
-			expect(payload.mcpAccessNotice).toBeUndefined();
 		});
-
-		test.each(['full', 'execution'] as const)(
-			'returns %s details and an MCP settings link when access is disabled',
-			async (detailLevel) => {
-				const workflow = createWorkflow({ settings: { availableInMCP: false } });
-				const workflowFinderService = mockInstance(WorkflowFinderService, {
-					findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
-				});
-				const tool = createWorkflowDetailsTool(
-					user,
-					baseWebhookUrl,
-					workflowFinderService,
-					mockInstance(CredentialsService, {}),
-					nodeTypes,
-					{ webhook: 'webhook', webhookTest: 'webhook-test' },
-					mockInstance(Telemetry, { track: vi.fn() }),
-					roleService,
-					projectService,
-				);
-
-				const result = await tool.handler({ workflowId: workflow.id, detailLevel });
-				expect(result.structuredContent).toMatchObject({
-					workflow: { id: workflow.id, settings: { availableInMCP: false } },
-					mcpAccessNotice: expect.stringContaining('/workflow/wf-1?settings=mcp'),
-				});
-				expect(result.content).toEqual([
-					{ type: 'text', text: JSON.stringify(result.structuredContent) },
-				]);
-			},
-		);
 
 		test('keeps only id and name for real credentials and drops AI Gateway (null-id) slots', async () => {
 			const workflow = createWorkflow({

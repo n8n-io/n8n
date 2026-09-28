@@ -192,7 +192,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 			failed: [
 				expect.objectContaining({
 					workflowId: 'wf-1',
-					error: expect.stringContaining('/workflow/wf-1?settings=mcp'),
+					error: expect.stringContaining('/workflow/wf-1?settings=true'),
 				}),
 			],
 		});

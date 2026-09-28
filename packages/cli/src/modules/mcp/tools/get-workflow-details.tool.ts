@@ -23,11 +23,7 @@ import {
 } from './schemas';
 import { trackAndRethrowToolError } from './tool-error.utils';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
-import {
-	getMcpWorkflow,
-	workflowMcpAvailabilityMessage,
-	type FoundWorkflow,
-} from './workflow-validation.utils';
+import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
@@ -186,12 +182,7 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{
-			includeActiveVersion: true,
-			includeTags: true,
-			includeParentFolder: true,
-			allowUnavailableInMcp: true,
-		},
+		{ includeActiveVersion: true, includeTags: true, includeParentFolder: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -280,8 +271,5 @@ export async function getWorkflowDetails(
 		workflow: sanitizedWorkflow,
 		triggerInfo: triggerNotice,
 		activeVersionTriggerInfo: activeVersionTriggerNotice,
-		...(!workflow.settings?.availableInMCP
-			? { mcpAccessNotice: workflowMcpAvailabilityMessage(workflow.id) }
-			: {}),
 	};
 }

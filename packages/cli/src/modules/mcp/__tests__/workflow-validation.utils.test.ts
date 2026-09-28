@@ -213,44 +213,18 @@ describe('getMcpWorkflow', () => {
 			});
 		});
 
-		test('links to the workflow MCP setting only when the user can read the workflow', async () => {
+		test('includes a workflow settings link in the not-available error', async () => {
 			const workflow = createWorkflow({
 				id: 'wf / 1',
 				settings: { availableInMCP: false },
 			});
-			const findWorkflowForUser = vi.fn().mockResolvedValueOnce(workflow).mockResolvedValue(null);
-			const workflowFinderService = mockInstance(WorkflowFinderService, { findWorkflowForUser });
-
-			await expect(
-				getMcpWorkflow('wf / 1', user, ['workflow:execute'], workflowFinderService),
-			).rejects.toThrow('https://n8n.example.com/n8n/workflow/wf%20%2F%201?settings=mcp');
-
-			await expect(
-				getMcpWorkflow('wf / 1', user, ['workflow:execute'], workflowFinderService),
-			).rejects.toThrow("Workflow not found or you don't have permission to access it.");
-		});
-
-		test('allows read-only details while keeping permission and archive checks', async () => {
-			const workflow = createWorkflow({ settings: { availableInMCP: false } });
-			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
-			const workflowFinderService = mockInstance(WorkflowFinderService, { findWorkflowForUser });
-
-			await expect(
-				getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService, {
-					allowUnavailableInMcp: true,
-					includeTags: true,
-				}),
-			).resolves.toBe(workflow);
-			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:read'], {
-				includeTags: true,
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
-			findWorkflowForUser.mockResolvedValueOnce(createWorkflow({ isArchived: true }));
 			await expect(
-				getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService, {
-					allowUnavailableInMcp: true,
-				}),
-			).rejects.toMatchObject({ reason: 'workflow_archived' });
+				getMcpWorkflow('wf / 1', user, ['workflow:read'], workflowFinderService),
+			).rejects.toThrow('https://n8n.example.com/n8n/workflow/wf%20%2F%201?settings=true');
 		});
 	});
 
