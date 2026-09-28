@@ -1,3 +1,4 @@
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { Response } from 'express';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { PostHogClient } from '@/posthog';
@@ -20,8 +21,6 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 

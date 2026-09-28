@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -37,7 +38,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';

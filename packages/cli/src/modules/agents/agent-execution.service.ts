@@ -6,6 +6,7 @@ import type {
 	AgentSessionStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ConflictError } from '@n8n/backend-services';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -13,7 +14,6 @@ import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 

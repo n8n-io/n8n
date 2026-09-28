@@ -15,5 +15,9 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"references": [
+		{ "path": "../../workflow/tsconfig.build.cjs.json" },
+		{ "path": "../api-types/tsconfig.build.json" }
+	]
 }

@@ -1,4 +1,5 @@
 import { InsightsSummaryPublicDto, InsightsSummaryQueryPublicDto } from '@n8n/api-types';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -14,8 +15,6 @@ import type { Response } from 'express';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 
 @PublicApiController('/insights')

@@ -1,4 +1,5 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -32,7 +33,6 @@ import {
 	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {

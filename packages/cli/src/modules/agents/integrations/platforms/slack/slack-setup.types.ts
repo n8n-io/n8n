@@ -1,6 +1,5 @@
+import { BadRequestError } from '@n8n/backend-services';
 import { isRecord } from '@n8n/utils/is-record';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { stringProperty } from '../../integration-helpers';
 

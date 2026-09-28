@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from '@n8n/backend-services';
 
 /**
  * A community package requires a node-authoring API version this runtime does

@@ -1,5 +1,6 @@
 /* eslint-disable id-denylist */
 import { Logger, safeJoinPath } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { formatBytes } from '@n8n/utils/number/bytes';
@@ -8,8 +9,6 @@ import { mkdir, readdir, stat, unlink } from 'fs/promises';
 import multer from 'multer';
 import { nanoid } from 'nanoid';
 import { extname } from 'path';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';

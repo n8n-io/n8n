@@ -1,5 +1,6 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -11,8 +12,6 @@ import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentExecutionService,

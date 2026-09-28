@@ -1,10 +1,10 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Only one authentication method can be active at a time. This function sets

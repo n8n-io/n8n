@@ -7,6 +7,7 @@ import type {
 	WorkflowReviewRequestWorkflowDetail,
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	WorkflowReviewInboxRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -19,7 +20,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';

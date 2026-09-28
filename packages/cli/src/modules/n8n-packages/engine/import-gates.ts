@@ -1,6 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/backend-services';
 
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';

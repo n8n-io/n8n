@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, IExecuteData } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 

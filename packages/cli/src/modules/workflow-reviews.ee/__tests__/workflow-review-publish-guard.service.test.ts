@@ -1,7 +1,6 @@
+import type { WorkflowPublishBlockedError } from '@n8n/backend-services';
 import type { WorkflowReviewRequest, WorkflowReviewRequestRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 
 import type { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewPublishGuard } from '../workflow-review-publish-guard.service';

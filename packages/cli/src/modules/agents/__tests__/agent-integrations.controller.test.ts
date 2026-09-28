@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { LockedError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,7 +14,6 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,

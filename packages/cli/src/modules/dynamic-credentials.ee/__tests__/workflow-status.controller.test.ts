@@ -1,9 +1,8 @@
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { WorkflowEntity } from '@n8n/db';
 import type { Request, Response } from 'express';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service';
 import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 import { WorkflowStatusController } from '../workflow-status.controller';

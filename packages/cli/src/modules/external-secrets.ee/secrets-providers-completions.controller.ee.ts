@@ -1,10 +1,10 @@
 import type { SecretCompletionsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ExternalSecretsConfig } from './external-secrets.config';

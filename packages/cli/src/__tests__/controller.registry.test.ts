@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@n8n/backend-services';
 vi.mock('@n8n/backend-common', async () => {
 	return {
 		...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
@@ -28,7 +29,6 @@ import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';

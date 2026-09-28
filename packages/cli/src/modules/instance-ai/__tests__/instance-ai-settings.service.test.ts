@@ -1,6 +1,7 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
 	CredentialsEntity,
@@ -12,7 +13,6 @@ import type {
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
 import {

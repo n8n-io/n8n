@@ -14,6 +14,7 @@ import {
 	type AgentEvalRunSummary,
 	type GenerateDraftCasesResult,
 } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -25,8 +26,6 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';

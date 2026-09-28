@@ -11,6 +11,7 @@ import {
 	workflowIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, TestCaseExecution, TestRun } from '@n8n/db';
 import {
 	ApiDescription,
@@ -30,9 +31,6 @@ import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import {

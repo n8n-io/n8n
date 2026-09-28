@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
@@ -16,7 +17,6 @@ import {
 } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 const issuer = 'https://n8n.example.com';
 

@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import { WorkflowRepository } from '@n8n/db';
 import {
 	type AuthenticatedRequest,
@@ -11,7 +12,6 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { SourceControlContextFactory } from './source-control-context.factory';

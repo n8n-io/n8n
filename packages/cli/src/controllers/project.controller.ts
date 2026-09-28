@@ -6,6 +6,7 @@ import {
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 } from '@n8n/api-types';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Get,
@@ -23,9 +24,6 @@ import {
 import { combineScopes, getAuthPrincipalScopes } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {

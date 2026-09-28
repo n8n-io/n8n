@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type {
 	User,
 	WorkflowHistory,
@@ -10,7 +11,6 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

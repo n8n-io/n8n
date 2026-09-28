@@ -6,6 +6,7 @@ import {
 	type InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	CredentialsRepository,
 	SharedWorkflowRepository,
@@ -26,7 +27,6 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';

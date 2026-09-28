@@ -9,6 +9,12 @@ import type {
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
 import {
 	AiPreferenceRepository,
@@ -22,10 +28,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 /** `type` lets the prompt name a personal project without its owner's name. */
 export type AiPreferenceProjectRef = { id: string; name: string; type?: Project['type'] };

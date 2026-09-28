@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -18,7 +19,6 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { createMember } from '@test-integration/db/users';
 

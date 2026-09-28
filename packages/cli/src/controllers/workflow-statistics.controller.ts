@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import type { WorkflowStatistics } from '@n8n/db';
 import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Get, Middleware, RestController } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

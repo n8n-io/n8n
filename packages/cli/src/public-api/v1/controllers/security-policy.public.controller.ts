@@ -1,4 +1,5 @@
 import { SecurityPolicyPublicDto, UpdateSecurityPolicyDto } from '@n8n/api-types';
+import { ConflictError } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -17,7 +18,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { SecurityPolicyReadResult } from '@/services/security-settings.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 

@@ -1,5 +1,6 @@
 import type { CreateEvaluationCollectionPayload } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
@@ -20,8 +21,6 @@ import { OperationalError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

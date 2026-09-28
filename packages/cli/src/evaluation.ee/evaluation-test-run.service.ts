@@ -1,10 +1,9 @@
 import { LicenseState } from '@n8n/backend-common';
+import { PaymentRequiredError } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
 
 type Pagination = { offset: number; limit: number };
 

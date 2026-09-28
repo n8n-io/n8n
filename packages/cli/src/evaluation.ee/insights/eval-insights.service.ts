@@ -8,13 +8,11 @@ import {
 	normalizedScores,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository, EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Telemetry } from '@/telemetry';
 
 import { runMetricScales } from '../metric-scales';

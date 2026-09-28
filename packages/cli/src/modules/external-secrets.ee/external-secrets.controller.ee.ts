@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { Get, Post, RestController, GlobalScope, Middleware } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsService } from './external-secrets.service.ee';

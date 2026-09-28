@@ -1,5 +1,6 @@
 import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -12,7 +13,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';

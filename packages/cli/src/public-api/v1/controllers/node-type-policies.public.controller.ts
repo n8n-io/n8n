@@ -16,6 +16,7 @@ import {
 	projectIdParamSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { NotFoundError, ServiceUnavailableError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -40,8 +41,6 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
 import {

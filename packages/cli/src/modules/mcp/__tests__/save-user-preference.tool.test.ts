@@ -1,5 +1,6 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -7,9 +8,6 @@ import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';

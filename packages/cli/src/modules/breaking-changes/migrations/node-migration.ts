@@ -1,6 +1,5 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type { IConnections, INode } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * A migration refused a specific node. Carries the node identity in `meta` so the
