@@ -314,9 +314,6 @@ export class DataTablesPublicController {
 		@Body({ required: true }) body: UpdateDataTableColumnPublicDto,
 	): Promise<DataTableColumnPublicDto> {
 		const { name, index } = body;
-		if (name === undefined && index === undefined) {
-			throw new BadRequestError('Provide at least one of "name" or "index".');
-		}
 
 		try {
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);

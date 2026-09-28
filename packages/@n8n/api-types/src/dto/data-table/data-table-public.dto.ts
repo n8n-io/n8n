@@ -78,16 +78,36 @@ export class CreateDataTableColumnPublicDto extends Z.class({
 	index: z.number().int().min(0).openapi(createDataTableColumnFieldDocs.index).optional(),
 }) {}
 
-// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index`. A shape cannot make two
-// fields optional and still require one of them, so the rule rides on the object's OpenAPI metadata,
-// and the controller rejects an empty body at runtime.
-export class UpdateDataTableColumnPublicDto extends Z.class(
-	{
+// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index`.
+const updateDataTableColumnPublicSchema = z
+	.object({
 		name: dataTableColumnNameSchema.openapi(updateDataTableColumnFieldDocs.name).optional(),
 		index: z.number().int().min(0).openapi(updateDataTableColumnFieldDocs.index).optional(),
-	},
-	{
-		strict: true,
-		openapi: { anyOf: [{ required: ['name'] }, { required: ['index'] }] },
-	},
-) {}
+	})
+	.strict()
+	.refine(({ name, index }) => name !== undefined || index !== undefined, {
+		message: 'At least one field is required',
+	})
+	.openapi({ minProperties: 1 });
+
+type UpdateDataTableColumnPublic = z.infer<typeof updateDataTableColumnPublicSchema>;
+
+export class UpdateDataTableColumnPublicDto implements UpdateDataTableColumnPublic {
+	name?: string;
+
+	index?: number;
+
+	static schema = updateDataTableColumnPublicSchema;
+
+	constructor(data: UpdateDataTableColumnPublic) {
+		Object.assign(this, updateDataTableColumnPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateDataTableColumnPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateDataTableColumnPublicSchema.parse(data);
+	}
+}
