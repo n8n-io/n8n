@@ -30,6 +30,8 @@ const sandboxIdForApp = (appId: string) => `app-publish-${appId}`;
 const STAGING_DIR = '.app-builds';
 const RESTORE_TIMEOUT_MS = 600_000;
 const LOG_TAIL_BYTES = 4096;
+/** Saves from the Code tab arrive in bursts; turns are minutes apart, so this only coalesces the former. */
+const BUILD_DEBOUNCE_MS = 5_000;
 
 /**
  * Empties the app directory except `node_modules` (kept so the install after
@@ -53,6 +55,14 @@ export function buildResetAppDirScript(input: { root: string; namespace: string 
 @Service()
 export class AppPublishService {
 	private sandboxService: InstanceAiSandboxService | undefined;
+
+	/** In-flight build per version id, so concurrent requests for one version share it. */
+	private readonly builds = new Map<string, Promise<AppPublishResult>>();
+
+	/** Tail of the build chain per app: builds of one app share its sandbox directory. */
+	private readonly sandboxLocks = new Map<string, Promise<unknown>>();
+
+	private readonly scheduledBuilds = new Map<string, NodeJS.Timeout>();
 
 	constructor(
 		private readonly appsService: AppsService,
@@ -124,7 +134,11 @@ export class AppPublishService {
 		};
 	}
 
-	/** `draft`: the app's live sandbox workspace, whose edits are stored before the build reads the newest source. */
+	/**
+	 * Publishes the draft: the app sandbox's edits are stored first, when there
+	 * is one, then the newest version is served. A version the end-of-turn build
+	 * already built is served at once; otherwise it is built now.
+	 */
 	async publish(
 		appId: string,
 		user: User,
@@ -132,22 +146,103 @@ export class AppPublishService {
 	): Promise<AppPublishResult> {
 		const app = await this.appsService.getApp(appId);
 
+		// A draft that exists but cannot be stored must not publish the older
+		// stored source in its place.
 		if (options.draft) {
 			try {
-				await this.snapshotService.snapshotAfterRun(appId, user, options.draft);
+				const snapshot = await this.snapshotService.snapshotAfterRun(appId, user, options.draft);
+				if (snapshot.outcome === 'failed') {
+					return { error: true, stage: 'snapshot', message: snapshot.message };
+				}
 			} catch (error) {
 				return { error: true, stage: 'snapshot', message: getErrorMessage(error) };
 			}
 		}
 
-		const source = await this.appsService.getSourceTarball(appId);
-		if (!source) {
+		const newest = await this.appsService.getNewestVersion(appId);
+		if (!newest) {
 			return {
 				error: true,
 				stage: 'restore',
 				message: `App "${app.name}" has no stored source to publish.`,
 			};
 		}
+
+		if (!newest.distStorageKey) {
+			const built = await this.buildVersion(appId, user, newest.id);
+			if ('error' in built) return built;
+		}
+		await this.appsService.setActiveVersion(appId, newest.id);
+		return { versionId: newest.id, url: this.appUrl(app.namespace) };
+	}
+
+	/**
+	 * Builds the newest version once the debounce window passes, so a burst of
+	 * saves costs one build, and never in parallel with another build of the
+	 * app. Detached from the turn: the caller does not wait, and a failure is
+	 * logged only. `publish` builds on demand, so nothing depends on this
+	 * having run.
+	 */
+	scheduleBuild(appId: string, user: User): void {
+		const pending = this.scheduledBuilds.get(appId);
+		if (pending) clearTimeout(pending);
+		const timer = setTimeout(() => {
+			this.scheduledBuilds.delete(appId);
+			void this.buildNewestIfNeeded(appId, user).catch((error: unknown) => {
+				this.logger.warn('Scheduled app build failed', { appId, error: getErrorMessage(error) });
+			});
+		}, BUILD_DEBOUNCE_MS);
+		timer.unref();
+		this.scheduledBuilds.set(appId, timer);
+	}
+
+	private async buildNewestIfNeeded(appId: string, user: User): Promise<void> {
+		const newest = await this.appsService.getNewestVersion(appId);
+		if (!newest || newest.distStorageKey) return;
+		const built = await this.buildVersion(appId, user, newest.id);
+		if ('error' in built) {
+			this.logger.warn('Scheduled app build failed', {
+				appId,
+				versionId: newest.id,
+				stage: built.stage,
+				message: built.message,
+			});
+		}
+	}
+
+	/**
+	 * Builds one stored version in the app's build sandbox and attaches the dist
+	 * to it. One build per app at a time (they share the sandbox's app
+	 * directory); a second request for a version already building joins it.
+	 */
+	async buildVersion(appId: string, user: User, versionId: string): Promise<AppPublishResult> {
+		const inFlight = this.builds.get(versionId);
+		if (inFlight) return await inFlight;
+
+		const previous = this.sandboxLocks.get(appId) ?? Promise.resolve();
+		const build = previous
+			.catch(() => undefined)
+			.then(async () => await this.buildVersionInSandbox(appId, user, versionId));
+		this.builds.set(versionId, build);
+		this.sandboxLocks.set(appId, build);
+		try {
+			return await build;
+		} finally {
+			this.builds.delete(versionId);
+			if (this.sandboxLocks.get(appId) === build) this.sandboxLocks.delete(appId);
+		}
+	}
+
+	private async buildVersionInSandbox(
+		appId: string,
+		user: User,
+		versionId: string,
+	): Promise<AppPublishResult> {
+		const app = await this.appsService.getApp(appId);
+		const version = await this.appsService.getVersion(appId, versionId);
+		// Built in the meantime, by a publish that did not wait for the schedule.
+		if (version.distStorageKey) return { versionId, url: this.appUrl(app.namespace) };
+		const source = await this.appsService.getVersionSource(appId, versionId);
 
 		const entry = await this.getSandboxService().getOrCreateWorkspaceEntry(
 			sandboxIdForApp(appId),
@@ -205,14 +300,28 @@ export class AppPublishService {
 			};
 		}
 
+		// The build's own source tarball is dropped: the version already holds
+		// the source it was built from.
+		const { appsService } = this;
+		const url = this.appUrl(app.namespace);
 		const sandboxContext: AppSandboxContext = {
-			appService: this.createAppServiceAdapter(),
+			appService: {
+				...this.createAppServiceAdapter(),
+				async storeVersion(_appId, files) {
+					await appsService.attachDist(appId, versionId, files.dist);
+					return { versionId, url };
+				},
+			},
 			appWorkspace: workspace,
 		};
 		const built = await buildApp(sandboxContext, { action: 'build', appId });
 		if ('denied' in built) return { error: true, stage: 'build', message: built.reason };
 		if ('error' in built) return built;
-		return { versionId: built.versionId, url: built.url };
+		return { versionId, url };
+	}
+
+	private appUrl(namespace: string): string {
+		return `${this.urlService.getInstanceBaseUrl()}/apps/${namespace}/`;
 	}
 }
 

@@ -161,8 +161,14 @@ const appUrl = computed(() =>
 	app.value ? `${window.location.origin}/apps/${app.value.namespace}/` : '',
 );
 
+// The newest build is the draft's last built state; it shows until the live
+// preview takes over, so a fresh load does not wait for the dev server.
 const versionId = computed(
-	() => props.artifactVersionId ?? app.value?.activeVersionId ?? undefined,
+	() =>
+		props.artifactVersionId ??
+		app.value?.newestBuiltVersionId ??
+		app.value?.activeVersionId ??
+		undefined,
 );
 
 const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));

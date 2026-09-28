@@ -89,6 +89,7 @@ export const AppsModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('apps.apps'),
 				value: APPS_VIEW,
+				preview: true,
 				to: {
 					name: APPS_VIEW,
 				},
@@ -98,6 +99,7 @@ export const AppsModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('apps.apps'),
 				value: PROJECT_APPS,
+				preview: true,
 				dynamicRoute: {
 					name: PROJECT_APPS,
 					includeProjectId: true,

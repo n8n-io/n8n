@@ -25,8 +25,9 @@ function createService() {
 	appsService.listVersions.mockResolvedValue([]);
 	const appPublishService = mock<AppPublishService>();
 	const snapshotService = mock<AppSourceSnapshotService>();
+	snapshotService.snapshotAfterRun.mockResolvedValue({ outcome: 'stored', versionId: 's-9' });
 	const service = new AppDraftService(appsService, appPublishService, snapshotService);
-	return { service, appsService, snapshotService };
+	return { service, appsService, appPublishService, snapshotService };
 }
 
 function createDraft(files: Record<string, string>) {
@@ -62,6 +63,20 @@ describe('AppDraftService', () => {
 			expect(result).toEqual({ versionId: 's-2', files: ['package.json', 'src/main.ts'] });
 		});
 
+		it('does not list the stored source when the sandbox draft could not be stored', async () => {
+			const { service, appsService, snapshotService } = createService();
+			const { draft } = createDraft({ 'package.json': '{}' });
+			snapshotService.snapshotAfterRun.mockResolvedValue({
+				outcome: 'failed',
+				message: 'tar: error',
+			});
+
+			await expect(service.listFiles('app-1', USER, draft)).rejects.toThrow(
+				"Could not store the app's draft: tar: error",
+			);
+			expect(appsService.listVersions).not.toHaveBeenCalled();
+		});
+
 		it('returns null for an app without any version', async () => {
 			const { service, snapshotService } = createService();
 
@@ -72,7 +87,7 @@ describe('AppDraftService', () => {
 
 	describe('write', () => {
 		it('hands the callback the current draft content and writes what it returns', async () => {
-			const { service, appsService, snapshotService } = createService();
+			const { service, appsService, appPublishService, snapshotService } = createService();
 			const { draft, filesystem } = createDraft({
 				'package.json': '{}',
 				'src/main.ts': 'export const x = 1;',
@@ -97,6 +112,7 @@ describe('AppDraftService', () => {
 				undefined,
 			);
 			expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('app-1', USER, draft, null);
+			expect(appPublishService.scheduleBuild).toHaveBeenCalledWith('app-1', USER);
 			expect(result).toEqual({ versionId: 's-9' });
 		});
 

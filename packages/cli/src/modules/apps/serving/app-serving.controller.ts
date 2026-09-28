@@ -4,13 +4,19 @@ import { getHtmlSandboxCSP } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { AppServingService } from './app-serving.service';
+import { AuthService } from '@/auth/auth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+
+import { AppServingService, type ResolvedAppFile } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
 import { pathSegments } from './path-segments';
 
 @RootLevelController('/apps')
 export class AppServingController {
-	constructor(private readonly appServingService: AppServingService) {}
+	constructor(
+		private readonly appServingService: AppServingService,
+		private readonly authService: AuthService,
+	) {}
 
 	/**
 	 * Serves a published App to anyone with the URL: a file of its active
@@ -28,11 +34,19 @@ export class AppServingController {
 			res.status(404).json({ code: 'not_found', message: 'Not found' });
 			return;
 		}
-		const filePath = await this.appServingService.resolve(req.params.namespace, segments);
-		if (!filePath) {
+		const requestedVersionId = typeof req.query.v === 'string' ? req.query.v : undefined;
+		const resolved = await this.appServingService.resolve(
+			req.params.namespace,
+			segments,
+			requestedVersionId,
+		);
+		// An unpublished build is for its builders only; a visitor gets the same
+		// answer as for a version that does not exist.
+		if (!resolved || !(await this.mayServe(req, resolved))) {
 			res.status(404).type('text').send('Not found');
 			return;
 		}
+		const { filePath } = resolved;
 
 		// A built app links its assets relative to its base URL, so the root document
 		// has to carry the trailing slash.
@@ -43,6 +57,24 @@ export class AppServingController {
 		}
 
 		await this.sendStaticFile(res, filePath);
+	}
+
+	/**
+	 * The active version is public. Any other build needs the session cookie of
+	 * a user who may read the app; the document and its assets load in an
+	 * iframe, which cannot send the browser-id header, so the cookie alone is
+	 * checked, as for other embedded resources.
+	 */
+	private async mayServe(req: Request, { app, version }: ResolvedAppFile): Promise<boolean> {
+		if (version.id === app.activeVersionId) return true;
+		const cookie = this.authService.getCookieToken(req);
+		if (!cookie) return false;
+		try {
+			const user = await this.authService.authenticateUserByCookie(cookie);
+			return await userHasScopes(user, ['app:read'], false, { projectId: app.projectId });
+		} catch {
+			return false;
+		}
 	}
 
 	private async sendStaticFile(res: Response, filePath: string) {

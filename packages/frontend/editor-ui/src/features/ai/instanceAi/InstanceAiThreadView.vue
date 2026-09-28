@@ -639,6 +639,13 @@ onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 });
 
+// The assistant page carries the thread in `params.threadId`, the app builder in `?thread=`.
+function routeThreadId(): string | undefined {
+	const { params, query } = router.currentRoute.value;
+	if (typeof params.threadId === 'string') return params.threadId;
+	return typeof query.thread === 'string' ? query.thread : undefined;
+}
+
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
 	// SSE, clears state, drops it from the store) — but only once the app has
@@ -647,7 +654,7 @@ onUnmounted(() => {
 	// hand-off that loads the AIA chunks) and discard one; that discarded
 	// instance's unmount fires while the route still points at the thread, and
 	// must not tear down the runtime the live instance is rendering.
-	if (router.currentRoute.value.params.threadId !== props.threadId) {
+	if (routeThreadId() !== props.threadId) {
 		store.disposeRuntime(props.threadId);
 		// Guarded by the same route check, and scoped to this thread's agent: a
 		// discarded duplicate instance must not drop a request the live instance's

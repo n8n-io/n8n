@@ -12,6 +12,8 @@ export type App = {
 	activeVersionId: string | null;
 	/** A source newer than the published version exists (per-turn snapshot, or nothing published yet). */
 	hasUnpublishedChanges: boolean;
+	/** Newest version with a build, published or not; shown until the live preview is up. */
+	newestBuiltVersionId: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -32,7 +34,7 @@ export interface AppVersion {
 	/** False once retention pruned the build; only versions with a dist can be served. */
 	hasDist: boolean;
 	isActive: boolean;
-	/** A build whose dist was pruned reads as a snapshot. */
+	/** `publish` = the served version; every other version, built or not, is a `snapshot`. */
 	kind: 'publish' | 'snapshot';
 	/** Short summary of what changed, or null when none was generated. */
 	label: string | null;

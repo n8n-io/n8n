@@ -69,6 +69,7 @@ export class AppPreviewController {
 		const access = await this.instanceAiService.getAppPreviewSandbox(req.user);
 		if (!access.enabled) return { status: 'unsupported', reason: 'provider' };
 
+		this.instanceAiService.keepAppSandboxCached(app.id);
 		await this.instanceAiService.awaitPendingSnapshot(app.id);
 		return await this.appPreviewService.ensure({
 			appId: app.id,

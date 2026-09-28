@@ -13,6 +13,7 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 
 import { AppPublishService, buildResetAppDirScript } from '../app-publish.service';
+import type { AppVersion } from '../app-version.entity';
 import type { App } from '../app.entity';
 import type { AppsService } from '../apps.service';
 
@@ -30,9 +31,11 @@ class TestableAppPublishService extends AppPublishService {
 		snapshotService: AppSourceSnapshotService,
 		private readonly sandboxServiceMock: ReturnType<typeof mock<InstanceAiSandboxService>>,
 	) {
+		const urlService = mock<UrlService>();
+		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 		super(
 			appsService,
-			mock<UrlService>(),
+			urlService,
 			snapshotService,
 			mock<InstanceAiSettingsService>(),
 			mock<AiService>(),
@@ -50,13 +53,15 @@ class TestableAppPublishService extends AppPublishService {
 const ROOT = '/home/user/workspace';
 const APP = { id: 'app-1', name: 'Greeter', namespace: 'greeter', activeVersionId: 'v-0' } as App;
 const USER = { id: 'user-1' } as User;
-const SOURCE = { versionId: 'v-3', data: Buffer.from([0x1f, 0x8b, 0x08, 0x00]) };
+const SOURCE = { fileName: 'greeter-v-3.tgz', data: Buffer.from([0x1f, 0x8b, 0x08, 0x00]) };
+const UNBUILT = { id: 'v-3', appId: 'app-1', distStorageKey: null } as unknown as AppVersion;
+const BUILT_VERSION = { ...UNBUILT, distStorageKey: 'blob/dist' } as AppVersion;
 const BUILT = {
 	appId: 'app-1',
 	name: 'Greeter',
 	namespace: 'greeter',
 	projectId: 'proj-1',
-	versionId: 'v-4',
+	versionId: 'v-3',
 	url: 'http://localhost:5678/apps/greeter/',
 	warnings: [],
 };
@@ -67,9 +72,11 @@ const fail = (stdout = '', stderr = '') => ({ exitCode: 1, stdout, stderr });
 function createService() {
 	const appsService = mock<AppsService>();
 	appsService.getApp.mockResolvedValue(APP);
-	appsService.getSourceTarball.mockResolvedValue(SOURCE);
+	appsService.getNewestVersion.mockResolvedValue(UNBUILT);
+	appsService.getVersion.mockResolvedValue(UNBUILT);
+	appsService.getVersionSource.mockResolvedValue(SOURCE);
 	const snapshotService = mock<AppSourceSnapshotService>();
-	snapshotService.snapshotAfterRun.mockResolvedValue(undefined);
+	snapshotService.snapshotAfterRun.mockResolvedValue({ outcome: 'unchanged' });
 
 	const executeCommand = vi.fn().mockResolvedValue(ok());
 	const writeFile = vi.fn().mockResolvedValue(undefined);
@@ -97,13 +104,14 @@ describe('AppPublishService', () => {
 	});
 
 	it('replaces the sources in the build sandbox with the newest stored ones, then builds', async () => {
-		const { service, executeCommand, writeFile, sandboxServiceMock, snapshotService } =
+		const { service, appsService, executeCommand, writeFile, sandboxServiceMock, snapshotService } =
 			createService();
 
 		const result = await service.publish('app-1', USER);
 
-		expect(result).toEqual({ versionId: 'v-4', url: 'http://localhost:5678/apps/greeter/' });
+		expect(result).toEqual({ versionId: 'v-3', url: 'http://localhost:5678/apps/greeter/' });
 		expect(snapshotService.snapshotAfterRun).not.toHaveBeenCalled();
+		expect(appsService.setActiveVersion).toHaveBeenCalledWith('app-1', 'v-3');
 		expect(sandboxServiceMock.getOrCreateWorkspaceEntry).toHaveBeenCalledWith(
 			'app-publish-app-1',
 			USER,
@@ -135,10 +143,11 @@ describe('AppPublishService', () => {
 		const order: string[] = [];
 		snapshotService.snapshotAfterRun.mockImplementation(async () => {
 			order.push('snapshot');
+			return { outcome: 'stored', versionId: 'v2' };
 		});
-		appsService.getSourceTarball.mockImplementation(async () => {
+		appsService.getNewestVersion.mockImplementation(async () => {
 			order.push('read');
-			return SOURCE;
+			return UNBUILT;
 		});
 
 		await service.publish('app-1', USER, { draft: workspace });
@@ -160,9 +169,27 @@ describe('AppPublishService', () => {
 		expect(buildApp).not.toHaveBeenCalled();
 	});
 
+	it('reports the snapshot stage when the sandbox holds the app but its source could not be packed', async () => {
+		const { service, snapshotService, sandboxServiceMock } = createService();
+		snapshotService.snapshotAfterRun.mockResolvedValue({
+			outcome: 'failed',
+			message: 'Could not pack the app source (exit code 1). tar: error',
+		});
+
+		const result = await service.publish('app-1', USER, { draft: mock<Workspace>() });
+
+		expect(result).toEqual({
+			error: true,
+			stage: 'snapshot',
+			message: 'Could not pack the app source (exit code 1). tar: error',
+		});
+		expect(sandboxServiceMock.getOrCreateWorkspaceEntry).not.toHaveBeenCalled();
+		expect(buildApp).not.toHaveBeenCalled();
+	});
+
 	it('reports the restore stage when the app has no stored source', async () => {
 		const { service, appsService, sandboxServiceMock } = createService();
-		appsService.getSourceTarball.mockResolvedValue(null);
+		appsService.getNewestVersion.mockResolvedValue(null);
 
 		const result = await service.publish('app-1', USER);
 
@@ -217,17 +244,8 @@ describe('AppPublishService', () => {
 		await expect(service.publish('app-1', USER)).resolves.toEqual(failure);
 	});
 
-	it('stores the version through the apps service when the build asks for it', async () => {
+	it("attaches the dist to the version it built and drops the build's own source", async () => {
 		const { service, appsService } = createService();
-		appsService.createVersion.mockResolvedValue({
-			id: 'v-4',
-			appId: 'app-1',
-			createdAt: '2026-01-01T00:00:00.000Z',
-			hasDist: true,
-			label: null,
-			isActive: true,
-			kind: 'publish',
-		});
 		vi.mocked(buildApp).mockImplementation(async (context) => {
 			const stored = await context.appService!.storeVersion('app-1', {
 				source: Buffer.from('s'),
@@ -238,11 +256,96 @@ describe('AppPublishService', () => {
 
 		const result = await service.publish('app-1', USER);
 
-		expect(appsService.createVersion).toHaveBeenCalledWith(
-			'app-1',
-			Buffer.from('s'),
-			Buffer.from('d'),
-		);
-		expect(result).toMatchObject({ versionId: 'v-4' });
+		expect(appsService.attachDist).toHaveBeenCalledWith('app-1', 'v-3', Buffer.from('d'));
+		expect(appsService.createVersion).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ versionId: 'v-3' });
+	});
+
+	it('serves an already built newest version without building', async () => {
+		const { service, appsService, sandboxServiceMock } = createService();
+		appsService.getNewestVersion.mockResolvedValue(BUILT_VERSION);
+
+		const result = await service.publish('app-1', USER);
+
+		expect(result).toEqual({ versionId: 'v-3', url: 'http://localhost:5678/apps/greeter/' });
+		expect(appsService.setActiveVersion).toHaveBeenCalledWith('app-1', 'v-3');
+		expect(sandboxServiceMock.getOrCreateWorkspaceEntry).not.toHaveBeenCalled();
+		expect(buildApp).not.toHaveBeenCalled();
+	});
+
+	describe('buildVersion', () => {
+		it('shares one build between concurrent requests for the same version', async () => {
+			const { service } = createService();
+
+			const [a, b] = await Promise.all([
+				service.buildVersion('app-1', USER, 'v-3'),
+				service.buildVersion('app-1', USER, 'v-3'),
+			]);
+
+			expect(a).toEqual(b);
+			expect(buildApp).toHaveBeenCalledTimes(1);
+		});
+
+		it('runs builds of one app one after another', async () => {
+			const { service, appsService } = createService();
+			const order: string[] = [];
+			vi.mocked(buildApp).mockImplementation(async (_context, input) => {
+				const versionId = appsService.getVersion.mock.calls.at(-1)?.[1];
+				order.push(`start ${versionId}`);
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				order.push(`end ${versionId}`);
+				return { ...BUILT, appId: input.appId, versionId: String(versionId) };
+			});
+			appsService.getVersion.mockImplementation(
+				async (_appId, versionId) => ({ ...UNBUILT, id: versionId }) as AppVersion,
+			);
+
+			await Promise.all([
+				service.buildVersion('app-1', USER, 'v-3'),
+				service.buildVersion('app-1', USER, 'v-4'),
+			]);
+
+			expect(order).toEqual(['start v-3', 'end v-3', 'start v-4', 'end v-4']);
+		});
+
+		it('does not rebuild a version that gained its dist in the meantime', async () => {
+			const { service, appsService, sandboxServiceMock } = createService();
+			appsService.getVersion.mockResolvedValue(BUILT_VERSION);
+
+			await expect(service.buildVersion('app-1', USER, 'v-3')).resolves.toEqual({
+				versionId: 'v-3',
+				url: 'http://localhost:5678/apps/greeter/',
+			});
+			expect(sandboxServiceMock.getOrCreateWorkspaceEntry).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('scheduleBuild', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
+
+		it('builds the newest unbuilt version once after a burst of schedules', async () => {
+			const { service } = createService();
+
+			service.scheduleBuild('app-1', USER);
+			await vi.advanceTimersByTimeAsync(4_000);
+			service.scheduleBuild('app-1', USER);
+			await vi.advanceTimersByTimeAsync(4_000);
+			expect(buildApp).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(buildApp).toHaveBeenCalledTimes(1);
+		});
+
+		it('does nothing when the newest version is built already', async () => {
+			const { service, appsService, sandboxServiceMock } = createService();
+			appsService.getNewestVersion.mockResolvedValue(BUILT_VERSION);
+
+			service.scheduleBuild('app-1', USER);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(sandboxServiceMock.getOrCreateWorkspaceEntry).not.toHaveBeenCalled();
+			expect(buildApp).not.toHaveBeenCalled();
+		});
 	});
 });

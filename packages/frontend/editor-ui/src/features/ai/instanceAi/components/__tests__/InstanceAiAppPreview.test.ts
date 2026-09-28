@@ -108,6 +108,7 @@ const loadedApp = (overrides: Partial<App> = {}): App => ({
 	projectId: 'proj-1',
 	activeVersionId: 'v-1',
 	hasUnpublishedChanges: false,
+	newestBuiltVersionId: null,
 	createdAt: '2026-04-01T00:00:00.000Z',
 	updatedAt: '2026-04-01T00:00:00.000Z',
 	...overrides,

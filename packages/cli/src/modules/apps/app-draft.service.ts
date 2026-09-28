@@ -12,6 +12,7 @@ import { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview/app-
 
 import { AppPublishService } from './app-publish.service';
 import { AppsService } from './apps.service';
+import { AppDraftUnavailableError } from './errors/app-draft-unavailable.error';
 import { createDistTarFilter } from './serving/dist-tar-filter';
 
 /** Same budget `AppVersionService` accepts for a source upload. */
@@ -48,7 +49,10 @@ export class AppDraftService {
 		user: User,
 		draft?: Workspace,
 	): Promise<{ versionId: string; files: string[] } | null> {
-		if (draft) await this.snapshotService.snapshotAfterRun(appId, user, draft);
+		if (draft) {
+			const snapshot = await this.snapshotService.snapshotAfterRun(appId, user, draft);
+			if (snapshot.outcome === 'failed') throw new AppDraftUnavailableError(snapshot.message);
+		}
 		const [newest] = await this.appsService.listVersions(appId);
 		if (!newest) return null;
 		return {
@@ -73,7 +77,9 @@ export class AppDraftService {
 		if (draft) {
 			const written = await this.writeIntoDraft(app.id, app.namespace, filesFor, draft);
 			if (written !== true) return written;
-			await this.snapshotService.snapshotAfterRun(appId, user, draft, label);
+			const snapshot = await this.snapshotService.snapshotAfterRun(appId, user, draft, label);
+			if (snapshot.outcome === 'failed') return { error: true, message: snapshot.message };
+			if (snapshot.outcome === 'stored') this.appPublishService.scheduleBuild(appId, user);
 			const [newest] = await this.appsService.listVersions(appId);
 			return { versionId: newest?.id ?? null };
 		}
@@ -87,6 +93,7 @@ export class AppDraftService {
 		}
 		const patched = await patchTarball(source.data, filesFor);
 		const version = await this.appsService.createSourceSnapshot(appId, patched, label);
+		this.appPublishService.scheduleBuild(appId, user);
 		return { versionId: version.id };
 	}
 

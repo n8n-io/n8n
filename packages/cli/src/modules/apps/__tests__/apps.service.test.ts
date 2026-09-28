@@ -65,11 +65,15 @@ describe('AppsService', () => {
 		it('pages one project and marks each app with its publish state', async () => {
 			appRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 3, data: [app] });
 			appVersionService.hasUnpublishedChanges.mockResolvedValue(true);
+			appVersionService.findNewestBuilt.mockResolvedValue({ id: 'b-1' } as AppVersion);
 
 			const result = await service.listApps('project-1', query);
 
 			expect(appRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(['project-1'], query);
-			expect(result).toEqual({ count: 3, data: [{ ...app, hasUnpublishedChanges: true }] });
+			expect(result).toEqual({
+				count: 3,
+				data: [{ ...app, hasUnpublishedChanges: true, newestBuiltVersionId: 'b-1' }],
+			});
 		});
 
 		it('pages across every project the user belongs to', async () => {

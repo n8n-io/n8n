@@ -35,6 +35,7 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
+import type { AppVersion } from './app-version.entity';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
@@ -93,7 +94,11 @@ function inputJsonSchema(triggerNode: INode, triggerType: string): JSONSchema7 {
 }
 
 /** What the REST API returns for an app: the entity plus its draft-versus-published state. */
-type AppResponse = App & { hasUnpublishedChanges: boolean };
+type AppResponse = App & {
+	hasUnpublishedChanges: boolean;
+	/** Newest version that has a build; what the builder shows before its dev server is up. */
+	newestBuiltVersionId: string | null;
+};
 
 @Service()
 export class AppsService {
@@ -144,8 +149,11 @@ export class AppsService {
 	}
 
 	async toResponse(app: App): Promise<AppResponse> {
-		const hasUnpublishedChanges = await this.appVersionService.hasUnpublishedChanges(app);
-		return { ...app, hasUnpublishedChanges };
+		const [hasUnpublishedChanges, newestBuilt] = await Promise.all([
+			this.appVersionService.hasUnpublishedChanges(app),
+			this.appVersionService.findNewestBuilt(app.id),
+		]);
+		return { ...app, hasUnpublishedChanges, newestBuiltVersionId: newestBuilt?.id ?? null };
 	}
 
 	async updateApp(appId: string, dto: UpdateAppDto) {
@@ -521,7 +529,7 @@ export class AppsService {
 	}
 
 	/** Scoped to `appId` so a versionId from a different app is treated as not found. */
-	private async getVersion(appId: string, versionId: string) {
+	async getVersion(appId: string, versionId: string) {
 		const version = await this.appVersionService.findById(versionId);
 		if (!version || version.appId !== appId) throw new AppVersionNotFoundError(versionId);
 		return version;
@@ -534,6 +542,18 @@ export class AppsService {
 
 	async labelVersionsSince(appId: string, since: Date, label: string) {
 		await this.appVersionService.labelVersionsSince(appId, since, label);
+	}
+
+	/** The newest version, built or not; null for an app without any source. */
+	async getNewestVersion(appId: string): Promise<AppVersion | null> {
+		const [newest] = await this.appVersionService.list(appId);
+		return newest ?? null;
+	}
+
+	/** Attaches a build to a source-only version, without serving it. */
+	async attachDist(appId: string, versionId: string, dist: Buffer) {
+		const version = await this.getVersion(appId, versionId);
+		return await this.appVersionService.attachDist(version, dist);
 	}
 
 	/** The stored source tarball of a version, for download. */

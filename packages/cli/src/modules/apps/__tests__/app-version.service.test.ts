@@ -217,6 +217,56 @@ describe('AppVersionService', () => {
 		});
 	});
 
+	describe('attachDist', () => {
+		const snapshot = {
+			id: 'v-snap',
+			appId: 'app-1',
+			storedAt: 'db',
+			sourceStorageKey: 'src-v-snap',
+			distStorageKey: null,
+			distSizeBytes: null,
+		} as AppVersion;
+
+		beforeEach(() => {
+			appRepository.findOneBy.mockResolvedValue({
+				id: 'app-1',
+				projectId: 'project-1',
+				activeVersionId: 'v-active',
+			} as App);
+			blobStore.write.mockResolvedValue({ storedAt: 'db', storageKey: 'dist-key' });
+		});
+
+		it('stores the dist on the snapshot row without serving it, and prunes old dists', async () => {
+			const built = await service.attachDist(snapshot, dist);
+
+			expect(blobStore.write).toHaveBeenCalledWith(
+				{ appId: 'app-1', versionId: 'v-snap', kind: 'dist' },
+				dist,
+			);
+			expect(appVersionRepository.setDist).toHaveBeenCalledWith('v-snap', {
+				distStorageKey: 'dist-key',
+				distSizeBytes: dist.length,
+			});
+			expect(appRepository.setActiveVersionId).not.toHaveBeenCalled();
+			expect(appVersionRepository.findDistPrunable).toHaveBeenCalledWith('app-1', 5, 'v-active');
+			expect(built).toMatchObject({ id: 'v-snap', distStorageKey: 'dist-key' });
+		});
+
+		it('rejects a dist without index.html and writes nothing', async () => {
+			await expect(service.attachDist(snapshot, tgz({ './app.js': ';' }))).rejects.toThrow(
+				InvalidAppVersionTarballError,
+			);
+			expect(blobStore.write).not.toHaveBeenCalled();
+		});
+
+		it('deletes the dist blob when the row update fails', async () => {
+			appVersionRepository.setDist.mockRejectedValue(new Error('db down'));
+
+			await expect(service.attachDist(snapshot, dist)).rejects.toThrow('db down');
+			expect(blobStore.delete).toHaveBeenCalledWith([{ storedAt: 'db', storageKey: 'dist-key' }]);
+		});
+	});
+
 	describe('createSourceSnapshot', () => {
 		const versionRow = (id: string, distStorageKey: string | null = null): AppVersion =>
 			({
@@ -410,6 +460,14 @@ describe('AppVersionService', () => {
 		it('marks a source-only version as an inactive snapshot', () => {
 			expect(service.toResponse(row(null), 'v-9')).toMatchObject({
 				hasDist: false,
+				isActive: false,
+				kind: 'snapshot',
+			});
+		});
+
+		it('marks a built version that is not served as a snapshot', () => {
+			expect(service.toResponse(row('dist-key'), 'v-9')).toMatchObject({
+				hasDist: true,
 				isActive: false,
 				kind: 'snapshot',
 			});

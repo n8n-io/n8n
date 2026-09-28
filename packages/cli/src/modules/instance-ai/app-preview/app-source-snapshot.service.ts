@@ -59,10 +59,18 @@ export function buildSnapshotScript(input: {
 	].join('\n');
 }
 
+/** What became of the draft of the app the sandbox belongs to; other apps found in it are stored best-effort. */
+export type AppSnapshotOutcome =
+	| { outcome: 'stored'; versionId: string }
+	| { outcome: 'unchanged' }
+	/** The sandbox does not hold the app: the stored source is the draft. */
+	| { outcome: 'absent' }
+	| { outcome: 'failed'; message: string };
+
 /**
  * Stores the source of every app in an app's sandbox at the end of a turn, so
- * the working copy survives the sandbox without a build. Best-effort by
- * design: a failed snapshot is logged, never surfaced to the run.
+ * the working copy survives the sandbox without a build. The run never sees a
+ * failure; publish and the Code tab do, through the returned outcome.
  */
 @Service()
 export class AppSourceSnapshotService {
@@ -83,27 +91,30 @@ export class AppSourceSnapshotService {
 		user: User,
 		rawWorkspace: Workspace,
 		label: string | null = null,
-	): Promise<void> {
+	): Promise<AppSnapshotOutcome> {
 		const root = await getWorkspaceRoot(rawWorkspace);
 		const workspace = createScopedWorkspace(rawWorkspace, root);
 		const executeCommand = workspace.sandbox?.executeCommand?.bind(workspace.sandbox);
 		const filesystem = workspace.filesystem;
-		if (!executeCommand || !filesystem) return;
+		if (!executeCommand || !filesystem) {
+			return { outcome: 'failed', message: 'The sandbox is not available on this instance.' };
+		}
 
 		const listed = await executeCommand(LIST_APPS_SCRIPT, [], { cwd: root });
 		const namespaces = listed.stdout.split('\n').filter((line) => /^[a-z0-9-]+$/.test(line));
 		if (namespaces.length === 0) {
 			this.logger.debug('No app to snapshot in the app sandbox', { appId });
-			return;
+			return { outcome: 'absent' };
 		}
 
+		const outcomes = new Map<string, AppSnapshotOutcome>();
 		for (const namespace of namespaces) {
 			const app = await this.appRepository.findByNamespace(namespace);
 			if (
 				!app ||
 				!(await userHasScopes(user, ['app:update'], false, { projectId: app.projectId }))
 			) {
-				this.logger.debug('Skipping app snapshot: unknown app or no update scope', {
+				this.logger.warn('Skipping app snapshot: unknown app or no update scope', {
 					appId,
 					namespace,
 				});
@@ -113,46 +124,73 @@ export class AppSourceSnapshotService {
 			const key = `${appId}:${namespace}`;
 			const tarball = `${STAGING_DIR}/${namespace}-${Date.now()}-snapshot.tgz`;
 			try {
-				const packed = await executeCommand(
-					buildSnapshotScript({ root, namespace, tarball, lastHash: this.lastHashes.get(key) }),
-					[],
-					{ cwd: root, timeout: SNAPSHOT_TIMEOUT_MS },
-				);
-				const match = /^SNAPSHOT (\S+) (\d+)$/m.exec(packed.stdout);
-				if (packed.exitCode !== 0 || !match) {
-					if (!/^(UNCHANGED|PRISTINE)$/m.test(packed.stdout)) {
-						this.logger.debug('App snapshot script did not produce a tarball', {
-							appId,
-							namespace,
-							exitCode: packed.exitCode,
-							output: packed.stdout.slice(-1024),
-						});
-					}
-					continue;
-				}
-				const [, hash, size] = match;
-				if (Number(size) > MAX_TARBALL_BYTES) {
-					this.logger.warn('App source is too large to snapshot', { appId, namespace, size });
-					continue;
-				}
-				const source = await filesystem.readFile(tarball);
-				if (!Buffer.isBuffer(source)) {
-					this.logger.warn('App snapshot read-out was not binary', { appId, namespace });
-					continue;
-				}
-				const version = await this.appsService.createSourceSnapshot(app.id, source, label);
-				this.lastHashes.set(key, hash);
-				this.logger.debug('Stored app source snapshot', {
-					appId,
+				const outcome = await this.snapshotNamespace({
+					executeCommand,
+					filesystem,
+					root,
 					namespace,
-					versionId: version.id,
+					tarball,
+					key,
+					appId: app.id,
+					label,
 				});
+				if (outcome.outcome === 'failed') {
+					this.logger.warn('App source snapshot failed', {
+						appId,
+						namespace,
+						message: outcome.message,
+					});
+				}
+				outcomes.set(app.id, outcome);
 			} finally {
 				await executeCommand(`rm -f '${root}/${tarball}'`, [], { cwd: root }).catch(
 					() => undefined,
 				);
 			}
 		}
+		return outcomes.get(appId) ?? { outcome: 'absent' };
+	}
+
+	private async snapshotNamespace(input: {
+		executeCommand: NonNullable<NonNullable<Workspace['sandbox']>['executeCommand']>;
+		filesystem: NonNullable<Workspace['filesystem']>;
+		root: string;
+		namespace: string;
+		tarball: string;
+		key: string;
+		appId: string;
+		label: string | null;
+	}): Promise<AppSnapshotOutcome> {
+		const { root, namespace, tarball, key, appId } = input;
+		const packed = await input.executeCommand(
+			buildSnapshotScript({ root, namespace, tarball, lastHash: this.lastHashes.get(key) }),
+			[],
+			{ cwd: root, timeout: SNAPSHOT_TIMEOUT_MS },
+		);
+		if (/^(UNCHANGED|PRISTINE)$/m.test(packed.stdout)) return { outcome: 'unchanged' };
+		const match = /^SNAPSHOT (\S+) (\d+)$/m.exec(packed.stdout);
+		if (packed.exitCode !== 0 || !match) {
+			const log = `${packed.stdout}\n${packed.stderr}`.trim().slice(-1024);
+			return {
+				outcome: 'failed',
+				message: `Could not pack the app source (exit code ${packed.exitCode}). ${log}`.trim(),
+			};
+		}
+		const [, hash, size] = match;
+		if (Number(size) > MAX_TARBALL_BYTES) {
+			return {
+				outcome: 'failed',
+				message: `The app source is ${size} bytes; the limit is ${MAX_TARBALL_BYTES}.`,
+			};
+		}
+		const source = await input.filesystem.readFile(tarball);
+		if (!Buffer.isBuffer(source)) {
+			return { outcome: 'failed', message: 'The app source read-out was not binary.' };
+		}
+		const version = await this.appsService.createSourceSnapshot(appId, source, input.label);
+		this.lastHashes.set(key, hash);
+		this.logger.debug('Stored app source snapshot', { appId, namespace, versionId: version.id });
+		return { outcome: 'stored', versionId: version.id };
 	}
 
 	async labelVersionsSince(appId: string, since: Date, label: string): Promise<void> {

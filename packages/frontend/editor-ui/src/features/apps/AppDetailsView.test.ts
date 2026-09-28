@@ -104,6 +104,7 @@ function makeApp(overrides: Partial<App> = {}): App {
 		projectId: 'proj-1',
 		activeVersionId: null,
 		hasUnpublishedChanges: false,
+		newestBuiltVersionId: null,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		updatedAt: '2026-04-01T00:00:00.000Z',
 		...overrides,
@@ -165,6 +166,17 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
 			'src',
 			'/apps/greeter/?v=v-7',
+		);
+	});
+
+	it('shows the newest build in the iframe before the published one', async () => {
+		const { getByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7', newestBuiltVersionId: 'v-9' }),
+		);
+
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-9',
 		);
 	});
 

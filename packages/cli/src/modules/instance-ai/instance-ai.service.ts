@@ -180,6 +180,7 @@ import { assertNever } from '@/utils';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { AppPreviewService, settlesWithin } from './app-preview/app-preview.service';
 import { AppSourceSnapshotService } from './app-preview/app-source-snapshot.service';
+import { AppPublishService } from '@/modules/apps/app-publish.service';
 import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
@@ -929,6 +930,7 @@ export class InstanceAiService {
 			errorReporter: this.errorReporter,
 			runState: this.runState,
 			backgroundTasks: this.backgroundTasks,
+			isAppInUse: (appId) => this.hasActiveRunForApp(appId),
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			resolveTracingConfig: async (threadId, userId) => {
@@ -2031,6 +2033,15 @@ export class InstanceAiService {
 	/** The workspace of a sandbox key only if something already created it; never creates one. */
 	getCachedWorkspace(sandboxKey: string): Workspace | undefined {
 		return this.sandboxService.getCachedWorkspaceEntry(sandboxKey)?.workspace;
+	}
+
+	/**
+	 * The live preview's heartbeat keeps the remote app sandbox alive; the cache
+	 * entry must not expire before it, or publish and the Code tab lose sight of
+	 * the draft the preview shows.
+	 */
+	keepAppSandboxCached(appId: string): void {
+		this.sandboxService.touchCachedWorkspaceEntry(appSandboxKey(appId));
 	}
 
 	/**
@@ -7221,7 +7232,14 @@ export class InstanceAiService {
 			// Marked before the first await: the run-finish event is already out, and the
 			// client's ensure that follows it must find the rebuild in flight.
 			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(appId, entry.workspace);
-			await Container.get(AppSourceSnapshotService).snapshotAfterRun(appId, user, entry.workspace);
+			const snapshot = await Container.get(AppSourceSnapshotService).snapshotAfterRun(
+				appId,
+				user,
+				entry.workspace,
+			);
+			// Detached: the preview waits for the snapshot, never for the build.
+			if (snapshot.outcome === 'stored')
+				Container.get(AppPublishService).scheduleBuild(appId, user);
 			await rebuilt;
 		} catch (error) {
 			this.logger.warn('App source snapshot failed', {

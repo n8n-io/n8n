@@ -73,6 +73,10 @@ export function appSandboxKey(appId: string): string {
 	return `app-${appId}`;
 }
 
+function appIdFromSandboxKey(key: string): string | undefined {
+	return key.startsWith('app-') ? key.slice('app-'.length) : undefined;
+}
+
 function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {
@@ -171,6 +175,8 @@ export type InstanceAiSandboxServiceOptions = {
 	errorReporter: ErrorReporter;
 	runState: InstanceAiSandboxRunState;
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
+	/** Whether a run on any thread builds the app; `runState` is keyed by thread and never sees an app sandbox. */
+	isAppInUse?: (appId: string) => boolean;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
 	resolveTracingConfig?: (
@@ -412,6 +418,12 @@ export class InstanceAiSandboxService {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry || this.isSandboxEntryExpired(entry)) return undefined;
 		return entry;
+	}
+
+	/** Extends the cache entry's idle TTL, when there is one; a caller that keeps the remote sandbox alive reports it here. */
+	touchCachedWorkspaceEntry(threadId: string): void {
+		const entry = this.getCachedWorkspaceEntry(threadId);
+		if (entry) this.touchSandboxEntry(threadId, entry);
 	}
 
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
@@ -666,6 +678,8 @@ export class InstanceAiSandboxService {
 	}
 
 	private isSandboxInUse(threadId: string): boolean {
+		const appId = appIdFromSandboxKey(threadId);
+		if (appId !== undefined) return this.options.isAppInUse?.(appId) ?? false;
 		return Boolean(
 			this.options.runState.getActiveRunId(threadId) ||
 				this.options.runState.hasSuspendedRun(threadId) ||

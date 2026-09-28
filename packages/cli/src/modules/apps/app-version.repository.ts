@@ -35,10 +35,22 @@ export class AppVersionRepository extends Repository<AppVersion> {
 	}
 
 	/** Unlabeled versions of an app created at or after `since`. */
+	/** Versions that still have their dist, newest first. */
+	async listBuiltByAppId(appId: string) {
+		return await this.find({
+			where: { appId, distStorageKey: Not(IsNull()) },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
 	async findUnlabeledSince(appId: string, since: Date) {
 		return await this.find({
 			where: { appId, label: IsNull(), createdAt: MoreThanOrEqual(since) },
 		});
+	}
+
+	async setDist(id: string, dist: { distStorageKey: string; distSizeBytes: number }) {
+		await this.update({ id }, dist);
 	}
 
 	async setLabel(ids: string[], label: string) {

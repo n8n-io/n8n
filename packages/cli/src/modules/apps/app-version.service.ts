@@ -81,6 +81,41 @@ export class AppVersionService {
 	}
 
 	/**
+	 * Gives a source-only version its build without serving it: the end-of-turn
+	 * build attaches to the snapshot it built, so `setActiveVersion` on that
+	 * snapshot is a publish with no build at click time.
+	 */
+	async attachDist(version: AppVersion, dist: Buffer): Promise<AppVersion> {
+		const app = await this.appRepository.findOneBy({ id: version.appId });
+		if (!app) throw new AppNotFoundError(version.appId);
+		await this.assertUnderQuota(app.id, app.projectId, dist.length);
+		const distEntries = await this.assertTarball('dist', dist, createDistTarFilter());
+		if (!distEntries.some((entry) => path.posix.normalize(entry) === 'index.html')) {
+			throw new InvalidAppVersionTarballError('dist', 'has no index.html at its root');
+		}
+
+		const distBlob = await this.blobStore.write(
+			{ appId: app.id, versionId: version.id, kind: 'dist' },
+			dist,
+		);
+		try {
+			// One `storedAt` per row: a dist in another store than the source would be unreadable.
+			if (distBlob.storedAt !== version.storedAt) {
+				throw new UnexpectedError('The dist would be stored in another store than the source.');
+			}
+			await this.appVersionRepository.setDist(version.id, {
+				distStorageKey: distBlob.storageKey,
+				distSizeBytes: dist.length,
+			});
+		} catch (error) {
+			await this.blobStore.delete([distBlob]);
+			throw error;
+		}
+		await this.pruneDist(app.id, app.activeVersionId ?? version.id);
+		return { ...version, distStorageKey: distBlob.storageKey, distSizeBytes: dist.length };
+	}
+
+	/**
 	 * Cheapest checks first, before any tarball parsing CPU cost. The app's
 	 * existence is guaranteed by the caller, so this only checks quotas.
 	 */
@@ -252,6 +287,11 @@ export class AppVersionService {
 	 * True when a version newer than the published one exists: a per-turn snapshot
 	 * after the last publish, or any version while nothing is published yet.
 	 */
+	async findNewestBuilt(appId: string): Promise<AppVersion | null> {
+		const [newest] = await this.appVersionRepository.listBuiltByAppId(appId);
+		return newest ?? null;
+	}
+
 	async hasUnpublishedChanges(app: App): Promise<boolean> {
 		const versions = await this.appVersionRepository.listByAppId(app.id);
 		const [newest] = versions;
@@ -285,7 +325,8 @@ export class AppVersionService {
 			createdAt: version.createdAt.toISOString(),
 			hasDist,
 			isActive: version.id === activeVersionId,
-			kind: hasDist ? 'publish' : 'snapshot',
+			// Every turn is built, so a dist no longer means the version was published.
+			kind: version.id === activeVersionId ? 'publish' : 'snapshot',
 			label: version.label,
 		};
 	}

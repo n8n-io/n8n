@@ -51,6 +51,7 @@ type Overrides = {
 	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
 	config?: Partial<InstanceAiConfig>;
 	runState?: Partial<InstanceAiSandboxRunState>;
+	isAppInUse?: InstanceAiSandboxServiceOptions['isAppInUse'];
 	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
 	settingsService?: Partial<InstanceAiSandboxSettings>;
 	aiService?: Partial<InstanceAiSandboxProxy>;
@@ -83,6 +84,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		logger,
 		errorReporter,
 		runState,
+		isAppInUse: overrides.isAppInUse,
 		backgroundTasks,
 		settingsService,
 		aiService,
@@ -947,6 +949,64 @@ describe('InstanceAiSandboxService', () => {
 				);
 				expect(reused).toBeDefined();
 				expect(createSandbox).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps an app sandbox alive while a thread that builds the app runs', async () => {
+			vi.useFakeTimers();
+			try {
+				const isAppInUse = vi.fn((appId: string) => appId === 'app-1');
+				const { service, runState } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+					isAppInUse,
+				});
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue({
+					init: vi.fn(async () => {}),
+					destroy: vi.fn(async () => {}),
+				});
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				const entry = await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+				vi.advanceTimersByTime(1000);
+
+				expect(isAppInUse).toHaveBeenCalledWith('app-1');
+				expect(runState.getActiveRunId).not.toHaveBeenCalledWith(appSandboxKey('app-1'));
+				expect(service.getCachedWorkspaceEntry(appSandboxKey('app-1'))).toBe(entry);
+
+				isAppInUse.mockReturnValue(false);
+				vi.advanceTimersByTime(1000);
+				expect(service.getCachedWorkspaceEntry(appSandboxKey('app-1'))).toBeUndefined();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('extends the TTL of a cached entry on touch and ignores unknown keys', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+				});
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue({
+					init: vi.fn(async () => {}),
+					destroy: vi.fn(async () => {}),
+				});
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				service.touchCachedWorkspaceEntry('thread-unknown');
+				const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+				vi.advanceTimersByTime(600);
+				service.touchCachedWorkspaceEntry('thread-1');
+				vi.advanceTimersByTime(600);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBe(entry);
+
+				vi.advanceTimersByTime(400);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
 			} finally {
 				vi.useRealTimers();
 			}

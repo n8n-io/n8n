@@ -75,6 +75,7 @@ function createService() {
 	appsService.getApp.mockResolvedValue(APP);
 	appsService.listVersions.mockResolvedValue([]);
 	const snapshotService = mock<AppSourceSnapshotService>();
+	snapshotService.snapshotAfterRun.mockResolvedValue({ outcome: 'stored', versionId: 's-9' });
 	const service = new AppThemeService(
 		new AppDraftService(appsService, mock<AppPublishService>(), snapshotService),
 	);

@@ -98,8 +98,9 @@ describe('AppSourceSnapshotService', () => {
 		const { service, appsService, executeCommand, readFile, workspace } = createService();
 		mockSandboxWithApp(executeCommand);
 
-		await service.snapshotAfterRun('app-1', USER, workspace);
+		const outcome = await service.snapshotAfterRun('app-1', USER, workspace);
 
+		expect(outcome).toEqual({ outcome: 'stored', versionId: 'snap-1' });
 		expect(executeCommand.mock.calls[0][0]).toBe(LIST_APPS_SCRIPT);
 		expect(executeCommand.mock.calls[1][0]).toContain(`cd '${ROOT}/apps/greeter'`);
 		expect(executeCommand.mock.calls[1][2]).toMatchObject({ cwd: ROOT, timeout: 60_000 });
@@ -128,7 +129,9 @@ describe('AppSourceSnapshotService', () => {
 				return await Promise.resolve(ok('UNCHANGED\n'));
 			return await Promise.resolve(ok('SNAPSHOT h1 4\n'));
 		});
-		await service.snapshotAfterRun('app-1', USER, workspace);
+		expect(await service.snapshotAfterRun('app-1', USER, workspace)).toEqual({
+			outcome: 'unchanged',
+		});
 		expect(appsService.createSourceSnapshot).toHaveBeenCalledTimes(1);
 
 		service.clearApp('app-1');
@@ -141,7 +144,7 @@ describe('AppSourceSnapshotService', () => {
 		const { service, appsService, appRepository, executeCommand, workspace } = createService();
 		executeCommand.mockResolvedValue(ok(''));
 
-		await service.snapshotAfterRun('app-1', USER, workspace);
+		expect(await service.snapshotAfterRun('app-1', USER, workspace)).toEqual({ outcome: 'absent' });
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(appRepository.findByNamespace).not.toHaveBeenCalled();
@@ -170,13 +173,18 @@ describe('AppSourceSnapshotService', () => {
 			if (command.includes('tar -czf')) return await Promise.resolve(fail('tar: error'));
 			return await Promise.resolve(ok());
 		});
-		await service.snapshotAfterRun('app-1', USER, workspace);
+		expect(await service.snapshotAfterRun('app-1', USER, workspace)).toEqual({
+			outcome: 'failed',
+			message: expect.stringContaining('tar: error'),
+		});
 		expect(readFile).not.toHaveBeenCalled();
 		expect(String(executeCommand.mock.calls.at(-1)?.[0])).toMatch(/^rm -f /);
 
 		mockSandboxWithApp(executeCommand);
 		readFile.mockResolvedValue('text');
-		await service.snapshotAfterRun('app-1', USER, workspace);
+		expect(await service.snapshotAfterRun('app-1', USER, workspace)).toMatchObject({
+			outcome: 'failed',
+		});
 
 		expect(appsService.createSourceSnapshot).not.toHaveBeenCalled();
 	});

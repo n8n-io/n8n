@@ -124,6 +124,7 @@ vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 
 const mockRouteState = vi.hoisted(() => ({
 	params: { threadId: 'thread-1' } as { threadId?: string },
+	query: {} as { thread?: string },
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -142,7 +143,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		replace: routerReplaceSpy,
 		currentRoute: {
 			get value() {
-				return { params: mockRouteState.params };
+				return { params: mockRouteState.params, query: mockRouteState.query };
 			},
 		},
 	}),
@@ -504,6 +505,7 @@ describe('InstanceAiThreadView', () => {
 		routerReplaceSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
+		mockRouteState.query = {};
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
@@ -2933,6 +2935,16 @@ describe('InstanceAiThreadView', () => {
 			// A duplicate instance created and discarded during a layout transition
 			// (e.g. an editor hand-off) unmounts while the route still shows the
 			// thread — it must not tear down the runtime the live instance renders.
+			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
+
+			unmount();
+
+			expect(store.disposeRuntime).not.toHaveBeenCalled();
+		});
+
+		it('keeps the runtime when unmounting while `?thread=` still points at the thread', () => {
+			mockRouteState.params = {};
+			mockRouteState.query = { thread: 'thread-1' };
 			const { unmount } = renderView({ props: { threadId: 'thread-1' } });
 
 			unmount();

@@ -71,8 +71,8 @@ export const appVersionSchema = z.object({
 	hasDist: z.boolean(),
 	// Served at `/apps/<namespace>/`.
 	isActive: z.boolean(),
-	// `publish` = built version that still has its dist; `snapshot` = source only.
-	// The rows carry nothing else, so a build whose dist was pruned reads as a snapshot.
+	// `publish` = the version served at `/apps/<namespace>/`; `snapshot` = every other
+	// version, built or not. Nothing records past publishes.
 	kind: z.enum(['publish', 'snapshot']),
 	// Short summary of what changed, or null when none was generated.
 	label: z.string().nullable(),

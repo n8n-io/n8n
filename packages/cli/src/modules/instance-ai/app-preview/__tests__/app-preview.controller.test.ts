@@ -65,7 +65,12 @@ describe('AppPreviewController', () => {
 		appDraftService.listFiles.mockResolvedValue({ versionId: 's-3', files: ['src/main.ts'] });
 		appDraftService.write.mockResolvedValue({ versionId: 's-4' });
 		appsService.toResponse.mockImplementation(
-			async (value) => await Promise.resolve({ ...value, hasUnpublishedChanges: true }),
+			async (value) =>
+				await Promise.resolve({
+					...value,
+					hasUnpublishedChanges: true,
+					newestBuiltVersionId: null,
+				}),
 		);
 	});
 
@@ -307,9 +312,10 @@ describe('AppPreviewController', () => {
 		});
 	});
 
-	it('ensures the preview of the app', async () => {
+	it('ensures the preview of the app and keeps its sandbox entry cached', async () => {
 		await expect(controller.ensure(req, res, 'app-1')).resolves.toEqual({ status: 'starting' });
 
+		expect(instanceAiService.keepAppSandboxCached).toHaveBeenCalledWith('app-1');
 		expect(appPreviewService.ensure).toHaveBeenCalledWith({
 			appId: 'app-1',
 			projectId: 'project-1',
