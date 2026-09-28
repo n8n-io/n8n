@@ -1,0 +1,69 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/span-collector.ts
+  s_6632fc4b04733b::t_b24e26102a5656 4,180,204
+  s_6632fc4b04733b::t_dbde0b7e7acdbb 14,16,66,68,70-117
+  s_6632fc4b04733b::t_b06788201b9484 31-37,213-214,275-278,402,404-405,410-412,558-559
+  s_6632fc4b04733b::t_97ac8ff7aaa376 41-43
+  s_6632fc4b04733b::t_fd19622b069e7b 12,162-179,181-199,206,210-212,307,328-330,356-363,436-437,463
+  s_6632fc4b04733b::t_e475489ffe7a54 200-203,205,207-209
+  s_6632fc4b04733b::t_5762e40dd468d5 1-3,5-11,13,15,17-30,38-40,44-65,67,69,118-161,215-274,279-306,308-327,331-355,364-401,403,406-409,413-435,438-462,464-557,560-562
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/trace-writer.test.ts
+  s_6632fc4b04733b::t_f8334a62f49489 1-249
+  s_6632fc4b04733b::t_f1b945d904b810 279-281,287-299
+  s_6632fc4b04733b::t_df8f113b084aa3 282-286
+  s_6632fc4b04733b::t_b3925850942361 250-254,259-278
+  s_6632fc4b04733b::t_7107fe1bdff5ee 255-258
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/types.ts
+  s_6632fc4b04733b::t_97ac8ff7aaa376 2-7,9,21,33
+  s_6632fc4b04733b::t_b06788201b9484 94-96
+  s_6632fc4b04733b::t_ce410c5f178022 1,8,10-20,22-32,34-93,97
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/transport.ts
+  s_6632fc4b04733b::t_7f5a93e113b75e 1-87
+  s_6632fc4b04733b::t_4e2de12200cd18 88-90
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/DatabricksAiAgent.node.ts
+  s_6632fc4b04733b::t_910f3b9e31419d 16,151,158,162,169,176,196,201-204,206-212,214-240
+  s_6632fc4b04733b::t_576c95c98a7420 213
+  s_6632fc4b04733b::t_d4d07ccf766a8f 12
+  s_6632fc4b04733b::t_8c5914e45a07d2 35-150
+  s_6632fc4b04733b::t_5f13443487286a 1,185-195
+  s_6632fc4b04733b::t_571e50bf8e3e4b 13
+  s_6632fc4b04733b::t_ffdffacb6868c7 205
+  s_6632fc4b04733b::t_c11e0cfaec8e69 2-11,14-15,17-34,152-157,159-161,163-168,170-175,177-184,197-200,241-242
+packages/@n8n/nodes-langchain/package.json
+  s_6632fc4b04733b::t_ffdffacb6868c7 96
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/span-collector.test.ts
+  s_6632fc4b04733b::t_f1b945d904b810 544-569
+  s_6632fc4b04733b::t_6938fc01476085 4,441-501,503-541
+  s_6632fc4b04733b::t_d0c216b62e835d 307,312-323,330
+  s_6632fc4b04733b::t_8d61540e0f236a 292-295,298-306,308-311,324-329,331-343
+  s_6632fc4b04733b::t_f8334a62f49489 1-3,5-291,296-297,344-440,542-543
+  s_6632fc4b04733b::t_5d87a3d33853be 502
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/trace-writer.ts
+  s_6632fc4b04733b::t_df8f113b084aa3 134-138
+  s_6632fc4b04733b::t_7107fe1bdff5ee 113-115
+  s_6632fc4b04733b::t_b06788201b9484 129-133,139,168-169
+  s_6632fc4b04733b::t_3bd404ea7f9192 1-112,116-128,140-167,170-221
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_6632fc4b04733b::t_5bb5a99a3353b6 47-58,266,386,432,439-440,446
+  s_6632fc4b04733b::t_616da12352882a 475-476
+  s_6632fc4b04733b::t_09007e6c876e39 46
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/databricks.dark.svg
+  s_6632fc4b04733b::t_cfaf39ed45aab0 1-19
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/databricks.svg
+  s_6632fc4b04733b::t_d9fa59bca580ca 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2b1132e3649381c43fdb616a40c5ae8916bcb7d",
+  "prompts": {},
+  "sessions": {
+    "s_6632fc4b04733b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74c37032-2669-485c-96f2-b3d6bdef0061",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

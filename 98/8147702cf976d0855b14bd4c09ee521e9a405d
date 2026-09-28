@@ -1,0 +1,24 @@
+packages/cli/test/integration/public-api/audit.test.ts
+  s_858c3de874467c::t_bbb3cdfb12d44f 91,99-100,102-111
+  s_858c3de874467c::t_64562cbb823156 92-98,101,112-113
+packages/@n8n/api-types/src/dto/audit/audit-public.dto.ts
+  s_858c3de874467c::t_036072cc3521e4 23
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/generateAudit.generated.yml
+  s_858c3de874467c::t_877f6c2f55359d 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "988147702cf976d0855b14bd4c09ee521e9a405d",
+  "prompts": {},
+  "sessions": {
+    "s_858c3de874467c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c2ee938-cfbf-4eba-8151-d913eed42e6d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/test/integration/policy/workflow-start.policy.test.ts
+  s_fa1da8bd22ae88::t_20da437eb0bac3 18-19
+  s_fa1da8bd22ae88::t_77969b38f307cd 83
+  s_fa1da8bd22ae88::t_35d29c76a60404 317-320,323-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e28b4ad3050dd6abb9bc1cf0f5124fa6e858b7c4",
+  "prompts": {},
+  "sessions": {
+    "s_fa1da8bd22ae88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d758a5-27ef-4d66-81d2-ae0dccfd8226",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

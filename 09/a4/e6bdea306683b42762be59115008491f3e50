@@ -1,0 +1,28 @@
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_281efd42004ec0::t_b25ff660440254 2-22
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_281efd42004ec0::t_9944512a621673 2-42
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_281efd42004ec0::t_057f283c61fc76 133-139
+  s_281efd42004ec0::t_2953774c9afb40 130-132,140-142,173-175
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_281efd42004ec0::t_2a558a6e6ab7d6 2-12
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_281efd42004ec0::t_69e26d57446c9e 2-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "09a4e6bdea306683b42762be59115008491f3e50",
+  "prompts": {},
+  "sessions": {
+    "s_281efd42004ec0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb8-26d9-7362-a99e-66779bbf1d1d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

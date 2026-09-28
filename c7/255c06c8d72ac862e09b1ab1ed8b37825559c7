@@ -1,0 +1,27 @@
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  s_89dc01411ec332::t_75590b39cc0357 235,237
+packages/frontend/@n8n/design-system/src/css/fonts/geist.scss
+  s_89dc01411ec332::t_5316d621d06d62 1-17
+packages/frontend/@n8n/design-system/src/css/fonts.scss
+  s_89dc01411ec332::t_0901177c0f4655 3-4
+packages/frontend/@n8n/design-system/src/css/fonts/geist-mono.scss
+  s_89dc01411ec332::t_544af344d90e5c 1-17
+packages/frontend/@n8n/design-system/assets/fonts/Geist-OFL.txt
+  s_89dc01411ec332::t_cee9f169d85925 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7255c06c8d72ac862e09b1ab1ed8b37825559c7",
+  "prompts": {},
+  "sessions": {
+    "s_89dc01411ec332": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ce8c-8113-73bb-b5ca-017f252c2896",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

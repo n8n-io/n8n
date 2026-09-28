@@ -1,0 +1,30 @@
+packages/cli/src/public-api/types.ts
+  s_e8e4a2455511ee::t_5aa5b63f9485c5 127
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_e8e4a2455511ee::t_5aa5b63f9485c5 317-318,544-545
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_e8e4a2455511ee::t_b4d532ffc8086b 138-139
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_e8e4a2455511ee::t_5aa5b63f9485c5 3,156-172
+  s_e8e4a2455511ee::t_2c436b23d77362 173
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_e8e4a2455511ee::t_5aa5b63f9485c5 1892
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialType.generated.yml
+  s_e8e4a2455511ee::t_c5229e3a3752f7 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7eb4ba86edd8b0de27b5fd37d95431ffd9ab84a1",
+  "prompts": {},
+  "sessions": {
+    "s_e8e4a2455511ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "710773de-55e8-4d08-a4c7-828589b7562f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

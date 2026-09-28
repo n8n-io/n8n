@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/controllers/community-packages.public.controller.ts
+  s_c0ad61b04063d9::t_0b4292832adcee 37
+  s_c0ad61b04063d9::t_44aaab6f8377e0 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9e295cb6282cbcb0fa07092d9f3063db5a227237",
+  "prompts": {},
+  "sessions": {
+    "s_c0ad61b04063d9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fe2dcab2-7cb8-480c-a7fd-b0f16d59bed5",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
