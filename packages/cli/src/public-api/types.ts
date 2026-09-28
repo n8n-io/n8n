@@ -242,6 +242,5 @@ export declare namespace LdapRequest {
 // ----------------------------------
 
 export declare namespace SsoOidcRequest {
-	type Get = AuthenticatedRequest;
 	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

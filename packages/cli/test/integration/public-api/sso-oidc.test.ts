@@ -123,6 +123,19 @@ describe('OIDC SSO configuration in Public API', () => {
 			expect(response.body.clientSecret).not.toBe(validConfig.clientSecret);
 		});
 
+		it('returns every field of a stored configuration with the secret redacted', async () => {
+			testServer.license.enable('feat:oidc');
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toStrictEqual({
+				...validConfig,
+				clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
+			});
+		});
+
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
 
