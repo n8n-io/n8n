@@ -68,20 +68,18 @@ export async function collectSubWorkflowOutput(
 		throw new UnexpectedError('The last executed node is missing from the saved workflow.');
 	}
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-	const outputs =
-		typeof nodeType.description.outputs === 'string'
-			? await workflow.expression.withIsolate(async () =>
-					getNodeOutputs(workflow, node, nodeType.description),
-				)
-			: getNodeOutputs(workflow, node, nodeType.description);
-	const outputCount = getConnectionTypes(outputs).filter(
-		(type) => type === NodeConnectionTypes.Main,
-	).length;
 	const usePinData = run.mode === 'manual' && pinData?.[node.name] !== undefined;
 	const branches =
 		policy.lastRunOnly || usePinData
 			? lastRun.data.main
 			: mergeRunsPerBranch(getLastExecutedNodeRuns(run));
+	// Dynamic outputs were resolved during execution. Their expressions can depend on input data.
+	const outputCount =
+		typeof nodeType.description.outputs === 'string'
+			? branches.length
+			: getConnectionTypes(getNodeOutputs(workflow, node, nodeType.description)).filter(
+					(type) => type === NodeConnectionTypes.Main,
+				).length;
 	return [branches.slice(0, outputCount).flatMap((branch) => branch ?? [])];
 }
 

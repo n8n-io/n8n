@@ -161,7 +161,7 @@ describe('collectSubWorkflowOutput', () => {
 		},
 	);
 
-	it('resolves dynamic outputs from saved node parameters', async () => {
+	it('returns the dynamic outputs produced by the node', async () => {
 		const child = workflow(
 			'={{ Array.from({ length: $parameter.numberOutputs }, () => ({ type: "main" })) }}',
 			{ parameters: { numberOutputs: 3 } },
@@ -170,6 +170,23 @@ describe('collectSubWorkflowOutput', () => {
 			await collectSubWorkflowOutput(run([[[], [], [item(57)]]]), child, { lastRunOnly: false }),
 		).toEqual([[item(57)]]);
 	});
+
+	it.each([false, true])(
+		'keeps input-dependent outputs across runs when lastRunOnly is %s',
+		async (lastRunOnly) => {
+			const child = workflow(
+				'={{ Array.from({ length: $parameter.numberOutputs }, () => ({ type: "main" })) }}',
+				{ parameters: { numberOutputs: '={{ $json.outputCount }}' } },
+			);
+			const input = run([
+				[[item(55)], []],
+				[[], [], [item(57)]],
+			]);
+			expect(await collectSubWorkflowOutput(input, child, { lastRunOnly })).toEqual([
+				lastRunOnly ? [item(57)] : [item(55), item(57)],
+			]);
+		},
+	);
 
 	it('includes a configured error output', async () => {
 		const child = workflow([NodeConnectionTypes.Main], { onError: 'continueErrorOutput' });

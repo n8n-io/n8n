@@ -16,15 +16,21 @@ function requiredNode(workflow: IWorkflowBase, name: string): INode {
 	return node;
 }
 
-function childWithOutput(kind: 'filter' | 'emptyFilter' | 'switch' | 'if'): IWorkflowBase {
+function childWithOutput(
+	kind: 'filter' | 'emptyFilter' | 'switch' | 'inputSwitch' | 'if',
+): IWorkflowBase {
 	const child = definition('ado-5857-child.json');
 	const last = requiredNode(child, 'Last');
 	child.nodes = [requiredNode(child, 'Start'), last];
 	child.connections = { Start: { main: [[{ node: 'Last', type: 'main', index: 0 }]] } };
-	if (kind === 'switch') {
+	if (kind === 'switch' || kind === 'inputSwitch') {
 		last.type = 'n8n-nodes-base.switch';
-		last.typeVersion = 3.4;
-		last.parameters = { mode: 'expression', numberOutputs: 3, output: 2 };
+		last.typeVersion = kind === 'inputSwitch' ? 3.2 : 3.4;
+		last.parameters = {
+			mode: 'expression',
+			numberOutputs: kind === 'inputSwitch' ? '={{ $json.id - 52 }}' : 3,
+			output: kind === 'inputSwitch' ? 0 : 2,
+		};
 	} else {
 		last.type = kind === 'if' ? 'n8n-nodes-base.if' : 'n8n-nodes-base.filter';
 		last.parameters = {
@@ -106,6 +112,7 @@ test.describe(
 			{ kind: 'filter', ids: [56] },
 			{ kind: 'emptyFilter', ids: [] },
 			{ kind: 'switch', ids: [55, 56, 57] },
+			{ kind: 'inputSwitch', ids: [55, 56, 57] },
 			{ kind: 'if', ids: [56, 55, 57] },
 		] as const) {
 			test(`returns declared ${kind} outputs with parent item links`, async ({ api }) => {
@@ -133,6 +140,7 @@ test.describe(
 			{ kind: 'filter', ids: [56] },
 			{ kind: 'emptyFilter', ids: [] },
 			{ kind: 'switch', ids: [56] },
+			{ kind: 'inputSwitch', ids: [56] },
 		] as const) {
 			test(`returns ${kind} output after a persisted wait and an unpublished draft edit`, async ({
 				api,
