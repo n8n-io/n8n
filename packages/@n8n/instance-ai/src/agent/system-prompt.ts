@@ -175,7 +175,7 @@ function getPreferenceSavingSection(): string {
 	return `
 ## Saving Preferences
 
-When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat.`;
+When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
 function getLicenseLimitationsSection(licenseHints?: string[]): string {

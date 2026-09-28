@@ -61,9 +61,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ setupRequirements, n8n }) => {
+		test.beforeEach(async ({ setupRequirements }) => {
 			await setupRequirements(createTemplateRequirements());
-			await n8n.goHome();
 		});
 
 		test('Should take users to canvas when importing template', async ({ n8n }) => {

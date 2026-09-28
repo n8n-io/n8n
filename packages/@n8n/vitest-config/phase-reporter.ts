@@ -1,4 +1,4 @@
-import type { Reporter } from 'vitest/reporters';
+import type { Reporter } from 'vitest/node';
 
 export class PhaseReporter implements Reporter {
 	private firstModuleStart?: string;

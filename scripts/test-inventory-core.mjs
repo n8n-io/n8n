@@ -132,7 +132,7 @@ export function collectTarget(target, index, { outputDir, dynamic, timeoutSecond
 				'exec',
 				'vitest',
 				'list',
-				...(filesOnly ? ['--filesOnly'] : [`--json=${outputFile}`]),
+				...(filesOnly ? ['--filesOnly'] : ['--staticParse=false', `--json=${outputFile}`]),
 				'--passWithNoTests',
 				'--no-color',
 				...(target.config ? ['--config', target.config] : []),

@@ -26,6 +26,8 @@ import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-reg
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -33,13 +35,13 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
-import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
@@ -83,7 +85,6 @@ function makeService() {
 		updateSkill: agentSkillsService.updateSkill,
 	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
@@ -92,6 +93,8 @@ function makeService() {
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const telemetry = mock<Telemetry>();
+	const agentContextAdapter = mock<InstanceAiAgentContextAdapterService>();
+	agentContextAdapter.createReader.mockReturnValue({ lookup: vi.fn() });
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -105,15 +108,16 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const collaborationService = mock<CollaborationService>();
 
 	const service = new AgentsBuilderToolsService(
+		mock(),
 		agentsService as unknown as AgentsService,
 		agentConfigService as unknown as AgentConfigService,
 		agentCustomToolsService as unknown as AgentCustomToolsService,
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		attachableWorkflowsService,
 		agentsToolsService,
 		builderModelLiveLookupService,
 		mcpRegistryService,
@@ -129,13 +133,15 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
+		agentContextAdapter,
+		collaborationService,
 	);
 
 	return {
 		service,
+		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
-		attachableWorkflowsService,
 		agentTaskService,
 		agentPublishService,
 		agentTestRunService,
@@ -268,7 +274,35 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === name)!;
 		}
 
-		it('registers MCP-specific tools in the builder toolset', () => {
+		it('uses Agent context instead of duplicate read tools', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+			);
+			const toolNames = [...tools.json, ...tools.shared].map((tool) => tool.name);
+
+			expect(toolNames.filter((name) => name === 'agent-context')).toHaveLength(1);
+			for (const duplicate of [
+				'read_config',
+				'read_skill',
+				'list_skills',
+				'list_tasks',
+				'list_workflows',
+				'list_sub_agents',
+				'list_integration_types',
+				'resolve_integration',
+				'search_mcp_servers',
+			]) {
+				expect(toolNames).not.toContain(duplicate);
+			}
+		});
+
+		it('registers MCP verification in the builder toolset', () => {
 			const { service } = makeService();
 
 			const tools = service.getTools(
@@ -280,8 +314,6 @@ describe('AgentsBuilderToolsService', () => {
 			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
-			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
-			expect(toolNames).toContain(BUILDER_TOOLS.RESOLVE_INTEGRATION);
 		});
 
 		it('registers the finish_setup interactive tool in the builder toolset', () => {
@@ -311,21 +343,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(outboundHttp.transport).toHaveBeenCalledWith(
 				expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 			);
-		});
-
-		it('read_config returns the full config and its hash, without agent metadata', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.findById.mockResolvedValue(makeAgent());
-
-			const result = await getJsonTool(service, BUILDER_TOOLS.READ_CONFIG).handler!({}, ctx);
-
-			expect(result).toEqual({
-				ok: true,
-				config: { ...baseConfig, integrations: [] },
-				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
-			});
-			expect(result).not.toHaveProperty('status');
-			expect(result).not.toHaveProperty('configMutated');
 		});
 
 		it('write_config success result carries configMutated and agentId', async () => {
@@ -371,85 +388,41 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).not.toHaveProperty('configMutated');
 		});
 
-		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.listChatIntegrations.mockReturnValue([
-				{
-					type: 'linear',
-					label: 'Linear',
-					icon: 'linear',
-					credentialTypes: ['linearOAuth2Api'],
-					capabilities: ['Receive Linear issue/comment events'],
-					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
-					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
-				},
-			]);
+		it('write_config returns a locked failure while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
-			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).handler!(
-				{},
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+				},
 				ctx,
 			);
-			const description = getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).description;
 
-			expect(result).toEqual([
-				{
-					type: 'linear',
-					label: 'Linear',
-					icon: 'linear',
-					credentialTypes: ['linearOAuth2Api'],
-					capabilities: ['Receive Linear issue/comment events'],
-					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
-					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
-				},
-			]);
-			expect(description).toContain('pass the selected integration `type` to `configure_channel`');
-			expect(description).toContain('never use `ask_credential` for chat-channel credentials');
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
-		it('list_sub_agents returns saved same-project agents except the target agent', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.findByProjectId.mockResolvedValue([
-				{
-					id: agentId,
-					name: 'Current Agent',
-					activeVersionId: 'active-current',
-				},
-				{
-					id: 'agent-research',
-					name: 'Research Agent',
-					activeVersionId: 'active-research',
-				},
-				{
-					id: 'agent-draft',
-					name: 'Draft Agent',
-					activeVersionId: null,
-				},
-				{
-					id: 'agent-risk',
-					name: 'Risk Agent',
-					activeVersionId: 'active-risk',
-				},
-			] as Agent[]);
+		it('patch_config reports stage "locked" while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
-			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_SUB_AGENTS).handler!({}, ctx);
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/instructions', value: 'Changed.' }]),
+				},
+				ctx,
+			);
 
-			expect(agentsService.findByProjectId).toHaveBeenCalledWith(projectId);
-			expect(result).toEqual({
-				agents: [
-					{
-						agentId: 'agent-research',
-						name: 'Research Agent',
-					},
-					{
-						agentId: 'agent-draft',
-						name: 'Draft Agent',
-					},
-					{
-						agentId: 'agent-risk',
-						name: 'Risk Agent',
-					},
-				],
-			});
+			expect(result).toEqual(expect.objectContaining({ ok: false, stage: 'locked' }));
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
@@ -1403,35 +1376,6 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
-	describe('list_workflows tool', () => {
-		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
-			return service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((tool) => tool.name === 'list_workflows')!;
-		}
-
-		it('passes the search term to the attachable workflows service', async () => {
-			const { service, attachableWorkflowsService } = makeService();
-			attachableWorkflowsService.list.mockResolvedValue([
-				{ id: 'wf-1', name: 'Billing follow-up', published: true, triggerType: 'executeWorkflow' },
-			]);
-
-			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
-
-			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
-			expect(result).toEqual({
-				workflows: [
-					{
-						id: 'wf-1',
-						name: 'Billing follow-up',
-						published: true,
-						triggerType: 'executeWorkflow',
-					},
-				],
-			});
-		});
-	});
-
 	describe('build_custom_tool tool', () => {
 		function getBuildCustomTool(service: AgentsBuilderToolsService) {
 			return service
@@ -1439,7 +1383,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns only its id and name, not the full descriptor', async () => {
+		it('stores a custom tool without returning the full descriptor', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1458,6 +1402,7 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				id: 'seo_analyzer',
 				descriptor,
+				changed: true,
 			});
 
 			const result = await getBuildCustomTool(service).handler!(
@@ -1476,6 +1421,9 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				id: 'seo_analyzer',
 				name: 'seo_analyzer',
+				changed: true,
+				configMutated: true,
+				agentId,
 			});
 		});
 
@@ -1618,6 +1566,8 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
+				configMutated: true,
+				agentId,
 				skills: [
 					{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', name: skillOne.name },
 					{ id: 'skill_1Cd8YkNm4Rz6Wv3M', name: skillTwo.name },
@@ -1672,167 +1622,6 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			expect(result.success).toBe(false);
-		});
-	});
-
-	describe('read_skill tool', () => {
-		it('returns instructions with reference metadata but not reference content by default', async () => {
-			const { service, agentsService } = makeService();
-			const skill = {
-				name: 'Create tickets',
-				description: 'Use when creating or updating tickets',
-				instructions: 'Create clear, actionable tickets.',
-				allowedTools: ['create_ticket'],
-				references: [{ path: 'references/ticket-template.md', content: '# Tïcket template' }],
-			};
-			agentsService.getSkill.mockResolvedValue(skill);
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((candidate) => candidate.name === 'read_skill');
-
-			expect(tool).toBeDefined();
-			if (!tool) throw new Error('Expected read_skill tool');
-
-			const result = await tool.handler!({ skillId: 'skill_create_tickets' }, ctx);
-
-			expect(agentsService.getSkill).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				'skill_create_tickets',
-			);
-			expect(result).toEqual({
-				ok: true,
-				id: 'skill_create_tickets',
-				skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
-				skill: {
-					name: 'Create tickets',
-					description: 'Use when creating or updating tickets',
-					instructions: 'Create clear, actionable tickets.',
-					allowedTools: ['create_ticket'],
-					references: [{ path: 'references/ticket-template.md', characterCount: 17 }],
-				},
-			});
-		});
-
-		it('returns content only for explicitly requested reference paths', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.getSkill.mockResolvedValue({
-				name: 'Create tickets',
-				description: 'Use when creating or updating tickets',
-				instructions: 'Create clear, actionable tickets.',
-				references: [
-					{ path: 'references/ticket-template.md', content: '# Ticket template' },
-					{ path: 'references/escalation.md', content: '# Escalation' },
-				],
-			});
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((candidate) => candidate.name === 'read_skill');
-
-			expect(tool).toBeDefined();
-			if (!tool) throw new Error('Expected read_skill tool');
-
-			const result = await tool.handler!(
-				{
-					skillId: 'skill_create_tickets',
-					referencePaths: ['references/escalation.md'],
-				},
-				ctx,
-			);
-
-			expect(result).toEqual({
-				ok: true,
-				id: 'skill_create_tickets',
-				skillHash: expect.any(String),
-				skill: {
-					name: 'Create tickets',
-					description: 'Use when creating or updating tickets',
-					instructions: 'Create clear, actionable tickets.',
-					references: [
-						{ path: 'references/ticket-template.md', characterCount: 17 },
-						{
-							path: 'references/escalation.md',
-							characterCount: 12,
-							content: '# Escalation',
-						},
-					],
-				},
-			});
-		});
-
-		it('soft-fails when the persisted skill cannot be read', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.getSkill.mockRejectedValue(new Error('Skill not found'));
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((candidate) => candidate.name === 'read_skill');
-
-			expect(tool).toBeDefined();
-			if (!tool) throw new Error('Expected read_skill tool');
-
-			await expect(tool.handler!({ skillId: 'skill_missing' }, ctx)).resolves.toEqual({
-				ok: false,
-				errors: [{ message: 'Skill not found' }],
-			});
-		});
-	});
-
-	describe('list_skills tool', () => {
-		it('returns lightweight metadata for capability discovery', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.listSkills.mockResolvedValue({
-				skill_create_tickets: {
-					name: 'Create tickets',
-					description: 'Use when creating or updating tickets',
-					instructions: 'Create clear, actionable tickets.',
-				},
-				skill_review_images: {
-					name: 'Review images',
-					description: 'Use when reviewing images for quality issues',
-					instructions: 'Inspect each image carefully.',
-				},
-			});
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((candidate) => candidate.name === 'list_skills');
-
-			expect(tool).toBeDefined();
-			if (!tool) throw new Error('Expected list_skills tool');
-
-			const result = await tool.handler!({}, ctx);
-
-			expect(agentsService.listSkills).toHaveBeenCalledWith(agentId, projectId);
-			expect(result).toEqual({
-				ok: true,
-				skills: [
-					{
-						id: 'skill_create_tickets',
-						name: 'Create tickets',
-						description: 'Use when creating or updating tickets',
-					},
-					{
-						id: 'skill_review_images',
-						name: 'Review images',
-						description: 'Use when reviewing images for quality issues',
-					},
-				],
-			});
-		});
-
-		it('soft-fails when persisted skills cannot be listed', async () => {
-			const { service, agentsService } = makeService();
-			agentsService.listSkills.mockRejectedValue(new Error('Agent not found'));
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((candidate) => candidate.name === 'list_skills');
-
-			expect(tool).toBeDefined();
-			if (!tool) throw new Error('Expected list_skills tool');
-
-			await expect(tool.handler!({}, ctx)).resolves.toEqual({
-				ok: false,
-				errors: [{ message: 'Agent not found' }],
-			});
 		});
 	});
 
@@ -2065,66 +1854,6 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
-	describe('list_tasks tool', () => {
-		function getListTasksTool(service: AgentsBuilderToolsService) {
-			return service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.shared.find((tool) => tool.name === BUILDER_TOOLS.LIST_TASKS)!;
-		}
-
-		it('lists task bodies with enabled state from the current config', async () => {
-			const { service, agentsService, agentTaskService } = makeService();
-			agentsService.findById.mockResolvedValue(
-				makeAgent({
-					...baseConfig,
-					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
-				}),
-			);
-			agentTaskService.list.mockResolvedValue([
-				makeTaskDto(),
-				makeTaskDto({
-					id: 'task-2',
-					name: 'Weekly digest',
-					objective: 'Summarize the week and email a digest to the team.',
-					cronExpression: '0 9 * * 1',
-				}),
-			]);
-
-			const result = await getListTasksTool(service).handler!({}, ctx);
-
-			expect(result).toEqual({
-				ok: true,
-				tasks: [
-					{
-						id: 'task-1',
-						name: 'Daily summary',
-						objective:
-							'Summarize the team Slack #general channel from the last 24h and post a recap.',
-						cronExpression: '0 9 * * *',
-						enabled: true,
-					},
-					{
-						id: 'task-2',
-						name: 'Weekly digest',
-						objective: 'Summarize the week and email a digest to the team.',
-						cronExpression: '0 9 * * 1',
-						enabled: false,
-					},
-				],
-			});
-		});
-
-		it('does not list task bodies when the agent is outside the project', async () => {
-			const { service, agentsService, agentTaskService } = makeService();
-			agentsService.findById.mockResolvedValue(null);
-
-			const result = await getListTasksTool(service).handler!({}, ctx);
-
-			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
-			expect(agentTaskService.list).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('update_task tool', () => {
 		function getUpdateTaskTool(service: AgentsBuilderToolsService) {
 			return service
@@ -2134,28 +1863,53 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('updates only supplied fields while preserving the task id', async () => {
 			const { service, agentTaskService } = makeService();
-			agentTaskService.update.mockResolvedValue(
-				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
-			);
+			agentTaskService.updateWithChange.mockResolvedValue({
+				task: makeTaskDto({
+					cronExpression: '0 10 * * *',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+				}),
+				changed: true,
+			});
 
 			const result = await getUpdateTaskTool(service).handler!(
 				{ taskId: 'task-1', updates: { cronExpression: '0 10 * * *' } },
 				ctx,
 			);
 
-			expect(agentTaskService.update).toHaveBeenCalledWith(
+			expect(agentTaskService.updateWithChange).toHaveBeenCalledWith(
 				agentId,
 				projectId,
 				'task-1',
 				{ cronExpression: '0 10 * * *' },
 				{ user, modifiedBy: 'builder' },
 			);
+			expect(agentTaskService.list).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				ok: true,
 				id: 'task-1',
 				name: 'Daily summary',
 				configMutated: true,
 				agentId,
+			});
+		});
+
+		it('does not mark an unchanged task as a config mutation', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.updateWithChange.mockResolvedValue({
+				task: makeTaskDto(),
+				changed: false,
+			});
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { cronExpression: '0 9 * * *' } },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				id: 'task-1',
+				name: 'Daily summary',
+				changed: false,
 			});
 		});
 
@@ -2525,6 +2279,27 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('does not mark an idempotent publish as a change', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const publishedAgent = {
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			} as Agent;
+			agentsService.findById.mockResolvedValue(publishedAgent);
+			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+				changed: false,
+			});
+		});
+
 		it('denies publish when the user lacks agent:publish', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
@@ -2534,6 +2309,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: false,
 				errors: [{ message: 'You do not have permission to publish agents in this project.' }],
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
+			const { service, agentPublishService, collaborationService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
 			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
@@ -2603,6 +2392,30 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				errors: [{ message: 'Agent "agent-1" not found' }],
 			});
+		});
+	});
+
+	describe('MCP credential apply path', () => {
+		it('returns { applied: false } when a user holds the builder write lock', async () => {
+			const { service, collaborationService } = makeService();
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			// applyCredentialToMcpServer is private but called from the
+			// verify_mcp_server tool context; invoke it directly to test the
+			// lock gate without spinning up the full MCP verification flow.
+			const result = await (
+				service as unknown as {
+					applyCredentialToMcpServer: (
+						agentId: string,
+						projectId: string,
+						serverName: string,
+						credentialId: string,
+						user: User,
+					) => Promise<{ applied: boolean }>;
+				}
+			).applyCredentialToMcpServer(agentId, projectId, 'server-1', 'cred-1', user);
+
+			expect(result).toEqual({ applied: false });
 		});
 	});
 });

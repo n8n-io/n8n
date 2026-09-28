@@ -184,4 +184,37 @@ describe('deletion', () => {
 
 		expect(byteStore.delete).not.toHaveBeenCalled();
 	});
+
+	it('deleteMany deletes the rest of the batch when one prefix fails, and warns', async () => {
+		const prefixStore = mock<ByteStore>();
+		const failure = new Error('ENOTEMPTY: directory not empty');
+		prefixStore.deletePrefix = vi
+			.fn()
+			.mockRejectedValueOnce(failure)
+			.mockResolvedValueOnce(undefined);
+		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
+		const other = { type: 'execution', workflowId, executionId: '1000' } as const;
+
+		await expect(prefixManager.deleteMany([location, other])).resolves.toBeUndefined();
+
+		expect(prefixStore.deletePrefix).toHaveBeenCalledTimes(2);
+		expect(prefixStore.deletePrefix).toHaveBeenLastCalledWith(
+			`workflows/${workflowId}/executions/1000/binary_data`,
+		);
+		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+		expect(errorReporter.warn).toHaveBeenCalledWith(failure, {
+			extra: { prefix: `workflows/${workflowId}/executions/${executionId}/binary_data` },
+		});
+	});
+
+	it('deleteMany resolves and warns for each prefix when every one fails', async () => {
+		const prefixStore = mock<ByteStore>();
+		prefixStore.deletePrefix = vi.fn().mockRejectedValue(new Error('ENOTEMPTY'));
+		const prefixManager = new BinaryDataBlobManager(prefixStore, errorReporter);
+		const other = { type: 'execution', workflowId, executionId: '1000' } as const;
+
+		await expect(prefixManager.deleteMany([location, other])).resolves.toBeUndefined();
+
+		expect(errorReporter.warn).toHaveBeenCalledTimes(2);
+	});
 });
