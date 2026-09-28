@@ -1989,7 +1989,7 @@ const headerActions = computed(() => {
 	}
 
 	// Mirrors the workflow menu: description sits right before Favorite.
-	if (effectiveCanEditAgent.value && localConfig.value) {
+	if (effectiveCanEditAgent.value) {
 		actions.push({
 			id: 'edit-description',
 			label: locale.baseText('agents.builder.editDescription'),
@@ -2066,7 +2066,7 @@ function openImportJsonModal() {
 }
 
 function openDescriptionModal() {
-	if (!effectiveCanEditAgent.value || !localConfig.value) return;
+	if (!localConfig.value) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_DESCRIPTION_MODAL_KEY,

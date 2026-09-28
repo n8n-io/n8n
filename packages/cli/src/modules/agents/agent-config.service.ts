@@ -387,23 +387,12 @@ export class AgentConfigService {
 		validatedConfig: AgentJsonConfig,
 		clearOmitted: boolean | undefined,
 	): void {
-		// An empty description is a deliberate clear of the stored value.
-		if (validatedConfig.description !== undefined) {
-			const description = validatedConfig.description.trim();
-			if (description) {
-				nextSchema.description = description;
-			} else {
-				delete nextSchema.description;
-			}
-		}
-
-		if (validatedConfig.modelDeploymentName !== undefined) {
-			const deploymentName = validatedConfig.modelDeploymentName?.trim();
-			if (deploymentName) {
-				nextSchema.modelDeploymentName = deploymentName;
-			} else {
-				delete nextSchema.modelDeploymentName;
-			}
+		// Both are trimmed by the schema; an empty string clears the stored value.
+		for (const field of ['description', 'modelDeploymentName'] as const) {
+			const value = validatedConfig[field];
+			if (value === undefined) continue;
+			if (value) nextSchema[field] = value;
+			else delete nextSchema[field];
 		}
 
 		if (clearOmitted) {

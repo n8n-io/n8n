@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import { AGENT_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentModal from './modals/AgentModal.vue';
@@ -21,14 +22,13 @@ const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const description = ref(props.data.description);
-const canSave = computed(() => description.value.trim() !== props.data.description.trim());
+const canSave = computed(() => description.value.trim() !== props.data.description);
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
 function onSave() {
-	if (!canSave.value) return;
 	props.data.onConfirm(description.value.trim());
 	closeModal();
 }
@@ -47,7 +47,7 @@ function onSave() {
 				v-model="description"
 				type="textarea"
 				:rows="6"
-				:maxlength="512"
+				:maxlength="AGENT_DESCRIPTION_MAX_LENGTH"
 				autofocus
 				:placeholder="i18n.baseText('agents.builder.description.placeholder')"
 				data-testid="agent-description-input"
