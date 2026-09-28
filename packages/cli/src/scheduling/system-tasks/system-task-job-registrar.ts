@@ -24,6 +24,7 @@ export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'
  * The one durable job a system task owns, ready to provision. The schedule is
  * stored as declared, so `defaultTimezone` seeds the first run only: baking it
  * into the row would redefine every task whenever the instance timezone changes.
+ * An interval task seeds at `now`; a cron task seeds at its next fire.
  */
 export function systemTaskProvisionRequest(
 	task: SystemTask,
@@ -32,7 +33,10 @@ export function systemTaskProvisionRequest(
 	now: Date,
 ): ProvisionRequest {
 	const schedule = resolveSystemTaskSchedule(task);
-	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
+	const firstRunAt =
+		schedule.kind === 'interval'
+			? now
+			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
 	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
 

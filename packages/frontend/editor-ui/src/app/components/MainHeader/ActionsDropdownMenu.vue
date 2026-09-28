@@ -321,6 +321,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
 			label: locale.baseText('menuActions.productionChecklist'),
 			icon: { type: 'icon', value: 'list-checks' },
+			suppressCloseAutoFocus: true,
 		});
 	}
 
@@ -431,10 +432,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST: {
-			// Defer until the dropdown has closed and restored focus to its trigger;
-			// opening in the same tick lets that focus restore land "outside" the
-			// popover, which would immediately dismiss it.
-			setTimeout(() => productionChecklistRef.value?.open(), 0);
+			// Open after the dropdown unmounts so the floating layers do not overlap.
+			requestAnimationFrame(() => productionChecklistRef.value?.open());
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {

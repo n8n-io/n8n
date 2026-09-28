@@ -1015,7 +1015,7 @@ export class AgentExecutionService {
 	}
 }
 
-function toSessionStatus(
+export function toSessionStatus(
 	latestStatus: AgentExecutionStatus | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {

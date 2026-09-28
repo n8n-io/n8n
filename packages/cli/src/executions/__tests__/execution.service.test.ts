@@ -166,7 +166,7 @@ describe('ExecutionService', () => {
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
 
-		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+		it('should read an engine v2 id from the data plane, not the control plane', async () => {
 			const execution = mock<IExecutionResponse>({
 				id: V2_EXECUTION_ID,
 				data: { resultData: {} },
@@ -696,7 +696,6 @@ describe('ExecutionService', () => {
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
-					// @ts-expect-error Private method
 					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**
