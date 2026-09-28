@@ -4,7 +4,8 @@ import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
-import { retry, mockedStore } from '@/__tests__/utils';
+import { retry, mockedStore, getDropdownItems } from '@/__tests__/utils';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -2616,7 +2617,7 @@ describe('CredentialEdit', () => {
 			rolesManaged: false,
 		};
 
-		const setupOwnershipStores = () => {
+		const setupOwnershipStores = (scopes: Scope[] = ['credential:update']) => {
 			const pinia = createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
@@ -2647,7 +2648,7 @@ describe('CredentialEdit', () => {
 				isManaged: false,
 				homeProject: personalProjectState,
 				sharedWithProjects: [],
-				scopes: ['credential:update'],
+				scopes,
 			});
 			credentialsStore.state.credentialTypes = {
 				testApi: { name: 'testApi', displayName: 'Test API', properties: [] } as ICredentialType,
@@ -2694,6 +2695,60 @@ describe('CredentialEdit', () => {
 
 			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
 			expect(queryByTestId('credential-ownership-info')).not.toBeInTheDocument();
+		});
+
+		test('reflects an in-progress share/unshare on the Sharing tab immediately, without saving', async () => {
+			checkEnvFeatureFlag.mockReturnValue(true);
+			const { pinia, credentialsStore } = setupOwnershipStores([
+				'credential:update',
+				'credential:share',
+			]);
+
+			const rolesStore = mockedStore(useRolesStore);
+			vi.spyOn(rolesStore, 'processedCredentialRoles', 'get').mockReturnValue([
+				{
+					slug: 'credential:user',
+					displayName: 'User',
+					description: null,
+					systemRole: false,
+					roleType: 'credential',
+					scopes: [],
+					licensed: true,
+				},
+			]);
+
+			const salesOpsProject = {
+				id: 'sales-ops-project',
+				name: 'Sales Ops',
+				type: 'team' as const,
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				role: 'project:editor',
+			};
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.searchShareableProjects.mockResolvedValue({
+				count: 1,
+				data: [salesOpsProject],
+			});
+
+			const { getByTestId, getByText } = renderComponent({
+				props: { activeId: 'cred-owner-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(getByText('Not shared with any other project')).toBeInTheDocument());
+
+			await userEvent.click(getByText('Sharing'));
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			await userEvent.click(dropdownItems[0]);
+
+			// The ownership banner (rendered above the tabs, unaffected by which tab
+			// is active) must reflect the staged share immediately — before any save.
+			await retry(() => expect(getByText('Shared with Sales Ops')).toBeInTheDocument());
+			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
 		});
 	});
 });

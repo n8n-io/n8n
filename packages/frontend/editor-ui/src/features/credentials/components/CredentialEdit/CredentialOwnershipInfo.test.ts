@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { i18n } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -36,12 +37,13 @@ const teamProject = (id: string, name: string): ProjectSharingData => ({
 	updatedAt: '',
 });
 
-const renderComponent = createComponentRenderer(CredentialOwnershipInfo, {
-	pinia: createTestingPinia(),
-});
+const pinia = createTestingPinia();
+
+const renderComponent = createComponentRenderer(CredentialOwnershipInfo, { pinia });
 
 describe('CredentialOwnershipInfo', () => {
 	beforeEach(() => {
+		setActivePinia(pinia);
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.personalProject = personalProject;
 	});

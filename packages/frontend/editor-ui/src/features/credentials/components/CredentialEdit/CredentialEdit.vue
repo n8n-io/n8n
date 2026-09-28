@@ -430,6 +430,13 @@ const showOwnershipInfo = computed(
 		!modalOptions.value?.destination,
 );
 
+const liveSharedWithProjects = computed<ProjectSharingData[] | undefined>(() => {
+	const staged = credentialData.value.sharedWithProjects;
+	return Array.isArray(staged)
+		? (staged as ProjectSharingData[])
+		: currentCredential.value?.sharedWithProjects;
+});
+
 const showAiGatewayErrorNudge = computed(() => {
 	const node = workflowContextNode.value;
 	const type = credentialTypeName.value;
@@ -1718,7 +1725,7 @@ const { width } = useElementSize(credNameRef);
 					<CredentialOwnershipInfo
 						v-if="showOwnershipInfo"
 						:home-project="currentCredential?.homeProject"
-						:shared-with-projects="currentCredential?.sharedWithProjects"
+						:shared-with-projects="liveSharedWithProjects"
 						:is-global="currentCredential?.isGlobal"
 						:working-project-id="workingProjectId"
 					/>
