@@ -1135,7 +1135,6 @@ export class WorkflowService {
 				activationMode,
 				{ source },
 			);
-			await this.retryStateRepository.clearRetrySuppression(workflowId);
 		}
 
 		// The publication commit boundary: both branches above have durably published the
