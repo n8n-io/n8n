@@ -2330,6 +2330,7 @@ onBeforeUnmount(() => {
 .wrapper {
 	display: flex;
 	width: 100%;
+	container-type: inline-size;
 }
 
 .executionButtons {
@@ -2344,6 +2345,12 @@ onBeforeUnmount(() => {
 	width: auto;
 
 	@include breakpoints.breakpoint('sm-only') {
+		left: auto;
+		right: var(--spacing--sm);
+		transform: none;
+	}
+
+	@container (max-width: #{var.$sm - 1}) {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;
