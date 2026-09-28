@@ -33,10 +33,7 @@ const documentTitle = useDocumentTitle();
 const mcpStore = useMCPStore();
 
 const workflowsLoading = ref(false);
-<<<<<<< HEAD
 const showConnectWorkflowsDialog = ref(false);
-=======
->>>>>>> origin/master
 const availableWorkflows = ref<McpWorkflow[]>([]);
 const availableWorkflowsTotal = ref(0);
 const workflowsTableState = ref<TableOptions>({
@@ -133,11 +130,7 @@ const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
 };
 
 const onUpdateDescription = (workflow: McpWorkflow) => {
-<<<<<<< HEAD
 	capabilityRegistry.use(capabilities.modalOpeners).openModalWithData({
-=======
-	uiStore.openModalWithData({
->>>>>>> origin/master
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {
 			workflowId: workflow.id,

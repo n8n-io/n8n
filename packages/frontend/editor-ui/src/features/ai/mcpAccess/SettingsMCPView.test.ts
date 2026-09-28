@@ -13,11 +13,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { McpAgent, McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
-<<<<<<< HEAD
-=======
-import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
-import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
->>>>>>> origin/master
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
