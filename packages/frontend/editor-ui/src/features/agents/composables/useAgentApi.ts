@@ -3,6 +3,8 @@ import type {
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentChatQueueResponse,
+	AgentChatQueueUpdateDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -542,6 +544,49 @@ export const getAgentBackgroundJobs = async (
 		context,
 		'GET',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
+	);
+};
+
+export const getAgentChatQueue = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentChatQueueResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue`,
+	);
+};
+
+export const updateAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueUpdateDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		payload,
+	);
+};
+
+export const removeAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+): Promise<{ removed: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
 	);
 };
 
