@@ -127,6 +127,14 @@ type SetupChatTelemetryContext = Pick<
 >;
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
+/** How an onboarding thread ended; the telemetry value of each exit. */
+export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
+/** Tool calls that end the onboarding flow, with the outcome each one reports. */
+const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
+	['leave-onboarding', 'left'],
+	['build-workflow', 'build'],
+]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
 
@@ -162,6 +170,12 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	onOnboardingLeft?: (
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -899,6 +913,10 @@ export function createThreadRuntime(
 
 	function rearmRunState(runId: string | null | undefined): void {
 		if (!runId) return;
+		// A run the stream already finished (the host-seeded onboarding follow-up) must not
+		// come back as active: `run-finish` clears `activeRunId` only for the active run.
+		const groupId = groupIdByRunId.get(runId);
+		if (groupId && runStateByGroupId.get(groupId)?.status !== 'active') return;
 		activeRunId.value = runId;
 		markAssistantMessageStreaming(messages.value, runId);
 		triggerRef(messages);
@@ -1164,6 +1182,24 @@ export function createThreadRuntime(
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
+			}
+			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
+			// too, so the user gets the normal chrome back instead of a stuck flow.
+			if (parsed.data.type === 'tool-call') {
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const reason = parsed.data.payload.args.reason;
+				if (outcome) {
+					hooks.onOnboardingLeft?.(
+						threadId,
+						outcome,
+						typeof reason === 'string' ? reason : undefined,
+					);
+				}
+			} else if (
+				parsed.data.type === 'run-finish' &&
+				(parsed.data.payload.status === 'error' || parsed.data.payload.status === 'interrupted')
+			) {
+				hooks.onOnboardingLeft?.(threadId, 'run_failed');
 			}
 			if (parsed.data.type === 'preferences-applied') {
 				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
@@ -1916,6 +1952,7 @@ export function createThreadRuntime(
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		resolveActionSource,
 		addAlwaysAllowKey,
 		canAlwaysAllow,
 		findToolCallByRequestId,

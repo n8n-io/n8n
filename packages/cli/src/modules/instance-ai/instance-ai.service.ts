@@ -212,6 +212,7 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -222,6 +223,8 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
+import { loadOnboardingSkill } from './onboarding';
+import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -2525,6 +2528,11 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// starts a build, so a thread that left gets the tool no more.
+		const thread = await memory.getThread(threadId);
+		const onboardingThread =
+			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2540,6 +2548,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
@@ -4069,11 +4078,17 @@ export class InstanceAiService {
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
-			const isOpeningTurn = Boolean(thread && !thread.title);
+			// An onboarding thread is titled at creation and opens with a seeded greeting. Its first
+			// user turn answers it, and is the turn that marks the title final below.
+			const unopenedOnboarding =
+				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
+			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
+			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
 
 			if (isOpeningTurn) {
-				const handoffTitle =
-					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+				const handoffTitle = unopenedOnboarding
+					? ONBOARDING_OPENING.title
+					: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
 				await patchThread(memory, {
 					threadId,
@@ -4185,6 +4200,9 @@ export class InstanceAiService {
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext.state === 'injected' ? instanceContext.block : '',
+				// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
+				// and stays in the history for the later turns.
+				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
 				pastConversationsSection

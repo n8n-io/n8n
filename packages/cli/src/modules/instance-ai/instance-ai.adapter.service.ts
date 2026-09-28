@@ -494,6 +494,8 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
@@ -518,6 +520,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
@@ -538,6 +541,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {

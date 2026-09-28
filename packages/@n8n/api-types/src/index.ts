@@ -362,6 +362,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	instanceAiQuestionSchema,
 	buildRunWorkflowSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -570,6 +571,7 @@ export type {
 	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
+	InstanceAiQuestion,
 	InstanceAiCredentialRequest,
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
