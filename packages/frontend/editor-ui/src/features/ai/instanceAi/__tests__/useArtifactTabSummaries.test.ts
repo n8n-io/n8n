@@ -147,6 +147,27 @@ describe('useArtifactTabSummaries', () => {
 		expect(getSummary(workflowTab('wf-1'))).toEqual(expect.objectContaining({ published: false }));
 	});
 
+	it('ignores an older response that arrives after a newer one', async () => {
+		const { getSummary, refresh } = setup([workflowTab('wf-1')]);
+		await flushPromises();
+
+		let resolveOlder: (rows: unknown[]) => void = () => {};
+		mocks.searchWorkflows.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+		const olderRefresh = refresh([workflowTab('wf-1')]);
+
+		mocks.searchWorkflows.mockResolvedValueOnce([workflowRow('wf-1', 'version-1')]);
+		await refresh([workflowTab('wf-1')]);
+
+		resolveOlder([workflowRow('wf-1', null)]);
+		await olderRefresh;
+
+		expect(getSummary(workflowTab('wf-1'))).toEqual(expect.objectContaining({ published: true }));
+	});
+
 	it('marks a workflow that is not in the response as having no details', async () => {
 		mocks.searchWorkflows.mockResolvedValue([workflowRow('wf-1')]);
 		const { getSummary } = setup([workflowTab('wf-1'), workflowTab('wf-deleted')]);

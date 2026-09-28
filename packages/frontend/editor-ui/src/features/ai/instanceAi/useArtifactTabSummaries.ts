@@ -80,17 +80,28 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 		'data-table': loadDataTables,
 	};
 
+	// Hover, new tab and build end refreshes can overlap. Only the latest
+	// request for a key writes, so a slow older response cannot restore old data.
+	const latestRequest = new Map<string, number>();
+	let requestSeq = 0;
+
 	async function refreshType(type: SummarizedType, ids: string[]) {
 		await Promise.all(
 			chunk([...new Set(ids)], MAX_IDS_PER_REQUEST).map(async (batch) => {
+				const seq = ++requestSeq;
+				for (const id of batch) latestRequest.set(summaryKey(type, id), seq);
+				const currentKeys = () =>
+					batch
+						.map((id) => ({ id, key: summaryKey(type, id) }))
+						.filter(({ key }) => latestRequest.get(key) === seq);
+
 				try {
 					const loaded = await loaders[type](batch);
-					for (const id of batch) summaries.set(summaryKey(type, id), loaded.get(id) ?? null);
+					for (const { id, key } of currentKeys()) summaries.set(key, loaded.get(id) ?? null);
 				} catch {
 					// Keep stored details. Mark unknown ids as checked, so the card
 					// shows the name alone instead of placeholders.
-					for (const id of batch) {
-						const key = summaryKey(type, id);
+					for (const { key } of currentKeys()) {
 						if (!summaries.has(key)) summaries.set(key, null);
 					}
 				}
