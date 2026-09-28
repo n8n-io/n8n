@@ -129,7 +129,6 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				instanceSettings.markAsFollower();
-				// @ts-expect-error Private method
 				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 

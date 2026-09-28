@@ -1041,7 +1041,6 @@ describe('run', () => {
 				{},
 			);
 			const { data } = arrangeFailingRunDeps(error);
-			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
@@ -1054,7 +1053,6 @@ describe('run', () => {
 		it('still rejects on other startup errors', async () => {
 			const error = new Error('boom');
 			const { data } = arrangeFailingRunDeps(error);
-			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
@@ -1550,7 +1548,6 @@ describe('pre-persist context establishment', () => {
 
 		addSpy.mockReset();
 		addSpy.mockResolvedValue('exec-1');
-		// @ts-expect-error Private method
 		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 
 		const workflowPreExecute = Container.get(WorkflowPreExecute);

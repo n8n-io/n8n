@@ -216,7 +216,6 @@ describe('TelemetryEventRelay', () => {
 				dbConnection,
 				loadNodesAndCredentials,
 			);
-			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
@@ -244,7 +243,6 @@ describe('TelemetryEventRelay', () => {
 				dbConnection,
 				loadNodesAndCredentials,
 			);
-			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
