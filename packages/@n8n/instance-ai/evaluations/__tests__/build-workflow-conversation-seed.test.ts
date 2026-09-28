@@ -5,6 +5,7 @@ import { buildWorkflow, buildFailedOnInfra } from '../harness/build-workflow';
 import { recordUserTurn, runMultiTurnConversation } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
+import { buildAgentOutcome } from '../outcome/workflow-discovery';
 
 // Stubbed as in build-workflow-seed-cleanup: only the restore call matters here.
 vi.mock('../harness/chat-loop', () => ({
@@ -682,6 +683,37 @@ describe('buildWorkflow with scenario seed data tables', () => {
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
 		// Tracked for cleanup by id, so the rename can't orphan it.
 		expect(build.createdDataTableIds).toContain('dt-real-1');
+	});
+
+	it('keeps the table map when the build saved no workflow', async () => {
+		// An Agent-only build saves no workflow, and its scenarios still reseed these tables.
+		vi.mocked(buildAgentOutcome).mockResolvedValueOnce({
+			workflowsCreated: [],
+			executionsRun: [],
+			dataTablesCreated: [],
+			finalText: 'done',
+			workflowJsons: [],
+		});
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: ['dt-real-1'] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			executionScenarios: [
+				{
+					name: 's1',
+					description: 'd',
+					dataSetup: 'setup',
+					successCriteria: 'ok',
+					seedDataTables: [jobApplications],
+				},
+			],
+		});
+
+		expect(build.success).toBe(false);
+		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
 	});
 });
 

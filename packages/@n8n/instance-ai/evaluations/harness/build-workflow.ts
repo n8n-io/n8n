@@ -1257,6 +1257,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				createdFolderIds: restoredFolderIds,
+				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
 				conversationMetrics,
 				events,
