@@ -313,6 +313,23 @@ export class AgentMessageList {
 		this.responseSet.add(host);
 	}
 
+	/**
+	 * Rename tool calls whose tool was renamed, so the model only ever sees the
+	 * current names. The change stays in memory: history is not re-saved, and
+	 * each run applies the same renames again.
+	 */
+	renameToolCalls(aliases: Readonly<Record<string, string>>): void {
+		for (const message of this.all) {
+			if (!('content' in message) || !Array.isArray(message.content)) continue;
+			for (const block of message.content) {
+				if (block.type !== 'tool-call') continue;
+				if (Object.prototype.hasOwnProperty.call(aliases, block.toolName)) {
+					block.toolName = aliases[block.toolName];
+				}
+			}
+		}
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {

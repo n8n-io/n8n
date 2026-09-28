@@ -708,3 +708,42 @@ describe('AgentMessageList — observation masking', () => {
 		expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool']);
 	});
 });
+
+describe('AgentMessageList — renameToolCalls', () => {
+	it('renames tool calls whose tool was renamed and leaves the rest', () => {
+		const list = new AgentMessageList();
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-2',
+						toolName: 'workflows',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		]);
+
+		list.renameToolCalls({ 'build-workflow': 'build_workflow' });
+
+		const [message] = list.messages();
+		const names = (message as Message).content
+			.filter((block): block is ContentToolCall => block.type === 'tool-call')
+			.map((block) => block.toolName);
+		expect(names).toEqual(['build_workflow', 'workflows']);
+		// History is renamed in memory only, so nothing is queued for saving.
+		expect(list.responseDelta()).toEqual([]);
+	});
+});

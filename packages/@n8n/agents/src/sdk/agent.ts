@@ -185,6 +185,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private providerTools: BuiltProviderTool[] = [];
 
+	private toolNameAliasMap: Readonly<Record<string, string>> | undefined;
+
 	private skillSource?: RuntimeSkillSource;
 
 	private hasRuntimeSkillTool = false;
@@ -359,6 +361,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** Add a provider-defined tool (e.g. Anthropic web search, OpenAI code interpreter). */
 	providerTool(builtProviderTool: BuiltProviderTool): this {
 		this.providerTools.push(builtProviderTool);
+		return this;
+	}
+
+	/**
+	 * Map old tool names to current ones after a rename. Stored history and
+	 * suspended calls then resolve to the renamed tool.
+	 */
+	toolNameAliases(aliases: Readonly<Record<string, string>>): this {
+		this.toolNameAliasMap = aliases;
 		return this;
 	}
 
@@ -1139,6 +1150,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
+			...(this.toolNameAliasMap ? { toolNameAliases: this.toolNameAliasMap } : {}),
 			memory: memoryConfig?.memory,
 			...(this.fileStoreValue !== undefined ? { fileStore: this.fileStoreValue } : {}),
 			observationLog: memoryConfig?.observationLog,

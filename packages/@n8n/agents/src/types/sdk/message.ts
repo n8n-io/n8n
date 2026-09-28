@@ -135,6 +135,13 @@ export type ContentToolCall = ContentMetadata & {
 	providerExecuted?: boolean;
 
 	/**
+	 * Provider options of a provider-executed result, which can differ from
+	 * the call's own. OpenAI tool search stores its call and its output as two
+	 * items with separate ids, and replays the output by that id.
+	 */
+	resultProviderOptions?: ProviderOptions;
+
+	/**
 	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
 	 * skill body can re-anchor to this result on a later turn instead of falling
 	 * back to the system prompt. Metadata only — never sent to the model.

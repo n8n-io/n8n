@@ -53,6 +53,11 @@ export interface AgentRuntimeConfig {
 		topK?: number;
 	};
 	providerTools?: BuiltProviderTool[];
+	/**
+	 * Old tool name to current tool name. Stored history and suspended calls
+	 * keep the name a tool had when it ran, so a rename would otherwise orphan them.
+	 */
+	toolNameAliases?: Readonly<Record<string, string>>;
 	memory?: BuiltMemory;
 	/** Host store resolving file-reference content parts to bytes before LLM calls. */
 	fileStore?: BuiltFileStore;

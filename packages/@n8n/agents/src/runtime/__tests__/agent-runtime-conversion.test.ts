@@ -797,6 +797,40 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect((block as { output: unknown }).output).toEqual({ result: 3 });
 	});
 
+	it('keeps the provider options of a provider-executed result for replay', () => {
+		// OpenAI tool search stores its call and its output as two items. The
+		// output is replayed by its own item id, not the call's.
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tsc_1',
+						toolName: 'tool_search',
+						input: { arguments: { query: 'data tables' } },
+						providerExecuted: true,
+						providerOptions: { openai: { itemId: 'tsc_1' } },
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'tsc_1',
+						toolName: 'tool_search',
+						output: { type: 'json', value: { tools: [{ name: 'data_tables' }] } },
+						providerOptions: { openai: { itemId: 'tso_1' } },
+					},
+				],
+			},
+		];
+
+		const [assistant] = toAiMessages(fromAiMessages(aiMessages) as Message[]);
+		if (assistant.role !== 'assistant' || typeof assistant.content === 'string') {
+			throw new Error('Expected an assistant message');
+		}
+		const result = assistant.content.find((part) => part.type === 'tool-result');
+		expect(result?.providerOptions).toEqual({ openai: { itemId: 'tso_1' } });
+	});
+
 	it('round-trips provider-executed tool results inside the assistant message', () => {
 		// Native web search: the AI SDK places the result in the assistant message,
 		// never in a role:tool message.

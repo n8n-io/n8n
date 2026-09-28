@@ -279,6 +279,8 @@ function toolCallToResultPart(
 			output: isContentToolResultOutput(block.output)
 				? block.output
 				: { type: 'json', value: block.output },
+			...(block.providerExecuted &&
+				block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 		};
 	}
 	// rejected
@@ -531,6 +533,9 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 			if (part.type !== 'tool-result') continue;
 			const block = toolCallIndex.get(part.toolCallId);
 			if (!block) continue; // orphan — drop
+			if (block.providerExecuted && part.providerOptions) {
+				block.resultProviderOptions = part.providerOptions;
+			}
 
 			const { output } = part;
 			if (output.type === 'json' || output.type === 'text') {

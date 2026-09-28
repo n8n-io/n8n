@@ -68,7 +68,8 @@ splitting fragments by stability:
 - **Stable** (base tools, the deferred-tool controllers `search_tools` /
   `load_tool`, the episodic-memory tools) stay in the cached instructions
   message — this set never changes for the life of a run.
-- **Volatile** (tools loaded via `load_tool` during the conversation) are
+- **Volatile** (tools loaded via `load_tool`, or by an active skill, during
+  the conversation) are
   routed into the same uncached second system message that observation-log
   memory uses (see `buildSystemMessages`), not dropped — the model still
   sees the instruction the moment the tool loads, just outside the cached
@@ -221,3 +222,20 @@ are billed at the catalog's 5-minute rate.
   including future turns — it's never "promoted" back into the cached
   instructions message. This repeats a small, fixed string on every call
   rather than growing it, so it doesn't affect cache stability.
+
+## Provider tool search
+
+For Anthropic models (including Claude on Vertex) and for OpenAI GPT-5.4 and
+later on the Responses API, the runtime replaces `search_tools` / `load_tool`
+with the provider's tool search (see `runtime/tools/native-tool-search.ts`).
+Deferred tools are sent with `deferLoading: true` after every eager tool, and
+the provider search tool is added to the request. The provider keeps deferred
+definitions out of the rendered prefix, so:
+
+- The tool-definitions breakpoint goes on the last eagerly sent tool. With the
+  local search pair, deferred tools disable that breakpoint.
+- Finding a deferred tool does not change the request, so the cache survives.
+- A deferred tool's `systemInstruction` is left out until the tool is loaded.
+
+Tools that an active skill needs are still sent eagerly, as with `load_tool`.
+

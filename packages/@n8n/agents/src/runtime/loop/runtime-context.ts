@@ -37,6 +37,11 @@ import {
 } from '../model/provider-quirks';
 import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+import {
+	type NativeToolSearch,
+	resolveNativeToolSearch,
+	withDeferLoading,
+} from '../tools/native-tool-search';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
@@ -68,6 +73,13 @@ export interface StaticLoopContext {
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
 export class RuntimeContextBuilder {
+	/**
+	 * Provider-side tool search for this run, set by `buildStaticLoopContext`.
+	 * When set, deferred tools go to the provider with `deferLoading` instead of
+	 * behind the local `search_tools` / `load_tool` pair.
+	 */
+	private nativeToolSearch: NativeToolSearch | undefined;
+
 	constructor(
 		private readonly config: AgentRuntimeConfig,
 		private readonly deferredToolManager: DeferredToolManager | undefined,
@@ -82,8 +94,14 @@ export class RuntimeContextBuilder {
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	): StaticLoopContext {
 		const ai = loadAi();
-		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model, this.config.modelFetch);
+		this.nativeToolSearch = this.deferredToolManager?.hasTools
+			? resolveNativeToolSearch(model)
+			: undefined;
+		const aiProviderTools = toAiSdkProviderTools([
+			...(this.config.providerTools ?? []),
+			...(this.nativeToolSearch ? [this.nativeToolSearch.searchTool] : []),
+		]);
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
 		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
@@ -135,6 +153,11 @@ export class RuntimeContextBuilder {
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
+		// A suspended call resumes under the name it had when it ran.
+		for (const [oldName, newName] of Object.entries(this.config.toolNameAliases ?? {})) {
+			const tool = toolMap.get(newName);
+			if (tool && !toolMap.has(oldName)) toolMap.set(oldName, tool);
+		}
 		const { instructions: effectiveInstructions, volatileInstructions } =
 			this.composeEffectiveInstructions(allUserTools);
 
@@ -194,8 +217,19 @@ export class RuntimeContextBuilder {
 	 * invalidate the cache.
 	 */
 	private getStaticToolCacheName(allUserTools: BuiltTool[]): string | undefined {
+		if (this.nativeToolSearch) {
+			// Deferred definitions stay out of the rendered prefix, so the last
+			// eagerly sent tool closes the cacheable tool block.
+			const deferred = this.nativelyDeferredToolNames();
+			return allUserTools.filter((tool) => !deferred.has(tool.name)).at(-1)?.name;
+		}
 		if (this.deferredToolManager?.hasTools) return undefined;
 		return allUserTools.at(-1)?.name;
+	}
+
+	private nativelyDeferredToolNames(): Set<string> {
+		if (!this.nativeToolSearch || !this.deferredToolManager) return new Set();
+		return new Set(this.deferredToolManager.getUnloadedTools().map((tool) => tool.name));
 	}
 
 	getCurrentTools(
@@ -204,20 +238,46 @@ export class RuntimeContextBuilder {
 		list?: AgentMessageList,
 	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
+		const manager = this.deferredToolManager?.hasTools ? this.deferredToolManager : undefined;
+		const native = this.nativeToolSearch;
 		const tools = [
 			...baseTools,
-			...(this.deferredToolManager?.hasTools
-				? [
-						...this.deferredToolManager.getControllerTools(),
-						...this.deferredToolManager.getLoadedTools(),
-					]
-				: []),
+			// Native search replaces the local discovery pair. Tools a skill loaded
+			// still go eagerly, so the model can call them without a search.
+			...(manager && !native ? manager.getControllerTools() : []),
+			...(manager ? manager.getLoadedTools() : []),
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
 		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
 		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
-		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
+		const eagerTools = flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
+		if (!manager || !native) return eagerTools;
+		// Deferred tools go last, after every eagerly sent tool, so the cache
+		// breakpoint on the last eager tool covers the whole rendered tool block.
+		return [
+			...eagerTools,
+			...manager.getUnloadedTools().map((tool) => withDeferLoading(tool, native.namespace)),
+		];
+	}
+
+	/**
+	 * Find a tool to resume a suspended call. Looks past the current toolset:
+	 * the call may target a deferred tool that is not loaded in this runtime,
+	 * or use the name the tool had before a rename.
+	 */
+	findToolForResume(
+		toolName: string,
+		persistence?: AgentPersistenceOptions,
+	): BuiltTool | undefined {
+		const aliases = this.config.toolNameAliases ?? {};
+		const name = Object.prototype.hasOwnProperty.call(aliases, toolName)
+			? aliases[toolName]
+			: toolName;
+		return (
+			this.getCurrentTools(persistence).find((tool) => tool.name === name) ??
+			this.deferredToolManager?.getTool(name)
+		);
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {
@@ -333,9 +393,13 @@ export class RuntimeContextBuilder {
 		const loadedToolNames = new Set(
 			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
 		);
+		// A natively deferred tool is not in the model's context until it is
+		// searched, so its rules would describe a tool the model cannot see.
+		const nativelyDeferred = this.nativelyDeferredToolNames();
 		const stableFragments: string[] = [];
 		const volatileFragments: string[] = [];
 		for (const tool of tools) {
+			if (nativelyDeferred.has(tool.name)) continue;
 			if (
 				typeof tool.systemInstruction !== 'string' ||
 				tool.systemInstruction.trim().length === 0

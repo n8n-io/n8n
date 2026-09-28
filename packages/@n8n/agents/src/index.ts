@@ -242,6 +242,11 @@ export {
 } from './runtime/mcp/mcp-content';
 export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
+export {
+	resolveNativeToolSearch,
+	supportsNativeToolSearch,
+} from './runtime/tools/native-tool-search';
+export type { NativeToolSearch } from './runtime/tools/native-tool-search';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {
