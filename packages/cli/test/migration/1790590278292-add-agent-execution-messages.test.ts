@@ -179,17 +179,21 @@ describe('AddAgentExecutionMessages migration', () => {
 			AND (${context.escape.columnName('modelContextAt')} IS NOT NULL OR ${context.escape.columnName('origin')} IS NULL)
 			AND ${timestamp} < :before
 			ORDER BY ${timestamp} DESC, ${context.escape.columnName('id')} DESC LIMIT 10`;
-		// Discourage explicit sorts to test whether the index provides the required order.
-		if (context.isPostgres) await context.runQuery('SET enable_sort = off');
-		try {
-			const explain = context.isSqlite ? 'EXPLAIN QUERY PLAN' : 'EXPLAIN (COSTS OFF)';
+		if (context.isPostgres) {
+			// Older transactions can temporarily prevent the planner from using this new index.
+			const [index] = await context.runQuery<Array<{ definition: string }>>(
+				'SELECT pg_get_indexdef(:indexName::regclass) AS definition',
+				{ indexName: context.escape.indexName('agents_messages_model_context') },
+			);
+			expect(index.definition).toMatch(
+				/ USING btree \("threadId", COALESCE\("modelContextAt", "createdAt"\), id\)$/,
+			);
+		} else {
 			const plan = await context.runQuery<Array<Record<string, string | number>>>(
-				`${explain} ${query}`,
+				`EXPLAIN QUERY PLAN ${query}`,
 				{ threadId, before: new Date('2026-05-13') },
 			);
-			expect(plan.flatMap(Object.values).join('\n')).not.toMatch(/Sort|TEMP B-TREE/);
-		} finally {
-			if (context.isPostgres) await context.runQuery('RESET enable_sort');
+			expect(plan.flatMap(Object.values).join('\n')).not.toContain('TEMP B-TREE');
 		}
 
 		const outputId = randomUUID();
