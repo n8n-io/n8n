@@ -5951,7 +5951,7 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		expect(result.pendingSuspend).toBeUndefined();
 		expect(runtime.getState().status).toBe('cancelled');
 		expect(onCancellation).toHaveBeenCalledOnce();
-		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId, expect.any(Object));
 	});
 
 	it('cleans up child continuations when checkpoint persistence fails', async () => {
@@ -5980,7 +5980,7 @@ describe('AgentRuntime — abort during a tool batch', () => {
 
 		expect(result.error).toBe(persistenceError);
 		expect(onCancellation).toHaveBeenCalledOnce();
-		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId, expect.any(Object));
 	});
 });
 
@@ -6129,6 +6129,14 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			const next = createRuntimeWithCheckpointStore([tool], checkpointStore);
 			await next.resume('generate', { approved: true }, { runId, toolCallId: 'tc-2' });
 			expect(observed[1]?.hostMetadata?.actor).toBe('tool-update');
+			expect(checkpointStore.delete).toHaveBeenCalledWith(
+				runId,
+				expect.objectContaining({
+					persistence: expect.objectContaining({
+						hostMetadata: { scope: { tenant: 'tenant-1' }, actor: 'tool-update' },
+					}),
+				}),
+			);
 			expect(await checkpointStore.load(runId)).toBeUndefined();
 		},
 	);
@@ -9576,7 +9584,7 @@ describe('AgentRuntime — oversized tool results', () => {
 
 			await runtime.generate('run');
 
-			expect(checkpointStorage.delete).toHaveBeenCalledWith(runId);
+			expect(checkpointStorage.delete).toHaveBeenCalledWith(runId, expect.any(Object));
 			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(true);
 		});
 

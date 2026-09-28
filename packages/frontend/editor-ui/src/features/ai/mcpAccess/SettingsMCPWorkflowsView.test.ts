@@ -14,7 +14,7 @@ import {
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
@@ -55,7 +55,7 @@ const createComponent = createComponentRenderer(SettingsMCPWorkflowsView, {
 	},
 });
 
-const workflowPage = (data: WorkflowListItem[] = []) => ({ data, count: data.length });
+const workflowPage = (data: McpWorkflow[] = []) => ({ data, count: data.length });
 
 describe('SettingsMCPWorkflowsView', () => {
 	beforeEach(() => {

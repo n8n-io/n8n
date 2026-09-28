@@ -429,8 +429,10 @@ export class SourceControlImportService {
 					role: true,
 				},
 			},
-			where:
+			// A credential the user never finished authorizing must not reach the push dialog or git
+			where: this.credentialsRepository.excludePendingAuthorization(
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
+			),
 		});
 
 		// Batched to bound the transient decryption allocations (plaintext + parsed object)

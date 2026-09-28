@@ -25,6 +25,9 @@ import { generateId } from '../generate-id';
 )
 @Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
 @Index('idx_workflow_step_execution_wait_till', ['waitTill'], { where: "status = 'waiting'" })
+@Index('idx_workflow_step_execution_unsettled', ['executionId', 'status'], {
+	where: "status IN ('queued', 'running', 'waiting')",
+})
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;

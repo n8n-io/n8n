@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import {
 	computed,
 	inject,
@@ -10,26 +13,25 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
-import { Handle, Position, useVueFlow } from '@vue-flow/core';
-import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
-import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
-import { HOVER_DELAY } from '@/app/constants';
-import {
-	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
-	GROUP_DESCRIPTION_MAX_LENGTH,
-	GROUP_DESCRIPTION_MIN_ZOOM,
-} from '../../../stores/canvasNodeGroups.constants';
-import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
-import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
+import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
+import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import {
+	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	GROUP_DESCRIPTION_MIN_ZOOM,
+} from '../../../stores/canvasNodeGroups.constants';
+import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import { HOVER_DELAY } from '@/app/constants';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -49,12 +51,14 @@ const props = withDefaults(
 		/** Whether the group's members form a selection that can be converted
 		 * to a sub-workflow (extraction is stricter than grouping). */
 		canExtract?: boolean;
+		hasTrigger?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
 		selected: false,
 		canExtract: false,
+		hasTrigger: false,
 	},
 );
 
@@ -485,6 +489,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 				</div>
 			</div>
 
+			<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
+			<div
+				v-if="hasTrigger && isCollapsed"
+				:class="$style.triggerMark"
+				role="img"
+				:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
+				data-test-id="canvas-node-group-trigger-mark"
+			>
+				<N8nIcon icon="bolt-filled" size="large" />
+			</div>
+
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
 				<div :class="$style.titleColumn">
 					<div :class="$style.titleRow">
@@ -876,6 +891,18 @@ function onWrapperPointerDown(event: PointerEvent) {
 .deactivatedLabel {
 	flex-shrink: 0;
 	white-space: nowrap;
+}
+
+.triggerMark {
+	position: absolute;
+	right: 100%;
+	top: 0;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding-right: var(--spacing--sm);
+	color: var(--color--primary);
 }
 
 .infoIcon {

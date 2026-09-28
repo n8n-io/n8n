@@ -23,8 +23,9 @@ describe('agent channel platform registry', () => {
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
-		// Teams ships without a setup stepper, so it rides the fallback view.
-		expect(isRegisteredAgentChannelPlatform('teams')).toBe(false);
+		// Registered for its stepper. The channel itself stays hidden from the
+		// catalog through `internal` on the backend, which is a separate switch.
+		expect(isRegisteredAgentChannelPlatform('teams')).toBe(true);
 	});
 
 	it('derives Slack list metadata from its local runtime state', () => {

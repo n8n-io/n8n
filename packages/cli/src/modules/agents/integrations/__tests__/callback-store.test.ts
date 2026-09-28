@@ -34,13 +34,13 @@ describe('CallbackStore', () => {
 		const reader = new CallbackStore(cache, lockService, 'agent-1:discord:cred-1');
 
 		const key = await writer.store('resume:run:tool:0', '{"approved":true}', {
-			kind: 'approval',
+			groupId: '["run","tool"]',
 		});
 
 		await expect(reader.resolve(key)).resolves.toEqual({
 			actionId: 'resume:run:tool:0',
 			value: '{"approved":true}',
-			kind: 'approval',
+			groupId: '["run","tool"]',
 		});
 	});
 
