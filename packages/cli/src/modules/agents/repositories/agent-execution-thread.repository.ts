@@ -146,6 +146,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
 	): Promise<AgentExecutionThreadPage> {
+		// SQLite timestamps can omit milliseconds, so compare them in one format.
+		const updatedAt =
+			this.manager.connection.options.type === 'postgres'
+				? 'thread.updatedAt'
+				: "STRFTIME('%Y-%m-%d %H:%M:%f', thread.updatedAt)";
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
@@ -157,9 +162,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.take(limit + 1);
 
 		if (cursor) {
-			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
+			query.andWhere(`${updatedAt} < :cursor`, { cursor: new Date(cursor) });
 		}
-		this.applyListFilters(query, filters);
+		this.applyListFilters(query, filters, updatedAt);
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
@@ -173,14 +178,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private applyListFilters(
 		query: SelectQueryBuilder<AgentExecutionThread>,
 		filters: AgentSessionQueryFilters,
+		updatedAt: string,
 	) {
 		if (filters.updatedAfter) {
-			query.andWhere('thread.updatedAt >= :updatedAfter', {
+			query.andWhere(`${updatedAt} >= :updatedAfter`, {
 				updatedAfter: filters.updatedAfter,
 			});
 		}
 		if (filters.updatedBefore) {
-			query.andWhere('thread.updatedAt <= :updatedBefore', {
+			query.andWhere(`${updatedAt} <= :updatedBefore`, {
 				updatedBefore: filters.updatedBefore,
 			});
 		}
