@@ -1173,7 +1173,7 @@ describe('Apply a project selection', () => {
 			workflowIds: [removed.id],
 		});
 
-		// The cherry-pick apply profile removes with `overwriteDeletionPolicy: 'hard-delete'`: an
+		// Promotion applies the selection with `overwriteDeletionPolicy: 'hard-delete'`: an
 		// archived-in-place workflow would stay on the target and read as a `deleted` diff row forever,
 		// so a branch-absent selection is removed to make the diff converge.
 		expect(result).toMatchObject({

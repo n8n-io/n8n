@@ -613,7 +613,9 @@ export class PromotionsService {
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
-			{ user: actor },
+			// Hard-delete so a removal drops the row: the promotion diff counts archived
+			// workflows, so an archived removal would never converge to "in sync".
+			{ user: actor, overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
 			{ sourceDir: packageFolder },
 			selection,
 		);
