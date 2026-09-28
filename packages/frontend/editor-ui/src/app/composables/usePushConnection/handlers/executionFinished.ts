@@ -25,10 +25,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import {
-	SampleTemplates,
-	isTutorialTemplateId,
-} from '@/features/workflows/templates/utils/workflowSamples';
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
@@ -142,11 +139,6 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isTutorialTemplateId(templateId)) {
-			telemetry.track('User executed tutorial template', {
-				template: templateId,
-				status: data.status,
-			});
 		}
 	}
 
