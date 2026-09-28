@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,6 +25,7 @@ import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const OVERLAPPING_RUNS = 4;
+const SEEDED_AT = new Date('2026-01-01T00:00:00.000Z');
 
 type StoredRow = Pick<McpRegistryServer, 'slug' | 'status' | 'version'>;
 
@@ -83,7 +85,21 @@ describe('McpRegistryRefreshTask', () => {
 	}
 
 	async function seed(servers: McpRegistryServer[]): Promise<void> {
-		await repository.insert(servers.map(toEntity));
+		await repository.insert(
+			servers.map((server) => ({ ...toEntity(server), updatedAt: SEEDED_AT })),
+		);
+	}
+
+	/**
+	 * Starts a run that is held after its metadata fetch starts, so a later run
+	 * can fetch and write first. Resolving the returned run's metadata lets it finish.
+	 */
+	async function startHeldRun() {
+		const metadata = createDeferredPromise<McpRegistryServerMetadata[]>();
+		apiClient.fetchServersMetadata.mockReturnValueOnce(metadata.promise);
+		const run = task.run(signal);
+		await vi.waitFor(() => expect(apiClient.fetchServersMetadata).toHaveBeenCalledTimes(1));
+		return { run, metadata };
 	}
 
 	async function storedRows(): Promise<StoredRow[]> {
@@ -126,10 +142,50 @@ describe('McpRegistryRefreshTask', () => {
 		expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
 	});
 
+	it('should keep the newer fetch when an older overlapping fetch writes last', async () => {
+		const olderNotion: McpRegistryServer = {
+			...notionMockServer,
+			version: '1.1.0',
+			updatedAt: '2026-04-01T10:00:00.000Z',
+		};
+		await seed([{ ...notionMockServer, version: '1.0.0', updatedAt: '2026-03-01T10:00:00.000Z' }]);
+		const older = await startHeldRun();
+		apiClient.fetchServersMetadata.mockResolvedValueOnce(metadataOf([notionMockServer]));
+		apiClient.fetchServersBySlugs
+			.mockResolvedValueOnce([notionMockServer])
+			.mockResolvedValueOnce([olderNotion]);
+
+		await task.run(signal);
+		older.metadata.resolve(metadataOf([olderNotion]));
+		await older.run;
+
+		expect(await storedRows()).toEqual([row(notionMockServer)]);
+	});
+
+	it('should keep a deprecation when an older overlapping fetch writes last', async () => {
+		const updatedLinear: McpRegistryServer = {
+			...linearMockServer,
+			version: '1.1.0',
+			updatedAt: '2026-06-01T10:00:00.000Z',
+		};
+		await seed([notionMockServer, linearMockServer]);
+		const older = await startHeldRun();
+		apiClient.fetchServersMetadata.mockResolvedValueOnce(metadataOf([notionMockServer]));
+		apiClient.fetchServersBySlugs.mockResolvedValueOnce([updatedLinear]);
+
+		await task.run(signal);
+		older.metadata.resolve(metadataOf([notionMockServer, updatedLinear]));
+		await older.run;
+
+		expect(await storedRows()).toEqual(
+			bySlug([row(notionMockServer), row({ ...linearMockServer, status: 'deprecated' })]),
+		);
+	});
+
 	it('should write nothing on a run after the registry is current', async () => {
 		serveRemote([notionMockServer, linearMockServer]);
 		await task.run(signal);
-		const upsert = vi.spyOn(repository, 'upsert');
+		const upsert = vi.spyOn(repository, 'upsertFetchedServers');
 		publisher.publishCommand.mockClear();
 
 		await task.run(signal);
