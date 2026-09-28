@@ -8849,6 +8849,7 @@
 	"agents.channels.teams.setup.registerApp.button": "Open Microsoft Entra",
 	"agents.channels.teams.setup.availability.readsChannels": "Reads channels",
 	"agents.channels.teams.setup.availability.readsGroupChats": "Reads group chats",
+	"agents.channels.teams.setup.availability.summarySeparator": " · ",
 	"agents.channels.teams.setup.install.identityTooltip": "Name and avatar come from the agent. Teams needs a description, so this default is used. To change any of it, edit the agent and download the package again.",
 	"agents.channels.teams.setup.install.downloaded": "App package downloaded. Upload it in Teams under Apps › Manage your apps › Upload an app.",
 	"agents.channels.teams.setup.registerApp.prerequisites": "You need a work or school account that can register apps. If you cannot, ask an admin for an app registration and its client secret.",

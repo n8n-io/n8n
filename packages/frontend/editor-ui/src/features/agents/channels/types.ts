@@ -61,6 +61,7 @@ export interface AgentChannelViewProps {
 	projectId: string;
 	agentId: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	ensureAgentPersisted?: () => Promise<void>;
 	forceNewCredential: boolean;
 	simpleSetup: boolean;
 	runtime: AgentChannelRuntime;

@@ -635,6 +635,7 @@ watch(
 					:project-id="projectId"
 					:agent-id="agentId"
 					:personalisation="personalisation"
+					:ensure-agent-persisted="ensureAgentPersisted"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"

@@ -86,7 +86,7 @@ const summary = computed(() =>
 	]
 		.filter((key): key is BaseTextKey => Boolean(key))
 		.map((key) => i18n.baseText(key))
-		.join(' · '),
+		.join(i18n.baseText(`${K}.summarySeparator`)),
 );
 </script>
 

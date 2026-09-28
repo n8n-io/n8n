@@ -274,14 +274,14 @@ describe('AgentChannelTeamsSetup', () => {
 						'agents.channels.teams.setup.availability.directChat',
 						'agents.channels.teams.setup.availability.teamChannels',
 						'agents.channels.teams.setup.availability.readsChannels',
-					].join(' · '),
+					].join('agents.channels.teams.setup.availability.summarySeparator'),
 				),
 			);
 		});
 
-		it('clears a read permission when its surface is turned back off', async () => {
+		it('clears a read permission when its surface goes off, so turning it back on starts cleared', async () => {
 			withBot();
-			const { getByTestId, emitted } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 			await openAvailability(getByTestId);
 
 			await fireEvent.click(getByTestId('teams-scope-channels'));
@@ -291,7 +291,6 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-scope-channels'));
 
 			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(false));
-			expect(emitted().connect).toBeFalsy();
 		});
 
 		it('restores saved settings', async () => {
@@ -371,6 +370,27 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({ title: 'agents.channels.teams.setup.install.downloaded' }),
 			);
+		});
+
+		it('does nothing more once the view is gone before the download finishes', async () => {
+			withBot();
+			let release: ((blob: Blob) => void) | undefined;
+			vi.mocked(fetchTeamsAppPackage).mockImplementation(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, emitted, unmount } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+
+			unmount();
+			release?.(new Blob(['zip']));
+			await flushPromises();
+
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(emitted().connect).toBeFalsy();
 		});
 
 		it('reports a failed download and does not connect', async () => {
@@ -559,6 +579,44 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(queryByTestId('teams-credential-verified')).toBeNull();
 			expect(getByTestId('teams-deploy-to-azure')).toBeDisabled();
 			expect(getByTestId('teams-download-package')).toBeDisabled();
+		});
+	});
+
+	describe('an agent that is not saved yet', () => {
+		it('saves the agent before asking for the setup state of a picked credential', async () => {
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+
+			renderComponent({ props: props({ modelValue: 'cred-1', ensureAgentPersisted }) });
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			expect(ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(getTeamsSetupState).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not save the agent while no credential is picked', async () => {
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+
+			renderComponent({ props: props({ ensureAgentPersisted }) });
+
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(ensureAgentPersisted).not.toHaveBeenCalled();
+		});
+
+		it('keeps the last steps locked when saving the agent fails', async () => {
+			withBot();
+			const ensureAgentPersisted = vi.fn().mockRejectedValue(new Error('offline'));
+
+			const { getByTestId, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+			expect(getTeamsSetupState).not.toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+			expect(getByTestId('teams-download-package')).toBeDisabled();
+			expect(emitted().connect).toBeFalsy();
 		});
 	});
 

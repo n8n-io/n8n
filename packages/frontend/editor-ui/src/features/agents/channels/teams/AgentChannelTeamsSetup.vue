@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
 import {
 	N8nButton,
@@ -50,6 +50,7 @@ const props = withDefaults(
 		forceNewCredential?: boolean;
 		savedSettings?: AgentTeamsIntegrationSettings;
 		personalisation?: AgentJsonConfig['personalisation'] | null;
+		ensureAgentPersisted?: () => Promise<void>;
 	}>(),
 	{
 		credentialsLoading: false,
@@ -61,6 +62,7 @@ const props = withDefaults(
 		forceNewCredential: false,
 		savedSettings: undefined,
 		personalisation: null,
+		ensureAgentPersisted: undefined,
 	},
 );
 
@@ -232,9 +234,12 @@ async function downloadPackage(): Promise<boolean> {
 	}
 }
 
+let unmounted = false;
+onBeforeUnmount(() => (unmounted = true));
+
 // Connecting closes the modal, so it waits for the package to be saved.
 async function downloadAndConnect() {
-	if (!(await downloadPackage())) return;
+	if (!(await downloadPackage()) || unmounted) return;
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
@@ -246,6 +251,9 @@ async function loadSetupState() {
 	const request = ++latestSetupState;
 	if (!props.projectId || !props.agentId) return;
 	try {
+		// A new agent has no row yet, and every agent-scoped Teams request needs
+		// one. Picking a credential is the first step that asks for that data.
+		if (props.mode === 'setup' && credentialId.value) await props.ensureAgentPersisted?.();
 		const state = await getTeamsSetupState(
 			rootStore.restApiContext,
 			props.projectId,
