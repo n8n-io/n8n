@@ -3,8 +3,8 @@ additionalProperties: false
 description: >
   The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a
   full replacement: every field must be provided, except `exporterProtocol`, which defaults to
-  `http/protobuf` when omitted. Fields managed declaratively via environment variables are
-  returned with their effective value and ignored on write.
+  `http/protobuf` when omitted. Fields managed by environment variables return their effective
+  value. Re-submitting that value is accepted; changing it returns 409.
 required:
   - enabled
   - exporterEndpoint

@@ -1,22 +1,17 @@
 import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Put, RestController } from '@n8n/decorators';
 
-import { OtelLifecycleHandler } from './otel-lifecycle-handler';
+import { OtelSettingsUpdateService } from './otel-settings-update.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
-
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @RestController('/otel')
 export class OtelSettingsController {
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly otelService: OtelService,
-		private readonly otelLifecycleHandler: OtelLifecycleHandler,
-		private readonly moduleRegistry: ModuleRegistry,
-		private readonly publisher: Publisher,
+		private readonly otelSettingsUpdateService: OtelSettingsUpdateService,
 	) {}
 
 	@Get('/settings')
@@ -32,11 +27,7 @@ export class OtelSettingsController {
 		_res: Response,
 		@Body dto: UpdateOtelSettingsDto,
 	) {
-		await this.otelSettingsService.saveSettings(dto);
-		await this.otelLifecycleHandler.onReloadOtelConfig();
-		await this.moduleRegistry.refreshModuleSettings('otel');
-		void this.publisher.publishCommand({ command: 'reload-otel-config' });
-		return this.otelSettingsService.getSettings();
+		return await this.otelSettingsUpdateService.updateSettings(dto);
 	}
 
 	@Post('/test-trace')

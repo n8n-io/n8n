@@ -5,7 +5,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelService } from '@/modules/otel/otel.service';
 
-import { toOtelSettingsResponse } from './otel.mapper';
+import { toOtelSettingsResponse } from '../../shared/otel.mapper';
 import type { OtelSettingsRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';

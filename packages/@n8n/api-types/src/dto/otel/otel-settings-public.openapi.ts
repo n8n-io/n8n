@@ -3,7 +3,7 @@ import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 export const otelSettingsPublicDocs = {
 	configuration: {
 		description:
-			'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a full replacement: every field must be provided, except `exporterProtocol`, which defaults to `http/protobuf` when omitted. Fields managed declaratively via environment variables are returned with their effective value and ignored on write.',
+			'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a full replacement: every field must be provided, except `exporterProtocol`, which defaults to `http/protobuf` when omitted. Fields managed by environment variables return their effective value. Re-submitting that value is accepted; changing it returns 409.',
 	},
 	enabled: { description: 'Whether OpenTelemetry tracing is enabled.', example: true },
 	exporterProtocol: {

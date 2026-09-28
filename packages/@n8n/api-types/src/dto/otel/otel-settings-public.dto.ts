@@ -33,13 +33,25 @@ export class UpdateOtelSettingsPublicDto extends Z.class(
 
 export class OtelSettingsPublicDto extends Z.class(
 	{
-		...UpdateOtelSettingsPublicDto.schema.shape,
+		enabled: z.boolean().openapi(docs.enabled),
 		exporterProtocol: z.string().openapi({
 			...docs.exporterProtocol,
 			enum: [...OTLP_PROTOCOLS],
 			default: 'http/protobuf',
 		}),
 		exporterEndpoint: z.string().openapi({ ...docs.exporterEndpoint, format: 'uri' }),
+		exporterTracingPath: z.string().openapi(docs.exporterTracingPath),
+		exporterServiceName: z.string().openapi({ ...docs.exporterServiceName, minLength: 1 }),
+		exporterHeaders: z.string().openapi(docs.exporterHeaders),
+		tracesSampleRate: z.number().openapi({ ...docs.tracesSampleRate, minimum: 0, maximum: 1 }),
+		startupConnectivityTimeoutMs: z.number().openapi({
+			...docs.startupConnectivityTimeoutMs,
+			type: 'integer',
+			minimum: 0,
+		}),
+		includeNodeSpans: z.boolean().openapi(docs.includeNodeSpans),
+		injectOutbound: z.boolean().openapi(docs.injectOutbound),
+		productionExecutionsOnly: z.boolean().openapi(docs.productionExecutionsOnly),
 	},
 	{ strict: true },
 ) {

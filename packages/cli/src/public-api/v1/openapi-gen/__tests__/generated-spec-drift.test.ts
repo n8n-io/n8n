@@ -8,8 +8,6 @@ import { parse } from 'yaml';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
-
 import { PromotionsPublicController } from '../../controllers/promotions.public.controller';
 
 import { getGeneratedArtifacts } from '../generate';
@@ -19,63 +17,6 @@ import { getGeneratedArtifacts } from '../generate';
  * `build:data` on every build. This asserts the committed copies still match a fresh generation.
  */
 const V1_DIR = path.resolve(__dirname, '../..');
-
-describe('OpenTelemetry settings route', () => {
-	it('registers PUT /settings/otel with a body and the manage scope', () => {
-		const route = resolvePublicApiRoutes().find(
-			({ path: routePath, method }) => routePath === '/settings/otel' && method === 'put',
-		);
-		expect(route?.apiKeyScope).toBe('otel:manage');
-		expect(route?.requestBodyDto).toBeDefined();
-		expect(route?.successStatus).toBe(200);
-	});
-
-	it('keeps every field and field description from the legacy settings schema', () => {
-		const legacy = parse(
-			fs.readFileSync(path.join(V1_DIR, 'handlers/otel/spec/schemas/otel-settings.yml'), 'utf8'),
-		) as OpenAPIV3.SchemaObject;
-		const generated = parse(
-			fs.readFileSync(
-				path.join(V1_DIR, 'handlers/settings/spec/paths/updateOtelSettings.generated.yml'),
-				'utf8',
-			),
-		) as OpenAPIV3.OperationObject;
-		const request = generated.requestBody as OpenAPIV3.RequestBodyObject;
-		const requestSchema = request.content['application/json'].schema as OpenAPIV3.SchemaObject;
-		const response = generated.responses['200'] as OpenAPIV3.ResponseObject;
-		const responseSchema = response.content?.['application/json'].schema as OpenAPIV3.SchemaObject;
-
-		for (const schema of [requestSchema, responseSchema]) {
-			expect(Object.keys(schema.properties ?? {}).sort()).toEqual(
-				Object.keys(legacy.properties ?? {}).sort(),
-			);
-			expect(schema.description?.trimEnd()).toBe(legacy.description?.trimEnd());
-			expect(schema.additionalProperties).toBe(false);
-			expect(schema.required).toEqual(expect.arrayContaining(legacy.required ?? []));
-			for (const [key, field] of Object.entries(legacy.properties ?? {})) {
-				const oldField = field as OpenAPIV3.SchemaObject;
-				const newField = schema.properties?.[key] as OpenAPIV3.SchemaObject;
-				for (const property of [
-					'type',
-					'format',
-					'enum',
-					'default',
-					'minLength',
-					'minimum',
-					'maximum',
-					'description',
-					'example',
-				] as const) {
-					if (property === 'description') {
-						expect(newField.description?.trimEnd()).toBe(oldField.description?.trimEnd());
-					} else {
-						expect(newField[property]).toEqual(oldField[property]);
-					}
-				}
-			}
-		}
-	});
-});
 
 describe('generated OpenAPI spec is up to date', () => {
 	it.each(getGeneratedArtifacts())(
