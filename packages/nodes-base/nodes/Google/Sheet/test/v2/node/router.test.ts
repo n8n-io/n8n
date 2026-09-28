@@ -16,7 +16,11 @@ describe('Google Sheets router', () => {
 		{ json: { document: 'document-2', sheet: 'Orders' } },
 	];
 
-	function createExecuteFunctions(typeVersion: number, inputItems = items) {
+	function createExecuteFunctions(
+		typeVersion: number,
+		inputItems = items,
+		config: { throwOnMissingSheet?: boolean } = {},
+	) {
 		const executeFunctions = mockDeep<IExecuteFunctions>();
 		executeFunctions.getInputData.mockReturnValue(inputItems);
 		executeFunctions.getNode.mockReturnValue(
@@ -38,7 +42,12 @@ describe('Google Sheets router', () => {
 				options?: IGetNodeParameterOptions,
 			): object | NodeParameterValueType => {
 				const item = inputItems[itemIndex].json;
-				if (parameterName === 'sheetName' && options?.extractValue) return item.sheet;
+				if (parameterName === 'sheetName' && options?.extractValue) {
+					if (item.sheet === undefined && config.throwOnMissingSheet) {
+						throw new Error('Missing sheet');
+					}
+					return item.sheet;
+				}
 				const parameters: Record<string, unknown> = {
 					resource: 'sheet',
 					operation: 'read',
@@ -137,32 +146,10 @@ describe('Google Sheets router', () => {
 
 	it('preserves input order when resource resolution fails with continueOnFail', async () => {
 		const inputItems = [items[0], { json: { document: 'document-2' } }, items[1]];
-		const executeFunctions = createExecuteFunctions(4.8, inputItems);
+		const executeFunctions = createExecuteFunctions(4.8, inputItems, {
+			throwOnMissingSheet: true,
+		});
 		executeFunctions.continueOnFail.mockReturnValue(true);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(
-				parameterName: string,
-				itemIndex: number,
-				_fallbackValue?: unknown,
-				options?: IGetNodeParameterOptions,
-			) => {
-				const item = inputItems[itemIndex].json;
-				if (parameterName === 'sheetName' && options?.extractValue) {
-					if (item.sheet === undefined) throw new Error('Missing sheet');
-					return item.sheet;
-				}
-				const parameters: Record<string, unknown> = {
-					resource: 'sheet',
-					operation: 'read',
-					documentId: { mode: 'id', value: item.document },
-					sheetName: { mode: 'name', value: item.sheet },
-					options: {},
-					'filtersUI.values': [],
-					combineFilters: 'AND',
-				};
-				return parameters[parameterName] as object | NodeParameterValueType;
-			},
-		);
 
 		const [result] = await router.call(executeFunctions);
 
