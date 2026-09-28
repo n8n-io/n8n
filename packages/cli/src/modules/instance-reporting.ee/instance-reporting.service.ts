@@ -53,9 +53,6 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 	rejected: 'Giving up on the instance report because the receiver rejected its payload',
 };
 
-/** How long to wait before re-attempting a delivery that failed. */
-export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
-
 /**
  * How many missed days one report may carry.
  *
@@ -240,23 +237,6 @@ export class InstanceReportingService {
 		await this.reportRepository.markSkipped(id);
 
 		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
-	}
-
-	/**
-	 * How long the scheduler must wait before attempting today's report again, or
-	 * `0` when it may attempt now.
-	 *
-	 * Derived from the report row, so the wait survives a restart. Without it, a
-	 * crash loop would attempt at once every time and spend the whole budget in
-	 * seconds.
-	 */
-	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findPending();
-		if (!pending?.lastAttemptAt) return 0;
-
-		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
-
-		return Math.max(0, RETRY_DELAY_MS - elapsed);
 	}
 
 	/**

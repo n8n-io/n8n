@@ -13,10 +13,12 @@ import { InstanceReportingSettingsService } from './instance-reporting-settings.
 import {
 	InstanceReportAlreadyCreatedError,
 	InstanceReportingService,
-	RETRY_DELAY_MS,
 } from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
+
+/** How long to wait before re-attempting a delivery that failed. */
+const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
  * Fires the daily instance report at this instance's configured report time.
@@ -122,7 +124,7 @@ export class InstanceReportingScheduler {
 			// the slot collapses to zero, so this pass falls through to reportIfDue,
 			// which skips the stale row and sends a fresh report.
 			const waitMs = Math.min(
-				await this.reportingService.msUntilRetryAllowed(new Date()),
+				await this.msUntilRetryAllowed(new Date()),
 				await this.msUntilNextSlot(reportTime),
 			);
 			if (waitMs > 0) {
@@ -215,6 +217,23 @@ export class InstanceReportingScheduler {
 		if (!this.isEnabled || this.isShuttingDown) return;
 
 		this.timeout = setTimeout(async () => await this.tick(), delayMs);
+	}
+
+	/**
+	 * How long the scheduler must wait before attempting today's report again, or
+	 * `0` when it may attempt now.
+	 *
+	 * Derived from the report row, so the wait survives a restart. Without it, a
+	 * crash loop would attempt at once every time and spend the whole budget in
+	 * seconds.
+	 */
+	private async msUntilRetryAllowed(now: Date): Promise<number> {
+		const pending = await this.reportRepository.findPending();
+		if (!pending?.lastAttemptAt) return 0;
+
+		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
+
+		return Math.max(0, RETRY_DELAY_MS - elapsed);
 	}
 }
 
