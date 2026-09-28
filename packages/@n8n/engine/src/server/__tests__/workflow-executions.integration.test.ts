@@ -7,12 +7,22 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { UnexpectedError } from '../../common';
-import { createDataSource, createStores, WorkflowExecution } from '../../database';
+import {
+	createDataSource,
+	createStores,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from '../../database';
 import { generateId } from '../../database/generate-id';
-import { ExecutionQueryService, StartExecutionService } from '../../execution';
+import {
+	CancelExecutionService,
+	ExecutionQueryService,
+	StartExecutionService,
+} from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import { noopExecutionResponseSender } from '../../response-channel';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -208,6 +218,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
+let responseSender: ExecutionResponseSender;
 let url: string;
 let stop: () => Promise<void>;
 
@@ -222,9 +233,16 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-	const { executionStore, executionViewStore } = createStores(dataSource);
+	responseSender = { send: vi.fn(), emitterFor: vi.fn(), stop: vi.fn() };
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			noopLifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
@@ -665,5 +683,79 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+});
+
+describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
+	const cancel = (id: string) =>
+		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
+	async function start() {
+		const body = startBody();
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url).post(`/api/workflow-executions/${generateId()}/cancel`).expect(401);
+	});
+
+	it('rejects an id that is not a uuid', async () => {
+		await cancel('not-a-uuid').expect(400);
+	});
+
+	it('answers 404 for an unknown execution', async () => {
+		const response = await cancel(generateId()).expect(404);
+		expect(response.body).toEqual({ error: 'not_found' });
+	});
+
+	it('cancels a queued execution and its pending steps, and tells the caller', async () => {
+		const executionId = await start();
+		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+		const step = await stepRepo.save(
+			stepRepo.create({ executionId, nodeId: 'a', iteration: 0, status: 'queued' }),
+		);
+
+		const response = await cancel(executionId).expect(200);
+
+		expect(response.body).toEqual({ executionId, status: 'cancelled' });
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: executionId } });
+		expect(row.status).toBe('cancelled');
+		expect(row.finishedAt).toBeInstanceOf(Date);
+		expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId,
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
+		});
+	});
+
+	it('answers a repeated cancel the same way, announcing nothing more', async () => {
+		const executionId = await start();
+		await cancel(executionId).expect(200);
+
+		const response = await cancel(executionId).expect(200);
+
+		expect(response.body).toEqual({ executionId, status: 'cancelled' });
+		expect(responseSender.send).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses to cancel an execution that has ended', async () => {
+		const executionId = await start();
+		await dataSource
+			.getRepository(WorkflowExecution)
+			.update({ id: executionId }, { status: 'completed', finishedAt: new Date() });
+
+		const response = await cancel(executionId).expect(409);
+
+		expect(response.body).toEqual({
+			error: 'not_cancellable',
+			reason: 'The execution has already completed',
+			details: { status: 'completed' },
+		});
+		expect(responseSender.send).not.toHaveBeenCalled();
 	});
 });
