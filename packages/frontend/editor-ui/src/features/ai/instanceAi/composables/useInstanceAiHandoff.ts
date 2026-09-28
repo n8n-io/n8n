@@ -442,23 +442,27 @@ export interface InstanceAiOnboardingSurvey {
 	what_team_are_you_on?: string;
 }
 
+/** The survey and where it came from, so telemetry can tell a `?team=` test run from a signup. */
+export type InstanceAiOnboardingLaunch = {
+	survey: InstanceAiOnboardingSurvey;
+	surveySource: 'cloud' | 'url';
+};
+
 /**
- * Provision the agent-first onboarding thread. The backend seeds the greeting and the first
- * question card, so nothing is stashed for the destination view to send. Shared by the
- * `/assistant?source=onboarding` router guard and the prototype button on the empty view.
- * Returns the thread id, or null if persistence failed.
+ * Provision the agent-first onboarding thread for the `/assistant?source=onboarding` router
+ * guard. The backend seeds the greeting and the first question card, so nothing is stashed for
+ * the destination view to send. Returns the thread id, or null if persistence failed.
  */
 export async function provisionOnboardingThread(
 	projectId: string,
-	survey: InstanceAiOnboardingSurvey | undefined,
-	origin: InstanceAiThreadOrigin,
+	launch: InstanceAiOnboardingLaunch | undefined,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
 		await useInstanceAiStore().syncThread(threadId, projectId, {
 			source: 'onboarding',
-			origin,
-			sourceContext: survey ? { survey } : undefined,
+			origin: 'external',
+			sourceContext: launch,
 		});
 	} catch {
 		return null;
