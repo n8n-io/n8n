@@ -487,10 +487,6 @@ export class PromotionsService {
 		projectId: string,
 		workflowIds: string[],
 	): Promise<ImportSelection> {
-		if (new Set(workflowIds).size !== workflowIds.length) {
-			throw new BadRequestError('workflowIds contains duplicates');
-		}
-
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 		const branchWorkflowIds = new Set(

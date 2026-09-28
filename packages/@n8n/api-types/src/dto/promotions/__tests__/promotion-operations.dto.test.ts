@@ -98,6 +98,12 @@ describe.each([
 		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
 	});
 
+	it('rejects a workflow list with duplicate ids', () => {
+		expect(dto.safeParse({ workflowIds: ['workflow1', 'workflow1'], expectedSource }).success).toBe(
+			false,
+		);
+	});
+
 	it('accepts a non-empty workflow list', () => {
 		expect(dto.parse({ workflowIds, expectedSource })).toEqual({ workflowIds, expectedSource });
 	});

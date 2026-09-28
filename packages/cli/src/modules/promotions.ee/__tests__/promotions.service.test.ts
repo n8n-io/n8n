@@ -1537,17 +1537,8 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
 			});
 
-			it('rejects duplicate IDs before reading the inventory', async () => {
-				await expect(
-					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'w1'] }),
-				).rejects.toMatchObject({
-					httpStatusCode: 400,
-					message: 'workflowIds contains duplicates',
-				});
-				expect(inventoryReader.read).not.toHaveBeenCalled();
-				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
-				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
-			});
+			// Duplicate ids are rejected by ApplySelectionDto before the service runs.
+			// See promotion-operations.dto.test.ts.
 
 			describe.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(
 				'%s',

@@ -1512,7 +1512,7 @@ describe('Apply a project selection over the public API', () => {
 			.post(`/promotions/projects/${project.id}/apply`)
 			.send({ workflowIds: [] })
 			.expect(400);
-		// The service refuses duplicate ids.
+		// The DTO refuses duplicate ids.
 		await agent
 			.post(`/promotions/projects/${project.id}/apply`)
 			.send({ workflowIds: [workflows[0].id, workflows[0].id] })

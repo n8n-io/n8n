@@ -104,9 +104,17 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+/** The selection is a set, so a repeated workflow id is a malformed request. */
+const selectedWorkflowIdsSchema = z
+	.array(n8nIdSchema)
+	.min(1)
+	.refine((ids) => new Set(ids).size === ids.length, {
+		message: 'workflowIds contains duplicates',
+	});
+
 export class ApplySelectionDto extends Z.class(
 	{
-		workflowIds: z.array(n8nIdSchema).min(1),
+		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema.optional(),
 	},
 	{ strict: true },
@@ -114,7 +122,7 @@ export class ApplySelectionDto extends Z.class(
 
 export class ContinueApplySelectionDto extends Z.class(
 	{
-		workflowIds: z.array(n8nIdSchema).min(1),
+		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema,
 	},
 	{ strict: true },
