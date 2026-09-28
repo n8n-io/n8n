@@ -25,7 +25,6 @@ import {
 	unmatchedConfirmations,
 	type ApprovalResponder,
 } from './confirmation-policy';
-import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
 import { createStubLocalMcpServer } from './stub-local-mcp';
@@ -134,10 +133,9 @@ export async function runDiscoveryScenario(
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
-		const approvalResponders: ApprovalResponder[] = [
-			credentialAutoSetupResponder,
-			...(mcpRegistry ? [createMcpConnectResponder(mcpRegistry)] : []),
-		];
+		const approvalResponders: ApprovalResponder[] = mcpRegistry
+			? [createMcpConnectResponder(mcpRegistry)]
+			: [];
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));

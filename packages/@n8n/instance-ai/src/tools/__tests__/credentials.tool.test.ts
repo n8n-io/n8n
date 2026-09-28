@@ -58,7 +58,6 @@ function suspendCtx(suspendFn: Mock = vi.fn()) {
 function resumeCtx(resumeData: {
 	approved: boolean;
 	credentials?: Record<string, string>;
-	autoSetup?: { credentialType: string; attemptId?: string };
 }) {
 	const suspend = vi.fn();
 	return { resumeData, suspend } as never;
@@ -2034,85 +2033,6 @@ describe('credentials tool', () => {
 				success: true,
 				deferred: true,
 				reason: expect.stringContaining('User skipped credential setup'),
-			});
-		});
-
-		it('should return needsBrowserSetup when autoSetup is present', async () => {
-			const context = createMockContext();
-			(context.credentialService.getDocumentationUrl as Mock).mockResolvedValue(
-				'https://docs.example.com/slack',
-			);
-			(context.credentialService.getCredentialFields as Mock).mockResolvedValue([
-				{ name: 'apiKey', displayName: 'API Key', type: 'string', required: true },
-			]);
-
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [{ credentialType: 'slackApi' }],
-				},
-				resumeCtx({ approved: true, autoSetup: { credentialType: 'slackApi' } }),
-			);
-
-			expect(result).toEqual({
-				success: false,
-				needsBrowserSetup: true,
-				credentialType: 'slackApi',
-				docsUrl: 'https://docs.example.com/slack',
-				requiredFields: [
-					{ name: 'apiKey', displayName: 'API Key', type: 'string', required: true },
-				],
-			});
-		});
-
-		it('should mark browser credential setup pending when autoSetup is present', async () => {
-			const context = createMockContext();
-			const markPending = vi.fn();
-			context.browserCredentialSetup = {
-				markPending,
-				markCreated: vi.fn(),
-				markCreateFailed: vi.fn(),
-			};
-
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [{ credentialType: 'slackApi' }],
-				},
-				resumeCtx({
-					approved: true,
-					autoSetup: { credentialType: 'slackApi', attemptId: 'attempt-1' },
-				}),
-			);
-
-			expect(markPending).toHaveBeenCalledWith('slackApi', 'attempt-1');
-		});
-
-		it('should handle autoSetup when getDocumentationUrl is not available', async () => {
-			const context = createMockContext();
-			context.credentialService.getDocumentationUrl = undefined;
-			context.credentialService.getCredentialFields = undefined;
-
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [{ credentialType: 'slackApi' }],
-				},
-				resumeCtx({ approved: true, autoSetup: { credentialType: 'slackApi' } }),
-			);
-
-			expect(result).toEqual({
-				success: false,
-				needsBrowserSetup: true,
-				credentialType: 'slackApi',
-				docsUrl: undefined,
-				requiredFields: undefined,
 			});
 		});
 

@@ -284,6 +284,29 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The n8n Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
 	},
+	BROWSER_USE_CREDENTIAL_SETUP_COMPLETED: {
+		name: 'Instance AI Browser Use credential setup completed',
+		description:
+			'A browser-assisted credential setup attempt ended when its run finished. Fires once per attempt, when the agent created or tried to create a credential through the Browser Use extension.',
+		properties: z.object({
+			user_id: z.string(),
+			credential_type: z.string(),
+			status: z.enum(['success', 'failure']),
+			failure_stage: z
+				.enum(['generation', 'persistence', 'unknown'])
+				.optional()
+				.describe('Where a failed attempt broke. Only set on failure'),
+			error_code: z
+				.string()
+				.optional()
+				.describe('Error code of the last failed create call. Only set on failure'),
+			is_valid: z.null().describe('Always null: the flow never runs a credential test'),
+			is_new: z.literal(true),
+			setup_method: z.enum(['conversation']),
+			thread_id: z.string(),
+			run_id: z.string(),
+		}),
+	},
 	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
 		name: 'User received AI Assistant response',
 		description:

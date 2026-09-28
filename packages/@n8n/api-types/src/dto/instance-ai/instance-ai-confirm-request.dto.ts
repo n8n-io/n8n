@@ -42,14 +42,6 @@ const credentialSelectionConfirmSchema = z.object({
 	credentials: credentialIdByTypeSchema,
 });
 
-const credentialAutoSetupConfirmSchema = z.object({
-	kind: z.literal('credentialAutoSetup'),
-	credentialType: z.string(),
-	/** Client-generated id shared by the setup-choice telemetry events and the
-	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
-	attemptId: z.string().trim().min(1).max(64).optional(),
-});
-
 const credentialDestinationConfirmSchema = credentialDestinationDecisionSchema.extend({
 	kind: z.literal('credentialDestination'),
 	approved: z.boolean(),
@@ -111,7 +103,6 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
-	credentialAutoSetupConfirmSchema,
 	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,

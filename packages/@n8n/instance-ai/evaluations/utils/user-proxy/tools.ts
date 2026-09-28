@@ -101,20 +101,12 @@ const pickResourceDecisionSchema = z.object({
  *        is not needed.
  *      - many  → `existingCredentialId` is required to disambiguate which one
  *        the direction names; omitting it declines (ambiguous).
- *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
- *    agent rebuild server-side (tool State 4). Live-captured tool result:
- *    `{success:false, needsBrowserSetup:true, credentialType:"slackApi", docsUrl:"...", requiredFields:[...]}`,
- *    followed by the assistant loading the `credential-setup-with-computer-use`
- *    skill as designed. Reachable and its shape is real, but not further
- *    implemented — the harness has no Computer Use tools attached, so a case
- *    scripting this will stall afterward. Do not push such a case to the
- *    gated CI suite.
  *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
  *    Live-captured tool result: `{success:true, deferred:true, reason:"User skipped credential setup for now...."}`.
  */
 const chooseCredentialSetupOptionDecisionSchema = z.object({
 	action: z.literal('choose_credential_setup_option'),
-	option: z.enum(['auto', 'manual', 'skip']),
+	option: z.enum(['manual', 'skip']),
 	/** Which `credentialRequests[].credentialType` this applies to. Optional
 	 *  when the card requests exactly one credential (the common case). */
 	credentialType: z.string().optional(),
@@ -235,7 +227,7 @@ export interface SetupWizardParseContext {
 
 /**
  * The credential-setup card's `credentialRequests[]`, carried through so
- * `manual`/`auto` can resolve a `credentialType` (and, for `manual`, an
+ * `manual` can resolve a `credentialType` (and, for `manual`, an
  * existing credential id already visible under the thread's eval allowlist —
  * see `EvalThreadCredentialAllowlistService` — to select) without re-deriving
  * it from the model's free-form answer.
@@ -263,7 +255,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 - pick_resource_decision(decision): The agent is asking the user to pick a gateway resource access option. Pick the option the user would choose.
 
-- choose_credential_setup_option(option, credentialType?, existingCredentialId?): The agent opened a standalone credential setup card (the event's payload has \`credentialRequests\`, not \`setupRequests\`). You are only ever shown this action when a stage direction governs this exact moment — outside that, credentials stay deferred automatically and you never see this event. Follow the direction: \`manual\` fills the card the way a user filling the form would — check \`credentialRequests[].existingCredentials\` for the resolved type: zero entries → a real credential is created for you automatically, no \`existingCredentialId\` needed; exactly one → it's selected automatically, no \`existingCredentialId\` needed; two or more → set \`existingCredentialId\` to the \`id\` of the one the direction names (match by its \`name\`). \`auto\` hands off to automatic browser-based setup (shape-only — the harness cannot actually drive that flow, so only script this in a throwaway local check, never in a case meant for the gated suite). \`skip\` if the direction says to decline. Never pick this action on your own initiative — only in response to a direction that explicitly asks for credential engagement.`;
+- choose_credential_setup_option(option, credentialType?, existingCredentialId?): The agent opened a standalone credential setup card (the event's payload has \`credentialRequests\`, not \`setupRequests\`). You are only ever shown this action when a stage direction governs this exact moment — outside that, credentials stay deferred automatically and you never see this event. Follow the direction: \`manual\` fills the card the way a user filling the form would — check \`credentialRequests[].existingCredentials\` for the resolved type: zero entries → a real credential is created for you automatically, no \`existingCredentialId\` needed; exactly one → it's selected automatically, no \`existingCredentialId\` needed; two or more → set \`existingCredentialId\` to the \`id\` of the one the direction names (match by its \`name\`). \`skip\` if the direction says to decline. Never pick this action on your own initiative — only in response to a direction that explicitly asks for credential engagement.`;
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
@@ -444,28 +436,6 @@ async function encodeCredentialSetupDecision(
 	if (decision.option === 'skip') return { kind: 'approval', approved: false };
 
 	const request = resolveCredentialRequest(decision.credentialType, credentialSetupContext);
-
-	if (decision.option === 'auto') {
-		// When the card told us which credentials it wants, only one of those is a
-		// valid target: falling back to the model's free-form string would launch
-		// automatic setup for a type the card never asked about. Without context
-		// the model's answer is the only source we have.
-		const credentialType = credentialSetupContext
-			? request?.credentialType
-			: decision.credentialType;
-		if (!credentialType) {
-			onParseFailure?.(
-				decision.action,
-				new Error(
-					`auto setup chosen with no resolvable credentialType${
-						decision.credentialType ? ` (card does not list "${decision.credentialType}")` : ''
-					}`,
-				),
-			);
-			return { kind: 'approval', approved: false };
-		}
-		return { kind: 'credentialAutoSetup', credentialType };
-	}
 
 	// manual — covers all three existing-credential counts for the resolved type.
 	return await resolveManualCredentialSelection(

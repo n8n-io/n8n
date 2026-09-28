@@ -7,10 +7,9 @@
 // `{ approved: true }`, which is the whole contract for an `approval` card — an
 // MCP tool call included.
 //
-// Cards that need the user to *supply* something (a credential choice, a
-// connect card's slugs, a Q&A wizard's answers) are filled in by an
-// ApprovalResponder living with that domain — `credential-approval.ts`,
-// `stub-mcp-registry.ts`. This module stays payload-agnostic: to cover a new
+// Cards that need the user to *supply* something (a connect card's slugs, a
+// Q&A wizard's answers) are filled in by an ApprovalResponder living with that
+// domain, e.g. `stub-mcp-registry.ts`. This module stays payload-agnostic: to cover a new
 // card kind, write a responder next to its domain and register it in the
 // runner. A scenario can always bypass the lot with `resumeWith`.
 // ---------------------------------------------------------------------------

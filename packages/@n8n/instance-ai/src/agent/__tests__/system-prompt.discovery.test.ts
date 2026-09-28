@@ -1,7 +1,5 @@
 /**
- * Browser/computer-use *discoverability* asserts on the assembled system prompt
- * and the credentials tool description (which carries the needsBrowserSetup
- * routing that used to live in the orchestrator routing index).
+ * Browser/computer-use *discoverability* asserts on the assembled system prompt.
  *
  * These tests pin the orchestrator-level wiring that connects discovery
  * signals (OAuth setup, local files, screenshots, platform migration, shell
@@ -10,7 +8,6 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import { createCredentialsTool } from '../../tools/credentials.tool';
 import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -22,19 +19,13 @@ const browserCapableOptions: { computerUseState: ComputerUseState } = {
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('credentials tool → Computer Use credential setup skill', () => {
-		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const tool = createCredentialsTool({} as never);
+	describe('chat request → Computer Use credential setup skill', () => {
+		it('routes credential setup in an external service console to the Computer Use skill', () => {
+			const prompt = getSystemPrompt(browserCapableOptions);
 
-			expect(tool.description).toContain('needsBrowserSetup=true');
-			expect(tool.description).toContain('credential-setup-with-computer-use');
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
-		});
-
-		it('routes browser credential setup through Computer Use tools', () => {
-			const tool = createCredentialsTool({} as never);
-
-			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(prompt).toMatch(
+				/set up credentials in an external service console,\s+load\s+the `credential-setup-with-computer-use` skill/,
+			);
 		});
 	});
 

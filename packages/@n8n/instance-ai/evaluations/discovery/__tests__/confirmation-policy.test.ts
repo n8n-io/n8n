@@ -4,8 +4,8 @@ import {
 	buildConfirmationPolicy,
 	resolveConfirmation,
 	unmatchedConfirmations,
+	type ApprovalResponder,
 } from '../confirmation-policy';
-import { credentialAutoSetupResponder } from '../credential-approval';
 import { createMcpConnectResponder, createStubMcpRegistry } from '../stub-mcp-registry';
 import type { DiscoveryTestCase } from '../types';
 
@@ -32,6 +32,11 @@ const connectPayload = {
 const credentialPayload = {
 	credentialRequests: [{ credentialType: 'slackOAuth2Api' }],
 };
+
+const credentialResponder: ApprovalResponder = (payload) =>
+	Array.isArray(payload.credentialRequests)
+		? { credentials: { slackOAuth2Api: 'cred-1' } }
+		: undefined;
 
 function mcpResponders() {
 	const registry = createStubMcpRegistry({ registry: ['notion', 'linear'], connected: [] });
@@ -102,14 +107,14 @@ describe('resolveConfirmation', () => {
 
 	it('takes the first responder that recognises the payload', () => {
 		const { responders } = mcpResponders();
-		const all = [credentialAutoSetupResponder, ...responders];
+		const all = [credentialResponder, ...responders];
 		expect(resolveConfirmation(suspension('mcp-servers', connectPayload), empty, all)).toEqual({
 			approved: true,
 			connectedSlugs: ['notion', 'linear'],
 		});
 		expect(resolveConfirmation(suspension('credentials', credentialPayload), empty, all)).toEqual({
 			approved: true,
-			autoSetup: { credentialType: 'slackOAuth2Api' },
+			credentials: { slackOAuth2Api: 'cred-1' },
 		});
 	});
 
@@ -170,7 +175,7 @@ describe('unmatchedConfirmations', () => {
 		scenario({
 			confirmations: {
 				'mcp_notion_notion-search': 'deny',
-				credentials: { decision: 'approve', resumeWith: { autoSetup: { credentialType: 'x' } } },
+				credentials: { decision: 'approve', resumeWith: { credentials: { x: 'cred-1' } } },
 			},
 		}),
 	);
@@ -204,22 +209,6 @@ describe('unmatchedConfirmations', () => {
 		expect(
 			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [suspension('nodes')]),
 		).toEqual([]);
-	});
-});
-
-describe('credentialAutoSetupResponder', () => {
-	it('requests browser auto-setup for the first credential', () => {
-		expect(credentialAutoSetupResponder(credentialPayload)).toEqual({
-			autoSetup: { credentialType: 'slackOAuth2Api' },
-		});
-	});
-
-	it.each([
-		['a payload with no credential requests', {}],
-		['an empty request list', { credentialRequests: [] }],
-		['a request with no credential type', { credentialRequests: [{}] }],
-	])('passes on %s', (_label, payload) => {
-		expect(credentialAutoSetupResponder(payload)).toBeUndefined();
 	});
 });
 
