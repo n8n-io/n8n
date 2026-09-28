@@ -472,6 +472,18 @@ describe('DatabricksVectorStore', () => {
 			);
 		});
 
+		it('names the schema when the content column is not one of its columns', async () => {
+			const store = await createStore(directDescribe, { contentColumn: 'txet' });
+
+			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
+				'has no column txet',
+			);
+			expect(fetchMock).not.toHaveBeenCalledWith(
+				expect.stringContaining('upsert-data'),
+				expect.anything(),
+			);
+		});
+
 		it('rejects a managed Delta Sync index without a request', async () => {
 			const store = await managedStore();
 

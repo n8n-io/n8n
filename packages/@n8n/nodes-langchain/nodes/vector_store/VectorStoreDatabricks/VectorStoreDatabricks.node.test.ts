@@ -369,7 +369,7 @@ describe('VectorStoreDatabricks', () => {
 		let httpRequestWithAuthentication: ReturnType<typeof vi.fn>;
 		let ctx: ILoadOptionsFunctions;
 
-		const setupSearchContext = (host: string) => {
+		const setupSearchContext = (host: string, mode = 'load') => {
 			httpRequestWithAuthentication = vi.fn(
 				async (_type: string, options: { url: string; qs: Record<string, string> }) =>
 					options.url.endsWith('/endpoints')
@@ -378,6 +378,7 @@ describe('VectorStoreDatabricks', () => {
 			);
 			ctx = {
 				getCredentials: vi.fn().mockResolvedValue({ ...mockCredential, host }),
+				getCurrentNodeParameter: vi.fn().mockReturnValue(mode),
 				getNode: vi.fn().mockReturnValue(nodeDef),
 				helpers: { httpRequestWithAuthentication },
 			} as unknown as ILoadOptionsFunctions;
@@ -399,6 +400,16 @@ describe('VectorStoreDatabricks', () => {
 				expect(options.url).toMatch(/^https:\/\/ws\.example\.com\/api\/2\.0\/vector-search\//);
 				expect(options.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 			}
+		});
+
+		it('offers only direct-access indexes in insert mode, the only type that accepts writes', async () => {
+			setupSearchContext('https://ws.example.com/', 'insert');
+
+			const result = await methods.listSearch.searchIndexes.call(ctx);
+
+			expect(result.results).toEqual([
+				{ name: 'cat.sch.zeta', value: 'cat.sch.zeta', description: 'DIRECT_ACCESS - ep1' },
+			]);
 		});
 
 		it('does not let the bearer follow a cross-origin redirect', async () => {

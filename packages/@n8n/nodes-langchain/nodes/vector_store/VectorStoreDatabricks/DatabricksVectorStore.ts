@@ -318,6 +318,11 @@ export class DatabricksVectorStore extends VectorStore {
 			);
 		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
+		if (schemaColumns.size > 0 && !schemaColumns.has(this.contentColumn)) {
+			throw new UserError(
+				`Index ${name} has no column ${this.contentColumn}. Its columns are: ${[...schemaColumns].join(', ')}`,
+			);
+		}
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 
 		// The loaders add keys like `source` and `loc` that would 400 against the schema
