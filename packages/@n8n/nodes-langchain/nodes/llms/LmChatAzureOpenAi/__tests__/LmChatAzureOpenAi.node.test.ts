@@ -1,5 +1,5 @@
 import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { getProxyAgent, makeN8nLlmFailedAttemptHandler } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -29,7 +29,12 @@ const entraCredential = {
 	oauthTokenData: { access_token: 'test-token' },
 };
 
-const setupMockContext = (authentication: string, credential: object, options: object = {}) => {
+const setupMockContext = (
+	authentication: string,
+	credential: object,
+	options: object = {},
+	responsesApiEnabled = false,
+) => {
 	const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 	ctx.getCredentials = vi.fn().mockResolvedValue(credential);
 	ctx.getNode = vi.fn().mockReturnValue(mockNode);
@@ -37,6 +42,7 @@ const setupMockContext = (authentication: string, credential: object, options: o
 		if (paramName === 'authentication') return authentication;
 		if (paramName === 'model') return 'gpt-4o';
 		if (paramName === 'options') return options;
+		if (paramName === 'responsesApiEnabled') return responsesApiEnabled;
 		return undefined;
 	});
 	ctx.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -105,6 +111,120 @@ describe('LmChatAzureOpenAi', () => {
 			if (previous === undefined) delete process.env.AZURE_OPENAI_ENDPOINT;
 			else process.env.AZURE_OPENAI_ENDPOINT = previous;
 		}
+	});
+
+	describe('Use Responses API', () => {
+		const foundry = {
+			...apiKeyCredential,
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		};
+
+		it.each([
+			['off', false],
+			['on', true],
+		])('should pass the setting through on Foundry when %s', async (_, enabled) => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, enabled);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({
+				useResponsesApi: enabled,
+			});
+		});
+
+		// The toggle must not appear on nodes saved before it existed, and the node has to keep
+		// offering both versions so those nodes still resolve.
+		it('should offer version 1 alongside 1.1', () => {
+			expect(new LmChatAzureOpenAi().description.version).toEqual([1, 1.1]);
+		});
+
+		it('should show the toggle only from version 1.1', () => {
+			const toggle = new LmChatAzureOpenAi().description.properties.find(
+				(p) => p?.name === 'responsesApiEnabled',
+			);
+
+			expect(toggle).toEqual(
+				expect.objectContaining({
+					type: 'boolean',
+					default: false,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				}),
+			);
+		});
+
+		// A version 1 node has no stored value for it, so the read has to fall back to off.
+		it('should force Chat Completions when the parameter is absent', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {});
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string, _i, fallback) => {
+				if (paramName === 'authentication') return 'azureOpenAiApi';
+				if (paramName === 'model') return 'gpt-4o';
+				if (paramName === 'options') return {};
+				return fallback;
+			});
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({ useResponsesApi: false });
+		});
+
+		// The two APIs name the format differently, and modelKwargs is spread over LangChain's own.
+		it.each([
+			[false, { response_format: { type: 'json_object' } }],
+			[true, { text: { format: { type: 'json_object' } } }],
+		])(
+			'should send the response format in the shape that API takes (on=%s)',
+			async (enabled, expected) => {
+				const ctx = setupMockContext(
+					'azureOpenAiApi',
+					foundry,
+					{ responseFormat: 'json_object' },
+					enabled,
+				);
+
+				await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+				expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({ modelKwargs: expected });
+			},
+		);
+
+		// Azure answers the route it does not serve with a bare 404, which reads as a missing
+		// deployment. The handler has to say which API the node asked for.
+		it.each([
+			[false, 'Chat Completions', "Turn on 'Use Responses API'"],
+			[true, 'the Responses API', "Turn off 'Use Responses API'"],
+		])('should explain a Foundry 404 when the setting is %s', async (enabled, api, remedy) => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, enabled);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const handler = vi.mocked(makeN8nLlmFailedAttemptHandler).mock.calls[0][1];
+			expect(handler).toBeDefined();
+			expect(() => handler!({ status: 404 } as never)).toThrow(
+				`Azure did not accept the deployment "gpt-4o" on ${api}`,
+			);
+			expect(() => handler!({ status: 404 } as never)).toThrow(remedy);
+		});
+
+		// The classic base URL ends in /openai/deployments/<name>, which has no Responses API
+		it('should refuse on a classic credential rather than call a path that does not exist', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, true);
+
+			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(
+				'The Responses API needs a credential using the Azure AI Foundry endpoint type',
+			);
+			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();
+		});
+
+		it('should keep forcing Chat Completions on classic when the setting is off', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, false);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
+				useResponsesApi: false,
+			});
+		});
 	});
 
 	describe('Extra Body', () => {
