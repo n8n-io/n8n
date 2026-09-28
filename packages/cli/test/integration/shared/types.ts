@@ -72,6 +72,7 @@ type ModuleName =
 	| 'data-table'
 	| 'instance-ai'
 	| 'mcp'
+	| 'oauth-jwe'
 	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'

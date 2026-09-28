@@ -40,6 +40,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint: expect.stringContaining('/mcp-oauth/token'),
 			registration_endpoint: expect.stringContaining('/mcp-oauth/register'),
 			revocation_endpoint: expect.stringContaining('/mcp-oauth/revoke'),
+			jwks_uri: expect.stringMatching(/\/rest\/\.well-known\/jwks\.json$/),
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
@@ -68,6 +69,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint,
 			registration_endpoint,
 			revocation_endpoint,
+			jwks_uri,
 		} = response.body;
 
 		expect(issuer).toMatch(/^https?:\/\//);
@@ -75,6 +77,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		expect(token_endpoint).toBe(`${issuer}/mcp-oauth/token`);
 		expect(registration_endpoint).toBe(`${issuer}/mcp-oauth/register`);
 		expect(revocation_endpoint).toBe(`${issuer}/mcp-oauth/revoke`);
+		expect(jwks_uri).toBe(`${issuer}/rest/.well-known/jwks.json`);
 	});
 
 	test('should include all required OAuth 2.1 fields', async () => {

@@ -25,6 +25,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from './oauth-signing-key.constants';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 import { authorizeAgainstGrant } from './resource-gate';
 import { isSameProtectedResource } from './resource-identity';
@@ -39,7 +40,7 @@ import { isSameProtectedResource } from './resource-identity';
  */
 @Service()
 export class OAuthTokenService implements OAuthTokenVerifier {
-	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
+	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = OAUTH_ACCESS_TOKEN_TTL_SECONDS;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
 	constructor(
