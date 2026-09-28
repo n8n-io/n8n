@@ -55,7 +55,7 @@ export function useAssistantAtMentions(options: {
 	}
 
 	function markOpened(source: AssistantMentionTriggerSource): void {
-		if (menuOpen.value) return;
+		if (openSource !== undefined) return;
 		openSource = source;
 		menuOpen.value = true;
 		options.onOpened?.(source);

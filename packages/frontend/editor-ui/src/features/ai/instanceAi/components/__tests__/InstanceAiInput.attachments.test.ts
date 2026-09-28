@@ -280,6 +280,15 @@ const MentionPickerStub = defineComponent({
 					},
 					'Report empty search',
 				),
+				// The real menu opens itself on its trigger and reports it through v-model.
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-open',
+						onClick: () => emit('update:modelValue', true),
+					},
+					'Open from button',
+				),
 			]);
 	},
 });
@@ -329,6 +338,24 @@ describe('InstanceAiInput — mention attachments', () => {
 				ambiguous_result_count: 2,
 				submenu_open_count: 1,
 			},
+		);
+	});
+
+	it('tracks a button open, and attributes a later empty search to the button', async () => {
+		const { getByTestId } = renderMentionsInput();
+
+		await userEvent.click(getByTestId('mention-picker-open'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
+			{ thread_id: 'thread-1', source: 'button' },
+		);
+
+		await userEvent.click(getByTestId('mention-picker-empty-search'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS,
+			expect.objectContaining({ source: 'button' }),
 		);
 	});
 

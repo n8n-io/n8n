@@ -61,6 +61,17 @@ describe('useAssistantAtMentions', () => {
 		expect(onOpened).toHaveBeenNthCalledWith(2, 'button');
 	});
 
+	it('reports a button open when the menu flips the v-model before the change handler runs', () => {
+		const { mentions, onOpened } = setup();
+
+		// The menu opens itself on the button click; the host's v-model setter
+		// runs before its `update:modelValue` listener reaches the composable.
+		mentions.menuOpen.value = true;
+		mentions.handleMenuOpenChange(true);
+
+		expect(onOpened).toHaveBeenCalledExactlyOnceWith('button');
+	});
+
 	it('does not open for an email-like value', async () => {
 		const { input, mentions } = setup();
 		input.value = 'user@';
