@@ -21,6 +21,7 @@ import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 import type { WebhookResponseRelay } from '../webhook-response-relay';
 
 const queue = mock<JobQueue>({
+	name: 'jobs',
 	client: { ping: vi.fn() },
 });
 
@@ -923,7 +924,11 @@ describe('ScalingService', () => {
 	});
 
 	describe('waitForJob', () => {
-		const job = mock<Job>({ id: 'job-1', data: { executionId: 'exec-1' } });
+		const job = mock<Job>({
+			id: 'job-1',
+			data: { executionId: 'exec-1' },
+			queue: { name: 'jobs' },
+		});
 
 		const getHandler = (event: string) =>
 			queue.on.mock.calls.find(([name]) => (name as string) === event)?.[1] as (
@@ -973,6 +978,74 @@ describe('ScalingService', () => {
 			});
 
 			await expect(wait).rejects.toThrow('boom');
+		});
+
+		it('should resolve when Bull reports the job as completed', async () => {
+			const wait = scalingService.waitForJob(job);
+
+			getHandler('global:completed')('job-1');
+
+			await expect(wait).resolves.toBeUndefined();
+		});
+
+		it('should reject at once when the worker reported the failure before the wait started', async () => {
+			getHandler('global:progress')('job-1', {
+				kind: 'job-failed',
+				executionId: 'exec-1',
+				workerId: 'worker-1',
+				errorMsg: 'boom',
+				errorStack: '',
+			});
+
+			await expect(scalingService.waitForJob(job)).rejects.toThrow('boom');
+		});
+
+		it('should settle only the wait for the queue that emitted the Bull event', async () => {
+			const poolJob = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-pool' },
+				queue: { name: 'jobs-gpu' },
+			});
+			let poolSettled = false;
+			void scalingService.waitForJob(poolJob).finally(() => (poolSettled = true));
+			const wait = scalingService.waitForJob(job);
+
+			// Bull job IDs are unique per queue only, and this handler belongs to the `jobs` queue
+			getHandler('global:completed')('job-1');
+
+			await expect(wait).resolves.toBeUndefined();
+			expect(poolSettled).toBe(false);
+		});
+
+		it('should resolve from the DB when the execution row is gone', async () => {
+			vi.useFakeTimers();
+			try {
+				executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+				const wait = scalingService.waitForJob(job);
+				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
+
+				await expect(wait).resolves.toBeUndefined();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should keep rechecking after a failed DB read', async () => {
+			vi.useFakeTimers();
+			try {
+				executionRepository.findSingleExecution
+					.mockRejectedValueOnce(new Error('db unavailable'))
+					.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
+
+				const wait = scalingService.waitForJob(job);
+				await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
+
+				await expect(wait).resolves.toBeUndefined();
+				expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should reject with the Bull reason when Bull reports the job as failed', async () => {

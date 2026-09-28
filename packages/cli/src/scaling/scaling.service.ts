@@ -9,7 +9,7 @@ import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, UnexpectedError } from 'n8n-workflow';
-import type { IRun } from 'n8n-workflow';
+import type { ExecutionStatus, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -44,11 +44,13 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 type PendingJobWait = {
-	jobId: string;
+	jobKey: string;
 	resolve: () => void;
 	reject: (error: Error) => void;
 	recheckTimer: NodeJS.Timeout;
 };
+
+const toJobKey = (queueName: string, jobId: JobId) => `${queueName}:${jobId.toString()}`;
 
 @Service()
 export class ScalingService {
@@ -61,11 +63,14 @@ export class ScalingService {
 
 	private jobResults = new Map<string, JobFinishedProps>();
 
+	/** Failures the worker reported before the main started waiting for the job. */
+	private jobFailures = new Map<string, Error>();
+
 	/** Mains waiting for a queued job to end, keyed by execution ID. */
 	private pendingJobWaits = new Map<string, PendingJobWait>();
 
-	/** Execution ID for each job a main is waiting for, for Bull events keyed by job ID. */
-	private executionIdByJobId = new Map<string, string>();
+	/** Execution ID for each job a main is waiting for, keyed by queue name and job ID. */
+	private executionIdByJobKey = new Map<string, string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -352,6 +357,7 @@ export class ScalingService {
 	popJobResult(executionId: string): JobFinishedProps | undefined {
 		const result = this.jobResults.get(executionId);
 		this.jobResults.delete(executionId);
+		this.jobFailures.delete(executionId);
 		return result;
 	}
 
@@ -368,31 +374,39 @@ export class ScalingService {
 	async waitForJob(job: Job): Promise<void> {
 		const { executionId } = job.data;
 
-		// The worker may have reported the result before this wait was registered.
+		// The worker may have reported the outcome before this wait was registered.
 		if (this.jobResults.has(executionId)) return;
+		const earlyFailure = this.jobFailures.get(executionId);
+		if (earlyFailure) {
+			this.jobFailures.delete(executionId);
+			throw earlyFailure;
+		}
 
 		await new Promise<void>((resolve, reject) => {
-			const jobId = job.id.toString();
+			// Bull job IDs are unique per queue only, so pool queues can reuse them
+			const jobKey = toJobKey(job.queue.name, job.id);
 			// ponytail: one status query per minute per in-flight execution; move to
 			// a single batched query if thousands of executions are in flight at once
 			const recheckTimer = setInterval(() => {
 				void this.recheckJobWait(executionId);
 			}, JOB_WAIT_RECHECK_INTERVAL_MS);
-			this.pendingJobWaits.set(executionId, { jobId, resolve, reject, recheckTimer });
-			this.executionIdByJobId.set(jobId, executionId);
+			this.pendingJobWaits.set(executionId, { jobKey, resolve, reject, recheckTimer });
+			this.executionIdByJobKey.set(jobKey, executionId);
 		});
 	}
 
+	/** @returns whether a wait was pending for this execution */
 	private settleJobWait(executionId: string, error?: Error) {
 		const wait = this.clearJobWait(executionId);
-		if (!wait) return;
+		if (!wait) return false;
 
 		if (error) wait.reject(error);
 		else wait.resolve();
+		return true;
 	}
 
-	private settleJobWaitByJobId(jobId: JobId, error?: Error) {
-		const executionId = this.executionIdByJobId.get(jobId.toString());
+	private settleJobWaitByJobKey(queueName: string, jobId: JobId, error?: Error) {
+		const executionId = this.executionIdByJobKey.get(toJobKey(queueName, jobId));
 		if (executionId) this.settleJobWait(executionId, error);
 	}
 
@@ -403,7 +417,7 @@ export class ScalingService {
 
 		clearInterval(wait.recheckTimer);
 		this.pendingJobWaits.delete(executionId);
-		this.executionIdByJobId.delete(wait.jobId);
+		this.executionIdByJobKey.delete(wait.jobKey);
 		return wait;
 	}
 
@@ -411,12 +425,26 @@ export class ScalingService {
 	private async recheckJobWait(executionId: string) {
 		if (!this.pendingJobWaits.has(executionId)) return;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId);
-		if (!execution || execution.status === 'new' || execution.status === 'running') return;
+		let execution: { status: ExecutionStatus } | undefined;
+		try {
+			execution = await this.executionRepository.findSingleExecution(executionId);
+		} catch (error) {
+			this.logger.warn(`Failed to recheck the status of execution ${executionId}, will retry`, {
+				executionId,
+				error,
+			});
+			return;
+		}
 
+		// `unknown` is stoppable and in flight elsewhere in the codebase, so it is in flight here too
+		const inFlightStatuses: ExecutionStatus[] = ['new', 'running', 'unknown'];
+		if (execution && inFlightStatuses.includes(execution.status)) return;
+
+		// A missing row means the worker finished and the execution was not saved,
+		// e.g. a manual execution with saving disabled. Nothing is left to wait for.
 		this.logger.warn(
 			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
-			{ executionId, status: execution.status },
+			{ executionId, status: execution?.status ?? 'deleted' },
 		);
 		this.settleJobWait(executionId);
 	}
@@ -649,7 +677,14 @@ export class ScalingService {
 						},
 					);
 
-					this.settleJobWait(msg.executionId, new Error(msg.errorMsg));
+					{
+						const error = new Error(msg.errorMsg);
+						const settled = this.settleJobWait(msg.executionId, error);
+						// A fast failure can arrive before the enqueuing main starts to wait
+						if (!settled && this.activeExecutions.has(msg.executionId)) {
+							this.jobFailures.set(msg.executionId, error);
+						}
+					}
 					break;
 				case 'abort-job':
 					break; // only for worker
@@ -671,9 +706,9 @@ export class ScalingService {
 
 		// Failures such as a stall are reported only by Bull, not by the worker
 		queue.on('global:failed', (jobId: JobId, failedReason: string) => {
-			this.settleJobWaitByJobId(jobId, new Error(failedReason));
+			this.settleJobWaitByJobKey(queue.name, jobId, new Error(failedReason));
 		});
-		queue.on('global:completed', (jobId: JobId) => this.settleJobWaitByJobId(jobId));
+		queue.on('global:completed', (jobId: JobId) => this.settleJobWaitByJobKey(queue.name, jobId));
 
 		if (this.isQueueMetricsEnabled) {
 			queue.on('global:completed', () => this.jobCounters.completed++);

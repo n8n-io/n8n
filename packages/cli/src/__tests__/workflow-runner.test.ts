@@ -15,7 +15,7 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
+import { DirectedGraph, ErrorReporter, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -56,6 +56,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
+import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -64,12 +65,18 @@ import { WorkflowRunner } from '@/workflow-runner';
 // class isn't initialised when the hoisted factory first resolves.
 const setupQueue = vi.fn();
 const addJob = vi.fn();
+const waitForJob = vi.fn();
+const popJobResult = vi.fn();
 
 @Service()
 class MockScalingService {
 	setupQueue = setupQueue;
 
 	addJob = addJob;
+
+	waitForJob = waitForJob;
+
+	popJobResult = popJobResult;
 }
 
 vi.mock('@/scaling/scaling.service', () => ({
@@ -1083,6 +1090,34 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('should finalize the execution when the result cannot be read from the DB after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		const readError = new Error('db unavailable');
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValueOnce(
+			readError,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		await expect(workflowExecution).rejects.toThrowError(readError);
+		expect(reportError).toHaveBeenCalledWith(readError, { executionId: '1' });
+		expect(finalizeExecution).toHaveBeenCalledWith('1');
 	});
 
 	it('should finalize the execution when pool resolution fails', async () => {

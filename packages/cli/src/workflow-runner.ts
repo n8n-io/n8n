@@ -5,6 +5,7 @@ import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -33,6 +34,7 @@ import {
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
+	UnexpectedError,
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -796,6 +798,8 @@ export class WorkflowRunner {
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Nobody will wait for this job, so drop any outcome the worker already reported
+			this.scalingService.popJobResult(executionId);
 			throw error;
 		}
 
@@ -862,15 +866,21 @@ export class WorkflowRunner {
 					!jobResult ||
 					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
 				) {
-					const fullExecutionData = await this.executionPersistence.findSingleExecution(
-						executionId,
-						{
+					let fullExecutionData: IExecutionResponse | undefined;
+					try {
+						fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 							includeData: true,
 							unflattenData: true,
-						},
-					);
-					if (!fullExecutionData) {
-						return reject(new Error(`Could not find execution with id "${executionId}"`));
+						});
+						if (!fullExecutionData) {
+							throw new UnexpectedError(`Could not find execution with id "${executionId}"`);
+						}
+					} catch (error) {
+						// An async executor's throw would never settle this promise, and the
+						// active execution would keep the request alive until restart
+						this.errorReporter.error(error, { executionId });
+						this.activeExecutions.finalizeExecution(executionId);
+						return reject(error);
 					}
 
 					runData = {
