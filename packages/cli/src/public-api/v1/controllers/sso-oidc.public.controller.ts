@@ -44,6 +44,8 @@ export class SsoOidcPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, OidcConfigurationPublicDto)
 	async getOidcConfiguration(): Promise<OidcConfigurationPublicDto> {
-		return toOidcConfigurationPublicDto(await this.oidcService.loadConfig());
+		const config = await this.oidcService.loadConfig();
+
+		return toOidcConfigurationPublicDto(config);
 	}
 }
