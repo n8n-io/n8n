@@ -11,6 +11,7 @@ import {
 } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { i18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -437,10 +438,17 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest.value++;
 	}
 
+	// ponytail: the exits of this session, so a thread-list refresh that races the metadata write
+	// (`onRunFinish` reloads the list on the same event as the `run_failed` exit) cannot hide the
+	// chrome again.
+	const leftOnboardingThreadIds = new Set<string>();
 	/** An onboarding thread hides the host chrome (chat header, sidebar, artifacts) until the user leaves it. */
 	function isOnboardingChromeHidden(threadId: string): boolean {
-		return localThreadEntries(threadId).some(
-			(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+		return (
+			!leftOnboardingThreadIds.has(threadId) &&
+			localThreadEntries(threadId).some(
+				(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+			)
 		);
 	}
 	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
@@ -450,7 +458,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		leaveReason?: string,
 	): void {
 		if (!isOnboardingChromeHidden(threadId)) return;
-		void updateThreadMetadata(threadId, { onboardingLeft: true });
+		leftOnboardingThreadIds.add(threadId);
+		updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
