@@ -23,6 +23,7 @@ function createMockContext(
 ): InstanceAiContext {
 	return {
 		userId: 'user-1',
+		credentialDescriptionsEnabled: true,
 		workflowService: {} as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
@@ -99,6 +100,33 @@ function arrayItems(schema: JsonSchema): JsonSchema {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
+	it.each([false, undefined])(
+		'omits descriptions and selection guidance when the flag is %s',
+		async (credentialDescriptionsEnabled) => {
+			const context = createMockContext({ credentialDescriptionsEnabled });
+			const credential = {
+				id: '1',
+				name: 'Reporting account',
+				type: 'postgres',
+				description: 'Read-only reporting account',
+			};
+			vi.mocked(context.credentialService.list).mockResolvedValue([credential]);
+			vi.mocked(context.credentialService.get).mockResolvedValue(credential);
+			const tool = createCredentialsTool(context);
+
+			const listed = await executeTool(tool, { action: 'list' }, noSuspendCtx());
+			const fetched = await executeTool(tool, { action: 'get', credentialId: '1' }, noSuspendCtx());
+
+			expect(listed).toMatchObject({ credentials: [{ id: '1', name: 'Reporting account' }] });
+			expect(JSON.stringify(listed)).not.toContain('description');
+			expect(fetched).toMatchObject({ id: '1', name: 'Reporting account' });
+			expect(fetched).not.toHaveProperty('description');
+			expect(context.credentialService.get).toHaveBeenCalledWith('1');
+			expect(getDescription(tool)).not.toContain('read their descriptions');
+			expect(credential.description).toBe('Read-only reporting account');
+		},
+	);
+
 	describe('action filtering', () => {
 		const builderCredentialActions = [
 			'list',

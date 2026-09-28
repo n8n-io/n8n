@@ -2,18 +2,24 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import type { DiagLogger } from '@opentelemetry/api';
-import { DiagLogLevel, diag, context, metrics, propagation, trace } from '@opentelemetry/api';
+import type { DiagLogger, Tracer, TracerProvider } from '@opentelemetry/api';
+import { DiagLogLevel, ProxyTracerProvider, diag, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import {
+	detectResources,
+	envDetector,
+	hostDetector,
+	processDetector,
+	resourceFromAttributes,
+} from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
+	BatchSpanProcessor,
 	type ReadableSpan,
 	type SpanExporter,
 	type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
-import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
+import { NodeTracerProvider, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
@@ -29,10 +35,22 @@ export type OtelTestTraceResult = { success: true } | { success: false; error: s
 const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
 
+// Deprecated in `@opentelemetry/api` 1.x, but the only public source of a no-op tracer provider.
+const noopTracerProvider = new ProxyTracerProvider();
+
+function registeredGlobalTracerProvider(): TracerProvider | undefined {
+	const globalProvider = trace.getTracerProvider();
+	const delegate =
+		globalProvider instanceof ProxyTracerProvider ? globalProvider.getDelegate() : globalProvider;
+	return delegate === noopTracerProvider.getDelegate() ? undefined : delegate;
+}
+
 @Service()
 export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
-	private sdk?: NodeSDK;
+	private provider?: NodeTracerProvider;
+	private ownsGlobalApi = false;
+	private hasLoggedForeignGlobalApiOwner = false;
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
@@ -52,9 +70,13 @@ export class OtelService {
 		await this.start(settings);
 	}
 
+	getTracer(name: string): Tracer {
+		return (this.provider ?? noopTracerProvider).getTracer(name);
+	}
+
 	/**
 	 * Sends a single `n8n.test_trace` span to the given OTLP endpoint and waits
-	 * for the exporter's result. Unlike the long-running SDK (which batches spans
+	 * for the exporter's result. Unlike the long-running provider (which batches spans
 	 * fire-and-forget), this uses a throwaway provider/exporter so the collector's
 	 * response — success, a rejection (HTTP status or gRPC status code), or a
 	 * network error — can be reported back to the caller. Runs independently of
@@ -111,9 +133,9 @@ export class OtelService {
 		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
-		let sdk: NodeSDK;
+		let provider: NodeTracerProvider;
 		try {
-			sdk = await this.startSdk(settings);
+			provider = await this.startProvider(settings);
 		} catch (error) {
 			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
 				error: error instanceof Error ? error.message : String(error),
@@ -122,47 +144,67 @@ export class OtelService {
 			return;
 		}
 
-		void this.checkEndpointReachability(settings, sdk);
+		void this.checkEndpointReachability(settings, provider);
 	}
 
 	async shutdown(): Promise<void> {
-		// Cleared before the flush, so a probe that fails meanwhile sees that its SDK is gone.
-		const sdk = this.sdk;
-		this.sdk = undefined;
+		// Cleared before the flush, so a probe that fails meanwhile sees that its provider is gone.
+		const provider = this.provider;
+		this.provider = undefined;
 		try {
-			await sdk?.shutdown();
+			await provider?.shutdown();
 		} catch (error) {
 			this.logger.warn(
-				'Failed to cleanly shut down OpenTelemetry SDK (exporter flush may have failed)',
+				'Failed to cleanly shut down OpenTelemetry tracer provider (exporter flush may have failed)',
 				{ error: error instanceof Error ? error.message : String(error) },
 			);
-		} finally {
-			// Unregister the global providers so the next NodeSDK.start() can register
-			// new ones. Without this, OTel's allowOverride=false guard blocks
-			// re-registration and the restart silently fails.
-			trace?.disable();
-			context?.disable();
-			propagation?.disable();
-			metrics?.disable();
 		}
 	}
 
-	private async startSdk(settings: OtelConfig): Promise<NodeSDK> {
+	private async startProvider(settings: OtelConfig): Promise<NodeTracerProvider> {
 		const traceExporter = await this.createTraceExporter(settings);
 
-		this.sdk = new NodeSDK({
-			resource: resourceFromAttributes({
-				[ATTR.OTEL_SERVICE_NAME]: settings.exporterServiceName,
-				[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
-				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
-				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
-			}),
-			traceExporter,
+		this.provider = new NodeTracerProvider({
+			resource: this.buildResource(settings.exporterServiceName),
 			sampler: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
+			spanProcessors: [new BatchSpanProcessor(traceExporter)],
 		});
+		this.registerGlobalApi(this.provider);
+		return this.provider;
+	}
 
-		this.sdk.start();
-		return this.sdk;
+	private buildResource(serviceName: string) {
+		return resourceFromAttributes({
+			[ATTR.OTEL_SERVICE_NAME]: serviceName,
+			[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+			[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
+			[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
+		}).merge(detectResources({ detectors: [envDetector, processDetector, hostDetector] }));
+	}
+
+	private registerGlobalApi(provider: NodeTracerProvider): void {
+		if (this.ownsGlobalApi) {
+			trace.disable();
+			this.ownsGlobalApi = trace.setGlobalTracerProvider(provider);
+			return;
+		}
+
+		if (registeredGlobalTracerProvider()) {
+			this.logForeignGlobalApiOwner();
+			return;
+		}
+
+		provider.register();
+		this.ownsGlobalApi = registeredGlobalTracerProvider() === provider;
+	}
+
+	private logForeignGlobalApiOwner(): void {
+		if (this.hasLoggedForeignGlobalApiOwner) return;
+
+		this.hasLoggedForeignGlobalApiOwner = true;
+		this.logger.info(
+			'Another library owns the global OpenTelemetry API, so n8n workflow tracing runs on its own tracer provider',
+		);
 	}
 
 	private async createTraceExporter(
@@ -284,7 +326,7 @@ export class OtelService {
 
 	private async checkEndpointReachability(
 		settings: OtelConfig,
-		startedSdk: NodeSDK,
+		startedProvider: NodeTracerProvider,
 	): Promise<void> {
 		const url = this.resolveExporterUrl(settings);
 		const timeoutMs = settings.startupConnectivityTimeoutMs;
@@ -296,8 +338,8 @@ export class OtelService {
 				await this.probeHttpEndpoint(url, timeoutMs);
 			}
 		} catch (error) {
-			// A restart or shutdown replaced the SDK this probe belongs to.
-			if (this.sdk !== startedSdk) return;
+			// A restart or shutdown replaced the provider this probe belongs to.
+			if (this.provider !== startedProvider) return;
 
 			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
 				endpoint: url,

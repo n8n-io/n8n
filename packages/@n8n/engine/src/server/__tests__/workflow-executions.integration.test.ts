@@ -11,9 +11,8 @@ import { createDataSource, createStores, WorkflowExecution } from '../../databas
 import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import { createConsoleLogger } from '../../logging';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -60,6 +59,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		{},
 		{ workflowIds: [] },
 		{ workflowIds: [''] },
+		{ workflowIds: 'all', mode: 'webhook' },
 		{ workflowIds: 'all', tenantId: 'tenant' },
 		{ workflowIds: 'all', unknown: true },
 		{ workflowIds: 'all', limit: 101 },
@@ -70,6 +70,11 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		{ workflowIds: 'all', before: sampleCursor, order: { top: 'running' } },
 	])('rejects an invalid search body %#', async (body) => {
 		await search(body).expect(400);
+	});
+
+	// An execution reports `waiting`, so the control plane filters the list by it.
+	it('accepts a search for waiting executions', async () => {
+		await search({ workflowIds: 'all', status: ['waiting'] }).expect(200);
 	});
 
 	it('rejects a cursor paired with a status-first sort at the store', async () => {
@@ -94,7 +99,16 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		expect(result.nextCursor).toBeNull();
 		expect(result.items.map((item) => item.id)).toEqual([id]);
 		expect(Object.keys(result.items[0]).sort()).toEqual(
-			['id', 'workflowId', 'status', 'mode', 'createdAt', 'updatedAt', 'finishedAt'].sort(),
+			[
+				'id',
+				'workflowId',
+				'status',
+				'mode',
+				'hostMode',
+				'createdAt',
+				'updatedAt',
+				'finishedAt',
+			].sort(),
 		);
 		const { executionViewStore } = createStores(dataSource);
 		const rows = await executionViewStore.listExecutionViews({
@@ -115,13 +129,27 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 	it('compares modes exactly and applies status filters', async () => {
 		const workflowId = generateId();
 		await start(workflowId);
-		const production = await search({
+		await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ workflowId, callerContext: { hostMode: 'webhook' } }))
+			.expect(201);
+
+		const trigger = await search({
 			workflowIds: [workflowId],
-			mode: 'production',
+			hostMode: 'trigger',
 			status: ['queued'],
 		}).expect(200);
-		expect((production.body as SearchExecutionsResponse).items).toHaveLength(1);
-		for (const filter of [{ mode: 'webhook' }, { mode: 'manual' }, { status: ['completed'] }]) {
+		expect((trigger.body as SearchExecutionsResponse).items).toHaveLength(1);
+
+		const webhook = await search({ workflowIds: [workflowId], hostMode: 'webhook' }).expect(200);
+		expect((webhook.body as SearchExecutionsResponse).items).toHaveLength(1);
+		expect((webhook.body as SearchExecutionsResponse).items[0]).toMatchObject({
+			mode: 'production',
+			hostMode: 'webhook',
+		});
+
+		for (const filter of [{ hostMode: 'manual' }, { status: ['completed'] }]) {
 			const response = await search({
 				workflowIds: [workflowId],
 				...filter,
@@ -173,7 +201,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 	graph: sampleGraph,
 	workflow: sampleWorkflow,
 	executionId: generateId(),
-	callerContext: {},
+	callerContext: { hostMode: 'trigger' },
 	...overrides,
 });
 
@@ -243,13 +271,16 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f', undefined])(
 		'rejects the execution id %p with 400',
 		async (executionId) => {
-			const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				workflow: sampleWorkflow,
-				executionId,
-				callerContext: {},
-			});
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send({
+					workflowId: 'wf-1',
+					graph: sampleGraph,
+					workflow: sampleWorkflow,
+					executionId,
+					callerContext: { hostMode: 'trigger' },
+				});
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -277,6 +308,16 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send(startBody({ callerContext: undefined }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a caller context without a host mode with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: { userId: 'user-1' } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -434,11 +475,16 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send(startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] }));
+			.send(
+				startBody({
+					triggerOutputs: [[{ json: { hello: 'world' } }]],
+					callerContext: { hostMode: 'webhook' },
+				}),
+			);
 		return (response.body as { executionId: string }).executionId;
 	}
 
-	it('returns the persisted status, mode, workflow id, graph, workflow and ISO timestamps', async () => {
+	it('returns the host mode with the persisted execution data', async () => {
 		const executionId = await createExecution();
 
 		const response = await request(url)
@@ -451,6 +497,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			workflowId: 'wf-1',
 			status: 'queued',
 			mode: 'production',
+			hostMode: 'webhook',
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			finishedAt: null,
@@ -488,7 +535,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
-			responseChannel: new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+			responseSender: noopExecutionResponseSender,
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {

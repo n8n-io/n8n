@@ -30,6 +30,7 @@ export interface ValidationWarning {
 	code: string;
 	message: string;
 	nodeName?: string;
+	parameterPath?: string;
 	/** Set at the creation site; `informational` never blocks save. */
 	severity?: IssueSeverity;
 }
@@ -39,6 +40,8 @@ export function collectValidationIssues(
 		code: string;
 		message: string;
 		nodeName?: string;
+		parameterPath?: string;
+		parameterName?: string;
 		severity?: IssueSeverity;
 	}>,
 	allWarnings: ValidationWarning[],
@@ -48,6 +51,7 @@ export function collectValidationIssues(
 			code: issue.code,
 			message: issue.message,
 			nodeName: issue.nodeName,
+			parameterPath: issue.parameterPath ?? issue.parameterName,
 			severity: issue.severity,
 		});
 	}

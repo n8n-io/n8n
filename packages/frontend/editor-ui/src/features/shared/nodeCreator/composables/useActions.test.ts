@@ -4,7 +4,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
-import { mockRestrictedNodeTypes } from '../__tests__/utils';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_LANGUAGE_MODELS,
@@ -115,6 +115,25 @@ describe('useActions', () => {
 					{ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true },
 					{ type: HTTP_REQUEST_NODE_TYPE, openDetail: true },
 				],
+			});
+		});
+
+		test.each([
+			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+		])('should not insert a manual trigger when opened from %s', (openSource) => {
+			const nodeCreatorStore = useNodeCreatorStore();
+
+			mockDocumentStoreState.workflowTriggerNodes = [];
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(openSource);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
+				connections: [],
+				nodes: [{ type: HTTP_REQUEST_NODE_TYPE, openDetail: true }],
 			});
 		});
 

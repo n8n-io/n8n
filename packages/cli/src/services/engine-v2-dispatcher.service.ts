@@ -8,9 +8,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
-import { createExecutionIdV2 } from '@/executions/execution-id';
+import { createExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -39,10 +40,10 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 /**
- * Routes a run to the engine 2.0 data plane and starts it there.
+ * Routes a run to the engine v2 data plane and starts it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
- * {@link start} runs. A workflow that opts into engine 2.0 never falls back to
+ * {@link start} runs. A workflow that opts into engine v2 never falls back to
  * v1 — anything the v2 path cannot do fails with a user-facing reason instead,
  * because a silent fallback would run the workflow on an engine the user did
  * not pick.
@@ -82,7 +83,12 @@ export class EngineV2Dispatcher {
 		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
 	}
 
-	/** Returns the execution id this dispatch minted. */
+	/**
+	 * Returns the execution id this run uses.
+	 *
+	 * A caller that has to wait for the run's answer mints the id itself, so it
+	 * can subscribe before the run can produce one.
+	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const trigger = this.resolveFiredTrigger(data);
 
@@ -98,7 +104,9 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = createExecutionIdV2();
+		const executionId = data.engineExecutionId ?? createExecutionIdV2();
+		// A caller that minted the id is waiting on that exact run.
+		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, trigger);
 
@@ -111,8 +119,8 @@ export class EngineV2Dispatcher {
 				// workflow that ran even after the live one is edited.
 				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
-				// Only manual, webhook and trigger route here, so anything that is not a
-				// manual run is a production run.
+				// The engine keeps only a coarse manual/production distinction. The exact
+				// host mode is carried in callerContext for reads and lifecycle events.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
 				// The step executor needs the v1 mode and the caller to resolve credentials.
 				callerContext: {
@@ -163,13 +171,13 @@ export class EngineV2Dispatcher {
 	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 
 		if (data.runData !== undefined) {
 			throw new UserError(
-				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 			);
 		}
 
@@ -177,18 +185,18 @@ export class EngineV2Dispatcher {
 		// user did not ask for, with their side effects.
 		if (data.destinationNode !== undefined) {
 			throw new UserError(
-				'Engine 2.0 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
 			);
 		}
 
 		if (data.startNodes?.length) {
 			throw new UserError(
-				'Engine 2.0 cannot start from selected nodes yet. Run the whole workflow instead.',
+				'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
 			);
 		}
 
 		if (data.agentRequest !== undefined) {
-			throw new UserError('Engine 2.0 cannot run a workflow as an AI tool yet.');
+			throw new UserError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -202,7 +210,7 @@ export class EngineV2Dispatcher {
 			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
 		) {
 			throw new UserError(
-				`Engine 2.0 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
+				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}
 
@@ -210,7 +218,7 @@ export class EngineV2Dispatcher {
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
 		if (pinnedNode !== undefined) {
 			throw new UserError(
-				`Engine 2.0 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
+				`Engine v2 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
 	}

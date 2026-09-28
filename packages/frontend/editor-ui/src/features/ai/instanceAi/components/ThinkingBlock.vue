@@ -8,9 +8,12 @@ import { N8nAiActivityStep } from '@n8n/design-system';
 import { computed } from 'vue';
 import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import InstanceContextStep from './InstanceContextStep.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
@@ -25,6 +28,7 @@ const props = withDefaults(
 );
 
 const { getToolLabel } = useToolLabel();
+const { getInstanceContextLabel } = useInstanceContextLabel();
 
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -45,9 +49,14 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+/** Reuse the context row label while it is the latest active entry. */
 const activityLabel = computed<string | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	return toolCall ? getToolLabel(toolCall.toolName, toolCall.args) : undefined;
+	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);
+
+	if (!props.active || props.awaitingInput) return undefined;
+	const last = props.entries[props.entries.length - 1];
+	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });
 
 const segments = computed(() => {
@@ -97,6 +106,8 @@ const durationSec = computed<number | undefined>(() => {
 				:entry="entry"
 				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 			/>
+
+			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"

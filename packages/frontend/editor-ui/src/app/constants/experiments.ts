@@ -1,6 +1,8 @@
 import {
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
 
 function createExperiment<
@@ -112,10 +114,6 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 	},
 );
 
-export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-);
-
 export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
@@ -151,6 +149,9 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
+export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
+export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
+
 /**
  * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
  * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
@@ -158,13 +159,15 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
  */
 export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
+export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
+
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
-// EOF Experiment cleanup
 
 export const EXPERIMENTS_TO_TRACK = [
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
+	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -191,7 +194,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
-	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
@@ -204,7 +206,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	MCP_JSON_NUDGE_EXPERIMENT.name,
-	// Experiment cleanup (119_surface_assistant_on_workflow_error)
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
-	// EOF Experiment cleanup
 ];

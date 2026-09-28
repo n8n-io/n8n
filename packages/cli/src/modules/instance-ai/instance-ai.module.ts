@@ -71,12 +71,14 @@ export class InstanceAiModule implements ModuleInterface {
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
+		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
 		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
+			mcpConnectionsAvailable,
 			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
@@ -87,7 +89,6 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
-			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 
@@ -113,6 +114,7 @@ export class InstanceAiModule implements ModuleInterface {
 			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
 		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity.js');
+		const { InstanceAiThreadTabs } = await import('./entities/instance-ai-thread-tabs.entity.js');
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
 		);
@@ -129,6 +131,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadGrant,
+			InstanceAiThreadTabs,
 			InstanceAiEventLogEntry,
 		];
 	}

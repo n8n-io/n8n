@@ -42,6 +42,8 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 } from '@/features/execution/executions/executions.utils';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -454,17 +456,27 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
 
-			// Experiment cleanup (119_surface_assistant_on_workflow_error)
-			toast.showMessage({
-				title,
-				message,
-				type: 'error',
-				duration: 0,
-				customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
-				onClose: () => releaseWorkflowErrorNudge(execution.id),
-			});
-			useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(execution.id);
-			// EOF Experiment cleanup
+			const { showPolicyViolationToast } = usePolicyViolationToast();
+			const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.executeTitle');
+			const violations = getPolicyViolations(execution.data.resultData.error);
+
+			if (violations) {
+				showPolicyViolationToast(violations, policyTitle, 'execute', documentId);
+			} else {
+				toast.showMessage({
+					title,
+					message,
+					type: 'error',
+					duration: 0,
+					// Experiment cleanup (119_surface_assistant_on_workflow_error)
+					customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+					onClose: () => releaseWorkflowErrorNudge(execution.id),
+					// EOF Experiment cleanup
+				});
+				// Experiment cleanup (119_surface_assistant_on_workflow_error)
+				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(execution.id);
+				// EOF Experiment cleanup
+			}
 		}
 
 		useBuilderStore().incrementManualExecutionStats('error');

@@ -2,6 +2,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as permissions from '@n8n/permissions';
 
 import type {
 	AgentCredentialsByProvider,
@@ -93,7 +94,8 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof permissions>()),
 	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
@@ -292,7 +294,7 @@ describe('AgentModelSelector', () => {
 		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeDefined();
 	});
 
-	it('shows the Free credits pill (same N8nActionPill as the node creator) on covered providers', async () => {
+	it('shows the Free credits badge on covered providers', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
 
@@ -506,7 +508,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		const item = getN8nCreditsItem(wrapper, 'anthropic');
-		// Green balance action pill (N8nActionPill), matching the workflow node.
+		/** Green balance badge that matches the workflow node. */
 		expect(item?.data?.actionPill).toEqual({ text: '$4.99 left', type: 'default' });
 	});
 

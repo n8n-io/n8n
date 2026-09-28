@@ -143,6 +143,7 @@ beforeEach(async () => {
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 
@@ -1180,6 +1181,53 @@ describe('GET /workflows', () => {
 		const response = await authOwnerAgent.get('/workflows').expect(200);
 
 		expect(response.body).toEqual({ count: 0, data: [] });
+	});
+
+	describe('ids filter', () => {
+		test('should omit requested workflows that the user cannot read or that do not exist', async () => {
+			const readableWorkflow = await createWorkflow({ name: 'Readable' }, member);
+			const inaccessibleWorkflow = await createWorkflow({ name: 'Inaccessible' }, owner);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query({
+					filter: JSON.stringify({
+						ids: [readableWorkflow.id, inaccessibleWorkflow.id, uuid()],
+					}),
+				})
+				.expect(200);
+
+			expect(response.body.count).toBe(1);
+			expect(response.body.data).toEqual([
+				expect.objectContaining({ id: readableWorkflow.id, name: 'Readable' }),
+			]);
+		});
+
+		test('should compose requested ids with project and archive filters', async () => {
+			const teamProject = await createTeamProject(undefined, member);
+			const projectWorkflow = await createWorkflow({ name: 'Project workflow' }, teamProject);
+			const archivedWorkflow = await createWorkflow(
+				{ name: 'Archived workflow', isArchived: true },
+				teamProject,
+			);
+			const crossProjectWorkflow = await createWorkflow({ name: 'Cross-project workflow' }, member);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query({
+					filter: JSON.stringify({
+						ids: [projectWorkflow.id, archivedWorkflow.id, crossProjectWorkflow.id],
+						projectId: teamProject.id,
+						isArchived: false,
+					}),
+				})
+				.expect(200);
+
+			expect(response.body.count).toBe(1);
+			expect(response.body.data).toEqual([
+				expect.objectContaining({ id: projectWorkflow.id, name: 'Project workflow' }),
+			]);
+		});
 	});
 
 	test('should return workflows', async () => {
@@ -5142,7 +5190,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe(
-				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 			);
 			expect(startExecution).not.toHaveBeenCalled();
 		});

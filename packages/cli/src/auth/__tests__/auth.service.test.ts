@@ -17,7 +17,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -654,6 +654,43 @@ describe('AuthService', () => {
 				'invalid signature',
 			);
 			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the user id is missing', { hash: 'mJAYx4Wb7k' }],
+			['the user id is empty', { id: '', hash: 'mJAYx4Wb7k' }],
+			['the hash is missing', { id: '123' }],
+		])('should throw when %s', async (_name, payload) => {
+			const token = jwtService.sign(payload, { expiresIn: '1h' });
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should throw when the payload is missing the expiry', async () => {
+			// jwt.verify treats an absent `exp` as a token that never expires.
+			const token = jwtService.sign({ id: user.id, hash: 'mJAYx4Wb7k' });
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			// `usedMfa` decides the MFA gate, and a non-empty string is truthy there.
+			['usedMfa', { usedMfa: 'false' }],
+			// `isEmbed` relaxes the refreshed cookie to SameSite=None.
+			['isEmbed', { isEmbed: 'yes' }],
+			// `browserId` binds the session to one browser.
+			['browserId', { browserId: 0 }],
+		])('should throw when %s is present but not its declared type', async (_name, claim) => {
+			const token = jwtService.sign(
+				{ id: user.id, hash: 'mJAYx4Wb7k', ...claim },
+				{ expiresIn: '1h' },
+			);
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
 		});
 
 		it('should throw on hijacked tokens', async () => {

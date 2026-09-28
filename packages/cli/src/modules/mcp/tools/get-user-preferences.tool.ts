@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
 import type { AiPreferenceService } from '@/services/ai-preference.service';
@@ -126,19 +127,29 @@ export const createGetUserPreferencesTool = (
 					: NOTHING_SAVED;
 
 			// Count, scopes and the size of the rendered text, never the text itself, which is
-			// the person's own writing. The length is what reviews the caps: CONTEXT-137 wants a
-			// new number once the 95th percentile of a rendered block passes 8,000 characters,
-			// and this read is one of the two paths that render one today (CONTEXT-137).
+			// the person's own writing. The length is what reviews the caps: the caps need a new
+			// number once the 95th percentile of a rendered block passes 8,000 characters, and
+			// this read is one of the two paths that render one today.
+			const scopes = [...new Set(items.map((item) => item.scope))];
+			const renderedLength = hasPreferences ? text.length : 0;
 			telemetryPayload.results = {
 				success: true,
 				data: {
 					hasPreferences,
 					count: items.length,
-					scopes: [...new Set(items.map((item) => item.scope))],
-					rendered_length: hasPreferences ? text.length : 0,
+					scopes,
+					rendered_length: renderedLength,
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			// The registered twin of the tool-call event: an MCP read is the one place a rendered
+			// block leaves n8n without a turn to attach it to.
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP, {
+				count: items.length,
+				scope_types: scopes,
+				rendered_length: renderedLength,
+				project_scoped: projectId !== undefined,
+			});
 
 			return {
 				content: [{ type: 'text', text }],

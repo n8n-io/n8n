@@ -1,6 +1,7 @@
 import type {
 	ContentImportContext,
 	CredentialDecryptContext,
+	CredentialSaveContext,
 	EnforcementPoint,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -10,7 +11,12 @@ import type {
 	PolicyCleared,
 	PolicySubject,
 } from '@n8n/decorators';
-import { workflowContentSubject, workflowSubject } from '@n8n/decorators';
+import {
+	credentialContentSubject,
+	credentialSubject,
+	workflowContentSubject,
+	workflowSubject,
+} from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -93,6 +99,21 @@ export class PolicyEnforcementService {
 
 	async evaluateWorkflowTransfer(context: WorkflowTransferContext): Promise<PolicyDecision> {
 		return await this.evaluate('workflowTransfer', context);
+	}
+
+	async enforceCredentialSave(
+		context: CredentialSaveContext,
+	): Promise<PolicyCleared<'credentialSave'>> {
+		// Same rule as a workflow save: a create binds to its content, an update to the row id.
+		const subject =
+			context.storedCredential === null
+				? credentialContentSubject(context.credential)
+				: credentialSubject(context.credential);
+		return await this.enforce('credentialSave', context, subject);
+	}
+
+	async evaluateCredentialSave(context: CredentialSaveContext): Promise<PolicyDecision> {
+		return await this.evaluate('credentialSave', context);
 	}
 
 	async enforceCredentialDecrypt(

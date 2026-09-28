@@ -16,6 +16,7 @@ import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	isDataTableRead,
@@ -1135,6 +1136,40 @@ describe('generateMockHints', () => {
 		]);
 	});
 
+	it('names the empty trigger content in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[0][0]).not.toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain(TRIGGER_CONTENT_CORRECTION);
+	});
+
+	it('names the failure reason in the retry prompt when the first attempt threw', async () => {
+		const generate = mockAgentResponses(
+			new Error('Unexpected end of JSON input'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[1][0]).toContain(
+			'The previous answer was unusable: Unexpected end of JSON input',
+		);
+	});
+
 	it('should return emptyResult with both warnings when every attempt fails', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
@@ -1183,6 +1218,26 @@ describe('generateMockHints', () => {
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
 	});
+
+	it.each([true, 'true'])(
+		'accepts empty triggerContent when triggerEmitsNoItems is %j, and forwards the flag',
+		async (flag) => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					globalContext: '',
+					nodeHints: { Slack: 'foo' },
+					triggerEmitsNoItems: flag,
+				}),
+			);
+
+			const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.triggerEmitsNoItems).toBe(true);
+			expect(result.warnings).toEqual([]);
+		},
+	);
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');

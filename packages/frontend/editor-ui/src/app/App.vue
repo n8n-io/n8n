@@ -22,6 +22,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
+import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -115,6 +116,7 @@ watch(
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 
 		void locale.use(newLocale);
+		registerTimeAgoLocale(newLocale);
 	},
 	{ immediate: true },
 );

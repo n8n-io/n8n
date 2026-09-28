@@ -19,7 +19,6 @@ import type {
 } from 'n8n-workflow';
 
 import type { ItemContext } from './prepareItemContext';
-import { isExecuteFunctions } from '../../../utils';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
 
@@ -94,10 +93,9 @@ export async function runAgent(
 	if (Object.keys(additionalMetadata).length > 0 && logger) {
 		ctx.logger.debug('Tracing metadata', { additionalMetadata });
 	}
-	const tracingConfig = isExecuteFunctions(ctx)
-		? getTracingConfig(ctx, { additionalMetadata })
-		: undefined;
-	const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
+	// `getTracingConfig` supports both context types, so sub-agents keep their LangSmith
+	// run name and execution id.
+	const executorWithTracing = executor.withConfig(getTracingConfig(ctx, { additionalMetadata }));
 
 	// Check if streaming is actually available
 	const isStreamingAvailable = 'isStreaming' in ctx ? ctx.isStreaming?.() : undefined;

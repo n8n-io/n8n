@@ -14,6 +14,7 @@ const events: LifecycleEvent[] = [
 		executionId: 'exec-1',
 		workflowId: 'wf-1',
 		mode: 'manual',
+		hostMode: 'manual',
 		at: '2026-08-24T10:00:00.000Z',
 	},
 	{

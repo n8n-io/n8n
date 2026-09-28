@@ -278,6 +278,36 @@ describe('NodeTypes', () => {
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
+	describe('resolveBaseName', () => {
+		it('resolves a synthetic Tool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('resolves a synthetic HitlTool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.hitlNodeHitlTool')).toEqual({
+				baseName: 'n8n-nodes-base.hitlNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('leaves a real on-disk node whose name ends in Tool as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.realTool')).toEqual({
+				baseName: 'n8n-nodes-base.realTool',
+				isSyntheticTool: false,
+			});
+		});
+
+		it('leaves a name without a tool suffix as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNode')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: false,
+			});
+		});
+	});
+
 	describe('getByName', () => {
 		it('should return node type when it exists', () => {
 			const result = nodeTypes.getByName('n8n-nodes-base.nonVersioned');

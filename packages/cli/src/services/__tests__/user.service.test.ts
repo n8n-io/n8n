@@ -26,7 +26,7 @@ import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';

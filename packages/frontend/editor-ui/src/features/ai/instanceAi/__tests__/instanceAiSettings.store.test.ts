@@ -2,6 +2,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -95,6 +97,7 @@ function makeModuleSettings(
 ): InstanceAiModuleSettings {
 	return {
 		enabled: true,
+		mcpConnectionsAvailable: true,
 		localGatewayDisabled: false,
 		browserUseEnabled: true,
 		proxyEnabled: false,
@@ -157,6 +160,21 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+	});
+
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {
 			setModuleSettings(settingsStore, {
@@ -181,6 +199,21 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when module settings is undefined', () => {
 			settingsStore.moduleSettings = {};
 			expect(store.isInstanceAiDisabled).toBe(true);
+		});
+	});
+
+	describe('isMcpAvailable', () => {
+		it('uses public module settings', () => {
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: true });
+			expect(store.isMcpAvailable).toBe(true);
+
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: false });
+			expect(store.isMcpAvailable).toBe(false);
+		});
+
+		it('returns false before module settings load', () => {
+			settingsStore.moduleSettings = {};
+			expect(store.isMcpAvailable).toBe(false);
 		});
 	});
 
@@ -514,7 +547,6 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
-				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -544,7 +576,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
-			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 

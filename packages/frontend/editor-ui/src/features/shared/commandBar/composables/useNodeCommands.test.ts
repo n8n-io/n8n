@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
-import { mockRestrictedNodeTypes } from '@/features/shared/nodeCreator/__tests__/utils';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -48,7 +48,8 @@ vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => 
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: vi.fn(),
 }));
 

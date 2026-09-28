@@ -1,3 +1,6 @@
+import type { Response } from 'express';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import type { PostHogClient } from '@/posthog';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -41,6 +44,8 @@ describe('CredentialsController', () => {
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
+	const postHogClient = mock<PostHogClient>();
+	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
@@ -67,6 +72,8 @@ describe('CredentialsController', () => {
 		mock(), // dbLockService
 		mock(), // eventService
 		mock(), // transactionRunner
+		mock(), // policyEnforcementService
+		credentialDescriptions,
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -97,6 +104,7 @@ describe('CredentialsController', () => {
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
 		credentialsOverwrites,
+		credentialDescriptions,
 	);
 
 	let req: AuthenticatedRequest;
@@ -107,6 +115,7 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
 		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
 		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');

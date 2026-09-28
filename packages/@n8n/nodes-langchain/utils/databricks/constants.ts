@@ -1,6 +1,5 @@
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
-import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, type INode } from 'n8n-workflow';
 
 /**
  * The bearer plus the partner User-Agent, set on every request and every retry.
@@ -16,10 +15,7 @@ export const databricksAuthHeaders = (token: string): HeadersInit => ({
  * Every request carries a secret (bearer token, or the client secret on the
  * mint path), so an http host would ship it in cleartext.
  */
-export function assertHttpsHost(
-	ctx: ILoadOptionsFunctions | ISupplyDataFunctions,
-	host: string,
-): void {
+export function assertHttpsHost(ctx: { getNode(): INode }, host: string): void {
 	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
 		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
 	}

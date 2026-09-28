@@ -11,7 +11,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
@@ -103,6 +103,48 @@ describe('OidcController', () => {
 			});
 
 			// Verify redirect to home page
+			expect(res.redirect).toHaveBeenCalledWith('/');
+		});
+
+		test('Should redirect to the destination stored in the state after login', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '/workflow/abc?tab=1',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('/workflow/abc?tab=1');
+		});
+
+		test('Should fall back to the home page when the stored destination is not a local path', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '//evil.example/phish',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+
+			await controller.callbackHandler(req, res);
+
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -547,6 +589,34 @@ describe('OidcController', () => {
 				secure: true,
 				maxAge: 15 * Time.minutes.toMilliseconds,
 			});
+		});
+
+		test('Should carry a safe in-app destination into the login state', async () => {
+			const req = mock<Request>({ query: { redirect: '/workflow/abc?tab=1' } });
+			const res = mock<Response>();
+			oidcService.generateLoginUrl.mockResolvedValueOnce({
+				url: new URL('https://provider.com/auth'),
+				state: 'state_value',
+				nonce: 'nonce_value',
+			});
+
+			await controller.redirectToAuthProvider(req, res);
+
+			expect(oidcService.generateLoginUrl).toHaveBeenCalledWith('/workflow/abc?tab=1');
+		});
+
+		test('Should replace an external destination with the home page', async () => {
+			const req = mock<Request>({ query: { redirect: 'https://evil.example/phish' } });
+			const res = mock<Response>();
+			oidcService.generateLoginUrl.mockResolvedValueOnce({
+				url: new URL('https://provider.com/auth'),
+				state: 'state_value',
+				nonce: 'nonce_value',
+			});
+
+			await controller.redirectToAuthProvider(req, res);
+
+			expect(oidcService.generateLoginUrl).toHaveBeenCalledWith('/');
 		});
 
 		test('Should propagate errors from OIDC service during URL generation', async () => {
