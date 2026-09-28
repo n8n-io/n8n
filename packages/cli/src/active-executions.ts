@@ -326,6 +326,7 @@ export class ActiveExecutions {
 	}
 
 	getRunningExecutionIds(): string[] {
+		// An enqueued execution runs as a Bull job in another process, so this only returns executions running in this process.
 		return Object.keys(this.activeExecutions).filter(
 			(executionId) =>
 				this.activeExecutions[executionId].status === 'running' &&
