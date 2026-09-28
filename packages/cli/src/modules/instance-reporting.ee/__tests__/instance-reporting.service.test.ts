@@ -19,7 +19,10 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import { InstanceReportingService } from '../instance-reporting.service';
+import {
+	InstanceReportAlreadyCreatedError,
+	InstanceReportingService,
+} from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/constants')>()),
@@ -344,9 +347,7 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			reportRepository.createPending.mockResolvedValue(null);
 
-			await expect(service.sendReport()).rejects.toThrow(
-				'Another process already created the instance report for today',
-			);
+			await expect(service.sendReport()).rejects.toThrow(InstanceReportAlreadyCreatedError);
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();

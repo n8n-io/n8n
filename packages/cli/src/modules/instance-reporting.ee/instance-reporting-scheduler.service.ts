@@ -10,7 +10,11 @@ import { EventService } from '@/events/event.service';
 import type { InstanceMonitoringReport } from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
-import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
+import {
+	InstanceReportAlreadyCreatedError,
+	InstanceReportingService,
+	RETRY_DELAY_MS,
+} from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -195,6 +199,13 @@ export class InstanceReportingScheduler {
 			await this.reportingService.sendReport();
 			return 'sent';
 		} catch (error) {
+			if (error instanceof InstanceReportAlreadyCreatedError) {
+				this.logger.info(
+					'Unexpected second instance report triggered for today, ignored because there is already a report for today',
+				);
+				return 'failed';
+			}
+
 			this.logger.warn('Failed to deliver the instance report', { error });
 			return 'failed';
 		}

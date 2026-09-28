@@ -39,6 +39,12 @@ class InstanceReportRejectedError extends OperationalError {
 	}
 }
 
+export class InstanceReportAlreadyCreatedError extends OperationalError {
+	constructor() {
+		super('Another process already created the instance report for today');
+	}
+}
+
 type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
 
 const SKIP_MESSAGES: Record<SkipReason, string> = {
@@ -157,9 +163,7 @@ export class InstanceReportingService {
 
 			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
 			if (!report) {
-				throw new OperationalError(
-					'Another process already created the instance report for today. Check that only one main reports for this database.',
-				);
+				throw new InstanceReportAlreadyCreatedError();
 			}
 		}
 
