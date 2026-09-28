@@ -58,6 +58,10 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import type { InstanceAiMessageAuthorship } from './prefills';
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionCounts,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
@@ -68,6 +72,7 @@ import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
@@ -192,6 +197,22 @@ export function getAgentBuilderTargetFromThreadMetadata(
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
+}
+
+export function getAgentBuilderTargetsFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const registry = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY];
+	if (!isRecord(registry)) return [];
+	return Object.values(registry).flatMap((value) => {
+		if (
+			!isRecord(value) ||
+			typeof value.agentId !== 'string' ||
+			typeof value.projectId !== 'string'
+		)
+			return [];
+		return [{ agentId: value.agentId, projectId: value.projectId }];
+	});
 }
 
 export function getPendingAgentTargetFromThreadMetadata(
@@ -587,6 +608,7 @@ export function createThreadRuntime(
 		},
 		() => pendingWorkflowAttachment.value ?? undefined,
 		() => [...transientWorkflowReferences.values()],
+		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1516,6 +1538,8 @@ export function createThreadRuntime(
 		isFirstMessage: boolean,
 		authorship: InstanceAiMessageAuthorship,
 		actionSource: InstanceAiThreadSourcePersisted,
+		mentionCounts: AssistantMentionCounts,
+		attachmentCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1533,6 +1557,11 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			mention_count: mentionCounts.mentionCount,
+			workflow_mention_count: mentionCounts.workflowMentionCount,
+			node_mention_count: mentionCounts.nodeMentionCount,
+			group_mention_count: mentionCounts.groupMentionCount,
+			attachment_count: attachmentCount,
 		});
 	}
 
@@ -1601,6 +1630,7 @@ export function createThreadRuntime(
 			pushRef?: string;
 			handoffContext?: InstanceAiHandoffContext;
 			responseStartedAtEpochMs?: number;
+			mentionCounts?: AssistantMentionCounts;
 		},
 	): Promise<boolean> {
 		const {
@@ -1609,6 +1639,7 @@ export function createThreadRuntime(
 			pushRef,
 			handoffContext,
 			responseStartedAtEpochMs = instanceAiResponseNow(),
+			mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 		} = opts;
 		const metricGeneration = responseMetricGeneration;
 		amendContext.value = null;
@@ -1618,7 +1649,13 @@ export function createThreadRuntime(
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const actionSource = resolveActionSource();
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage, authorship, actionSource);
+			trackUserMessageSent(
+				isFirstMessage,
+				authorship,
+				actionSource,
+				mentionCounts,
+				attachments?.length ?? 0,
+			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
 			if (!runId) {

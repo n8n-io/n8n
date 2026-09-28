@@ -16,6 +16,10 @@ const emit = defineEmits<{ remove: [] }>();
 const rootRef = useTemplateRef<HTMLElement>('root');
 
 defineExpose({ focus: () => rootRef.value?.focus() });
+
+function handleRemoveKeydown(event: KeyboardEvent): void {
+	if (event.key !== 'Escape') event.stopPropagation();
+}
 </script>
 
 <template>
@@ -37,7 +41,7 @@ defineExpose({ focus: () => rootRef.value?.focus() });
 					:title="props.removeLabel"
 					:aria-label="props.removeLabel"
 					:data-test-id="props.removeTestId"
-					@keydown.stop
+					@keydown="handleRemoveKeydown"
 					@click.stop="emit('remove')"
 				/>
 			</template>

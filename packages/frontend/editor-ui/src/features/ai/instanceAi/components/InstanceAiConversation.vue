@@ -57,8 +57,10 @@ import {
 import type { InstanceAiMessageAuthorship } from '../prefills';
 import type {
 	AssistantMentionArtifactReference,
+	AssistantMentionCounts,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -546,6 +548,7 @@ async function handleSubmit(
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
 	acceptDraft: () => void = () => {},
+	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -630,7 +633,8 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
-			responseStartedAtEpochMs,
+			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+			...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {

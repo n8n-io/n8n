@@ -13,6 +13,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
@@ -42,6 +43,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -80,6 +82,15 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
 			workflowSettings: workflowData.settings,
+			// A schedule has nobody to be, so the run is attributed to the publisher
+			// of the version it runs. That is the mapping's `versionId`, not the
+			// workflow row's `activeVersionId`: publication updates the row first and
+			// the mapping after, so mid-publication the row already points at a
+			// version whose nodes are not the ones below.
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				workflowId,
+				workflowData.versionId,
+			),
 		});
 
 		try {

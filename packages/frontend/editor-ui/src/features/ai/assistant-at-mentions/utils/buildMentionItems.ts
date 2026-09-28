@@ -54,6 +54,8 @@ function buildNodeMentionItem(
 		entityId: node.id,
 		workflowName: index.workflowName,
 		...(group ? { groupId: group.id, groupName: group.name } : {}),
+		nodeTypeName: node.type,
+		nodeTypeVersion: node.typeVersion,
 	};
 }
 
@@ -61,6 +63,7 @@ function buildGroupMentionItem(
 	index: WorkflowArtifactIndex,
 	groupId: string,
 	includeChildren: boolean,
+	excludedKeys?: ReadonlySet<string>,
 ): AssistantMentionItem | undefined {
 	const group = index.groupsById.get(groupId);
 	if (!group) return undefined;
@@ -68,7 +71,10 @@ function buildGroupMentionItem(
 	const children = includeChildren
 		? group.nodeIds
 				.map((nodeId) => buildNodeMentionItem(index, nodeId, group.id))
-				.filter((item): item is AssistantMentionItem => item !== undefined)
+				.filter(
+					(item): item is AssistantMentionItem =>
+						item !== undefined && !excludedKeys?.has(item.key),
+				)
 				.slice(0, MAX_MENTION_RESULTS)
 		: undefined;
 
@@ -83,8 +89,9 @@ function buildGroupMentionItem(
 		workflowName: index.workflowName,
 		groupId: group.id,
 		groupName: group.name,
+		nodeCount: group.nodeIds.length,
 		...(includeChildren
-			? { hasChildren: group.nodeIds.length > 0, ...(children ? { children } : {}) }
+			? { hasChildren: Boolean(children?.length), ...(children ? { children } : {}) }
 			: {}),
 	};
 }
@@ -93,17 +100,24 @@ function buildArtifactWorkflowItem(
 	artifact: WorkflowArtifactReference,
 	index?: WorkflowArtifactIndex,
 	includeChildren = true,
+	excludedKeys?: ReadonlySet<string>,
 ): AssistantMentionItem {
 	const workflowName = index?.workflowName ?? artifact.name;
 	const children =
 		includeChildren && index
 			? [
-					...index.groups.map((group) => buildGroupMentionItem(index, group.id, true)),
+					...index.groups.map((group) =>
+						buildGroupMentionItem(index, group.id, true, excludedKeys),
+					),
 					...index.nodes
 						.filter((node) => !index.nodeIdToGroupId.has(node.id))
 						.map((node) => buildNodeMentionItem(index, node.id)),
 				]
-					.filter((item): item is AssistantMentionItem => item !== undefined)
+					.filter(
+						(item): item is AssistantMentionItem =>
+							item !== undefined &&
+							(!excludedKeys?.has(item.key) || Boolean(item.hasChildren && item.children?.length)),
+					)
 					.slice(0, MAX_MENTION_RESULTS)
 			: undefined;
 
@@ -116,6 +130,7 @@ function buildArtifactWorkflowItem(
 		workflowId: artifact.id,
 		entityId: artifact.id,
 		workflowName,
+		...(index ? { nodeCount: index.nodes.length } : {}),
 		...(includeChildren
 			? { hasChildren: index ? Boolean(children?.length) : true, ...(children ? { children } : {}) }
 			: {}),
@@ -125,31 +140,39 @@ function buildArtifactWorkflowItem(
 export function buildArtifactBrowseItems(
 	artifacts: readonly WorkflowArtifactReference[],
 	getIndex: (workflowId: string) => WorkflowArtifactIndex | undefined,
+	excludedKeys?: ReadonlySet<string>,
 ): AssistantMentionItem[] {
-	return artifacts
-		.slice(0, MAX_MENTION_RESULTS)
-		.map((artifact) => buildArtifactWorkflowItem(artifact, getIndex(artifact.id)));
+	const items: AssistantMentionItem[] = [];
+	for (const artifact of artifacts) {
+		const item = buildArtifactWorkflowItem(artifact, getIndex(artifact.id), true, excludedKeys);
+		if (excludedKeys?.has(item.key) && !item.hasChildren) continue;
+		items.push(item);
+		if (items.length === MAX_MENTION_RESULTS) break;
+	}
+	return items;
 }
 
 export function buildArtifactSearchItems(
 	artifacts: readonly WorkflowArtifactReference[],
 	getIndex: (workflowId: string) => WorkflowArtifactIndex | undefined,
+	excludedKeys?: ReadonlySet<string>,
 ): AssistantMentionItem[] {
 	const items: AssistantMentionItem[] = [];
 
 	for (const artifact of artifacts) {
 		const index = getIndex(artifact.id);
-		items.push(buildArtifactWorkflowItem(artifact, index, false));
+		const workflowItem = buildArtifactWorkflowItem(artifact, index, false);
+		if (!excludedKeys?.has(workflowItem.key)) items.push(workflowItem);
 		if (!index) continue;
 
 		for (const group of index.groups) {
 			const item = buildGroupMentionItem(index, group.id, false);
-			if (item) items.push(item);
+			if (item && !excludedKeys?.has(item.key)) items.push(item);
 		}
 
 		for (const node of index.nodes) {
 			const item = buildNodeMentionItem(index, node.id, index.nodeIdToGroupId.get(node.id));
-			if (item) items.push(item);
+			if (item && !excludedKeys?.has(item.key)) items.push(item);
 		}
 	}
 

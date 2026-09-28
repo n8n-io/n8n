@@ -878,6 +878,35 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
+
+		test('auto-opens when a reused builder changes from exploring to editing', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+			const makeBuilderMessage = (activity: 'exploring' | 'editing') =>
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'active',
+								activity,
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				});
+
+			ctx.thread.messages = [makeBuilderMessage('exploring')];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBeUndefined();
+
+			ctx.thread.messages = [makeBuilderMessage('editing')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
 	});
 
 	describe('auto-open data table preview', () => {
