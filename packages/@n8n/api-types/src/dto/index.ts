@@ -422,6 +422,7 @@ export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	UpdateDataTablePublicDto,

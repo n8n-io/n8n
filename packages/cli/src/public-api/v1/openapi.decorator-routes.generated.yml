@@ -74,6 +74,9 @@ paths:
       $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
     delete:
       $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  /data-tables/{dataTableId}/columns:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTableColumns.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
