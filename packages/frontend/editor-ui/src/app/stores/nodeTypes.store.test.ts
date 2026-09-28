@@ -73,6 +73,12 @@ describe('useNodeTypesStore', () => {
 			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(true);
 		});
 
+		it('should return false before any node types are loaded', () => {
+			store.nodeTypes = {};
+
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(false);
+		});
+
 		it('should return false for a vetted community node type that is not installed', async () => {
 			vi.spyOn(useSettingsStore(), 'isCommunityNodesFeatureEnabled', 'get').mockReturnValue(true);
 			vi.mocked(nodeTypesApi.fetchCommunityNodeTypes).mockResolvedValueOnce([
