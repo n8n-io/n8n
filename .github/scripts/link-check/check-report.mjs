@@ -11,13 +11,19 @@
  *   are opened again in headless Chrome. Many sites block HTTP clients but serve
  *   browsers, and a second request confirms that a connection failure persists.
  *
+ * - A broken docs.n8n.io link on a line that changed in the last 30 days is
+ *   pending, not broken. Code often ships before its docs page. Needs git
+ *   history for that period.
+ *
  * Prints the broken links, adds them to $GITHUB_STEP_SUMMARY, and exits 1 if
  * there are any. Needs Chrome, which GitHub-hosted Ubuntu runners include.
  */
+import { execFileSync } from 'node:child_process';
 import { appendFile, readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const STRICT_ANCHOR_HOST = 'docs.n8n.io';
+const GRACE_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const BROWSER_STATUSES = new Set([403, 429, 999]);
 const CHALLENGE_TITLE = /just a moment|attention required|security checkpoint/i;
 
@@ -61,6 +67,38 @@ export function classify({ url, code, text }) {
 
 export function isBrowserPass({ status, title }) {
 	return status > 0 && status < 400 && !/\b404\b|not found/i.test(title);
+}
+
+/** Returns the commit time of a `git blame --porcelain` line in ms, or null if the commit is at the edge of the fetched history. */
+export function parseBlameTime(porcelain) {
+	if (/^boundary$/m.test(porcelain)) return null;
+	const time = porcelain.match(/^committer-time (\d+)$/m);
+	return time ? Number(time[1]) * 1000 : null;
+}
+
+export function isInGracePeriod({ url }, changedAt, now) {
+	return (
+		new URL(url).hostname === STRICT_ANCHOR_HOST &&
+		changedAt !== null &&
+		now - changedAt < GRACE_PERIOD_MS
+	);
+}
+
+function lineChangedAt({ file, line }) {
+	try {
+		const porcelain = execFileSync(
+			'git',
+			['blame', '--porcelain', '-L', `${line},${line}`, '--', file],
+			{
+				encoding: 'utf8',
+				stdio: ['ignore', 'pipe', 'ignore'],
+			},
+		);
+		return parseBlameTime(porcelain);
+	} catch {
+		// A line that git cannot blame counts as old, so the link is reported.
+		return null;
+	}
 }
 
 async function checkInBrowser(urls) {
@@ -124,11 +162,19 @@ async function main() {
 	const broken = failures.filter(
 		(f) => classify(f) === 'broken' || (classify(f) === 'browser' && !passedInBrowser.has(f.url)),
 	);
-	const lines = formatReport(broken);
-	const summary =
+	const now = Date.now();
+	const pending = new Set(broken.filter((f) => isInGracePeriod(f, lineChangedAt(f), now)));
+	const lines = formatReport(broken.filter((f) => !pending.has(f)));
+	const pendingLines = formatReport([...pending]);
+	const summary = [
 		lines.length === 0
 			? 'No broken links found.'
-			: `Found ${lines.length} broken links:\n\n${lines.join('\n')}`;
+			: `Found ${lines.length} broken links:\n\n${lines.join('\n')}`,
+		pendingLines.length > 0 &&
+			`${pendingLines.length} docs.n8n.io links changed in the last 30 days and do not work yet:\n\n${pendingLines.join('\n')}`,
+	]
+		.filter(Boolean)
+		.join('\n\n');
 
 	console.log(summary);
 	if (process.env.GITHUB_STEP_SUMMARY) {

@@ -22,6 +22,10 @@ jobs:
         with:
           persist-credentials: false
 
+      # The report script uses git blame to find links on lines that changed in the last 30 days.
+      - name: Fetch recent history
+        run: git fetch --quiet --shallow-since="35 days ago" origin "$GITHUB_SHA"
+
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:

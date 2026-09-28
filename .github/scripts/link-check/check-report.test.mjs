@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { classify, collectFailures, isBrowserPass } from './check-report.mjs';
+import {
+	classify,
+	collectFailures,
+	isBrowserPass,
+	isInGracePeriod,
+	parseBlameTime,
+} from './check-report.mjs';
 
 const entry = (url, status, line = 1) => ({ url, status, span: { line, column: 1 } });
 
@@ -49,4 +55,20 @@ test('isBrowserPass rejects error statuses and not-found pages', () => {
 	assert.equal(isBrowserPass({ status: 200, title: 'Page not found' }), false);
 	assert.equal(isBrowserPass({ status: 200, title: '404 Error | Salesforce Developers' }), false);
 	assert.equal(isBrowserPass({ status: 0, title: '' }), false);
+});
+
+test('parseBlameTime reads the commit time and treats history boundaries as unknown', () => {
+	const blame = 'abc 1 1 1\nauthor A\ncommitter-time 1790000000\nfilename x.ts\n\tline';
+	assert.equal(parseBlameTime(blame), 1790000000000);
+	assert.equal(parseBlameTime(blame.replace('filename', 'boundary\nfilename')), null);
+});
+
+test('isInGracePeriod applies only to recent docs.n8n.io lines', () => {
+	const day = 24 * 60 * 60 * 1000;
+	const now = 100 * day;
+	const docs = { url: 'https://docs.n8n.io/page/' };
+	assert.equal(isInGracePeriod(docs, now - 29 * day, now), true);
+	assert.equal(isInGracePeriod(docs, now - 31 * day, now), false);
+	assert.equal(isInGracePeriod(docs, null, now), false);
+	assert.equal(isInGracePeriod({ url: 'https://example.org/' }, now - day, now), false);
 });

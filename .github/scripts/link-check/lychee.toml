@@ -64,8 +64,6 @@ exclude = [
 	'^https://github\.com/n8n-io/license-management',
 	# Attribution headers copied as-is from a third-party library.
 	'^http://(getsprink\.com|brett-zamir\.me)',
-	# The docs pages for these hidden nodes do not exist yet (DOC-2341).
-	'n8n-nodes-langchain\.(embeddings|vectorstore)databricks',
 ]
 
 # docs.n8n.io has most of the links. It is our own site, so allow a shorter interval.
