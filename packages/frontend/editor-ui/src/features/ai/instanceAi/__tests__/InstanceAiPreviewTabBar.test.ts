@@ -397,6 +397,41 @@ describe('InstanceAiPreviewTabBar', () => {
 			).toBeNull();
 		});
 
+		it('replaces the placeholders when the details load while the card is open', async () => {
+			let resolveWorkflows: (rows: unknown[]) => void = () => {};
+			mockSearchWorkflows.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWorkflows = resolve;
+				}),
+			);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
+			).not.toBeNull();
+
+			resolveWorkflows([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: 'v1',
+				},
+			]);
+			await waitFor(() =>
+				expect(
+					document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+				).toHaveTextContent('Published'),
+			);
+			expect(getHoverCard()).toHaveTextContent('Edited');
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
+			).toBeNull();
+		});
+
 		it('shows the edited time and column count of a data table', async () => {
 			mockFetchDataTablesApi.mockResolvedValue({
 				count: 1,
