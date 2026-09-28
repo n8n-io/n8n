@@ -319,7 +319,6 @@ describe('LogsOverviewPanel', () => {
 
 	it('should trigger partial execution if the button is clicked', async () => {
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
-		// A run saves an unsaved workflow first and stops when that save fails.
 		workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 		const logs = createLogTree(

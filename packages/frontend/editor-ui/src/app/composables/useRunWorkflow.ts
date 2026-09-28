@@ -177,9 +177,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				}
 			}
 
-			// The executor only ever runs the DB copy, so a refused save (e.g. a
-			// node type policy) must stop the run: otherwise the stored version
-			// runs and the canvas highlights nodes the builder no longer sees.
 			if (isNewWorkflow || uiStore.stateIsDirty) {
 				const saved = await workflowSaving.saveCurrentWorkflow({
 					id: workflowDocumentStore.value.workflowId,
