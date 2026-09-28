@@ -1,9 +1,11 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 import unset from 'lodash/unset';
 import {
 	NodeOperationError,
 	deepCopy,
+	isSafeObjectProperty,
 	NodeConnectionTypes,
 	setSafeObjectProperty,
 } from 'n8n-workflow';
@@ -149,6 +151,8 @@ export class SplitOut implements INodeType {
 				.split(',')
 				.filter((field) => field.trim() !== '')
 				.map((field) => field.trim());
+			const supportsDestinationPaths =
+				nodeVersion >= 1.1 && !disableDotNotation && destinationFields.length > 0;
 
 			if (destinationFields.length && destinationFields.length !== fieldsToSplitOut.length) {
 				throw new NodeOperationError(
@@ -161,8 +165,6 @@ export class SplitOut implements INodeType {
 				| 'selectedOtherFields'
 				| 'allOtherFields'
 				| 'noOtherFields';
-			const supportsDestinationPaths =
-				nodeVersion >= 1.1 && !disableDotNotation && destinationFields.length > 0;
 
 			const multiSplit = fieldsToSplitOut.length > 1;
 
@@ -183,9 +185,22 @@ export class SplitOut implements INodeType {
 					setSafeObjectProperty(target, field, value);
 				}
 			};
+			const assertSafeOutputField = (field: string) => {
+				const path = supportsDestinationPaths ? toPath(field) : [field];
+				const reservedProperty = path.find((segment) => !isSafeObjectProperty(segment));
+				if (reservedProperty !== undefined) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The output field "${field}" contains the reserved property "${reservedProperty}"`,
+						{ description: 'Change the field name and try again.' },
+					);
+				}
+			};
 
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
+				const fieldName = destinationFieldName || fieldToSplitOut;
+				if (fieldToSplitOut !== '$binary') assertSafeOutputField(fieldName);
 
 				let entityToSplit: IDataObject[] = [];
 
@@ -223,8 +238,6 @@ export class SplitOut implements INodeType {
 					if (splited[elementIndex] === undefined) {
 						splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 					}
-
-					const fieldName = destinationFieldName || fieldToSplitOut;
 
 					if (fieldToSplitOut === '$binary') {
 						if (splited[elementIndex].binary === undefined) {

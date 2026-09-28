@@ -102,6 +102,34 @@ describe('SplitOut', () => {
 		]);
 	});
 
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should reject the reserved destination path segment %s',
+		async (reservedProperty) => {
+			const destinationFieldName = `output.${reservedProperty}.value`;
+			await expect(
+				execute('data', {
+					options: { destinationFieldName },
+				}),
+			).rejects.toThrow(
+				`The output field "${destinationFieldName}" contains the reserved property "${reservedProperty}"`,
+			);
+		},
+	);
+
+	it.each([
+		['version 1', { typeVersion: 1, options: {} }],
+		['disabled dot notation', { typeVersion: 1.1, options: { disableDotNotation: true } }],
+	] as const)('should reject a reserved literal destination in %s', async (_, config) => {
+		await expect(
+			execute('data', {
+				...config,
+				options: { ...config.options, destinationFieldName: 'constructor' },
+			}),
+		).rejects.toThrow(
+			'The output field "constructor" contains the reserved property "constructor"',
+		);
+	});
+
 	it('should preserve literal destination fields in version 1', async () => {
 		await expect(
 			execute('data', {
