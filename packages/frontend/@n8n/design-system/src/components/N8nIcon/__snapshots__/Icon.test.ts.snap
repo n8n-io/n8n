@@ -1,37 +1,37 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Icon > should render correctly with a custom color 1`] = `
-"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
+  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with a custom size 1`] = `
-"<svg viewBox="0 0 24 24" width="24px" height="24px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="24px" width="24px" data-icon="check">
+  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with a deprecated icon 1`] = `
-"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="variable">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 21s-4-3-4-9s4-9 4-9m8 0s4 3 4 9s-4 9-4 9M15 9l-6 6m0-6l6 6"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="variable">
+  <path d="M4.176 2.38A5.72 5.72 0 0 0 1.5 7.224v1.552c0 2.04 1.069 3.83 2.676 4.843L3.47 14.95A7.22 7.22 0 0 1 0 8.776V7.224A7.22 7.22 0 0 1 3.47 1.05zm8.351-1.33A7.22 7.22 0 0 1 16 7.224v1.552a7.22 7.22 0 0 1-3.473 6.174l-.704-1.33A5.72 5.72 0 0 0 14.5 8.775V7.224a5.72 5.72 0 0 0-2.677-4.844zM11.31 5.444l-.502.558L9.008 8l1.8 1.998.502.558-1.116 1.004-.502-.558L8 9.122l-1.692 1.88-.502.558-1.116-1.004.502-.558L6.99 8 5.192 6.002l-.502-.558L5.806 4.44l.502.558L8 6.878l1.692-1.88.502-.558z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with default props 1`] = `
-"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
+  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with predefined size 1`] = `
-"<svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="16px" width="16px" data-icon="check">
+  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with spin enabled 1`] = `
-"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+"<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
+  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
