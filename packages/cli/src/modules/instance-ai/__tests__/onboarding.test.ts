@@ -149,7 +149,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
 			THREAD_ID,
 			user.id,
-			'Got it! Tell me a little about how you use Gmail and Slack.',
+			'Got it. Finally, tell me a little about how you use Gmail and Slack.',
 			expect.stringContaining('<onboarding-answer>'),
 		);
 	});
