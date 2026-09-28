@@ -365,8 +365,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						runId: 'run-select-2',
 						toolCallId: 'tool-select-2',
 						integrationType: 'whatsapp',
+						resumeData: expect.objectContaining({ type: 'select', value: 'charmander' }),
 					}),
 				);
+				expect(ctx.lastPost()?.body).toMatchObject({
+					to: fixtures.contact.wa_id,
+					type: 'text',
+					text: { body: 'Great choice' },
+				});
 			} finally {
 				await ctx.shutdown();
 			}
