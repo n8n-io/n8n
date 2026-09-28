@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
+import { UnexpectedError } from '../src/errors/base/unexpected.error';
 import {
 	NodeConnectionTypes,
 	type INode,
@@ -229,6 +230,27 @@ describe('collectSubWorkflowOutput', () => {
 		).toEqual([[item(2)]]);
 	});
 
+	it.each([false, true])(
+		'uses terminal pin data in manual mode when lastRunOnly is %s',
+		async (lastRunOnly) => {
+			const input = run([
+				[[item(1)], []],
+				[[], [item(2)]],
+			]);
+			input.mode = 'manual';
+			input.data.resultData.pinData = { Last: [item(3), item(4)] };
+
+			expect(
+				await collectSubWorkflowOutput(input, workflow(['main', 'main']), { lastRunOnly }),
+			).toEqual([
+				[
+					{ json: item(3), pairedItem: { item: 0 } },
+					{ json: item(4), pairedItem: { item: 1 } },
+				],
+			]);
+		},
+	);
+
 	it('keeps binary data and item pairing without changing the item', async () => {
 		const output = {
 			...item(2),
@@ -248,6 +270,16 @@ describe('collectSubWorkflowOutput', () => {
 		expect(await collectSubWorkflowOutput(run([[[]]]), child, { lastRunOnly: false })).toEqual([
 			[],
 		]);
+	});
+
+	it('fails when the saved workflow does not contain the executed node', async () => {
+		const child = workflow(['main'], { name: 'Other' });
+
+		await expect(
+			collectSubWorkflowOutput(run([[[item(1)]]]), child, { lastRunOnly: false }),
+		).rejects.toThrow(
+			new UnexpectedError('The last executed node is missing from the saved workflow.'),
+		);
 	});
 });
 

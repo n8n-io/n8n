@@ -62,6 +62,8 @@ function changeDraftOutput(child: IWorkflowBase) {
 	requiredNode(child, 'Start').typeVersion = 1.1;
 	const last = requiredNode(child, 'Last');
 	if (last.type === 'n8n-nodes-base.switch') last.parameters.numberOutputs = 1;
+	// The collector must find the terminal node in the saved workflow.
+	last.name = 'Draft last';
 }
 
 async function publishParent(api: ApiHelpers, childId: string, mode = 'once', ids = [55, 56, 57]) {

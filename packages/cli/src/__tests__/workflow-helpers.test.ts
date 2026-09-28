@@ -1069,7 +1069,10 @@ describe('updateParentExecutionWithChildResults', () => {
 	}
 
 	it.each([false, true])('uses the saved lastRunOnly=%s policy on resume', async (lastRunOnly) => {
-		const child = childRun('success', 'Last', { data: { main: [[], [{ json: { id: 57 } }]] } });
+		const child = childRun('success', 'Last', {
+			executionIndex: 1,
+			data: { main: [[], [{ json: { id: 57 } }]] },
+		});
 		child.data.resultData.runData.Last.unshift({
 			startTime: 0,
 			executionTime: 0,
@@ -1077,6 +1080,7 @@ describe('updateParentExecutionWithChildResults', () => {
 			executionIndex: 0,
 			data: { main: [[], [{ json: { id: 55 } }]] },
 		});
+		if (!lastRunOnly) child.data.resultData.runData.Last.reverse();
 		child.data.subWorkflowOutput = { lastRunOnly };
 		const entry = await resumeWith(child, undefined, savedWorkflow(2));
 		expect(entry.data).toEqual({
