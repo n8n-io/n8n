@@ -89,6 +89,10 @@ export class AppPreviewProxyController {
 			proxyReq: (proxyReq, req) => {
 				proxyReq.removeHeader('cookie');
 				proxyReq.removeHeader('authorization');
+				// The sandbox service refuses every 3xx from its runner, 304 included, so a
+				// revalidated preview document or module would come back as a 502.
+				proxyReq.removeHeader('if-none-match');
+				proxyReq.removeHeader('if-modified-since');
 				const apiKey = devEntry(req)?.sandbox.apiKey;
 				if (apiKey) proxyReq.setHeader('X-Api-Key', apiKey);
 				fixRequestBody(proxyReq, req);
