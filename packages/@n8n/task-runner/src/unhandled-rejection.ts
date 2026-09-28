@@ -13,6 +13,7 @@ function describeKind(reason: object): string {
 }
 
 function describeObject(reason: object): string {
+	// Duck-typed, since an error from the vm sandbox fails `instanceof Error`.
 	if ('stack' in reason && typeof reason.stack === 'string') {
 		return reason.stack;
 	}
@@ -23,6 +24,7 @@ function describeObject(reason: object): string {
 	}
 
 	const kind = describeKind(reason);
+	// Read only the length: listing every index of a huge array or buffer can exhaust the heap.
 	if (Array.isArray(reason)) {
 		return `${kind} of length ${reason.length}`;
 	}
@@ -44,6 +46,7 @@ export function describeRejectionReason(reason: unknown): string {
 export function onUnhandledRejection(reason: unknown): void {
 	let message: string;
 	try {
+		// A Proxy or getter on the reason can throw.
 		message = `${LOG_PREFIX} Reason: ${describeRejectionReason(reason)}`;
 	} catch {
 		message = `${LOG_PREFIX} Reason could not be described`;
