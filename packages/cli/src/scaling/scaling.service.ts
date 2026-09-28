@@ -387,8 +387,6 @@ export class ScalingService {
 			// Bull job IDs are unique per queue only, so pool queues can reuse them
 			const jobKey = toJobKey(job.queue.name, job.id);
 
-			// ponytail: one status query per minute per in-flight execution; move to
-			// a single batched query if thousands of executions are in flight at once
 			const recheckTimer = setInterval(() => {
 				void this.recheckJobWait(executionId);
 			}, JOB_WAIT_RECHECK_INTERVAL_MS);
