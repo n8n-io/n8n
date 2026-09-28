@@ -579,7 +579,7 @@ describe('InstanceAiPreviewTabBar', () => {
 
 			await hoverTab(container, 'wf-1');
 			const cardContent = getHoverCard()!.parentElement!;
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await fireEvent.pointerEnter(cardContent, { pointerType: 'mouse' });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE * 2);
 
