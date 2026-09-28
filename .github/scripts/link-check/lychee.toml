@@ -19,6 +19,9 @@ host_request_interval = "100ms"
 scheme = ["https", "http"]
 exclude_all_private = true
 
+# npmjs.com shows GitHub runners a bot challenge, also in a browser. The registry API does not.
+remap = ['^https://www\.npmjs\.com/package/(.+)$ https://registry.npmjs.org/$1']
+
 preprocess = { command = ".github/scripts/link-check/preprocess.sh" }
 
 exclude_path = [
@@ -51,6 +54,10 @@ exclude = [
 	'^https?://[^/]+\.googleapis\.com',
 	'^https?://graph\.microsoft\.com',
 	'^https://www\.reddit\.com/.*\.json$',
+	# A URL prefix that the editor appends package names to.
+	'^https://www\.npmjs\.com/package/$',
+	# A Vercel bot checkpoint blocks GitHub runners, also in a browser.
+	'^https://www\.contentful\.com/',
 	# Private to n8n employees.
 	'^https://n8nio\.slack\.com/',
 	'^https://github\.com/n8n-io/license-management',
