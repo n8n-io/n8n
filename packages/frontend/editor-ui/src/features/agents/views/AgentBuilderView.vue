@@ -1993,7 +1993,7 @@ const headerActions = computed(() => {
 		actions.push({
 			id: 'edit-description',
 			label: locale.baseText('agents.builder.editDescription'),
-			icon: 'file-text',
+			icon: 'tags',
 		});
 	}
 
