@@ -31,10 +31,11 @@ interface OnboardingOpening {
 export const ONBOARDING_OPENING: OnboardingOpening = {
 	title: 'Welcome to n8n',
 	greeting: [
-		"Hi {{firstName}}, I'm your Assistant. Think of me as your n8n expert.",
-		"I'll ask 2 questions to finish your setup and suggest automations based on real workflows.",
+		"Hi {{firstName}}, I'm your Assistant.",
+		'Think of me as your n8n expert.',
+		"Two final questions, then I'll suggest automations that fit how you work.",
 	].join('\n\n'),
-	followUp: 'Got it! Tell me a little about how you use {{apps}}.',
+	followUp: 'Got it. Finally, tell me a little about how you use {{apps}}.',
 	questions: [
 		// The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
 		// metadata (`what_team_are_you_on`). The card hides options that start with "other"; its
