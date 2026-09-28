@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddReportDateToInstanceMonitoringReport1790262708467';
+const MIGRATION_NAME = 'AddReportDateToInstanceMonitoringReport1790583238183';
 const TABLE = 'instance_monitoring_report';
 
 type Status = 'pending' | 'delivered' | 'skipped_after_max_retries';

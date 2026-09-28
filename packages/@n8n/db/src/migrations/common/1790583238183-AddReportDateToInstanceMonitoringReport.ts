@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const TABLE_NAME = 'instance_monitoring_report';
 const COLUMN_NAME = 'reportDate';
 
-export class AddReportDateToInstanceMonitoringReport1790262708467 implements ReversibleMigration {
+export class AddReportDateToInstanceMonitoringReport1790583238183 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const { addColumns, column, createIndex } = context.schemaBuilder;
 
