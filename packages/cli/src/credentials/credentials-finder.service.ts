@@ -346,16 +346,24 @@ export class CredentialsFinderService {
 	 * A credential that no longer exists counts as unusable — for the instance
 	 * owner too, since nobody can use a row that is gone.
 	 *
+	 * A `null` user cannot use anything — every id comes back, described as it is.
+	 *
 	 * @param ignoreGlobalUseScope - answer for this user's own access only, as if
 	 * they held no instance-wide `credential:use`. Redaction asks this way: an
 	 * Owner must not see execution data through a grant nobody else has.
 	 */
 	async findUnusableCredentialsForUser(
-		user: User,
+		user: User | null,
 		credentialIds: string[],
 		{ ignoreGlobalUseScope = false }: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<UnusableCredential[]> {
 		if (credentialIds.length === 0) return [];
+
+		// A user we cannot resolve can use nothing, but the credentials are still
+		// described as they are: `exists` drives the publish gate's "no longer
+		// exists, update the node" wording, and a failed user lookup is no reason
+		// to send someone editing a node whose credential is fine.
+		if (!user) return await this.describeCredentials(credentialIds);
 
 		if (!ignoreGlobalUseScope && hasGlobalScope(user, 'credential:use')) {
 			const existingIds = new Set(await this.credentialsRepository.findExistingIds(credentialIds));
@@ -374,8 +382,13 @@ export class CredentialsFinderService {
 		return await this.describeCredentials(credentialIds.filter((id) => !usableIds.has(id)));
 	}
 
-	/** Names and owning projects for the given ids, for an error message. */
-	private async describeCredentials(credentialIds: string[]): Promise<UnusableCredential[]> {
+	/**
+	 * Names and owning projects for the given ids, for an error message. Public
+	 * for callers that already know the credentials are unusable and only need
+	 * them named — the stored name, because a node's remembered one goes stale
+	 * the moment the credential is renamed.
+	 */
+	async describeCredentials(credentialIds: string[]): Promise<UnusableCredential[]> {
 		if (credentialIds.length === 0) return [];
 
 		const [names, ownerProjects] = await Promise.all([

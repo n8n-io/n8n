@@ -12,6 +12,8 @@ import {
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { Logger } from '@n8n/backend-common';
+
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -32,6 +34,7 @@ describe('CredentialsPermissionChecker', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const logger = mock<Logger>();
 	const permissionChecker = new CredentialsPermissionChecker(
 		sharedCredentialsRepository,
 		credentialsRepository,
@@ -40,6 +43,7 @@ describe('CredentialsPermissionChecker', () => {
 		nodeTypes,
 		userRepository,
 		credentialsFinderService,
+		logger,
 	);
 
 	const workflowId = 'workflow123';
@@ -290,7 +294,9 @@ describe('CredentialsPermissionChecker', () => {
 		});
 	});
 
-	describe('the error the acting-user route throws', () => {
+	// The project route rejects the credential in every case here, so each one
+	// reaches the acting user.
+	describe('check through the acting-user route', () => {
 		const actingUser = mock<User>({ id: 'acting-user' });
 
 		beforeEach(() => {
@@ -299,6 +305,21 @@ describe('CredentialsPermissionChecker', () => {
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
 			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 			userRepository.findOne.mockResolvedValue(actingUser);
+		});
+
+		// The grant this ticket exists for: the project does not carry the credential,
+		// and the run goes ahead anyway because the person it acts as may use it.
+		it('throws nothing when the acting user may use the credential', async () => {
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+
+			await expect(
+				permissionChecker.check(workflowId, [node], actingUser.id),
+			).resolves.not.toThrow();
+
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				actingUser,
+				[credentialId],
+			);
 		});
 
 		it('names the credential, the node, and the project to ask', async () => {
@@ -335,6 +356,18 @@ describe('CredentialsPermissionChecker', () => {
 				message: 'Node "Test Node" uses the credential "Alice\'s Gmail", which you cannot use',
 				description: 'Ask its owner to share this credential with you.',
 			});
+		});
+
+		// A workflow published before publisher attribution existed, or one whose
+		// publisher was deleted, is refused for want of an identity. The user-facing
+		// message stays the sharing one, so the log is the only place that says why.
+		it('warns that the run had no identity, naming the remedy', async () => {
+			await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Refusing a run with no identity to attribute it to; republish the workflow to restore attribution',
+				{ workflowId, credentialIds: [credentialId] },
+			);
 		});
 
 		// Without an identity we cannot tell a colleague's personal credential from
@@ -838,9 +871,18 @@ describe('CredentialsPermissionChecker', () => {
 
 		it('should throw when the triggering user cannot be resolved', async () => {
 			userRepository.findOne.mockResolvedValueOnce(null);
+			// A null user reaches the shared check, which reports every id.
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential', exists: true, ownerProject: null },
+			]);
 
 			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
 				'Node "Test Node" uses a credential you do not have access to',
+			);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				null,
+				[credentialId],
+				{},
 			);
 		});
 
@@ -858,6 +900,7 @@ describe('CredentialsPermissionChecker', () => {
 			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 				actingUser,
 				[credentialId],
+				{},
 			);
 		});
 
@@ -889,6 +932,10 @@ describe('CredentialsPermissionChecker', () => {
 			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
 				mock<CredentialsEntity>({ id: credentialId, usageScope: 'instance' }),
+			]);
+			// Named from the database, not from the node's stale copy.
+			credentialsFinderService.describeCredentials.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Provider connection', exists: true, ownerProject: null },
 			]);
 
 			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
@@ -938,6 +985,7 @@ describe('CredentialsPermissionChecker', () => {
 			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 				actingUser,
 				[credentialId],
+				{},
 			);
 		});
 
@@ -968,6 +1016,11 @@ describe('CredentialsPermissionChecker', () => {
 			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
 				mock<CredentialsEntity>({ id: credentialId }),
 			]);
+			// The stored name wins for the instance-scoped one; renaming a provider
+			// connection leaves the node's copy stale.
+			credentialsFinderService.describeCredentials.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Renamed connection', exists: true, ownerProject: null },
+			]);
 			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
 				{ id: otherCredentialId, name: 'Other Credential', exists: true, ownerProject: null },
 			]);
@@ -975,7 +1028,7 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(
 				permissionChecker.findInaccessibleForUser(userId, [node, otherNode]),
 			).resolves.toEqual([
-				{ id: credentialId, name: 'Test Credential', exists: true },
+				{ id: credentialId, name: 'Renamed connection', exists: true },
 				{ id: otherCredentialId, name: 'Other Credential', exists: true },
 			]);
 
@@ -984,16 +1037,22 @@ describe('CredentialsPermissionChecker', () => {
 			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 				expect.anything(),
 				[otherCredentialId],
+				{},
 			);
 		});
 
-		it('fails closed and names every referenced credential when the user cannot be resolved', async () => {
+		// The publish gate reads `exists` to decide between "ask its owner to share
+		// it" and "no longer exists, update the node". A failed user lookup must not
+		// send a publisher editing a node whose credential is fine.
+		it('fails closed when the user cannot be resolved, without calling the credential deleted', async () => {
 			userRepository.findOne.mockResolvedValueOnce(null);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential', exists: true, ownerProject: null },
+			]);
 
 			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
-				{ id: credentialId, name: 'Test Credential', exists: false },
+				{ id: credentialId, name: 'Test Credential', exists: true },
 			]);
-			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1070,6 +1129,9 @@ describe('CredentialsPermissionChecker', () => {
 			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
 				mock<CredentialsEntity>({ id: credentialId }),
 			]);
+			credentialsFinderService.describeCredentials.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Provider connection', exists: true, ownerProject: null },
+			]);
 
 			await expect(
 				permissionChecker.resolveInaccessibleCredentialIdsForUser(user, [credentialId]),
@@ -1083,11 +1145,13 @@ describe('CredentialsPermissionChecker', () => {
 
 		it('fails closed when the user cannot be found', async () => {
 			userRepository.findOne.mockResolvedValueOnce(null);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential', exists: true, ownerProject: null },
+			]);
 
 			await expect(
 				permissionChecker.resolveInaccessibleCredentialIdsForUserId(userId, [credentialId]),
 			).resolves.toEqual([credentialId]);
-			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 		});
 
 		it('loads the user with the role relation and delegates to the core check', async () => {

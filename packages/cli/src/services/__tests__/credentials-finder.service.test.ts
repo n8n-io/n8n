@@ -1101,6 +1101,23 @@ describe('CredentialsFinderService', () => {
 			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
 		});
 
+		// `exists` drives the publish gate's "no longer exists, update the node"
+		// wording, so a user we could not resolve must not make live credentials
+		// look deleted.
+		it('describes the credentials as they are when the user cannot be resolved', async () => {
+			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Team Gmail' },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+				new Map([['cred-1', ownerProject]]),
+			);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(null, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject }]);
+		});
+
 		it('names what the user cannot use, with the project to ask', async () => {
 			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);

@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -70,6 +71,7 @@ export class CredentialsPermissionChecker {
 		private readonly nodeTypes: NodeTypes,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -85,30 +87,15 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		const { instanceScopedIds, projectScopedIds } =
-			await this.partitionByUsageScope(workflowCredIds);
-
-		// Not usable by a workflow at all, whoever is asking.
-		if (instanceScopedIds.length > 0) {
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[instanceScopedIds[0]][0]);
-		}
-
-		const user = await this.loadUserWithRole(userId);
-		if (!user) {
-			// Cannot resolve the acting user - fail closed.
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[projectScopedIds[0]][0]);
-		}
-
-		const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
-			user,
-			projectScopedIds,
-		);
+		const unusable = await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds);
 		if (unusable.length === 0) return;
 
 		const nodeToFlag = credIdsToNodes[unusable[0].id][0];
 		// The richer message is part of the feature, so it stays behind the flag
-		// along with everything else the user can see.
-		throw isCredSharingEnabled()
+		// along with everything else the user can see. An unnamed entry — an
+		// instance-scoped connection, or an unresolvable user — has nothing to name
+		// or point at, so it keeps the plain message too.
+		throw isCredSharingEnabled() && unusable[0].name !== unusable[0].id
 			? new UnusableCredentialForUserError(nodeToFlag, unusable[0])
 			: new InaccessibleCredentialForUserError(nodeToFlag);
 	}
@@ -128,31 +115,15 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return [];
 
-		const { instanceScopedIds, projectScopedIds } =
-			await this.partitionByUsageScope(workflowCredIds);
+		const unusable = await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds);
 
-		const user = await this.loadUserWithRole(userId);
-		// Unresolvable user: report everything, the same fail-closed answer `checkForUser` gives.
-		const unusable = user
-			? await this.credentialsFinderService.findUnusableCredentialsForUser(user, projectScopedIds)
-			: projectScopedIds.map((id) => ({ id, name: id, exists: false, ownerProject: null }));
-
-		// Their rows exist; only their names were never fetched, so read them off the node.
-		const instanceScoped = instanceScopedIds.map((id) => ({
+		return unusable.map(({ id, name, exists }) => ({
 			id,
-			name: this.cachedCredentialName(id, credIdsToNodes),
-			exists: true,
+			// An entry the database could not name carries its id. This caller holds
+			// the nodes, so it can do better: use the name the node remembers.
+			name: name === id ? this.cachedCredentialName(id, credIdsToNodes) : name,
+			exists,
 		}));
-
-		return [
-			...instanceScoped,
-			...unusable.map(({ id, name, exists }) => ({
-				id,
-				// The row is gone, so fall back to the name the node itself remembers.
-				name: exists ? name : this.cachedCredentialName(id, credIdsToNodes),
-				exists,
-			})),
-		];
 	}
 
 	/** Best-effort name for a credential id from the node's own cached reference, for when the credential row is gone. */
@@ -167,10 +138,47 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
-	 * Splits ids into those a workflow may never use (instance-scoped provider
-	 * connections) and the rest. The first group fails for everyone, so it must
-	 * never reach the acting-user question.
+	 * Everything among `credentialIds` that this run may not use: the
+	 * instance-scoped provider connections no workflow may use at all, then
+	 * whatever `user` personally cannot use of the rest.
+	 *
+	 * The one composition every entry point in this file needs, so they cannot
+	 * answer the same question differently. A `null` user means the acting user
+	 * could not be resolved: nothing is usable, and the credentials are still
+	 * described as they are.
+	 *
+	 * Entries the database could not name carry the id as their name. A caller
+	 * holding the nodes can do better, and {@link findInaccessibleForUser} does.
 	 */
+	private async findUnusable(
+		user: User | null,
+		credentialIds: string[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	): Promise<UnusableCredential[]> {
+		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
+
+		// A provider connection is not something a workflow may use, whoever asks, so
+		// there is no usability question to put — only a name to report, and it has
+		// to be the stored one: a node's remembered name goes stale the moment the
+		// connection is renamed.
+		const instanceScoped = instanceScopedIds.length
+			? await this.credentialsFinderService.describeCredentials(instanceScopedIds)
+			: [];
+
+		if (projectScopedIds.length === 0) return instanceScoped;
+
+		// Handles an unresolvable user too, and describes the credentials as they are
+		// rather than guessing that they are gone.
+		const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
+			user,
+			projectScopedIds,
+			options,
+		);
+
+		return [...instanceScoped, ...unusable];
+	}
+
+	/** Splits ids by whether a workflow may use them at all. */
 	private async partitionByUsageScope(
 		credentialIds: string[],
 	): Promise<{ instanceScopedIds: string[]; projectScopedIds: string[] }> {
@@ -197,12 +205,12 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
-		const user = await this.loadUserWithRole(userId);
-		if (!user) {
-			// Cannot resolve the user - fail closed.
-			return credentialIds;
-		}
-		return await this.resolveInaccessibleCredentialIdsForUser(user, credentialIds, options);
+		const unusable = await this.findUnusable(
+			await this.loadUserWithRole(userId),
+			credentialIds,
+			options,
+		);
+		return unusable.map((c) => c.id);
 	}
 
 	/**
@@ -215,16 +223,8 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		options: { ignoreGlobalUseScope?: boolean } = {},
 	): Promise<string[]> {
-		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
-		if (projectScopedIds.length === 0) return instanceScopedIds;
-
-		const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
-			user,
-			projectScopedIds,
-			options,
-		);
-
-		return [...instanceScopedIds, ...unusable.map((c) => c.id)];
+		const unusable = await this.findUnusable(user, credentialIds, options);
+		return unusable.map((c) => c.id);
 	}
 
 	/** Loads the role relation (scopes are eager) so `hasGlobalScope` can resolve. */
@@ -334,7 +334,19 @@ export class CredentialsPermissionChecker {
 		// acting user we cannot tell a colleague's personal credential from one
 		// simply never shared here, so keep the sharing answer, which is the
 		// accurate one for the common case.
-		if (!isCredSharingEnabled() || !actingUserId) {
+		if (!isCredSharingEnabled()) {
+			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+		}
+
+		if (!actingUserId) {
+			// Says out loud what the sharing message cannot: the run was refused for
+			// want of an identity, not because the credential was never shared. Hit by
+			// a workflow published before publisher attribution existed, or one whose
+			// publisher was deleted. Republishing writes the record and restores it.
+			this.logger.warn(
+				'Refusing a run with no identity to attribute it to; republish the workflow to restore attribution',
+				{ workflowId, credentialIds: rejectedByProject },
+			);
 			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
 		}
 
@@ -343,6 +355,10 @@ export class CredentialsPermissionChecker {
 			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
 		}
 
+		// Asks the finder directly rather than going through `findUnusable`: the ids
+		// here are already the project route's leftovers, so re-partitioning would
+		// re-query for nothing, and an unresolvable user has to keep the sharing
+		// answer above instead of failing closed with a named credential.
 		const unusableForActingUser =
 			await this.credentialsFinderService.findUnusableCredentialsForUser(
 				actingUser,
