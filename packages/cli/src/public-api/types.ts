@@ -5,7 +5,6 @@ import type {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
@@ -222,12 +221,4 @@ export declare namespace LdapRequest {
 	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
-}
-
-// ----------------------------------
-//        /settings/sso/oidc
-// ----------------------------------
-
-export declare namespace SsoOidcRequest {
-	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

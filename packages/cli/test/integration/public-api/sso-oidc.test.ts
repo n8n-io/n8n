@@ -297,6 +297,18 @@ describe('OIDC SSO configuration in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects an unknown body key with 400 and names the key', async () => {
+			testServer.license.enable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...validConfig, extra: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('extra');
+		});
+
 		it('rejects a partial body missing loginEnabled with 400', async () => {
 			testServer.license.enable('feat:oidc');
 			const { loginEnabled: _loginEnabled, ...partial } = validConfig;
