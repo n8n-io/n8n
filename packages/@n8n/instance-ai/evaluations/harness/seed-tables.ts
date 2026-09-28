@@ -90,7 +90,7 @@ export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): st
  *  project, so under the declared name two iterations of one case collide — they
  *  overlap on a lane, which is released when the build returns while the tables
  *  live to the last scenario row. Callers keep the declared name as the map key. */
-export function uniquifyScenarioTableNames(
+export function uniquifySeedTableNames(
 	tables: InstanceAiEvalSeedDataTable[],
 ): InstanceAiEvalSeedDataTable[] {
 	const suffix = freshSeedNameSuffix();

@@ -10,7 +10,7 @@ import {
 	evictLeftoverSeedTables,
 	reseedScenarioTables,
 	scenariosRequireSerialSeeding,
-	uniquifyScenarioTableNames,
+	uniquifySeedTableNames,
 } from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
 
@@ -253,10 +253,10 @@ describe('reseedScenarioTables', () => {
 	});
 });
 
-describe('uniquifyScenarioTableNames', () => {
+describe('uniquifySeedTableNames', () => {
 	it('suffixes each table so two runs of one case do not contend for the name', () => {
-		const [first] = uniquifyScenarioTableNames([jobApplications]);
-		const [second] = uniquifyScenarioTableNames([jobApplications]);
+		const [first] = uniquifySeedTableNames([jobApplications]);
+		const [second] = uniquifySeedTableNames([jobApplications]);
 
 		expect(first.name).toMatch(/^Job Applications \[seed [0-9a-f]{8}\]$/);
 		expect(second.name).not.toBe(first.name);
@@ -265,7 +265,7 @@ describe('uniquifyScenarioTableNames', () => {
 
 	it('shares one suffix across a case, and keeps columns and rows intact', () => {
 		const other = { ...jobApplications, id: 'other-1234', name: 'Other' };
-		const [a, b] = uniquifyScenarioTableNames([jobApplications, other]);
+		const [a, b] = uniquifySeedTableNames([jobApplications, other]);
 
 		expect(a.name.replace('Job Applications', '')).toBe(b.name.replace('Other', ''));
 		expect(a.columns).toEqual(jobApplications.columns);
@@ -273,7 +273,7 @@ describe('uniquifyScenarioTableNames', () => {
 	});
 
 	it('keeps the suffixed name inside the 128-char column bound', () => {
-		const [long] = uniquifyScenarioTableNames([{ ...jobApplications, name: 'x'.repeat(200) }]);
+		const [long] = uniquifySeedTableNames([{ ...jobApplications, name: 'x'.repeat(200) }]);
 		expect(long.name.length).toBe(128);
 	});
 });
@@ -322,7 +322,7 @@ describe('evictLeftoverSeedTables', () => {
 	it('matches a leftover whose base was truncated to fit the column bound', async () => {
 		const deleteDataTable = vi.fn();
 		const longName = 'x'.repeat(200);
-		const [stored] = uniquifyScenarioTableNames([{ ...jobApplications, name: longName }]);
+		const [stored] = uniquifySeedTableNames([{ ...jobApplications, name: longName }]);
 		await evictLeftoverSeedTables(
 			evictClient([{ id: 'left-long', name: stored.name }], deleteDataTable),
 			[{ ...jobApplications, name: longName }],
