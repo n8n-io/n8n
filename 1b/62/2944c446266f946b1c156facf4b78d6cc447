@@ -1,0 +1,65 @@
+packages/cli/src/workflows/__tests__/workflow-publisher.service.test.ts
+  s_6e5e6dade5599e::t_b71c49e04214cc 2,12,21-24,27,31,40,69
+  s_6e5e6dade5599e::t_8eecb968346c82 48-63
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_6e5e6dade5599e::t_4181d5a8adcb1d 56-58,75-78
+  s_6e5e6dade5599e::t_45fd86b9b9e1b5 69-71
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_6e5e6dade5599e::t_9998b3b2b84723 952,995
+packages/cli/src/workflows/workflow-publisher.service.ts
+  s_6e5e6dade5599e::t_a845e676108ef7 38-40,48-54
+  s_6e5e6dade5599e::t_60ac9527bb1052 2,24-25,34-37,44,58
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_6e5e6dade5599e::t_30b86339f932ad 92
+  s_6e5e6dade5599e::t_656cf57b31ee2b 30,46
+  s_6e5e6dade5599e::t_345ff0f1279302 18,98-117
+  s_6e5e6dade5599e::t_d5b245c2927c6f 118-119
+packages/cli/src/webhooks/live-webhooks.ts
+  s_6e5e6dade5599e::t_cbeab32cfc056d 141-144,147
+packages/cli/src/active-workflow-manager.ts
+  s_6e5e6dade5599e::t_d2190875aa5827 636-638
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_6e5e6dade5599e::t_398f38a27d7cad 296-328
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_6e5e6dade5599e::t_cbeab32cfc056d 85-89,92
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6e5e6dade5599e::t_c954b92ce1df90 221,405-409,415,426,436,528-529,553-560,567-575,577-578
+  s_6e5e6dade5599e::t_cbeab32cfc056d 561-566,576
+  s_6e5e6dade5599e::t_58a157bc2f764d 579-580
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_6e5e6dade5599e::t_4adefc8d488038 158,296,720
+  s_6e5e6dade5599e::t_bad87bd10ffb0a 173
+  s_6e5e6dade5599e::t_10777838569567 181,189,726-799,803-812
+  s_6e5e6dade5599e::t_280113b8c8eb38 800-802
+  s_6e5e6dade5599e::t_624395eba912e9 43,75,103,124
+  s_6e5e6dade5599e::t_3341d2bbb24134 174-176,178-180
+  s_6e5e6dade5599e::t_b0435fe0fa9607 182-184,186-188
+  s_6e5e6dade5599e::t_b279977b2ee2bd 190-192
+  s_6e5e6dade5599e::t_cd0d30d7441cf8 813
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_6e5e6dade5599e::t_da7d9666cd8784 276-278,280-284
+  s_6e5e6dade5599e::t_1eba96406cd330 270-271
+  s_6e5e6dade5599e::t_7e6f8207d6aae0 303-305
+  s_6e5e6dade5599e::t_a016d402a3c5ea 255-269,272-275,279,285-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1b622944c446266f946b1c156facf4b78d6cc447",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

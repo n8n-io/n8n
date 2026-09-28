@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_2f8e12c8ef524c::t_5d6b25f87f6d43 4,6,22-24,45,114-115,460-497,501-569,574-598
+  s_2f8e12c8ef524c::t_dbf4a8d8f7fc73 498-500,570-573
+  s_2f8e12c8ef524c::t_2316e7625dec80 599
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2f8e12c8ef524c::t_c14fef0d63bb69 54-55,180-181
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_2f8e12c8ef524c::t_dbf4a8d8f7fc73 14-17,1453-1460,1462-1639
+  s_2f8e12c8ef524c::t_c14fef0d63bb69 13,18,73-74,141-142
+  s_2f8e12c8ef524c::t_eb35217b258204 1461
+  s_2f8e12c8ef524c::t_30030bb5cc2d73 1640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f26bc941c13a70bb04bfb44757d8b74223694f2",
+  "prompts": {},
+  "sessions": {
+    "s_2f8e12c8ef524c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d794-351a-7251-a5c4-8039f0109ab6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
