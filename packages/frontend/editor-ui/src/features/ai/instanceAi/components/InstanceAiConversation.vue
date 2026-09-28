@@ -195,17 +195,37 @@ watch(
 	},
 	{ immediate: true },
 );
+// ponytail: the host answers the card without a model turn, so its follow-up would land in the
+// same frame as the click. Hold it behind the thinking block for one beat, like the greeting.
+const followUpHeld = ref(false);
+let followUpTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+	() => displayedMessages.length,
+	(length, previous) => {
+		if (previous !== 1 || length !== 2 || displayedMessages[1].role !== 'assistant') return;
+		if (!store.isOnboardingChromeHidden(thread.id)) return;
+		followUpHeld.value = true;
+		followUpTimer = setTimeout(() => {
+			followUpHeld.value = false;
+			followUpTimer = null;
+		}, GREETING_THINKING_MS);
+	},
+);
 onUnmounted(() => {
 	if (greetingTimer) clearTimeout(greetingTimer);
+	if (followUpTimer) clearTimeout(followUpTimer);
 });
 /**
  * While the greeting plays: the greeting without its agent tree (the message renders its text
- * from the tree when it has one). The stored messages otherwise.
+ * from the tree when it has one). While the follow-up is held: the greeting only. The stored
+ * messages otherwise.
  */
 const renderedMessages = computed(() => {
 	const greeting = onboardingGreeting.value;
-	if (!greeting || greetingPhase.value === null) return displayedMessages;
-	return [{ ...greeting, agentTree: undefined, isStreaming: true }];
+	if (greeting && greetingPhase.value !== null) {
+		return [{ ...greeting, agentTree: undefined, isStreaming: true }];
+	}
+	return followUpHeld.value ? displayedMessages.slice(0, 1) : displayedMessages;
 });
 
 // True when at least one pending confirmation should occupy the chat-input
@@ -820,14 +840,18 @@ defineExpose({
 					</TransitionGroup>
 					<Transition name="message-slide">
 						<N8nChatMessage
-							v-if="greetingPhase === 'thinking'"
+							v-if="greetingPhase === 'thinking' || followUpHeld"
 							role="assistant"
 							data-test-id="instance-ai-onboarding-thinking"
 						>
 							<AiThinkingBlock
 								:segments="[]"
 								:active="true"
-								:activity-label="i18n.baseText('instanceAi.onboardingGreeting.thinkingActivity')"
+								:activity-label="
+									greetingPhase === 'thinking'
+										? i18n.baseText('instanceAi.onboardingGreeting.thinkingActivity')
+										: undefined
+								"
 							/>
 						</N8nChatMessage>
 					</Transition>
@@ -905,7 +929,9 @@ defineExpose({
 										kind="floating"
 									/>
 									<InstanceAiInput
-										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-else-if="
+											greetingPhase === null && !followUpHeld && !awaitingOnboardingGreeting
+										"
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
