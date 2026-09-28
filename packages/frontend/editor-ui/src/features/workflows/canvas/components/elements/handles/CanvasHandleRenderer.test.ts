@@ -88,6 +88,7 @@ describe('CanvasHandleRenderer', () => {
 
 		expect(container.querySelector('.handle')).toBeInTheDocument();
 		expect(container.querySelector('.outputs.main')).toBeInTheDocument();
+		expect(container.querySelector('[data-connectable-end="false"]')).toBeInTheDocument();
 	});
 
 	it('allows a main output to receive a drag from an empty-group input', async () => {
@@ -104,11 +105,11 @@ describe('CanvasHandleRenderer', () => {
 				provide: {
 					...createCanvasProvide({
 						connectingHandle: {
-						nodeId: 'anchor',
-						handleId: CANVAS_NODE_GROUP_INPUT_HANDLE,
-						handleType: 'target',
-						isEmptyGroupTargetStart: true,
-					},
+							nodeId: 'anchor',
+							handleId: CANVAS_NODE_GROUP_INPUT_HANDLE,
+							handleType: 'target',
+							isEmptyGroupTargetStart: true,
+						},
 					}),
 					...createCanvasNodeProvide(),
 				},
