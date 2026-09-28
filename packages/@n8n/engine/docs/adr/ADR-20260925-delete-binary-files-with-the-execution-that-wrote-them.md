@@ -59,7 +59,7 @@ The four binary data modes differ.
    path or under the execution path, and deletes them when the run does not start: a refused
    payload, a failed dispatch, or a start rejected after a rename. After it, the files belong to the
    execution, and the retention job of CAT-2939 decides when they go. From then on no file is
-   distinguished by the process that wrote it: a webhook file the CP renamed and a file a step
+   distinguished by the process that wrote it: a trigger file the CP renamed and a file a step
    wrote on the DP are deleted by the same call, because both are under the execution path. This
    holds because CP and DP actions on files do not depend on the deployment model: both planes
    write to and delete from the same store. With `filesystem` the operator should mount one shared
