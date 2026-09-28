@@ -292,7 +292,7 @@ export class InstanceReportingService {
 		const [totals, { productionRootExecutions }] = await Promise.all([
 			this.insightsService.getDailyExecutionTotals({
 				startDate: new Date(`${days[0]}T00:00:00.000Z`),
-				endDate: new Date(`${days[days.length - 1]}T00:00:00.000Z`),
+				endDate: new Date(`${days.at(-1)}T00:00:00.000Z`),
 			}),
 			// Same source as the `productionRootExecutions` license metric, so the
 			// reported total matches what the license server sees.
