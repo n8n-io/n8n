@@ -6,11 +6,11 @@
  * On branching graphs the traversal must stay linear in the graph size, so a node
  * reachable through many paths must be expanded once, not once per path.
  */
-import { bench, describe } from 'vitest';
+import { describe } from 'vitest';
 import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 
-import { BENCH_OPTIONS } from '../bench-options';
+import { defineBench } from '../bench-options';
 
 const MAIN = 'main';
 
@@ -55,39 +55,23 @@ function wideFanOut(width: number): IConnections {
 
 describe('Workflow graph traversal', () => {
 	const linear = linearChain(500);
-	bench(
-		'getChildNodes: linear chain (501 nodes)',
-		() => {
-			getChildNodes(linear, 'n0');
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('getChildNodes: linear chain (501 nodes)', () => {
+		getChildNodes(linear, 'n0');
+	});
 
 	const wide = wideFanOut(184);
-	bench(
-		'getChildNodes: wide fan-out (184 branches into one sink)',
-		() => {
-			getChildNodes(wide, 'trigger');
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('getChildNodes: wide fan-out (184 branches into one sink)', () => {
+		getChildNodes(wide, 'trigger');
+	});
 
 	// exponential paths, must stay linear.
 	const diamonds = diamondChain(14); // 2^14 ≈ 16k paths, 43 nodes
-	bench(
-		'getChildNodes: diamond chain (14 diamonds, 43 nodes)',
-		() => {
-			getChildNodes(diamonds, 'start');
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('getChildNodes: diamond chain (14 diamonds, 43 nodes)', () => {
+		getChildNodes(diamonds, 'start');
+	});
 
 	const diamondsByDestination = mapConnectionsByDestination(diamonds);
-	bench(
-		'getParentNodes: diamond chain (14 diamonds, 43 nodes)',
-		() => {
-			getParentNodes(diamondsByDestination, 'm13');
-		},
-		BENCH_OPTIONS,
-	);
+	defineBench('getParentNodes: diamond chain (14 diamonds, 43 nodes)', () => {
+		getParentNodes(diamondsByDestination, 'm13');
+	});
 });

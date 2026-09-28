@@ -104,6 +104,30 @@ export function onceStatusHandle(
 	};
 }
 
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
 	slackThreadContext?: SlackThreadContext;
@@ -199,7 +223,7 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
-	 * Builder-facing guidance returned by `list_integration_types`.
+	 * Builder-facing guidance returned by `agent-context` integrations.
 	 * This helps the builder choose between connecting the agent to a chat
 	 * integration and adding a regular node/workflow tool for the same product.
 	 */
@@ -250,6 +274,14 @@ export abstract class AgentChatIntegration {
 
 	/** Whether action messages are deleted before the agent resumes. */
 	readonly deleteActionMessageBeforeResume: boolean = true;
+
+	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
 
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single

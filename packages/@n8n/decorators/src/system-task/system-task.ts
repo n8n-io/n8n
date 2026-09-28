@@ -3,6 +3,7 @@ import {
 	MAX_INTEGER_32BITS_SIGNED,
 	ScheduledJobMisfirePolicy,
 	Time,
+	type IntervalDefinition,
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
@@ -136,6 +137,7 @@ const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seco
  * Rejects a task that declares an option the schedulers cannot honor.
  *
  * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
+ * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
 export function validateSystemTask(task: SystemTask): void {
 	resolveSystemTaskRunOptions(task);
@@ -151,23 +153,74 @@ export function validateSystemTask(task: SystemTask): void {
 			extra: { name: task.name, retryDelaySeconds },
 		});
 	}
+
+	// A cluster task's interval is rounded up to one second, but an instance
+	// task's is kept to the millisecond, so a non-positive one would fire every millisecond.
+	const { schedule, placement } = task;
+	if (
+		placement.scope === 'instance' &&
+		schedule.kind === 'interval' &&
+		!(schedule.intervalSeconds > 0 && Number.isFinite(schedule.intervalSeconds))
+	) {
+		throw new UnexpectedError(
+			'A system task declares an interval that is not positive and finite',
+			{
+				extra: { name: task.name, intervalSeconds: schedule.intervalSeconds },
+			},
+		);
+	}
 }
 
 /**
- * Resolves the schedule a task is planned with. An interval is rounded to the
- * whole second the scheduler requires, so a cadence derived from a fractional
- * config value keeps running as it did on the legacy timers.
+ * An interval schedule firing every `seconds`, rounded to the whole second.
+ *
+ * @throws {UnexpectedError} when `seconds` is negative or not a number
+ */
+export function intervalFromSeconds(seconds: number): IntervalDefinition {
+	if (!(seconds >= 0)) {
+		throw new UnexpectedError('A system task interval in seconds is negative or not a number', {
+			extra: { seconds },
+		});
+	}
+	return { kind: 'interval', intervalSeconds: Math.round(seconds) };
+}
+
+/** An interval schedule firing every `milliseconds`, rounded to the whole millisecond. */
+export function intervalFromMilliseconds(milliseconds: number): IntervalDefinition {
+	return {
+		kind: 'interval',
+		intervalSeconds: Math.round(milliseconds) / Time.seconds.toMilliseconds,
+	};
+}
+
+/**
+ * Resolves the schedule a task is planned with. A cluster task's interval is
+ * rounded to the whole second the scheduler requires, so a cadence derived from
+ * a fractional config value keeps running as it did on the legacy timers. An
+ * instance task's interval keeps its sub-second part, rounded to the millisecond.
  */
 export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
 	const { schedule } = task;
 	if (schedule.kind !== 'interval') return schedule;
 
-	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
+	const intervalSeconds =
+		task.placement.scope === 'instance'
+			? wholeMilliseconds(schedule.intervalSeconds)
+			: wholeSeconds(schedule.intervalSeconds);
+
+	return { ...schedule, intervalSeconds };
 }
 
 /** Rounds to the whole second the scheduler requires, never below one. */
 function wholeSeconds(seconds: number): number {
 	return Math.max(1, Math.round(seconds));
+}
+
+/** Rounds to the whole millisecond a timer honors, never below one. */
+function wholeMilliseconds(seconds: number): number {
+	return (
+		Math.max(1, Math.round(seconds * Time.seconds.toMilliseconds)) / Time.seconds.toMilliseconds
+	);
 }
 
 function assertInRange(taskName: string, field: string, value: number, min: number) {

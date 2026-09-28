@@ -847,6 +847,13 @@ pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
   `data/{workflows,agents}/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Validation is selective.** Exact slugs and `--changed` read only the named
+  files, so an unrelated invalid file in `data/workflows` (a case authored on a
+  newer branch, a half-written draft) never blocks your push. `--filter` parses
+  only the files whose slug matches; `--tier` reads the tier from inside each
+  file, so it parses them all. An invalid file either one parses prints
+  `⚠ skipped invalid case file …` and the push continues without it. A file you
+  named still fails the push when it is invalid.
 - **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a

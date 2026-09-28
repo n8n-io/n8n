@@ -713,6 +713,23 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should leave out credentials whose authorization is still pending', async () => {
+			const pending = await createCredentials(
+				{ name: 'pending', data: '', type: 'test' },
+				teamProjectA,
+			);
+			await credentialsRepository.update(pending.id, {
+				pendingAuthorizationExpiresAt: new Date(Date.now() + 60_000),
+			});
+
+			const versions = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			expect(versions.map((v) => v.id)).not.toContain(pending.id);
+			expect(versions).toHaveLength(teamACredentials.length + teamBCredentials.length);
+		});
+
 		it('should only get all available credentials from the team project, for a project admin', async () => {
 			const versions = await service.getLocalCredentialsFromDb(
 				await sourceControlContextFactory.createContext(projectAdmin),

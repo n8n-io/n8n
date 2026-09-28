@@ -18,7 +18,15 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// Scoped to `nodes/` because those icons never appear in component
 			// snapshots (unlike the eagerly-imported `custom/` icons), and to
 			// `test.alias` so it never leaks into production/dev builds. See svg-stub.ts.
-			alias: [{ find: /^.*\/nodes\/[^/]+\.svg(\?.*)?$/, replacement: svgStub }],
+			alias: [
+				{ find: /^.*\/nodes\/[^/]+\.svg(\?.*)?$/, replacement: svgStub },
+				// Load `element-plus` from its single-file bundle. Its `es/` entry makes Node evaluate
+				// ~980 files in every test file (about 0.25 s each); the bundle has the same 432 exports.
+				// A bare replacement resolves from the importer, so a package without `element-plus`
+				// is not affected. `vue` stays external to the bundle, so there is one Vue instance.
+				// `patches/element-plus@2.4.3.patch` applies the same lockscreen guard to this bundle.
+				{ find: /^element-plus$/, replacement: 'element-plus/dist/index.full.mjs' },
+			],
 			silent: true,
 			globals: true,
 			// Restore `vi.spyOn` spies to their original implementation before each test, so
@@ -32,9 +40,10 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// every frontend package inherits it instead of rediscovering the failure.
 			passWithNoTests: true,
 			setupFiles: ['./src/__tests__/setup.ts'],
-			// Inline so vitest maps the `vitest` import inside it to the running instance.
-			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
-			server: { deps: { inline: ['vitest-mock-extended'] } },
+			// Inline so vitest maps the `vitest` import inside them to the running instance.
+			// Externalized, pnpm can link them to a second vitest copy. Vitest 5 bundles
+			// `expect` into `vitest`, so a second copy breaks snapshots and `.rejects`.
+			server: { deps: { inline: ['vitest-mock-extended', '@testing-library/jest-dom'] } },
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {

@@ -1,8 +1,7 @@
 # Agent design language
 
-This document is the source of truth for Agent-only interface patterns in this
-module. It starts with modal patterns. Add other reusable Agent patterns as the
-interface develops.
+This document defines reusable Agent interface patterns in this module. Add
+patterns as the interface develops.
 
 ## Scope
 
@@ -11,6 +10,12 @@ interface develops.
 - Do not add or change a global Design System primitive for an Agent-only need.
 - Put all user-facing text in i18n.
 - Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Breadcrumbs
+
+Show the project icon before the project name in Agent builder and session
+timeline breadcrumbs. Use the same icon as the owning project. Show the user
+icon for a personal project.
 
 ## Modal patterns
 
@@ -66,6 +71,11 @@ pencil on hover. Keep the title clickable.
 
 Do not show a second Name field in the body. Show title validation next to the
 title after the user selects Save.
+
+Skills show `Add skill` on the upload screen. Show the editable skill name in
+the title when the editor opens. Give a new manual skill a unique `New skill`
+name. Show an imported skill's name after upload. Keep Name out of the
+`SKILL.md` editor and show name errors beside the title after Save.
 
 Keep the title read-only for external entities. Channels use the integration
 label. Sub-agents use the selected Agent name. Custom tools stay read-only
@@ -128,11 +138,20 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
 
+New skills start with an upload screen. Make `Upload folder` the primary
+action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
+below the drop zone, inline with the prompt. Keep the same font and underline.
+Change only its text color on hover. Do not show a background. Hide the footer
+until the editor opens. Show Back for manual creation. Back discards the draft
+and returns to the upload screen.
+Existing skills open in the editor. Keep the body field order: When to use this
+skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
 - Confirm the title has no asset icon.
-- Confirm an editable title replaces a duplicate Name field.
+- Confirm an editable title replaces a duplicate Name field, including Skills.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.
 - Confirm Cancel appears before the primary action.
