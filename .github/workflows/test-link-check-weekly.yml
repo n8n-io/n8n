@@ -35,7 +35,7 @@ jobs:
         run: |
           curl -sSfL -o lychee.tar.gz "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
           echo "${LYCHEE_SHA256}  lychee.tar.gz" | sha256sum --check
-          tar -xzf lychee.tar.gz -C /usr/local/bin lychee
+          tar -xzf lychee.tar.gz --strip-components=1 -C /usr/local/bin lychee-x86_64-unknown-linux-gnu/lychee
           lychee --version
 
       # Lychee exits non-zero when it finds failures. The next step decides which failures are broken links.
