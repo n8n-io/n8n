@@ -134,6 +134,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
   bigint id
+  varchar_36_ messageId FK
   json payload
   varchar_32_ source
   varchar_128_ threadId FK

@@ -122,22 +122,22 @@ export class AgentMessageQueueConsumer {
 
 	/** Execute a claimed message, deliver its output, and settle its queue item. */
 	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
-		const { item, thread, admission } = claim;
+		const { item, thread, admission, payload } = claim;
 		const controller = new AbortController();
 		const signal = AbortSignal.any([
 			controller.signal,
 			this.executionService.getAbortSignal(admission.executionId),
 		]);
 		const sender =
-			item.payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
+			payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
 		try {
-			if (item.payload.kind === 'preview' && sender) {
+			if (payload.kind === 'preview' && sender) {
 				this.chatExecutionService.register(
 					{
 						projectId: thread.projectId,
 						agentId: thread.agentId,
 						threadId: thread.id,
-						userId: item.payload.userId,
+						userId: payload.userId,
 						executionId: admission.executionId,
 					},
 					controller,
@@ -147,7 +147,7 @@ export class AgentMessageQueueConsumer {
 					executionId: admission.executionId,
 					sessionId: thread.id,
 					inputMessageIds: admission.inputMessageIds,
-					message: item.payload.message,
+					message: payload.message,
 				});
 				await this.chatExecutionService.settle(
 					admission.executionId,
@@ -178,9 +178,9 @@ export class AgentMessageQueueConsumer {
 		signal: AbortSignal,
 		send: (event: AgentSseEvent) => void,
 	): Promise<void> {
-		const { item, thread, admission } = claim;
-		if (item.payload.kind !== 'preview') return;
-		const user = await this.userRepository.findByIdWithRole(item.payload.userId);
+		const { item, thread, admission, payload } = claim;
+		if (payload.kind !== 'preview') return;
+		const user = await this.userRepository.findByIdWithRole(payload.userId);
 		if (
 			!user ||
 			user.disabled ||
@@ -222,8 +222,8 @@ export class AgentMessageQueueConsumer {
 			agentId: thread.agentId,
 			projectId: thread.projectId,
 			user,
-			message: item.payload.message,
-			attachments: item.payload.attachments,
+			message: payload.message,
+			attachments: payload.attachments,
 			sessionId: thread.id,
 			sessionMode: 'existing',
 			previewChat: true,
@@ -242,16 +242,16 @@ export class AgentMessageQueueConsumer {
 		signal: AbortSignal,
 		bridge?: AgentChatBridge,
 	): Promise<void> {
-		const { item, thread } = claim;
-		if (item.payload.kind !== 'integration') return;
+		const { item, thread, payload } = claim;
+		if (payload.kind !== 'integration') return;
 		const connection = await this.repository.findPublishedConnection(
 			thread.agentId,
 			thread.projectId,
 			item.source,
-			item.payload.credentialId,
+			payload.credentialId,
 		);
 		if (!connection) throw new UserError('The message integration is no longer configured');
 		if (!bridge) throw new OperationalError('The message integration is unavailable');
-		await bridge.consumeQueuedMessage(item.payload, thread.id, claim.admission, signal, connection);
+		await bridge.consumeQueuedMessage(payload, thread.id, claim.admission, signal, connection);
 	}
 }

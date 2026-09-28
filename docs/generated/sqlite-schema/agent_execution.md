@@ -101,6 +101,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ executionId FK
   INTEGER id
+  varchar_36_ messageId FK
   TEXT payload
   varchar_32_ source
   varchar_128_ threadId FK

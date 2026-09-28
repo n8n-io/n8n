@@ -18,7 +18,11 @@ import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
-import type { QueuedIntegrationMessage } from '../types/agent-queued-message';
+import type {
+	AgentQueuedMessage,
+	AgentQueueDispatch,
+	QueuedIntegrationMessage,
+} from '../types/agent-queued-message';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -35,19 +39,23 @@ describe('AgentMessageQueueConsumer', () => {
 	let consumer: AgentMessageQueueConsumer;
 
 	function claim(threadId: string, integration = false): ClaimedAgentMessage {
+		const payload: AgentQueuedMessage = integration
+			? mock<QueuedIntegrationMessage>({
+					kind: 'integration',
+					message: 'input',
+					credentialId: 'credential',
+					platformThreadId: 'slack:channel:thread',
+				})
+			: { kind: 'preview', message: 'input', userId: 'user', resourceId: 'draft-chat:user' };
 		return {
+			payload,
 			item: mock<AgentMessageQueue>({
 				id: threadId,
 				threadId,
 				source: integration ? 'slack' : 'chat',
 				payload: integration
-					? mock<QueuedIntegrationMessage>({
-							kind: 'integration',
-							message: 'input',
-							credentialId: 'credential',
-							platformThreadId: 'slack:channel:thread',
-						})
-					: { kind: 'preview', message: 'input', userId: 'user', resourceId: 'draft-chat:user' },
+					? mock<AgentQueueDispatch>({ kind: 'integration', credentialId: 'credential' })
+					: { kind: 'preview', userId: 'user' },
 			}),
 			thread: mock<AgentExecutionThread>({ id: threadId, agentId: 'agent', projectId: 'project' }),
 			admission: {
@@ -103,8 +111,8 @@ describe('AgentMessageQueueConsumer', () => {
 
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
 		const first = claim('first');
-		first.item.payload.message = 'edited first message';
-		first.recording.userMessage = first.item.payload.message;
+		first.payload.message = 'edited first message';
+		first.recording.userMessage = first.payload.message;
 		const second = claim('second');
 		const waiting = createDeferredPromise();
 		repository.findThreadIds.mockResolvedValue(['first', 'second']);
@@ -234,7 +242,7 @@ describe('AgentMessageQueueConsumer', () => {
 				if (outcome === 'accepted') {
 					await vi.waitFor(() =>
 						expect(bridge.consumeQueuedMessage).toHaveBeenCalledWith(
-							item.item.payload,
+							item.payload,
 							item.thread.id,
 							item.admission,
 							expect.any(AbortSignal),
