@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8e9cae71c7c159::t_7fb33fd2925d63 222-245
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8e9cae71c7c159::t_3eada24c847d28 8964
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8e9cae71c7c159::t_09bd33306cd175 143-149,151
+  s_8e9cae71c7c159::t_be6cea3312b00a 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae83767709770a8bd6b789c1be7a2ce9ef7ba483",
+  "prompts": {},
+  "sessions": {
+    "s_8e9cae71c7c159": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93946471-1d3e-40e1-a7f0-dd60bb59d865",
+        "model": "composer-2.5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

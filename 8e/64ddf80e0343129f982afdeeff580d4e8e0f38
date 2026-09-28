@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_84e24ec6fa2c40::t_260b0b3058f273 353,390-399,540
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_84e24ec6fa2c40::t_0920e96ec3bfe6 94,1991-1999,2068-2077,2080-2084,2086-2089
+  s_84e24ec6fa2c40::t_260b0b3058f273 2078-2079
+packages/frontend/editor-ui/src/features/agents/components/AgentDescriptionModal.vue
+  s_84e24ec6fa2c40::t_766798da633e46 1-78
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_84e24ec6fa2c40::t_329bb73177fd20 437
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_84e24ec6fa2c40::t_0920e96ec3bfe6 22
+packages/frontend/editor-ui/src/features/agents/modals.ts
+  s_84e24ec6fa2c40::t_0920e96ec3bfe6 5,100-107
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_84e24ec6fa2c40::t_bde47dd858dfe0 386,407,450-466
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_84e24ec6fa2c40::t_7f189cdedab23c 7954-7956
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentDescriptionModal.test.ts
+  s_84e24ec6fa2c40::t_e759bbe4d9817b 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e64ddf80e0343129f982afdeeff580d4e8e0f38",
+  "prompts": {},
+  "sessions": {
+    "s_84e24ec6fa2c40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3719f38f-95fa-4ccc-bac2-62f1b4973429",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

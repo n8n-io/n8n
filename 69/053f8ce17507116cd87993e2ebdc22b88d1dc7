@@ -1,0 +1,83 @@
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/composables/useArtifactMentionIndex.test.ts
+  ai_agent 76-99
+docs/generated/sqlite-schema/README.md
+  ai_agent 93,1235
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.vue
+  ai_agent 22,33,60,68,75-76,79,84-92,115,144-145,263-269,295-296,365,378-379,406-407
+docs/generated/postgres-schema/README.md
+  ai_agent 93,1249
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  ai_agent 2,20,28,61,81-90,205-206,1292-1305,1312-1313
+docs/generated/sqlite-schema/instance_monitoring_report.md
+  ai_agent 9,25,33,41,58
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  ai_agent 1-121
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/handles/_canvasHandleStyles.scss
+  ai_agent 1-16
+packages/@n8n/telemetry/src/events/workflow.ts
+  ai_agent 7-115
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  ai_agent 77
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasConnectionLine.test.ts
+  ai_agent 8,28-43,58-61,89-104
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AnsweredQuestions.vue
+  ai_agent 36-37
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 19,955-958,1191,1193-1208,1306,1319-1322,1393,1396
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  ai_agent 42-47,126-127,161-164
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  ai_agent 18-19,183,575-584
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  ai_agent 1,66,304-361
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  ai_agent 34-39,129,333-359
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  ai_agent 29,32,34,59,76,145,1780-1854,1924,1928,1947-2143,3095-3180,5064-5111,5317-5357,6247-6308,7312-7349,8208,8212,8313,8321-8322
+packages/@n8n/config/test/config.test.ts
+  ai_agent 383
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  ai_agent 4,411-428
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  ai_agent 60-66,76-83,1358-1510
+packages/frontend/editor-ui/src/features/workflows/canvas/emptyGroup.utils.test.ts
+  ai_agent 1-103
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 268-270
+docs/generated/postgres-schema/public.instance_monitoring_report.md
+  ai_agent 14,35,52
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  ai_agent 1-83
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  ai_agent 1,3,51,57-58,60-77,129-132,134,138-139
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  ai_agent 250-252,397
+pnpm-lock.yaml
+  ai_agent 1144-1145,14063-14064,14068-14069,14073-14074,14076,14078-14079,14081,14083-14084,14088-14089,23350-23351,32118,32121,32124,32127,32130,32133,43530,43532-43537
+package.json
+  ai_agent 120
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getOidcConfiguration.generated.yml
+  ai_agent 1-79
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantMentionBreadcrumbs.vue
+  ai_agent 1-88
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  ai_agent 42,199-202
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.test.ts
+  ai_agent 121-139
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/utils/getEdgeRenderData.ts
+  ai_agent 20,23-24,30-34
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  ai_agent 11,213-239
+packages/cli/src/modules/instance-reporting.ee/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  ai_agent 31-37,40,50-77,82,93,103,129,145,151,159,166,173-184,193,199,212,215,217,225,231,234,244,248,250,252,260-282,285,300
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/utils/buildMentionItems.ts
+  ai_agent 11-14,118-122
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 415-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69053f8ce17507116cd87993e2ebdc22b88d1dc7",
+  "prompts": {}
+}
