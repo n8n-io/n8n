@@ -66,7 +66,7 @@ export class Flow implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'task') {
-				//https://developer.getflow.com/api/#tasks_create-task
+				//https://web.archive.org/web/2024/https://developer.getflow.com/api/#tasks_create-task
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
@@ -128,7 +128,7 @@ export class Flow implements INodeType {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_update-a-task
+				//https://web.archive.org/web/2024/https://developer.getflow.com/api/#tasks_update-a-task
 				if (operation === 'update') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
@@ -196,7 +196,7 @@ export class Flow implements INodeType {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_get-task
+				//https://web.archive.org/web/2024/https://developer.getflow.com/api/#tasks_get-task
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const filters = this.getNodeParameter('filters', i);
@@ -210,7 +210,7 @@ export class Flow implements INodeType {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_get-tasks
+				//https://web.archive.org/web/2024/https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i);

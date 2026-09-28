@@ -409,7 +409,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						}
 					}
 
-					//https://docs.venafi.cloud/api/t-cloud-api-renew-cert/
+					//https://docs.venafi.cloud/api/renewing-a-certificate-api/
 					if (operation === 'renew') {
 						const applicationId = this.getNodeParameter('applicationId', i) as string;
 						const certificateIssuingTemplateId = this.getNodeParameter(
