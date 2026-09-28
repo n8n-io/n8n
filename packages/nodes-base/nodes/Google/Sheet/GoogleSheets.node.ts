@@ -11,7 +11,7 @@ export class GoogleSheets extends VersionedNodeType {
 			name: 'googleSheets',
 			icon: 'file:googleSheets.svg',
 			group: ['input', 'output'],
-			defaultVersion: 4.7,
+			defaultVersion: 4.8,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Read, update and write data to Google Sheets',
 			builderHint: {
@@ -70,6 +70,7 @@ columns: {
 			4.5: new GoogleSheetsV2(baseDescription),
 			4.6: new GoogleSheetsV2(baseDescription),
 			4.7: new GoogleSheetsV2(baseDescription),
+			4.8: new GoogleSheetsV2(baseDescription, 4.8),
 		};
 
 		super(nodeVersions, baseDescription);

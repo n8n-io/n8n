@@ -208,10 +208,15 @@ export async function getExistingSheetNames(sheet: GoogleSheet) {
 	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
 }
 
-export function mapFields(this: IExecuteFunctions, inputSize: number) {
+export function mapFields(
+	this: IExecuteFunctions,
+	inputSize: number,
+	selectedItemIndexes?: number[],
+) {
 	const returnData: IDataObject[] = [];
+	const itemIndexes = selectedItemIndexes ?? Array.from({ length: inputSize }, (_, index) => index);
 
-	for (let i = 0; i < inputSize; i++) {
+	for (const i of itemIndexes) {
 		const nodeVersion = this.getNode().typeVersion;
 		if (nodeVersion < 4) {
 			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
