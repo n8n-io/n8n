@@ -432,6 +432,7 @@ export const setMetricsProperties: INodeProperties[] = [
 	...promptFieldForMetric('correctness', CORRECTNESS_PROMPT),
 	...promptFieldForMetric('helpfulness', HELPFULNESS_PROMPT),
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id -- the docs anchor contains "id"
 		displayName:
 			"Calculate the custom metrics before this node, then map them below. <a href='https://docs.n8n.io/build/integrate-ai/test-and-improve-ai-workflows/use-metrics-to-measure-quality#id-2-add-metrics-to-workflow' target='_blank'>View metric examples</a>",
 		name: 'notice',
