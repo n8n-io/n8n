@@ -85,7 +85,8 @@ export function useAgentConfig() {
 		);
 		const stale = latestKey !== key;
 		if (!stale) {
-			config.value = result.config;
+			// The save response can lag behind newer edits in the working draft.
+			// Only a fetch may replace config; the save still advances its hash.
 			configHash.value = result.configHash;
 			ownBases.add(baseConfigHash);
 			ownLatest = result.configHash;
