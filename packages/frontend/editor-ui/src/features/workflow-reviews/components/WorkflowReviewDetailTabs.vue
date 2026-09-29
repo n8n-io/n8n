@@ -229,9 +229,12 @@ const tabOptions = computed(() => [
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	/* Holds the active-tab indicator, so the border sits under it. */
+	padding-bottom: var(--review-tab-bar--indicator-overhang);
+	border-bottom: var(--border);
 
 	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--xs));
+		transform: translateY(var(--spacing--sm));
 	}
 }
 
@@ -240,7 +243,7 @@ const tabOptions = computed(() => [
 	flex: 1;
 	gap: var(--spacing--sm);
 	min-height: 0;
-	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+	padding-top: var(--spacing--sm);
 }
 
 .panel {

@@ -337,11 +337,21 @@ function onListBackgroundClick() {
 }
 
 .header {
+	position: relative;
 	display: flex;
 	align-items: center;
 	height: var(--review-tab-bar--height, var(--height--sm));
 	padding-right: var(--spacing--md);
-	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 15px));
+
+	&::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: var(--spacing--md);
+		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang) - var(--border-width));
+		border-bottom: var(--border-width) solid var(--border-color);
+	}
 }
 
 .list {
