@@ -5,7 +5,6 @@ import type {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOidcConfigurationDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
