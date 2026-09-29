@@ -192,6 +192,8 @@ const statusSummary = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+	/* Names wrap at spaces; an email breaks mid-word only when it does not fit. */
+	overflow-wrap: anywhere;
 }
 
 .workflow {
