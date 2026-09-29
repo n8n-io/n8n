@@ -70,6 +70,8 @@ const credentialOwnerName = computed(() => {
 	return name ?? email ?? '';
 });
 
+const credentialOwnerFirstName = computed(() => credentialOwnerName.value.split(' ')[0]);
+
 const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() => {
 	const credentialContainsProjectSharingData = (
 		data: ICredentialDataDecryptedObject,
@@ -204,7 +206,7 @@ const usedInAccessText = computed(() =>
 	isOwnedByViewer.value
 		? i18n.baseText('credentialEdit.credentialSharing.onlyYou')
 		: i18n.baseText('credentialEdit.credentialSharing.onlyOwner', {
-				interpolate: { name: credentialOwnerName.value },
+				interpolate: { name: credentialOwnerFirstName.value },
 			}),
 );
 

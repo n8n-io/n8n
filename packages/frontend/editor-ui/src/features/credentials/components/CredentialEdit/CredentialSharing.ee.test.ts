@@ -793,7 +793,8 @@ describe('CredentialSharing.ee', () => {
 			});
 
 			const row = getByTestId('credential-used-in-project');
-			expect(row).toHaveTextContent('Only Mona Pfeffer');
+			expect(row).toHaveTextContent('Only Mona');
+			expect(row).not.toHaveTextContent('Only Mona Pfeffer');
 			expect(queryByText('Only you')).not.toBeInTheDocument();
 			expect(getByTestId('credential-used-in-project-share')).toBeInTheDocument();
 		});
