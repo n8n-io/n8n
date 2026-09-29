@@ -71,6 +71,11 @@ const props = withDefaults(
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		pageSizes?: number[];
 		/**
+		 * Render the pager. Set this to false when the screen loads more rows itself.
+		 * @default true
+		 */
+		pagination?: boolean;
+		/**
 		 * Show an All option in the page size selector.
 		 * Selecting it sets items per page to `PAGINATION_ALL_ITEMS_PER_PAGE`.
 		 * @default false
@@ -82,6 +87,7 @@ const props = withDefaults(
 		itemSelectable: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
+		pagination: true,
 		showAll: false,
 		rowProps: undefined,
 	},
@@ -260,7 +266,9 @@ const pagination = computed<PaginationState>({
 	},
 });
 
-const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+const showPagination = computed(
+	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
+);
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
