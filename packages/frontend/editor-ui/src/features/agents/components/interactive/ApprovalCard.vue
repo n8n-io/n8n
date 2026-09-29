@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nApprovalCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const approvalLabels = useApprovalCardLabels();
 
 const toolLabel = computed(() => props.input.displayName ?? props.input.toolName);
 
@@ -48,6 +50,7 @@ function submit(key: string) {
 <template>
 	<N8nApprovalCard
 		:title="i18n.baseText('agents.chat.approval.title')"
+		:labels="approvalLabels"
 		:description="
 			i18n.baseText('agents.chat.approval.description', {
 				interpolate: { toolName: toolLabel },

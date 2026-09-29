@@ -10,6 +10,7 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
@@ -45,6 +46,7 @@ const props = defineProps<Props>();
 
 const thread = useThread();
 const i18n = useI18n();
+const approvalLabels = useApprovalCardLabels();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
@@ -619,6 +621,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
 				data-test-id="instance-ai-confirmation-panel"
 				:title="buildApprovalTitle(chunk.item)"
+				:labels="approvalLabels"
 				:description="buildApprovalSubtitle(chunk.item)"
 				:description-label="i18n.baseText('instanceAi.confirmation.details')"
 				:options="credentialDestinationOptions(chunk.item)"

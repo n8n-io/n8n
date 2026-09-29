@@ -7,6 +7,7 @@ import type {
 	ResumeOptions,
 	SerializableAgentState,
 	StreamChunk,
+	ToolApprovalContext,
 } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -849,16 +850,16 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
 		});
 
-		it.each(['before recording', 'after recording'] as const)(
+		it.each(['before recording', 'after recording', 'during grant lookup'] as const)(
 			'does not invoke the SDK when cancelled %s',
 			async (when) => {
 				const controller = new AbortController();
-				const { stream, sdkStart, executionService, runtimeCacheService } = makeTurn({
-					abortSignal: controller.signal,
-				});
+				const { stream, sdkStart, executionService, runtimeCacheService, toolApprovalService } =
+					makeTurn({ abortSignal: controller.signal });
+				const grantLookup = createDeferredPromise<ToolApprovalContext>();
 				if (when === 'before recording') {
 					controller.abort();
-				} else {
+				} else if (when === 'after recording') {
 					executionService.startExecutionRecording.mockImplementation(async () => {
 						controller.abort();
 						return {
@@ -867,9 +868,18 @@ describe('AgentExecutionOrchestratorService', () => {
 							inputMessageIds: ['message-1'],
 						};
 					});
+				} else {
+					toolApprovalService.createContext.mockReturnValueOnce(grantLookup.promise);
 				}
 
-				await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
+				const execution = collect(stream);
+				if (when === 'during grant lookup') {
+					await vi.waitFor(() => expect(toolApprovalService.createContext).toHaveBeenCalled());
+					controller.abort();
+					grantLookup.resolve({ approvedKeys: new Set(), onDecision: vi.fn() });
+				}
+
+				await expect(execution).rejects.toMatchObject({ name: 'AbortError' });
 				expect(sdkStart).not.toHaveBeenCalled();
 				if (when === 'before recording') {
 					expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
@@ -878,7 +888,13 @@ describe('AgentExecutionOrchestratorService', () => {
 						'execution-1',
 						expect.objectContaining({
 							hitlStatus: undefined,
-							record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+							record: expect.objectContaining({
+								finishReason: 'cancelled',
+								error: null,
+								timeline: expect.not.arrayContaining([
+									expect.objectContaining({ type: 'hitl-response' }),
+								]),
+							}),
 						}),
 					);
 				}

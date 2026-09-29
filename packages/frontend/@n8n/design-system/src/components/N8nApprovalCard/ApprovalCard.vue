@@ -22,6 +22,21 @@ export interface ApprovalOption {
 	testId?: string;
 }
 
+export interface ApprovalCardLabels {
+	/** Label for a session approval. */
+	alwaysAllow: string;
+	/** Text that describes the session scope. */
+	alwaysAllowSuffix: string;
+	/** Label for a single-use approval. */
+	allowOnce: string;
+	/** Label for the deny action. */
+	deny: string;
+	/** Label for a saved approval. */
+	allowed: string;
+	/** Label for a saved denial. */
+	denied: string;
+}
+
 interface ApprovalCardProps {
 	/** Heading that describes the action. */
 	title: string;
@@ -33,6 +48,8 @@ interface ApprovalCardProps {
 	descriptionLabel?: string;
 	/** Custom decisions. Defaults to the standard allow and deny choices. */
 	options?: readonly ApprovalOption[];
+	/** Translated text for the standard decisions and saved results. */
+	labels?: ApprovalCardLabels;
 	/** Add the session choice to the standard decisions. */
 	supportsSessionApproval?: boolean;
 	/** Mark the standard single-use choice as destructive. */
@@ -53,6 +70,18 @@ const props = withDefaults(defineProps<ApprovalCardProps>(), {
 const emit = defineEmits<{ select: [key: string] }>();
 const { t } = useI18n();
 
+const labels = computed<ApprovalCardLabels>(
+	() =>
+		props.labels ?? {
+			alwaysAllow: t('approvalCard.alwaysAllow'),
+			alwaysAllowSuffix: t('approvalCard.alwaysAllowSuffix'),
+			allowOnce: t('approvalCard.allowOnce'),
+			deny: t('approvalCard.deny'),
+			allowed: t('approvalCard.allowed'),
+			denied: t('approvalCard.denied'),
+		},
+);
+
 const options = computed<readonly ApprovalOption[]>(() => {
 	if (props.options) return props.options;
 	const choices: ApprovalOption[] = [];
@@ -60,18 +89,18 @@ const options = computed<readonly ApprovalOption[]>(() => {
 		choices.push({
 			key: 'always-allow',
 			icon: 'check-check',
-			label: t('approvalCard.alwaysAllow'),
-			suffix: t('approvalCard.alwaysAllowSuffix'),
+			label: labels.value.alwaysAllow,
+			suffix: labels.value.alwaysAllowSuffix,
 		});
 	}
 	choices.push(
 		{
 			key: 'allow-once',
 			icon: 'check',
-			label: t('approvalCard.allowOnce'),
+			label: labels.value.allowOnce,
 			destructive: props.destructive,
 		},
-		{ key: 'deny', icon: 'ban', label: t('approvalCard.deny') },
+		{ key: 'deny', icon: 'ban', label: labels.value.deny },
 	);
 	return choices;
 });
@@ -109,7 +138,7 @@ function onKeydown(event: KeyboardEvent) {
 		highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
 		return;
 	}
-	if (event.key === 'Enter') {
+	if (event.key === 'Enter' || event.key === ' ') {
 		event.preventDefault();
 		const option = options.value[highlightedIndex.value];
 		if (option) selectOption(option.key);
@@ -142,7 +171,7 @@ function onKeydown(event: KeyboardEvent) {
 					:color="decision === 'allowed' ? 'success' : 'danger'"
 				/>
 				<N8nText size="small">
-					{{ t(decision === 'allowed' ? 'approvalCard.allowed' : 'approvalCard.denied') }}
+					{{ labels[decision] }}
 				</N8nText>
 			</div>
 			<div

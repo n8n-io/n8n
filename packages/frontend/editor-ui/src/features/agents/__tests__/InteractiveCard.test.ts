@@ -1,25 +1,13 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { mount } from '@vue/test-utils';
 import { APPROVAL_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import { describe, expect, it, vi } from 'vitest';
+import { i18nInstance, setLanguage } from '@n8n/i18n';
+import { nextTick } from 'vue';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import InteractiveCard from '../components/interactive/InteractiveCard.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
-
-vi.mock('@n8n/i18n', () => {
-	const i18n = {
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.chat.approval.title') return 'Approval required';
-			if (key === 'agents.chat.approval.description') {
-				return `The agent wants to run the ${options?.interpolate?.toolName ?? ''} tool.`;
-			}
-			if (key === 'agents.chat.approval.viewToolDetails') return 'View tool details';
-			return key;
-		},
-	};
-	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
-});
 
 function mountCard(payload: InteractivePayload) {
 	return mount(InteractiveCard, {
@@ -58,6 +46,50 @@ const approvalPayload: InteractivePayload = {
 };
 
 describe('InteractiveCard', () => {
+	afterEach(() => {
+		setLanguage('en');
+	});
+
+	it('updates shared approval choices and saved results from the app locale', async () => {
+		const input = parseApprovalInput({ ...approvalPayload.input, supportsSessionApproval: true });
+		const payload = { ...approvalPayload, input: input! };
+		const wrapper = mountCard(payload);
+		expect(wrapper.text()).toContain('Always allow');
+
+		i18nInstance.global.setLocaleMessage('de', {
+			...i18nInstance.global.getLocaleMessage('en'),
+			...Object.fromEntries([
+				['instanceAi.confirmation.alwaysAllow', 'Immer erlauben'],
+				['instanceAi.confirmation.alwaysAllowSuffix', 'in dieser Sitzung'],
+				['instanceAi.confirmation.approve', 'Einmal erlauben'],
+				['instanceAi.confirmation.deny', 'Ablehnen'],
+				['instanceAi.confirmation.approved', 'Erlaubt'],
+				['instanceAi.confirmation.denied', 'Abgelehnt'],
+			]),
+		});
+		setLanguage('de');
+		await nextTick();
+
+		const sessionChoice = wrapper.get('[data-test-id="approval-card-always-allow"]');
+		expect(sessionChoice.text()).toContain('Immer erlauben');
+		expect(sessionChoice.text()).toContain('in dieser Sitzung');
+		expect(wrapper.get('[data-test-id="approval-card-allow-once"]').text()).toBe('Einmal erlauben');
+		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toBe('Ablehnen');
+
+		await wrapper.setProps({
+			payload: { ...payload, resolvedAt: 1, resolvedValue: { approved: true } },
+		});
+		expect(wrapper.text()).toContain('Erlaubt');
+		await wrapper.setProps({
+			payload: { ...payload, resolvedAt: 1, resolvedValue: { approved: false } },
+		});
+		expect(wrapper.text()).toContain('Abgelehnt');
+
+		setLanguage('en');
+		await nextTick();
+		expect(wrapper.text()).toContain('Denied');
+	});
+
 	it('preserves session support from the backend and emits the chosen scope', async () => {
 		const input = parseApprovalInput({ ...approvalPayload.input, supportsSessionApproval: true });
 		const wrapper = mountCard({ ...approvalPayload, input: input! });

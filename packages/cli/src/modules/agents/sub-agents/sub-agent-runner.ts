@@ -304,6 +304,7 @@ export class SubAgentRunner {
 				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
 			};
+			context.abortSignal?.throwIfAborted();
 			executionStarted = operation.type === 'run';
 			const resultStream =
 				operation.type === 'run'

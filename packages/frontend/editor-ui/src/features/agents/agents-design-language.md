@@ -181,8 +181,9 @@ global Design System guidance.
 ## Tool approvals
 
 Use `N8nApprovalCard` for Preview tool approvals, including background child
-approvals. It owns the shared layout, keyboard controls, and standard decision
-labels for the Assistant and Agent Preview.
+approvals. It owns the shared layout, keyboard controls, and standard choices
+for the Assistant and Agent Preview. Pass the app catalog labels through
+`useApprovalCardLabels`.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Do not autofocus cards in the chat
 timeline. If a surface keeps a resolved card, show the decision without active

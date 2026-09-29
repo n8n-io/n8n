@@ -193,6 +193,7 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 	): Promise<ReadableStream<StreamChunk>> {
 		turn.options.approvalContext = await this.toolApprovalService.createContext(turn.recording);
+		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
 			return (await config.agentInstance.stream(turn.input, turn.options)).stream;

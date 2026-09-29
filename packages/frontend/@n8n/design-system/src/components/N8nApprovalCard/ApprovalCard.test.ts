@@ -63,13 +63,13 @@ describe('N8nApprovalCard', () => {
 		expect(getByTestId('opt-always-allow').getAttribute('aria-selected')).toBe('false');
 	});
 
-	it('emits select with the highlighted option on Enter', async () => {
+	it.each(['Enter', ' '])('emits select with the highlighted option on %j', async (key) => {
 		const { getByRole, emitted } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', options: OPTIONS },
 		});
 		const listbox = getByRole('listbox');
 		await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
-		await fireEvent.keyDown(listbox, { key: 'Enter' });
+		await fireEvent.keyDown(listbox, { key });
 		expect(emitted('select')).toEqual([['allow-once']]);
 	});
 

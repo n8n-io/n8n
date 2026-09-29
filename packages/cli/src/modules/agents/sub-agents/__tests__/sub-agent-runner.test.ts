@@ -6,6 +6,7 @@ import {
 	type CredentialProvider,
 	type StreamChunk,
 	type StreamResult,
+	type ToolApprovalContext,
 } from '@n8n/agents';
 import type {
 	ResolvedSubAgentSource,
@@ -16,6 +17,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -940,6 +942,59 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({ record: expect.objectContaining({ error: error.message }) }),
 		);
 	});
+
+	it.each(['run', 'resume'] as const)(
+		'does not %s a child when cancelled during the grant lookup',
+		async (operation) => {
+			const parentAbort = new AbortController();
+			const grantLookup = createDeferredPromise<ToolApprovalContext>();
+			toolApprovalService.createContext.mockReturnValueOnce(grantLookup.promise);
+			const context = {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production' as const,
+				abortSignal: parentAbort.signal,
+			};
+			const execution =
+				operation === 'run'
+					? runner.run(spawnRequest, context)
+					: runner.resumeForeground(
+							{
+								...delegatedRequest,
+								childRunId: 'child-run-1',
+								childToolCallId: 'tool-call-1',
+								childThreadId: 'child-thread-1',
+								resumeData: { approved: true, scope: 'session' },
+								resumeContext: { agentId: 'agent-1' },
+								parentThreadId,
+							},
+							context,
+						);
+
+			await vi.waitFor(() => expect(toolApprovalService.createContext).toHaveBeenCalled());
+			parentAbort.abort();
+			grantLookup.resolve({ approvedKeys: new Set(), onDecision: vi.fn() });
+
+			await expect(execution).rejects.toMatchObject({ name: 'AbortError' });
+			expect(childAgent.stream).not.toHaveBeenCalled();
+			expect(childAgent.resume).not.toHaveBeenCalled();
+			expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+				'agent-execution-1',
+				expect.objectContaining({
+					hitlStatus: undefined,
+					record: expect.objectContaining({
+						finishReason: 'cancelled',
+						error: null,
+						timeline: expect.not.arrayContaining([
+							expect.objectContaining({ type: 'hitl-response' }),
+						]),
+					}),
+				}),
+			);
+			expect(childAgent.close).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('aborts the child run when the parent run is cancelled', async () => {
 		const parentAbort = new AbortController();
