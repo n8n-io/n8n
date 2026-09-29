@@ -77,7 +77,10 @@ describe('MigrationFindingSyncService', () => {
 	let service: MigrationFindingSyncService;
 
 	function givenWorkflows(count: number) {
-		const allIds = Array.from({ length: count }, (_, index) => `wf-${String(index).padStart(4, '0')}`);
+		const allIds = Array.from(
+			{ length: count },
+			(_, index) => `wf-${String(index).padStart(4, '0')}`,
+		);
 		workflowRepository.getIdsPage.mockImplementation(async ({ skip, take }) =>
 			allIds.slice(skip, skip + take),
 		);

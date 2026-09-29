@@ -13,7 +13,9 @@ import { diffMigrationFindings, type MigrationFindingHit } from './migration-fin
 
 /** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
 export function computeRuleSetFingerprint(ruleIds: string[]): string {
-	return createHash('sha256').update([...ruleIds].sort().join('\n')).digest('hex');
+	return createHash('sha256')
+		.update([...ruleIds].sort().join('\n'))
+		.digest('hex');
 }
 
 /**
