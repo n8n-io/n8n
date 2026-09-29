@@ -2,6 +2,7 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nButton,
 	N8nCallout,
@@ -11,17 +12,14 @@ import {
 	N8nSegmentControl,
 	N8nSetupConnection,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { addCredentialTranslation, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	deepCopy,
-	DOMAIN_RESTRICTION_FIELDS,
-	type ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
+import { deepCopy, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES, BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -34,6 +32,8 @@ import { useCredentialOAuth } from '@/features/credentials/composables/useCreden
 import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { groupCredentialSetupFields } from '@/features/credentials/credentialSetupFields';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 import TemplatedAuthSimpleView from '@/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -79,6 +79,7 @@ const toast = useToast();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const credentialsStore = useCredentialsStore();
+const { check: envFeatureFlag } = useEnvFeatureFlag();
 const oauth = useCredentialOAuth();
 const quickConnect = useQuickConnect();
 const gateway = useAiGateway();
@@ -87,7 +88,13 @@ const initialized = ref(false);
 const initializationFailed = ref(false);
 const busy = ref(false);
 const reopenAuthorization = ref<() => void>();
-const createNew = ref(false);
+const createNew = ref(
+	Boolean(
+		props.item.preferNew &&
+			!props.pendingCredential &&
+			!props.node?.credentials?.[props.item.credentialType],
+	),
+);
 const hasDraft = ref(false);
 watch(busy, (value) => emit('update:busy', value));
 watch(
@@ -172,13 +179,17 @@ watch(
 		selectedOAuthId,
 		() => storedCredential.value?.updatedAt,
 		() => storedCredential.value?.connectedByMe,
+		() => storedCredential.value?.scopes?.join(','),
 	],
 	async ([id], _previous, onCleanup) => {
 		let stale = false;
 		onCleanup(() => {
 			stale = true;
 		});
-		oauthConnection.value = undefined;
+		const permissions = getResourcePermissions(storedCredential.value?.scopes).credential;
+		oauthConnection.value = storedCredential.value?.isResolvable
+			? storedCredential.value.connectedByMe
+			: permissions.read === true && !permissions.update;
 		oauthMode.value = 'unknown';
 		loadingOAuth.value = Boolean(id);
 		if (!id) return;
@@ -201,7 +212,7 @@ watch(
 				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
 			}
 		} catch {
-			// A shared credential can be usable without permission to read its data.
+			// Keep the permission-based fallback when credential data is unavailable.
 		} finally {
 			if (!stale) loadingOAuth.value = false;
 		}
@@ -245,35 +256,40 @@ watch(
 	[gatewayAvailable, gateway.balance, usableCredentials],
 	([available, balance, credentials]) => {
 		if (available && !modeChanged.value && !connected.value)
-			mode.value = (balance ?? 0) > 0 || credentials.length === 0 ? 'credits' : 'own';
+			mode.value =
+				!props.item.preferNew && ((balance ?? 0) > 0 || credentials.length === 0)
+					? 'credits'
+					: 'own';
 	},
 	{ immediate: true },
 );
 
-const inlineFields = computed(() => {
-	const fields = form.credentialProperties.value.filter(
-		(property) =>
-			property.type !== 'hidden' &&
-			property.type !== 'notice' &&
-			!property.typeOptions?.copyButton &&
-			!(
-				props.item.credentialType === 'googlePalmApi' &&
-				property.name === 'host' &&
-				(form.credentialData.value.host ?? property.default) === property.default
-			) &&
-			!DOMAIN_RESTRICTION_FIELDS.some(({ name }) => name === property.name),
-	);
-	const required = fields.filter((property) => property.required);
-	// Older credential definitions can omit required flags even for access tokens.
-	const inputs = required.length ? required : fields.filter((property) => !property.default);
-	return inputs.length <= 2 ? inputs : [];
-});
+const credentialFields = computed(() =>
+	groupCredentialSetupFields(
+		props.item.credentialType,
+		form.parentTypes.value,
+		form.credentialProperties.value.filter(
+			(property) => !property.envFeatureFlag || envFeatureFlag.value(property.envFeatureFlag),
+		),
+	),
+);
+const helpFields = computed(() =>
+	credentialFields.value.inline.filter(
+		(property) => property.type !== 'notice' && !property.typeOptions?.copyButton,
+	),
+);
 const fieldTitles = computed(() =>
 	isTemplated.value
 		? listPlaceholderTitles(form.credentialData.value)
-		: inlineFields.value.map((property) => property.displayName),
+		: helpFields.value.map((property) => property.displayName),
 );
-const useAdvancedForm = computed(() => !canQuickConnect.value && fieldTitles.value.length === 0);
+const useAdvancedForm = computed(
+	() =>
+		!canQuickConnect.value &&
+		(isTemplated.value
+			? fieldTitles.value.length === 0
+			: credentialFields.value.inline.length === 0),
+);
 const advancedIsPrimary = computed(() => isTemplated.value && useAdvancedForm.value);
 const valueLabel = computed(() =>
 	binding.value?.__aiGatewayManaged
@@ -375,7 +391,7 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 });
 
 const helpLabel = computed(() => {
-	const fieldName = inlineFields.value.length === 1 ? inlineFields.value[0].name : undefined;
+	const fieldName = helpFields.value.length === 1 ? helpFields.value[0].name : undefined;
 	return i18n.baseText(
 		fieldName === 'apiKey'
 			? 'instanceAi.setupPanel.helpFindApiKey'
@@ -763,17 +779,25 @@ onScopeDispose(() => {
 			</template>
 			<template #action-leading>
 				<N8nText v-if="useCredits && balanceLabel" step="xs">{{ balanceLabel }}</N8nText>
-				<N8nButton
+				<N8nTooltip
 					v-else-if="!useCredits"
-					variant="ghost"
-					size="small"
-					:class="$style.help"
-					:disabled="helpDisabled || busy"
-					@click="askForHelp"
+					as-child
+					:disabled="!helpDisabled"
+					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
 				>
-					<N8nIcon icon="sparkles" size="small" />
-					{{ helpLabel }}
-				</N8nButton>
+					<span :tabindex="helpDisabled ? 0 : undefined">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:class="$style.help"
+							:disabled="helpDisabled || busy"
+							@click="askForHelp"
+						>
+							<N8nIcon icon="sparkles" size="small" />
+							{{ helpLabel }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
 			</template>
 			<N8nText v-if="needsAuthorization" size="small">{{ value }}</N8nText>
 			<template
@@ -805,7 +829,7 @@ onScopeDispose(() => {
 					v-else
 					compact
 					:credential-type="item.credentialType"
-					:credential-properties="inlineFields"
+					:credential-properties="credentialFields.inline"
 					:credential-data="form.credentialData.value"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="form.showValidationWarning.value"

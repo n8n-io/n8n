@@ -3,7 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';

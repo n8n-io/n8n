@@ -835,6 +835,26 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** One question of the ask-user card (`inputType=questions`). */
+export const instanceAiQuestionSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: z.enum(['single', 'multi', 'text']),
+	options: z.array(z.string()).optional(),
+	/** Hides Skip and blocks Next until the question has an answer. */
+	required: z.boolean().optional(),
+	/** Label of the built-in free-text row; the card shows "Something else" without it. */
+	freeTextLabel: z.string().optional(),
+	/**
+	 * Options that follow an earlier `single` question of the same card: the option selected for
+	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.
+	 */
+	optionsByAnswer: z
+		.object({ questionId: z.string(), options: z.record(z.string(), z.array(z.string())) })
+		.optional(),
+});
+export type InstanceAiQuestion = z.infer<typeof instanceAiQuestionSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -878,14 +898,7 @@ export const confirmationRequestPayloadSchema = z.object({
 				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
-		.array(
-			z.object({
-				id: z.string(),
-				question: z.string(),
-				type: z.enum(['single', 'multi', 'text']),
-				options: z.array(z.string()).optional(),
-			}),
-		)
+		.array(instanceAiQuestionSchema)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
 	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
@@ -1161,6 +1174,7 @@ export const setupItemSchema = z.discriminatedUnion('kind', [
 		kind: z.literal('credential'),
 		credentialType: z.string(),
 		appDisplayName: z.string().optional(),
+		preferNew: z.boolean().optional(),
 		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
 		setupHint: credentialSetupHintSchema.optional(),
 		/** Why the app is needed, e.g. "for the docs search". */
@@ -1643,6 +1657,43 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
+/** Identifies a resource that a thread tab shows. */
+export const instanceAiThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
+	type: true,
+	id: true,
+});
+export type InstanceAiThreadTabRef = z.infer<typeof instanceAiThreadTabRefSchema>;
+
+/** One open tab. The name lets the tab render before the resource details load. */
+export const instanceAiThreadTabSchema = instanceAiThreadTabRefSchema.extend({
+	name: z.string().max(255),
+	projectId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
+
+/**
+ * The tabs a user has open in a thread. `tabs` is in display order.
+ * `closedTabs` holds the artifacts the user closed, so they do not reopen when
+ * the thread loads again.
+ */
+export const instanceAiThreadTabsStateSchema = z.object({
+	tabs: z.array(instanceAiThreadTabSchema).max(100),
+	closedTabs: z.array(instanceAiThreadTabRefSchema).max(500),
+	activeTab: instanceAiThreadTabRefSchema.nullable(),
+	/**
+	 * Whether the preview panel is open. Without it, the active tab does not
+	 * tell if the user can see that tab. Optional, so a state saved before this
+	 * field existed stays valid.
+	 */
+	previewOpen: z.boolean().optional(),
+});
+export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
+
+export interface InstanceAiThreadTabsResponse {
+	/** `null` when the user has not changed the tabs of this thread yet. */
+	state: InstanceAiThreadTabsState | null;
+}
+
 /**
  * Build style for a run. `progressive` makes the agent build a minimal working
  * slice first, gate increments on real executions, and extend on actual
@@ -1708,11 +1759,13 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `canvas_action_button` — Instance AI button on the workflow canvas
  * - `canvas_choice_prompt` — empty-canvas choice prompt that opens Instance AI
  * - `node_error_view` — "Ask AI" from a node error / failed-execution view
+ * - `workflow_error_nudge` — nudge on a workflow error toast that opens the Assistant to fix the run
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1725,11 +1778,13 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
+	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'onboarding',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',
@@ -2744,6 +2799,14 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+/**
+ * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
+ * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
+ * instance and takes precedence over this flag.
+ */
+export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
+export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';

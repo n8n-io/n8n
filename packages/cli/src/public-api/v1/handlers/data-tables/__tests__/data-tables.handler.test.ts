@@ -4,8 +4,7 @@ import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';

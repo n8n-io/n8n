@@ -111,6 +111,29 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).not.toContain('Turn two');
 	});
 
+	it('groups shared input references and stops at a hidden input with its own ID', () => {
+		const executions = [
+			makeExecution({ id: 'start', userMessage: 'Question', inputMessageIds: ['input-1'] }),
+			makeExecution({
+				id: 'resume',
+				userMessage: null,
+				inputMessageIds: ['input-1'],
+				timeline: [{ type: 'text', content: 'Approved answer', timestamp: 1 }],
+			}),
+			makeExecution({
+				id: 'wake',
+				userMessage: null,
+				inputMessageIds: ['hidden-input'],
+				timeline: [{ type: 'text', content: 'Background result', timestamp: 2 }],
+			}),
+		];
+		const block = formatPreviewSessionContext(makeThread(), executions, 'resume');
+		expect(block).toContain('scope: single turn, turns: 2');
+		expect(block).toContain('User: Question');
+		expect(block).toContain('Approved answer');
+		expect(block).not.toContain('Background result');
+	});
+
 	it('walks back from a resumed HITL execution to include the user message and pre-suspension events', () => {
 		const executions = [
 			makeExecution({

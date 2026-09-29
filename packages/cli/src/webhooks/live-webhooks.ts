@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';

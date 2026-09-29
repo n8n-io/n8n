@@ -39,6 +39,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -49,7 +50,9 @@ import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
+	CONCISE_PROMPT_VERSION,
 	MAX_STEPS,
+	assertInstanceAiPromptVersion,
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -150,9 +153,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
@@ -169,7 +170,6 @@ import {
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
@@ -212,6 +212,8 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
+	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -222,6 +224,8 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
+import { loadOnboardingSkill } from './onboarding';
+import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -653,6 +657,25 @@ type InstanceContextGates = Pick<
 
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
+
+/**
+ * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
+ * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
+ * would report a fallback from an empty version instead of a clean default
+ * selection.
+ *
+ * An unknown version throws, so a typo fails the run loudly rather than
+ * silently serving the default profile. Resolved at the point of use, not
+ * cached at construction: a module `init()` that throws takes the whole n8n
+ * process down with it, and an optional Instance AI pin must not cost the
+ * instance its webhooks and executions.
+ */
+export function resolveOperatorPromptVersion(configured: string | undefined): string | undefined {
+	const version = configured?.trim();
+	if (!version) return undefined;
+	assertInstanceAiPromptVersion(version);
+	return version;
+}
 
 @Service()
 export class InstanceAiService {
@@ -2503,6 +2526,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
+			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
@@ -2517,14 +2541,27 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
+		const mode =
+			this.runState.getBuildMode(threadId) ??
+			(progressiveBuildingEnabled ? 'progressive' : 'default');
+		// The operator pin sits below the request pin and the thread's own selection,
+		// so evals and in-flight conversations keep the profile they started on.
+		// The concise experiment applies only in default mode, so a progressive
+		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
-			version: this.runState.getPromptVersion(threadId),
-			mode:
-				this.runState.getBuildMode(threadId) ??
-				(progressiveBuildingEnabled ? 'progressive' : 'default'),
+			version:
+				this.runState.getPromptVersion(threadId) ??
+				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
+				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
+			mode,
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// starts a build, so a thread that left gets the tool no more.
+		const thread = await memory.getThread(threadId);
+		const onboardingThread =
+			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2540,6 +2577,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
@@ -2812,8 +2850,6 @@ export class InstanceAiService {
 			runtimeSkills,
 			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
-			webhookBaseUrl: this.webhookBaseUrl,
-			formBaseUrl: this.formBaseUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
@@ -4069,11 +4105,17 @@ export class InstanceAiService {
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
-			const isOpeningTurn = Boolean(thread && !thread.title);
+			// An onboarding thread is titled at creation and opens with a seeded greeting. Its first
+			// user turn answers it, and is the turn that marks the title final below.
+			const unopenedOnboarding =
+				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
+			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
+			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
 
 			if (isOpeningTurn) {
-				const handoffTitle =
-					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+				const handoffTitle = unopenedOnboarding
+					? ONBOARDING_OPENING.title
+					: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
 				await patchThread(memory, {
 					threadId,
@@ -4185,8 +4227,17 @@ export class InstanceAiService {
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext.state === 'injected' ? instanceContext.block : '',
+				// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
+				// and stays in the history for the later turns.
+				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				resumeReason === undefined
+					? buildInstanceUrlsBlock({
+							webhookBaseUrl: this.webhookBaseUrl,
+							formBaseUrl: this.formBaseUrl,
+						})
+					: undefined,
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,

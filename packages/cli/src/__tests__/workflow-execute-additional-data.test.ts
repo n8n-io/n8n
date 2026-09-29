@@ -1,3 +1,4 @@
+import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -30,7 +31,6 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
@@ -42,7 +42,6 @@ import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-princi
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import {
@@ -448,7 +447,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 
-			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+			// Two reasons the user has to survive this boundary. It is what lets the
+			// acting-user route pass a credential the person legitimately reaches, one
+			// level down as at the top. And an empty user sent any inline sub-workflow
+			// nested inside a stored one to the project check, which an inline
+			// sub-workflow has no project for — skipping the user check entirely.
+			it('carries the acting user into a database sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
@@ -458,8 +462,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 					}),
 				);
 
+				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					'user-1',
+				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
-				expect(integratedAdditionalData.userId).toBeUndefined();
+				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 		});
 

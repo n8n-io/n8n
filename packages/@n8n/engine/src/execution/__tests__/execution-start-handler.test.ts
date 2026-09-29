@@ -69,6 +69,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
 		...overrides,
 	};
 }
