@@ -101,6 +101,15 @@ interface RunBudget {
 // Executes workflows with LLM-based HTTP mocking. Phase 1 generates per-node
 // mock hints (one LLM call); Phase 2 runs the workflow with a per-execution
 // mock handler — additionalData is fresh, no global state mutated.
+/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
+function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = node.parameters?.dataTableId as { mode?: unknown; value?: unknown } | string | undefined;
+	const value = typeof locator === 'string' ? locator : locator?.value;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const byName = typeof locator !== 'string' && locator?.mode === 'name';
+	return { mode: byName ? 'name' : 'id', value };
+}
+
 @Service()
 export class EvalExecutionService {
 	constructor(
@@ -444,30 +453,38 @@ export class EvalExecutionService {
 		const live = new Set<string>();
 		if (!seededDataTableIds?.length) return live;
 		const seeded = new Set(seededDataTableIds);
-		const projectId = (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
+		// The node resolves a `name` locator case-insensitively at run time
+		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
+		// same way, or a read spelt in another case would stay pinned.
+		const seededByLowerName = new Map<string, string>();
+		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
+			seededByLowerName.set(table.name.toLowerCase(), table.id);
+		}
 		for (const node of workflowEntity.nodes) {
 			if (!isDataTableRead(node)) continue;
-			const tableId = await this.resolveDataTableNodeId(node, projectId);
+			const locator = dataTableLocator(node);
+			if (!locator) continue;
+			const tableId =
+				locator.mode === 'name' ? seededByLowerName.get(locator.value.toLowerCase()) : locator.value;
 			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
 		}
 		return live;
 	}
 
-	/** The table a Data Table node binds. `name` mode carries a name, which the node
-	 *  resolves at run time, so only an exact name match counts here. */
+	/** The table a Data Table node binds, for the column shapes. `name` mode is
+	 *  looked up in the project the way the node does, case-insensitively. */
 	private async resolveDataTableNodeId(
 		node: INode,
 		projectId: string,
 	): Promise<string | undefined> {
-		const locator = node.parameters?.dataTableId as
-			| { mode?: unknown; value?: unknown }
-			| string
-			| undefined;
-		const value = typeof locator === 'string' ? locator : locator?.value;
-		if (typeof value !== 'string' || value.length === 0) return undefined;
-		if (typeof locator === 'string' || locator?.mode !== 'name') return value;
-		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [value]);
-		return matches.at(0)?.id;
+		const locator = dataTableLocator(node);
+		if (!locator) return undefined;
+		if (locator.mode !== 'name') return locator.value;
+		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+			locator.value,
+		]);
+		const wanted = locator.value.toLowerCase();
+		return (matches.find((m) => m.name.toLowerCase() === wanted) ?? matches.at(0))?.id;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────

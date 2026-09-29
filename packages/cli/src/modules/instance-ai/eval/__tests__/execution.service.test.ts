@@ -1953,19 +1953,24 @@ describe('EvalExecutionService', () => {
 					nodes: [
 						makeStartNode(),
 						readNode('Read Seeded', { __rl: true, mode: 'list', value: 'dt-seeded' }),
-						readNode('Read Named', { __rl: true, mode: 'name', value: 'Stock [seed 1a2b3c4d]' }),
+						// Spelt in another case: the node resolves names case-insensitively.
+						readNode('Read Named', { __rl: true, mode: 'name', value: 'stock [SEED 1a2b3c4d]' }),
 						readNode('Read Other', { __rl: true, mode: 'id', value: 'dt-other' }),
+						// A name the seed did not create stays pinned.
+						readNode('Read Unseeded', { __rl: true, mode: 'name', value: 'Orders' }),
 					],
 				}) as never,
 			);
-			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				{ id: 'dt-seeded', name: 'Customers' },
 				{ id: 'dt-named', name: 'Stock [seed 1a2b3c4d]' },
-			]);
+			] as never);
 
 			await service.executeWithLlmMock('wf-1', makeUser(), {
 				seededDataTableIds: ['dt-seeded', 'dt-named'],
 			});
 
+			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-seeded', 'dt-named']);
 			const liveReads = identifyNodesForPinDataMock.mock.calls[0][2];
 			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
 		});
