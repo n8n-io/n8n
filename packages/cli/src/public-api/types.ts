@@ -1,7 +1,5 @@
 import type {
-	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
@@ -156,17 +154,6 @@ export declare namespace DataTableRequest {
 			returnData?: string | boolean;
 			dryRun?: string | boolean;
 		}
-	>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
 	>;
 }
 
