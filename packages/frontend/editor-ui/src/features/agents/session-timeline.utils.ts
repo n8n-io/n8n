@@ -442,7 +442,7 @@ interface RawTextEvent {
 
 interface RawInputEvent {
 	type: 'input';
-	message: AgentPersistedMessageDto;
+	messageId: string;
 	timestamp: number;
 }
 
@@ -658,6 +658,25 @@ function hitlResponseItem(
 	};
 }
 
+function inputTimelineItem(
+	input: AgentPersistedMessageDto,
+	executionId: string,
+	timestamp: number,
+): TimelineItem | undefined {
+	const [message] = convertDbMessages([input]);
+	if (!message) return undefined;
+	return {
+		kind: 'user',
+		executionId,
+		content: message.content,
+		timestamp,
+		...(input.author && { authorName: input.author.name }),
+		attachments: message.attachments?.flatMap(({ fileId, fileName, mimeType, sizeBytes }) =>
+			fileId ? [{ id: fileId, fileName, mimeType, sizeBytes: sizeBytes ?? 0 }] : [],
+		),
+	};
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	const initialToolCalls = new Map<string, RawToolCallEvent>();
@@ -668,19 +687,29 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
-		// Attachment-only sends record a null userMessage but still carry files.
-		if (exec.userMessage || exec.attachments?.length) {
+		const events = timelineEvents(exec);
+		const timestamp = exec.startedAt ? new Date(exec.startedAt).getTime() : 0;
+		if (exec.inputMessages !== undefined) {
+			const steeredIds = new Set(
+				events.filter((event) => event.type === 'input').map((event) => event.messageId),
+			);
+			for (const input of exec.inputMessages) {
+				if (steeredIds.has(input.id)) continue;
+				const item = inputTimelineItem(input, exec.id, timestamp);
+				if (item) items.push(item);
+			}
+		} else if (exec.userMessage || exec.attachments?.length) {
 			items.push({
 				kind: 'user',
 				executionId: exec.id,
 				content: exec.userMessage ?? '',
-				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				timestamp,
 				...(exec.author && { authorName: exec.author.name }),
 				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}
 
-		for (const event of timelineEvents(exec)) {
+		for (const event of events) {
 			if (event.type === 'background-task-signal') {
 				items.push({
 					kind: 'background-task-signal',
@@ -689,17 +718,10 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					backgroundJobSignal: event.signal,
 				});
 			} else if (event.type === 'input') {
-				const [message] = convertDbMessages([event.message]);
-				if (!message) continue;
-				items.push({
-					kind: 'user',
-					executionId: exec.id,
-					content: message.content,
-					timestamp: event.timestamp,
-					attachments: message.attachments?.flatMap(({ fileId, fileName, mimeType, sizeBytes }) =>
-						fileId ? [{ id: fileId, fileName, mimeType, sizeBytes: sizeBytes ?? 0 }] : [],
-					),
-				});
+				const input = exec.inputMessages?.find(({ id }) => id === event.messageId);
+				if (!input) continue;
+				const item = inputTimelineItem(input, exec.id, event.timestamp);
+				if (item) items.push(item);
 			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;

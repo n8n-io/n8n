@@ -203,7 +203,6 @@ describe('AgentExecutionRepository', () => {
 			checkpointStorage,
 			executionService,
 			mock<AgentExecutionUpdateBroadcaster>(),
-			new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
 		);
 		const queue = new AgentMessageQueueService(
 			txRunner,
@@ -1200,15 +1199,29 @@ describe('AgentExecutionRepository', () => {
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
 
-		it.each([false, true])(
-			'consumes steering through a Preview resume with automatic continuation=%s',
-			async (automaticPreviewContinuation) => {
+		it.each([
+			{ automaticPreviewContinuation: false, legacy: false },
+			{ automaticPreviewContinuation: true, legacy: false },
+			{ automaticPreviewContinuation: false, legacy: true },
+		])(
+			'consumes steering through a Preview resume (automatic=$automaticPreviewContinuation, legacy=$legacy)',
+			async ({ automaticPreviewContinuation, legacy }) => {
 				const fixture = await startSuspendedApprovalRun(owner);
 				const services = recordingServices();
 				const { threadId, suspension, recording, common } = fixture;
+				const [predecessor] = await repository.findByThreadIdOrdered(threadId);
+				if (legacy) {
+					await repository.update(predecessor.id, { userMessage: 'Start' });
+					await repository.manager.delete(AgentExecutionMessageLink, {
+						executionId: predecessor.id,
+					});
+				}
+				const initialInputs = await services.messageRepository.findExecutionInputs([
+					predecessor.id,
+				]);
 				const target = { projectId, agentId, threadId, userId: owner.id };
-				const b = await services.queue.enqueue(input(threadId, 'B'));
-				const c = await services.queue.enqueue(input(threadId, 'C'));
+				const b = await enqueue(services, input(threadId, 'B'));
+				const c = await enqueue(services, input(threadId, 'C'));
 				const runtime = fixture.makeAgent(services.checkpointStorage.getStorage(agentId));
 				let executionId = '';
 				try {
@@ -1243,7 +1256,10 @@ describe('AgentExecutionRepository', () => {
 								type: 'message-steered',
 								queueId: c.id,
 								executionId,
-								message: expect.objectContaining({ content: [{ type: 'text', text: 'C' }] }),
+								message: expect.objectContaining({
+									id: c.messageId,
+									content: [{ type: 'text', text: 'C' }],
+								}),
 							}),
 						},
 					});
@@ -1251,9 +1267,28 @@ describe('AgentExecutionRepository', () => {
 						status: 'success',
 						acceptsSteering: false,
 						timeline: expect.arrayContaining([
-							expect.objectContaining({ type: 'input', queueId: c.id }),
+							expect.objectContaining({ type: 'input', messageId: c.messageId }),
 						]),
 					});
+					const inputs = await services.messageRepository.findExecutionInputs([executionId]);
+					expect(inputs.get(executionId)?.map(({ id }) => id)).toEqual([
+						...(initialInputs.get(predecessor.id) ?? []).map(({ id }) => id),
+						c.messageId,
+					]);
+					const detail = await services.executionService.getThreadDetail(
+						threadId,
+						projectId,
+						agentId,
+						owner.id,
+					);
+					expect(
+						executionsToMessagesDto(detail!.executions)
+							.filter(({ role }) => role === 'user')
+							.map(({ content }) => content),
+					).toEqual([[{ type: 'text', text: 'Start' }], [{ type: 'text', text: 'C' }]]);
+					expect(
+						formatPreviewSessionContext(detail!.thread, detail!.executions, executionId),
+					).toContain('User: Start');
 					expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 						b.id,
 					]);
@@ -1269,22 +1304,24 @@ describe('AgentExecutionRepository', () => {
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
 			const target = { projectId, agentId, threadId, userId: owner.id };
-			await local.queue.enqueue(input(threadId, 'A', 'new'));
+			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
-			const b = await local.queue.enqueue(input(threadId, 'B'));
-			const data = input(threadId, 'C');
+			const b = await enqueue(local, input(threadId, 'B'));
+			const data = input(threadId, 'C', 'existing', uuid());
 			data.payload.attachments = [
 				{ id: 'file-c', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 3 },
 			];
-			const c = await local.queue.enqueue(data);
-			const d = await local.queue.enqueue(input(threadId, 'D'));
+			const c = await enqueue(local, data);
+			const original = await local.messageRepository.findOneByOrFail({ id: c.messageId });
+			const d = await enqueue(local, input(threadId, 'D'));
 			await local.queue.steer({ ...target, queueId: d.id, executionId });
 			const concurrent = await Promise.allSettled([
 				local.queue.steer({ ...target, queueId: c.id, executionId }),
 				remote.queue.steer({ ...target, queueId: c.id, executionId }),
 			]);
 			expect(concurrent.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
 			await expect(
 				remote.queue.steer({ ...target, userId: 'other-user', queueId: b.id, executionId }),
 			).rejects.toThrow('Session not found');
@@ -1300,13 +1337,15 @@ describe('AgentExecutionRepository', () => {
 			expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
 			const recorder = local.turns.createRecorder(undefined, () => executionId, target);
 			recorder.record({ type: 'text-delta', id: 'before', delta: 'before' });
+			const outputId = uuid();
+			const boundaryTimestamp = Date.now();
 			const result = await local.steering.consume(
 				{ ...target, executionId },
 				{
 					messages: [
 						{
-							id: uuid(),
-							createdAt: new Date(),
+							id: active.admission.inputMessageIds[0],
+							createdAt: new Date(boundaryTimestamp - 1),
 							role: 'user',
 							content: [
 								{ type: 'text', text: 'A' },
@@ -1318,8 +1357,14 @@ describe('AgentExecutionRepository', () => {
 								},
 							],
 						},
+						{
+							id: outputId,
+							createdAt: new Date(boundaryTimestamp),
+							role: 'assistant',
+							content: [{ type: 'text', text: 'before' }],
+						},
 					],
-					lastCreatedAt: Date.now(),
+					lastCreatedAt: boundaryTimestamp,
 					completing: false,
 					canContinue: true,
 				},
@@ -1327,8 +1372,35 @@ describe('AgentExecutionRepository', () => {
 				local.executionService.getAbortSignal(executionId),
 			);
 			expect(result.events.map(({ queueId }) => queueId)).toEqual([d.id, c.id]);
+			expect(result.messages.map(({ id }) => id)).toEqual([d.messageId, c.messageId]);
+			expect(result.events[1].message).toMatchObject({
+				id: c.messageId,
+				createdAt: original.createdAt.toISOString(),
+			});
 			const stored = await local.messageRepository.findBy({ threadId });
-			expect(stored).toHaveLength(3);
+			expect(stored).toHaveLength(5);
+			expect(stored.find(({ id }) => id === c.messageId)).toMatchObject({
+				content: original.content,
+				createdAt: original.createdAt,
+				author: original.author,
+				origin: original.origin,
+				modelContextAt: result.messages[1].createdAt,
+			});
+			expect(
+				(await local.messageRepository.findRuntimeMessages({ threadId })).map(({ id }) => id),
+			).toEqual([active.admission.inputMessageIds[0], outputId, d.messageId, c.messageId]);
+			expect(
+				await repository.manager.find(AgentExecutionMessageLink, {
+					where: { executionId },
+					order: { direction: 'ASC', position: 'ASC' },
+				}),
+			).toMatchObject([
+				{ messageId: active.admission.inputMessageIds[0], direction: 'input', position: 0 },
+				{ messageId: d.messageId, direction: 'input', position: 1 },
+				{ messageId: c.messageId, direction: 'input', position: 2 },
+				{ messageId: outputId, direction: 'output', position: 0 },
+			]);
+			expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
 			expect(JSON.stringify(stored)).not.toContain('"data"');
 			expect(JSON.stringify(stored)).toContain('file-c');
 			expect(local.attachmentService.deleteByIds).not.toHaveBeenCalled();
@@ -1362,11 +1434,15 @@ describe('AgentExecutionRepository', () => {
 			const services = recordingServices();
 			const threadId = uuid();
 			const target = { projectId, agentId, threadId, userId: owner.id };
-			await services.queue.enqueue(input(threadId, 'A', 'new'));
+			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
-			const c = await services.queue.enqueue(input(threadId, 'C'));
+			const c = await enqueue(services, input(threadId, 'C'));
 			await services.queue.steer({ ...target, queueId: c.id, executionId });
+			const before = await services.messageRepository.find({
+				where: { threadId },
+				order: { id: 'ASC' },
+			});
 			const consume = services.queueRepository.consumeSteering.bind(services.queueRepository);
 			const failure = vi
 				.spyOn(services.queueRepository, 'consumeSteering')
@@ -1389,7 +1465,14 @@ describe('AgentExecutionRepository', () => {
 				),
 			).rejects.toThrow('consumption failed');
 			failure.mockRestore();
-			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
+			expect(
+				await services.messageRepository.find({ where: { threadId }, order: { id: 'ASC' } }),
+			).toEqual(before);
+			expect(
+				(await services.messageRepository.findExecutionInputs([executionId]))
+					.get(executionId)
+					?.map(({ id }) => id),
+			).toEqual(active.admission.inputMessageIds);
 			expect((await repository.findExecution(executionId))?.timeline ?? []).toEqual([]);
 			expect(recorder.getMessageRecord().timeline).toEqual([]);
 			expect(await services.queueRepository.findOneByOrFail({ id: c.id })).toMatchObject({
@@ -1405,11 +1488,11 @@ describe('AgentExecutionRepository', () => {
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
 				const target = { projectId, agentId, threadId, userId: owner.id };
-				await local.queue.enqueue(input(threadId, 'A', 'new'));
+				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
-				const b = await local.queue.enqueue(input(threadId, 'B'));
-				const c = await local.queue.enqueue(input(threadId, 'C'));
+				const b = await enqueue(local, input(threadId, 'B'));
+				const c = await enqueue(local, input(threadId, 'C'));
 				await remote.queue.steer({ ...target, queueId: c.id, executionId });
 				if (reason === 'stop') await remote.steering.close(threadId, executionId);
 				if (reason === 'limit') {
@@ -1482,10 +1565,10 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				await local.queue.enqueue(input(threadId, 'A', 'new'));
+				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
-				const c = await local.queue.enqueue(input(threadId, 'C'));
+				const c = await enqueue(local, input(threadId, 'C'));
 				const target = {
 					projectId,
 					agentId,
@@ -1544,9 +1627,9 @@ describe('AgentExecutionRepository', () => {
 				expect(settled[0].status).toBe('fulfilled');
 				expect(settled[1].status).toBe(operation === 'edit' ? 'fulfilled' : 'rejected');
 				if (operation === 'edit')
-					expect((await remote.queueRepository.findOneByOrFail({ id: c.id })).payload.message).toBe(
-						'edited',
-					);
+					expect(
+						(await remote.messageRepository.findOneByOrFail({ id: c.messageId })).content,
+					).toEqual(buildInboundUserMessage('edited', [])[0]);
 				if (operation === 'failure') {
 					expect(settled[1]).toMatchObject({
 						reason: { message: 'This message cannot be added to that execution' },

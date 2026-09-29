@@ -453,7 +453,7 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 		}
-		if (previewControl) {
+		if (config.previewChat && previewControl) {
 			turn.options.onInputBoundary = async (boundary) => {
 				const result = await this.steering.consume(
 					{ ...config.context, executionId, userId: previewControl.userId },
@@ -465,6 +465,8 @@ export class AgentTurnExecutionService {
 				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
 				return result.messages;
 			};
+		}
+		if (previewControl) {
 			this.chatExecutionService.register(
 				{
 					...config.context,

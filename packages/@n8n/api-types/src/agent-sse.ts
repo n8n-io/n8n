@@ -9,9 +9,9 @@
  * - `start-step` / `finish-step` mark LLM iteration boundaries.
  *
  * The frontend groups deltas by these ids and uses `start-step` / `finish-step`
- * to decide when a new ChatMessage cursor should open. There is no
- * server-minted `messageId` — the FE generates its own UUID per ChatMessage
- * for v-for keys only.
+ * to decide when a new ChatMessage cursor should open. The frontend assigns
+ * display IDs to assistant messages. `execution-started` and `message-steered`
+ * carry canonical input IDs for reconciliation with history.
  *
  * `runId` is included on `ToolSuspendedPayload` and echoed back by the
  * frontend on resume. The SDK stores `runId` on each `PendingToolCall` and

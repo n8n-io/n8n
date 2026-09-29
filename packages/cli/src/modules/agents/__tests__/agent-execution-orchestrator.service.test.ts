@@ -1493,7 +1493,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);
 		executionService.canUseProductionChatThread.mockResolvedValue(true);
-		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
 			service.executeForN8nChatPublished({
@@ -1513,6 +1514,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				attributionUserId: user.id,
 			}),
 		);
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
 			'n8n-chat-production:user-1',

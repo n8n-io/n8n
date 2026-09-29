@@ -28,9 +28,13 @@ describe('execution-to-message-mapper', () => {
 			execution({
 				status: 'error',
 				error: 'Failed after input',
+				inputMessages: [
+					{ id: 'initial-message', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+					input,
+				],
 				timeline: [
 					{ type: 'text', content: 'before', timestamp: 100, endTime: 120 },
-					{ type: 'input', queueId: '3', message: input, timestamp: 150 },
+					{ type: 'input', messageId: input.id, timestamp: 150 },
 					{ type: 'text', content: 'after', timestamp: 200, endTime: 220 },
 				],
 			}),

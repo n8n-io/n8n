@@ -674,9 +674,20 @@ describe('flattenExecutionsToTimelineItems', () => {
 					{ type: 'text', content: 'Before steering', timestamp: 100 },
 					{
 						type: 'input',
-						queueId: 'q-1',
 						timestamp: 200,
-						message: {
+						messageId: 'steered-user-message',
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{
+					userMessage: `Original request\n${content}`,
+					inputMessages: [
+						{
+							id: 'original-input',
+							role: 'user',
+							content: [{ type: 'text', text: 'Original request' }],
+						},
+						{
 							id: 'steered-user-message',
 							role: 'user',
 							content: [
@@ -690,10 +701,8 @@ describe('flattenExecutionsToTimelineItems', () => {
 								},
 							],
 						},
-					},
-					{ type: 'text', content: 'After steering', timestamp: 300 },
-				],
-				{ userMessage: 'Original request' },
+					],
+				},
 			),
 		]);
 

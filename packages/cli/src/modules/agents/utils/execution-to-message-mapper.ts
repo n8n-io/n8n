@@ -152,7 +152,14 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		return executionSegmentToMessagesDto(execution);
 	}
 	const messages: AgentPersistedMessageDto[] = [];
-	let segment: ExecutionTranscript = { ...execution, timeline: [] };
+	const steeredIds = new Set(
+		execution.timeline.filter((event) => event.type === 'input').map((event) => event.messageId),
+	);
+	let segment: ExecutionTranscript = {
+		...execution,
+		inputMessages: execution.inputMessages?.filter(({ id }) => !steeredIds.has(id)),
+		timeline: [],
+	};
 	let suffix = '';
 	const appendSegment = (value: ExecutionTranscript) => {
 		for (const message of executionSegmentToMessagesDto(value)) {
@@ -166,13 +173,15 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			continue;
 		}
 		appendSegment({ ...segment, status: 'success', error: null });
-		messages.push({ ...event.message, executionId: execution.id });
-		suffix = `:${event.message.id}`;
+		const input = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		if (input) messages.push({ ...input, executionId: execution.id });
+		suffix = `:${event.messageId}`;
 		segment = {
 			...execution,
 			userMessage: null,
 			attachments: null,
 			author: null,
+			inputMessages: [],
 			timeline: [],
 			createdAt: new Date(event.timestamp),
 		};

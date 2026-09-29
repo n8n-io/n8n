@@ -2,7 +2,6 @@ import type { AgentDbMessage, AgentInputBoundary } from '@n8n/agents';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
-import { randomUUID } from 'node:crypto';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
@@ -15,11 +14,9 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from './repositories/agent-message.repository';
-import { AgentThreadRepository } from './repositories/agent-thread.repository';
 import { checkpointExecutionId } from './types/agent-queued-message';
 import type { SteeringConsumption } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { buildInboundUserMessage } from './utils/inbound-attachments';
 
 interface SteeringContext {
 	agentId: string;
@@ -40,7 +37,6 @@ export class AgentMessageSteeringService {
 		private readonly checkpoints: N8NCheckpointStorage,
 		private readonly executionService: AgentExecutionService,
 		private readonly updates: AgentExecutionUpdateBroadcaster,
-		private readonly messageThreads: AgentThreadRepository,
 	) {}
 
 	async findEligible(thread: AgentExecutionThread, ctx: OperationContext = {}) {
@@ -93,12 +89,16 @@ export class AgentMessageSteeringService {
 		recorder: ExecutionRecorder,
 		signal: AbortSignal,
 	): Promise<SteeringConsumption> {
+		signal.throwIfAborted();
 		const result = await this.executionService.withTimelineWritesPaused(
 			context.executionId,
 			async () => {
 				const timeline = structuredClone(recorder.getMessageRecord().timeline);
 				try {
-					const consumed = await this.commitInput(context, boundary, timeline, signal);
+					const consumed = await this.txRunner.run(
+						{},
+						async (ctx) => await this.consumeLocked(context, boundary, timeline, signal, ctx),
+					);
 					recorder.recordInputs(inputMarkers(consumed));
 					return consumed;
 				} catch (error) {
@@ -115,33 +115,13 @@ export class AgentMessageSteeringService {
 		return result;
 	}
 
-	private async commitInput(
-		context: SteeringContext,
-		boundary: AgentInputBoundary,
-		timeline: TimelineEvent[],
-		signal: AbortSignal,
-	): Promise<SteeringConsumption> {
-		for (;;) {
-			signal.throwIfAborted();
-			const items = await this.queue.findSteering(context.threadId, context.executionId, {});
-			const staged = this.prepareInput(items, context.executionId, boundary.lastCreatedAt);
-			const result = await this.txRunner.run(
-				{},
-				async (ctx) => await this.consumeLocked(context, boundary, timeline, staged, signal, ctx),
-			);
-			if (result) return result;
-			// A new reservation changed the batch. Stage its IDs before opening another transaction.
-		}
-	}
-
 	private async consumeLocked(
 		context: SteeringContext,
 		boundary: AgentInputBoundary,
 		timeline: TimelineEvent[],
-		staged: SteeringConsumption,
 		signal: AbortSignal,
 		ctx: OperationContext,
-	): Promise<SteeringConsumption | null> {
+	): Promise<SteeringConsumption> {
 		const { threadId, executionId, userId } = context;
 		const thread = await this.threads.lockById(threadId, ctx);
 		const execution = await this.executions.findExecution(executionId, ctx);
@@ -155,28 +135,24 @@ export class AgentMessageSteeringService {
 			return { messages: [], events: [], stopped: false };
 		}
 		const items = await this.queue.findSteering(threadId, executionId, ctx);
-		if (
-			items.length !== staged.events.length ||
-			items.some((item, index) => item.id !== staged.events[index].queueId)
-		)
-			return null;
 		if (items.length === 0) {
 			if (boundary.completing) await this.executions.closeSteering(threadId, executionId, ctx);
 			return { messages: [], events: [], stopped: false };
 		}
 		const resourceId = draftChatMemoryResourceId(userId);
-		await this.messageThreads.ensureExists(threadId, resourceId, ctx);
-		await this.messages.saveMessages(
-			threadId,
-			resourceId,
-			[...boundary.messages, ...staged.messages],
+		const consumed = this.prepareInput(items, executionId, boundary.lastCreatedAt);
+		for (const { messageId } of items) {
+			await this.messages.linkExecutionInput(executionId, messageId, { threadId, resourceId }, ctx);
+		}
+		await this.messages.saveRuntimeMessages(
+			{ threadId, resourceId, executionId, messages: [...boundary.messages, ...consumed.messages] },
 			ctx,
 		);
 		signal.throwIfAborted();
 		if (
 			!(await this.executions.updateTimelineIfRunning(
 				executionId,
-				[...timeline, ...inputMarkers(staged)],
+				[...timeline, ...inputMarkers(consumed)],
 				ctx,
 			))
 		) {
@@ -188,7 +164,7 @@ export class AgentMessageSteeringService {
 			items.map(({ id }) => id),
 			ctx,
 		);
-		return staged;
+		return consumed;
 	}
 
 	private prepareInput(
@@ -202,20 +178,27 @@ export class AgentMessageSteeringService {
 		for (const item of items) {
 			if (item.payload.kind !== 'preview')
 				throw new UnexpectedError('Only Preview input can be steered');
-			const [input] = buildInboundUserMessage(item.payload.message, item.payload.attachments ?? []);
 			const message: AgentDbMessage = {
-				...input,
-				id: randomUUID(),
+				...(item.message.modelContent ?? item.message.content),
+				id: item.messageId,
 				createdAt: new Date(timestamp++),
 			};
-			const dto = messageToDto(message);
-			if (!dto) throw new UnexpectedError('Steering input must be a user message');
+			const dto = messageToDto({
+				...item.message.content,
+				id: item.messageId,
+				createdAt: item.message.createdAt,
+			});
+			if (dto?.role !== 'user') throw new UnexpectedError('Steering input must be a user message');
 			messages.push(message);
 			events.push({
 				type: 'message-steered',
 				queueId: item.id,
 				executionId,
-				message: { ...dto, executionId },
+				message: {
+					...dto,
+					executionId,
+					...(item.message.author ? { author: item.message.author } : {}),
+				},
 			});
 		}
 		return { messages, events, stopped: false };
@@ -237,10 +220,9 @@ export class AgentMessageSteeringService {
 function inputMarkers(
 	consumed: SteeringConsumption,
 ): Array<Extract<TimelineEvent, { type: 'input' }>> {
-	return consumed.events.map((event, index) => ({
+	return consumed.messages.map((message) => ({
 		type: 'input',
-		queueId: event.queueId,
-		message: event.message,
-		timestamp: consumed.messages[index].createdAt.getTime(),
+		messageId: message.id,
+		timestamp: message.createdAt.getTime(),
 	}));
 }

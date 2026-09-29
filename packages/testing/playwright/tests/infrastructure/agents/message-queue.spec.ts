@@ -250,13 +250,16 @@ test.describe(
 					.toEqual(['cancelled', 'running']);
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				await expect.poll(() => executionId(second.events)).toBeTruthy();
-				const steered = await open(0, threadId, 'additional input');
+				const steeringRequestId = randomUUID();
+				const steered = await open(0, threadId, 'additional input', undefined, steeringRequestId);
 				await expect
 					.poll(() => steered.events.find((event) => event.type === 'message-queued'))
 					.toBeTruthy();
 				const pending = await ingress.agents.queuedMessages(project.id, agent.id, threadId);
 				const steerId = pending.items.find(({ message }) => message === 'additional input')?.id;
 				assert(steerId);
+				const steeringMessageId = await queuedMessageId(steerId);
+				await retry(1, threadId, steeringRequestId);
 				await ingress.agents.steerQueuedMessage(
 					project.id,
 					agent.id,
@@ -280,6 +283,7 @@ test.describe(
 					.toEqual(['cancelled', 'success', 'success']);
 				expect(await second.done).toBeUndefined();
 				await retry(1, threadId, secondId);
+				await retry(0, threadId, steeringRequestId);
 				expect(second.events).toContainEqual(
 					expect.objectContaining({
 						type: 'execution-started',
@@ -303,9 +307,11 @@ test.describe(
 						type: 'message-steered',
 						queueId: steerId,
 						executionId: executionId(second.events),
+						message: expect.objectContaining({ id: steeringMessageId }),
 					}),
 				);
 				const history = await ingress.agents.history(project.id, agent.id, threadId);
+				expect(history.messages.filter(({ id }) => id === steeringMessageId)).toHaveLength(1);
 				expect(
 					history.messages.filter(({ role }) => role === 'user').flatMap(({ content }) => content),
 				).toContainEqual({ type: 'text', text: 'additional input' });
@@ -316,7 +322,7 @@ test.describe(
 					(await ingress.agents.executions(project.id, agent.id, threadId)).map(
 						({ userMessage }) => userMessage,
 					),
-				).toEqual(['fifo-blocked', 'fifo-remote', 'third']);
+				).toEqual(['fifo-blocked', 'fifo-remote\nadditional input', 'third']);
 
 				const crashThread = randomUUID();
 				const interruptedId = randomUUID();
@@ -326,13 +332,13 @@ test.describe(
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				const afterCrash = await open(0, crashThread, 'survives restart');
 				await expect.poll(async () => await queued(crashThread)).toBe(1);
-				const pending = await ingress.agents.queuedMessages(project.id, agent.id, crashThread);
-				const recoveredInputId = await queuedMessageId(pending.items[0].id);
+				const crashPending = await ingress.agents.queuedMessages(project.id, agent.id, crashThread);
+				const recoveredInputId = await queuedMessageId(crashPending.items[0].id);
 				await ingress.agents.steerQueuedMessage(
 					project.id,
 					agent.id,
 					crashThread,
-					pending.items[0].id,
+					crashPending.items[0].id,
 					executionId(interrupted.events)!,
 				);
 				const [main] = n8nContainer.findContainers('-n8n-main-2$');
@@ -369,20 +375,6 @@ test.describe(
 				).toEqual(['fifo-crash', 'survives restart']);
 				expect(await queued(crashThread)).toBe(0);
 				await retry(0, crashThread, interruptedId);
-				expect(
-					await n8nContainer.services.proxy.verifyRequest(
-						{
-							method: 'POST',
-							path: '/v1/messages',
-							body: {
-								type: 'JSON',
-								json: JSON.stringify({ stream: true }),
-								matchType: 'ONLY_MATCHING_FIELDS',
-							},
-						},
-						7,
-					),
-				).toBe(true);
 
 				const committedThread = randomUUID();
 				await signalMain(n8nContainer, 0, 'SIGSTOP');
@@ -390,7 +382,14 @@ test.describe(
 				await expect.poll(() => executionId(beforeCommit.events), { timeout: 30_000 }).toBeTruthy();
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				const ordinary = await open(0, committedThread, 'ordinary after crash');
-				const committedInput = await open(0, committedThread, 'steer-committed');
+				const committedRequestId = randomUUID();
+				const committedInput = await open(
+					0,
+					committedThread,
+					'steer-committed',
+					undefined,
+					committedRequestId,
+				);
 				await expect
 					.poll(() => committedInput.events.find((event) => event.type === 'message-queued'))
 					.toBeTruthy();
@@ -403,6 +402,7 @@ test.describe(
 					({ message }) => message === 'steer-committed',
 				)?.id;
 				assert(committedId);
+				const committedMessageId = await queuedMessageId(committedId);
 				await ingress.agents.steerQueuedMessage(
 					project.id,
 					agent.id,
@@ -426,7 +426,9 @@ test.describe(
 					)
 					.toEqual(['interrupted', 'success']);
 				expect(await ordinary.done).toBeUndefined();
+				await retry(0, committedThread, committedRequestId);
 				const recovered = await ingress.agents.history(project.id, agent.id, committedThread);
+				expect(recovered.messages.filter(({ id }) => id === committedMessageId)).toHaveLength(1);
 				expect(
 					recovered.messages
 						.filter(({ role }) => role === 'user')
@@ -440,8 +442,22 @@ test.describe(
 					(await ingress.agents.executions(project.id, agent.id, committedThread)).map(
 						({ userMessage }) => userMessage,
 					),
-				).toEqual(['steer-boundary', 'ordinary after crash']);
+				).toEqual(['steer-boundary\nsteer-committed', 'ordinary after crash']);
 				expect(await queued(committedThread)).toBe(0);
+				expect(
+					await n8nContainer.services.proxy.verifyRequest(
+						{
+							method: 'POST',
+							path: '/v1/messages',
+							body: {
+								type: 'JSON',
+								json: JSON.stringify({ stream: true }),
+								matchType: 'ONLY_MATCHING_FIELDS',
+							},
+						},
+						10,
+					),
+				).toBe(true);
 			} finally {
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				for (const stream of streams) stream.disconnect();
