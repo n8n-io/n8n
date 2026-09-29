@@ -1,0 +1,36 @@
+packages/@n8n/ai-utilities/oxlint.config.mts
+  s_4d4515bb8fac55::t_f6ed170039ba5c 8-41
+  s_4d4515bb8fac55::t_a3f96747c33a9a 1-7,42
+packages/@n8n/node-cli/oxlint.config.mts
+  s_4d4515bb8fac55::t_a3f96747c33a9a 1-17
+packages/@n8n/node-cli/package.json
+  s_4d4515bb8fac55::t_a3f96747c33a9a 25-26,68,72-73
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_4d4515bb8fac55::t_a3f96747c33a9a 24-25,88,96-97
+packages/@n8n/ai-utilities/package.json
+  s_4d4515bb8fac55::t_a3f96747c33a9a 125-126,136
+  s_4d4515bb8fac55::t_529267679027c2 149-151
+packages/@n8n/ai-utilities/eslint.config.mjs
+  s_4d4515bb8fac55::t_2917b9fa976383 8-23,29-38
+packages/@n8n/ai-workflow-builder.ee/oxlint.config.mts
+  s_4d4515bb8fac55::t_a3f96747c33a9a 1-6,8-26
+  s_4d4515bb8fac55::t_bc8bd116c137f2 7
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_f4d040e0310909 1407-1409,1434-1439,1540-1542,1564-1569,3404-3406,3416-3421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36984aba016c16411bb24bac07fef89c6609f3b4",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
