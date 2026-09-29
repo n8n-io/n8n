@@ -125,6 +125,41 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(1);
 		});
 
+		it('refetches the loaded project when forced', async () => {
+			mocks.fetchAvailableTypes
+				.mockResolvedValueOnce(PROJECT_A_RESPONSE)
+				.mockResolvedValueOnce(PROJECT_B_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			await store.fetchForProject('project-a', { force: true });
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
+			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
+		it('keeps the loaded answer while a forced refetch is in flight', async () => {
+			let resolveRefetch: (value: AvailableTypesResponse) => void = () => {};
+			mocks.fetchAvailableTypes.mockResolvedValueOnce(PROJECT_A_RESPONSE).mockImplementationOnce(
+				async () =>
+					await new Promise<AvailableTypesResponse>((resolve) => {
+						resolveRefetch = resolve;
+					}),
+			);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			const pending = store.fetchForProject('project-a', { force: true });
+
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
+
+			resolveRefetch(PROJECT_B_RESPONSE);
+			await pending;
+
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
 		it('reflects the new project after a switch', async () => {
 			mocks.fetchAvailableTypes
 				.mockResolvedValueOnce(PROJECT_A_RESPONSE)

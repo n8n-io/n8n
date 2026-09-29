@@ -1274,6 +1274,41 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			});
 		});
 
+		it('refetches the policy after a community install and adds nothing when the installed tool is restricted', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+				if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
+				return null;
+			});
+			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+				nodeDescription: COMMUNITY_PREVIEW,
+				packageName: 'n8n-nodes-firecrawl',
+				isOfficialNode: true,
+			});
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+			};
+			mockRestrictedNodeTypes();
+			// The install adds a node type the loaded answer does not cover; the refetch reports it.
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockImplementation(async (_projectId, options) => {
+					if (options?.force) mockRestrictedNodeTypes({ [COMMUNITY_INSTALLED.name]: 'instance' });
+				});
+			const onConfirm = vi.fn();
+			render([], onConfirm, [], PROJECT_ID);
+			await flushPromises();
+
+			const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+			emitConnect(preview!);
+			await flushPromises();
+
+			expect(installNodeMock).toHaveBeenCalled();
+			expect(fetchForProject).toHaveBeenLastCalledWith(PROJECT_ID, { force: true });
+			expect(configFormData).toBeNull();
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+			expect(onConfirm).not.toHaveBeenCalled();
+		});
+
 		it('leaves the list untouched when nothing is restricted', async () => {
 			mockRestrictedNodeTypes();
 

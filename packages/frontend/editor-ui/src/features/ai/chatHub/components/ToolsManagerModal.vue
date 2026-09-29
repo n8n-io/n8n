@@ -365,6 +365,12 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
+			// The policy answer covers only the node types the server had loaded when it was fetched.
+			const projectId = projectsStore.personalProject?.id;
+			if (projectId) {
+				await typeAvailabilityPoliciesStore.fetchForProject(projectId, { force: true });
+			}
+			if (notifyRestricted(installed)) return;
 			openSettingsFor(installed);
 		} finally {
 			installingToolName.value = null;

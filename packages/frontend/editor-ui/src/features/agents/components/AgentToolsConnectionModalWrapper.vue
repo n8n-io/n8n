@@ -458,6 +458,11 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
+		// The policy answer covers only the node types the server had loaded when it was fetched.
+		if (props.data.projectId) {
+			await typeAvailabilityPoliciesStore.fetchForProject(props.data.projectId, { force: true });
+		}
+		if (notifyRestricted(installed.name)) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;

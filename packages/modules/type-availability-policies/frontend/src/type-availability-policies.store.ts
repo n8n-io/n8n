@@ -25,12 +25,19 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
 		);
 
-		async function fetchForProject(projectId: string): Promise<void> {
+		/**
+		 * `force` refetches the loaded project, for when the server's node set changed
+		 * (a community node install). The loaded answer stays in place until the new one lands.
+		 */
+		async function fetchForProject(
+			projectId: string,
+			{ force = false }: { force?: boolean } = {},
+		): Promise<void> {
 			if (!isEnabled.value) return;
 
 			requestedProjectId.value = projectId;
 
-			if (projectId === loadedProjectId.value) {
+			if (projectId === loadedProjectId.value && !force) {
 				isLoading.value = false;
 				return;
 			}
