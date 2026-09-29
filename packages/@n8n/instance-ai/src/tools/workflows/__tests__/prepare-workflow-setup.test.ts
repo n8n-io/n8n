@@ -66,7 +66,7 @@ function createContext() {
 describe('prepareWorkflowSetup', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('persists a temporary workflow and source identity before announcing its requirements', async () => {
+	it('persists and promotes the draft before announcing its requirements', async () => {
 		const { context, workflowService, threadMemory, snapshots, publish } = createContext();
 
 		const result = await prepareWorkflowSetup(context, {
@@ -82,6 +82,9 @@ describe('prepareWorkflowSetup', () => {
 			{ markAsAiTemporary: true, folderPath: 'Notifications' },
 		);
 		expect(threadMemory.saveThread.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(workflowService.clearAiTemporary).mock.invocationCallOrder[0],
+		);
+		expect(vi.mocked(workflowService.clearAiTemporary).mock.invocationCallOrder[0]).toBeLessThan(
 			publish.mock.invocationCallOrder[0],
 		);
 		expect(await getWorkflowSourceFileBinding({ ...context }, filePath)).toMatchObject({
@@ -214,6 +217,7 @@ describe('prepareWorkflowSetup', () => {
 
 		await expect(prepareWorkflowSetup(context, input)).rejects.toThrow('Could not persist');
 		expect(publish).not.toHaveBeenCalled();
+		expect(workflowService.clearAiTemporary).not.toHaveBeenCalled();
 		expect(context.aiCreatedWorkflowIds).toContain('wf-1');
 
 		await expect(prepareWorkflowSetup(context, input)).resolves.toMatchObject({

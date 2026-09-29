@@ -22,6 +22,7 @@ import {
 	buildWorkflowInputSchema,
 	createBuildWorkflowTool,
 } from '../build-workflow.tool';
+import { prepareWorkflowSetup } from '../prepare-workflow-setup';
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
@@ -1504,7 +1505,7 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
-	it('builds into the early setup workflow and saves the user-selected account', async () => {
+	it('continues a stopped early setup draft with the same file and selected account', async () => {
 		const filePath = 'src/workflows/main.workflow.ts';
 		const setupItemId = 'wf-early:credential:slackApi';
 		const selection: InstanceAiSetupCredentialSelection = {
@@ -1519,20 +1520,6 @@ describe('createBuildWorkflowTool', () => {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			metadata: {
-				instanceAiWorkflowSourceFiles: {
-					[filePath]: {
-						filePath,
-						workflowId: 'wf-early',
-						workflowVersionId: 'v-current',
-						workflowChecksum: 'checksum-current',
-						setupPending: true,
-						setupPreferences: {
-							runId: 'early-run',
-							satisfiedCredentialTypes: [],
-							preferNewCredentialTypes: ['slackApi'],
-						},
-					},
-				},
 				[instanceAiSetupCredentialSelectionKey(setupItemId)]: selection,
 			},
 		};
@@ -1554,6 +1541,32 @@ describe('createBuildWorkflowTool', () => {
 				},
 			},
 		});
+		let isTemporary = true;
+		let isArchived = false;
+		vi.mocked(context.workflowService.clearAiTemporary).mockImplementation(async () => {
+			isTemporary = false;
+		});
+		context.workflowService.archiveIfAiTemporary = vi.fn(async () => {
+			isArchived = isTemporary;
+			return isArchived;
+		});
+		vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue(
+			await context.workflowService.get('wf-early'),
+		);
+		const requirements = [{ credentialType: 'slackApi', preferNew: true }];
+		await prepareWorkflowSetup(context, {
+			filePath,
+			workflowName: 'Slack updates',
+			credentials: requirements,
+		});
+		await context.workflowService.archiveIfAiTemporary('wf-early');
+		const resumedContext = {
+			...context,
+			runId: 'continued-run',
+			aiCreatedWorkflowIds: new Set<string>(),
+		};
+		await prepareWorkflowSetup(resumedContext, { filePath, credentials: requirements });
+
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
 			success: true,
 			compiler: 'sandbox-tsx',
@@ -1590,6 +1603,7 @@ describe('createBuildWorkflowTool', () => {
 		vi.mocked(resolveCredentials).mockImplementationOnce(actualResolver.resolveCredentials);
 		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockImplementationOnce(
 			async (workflowId) => {
+				if (isArchived) throw new Error('Cannot update an archived workflow.');
 				expect(thread.metadata?.[appliedKey]).toBeUndefined();
 				return {
 					id: workflowId,
@@ -1606,13 +1620,13 @@ describe('createBuildWorkflowTool', () => {
 			},
 		);
 
-		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(resumedContext), {
 			filePath,
 			preferNewCredentials: ['slackApi'],
 		});
 
 		expect(result).toMatchObject({ success: true, workflowId: 'wf-early' });
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledTimes(1);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-early',
 			expect.objectContaining({
@@ -1625,12 +1639,12 @@ describe('createBuildWorkflowTool', () => {
 			{ expectedChecksum: 'checksum-current' },
 		);
 		expect(thread.metadata?.[appliedKey]).toBe(true);
-		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+		await expect(getWorkflowSourceFileBinding(resumedContext, filePath)).resolves.toMatchObject({
 			workflowId: 'wf-early',
 			workflowChecksum: 'checksum-saved',
 			setupPending: undefined,
 			setupPreferences: {
-				runId: 'early-run',
+				runId: 'continued-run',
 				satisfiedCredentialTypes: ['slackApi'],
 				preferNewCredentialTypes: [],
 			},

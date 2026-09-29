@@ -17,11 +17,13 @@ import {
 	type INodeTypeDescription,
 	type AssignmentCollectionValue,
 } from 'n8n-workflow';
-import type {
-	InstanceAiAgentNode,
-	InstanceAiCredentialSetupHint,
-	InstanceAiSetupItem,
-	PushMessage,
+import {
+	instanceAiSetupCredentialSelectionKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiAgentNode,
+	type InstanceAiCredentialSetupHint,
+	type InstanceAiSetupItem,
+	type PushMessage,
 } from '@n8n/api-types';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -547,6 +549,26 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(getAllByTestId('setup-panel-row')).toHaveLength(1);
 		expect(getByRole('combobox')).toHaveValue('cred-2');
 		expect(getByLabelText('Channel')).toBeVisible();
+	});
+
+	it('allows Execute while retaining an account choice for a node added later', async () => {
+		const itemId = 'wf-1:credential:slackApi:Later';
+		const selection = {
+			selectionId: 'later-choice',
+			credentialType: 'slackApi',
+			credentialId: 'cred-2',
+			nodeNames: ['Later'],
+		};
+		threadMetadata.value[instanceAiSetupCredentialSelectionKey(itemId)] = selection;
+		saved.nodes[0].parameters.options = { value: 'configured' };
+		const view = await openParameters();
+		await fireEvent.update(view.getByLabelText('Channel'), 'updates');
+		await fireEvent.click(view.getByRole('button', { name: 'Confirm' }));
+		await flushPromises();
+		expect(await view.findByRole('button', { name: 'Execute' })).toBeEnabled();
+		expect(readPendingInstanceAiSetupCredentialSelections(threadMetadata.value, 'wf-1')).toEqual([
+			{ itemId, selection },
+		]);
 	});
 
 	it.each([false, true])(

@@ -10,6 +10,7 @@ import {
 } from './setup-items';
 import { analyzeWorkflow } from './setup-workflow.service';
 import { recordSessionOwnedWorkflow } from './workflow-build-context';
+import { promoteMainWorkflow } from './workflow-build-reporting';
 import {
 	getWorkflowSourceFileBinding,
 	normalizeWorkflowSourceFilePath,
@@ -149,6 +150,7 @@ async function prepare(
 	}
 	if (!binding.workflowId)
 		throw new OperationalError('The workflow setup context has no workflow ID');
+	if (binding.setupPending) await promoteMainWorkflow(context, binding.workflowId);
 	const items = binding.setupPending
 		? buildSetupItemsFromCredentialRequests(binding.workflowId, input.credentials)
 		: buildSetupItemsFromAnnouncement(

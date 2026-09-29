@@ -7,7 +7,7 @@ import { instanceAiSetupCredentialSelectionKey } from '@n8n/api-types';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
@@ -90,6 +90,7 @@ function createHarness(
 	const building = ref(options.agentBuilding ?? false);
 	const workflowId = ref('workflowId' in options ? options.workflowId : WORKFLOW_ID);
 	const savedWorkflowChecksum = ref('c1');
+	const workflowNodes = ref<INodeUi[]>();
 
 	const updateWorkflow = vi
 		.fn()
@@ -103,12 +104,21 @@ function createHarness(
 	const actions = useSetupPanelActions({
 		threadId: 'thread-1',
 		workflowId: () => workflowId.value,
+		workflowNodes,
 		isAgentBuilding: () => building.value,
 		savedWorkflowChecksum,
 		onFlushResult: options.onFlushResult,
 		onSaved,
 	});
-	return { actions, building, workflowId, savedWorkflowChecksum, updateWorkflow, onSaved };
+	return {
+		actions,
+		building,
+		workflowId,
+		workflowNodes,
+		savedWorkflowChecksum,
+		updateWorkflow,
+		onSaved,
+	};
 }
 
 describe('useSetupPanelActions', () => {
@@ -181,6 +191,13 @@ describe('useSetupPanelActions', () => {
 		getNodeCredentialIssues.mockReturnValue(null);
 		getNodeInputIssues.mockReset();
 		getNodeInputIssues.mockReturnValue(null);
+		const nodeTypes = mockedStore(useNodeTypesStore);
+		nodeTypes.loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+		nodeTypes.getNodeType = vi
+			.fn()
+			.mockReturnValue(
+				mockNodeTypeDescription({ credentials: [{ name: 'slackApi', required: true }] }),
+			);
 	});
 
 	it.each<SetupCredentialRef>([
@@ -338,16 +355,53 @@ describe('useSetupPanelActions', () => {
 		expect(onSaved).not.toHaveBeenCalled();
 	});
 
-	it('drops the bind without writing when every target node is gone', async () => {
-		const { actions, updateWorkflow, onSaved } = createHarness();
-		vi.mocked(getWorkflow).mockResolvedValue(
-			makeWorkflow({ nodes: [createTestNode({ name: 'Other' })] }),
-		);
+	it.each([false, true])(
+		'retains unmatched choices when another bind is saved, node-specific: %s',
+		async (nodeSpecific) => {
+			const { actions, building, workflowNodes, savedWorkflowChecksum, updateWorkflow } =
+				createHarness({ agentBuilding: true });
+			const nodeTypes = mockedStore(useNodeTypesStore);
+			nodeTypes.loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+			nodeTypes.getNodeType = vi.fn((type) =>
+				mockNodeTypeDescription({
+					credentials: [{ name: type === 'other' ? 'httpBasicAuth' : 'slackApi', required: true }],
+					properties: [],
+				}),
+			);
+			const otherNode = createTestNode({ name: 'Other', type: 'other' });
+			const firstNodes = [otherNode, createTestNode({ name: 'Slack', type: 'other' })];
+			workflowNodes.value = firstNodes;
+			vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ nodes: firstNodes }));
+			await actions.bindCredential(
+				{ ...credentialItem, nodeBindings: nodeSpecific ? credentialItem.nodeBindings : undefined },
+				credential,
+			);
+			await actions.bindCredential(
+				{
+					id: `${WORKFLOW_ID}:credential:httpBasicAuth:Other`,
+					kind: 'credential',
+					credentialType: 'httpBasicAuth',
+					nodeBindings: [{ nodeName: 'Other' }],
+				},
+				{ id: 'other-account', name: 'Other account' },
+			);
+			building.value = false;
+			await vi.waitFor(() => expect(actions.pendingApplyCount.value).toBe(0));
+			expect(updateWorkflow).toHaveBeenCalledTimes(1);
+			expect(actions.getPendingCredential(credentialItem.id)).toEqual(credential);
 
-		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('dropped');
-		expect(updateWorkflow).not.toHaveBeenCalled();
-		expect(onSaved).not.toHaveBeenCalled();
-	});
+			const nodes = [otherNode, createTestNode({ name: 'Slack' })];
+			vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ nodes, checksum: 'c3' }));
+			workflowNodes.value = nodes;
+			expect(actions.pendingApplyCount.value).toBe(1);
+			savedWorkflowChecksum.value = 'c3';
+			await vi.waitFor(() =>
+				expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined(),
+			);
+			expect(updateWorkflow).toHaveBeenCalledTimes(2);
+			expect(updateWorkflow.mock.calls[1][1].nodes[1].credentials.slackApi).toEqual(credential);
+		},
+	);
 
 	it('skips the write when every target node already carries the credential', async () => {
 		const { actions, updateWorkflow, onSaved } = createHarness();
@@ -721,6 +775,7 @@ describe('useSetupPanelActions', () => {
 		documentStore.hydrate(makeWorkflow());
 		const slackNodeType = {
 			displayName: 'Slack',
+			credentials: [{ name: 'slackApi', required: true }],
 			name: 'n8n-nodes-base.set',
 			version: 1,
 			group: [],

@@ -469,6 +469,7 @@ export function useWorkflowSetupItems(
 
 	return {
 		credentialsAvailable,
+		workflowNodes,
 		savedWorkflowChecksum: computed(() => fetchedWorkflow.value?.checksum),
 		isCheckingOAuthCredentials,
 		isWorkflowAvailable,

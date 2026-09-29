@@ -82,10 +82,7 @@ export async function applyPendingSetupCredentialSelections(
 				credentialTypes.has(credentialType) &&
 				(nodeNames ? nodeNames.includes(node.name ?? '') : !generic),
 		);
-		if (targets.length === 0) {
-			result.consumedSelections.push(pending);
-			continue;
-		}
+		if (targets.length === 0) continue;
 
 		const stored = credentialMap.get(credentialType)?.find(({ id }) => id === credentialId);
 		const gateway =

@@ -96,6 +96,7 @@ const {
 	rows,
 	rowSource,
 	credentialsAvailable,
+	workflowNodes,
 	savedWorkflowChecksum,
 	isRefreshingWorkflow,
 	isCheckingOAuthCredentials,
@@ -151,6 +152,7 @@ watch(
 const actions = useSetupPanelActions({
 	threadId: thread.id,
 	workflowId: () => props.workflowId,
+	workflowNodes,
 	isAgentBuilding,
 	savedWorkflowChecksum,
 	onFlushResult: notifyApplyResult,

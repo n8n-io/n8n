@@ -282,16 +282,37 @@ describe('setup credential selections', () => {
 		expect(resolved.mockedCredentialTypes).toEqual([]);
 	});
 
-	it('settles a removed requirement without modifying its credential', async () => {
-		const { context, thread, apply } = createContext({
+	it('keeps a choice until a later build adds the service', async () => {
+		const { context, thread, apply, resolve } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
-		const result = await apply(workflow([]));
+		const first = await apply(workflow([node('Trigger', 'manualTrigger')]));
+		await markSetupCredentialSelectionsApplied(context, first.consumedSelections);
+		expect(readPendingInstanceAiSetupCredentialSelections(thread.metadata, 'workflow-1')).toEqual([
+			{ itemId, selection },
+		]);
+
+		const json = workflow([
+			node('Slack', 'slackApi', {
+				credentials: { slackApi: { id: 'other', name: 'Other account' } },
+			}),
+		]);
+		const candidates: CredentialMap = new Map([
+			[
+				'slackApi',
+				[
+					{ id: selection.credentialId, name: 'Selected account', type: 'slackApi' },
+					{ id: 'other', name: 'Other account', type: 'slackApi' },
+				],
+			],
+		]);
+		const result = await apply(json, candidates);
+		await resolve(json, candidates, undefined, result.resolvedCredentialsByNode);
+		expect(json.nodes[0].credentials?.slackApi?.id).toBe(selection.credentialId);
 		await markSetupCredentialSelectionsApplied(context, result.consumedSelections);
 		expect(readPendingInstanceAiSetupCredentialSelections(thread.metadata, 'workflow-1')).toEqual(
 			[],
 		);
-		expect(context.credentialService.delete).not.toHaveBeenCalled();
 	});
 
 	it('preserves a newer selection when the earlier workflow save finishes', async () => {
