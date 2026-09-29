@@ -215,6 +215,12 @@ const unchangedFixtures: Fixture[] = [
 		schema: { name: 'Agent config' },
 		expected: { name: 'Agent config' },
 	},
+	// PostgreSQL excludes this row by key depth. SQLite selects it, then structural validation rejects it.
+	{
+		name: 'nested mcpServers key',
+		schema: { metadata: { mcpServers: [{ approval: { mode: 'global' } }] } },
+		expected: { metadata: { mcpServers: [{ approval: { mode: 'global' } }] } },
+	},
 	{ name: 'empty mcpServers', schema: { mcpServers: [] }, expected: { mcpServers: [] } },
 	{
 		name: 'already migrated',

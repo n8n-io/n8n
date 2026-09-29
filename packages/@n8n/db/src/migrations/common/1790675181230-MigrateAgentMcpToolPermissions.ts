@@ -139,6 +139,8 @@ function migrateConfig(value: unknown): MigrationResult {
  * The migration processes current and historical agent configs in batches. It
  * validates every MCP server before it updates a row, preserves unrelated
  * fields, and skips malformed rows instead of applying a partial conversion.
+ *
+ * The migration prefilters rows by the presence of the `mcpServers` key in the schema.
  */
 export class MigrateAgentMcpToolPermissions1790675181230 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
@@ -148,20 +150,31 @@ export class MigrateAgentMcpToolPermissions1790675181230 implements Irreversible
 	}
 
 	private async migrateTable(
-		{ escape, logger, migrationName, parseJson, runInBatches, runQuery }: MigrationContext,
+		{
+			escape,
+			isPostgres,
+			logger,
+			migrationName,
+			parseJson,
+			runInBatches,
+			runQuery,
+		}: MigrationContext,
 		tableName: (typeof tables)[number]['name'],
 		idColumnName: (typeof tables)[number]['idColumn'],
 	) {
 		const table = escape.tableName(tableName);
 		const idColumn = escape.columnName(idColumnName);
 		const schemaColumn = escape.columnName('schema');
+		const candidateFilter = isPostgres
+			? `${schemaColumn}::jsonb ? 'mcpServers'`
+			: `${schemaColumn} LIKE '%"mcpServers"%'`;
 		let migratedCount = 0;
 		let skippedCount = 0;
 
 		await runInBatches<ConfigRow>(
 			`SELECT ${idColumn} AS id, ${schemaColumn} AS schema
 			 FROM ${table}
-			 WHERE ${schemaColumn} IS NOT NULL
+			 WHERE ${schemaColumn} IS NOT NULL AND ${candidateFilter}
 			 ORDER BY ${idColumn}`,
 			async (rows) => {
 				for (const row of rows) {
