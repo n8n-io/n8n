@@ -28,9 +28,9 @@ const makeUniqueViolation = (code: string): QueryFailedError => {
 	return err;
 };
 
-/** A stored row for a fresh RSA key, wrapped the way the fixture cipher unwraps it. */
+/** A stored row for a fresh EC key, wrapped the way the fixture cipher unwraps it. */
 const makeKeyRow = (id: string, overrides: Partial<DeploymentKey> = {}): DeploymentKey => {
-	const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+	const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 	const privateJwk = {
 		...privateKey.export({ format: 'jwk' }),
 		kid: id,
@@ -80,9 +80,10 @@ describe('OAuthSigningKeyService', () => {
 			expect(value).toBe(cipher.encryptDEKWithInstanceKey.mock.results[0].value);
 			expect(JSON.parse(cipher.decryptDEKWithInstanceKey(value))).toMatchObject({
 				kid: id,
-				alg: 'RS256',
+				alg: 'ES256',
 				use: 'sig',
-				kty: 'RSA',
+				kty: 'EC',
+				crv: 'P-256',
 			});
 			expect(cache.delete).toHaveBeenCalledWith(OAUTH_SIGNING_KEYS_CACHE_KEY);
 			expect(jwt.decode(service.signAccessToken(claims()), { complete: true })?.header.kid).toBe(
@@ -133,8 +134,8 @@ describe('OAuthSigningKeyService', () => {
 		const jwks = await service.getPublicJwks();
 
 		expect(jwks).toHaveLength(1);
-		expect(Object.keys(jwks[0]).sort()).toEqual(['alg', 'e', 'kid', 'kty', 'n', 'use']);
-		expect(jwks[0]).toMatchObject({ kty: 'RSA', alg: 'RS256', use: 'sig' });
+		expect(Object.keys(jwks[0]).sort()).toEqual(['alg', 'crv', 'kid', 'kty', 'use', 'x', 'y']);
+		expect(jwks[0]).toMatchObject({ kty: 'EC', crv: 'P-256', alg: 'ES256', use: 'sig' });
 	});
 
 	describe('retired keys', () => {
@@ -178,9 +179,9 @@ describe('OAuthSigningKeyService', () => {
 			issuer: ISSUER,
 			audience: AUDIENCE,
 			typ: 'at+jwt',
-			algorithms: ['RS256'],
+			algorithms: ['ES256'],
 		});
 		expect(payload.sub).toBe('user-1');
-		expect(protectedHeader.alg).toBe('RS256');
+		expect(protectedHeader.alg).toBe('ES256');
 	});
 });

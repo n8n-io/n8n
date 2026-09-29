@@ -15,9 +15,9 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,
+	OAUTH_SIGNING_CURVE,
 	OAUTH_SIGNING_KEY_USE,
 	OAUTH_SIGNING_KEYS_CACHE_KEY,
-	OAUTH_SIGNING_MODULUS_LENGTH,
 	RETIRED_SIGNING_KEY_GRACE_MS,
 } from './oauth-signing-key.constants';
 
@@ -37,11 +37,11 @@ type ActiveSigningKey = {
 	privateKey: KeyObject;
 };
 
-/** The only JWK members safe to publish for an RSA signing key. */
-const PUBLIC_JWK_FIELDS = ['kty', 'n', 'e', 'kid', 'alg', 'use'] as const;
+/** The only JWK members safe to publish for an EC signing key. */
+const PUBLIC_JWK_FIELDS = ['kty', 'crv', 'x', 'y', 'kid', 'alg', 'use'] as const;
 
 /**
- * Manages the RS256 key pair that signs OAuth access tokens. One active
+ * Manages the ES256 key pair that signs OAuth access tokens. One active
  * private JWK is stored in `deployment_key` per algorithm, enforced by a
  * partial unique index on `(type, algorithm)`. The JWK `kid` and the
  * `deployment_key.id` are the same nanoid, as for the JWE keys.
@@ -147,8 +147,8 @@ export class OAuthSigningKeyService {
 	}
 
 	private async generateAndPersist(): Promise<void> {
-		const { privateKey } = await generateKeyPairAsync('rsa', {
-			modulusLength: OAUTH_SIGNING_MODULUS_LENGTH,
+		const { privateKey } = await generateKeyPairAsync('ec', {
+			namedCurve: OAUTH_SIGNING_CURVE,
 		});
 		// The JWK kid is the deployment_key row's primary key.
 		const id = generateNanoId();

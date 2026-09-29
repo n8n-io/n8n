@@ -131,7 +131,7 @@ describe('OAuthSigningKeyService (integration)', () => {
 		await service.initialize();
 
 		const keys = await service.getPublicJwks();
-		expect(Object.keys(keys[0]).sort()).toEqual(['alg', 'e', 'kid', 'kty', 'n', 'use']);
+		expect(Object.keys(keys[0]).sort()).toEqual(['alg', 'crv', 'kid', 'kty', 'use', 'x', 'y']);
 
 		const { payload } = await jwtVerify(
 			service.signAccessToken(claims()),
@@ -140,7 +140,7 @@ describe('OAuthSigningKeyService (integration)', () => {
 				issuer: ISSUER,
 				audience: AUDIENCE,
 				typ: 'at+jwt',
-				algorithms: ['RS256'],
+				algorithms: ['ES256'],
 			},
 		);
 		expect(payload.sub).toBe('user-1');
@@ -149,8 +149,8 @@ describe('OAuthSigningKeyService (integration)', () => {
 	it('publishes a retired key only within the grace window', async () => {
 		const cipher = Container.get(Cipher);
 		const insertRetired = async (id: string, retiredAt: Date) => {
-			const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-			const jwk = { ...privateKey.export({ format: 'jwk' }), kid: id, alg: 'RS256', use: 'sig' };
+			const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+			const jwk = { ...privateKey.export({ format: 'jwk' }), kid: id, alg: 'ES256', use: 'sig' };
 			await keyStore.insert({
 				id,
 				type: OAUTH_SIGNING_KEY_TYPE,
