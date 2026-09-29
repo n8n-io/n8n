@@ -102,16 +102,14 @@ const instanceTooltips = computed(() => {
 
 const compatibleWorkflowsCount = computed(() => {
 	if (!state.value) return 0;
-	return (
-		state.value.totalWorkflows -
-		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
-	);
+	return state.value.totalWorkflows - state.value.totalAffectedWorkflows;
 });
 
 const compatiblePercentage = computed(() => {
 	const total = state.value?.totalWorkflows ?? 0;
 	if (total === 0) return 0;
-	return Math.round((compatibleWorkflowsCount.value / total) * 100);
+	// Floor so the bar only fills once every workflow is compatible
+	return Math.floor((compatibleWorkflowsCount.value / total) * 100);
 });
 
 const progressLabel = computed(() =>
