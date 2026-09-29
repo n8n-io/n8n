@@ -41,11 +41,13 @@ Possible approaches:
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
 
-### `n8n-node-dev` type analysis
+## Retirement exceptions
 
-`n8n-node-dev` inherits `moduleResolution=node10`. `oxlint-tsgolint` rejects this removed option, so type-aware Oxlint cannot start.
+### `n8n-node-dev`
 
-Keep ESLint until the package moves to a supported module resolution mode. Validate its build and published CLI behavior as part of that change.
+Keep `n8n-node-dev` on ESLint. The v3 removal plan makes an Oxlint migration unnecessary.
+
+Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 
