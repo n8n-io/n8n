@@ -7,7 +7,12 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	detectStickyLayoutWarnings,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes } from 'n8n-workflow';
 
@@ -292,6 +297,24 @@ export class ParseValidateHandler {
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
+
+			// Only now are sticky sizes and positions settled, so this is the first
+			// point a note that still clips its text can be spotted. Layout grows the
+			// band where it can; what is left needs a judgement call the layout cannot
+			// make, so hand it back for the caller to fix.
+			const stickyWarnings = detectStickyLayoutWarnings(workflowJson);
+			if (stickyWarnings.length > 0) {
+				this.logger?.info('Sticky notes with clipped text', {
+					stickies: stickyWarnings.map((warning) => warning.nodeName),
+				});
+			}
+			for (const warning of stickyWarnings) {
+				allWarnings.push({
+					code: warning.code,
+					message: warning.message,
+					nodeName: warning.nodeName,
+				});
+			}
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

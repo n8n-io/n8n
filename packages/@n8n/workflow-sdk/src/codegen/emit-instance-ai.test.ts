@@ -220,6 +220,9 @@ describe('emit-instance-ai', () => {
 			'PluginRegistry',
 			'ValidationError',
 			'ValidationWarning',
+			// Host-side layout check; runs over a serialized workflow, never written
+			// inside one.
+			'detectStickyLayoutWarnings',
 			// Expression helpers (workflows use `expr()` only; the rest are parser internals)
 			'createFromAIExpression',
 			'isExpression',

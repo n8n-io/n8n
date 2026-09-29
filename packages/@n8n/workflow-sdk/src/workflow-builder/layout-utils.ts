@@ -31,12 +31,14 @@ import {
 	DEFAULT_STICKY_SIZE,
 	STICKY_PADDING,
 	STICKY_HEADER_HEIGHT,
+	STICKY_TEXT_INTERNAL_PADDING,
 	MAX_STICKY_SEPARATION_STEPS,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './constants';
+import { estimateStickyTextHeight } from './sticky-text-sizing';
 import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
@@ -290,6 +292,15 @@ function snapToGrid(value: number): number {
 	return Math.round(value / GRID_SIZE) * GRID_SIZE;
 }
 
+/**
+ * Snap up to the grid. Derived sizes must never round *down*: a sticky's origin
+ * and its height are snapped independently, so rounding both can shave a few px
+ * off the box and stop it containing what it is meant to wrap.
+ */
+function ceilToGrid(value: number): number {
+	return Math.ceil(value / GRID_SIZE) * GRID_SIZE;
+}
+
 function compositeBoundingBox(boxes: BoundingBox[]): BoundingBox {
 	const { minX, minY, maxX, maxY } = boxes.reduce(
 		(bbox, node) => ({
@@ -486,22 +497,43 @@ function toPoint(position?: [number, number]): { x: number; y: number } | undefi
 }
 
 /**
- * The box that wraps a sticky's anchors: room above for the note's own text, and
- * room below for the nodes' names. The bottom gap is larger than the sides
- * because a node paints its label under its tile, and the same value the editor
- * uses, so Tidy Up leaves the note where it is.
+ * The box that wraps a sticky's anchors: a band above for the note's own text,
+ * and room below for the nodes' names. The bottom gap is larger than the sides
+ * because a node paints its label under its tile, and is the same value the
+ * editor uses, so Tidy Up leaves the note where it is.
  */
-function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
+function wrappingBoxFor(
+	anchorBoxes: BoundingBox[],
+	band: number = STICKY_HEADER_HEIGHT,
+): BoundingBox | undefined {
 	if (anchorBoxes.length === 0) return undefined;
 	const wrapped = compositeBoundingBox(anchorBoxes);
 	return {
 		x: snapToGrid(wrapped.x - STICKY_PADDING),
-		y: snapToGrid(wrapped.y - STICKY_PADDING - STICKY_HEADER_HEIGHT),
+		y: snapToGrid(wrapped.y - STICKY_PADDING - band),
 		width: snapToGrid(wrapped.width + STICKY_PADDING * 2),
-		height: snapToGrid(
-			wrapped.height + STICKY_PADDING + STICKY_HEADER_HEIGHT + STICKY_BOTTOM_PADDING,
-		),
+		height: snapToGrid(wrapped.height + STICKY_PADDING + band + STICKY_BOTTOM_PADDING),
 	};
+}
+
+/** The markdown a sticky renders, if it has any. */
+function stickyContent(graphNode: GraphNode): string | undefined {
+	const content = graphNode.instance.config?.parameters?.content;
+	return typeof content === 'string' ? content : undefined;
+}
+
+/**
+ * Vertical room a sticky needs above its anchors for its own text.
+ *
+ * The band only ever grows downward-facing space *above* the nodes, so the
+ * anchors stay pinned to the bottom of the box and containment is preserved by
+ * construction. Growing the box sideways instead is not safe: dagre puts chained
+ * nodes 224px apart, which leaves about 64px between two single-node section
+ * stickies, and both are pinned so nothing would pull them back apart.
+ */
+function textBandFor(content: string | undefined, width: number): number {
+	const needed = estimateStickyTextHeight(content, width) + STICKY_TEXT_INTERNAL_PADDING;
+	return ceilToGrid(Math.max(STICKY_HEADER_HEIGHT, needed));
 }
 
 /**
@@ -569,6 +601,40 @@ export function resolveStickyGeometry(
 		return { x: position[0], y: position[1], width, height };
 	};
 
+	/** Every non-sticky node on the canvas, keyed by name. */
+	const nodeBoxByName = new Map<string, BoundingBox>();
+	for (const nodeName of nodes.keys()) {
+		if (nodes.get(nodeName)?.instance.type === STICKY_NODE_TYPE) continue;
+		const box = boxOfNode(nodeName);
+		if (box) nodeBoxByName.set(nodeName, box);
+	}
+
+	/**
+	 * How far a note may grow upward before it swallows a node it does not document.
+	 *
+	 * The band opens upward, so on a branching canvas a lower branch's note can
+	 * reach over a node belonging to the branch above it. That note would then look
+	 * like it documents that node, and the node would be drawn over its text. Stop
+	 * at the lowest such node instead.
+	 */
+	const bandCeilingFor = (
+		box: BoundingBox,
+		anchorNames: Set<string>,
+		anchorTop: number,
+	): number => {
+		let ceiling = Number.POSITIVE_INFINITY;
+		for (const [nodeName, nodeBox] of nodeBoxByName) {
+			if (anchorNames.has(nodeName)) continue;
+			const overlapsHorizontally =
+				nodeBox.x < box.x + box.width && box.x < nodeBox.x + nodeBox.width;
+			if (!overlapsHorizontally) continue;
+			const nodeBottom = nodeBox.y + nodeBox.height;
+			if (nodeBottom > anchorTop) continue;
+			ceiling = Math.min(ceiling, anchorTop - STICKY_PADDING - nodeBottom - NODE_Y_SPACING);
+		}
+		return ceiling;
+	};
+
 	const resolved = stickyNames.flatMap((name) => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return [];
@@ -576,26 +642,48 @@ export function resolveStickyGeometry(
 		const { instance } = graphNode;
 		const explicitPosition = instance.config?.position;
 
-		const anchorBoxes = isAnchoredStickyNote(instance)
-			? instance.stickyAnchorIds
-					.map((id) => nameById.get(id))
-					.filter((anchorName): anchorName is string => anchorName !== undefined)
-					.map(boxOfNode)
-					.filter((box): box is BoundingBox => box !== undefined)
-			: [];
+		const anchorNames = new Set(
+			isAnchoredStickyNote(instance)
+				? instance.stickyAnchorIds
+						.map((id) => nameById.get(id))
+						.filter((anchorName): anchorName is string => anchorName !== undefined)
+				: [],
+		);
+		const anchorBoxes = [...anchorNames]
+			.map(boxOfNode)
+			.filter((box): box is BoundingBox => box !== undefined);
 
-		const wrappingBox = wrappingBoxFor(anchorBoxes);
-
-		// Whatever the caller declared wins, dimension by dimension; the anchors only
-		// fill in what is missing, so a declared width still gets a wrapping height.
+		// Whatever the caller declared wins, dimension by dimension; the anchors and
+		// the note's own text only fill in what is missing.
 		const declared = declaredStickySize(graphNode);
 		const ownWidth = declaresOwnWidth(graphNode);
 		const ownHeight = declaresOwnHeight(graphNode);
+		const content = stickyContent(graphNode);
+
+		// Size the box to the anchors first, then re-cut it with a band tall enough
+		// for the text at whatever width the box ends up being. Text that does not
+		// fit is not scrollable — the canvas clips it.
+		const baseBox = wrappingBoxFor(anchorBoxes);
+		const wrapWidth = ownWidth ? declared.width : baseBox?.width;
+		let wrappingBox = baseBox;
+		if (!ownHeight && baseBox) {
+			const anchorTop = Math.min(...anchorBoxes.map((box) => box.y));
+			const wanted = textBandFor(content, wrapWidth ?? declared.width);
+			const ceiling = bandCeilingFor(baseBox, anchorNames, anchorTop);
+			// Never shrink below the flat band this used to reserve.
+			const band = Math.max(STICKY_HEADER_HEIGHT, Math.min(wanted, ceiling));
+			wrappingBox = wrappingBoxFor(anchorBoxes, band);
+		}
+
+		// Only notes that wrap anchors are sized here. A free note keeps the
+		// StickyNote defaults: giving it a size would write width and height into
+		// every note that has none today, which changes stored workflows on every
+		// round trip. Sizing those needs its own change.
 		const size = {
 			width: !ownWidth && wrappingBox ? wrappingBox.width : declared.width,
 			height: !ownHeight && wrappingBox ? wrappingBox.height : declared.height,
 		};
-		const sizedByAnchors = wrappingBox !== undefined && !(ownWidth && ownHeight);
+		const sizedByResolver = wrappingBox !== undefined && !(ownWidth && ownHeight);
 
 		const origin = toPoint(explicitPosition) ??
 			(wrappingBox && { x: wrappingBox.x, y: wrappingBox.y }) ??
@@ -605,13 +693,13 @@ export function resolveStickyGeometry(
 		// either one would take it away from the thing it is meant to sit on.
 		const pinned = explicitPosition !== undefined || wrappingBox !== undefined;
 
-		return [{ name, box: { ...origin, ...size }, sizedByAnchors, pinned }];
+		return [{ name, box: { ...origin, ...size }, sizedByResolver, pinned }];
 	});
 
-	const record = (name: string, box: BoundingBox, sizedByAnchors: boolean): void => {
+	const record = (name: string, box: BoundingBox, sizedByResolver: boolean): void => {
 		geometryByName.set(name, {
 			position: [box.x, box.y],
-			...(sizedByAnchors && { size: { width: box.width, height: box.height } }),
+			...(sizedByResolver && { size: { width: box.width, height: box.height } }),
 		});
 	};
 
@@ -627,9 +715,9 @@ export function resolveStickyGeometry(
 		...nodeBoxes,
 		...resolved.filter((sticky) => sticky.pinned).map(({ box }) => box),
 	];
-	for (const { name, box, sizedByAnchors, pinned } of resolved) {
+	for (const { name, box, sizedByResolver, pinned } of resolved) {
 		if (pinned) {
-			record(name, box, sizedByAnchors);
+			record(name, box, sizedByResolver);
 			continue;
 		}
 
@@ -637,7 +725,7 @@ export function resolveStickyGeometry(
 		// everything already placed rather than stacking on it.
 		const separated = separateFrom(placed, box);
 		placed.push(separated);
-		record(name, separated, sizedByAnchors);
+		record(name, separated, sizedByResolver);
 	}
 
 	return geometryByName;

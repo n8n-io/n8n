@@ -7,6 +7,7 @@
 
 import type { NodeJSON, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
+import { estimateStickyTextHeight } from './sticky-text-sizing';
 import { DEFAULT_NODE_SIZE, DEFAULT_STICKY_SIZE, STICKY_NODE_TYPE } from './constants';
 import { node, sticky, trigger } from './node-builders/node-builder';
 
@@ -322,6 +323,158 @@ describe('sticky note placement with tidyUp', () => {
 		);
 		const LABEL_HEIGHT = 47;
 		expect(box.y + box.height - lowestNodeBottom).toBeGreaterThanOrEqual(LABEL_HEIGHT);
+	});
+
+	describe('sizing the band to the text', () => {
+		/** Clear vertical room between a sticky's top edge and the nodes it wraps. */
+		function bandOf(json: WorkflowJSON, stickyName: string, nodeName: string): number {
+			return nodeBox(json, nodeName).y - stickyBox(json, stickyName).y;
+		}
+
+		function wrapOne(content: string, config: Record<string, unknown> = {}) {
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Every Friday' },
+			});
+			const solo = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Solo' },
+			});
+			return workflow('wf', 'Test')
+				.add(start.to(solo))
+				.add(sticky(content, [solo], { name: 'Note', ...config }))
+				.toJSON({ tidyUp: true });
+		}
+
+		it('reserves enough room for a one-node section to show its text', () => {
+			// A section wrapping a single node is only 160px wide, so a real sentence
+			// needs several lines. Anything that does not fit is clipped, not scrolled.
+			const content =
+				'### Logging\nEvery answered turn is written to the analytics database so we can review quality later.';
+			const json = wrapOne(content);
+
+			const box = stickyBox(json, 'Note');
+			const needed = estimateStickyTextHeight(content, box.width);
+			expect(bandOf(json, 'Note', 'Solo')).toBeGreaterThanOrEqual(needed);
+			expect(contains(box, nodeBox(json, 'Solo'))).toBe(true);
+		});
+
+		it('gives longer text a taller band than shorter text', () => {
+			const short = wrapOne('### Short');
+			const long = wrapOne(
+				'### Long\nA much longer explanation that has to wrap over a good few lines before it ends.',
+			);
+			expect(bandOf(long, 'Note', 'Solo')).toBeGreaterThan(bandOf(short, 'Note', 'Solo'));
+		});
+
+		it('needs a shorter band once the caller makes the note wide', () => {
+			const content =
+				'### Logging\nEvery answered turn is written to the analytics database so we can review quality later.';
+			const narrow = wrapOne(content);
+			const wide = wrapOne(content, { width: 800 });
+			expect(stickyBox(wide, 'Note').width).toBe(800);
+			expect(bandOf(wide, 'Note', 'Solo')).toBeLessThan(bandOf(narrow, 'Note', 'Solo'));
+		});
+
+		it('leaves a declared height alone', () => {
+			const json = wrapOne('### Long\n'.padEnd(400, 'text that would otherwise grow the box '), {
+				height: 300,
+			});
+			expect(stickyBox(json, 'Note').height).toBe(300);
+		});
+
+		it('does not widen a section into its neighbour', () => {
+			// Chained nodes sit 224px apart, so two one-node sections have about 64px
+			// between them. Growing the box sideways would overlap them, and both are
+			// pinned to their anchors so nothing would pull them back apart.
+			const { start, fetch, compute, post, record } = buildChain();
+			const json = workflow('wf', 'Test')
+				.add(start.to(fetch).to(compute).to(post).to(record))
+				.add(
+					sticky('## First\nA sentence long enough to need more than one line.', [fetch], {
+						name: 'A',
+					}),
+				)
+				.add(
+					sticky('## Second\nAnother sentence long enough to need more than one line.', [post], {
+						name: 'B',
+					}),
+				)
+				.toJSON({ tidyUp: true });
+
+			expect(overlaps(stickyBox(json, 'A'), stickyBox(json, 'B'))).toBe(false);
+		});
+
+		it('still wraps every anchor once the band has grown', () => {
+			const { start, fetch, compute, post, record } = buildChain();
+			const json = workflow('wf', 'Test')
+				.add(start.to(fetch).to(compute).to(post).to(record))
+				.add(
+					sticky(
+						'## Ingest\nA long description that wraps onto several lines in this box.',
+						[start, fetch, compute],
+						{
+							name: 'Wide note',
+						},
+					),
+				)
+				.toJSON({ tidyUp: true });
+
+			const box = stickyBox(json, 'Wide note');
+			for (const nodeName of ['Every Friday', 'Active teams', 'Compute week']) {
+				expect(contains(box, nodeBox(json, nodeName))).toBe(true);
+			}
+		});
+
+		it('does not reach over a node on another branch', () => {
+			// The band opens upward, so on a branching canvas the note for the lower
+			// path can grow across a node on the path above it. It would then look
+			// like it documents that node, and the node would cover its text.
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Start' },
+			});
+			const upper = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Upper branch' },
+			});
+			const lower = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Lower branch' },
+			});
+
+			const json = workflow('wf', 'Test')
+				.add(start.to(upper))
+				.add(start.to(lower))
+				.add(
+					sticky(
+						'## Lower\nNothing is written and no message is sent. The caller gets a 400 back and is expected to fix the payload and retry.',
+						[lower],
+						{ name: 'Lower note' },
+					),
+				)
+				.toJSON({ tidyUp: true });
+
+			const box = stickyBox(json, 'Lower note');
+			expect(contains(box, nodeBox(json, 'Lower branch'))).toBe(true);
+			expect(contains(box, nodeBox(json, 'Upper branch'))).toBe(false);
+		});
+
+		it('settles after the first layout instead of growing each time', () => {
+			// The size it emits becomes a declared size on the way back in, so a second
+			// pass must not grow the note again.
+			let json = wrapOne('### Logging\nEvery answered turn is written to the analytics database.');
+			const first = stickyBox(json, 'Note');
+			for (let i = 0; i < 3; i++) {
+				json = workflow.fromJSON(json).toJSON({ tidyUp: true });
+				expect(stickyBox(json, 'Note')).toEqual(first);
+			}
+		});
 	});
 
 	it('emits every sticky as a sticky note node', () => {
