@@ -3,10 +3,11 @@ import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useResizeObserver } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { onMounted, ref, watch } from 'vue';
+import { inject, onMounted, ref, watch } from 'vue';
 
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
+import { ReviewDetailScrollContainerKey } from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { resolveActivityComponent } from './activityEntryRegistry';
 
@@ -14,7 +15,8 @@ const i18n = useI18n();
 const store = useReviewActivityStore();
 const { entries, loading, loadingMore, hasMore, error } = storeToRefs(store);
 
-const scrollContainer = ref<HTMLElement | null>(null);
+const scrollContainer = inject(ReviewDetailScrollContainerKey, ref(null));
+const feed = ref<HTMLElement | null>(null);
 const list = ref<HTMLElement | null>(null);
 const sentinel = ref<HTMLElement | null>(null);
 const composer = ref<HTMLElement | null>(null);
@@ -109,10 +111,10 @@ useResizeObserver(composer, ([entry]) => {
 	const growth = height - composerHeight;
 	composerHeight = height;
 
+	feed.value?.style.setProperty('--review-activity--composer-height', `${height}px`);
+
 	const container = scrollContainer.value;
-	if (!container) return;
-	container.style.setProperty('--review-activity--composer-height', `${height}px`);
-	if (growth <= 0) return;
+	if (!container || growth <= 0) return;
 
 	// Was at the bottom before this growth. 1px covers rounding.
 	const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
@@ -139,7 +141,7 @@ onMounted(() => {
 
 <template>
 	<div
-		ref="scrollContainer"
+		ref="feed"
 		:class="[$style.feed, { [$style.feedWithComposer]: $slots.composer }]"
 		data-test-id="workflow-review-activity-feed"
 	>
@@ -235,20 +237,7 @@ onMounted(() => {
 
 	display: flex;
 	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	overflow: auto;
 	padding-block: var(--spacing--5xs) var(--spacing--sm);
-	/* Keeps the cards off the scrollbar that appears here when feed overflows */
-	padding-inline-end: var(--spacing--2xs);
-}
-
-/* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
-	load-older sentinel never leaves the screen and drains every page. */
-@container review-detail (max-width: 44rem) {
-	.feed {
-		max-height: 60vh;
-	}
 }
 
 /* Same inset the list gives its entries, so a card here starts on the avatar column. */

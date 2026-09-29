@@ -140,6 +140,9 @@ const statusSummary = computed(() =>
 
 <style module lang="scss">
 .metadata {
+	position: sticky;
+	top: 0;
+	align-self: flex-start;
 	display: flex;
 	flex: 0 0 min(18rem, 30%);
 	flex-direction: column;
@@ -231,7 +234,6 @@ const statusSummary = computed(() =>
 		flex-basis: auto;
 		width: 100%;
 		min-width: 0;
-		padding-inline-end: var(--spacing--2xs);
 	}
 }
 </style>
