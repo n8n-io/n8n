@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_dff57e7b253b23::t_c03b61097dc8f2 283,459-463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "536d4690b1463098422e09f1215ec446eb3fd53c",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

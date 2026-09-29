@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_dcee0ae5843e0b::t_90bfb5ecc9be22 98
+  s_dcee0ae5843e0b::t_89a8d10f02d302 86,104-105,117,272-273,299,304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06003bba4c8987d131e699d0f3820830ca4ec212",
+  "prompts": {},
+  "sessions": {
+    "s_dcee0ae5843e0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbb3a2e0-5425-4164-be16-429d3856ec8c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
