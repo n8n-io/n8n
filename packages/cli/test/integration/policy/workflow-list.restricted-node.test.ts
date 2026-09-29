@@ -15,6 +15,7 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { createFolder } from '../shared/db/folders';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -33,13 +34,14 @@ const testServer = utils.setupTestServer({
 let owner: User;
 let ownerAgent: SuperAgentTest;
 
-const node = (type: string): INode => ({
+const node = (type: string, overrides: Partial<INode> = {}): INode => ({
 	id: uuid(),
 	name: type,
 	type,
 	typeVersion: 1,
 	position: [0, 0],
 	parameters: {},
+	...overrides,
 });
 
 const denySlack = {
@@ -67,15 +69,21 @@ async function indexVersion(
 	);
 }
 
-async function listRestricted(projectId?: string) {
+async function listRestricted({
+	projectId,
+	includeFolders,
+}: { projectId?: string; includeFolders?: boolean } = {}) {
 	const filter = JSON.stringify({
 		executionBlockedBy: ['restrictedNode'],
 		...(projectId && { projectId }),
 	});
-	const response = await ownerAgent.get('/workflows').query({ filter }).expect(200);
+	const response = await ownerAgent
+		.get('/workflows')
+		.query({ filter, ...(includeFolders && { includeFolders }) })
+		.expect(200);
 
 	return {
-		ids: response.body.data.map((workflow: { id: string }) => workflow.id).sort(),
+		ids: response.body.data.map((row: { id: string }) => row.id).sort(),
 		count: response.body.count,
 	};
 }
@@ -96,8 +104,10 @@ afterEach(async () => {
 		'WorkflowPublishHistory',
 		'WorkflowEntity',
 		'WorkflowHistory',
+		'Folder',
 	]);
 	await clearPolicyCache();
+	testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 });
 
 describe('GET /workflows with the restricted node filter', () => {
@@ -140,7 +150,7 @@ describe('GET /workflows with the restricted node filter', () => {
 			.expect(200);
 
 		expect(await listRestricted()).toEqual({ ids: [restricted.id], count: 1 });
-		expect(await listRestricted(otherProject.id)).toEqual({ ids: [], count: 0 });
+		expect(await listRestricted({ projectId: otherProject.id })).toEqual({ ids: [], count: 0 });
 	});
 
 	test('applies the instance verdict with and without a project policy', async () => {
@@ -174,6 +184,40 @@ describe('GET /workflows with the restricted node filter', () => {
 			ids: [deniedByInstance.id, delegatedWithoutOptIn.id].sort(),
 			count: 2,
 		});
+	});
+
+	test('counts a disabled node, as enforcement does', async () => {
+		const disabledSlack = await createWorkflow(
+			{ nodes: [node(MANUAL_TRIGGER), node(SLACK, { disabled: true })] },
+			owner,
+		);
+
+		await ownerAgent.put('/node-type-policies/instance').send(denySlack).expect(200);
+
+		expect(await listRestricted()).toEqual({ ids: [disabledSlack.id], count: 1 });
+	});
+
+	test('keeps the folders when the list includes them', async () => {
+		const project = await createTeamProject('With folders', owner);
+		const folder = await createFolder(project);
+		const restricted = await createWorkflow({ nodes: [node(SLACK)] }, project);
+		await createWorkflow({ nodes: [node(MANUAL_TRIGGER)] }, project);
+
+		await ownerAgent.put('/node-type-policies/instance').send(denySlack).expect(200);
+
+		expect(await listRestricted({ projectId: project.id, includeFolders: true })).toEqual({
+			ids: [folder.id, restricted.id].sort(),
+			count: 2,
+		});
+	});
+
+	test('matches nothing when the license has lapsed, as enforcement stops too', async () => {
+		await createWorkflow({ nodes: [node(SLACK)] }, owner);
+		await ownerAgent.put('/node-type-policies/instance').send(denySlack).expect(200);
+
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
+
+		expect(await listRestricted()).toEqual({ ids: [], count: 0 });
 	});
 
 	test('matches nothing when no policy restricts a node type in use', async () => {
@@ -213,6 +257,7 @@ describe('WorkflowRepository with restricted node types', () => {
 		const byProjects = [
 			...otherOutcomes,
 			{ projectIds: [grouped.id], nodeTypes: [SLACK] },
+			{ projectIds: [restrictsNothing.id], nodeTypes: [] },
 			{
 				projectIds: [allowlist.id],
 				nodeTypes: nodeTypesInUse.filter((type) => type !== MANUAL_TRIGGER),
@@ -232,10 +277,6 @@ describe('WorkflowRepository with restricted node types', () => {
 			{
 				restrictedNodeTypes: {
 					shared: [HTTP_REQUEST],
-					exceptProjectIds: [
-						...byProjects.flatMap(({ projectIds }) => projectIds),
-						restrictsNothing.id,
-					],
 					byProjects,
 					nodeTypesInUse,
 				},

@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 
 export const NO_RESTRICTED_NODE_TYPES: RestrictedNodeTypes = {
 	shared: [],
-	exceptProjectIds: [],
 	byProjects: [],
 	nodeTypesInUse: [],
 };

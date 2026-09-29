@@ -6,7 +6,9 @@ import {
 	type RestrictedNodeTypes,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { singleFlight } from '@n8n/utils/promise/single-flight';
 
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import {
 	NO_RESTRICTED_NODE_TYPES,
 	type RestrictedNodeTypesProvider,
@@ -23,14 +25,22 @@ const deniedNames = (verdicts: ComposedTypeVerdict[]) =>
 
 @Service()
 export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeTypesProvider {
+	readonly findRestrictedNodeTypesInUse = singleFlight(
+		async () => await this.findRestrictedNodeTypes(),
+	);
+
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly licenseState: LicenseState,
 		private readonly workflowDependencyRepository: WorkflowDependencyRepository,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
-	async findRestrictedNodeTypesInUse(): Promise<RestrictedNodeTypes> {
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)) {
+	private async findRestrictedNodeTypes(): Promise<RestrictedNodeTypes> {
+		if (
+			!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES) ||
+			!this.policyEnforcementService.hasChecksFor('workflowStart')
+		) {
 			return NO_RESTRICTED_NODE_TYPES;
 		}
 
@@ -42,21 +52,17 @@ export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeType
 
 		const shared = deniedNames(withoutProjectPolicy);
 		const sharedKey = shared.join('\n');
-		const exceptProjectIds: string[] = [];
 		const groups = new Map<string, NodeTypesInProjects>();
 		for (const { projectId, verdicts } of byProject) {
 			const denied = deniedNames(verdicts);
 			const key = denied.join('\n');
 			if (key === sharedKey) continue;
 
-			exceptProjectIds.push(projectId);
-			if (denied.length === 0) continue;
-
 			const group = groups.get(key) ?? { projectIds: [], nodeTypes: denied };
 			group.projectIds.push(projectId);
 			groups.set(key, group);
 		}
 
-		return { shared, exceptProjectIds, byProjects: [...groups.values()], nodeTypesInUse: inUse };
+		return { shared, byProjects: [...groups.values()], nodeTypesInUse: inUse };
 	}
 }

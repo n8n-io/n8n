@@ -13,9 +13,6 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import difference from 'lodash/difference';
-import mapValues from 'lodash/mapValues';
-import partition from 'lodash/partition';
 import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { ActivityProjectScope } from './activity-event.repository';
@@ -23,10 +20,8 @@ import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { runWorkflowContentWrite } from './workflow-content-write-context';
-import {
-	runningVersionRowsCondition,
-	type RestrictedNodeTypes,
-} from './workflow-dependency.repository';
+import { restrictedNodeTypeMatch, type RestrictedNodeTypes } from './restricted-node-type-match';
+import { runningVersionRowsCondition } from './workflow-dependency.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -86,63 +81,6 @@ type WorkflowListResult = {
 	workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[];
 	count: number;
 };
-
-const projectNodeTypeKeys = (projectIds: string[], nodeTypes: string[]) =>
-	projectIds.flatMap((projectId) => nodeTypes.map((nodeType) => `${projectId} ${nodeType}`));
-
-function keyProjectOutcomes({ byProjects, nodeTypesInUse }: RestrictedNodeTypes) {
-	const [allowlists, denylists] = partition(
-		byProjects,
-		({ nodeTypes }) => nodeTypes.length * 2 > nodeTypesInUse.length,
-	);
-
-	return {
-		deniedKeys: denylists.flatMap(({ projectIds, nodeTypes }) =>
-			projectNodeTypeKeys(projectIds, nodeTypes),
-		),
-		allowlistProjectIds: allowlists.flatMap(({ projectIds }) => projectIds),
-		allowedKeys: allowlists.flatMap(({ projectIds, nodeTypes }) =>
-			projectNodeTypeKeys(projectIds, difference(nodeTypesInUse, nodeTypes)),
-		),
-	};
-}
-
-function toBoundList(dbType: GlobalConfig['database']['type'], values: string[]) {
-	return dbType === 'postgresdb' ? values : JSON.stringify(values);
-}
-
-function inBoundList(dbType: GlobalConfig['database']['type'], parameter: string) {
-	return dbType === 'postgresdb'
-		? `= ANY(CAST(:${parameter} AS text[]))`
-		: `IN (SELECT value FROM json_each(:${parameter}))`;
-}
-
-function restrictedNodeTypeMatch(
-	restricted: RestrictedNodeTypes,
-	dbType: GlobalConfig['database']['type'],
-) {
-	const inList = (parameter: string) => inBoundList(dbType, parameter);
-	const { deniedKeys, allowlistProjectIds, allowedKeys } = keyProjectOutcomes(restricted);
-	const projectNodeType = "(restrictedOwner.projectId || ' ' || restrictedDep.dependencyKey)";
-
-	const deniedByDefault = `restrictedDep.dependencyKey ${inList('restrictedShared')} AND NOT (restrictedOwner.projectId ${inList('restrictedExceptProjectIds')})`;
-	const deniedInOwnProject = `${projectNodeType} ${inList('restrictedDeniedKeys')}`;
-	const notInOwnAllowlist = `restrictedOwner.projectId ${inList('restrictedAllowlistProjectIds')} AND NOT (${projectNodeType} ${inList('restrictedAllowedKeys')})`;
-
-	return {
-		condition: `((${deniedByDefault}) OR ${deniedInOwnProject} OR (${notInOwnAllowlist}))`,
-		parameters: mapValues(
-			{
-				restrictedShared: restricted.shared,
-				restrictedExceptProjectIds: restricted.exceptProjectIds,
-				restrictedDeniedKeys: deniedKeys,
-				restrictedAllowlistProjectIds: allowlistProjectIds,
-				restrictedAllowedKeys: allowedKeys,
-			},
-			(values) => toBoundList(dbType, values),
-		),
-	};
-}
 
 /**
  * The workflows an agent's workflow tools refer to: refs by id, legacy refs by
@@ -1673,7 +1611,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		const { condition, parameters } = restrictedNodeTypeMatch(
 			restricted,
-			this.globalConfig.database.type,
+			this.globalConfig.database.type === 'postgresdb',
 		);
 		const subQuery = this.buildRunningNodeTypesByOwnerSubQuery().andWhere(condition, parameters);
 
