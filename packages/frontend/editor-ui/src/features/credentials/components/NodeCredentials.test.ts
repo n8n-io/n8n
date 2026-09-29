@@ -1718,6 +1718,47 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('credential auto-select', () => {
+		it('does not assign a credential when opening a node on a read-only canvas', () => {
+			// ADO-5791: Preview canvases open the NDV in read-only mode.
+			const nodeWithoutCredentials: INodeUi = { ...openAiNodeNoCreds, credentials: {} };
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					name: nodeWithoutCredentials.type,
+					displayName: 'OpenAI',
+					version: nodeWithoutCredentials.typeVersion,
+					group: ['transform'],
+					description: '',
+					defaults: { name: 'OpenAI' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [{ name: 'openAiApi', required: true }],
+					properties: [],
+				},
+			]);
+			ndvStore.activeNode = nodeWithoutCredentials;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					node: nodeWithoutCredentials,
+					overrideCredType: '',
+					readonly: true,
+					showAll: true,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+			expect(nodeWithoutCredentials.credentials).toEqual({});
+		});
+
 		it('should auto-select a credential of the overridden type on mount', () => {
 			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
 			ndvStore.activeNode = httpNodeNoCreds;
