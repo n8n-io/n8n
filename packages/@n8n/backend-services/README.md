@@ -27,9 +27,9 @@ and infrastructure services that need the persistence layer or that only
 
 ## What lives here
 
-Nothing yet. The next PRs move the response errors, `UrlService`, `CacheService`,
-`RedisClientService`, `ProtectedResourceRegistry`, `EventService`, `RoleService`,
-the finder services and the scope checks here, one area at a time.
+The package contains `UrlService`. The next PRs move the response errors,
+`CacheService`, `RedisClientService`, `ProtectedResourceRegistry`, `EventService`,
+`RoleService`, the finder services and the scope checks here, one area at a time.
 
 ## Compatibility with cli
 

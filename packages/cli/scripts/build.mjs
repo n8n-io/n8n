@@ -34,14 +34,26 @@ function generateUserManagementEmailTemplates() {
 
 	shell.mkdir('-p', destinationDir);
 
-	const templates = glob.sync('*.mjml', { cwd: sourceDir });
-	templates.forEach((template) => {
-		if (template.startsWith('_')) return;
-		const source = path.resolve(sourceDir, template);
-		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output "${destination}" "${source}"`;
-		shell.exec(command, { silent: false });
+	const templates = glob.sync('*.mjml', { cwd: sourceDir }).filter((t) => !t.startsWith('_'));
+
+	// One mjml process for all templates: each `pnpm mjml` start costs about 0.3s.
+	// With several inputs, mjml writes `<name>.html` into the output directory.
+	const sources = templates.map((template) => `"${path.resolve(sourceDir, template)}"`).join(' ');
+	const result = shell.exec(`pnpm mjml ${sources} --output "${destinationDir}${path.sep}"`, {
+		silent: false,
 	});
+	if (result.code !== 0) {
+		throw new Error(`mjml failed to compile the email templates (exit code ${result.code})`);
+	}
+
+	for (const template of templates) {
+		const name = template.replace(/\.mjml$/, '');
+		const compiled = path.resolve(destinationDir, `${name}.html`);
+		if (!existsSync(compiled)) {
+			throw new Error(`mjml did not write ${compiled}`);
+		}
+		shell.mv(compiled, path.resolve(destinationDir, `${name}.handlebars`));
+	}
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
 }
@@ -74,14 +86,16 @@ async function buildPublicApiSpec() {
 	// 1. Generate decorated route OpenAPI specs from source.
 	generateDocs(v1Dir);
 
-	// 2. Bundle both sources.
+	// 2. Bundle both sources in one redocly process. With several inputs, redocly
+	// writes each bundle into the output directory under its source file name.
 	const v1DistDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+	bundleSpecs(
+		[path.join(v1Dir, SPEC_FILENAME), path.join(v1Dir, DECORATOR_ROOT_FILENAME)],
+		v1DistDir,
+	);
 
 	const eovDistSpec = path.join(v1DistDir, SPEC_FILENAME);
-	bundleSpec(path.join(v1Dir, SPEC_FILENAME), eovDistSpec);
-
 	const decoratorDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
-	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), decoratorDistSpec);
 
 	// 3. Merge the two specs into a single OpenAPI document, writing back to the eov spec path.
 	const eovDoc = parseYaml(readFileSync(eovDistSpec, 'utf8'));
@@ -125,13 +139,25 @@ async function loadOpenApiGenerator() {
 	return generator;
 }
 
-// Bundles a spec through redocly, resolving all $refs into a single file at `distPath`.
-function bundleSpec(sourcePath, distPath) {
-	const result = shell.exec(`pnpm openapi bundle "${sourcePath}" --output "${distPath}"`, {
+// Bundles specs through redocly, resolving all $refs. Each source becomes one file in `distDir`.
+function bundleSpecs(sourcePaths, distDir) {
+	const distPaths = sourcePaths.map((sourcePath) => path.join(distDir, path.basename(sourcePath)));
+	// Remove old output, so that the check below cannot pass on a stale file.
+	for (const distPath of distPaths) rmSync(distPath, { force: true });
+
+	const sources = sourcePaths.map((sourcePath) => `"${sourcePath}"`).join(' ');
+	const result = shell.exec(`pnpm openapi bundle ${sources} --output "${distDir}"`, {
 		silent: true,
 	});
 	if (result.code !== 0) {
-		throw new Error(`redocly failed to bundle ${sourcePath}:\n${result.stderr || result.stdout}`);
+		throw new Error(
+			`redocly failed to bundle ${sourcePaths.join(', ')}:\n${result.stderr || result.stdout}`,
+		);
+	}
+	for (const [i, distPath] of distPaths.entries()) {
+		if (!existsSync(distPath)) {
+			throw new Error(`redocly did not write the bundle for ${sourcePaths[i]} to ${distPath}`);
+		}
 	}
 }
 

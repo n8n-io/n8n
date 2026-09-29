@@ -561,6 +561,7 @@ async function handleSubmit(
 	responseStartedAtEpochMs?: number,
 	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -601,7 +602,8 @@ async function handleSubmit(
 		attachments,
 		pushRef: rootStore.pushRef,
 		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
+		...(mentionCounts.total > 0 ? { mentionCounts } : {}),
+		...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
 	});
 	if (!sent) {
 		isStartingThread.value = false;

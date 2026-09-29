@@ -2301,10 +2301,6 @@ onUpdated(async () => {
 	}
 }
 
-.el-dropdown {
-	color: var(--color--text--tint-1);
-}
-
 .list-option {
 	margin: 6px 0;
 	white-space: normal;
@@ -2349,10 +2345,6 @@ onUpdated(async () => {
 
 .input-with-opener .el-input__suffix {
 	right: 0;
-}
-
-.el-input--suffix .el-input__inner {
-	padding-right: 0;
 }
 
 .textarea-modal-opener {

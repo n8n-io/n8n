@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';
