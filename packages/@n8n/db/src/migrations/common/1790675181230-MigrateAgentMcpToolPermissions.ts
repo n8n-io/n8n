@@ -168,6 +168,7 @@ export class MigrateAgentMcpToolPermissions1790675181230 implements Irreversible
 		const candidateFilter = isPostgres
 			? `${schemaColumn}::jsonb ? 'mcpServers'`
 			: `${schemaColumn} LIKE '%"mcpServers"%'`;
+		let processedCount = 0;
 		let migratedCount = 0;
 		let skippedCount = 0;
 
@@ -178,6 +179,7 @@ export class MigrateAgentMcpToolPermissions1790675181230 implements Irreversible
 			 ORDER BY ${idColumn}`,
 			async (rows) => {
 				for (const row of rows) {
+					processedCount++;
 					let schema: unknown;
 					try {
 						schema = parseJson<unknown>(row.schema);
@@ -209,7 +211,7 @@ export class MigrateAgentMcpToolPermissions1790675181230 implements Irreversible
 		);
 
 		logger.info(
-			`[${migrationName}] Migrated ${migratedCount} ${tableName} rows; skipped ${skippedCount} malformed rows.`,
+			`[${migrationName}] Processed ${processedCount} ${tableName} rows; migrated ${migratedCount}; skipped ${skippedCount} malformed rows.`,
 		);
 	}
 }

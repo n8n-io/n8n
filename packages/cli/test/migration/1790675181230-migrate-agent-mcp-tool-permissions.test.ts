@@ -4,6 +4,7 @@ import {
 	runSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -375,5 +376,66 @@ describe('MigrateAgentMcpToolPermissions migration', () => {
 				);
 			}
 		});
+	});
+
+	it('processes only rows with MCP server candidates', async () => {
+		const schemas = [
+			{},
+			{ name: 'No MCP server' },
+			{ metadata: { retained: true } },
+			{ mcpServers: [] },
+			{ mcpServers: [{ name: 'MCP server' }] },
+		];
+		const loggerInfo = vi.spyOn(Container.get(Logger), 'info').mockImplementation(() => {});
+
+		try {
+			await withContext(async ({ escape, runQuery }) => {
+				const projectId = randomUUID();
+				const now = new Date();
+				await runQuery(
+					`INSERT INTO ${escape.tableName('project')} ("id", "name", "type", "createdAt", "updatedAt")
+					 VALUES (:projectId, 'Project', 'personal', :now, :now)`,
+					{ projectId, now },
+				);
+
+				for (const [index, schema] of schemas.entries()) {
+					const agentId = randomUUID();
+					await runQuery(
+						`INSERT INTO ${escape.tableName('agents')}
+						 ("id", "name", "projectId", "schema", "integrations", "tools", "skills", "createdAt", "updatedAt")
+						 VALUES (:agentId, :name, :projectId, :schema, '[]', '{}', '{}', :now, :now)`,
+						{
+							agentId,
+							name: `Agent ${index}`,
+							projectId,
+							schema: JSON.stringify(schema),
+							now,
+						},
+					);
+					await runQuery(
+						`INSERT INTO ${escape.tableName('agent_history')}
+						 ("versionId", "agentId", "schema", "author", "createdAt", "updatedAt")
+						 VALUES (:versionId, :agentId, :schema, 'Test User', :now, :now)`,
+						{
+							versionId: randomUUID(),
+							agentId,
+							schema: JSON.stringify(schema),
+							now,
+						},
+					);
+				}
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			expect(loggerInfo).toHaveBeenCalledWith(
+				`[${MIGRATION_NAME}] Processed 2 agents rows; migrated 1; skipped 0 malformed rows.`,
+			);
+			expect(loggerInfo).toHaveBeenCalledWith(
+				`[${MIGRATION_NAME}] Processed 2 agent_history rows; migrated 1; skipped 0 malformed rows.`,
+			);
+		} finally {
+			loggerInfo.mockRestore();
+		}
 	});
 });
