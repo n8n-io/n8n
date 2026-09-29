@@ -7613,6 +7613,7 @@
 	"instanceAi.testAgent.generate": "Generate test cases",
 	"instanceAi.testAgent.dismiss": "Maybe later",
 	"instanceAi.testAgentPreview.eyebrow": "A simple try",
+	"instanceAi.testAgentPreview.agentLabel": "Agent",
 	"instanceAi.testAgentPreview.generatingPreview": "Trying a simple request on your agent…",
 	"instanceAi.testAgentPreview.confirmQuestion": "Did that look right?",
 	"instanceAi.testAgentPreview.looksGood": "Looks good",

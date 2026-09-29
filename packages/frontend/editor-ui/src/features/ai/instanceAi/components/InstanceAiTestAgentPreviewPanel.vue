@@ -7,12 +7,13 @@
  * flag, alongside the original `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
-import { N8nButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
+import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
+const formatRelative = useRelativeTimestamp();
 
 type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
 const phase = ref<Phase>('generating-preview');
@@ -41,6 +43,11 @@ const previewResult = computed(() =>
 );
 const previewInput = computed(() => readCaseRequest(previewResult.value?.input));
 const previewOutput = computed(() => readAgentAnswer(previewResult.value?.output ?? null));
+const previewAnsweredAt = computed(() => {
+	const result = previewResult.value;
+	const timestamp = result?.completedAt ?? result?.runAt ?? result?.createdAt;
+	return timestamp ? formatRelative(timestamp) : null;
+});
 
 // Not reactive by design — nothing templates off it. It only guards async
 // continuations against acting after the panel is gone, since the store's
@@ -156,16 +163,28 @@ function onOpenEvals() {
 		</template>
 
 		<template v-else-if="phase === 'awaiting-confirmation'">
-			<N8nText step="xs" color="text-base">
-				{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
-			</N8nText>
-			<N8nText bold color="text-dark">{{ previewInput }}</N8nText>
-			<div :class="$style.answer">
-				<span :class="$style.iconWrap">
-					<N8nIcon icon="sparkles" size="small" />
-				</span>
+			<N8nCard data-test-id="instance-ai-test-agent-preview-input" :class="$style.inputCard">
+				<template #header>
+					<N8nText step="xs" color="text-base">
+						{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
+					</N8nText>
+				</template>
+				<N8nText color="text-dark">{{ previewInput }}</N8nText>
+			</N8nCard>
+			<N8nCard data-test-id="instance-ai-test-agent-preview-output">
+				<template #header>
+					<div :class="$style.answerHeader">
+						<span :class="$style.iconWrap">
+							<N8nIcon icon="sparkles" size="small" />
+						</span>
+						<N8nText bold color="text-dark">
+							{{ i18n.baseText('instanceAi.testAgentPreview.agentLabel') }}
+						</N8nText>
+						<N8nText v-if="previewAnsweredAt" color="text-base">{{ previewAnsweredAt }}</N8nText>
+					</div>
+				</template>
 				<N8nText color="text-base">{{ previewOutput }}</N8nText>
-			</div>
+			</N8nCard>
 			<N8nText bold color="text-dark">
 				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
 			</N8nText>
@@ -241,9 +260,16 @@ function onOpenEvals() {
 	gap: var(--spacing--2xs);
 }
 
-.answer {
+// The input is a quoted pill rather than a response card — flatter than
+// `N8nCard`'s default so it reads as "what was asked", not "an answer".
+.inputCard {
+	background-color: var(--background--subtle);
+	border: none;
+}
+
+.answerHeader {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
