@@ -485,7 +485,12 @@ function toPoint(position?: [number, number]): { x: number; y: number } | undefi
 	return position && { x: position[0], y: position[1] };
 }
 
-/** The box that wraps a sticky's anchors, with room above for the note's own text. */
+/**
+ * The box that wraps a sticky's anchors: room above for the note's own text, and
+ * room below for the nodes' names. The bottom gap is larger than the sides
+ * because a node paints its label under its tile, and the same value the editor
+ * uses, so Tidy Up leaves the note where it is.
+ */
 function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 	if (anchorBoxes.length === 0) return undefined;
 	const wrapped = compositeBoundingBox(anchorBoxes);
@@ -493,7 +498,9 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 		x: snapToGrid(wrapped.x - STICKY_PADDING),
 		y: snapToGrid(wrapped.y - STICKY_PADDING - STICKY_HEADER_HEIGHT),
 		width: snapToGrid(wrapped.width + STICKY_PADDING * 2),
-		height: snapToGrid(wrapped.height + STICKY_PADDING * 2 + STICKY_HEADER_HEIGHT),
+		height: snapToGrid(
+			wrapped.height + STICKY_PADDING + STICKY_HEADER_HEIGHT + STICKY_BOTTOM_PADDING,
+		),
 	};
 }
 

@@ -304,6 +304,26 @@ describe('sticky note placement with tidyUp', () => {
 		expect(overlaps(box, nodeBox(json, 'B'))).toBe(false);
 	});
 
+	it('leaves room under the nodes for their names', () => {
+		// A node paints its name and subtitle below its 96px tile, about 47px of it.
+		// A gap the size of the side padding lets that label hang outside the note.
+		const { start, fetch } = buildChain();
+		const json = workflow('wf', 'Test')
+			.add(start.to(fetch))
+			.add(sticky('## Ingest', [start, fetch], { name: 'Ingest note' }))
+			.toJSON({ tidyUp: true });
+
+		const box = stickyBox(json, 'Ingest note');
+		const lowestNodeBottom = Math.max(
+			...['Every Friday', 'Active teams'].map((name) => {
+				const nb = nodeBox(json, name);
+				return nb.y + nb.height;
+			}),
+		);
+		const LABEL_HEIGHT = 47;
+		expect(box.y + box.height - lowestNodeBottom).toBeGreaterThanOrEqual(LABEL_HEIGHT);
+	});
+
 	it('emits every sticky as a sticky note node', () => {
 		const { start, fetch } = buildChain();
 
