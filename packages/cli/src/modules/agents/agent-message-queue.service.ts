@@ -139,7 +139,7 @@ export class AgentMessageQueueService {
 			const {
 				platform: _platform,
 				integrationConnectionId,
-				messageId,
+				messageId: platformMessageId,
 				...messageContext
 			} = fullContext;
 			queueDispatch = { ...integrationDispatch, messageContext };
@@ -148,7 +148,7 @@ export class AgentMessageQueueService {
 			origin = {
 				source,
 				integrationConnectionId,
-				platformMessageId: messageId,
+				platformMessageId,
 				platformThreadId,
 			};
 		}
