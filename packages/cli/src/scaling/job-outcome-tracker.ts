@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import type { ExecutionStatus, IExecuteResponsePromiseData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 
 import { JOB_WAIT_RECHECK_INTERVAL_MS } from './constants';
 import type { Job, JobFinishedProps, JobId } from './scaling.types';
@@ -68,6 +69,7 @@ export class JobOutcomeTracker {
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -168,6 +170,7 @@ export class JobOutcomeTracker {
 				`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
 				{ executionId, status },
 			);
+			this.eventService.emit('job-completion-missed', { executionId, status });
 			this.settle(executionId, { succeeded: SUCCEEDED_STATUSES.has(status) });
 		}
 	}

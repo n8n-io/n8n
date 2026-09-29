@@ -923,7 +923,7 @@ describe('ScalingService', () => {
 
 			it('should end the wait when an older worker reports the job as finished', async () => {
 				// A real tracker, so the handler and the tracker are checked together
-				const realTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock());
+				const realTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock(), mock());
 				const service = new ScalingService(
 					logger,
 					errorReporter,

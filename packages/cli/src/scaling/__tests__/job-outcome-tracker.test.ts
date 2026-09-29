@@ -4,6 +4,7 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { EventService } from '@/events/event.service';
 
 import { JOB_WAIT_RECHECK_INTERVAL_MS } from '../constants';
 import { JobOutcomeTracker } from '../job-outcome-tracker';
@@ -12,6 +13,7 @@ import type { Job, JobFinishedProps } from '../scaling.types';
 describe('JobOutcomeTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const executionRepository = mock<ExecutionRepository>();
+	const eventService = mock<EventService>();
 	let tracker: JobOutcomeTracker;
 
 	const job = mock<Job>({ id: 'job-1', data: { executionId: 'exec-1' }, queue: { name: 'jobs' } });
@@ -23,7 +25,12 @@ describe('JobOutcomeTracker', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		activeExecutions.has.mockReturnValue(true);
-		tracker = new JobOutcomeTracker(mockLogger(), activeExecutions, executionRepository);
+		tracker = new JobOutcomeTracker(
+			mockLogger(),
+			activeExecutions,
+			executionRepository,
+			eventService,
+		);
 	});
 
 	afterEach(() => {
@@ -158,6 +165,10 @@ describe('JobOutcomeTracker', () => {
 
 			await expect(wait).resolves.toBeUndefined();
 			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {});
+			expect(eventService.emit).toHaveBeenCalledWith('job-completion-missed', {
+				executionId: 'exec-1',
+				status: 'success',
+			});
 		});
 
 		it('should answer the request with an error when the DB shows the execution failed', async () => {
