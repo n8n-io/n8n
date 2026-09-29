@@ -13,9 +13,7 @@ import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';

@@ -15,6 +15,9 @@ import {
 
 const TIMEOUT_MS = 50_000;
 
+const runEnd = { kind: 'runEnd' } as const;
+const stepResponse = { kind: 'stepResponse' } as const;
+
 /**
  * Stands in for the receiver. Only `src/modules/engine-v2/**` may import
  * `@n8n/engine` at runtime, and the receiver's own suite covers the frame round
@@ -80,22 +83,22 @@ describe('EngineV2WebhookResponder', () => {
 	it('listens under the id the run is started with', async () => {
 		const executionId = createExecutionIdV2();
 
-		expect((await responder.waitForResponse(executionId)).executionId).toBe(executionId);
+		expect((await responder.waitForResponse(executionId, runEnd)).executionId).toBe(executionId);
 	});
 
 	it('refuses to listen before the host hands over a receiver', async () => {
-		await expect(newResponder().waitForResponse(createExecutionIdV2())).rejects.toThrow(
+		await expect(newResponder().waitForResponse(createExecutionIdV2(), runEnd)).rejects.toThrow(
 			'without a receiver',
 		);
 	});
 
 	it('refuses a run once it listens for as many as it can hold', async () => {
 		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
-			await responder.waitForResponse(createExecutionIdV2());
+			await responder.waitForResponse(createExecutionIdV2(), runEnd);
 		}
 
 		// Refused before dispatch, so no run starts that nothing can answer.
-		await expect(responder.waitForResponse(createExecutionIdV2())).rejects.toThrow(
+		await expect(responder.waitForResponse(createExecutionIdV2(), runEnd)).rejects.toThrow(
 			'Try again later',
 		);
 	});
@@ -104,18 +107,18 @@ describe('EngineV2WebhookResponder', () => {
 		const pending = await Promise.all(
 			Array.from(
 				{ length: MAX_PENDING_WEBHOOKS },
-				async () => await responder.waitForResponse(createExecutionIdV2()),
+				async () => await responder.waitForResponse(createExecutionIdV2(), runEnd),
 			),
 		);
 
 		pending[0].release();
 
-		await expect(responder.waitForResponse(createExecutionIdV2())).resolves.toBeDefined();
+		await expect(responder.waitForResponse(createExecutionIdV2(), runEnd)).resolves.toBeDefined();
 	});
 
 	it('leaves an unrelated pending run unaffected', async () => {
-		const other = await responder.waitForResponse(createExecutionIdV2());
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const other = await responder.waitForResponse(createExecutionIdV2(), runEnd);
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 
 		deliver(endedResponse(pending.executionId));
 
@@ -128,7 +131,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports the step the run ended with', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 
 		deliver(endedResponse(pending.executionId));
 
@@ -139,7 +142,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports no last node when that step produced nothing', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 
 		deliver(
 			endedResponse(pending.executionId, {
@@ -151,7 +154,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports the response produced by the Respond node', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+		const pending = await responder.waitForResponse(createExecutionIdV2(), stepResponse);
 
 		deliver({
 			type: 'response',
@@ -166,7 +169,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('restores a Buffer body the data plane sent as a base64 envelope', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+		const pending = await responder.waitForResponse(createExecutionIdV2(), stepResponse);
 		const bytes = Buffer.from([0x00, 0xff, 0x10]);
 		const headers = { 'content-type': 'application/octet-stream', 'content-length': 3 };
 
@@ -189,7 +192,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('keeps the first terminal outcome', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
+		const pending = await responder.waitForResponse(createExecutionIdV2(), stepResponse);
 
 		deliver({
 			type: 'response',
@@ -201,21 +204,24 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toMatchObject({ status: 'response' });
 	});
 
-	it('ignores a Respond node result when the response mode waits for the last node', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+	it.each([runEnd, { kind: 'none' } as const])(
+		'ignores a Respond node result when the expectation is %j',
+		async (expectation) => {
+			const pending = await responder.waitForResponse(createExecutionIdV2(), expectation);
 
-		deliver({
-			type: 'response',
-			executionId: pending.executionId,
-			payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
-		});
-		deliver(endedResponse(pending.executionId));
+			deliver({
+				type: 'response',
+				executionId: pending.executionId,
+				payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
+			});
+			deliver(endedResponse(pending.executionId));
 
-		await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
-	});
+			await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+		},
+	);
 
 	it('reports a failure with the node that caused it', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 
 		deliver(
 			endedResponse(pending.executionId, {
@@ -238,7 +244,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports a response failure without attributing it to a node', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 
 		deliver({
 			type: 'undeliverable',
@@ -256,7 +262,7 @@ describe('EngineV2WebhookResponder', () => {
 		const impatient = newResponder(1);
 		impatient.useReceiver(fakeReceiver().receiver);
 
-		const pending = await impatient.waitForResponse(createExecutionIdV2());
+		const pending = await impatient.waitForResponse(createExecutionIdV2(), runEnd);
 		await vi.advanceTimersByTimeAsync(1);
 		await expect(pending.settled).resolves.toEqual({
 			status: 'timeout',
@@ -264,7 +270,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('drops later responses for a released run', async () => {
-		const pending = await responder.waitForResponse(createExecutionIdV2());
+		const pending = await responder.waitForResponse(createExecutionIdV2(), runEnd);
 		pending.release();
 
 		deliver(endedResponse(pending.executionId));
@@ -276,9 +282,9 @@ describe('EngineV2WebhookResponder', () => {
 
 	it('refuses a second wait for the same execution', async () => {
 		const executionId = createExecutionIdV2();
-		await responder.waitForResponse(executionId);
+		await responder.waitForResponse(executionId, runEnd);
 
-		await expect(responder.waitForResponse(executionId)).rejects.toThrow(
+		await expect(responder.waitForResponse(executionId, runEnd)).rejects.toThrow(
 			'already waits for a response for this execution',
 		);
 	});
@@ -316,10 +322,10 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		responder.useReceiver(receiver);
 
 		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
-			void responder.waitForResponse(createExecutionIdV2());
+			void responder.waitForResponse(createExecutionIdV2(), runEnd);
 		}
 
-		await expect(responder.waitForResponse(createExecutionIdV2())).rejects.toThrow(
+		await expect(responder.waitForResponse(createExecutionIdV2(), runEnd)).rejects.toThrow(
 			'Try again later',
 		);
 	});
@@ -330,14 +336,14 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		responder.useReceiver(receiver);
 		const executionId = createExecutionIdV2();
 
-		const failed = responder.waitForResponse(executionId);
+		const failed = responder.waitForResponse(executionId, runEnd);
 		await vi.waitFor(() => expect(subscriptions).toHaveLength(1));
 		subscriptions[0].reject(new Error('Redis is unavailable'));
 
 		await expect(failed).rejects.toThrow('Redis is unavailable');
 		expect(vi.getTimerCount()).toBe(0);
 
-		const retried = responder.waitForResponse(executionId);
+		const retried = responder.waitForResponse(executionId, runEnd);
 		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
 		subscriptions[1].resolve(() => {});
 		await expect(retried).resolves.toBeDefined();
@@ -351,7 +357,7 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		const executionId = createExecutionIdV2();
 
 		let settled = false;
-		const waiting = responder.waitForResponse(executionId).finally(() => {
+		const waiting = responder.waitForResponse(executionId, runEnd).finally(() => {
 			settled = true;
 		});
 		const rejection = expect(waiting).rejects.toThrow(`within ${SUBSCRIBE_TIMEOUT_MS / 1000}s`);
@@ -364,7 +370,7 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		expect(vi.getTimerCount()).toBe(0);
 
 		// The slot is free before the late subscription completes.
-		const retried = responder.waitForResponse(executionId);
+		const retried = responder.waitForResponse(executionId, runEnd);
 		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
 
 		const unsubscribe = vi.fn();

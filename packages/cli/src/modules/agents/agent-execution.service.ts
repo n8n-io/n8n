@@ -13,7 +13,7 @@ import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -22,7 +22,15 @@ import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
-import { checkpointExecutionId } from './types/agent-queued-message';
+import {
+	checkpointExecutionId,
+	EXECUTION_METADATA_KEY,
+	type AgentExecutionAdmission,
+} from './types/agent-queued-message';
+import { AgentMessageRepository } from './repositories/agent-message.repository';
+import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-message.entity';
+import { messageToDto } from './agent-message-mapper';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
@@ -40,6 +48,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
+	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -62,7 +71,7 @@ export interface RecordMessageParams {
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
-	/** Attachments included on the user turn; persisted on the run for the sessions view. */
+	/** Attachments included on the original input message. */
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
@@ -84,6 +93,9 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	resourceId: string;
+	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
+	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
@@ -96,6 +108,7 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 export interface AgentExecutionReservation {
 	execution: AgentExecution;
 	needsTitleSync: boolean;
+	inputMessageIds: string[];
 }
 
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
@@ -142,6 +155,21 @@ export class AgentExecutionService {
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
 
+	/**
+	 * Side-call cost report ids with an in-flight transaction. Concurrent
+	 * deliveries of the same `reportId` coalesce onto the in-flight promise
+	 * instead of each running its own transaction, which would double-count.
+	 * The entry is removed when the attempt settles; a failed attempt is not
+	 * claimed, so a later replay can retry.
+	 */
+	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
+
+	/**
+	 * Per-execution in-flight side-call cost recordings, drained by
+	 * `writeTerminalExecution` before the terminal UPDATE.
+	 */
+	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -156,32 +184,44 @@ export class AgentExecutionService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
 		private readonly queueRepository: AgentMessageQueueRepository,
+		private readonly messageRepository: AgentMessageRepository,
 	) {}
 
-	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
+	async startExecutionRecording(
+		params: StartExecutionParams,
+		startedAt: Date,
+	): Promise<AgentExecutionAdmission> {
 		const reservation = await this.txRunner.run(
 			{},
 			async (ctx) => await this.reserveExecution(params, startedAt, ctx),
 		);
 		this.activateExecution(reservation, params);
-		return reservation.execution.id;
+		return {
+			executionId: reservation.execution.id,
+			startedAt,
+			inputMessageIds: reservation.inputMessageIds,
+		};
 	}
 
 	async reserveExecution(
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
-		const prepared = await this.prepareThread(params, ctx);
-		const queueItem = await this.checkAdmission(params, ctx);
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
+		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
 			startedAt,
 			stoppedAt: null,
 			duration: 0,
-			userMessage: prepared.userMessage,
-			author: params.author ?? null,
+			userMessage: null,
+			author: null,
 			model: null,
 			promptTokens: null,
 			completionTokens: null,
@@ -194,9 +234,16 @@ export class AgentExecutionService {
 			failureSummary: null,
 			hitlStatus: null,
 			source: params.source ?? null,
-			attachments: params.attachments?.length ? params.attachments : null,
+			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		const inputMessageIds = await this.reserveInput(
+			params,
+			inserted.id,
+			predecessorId,
+			queueItem?.messageId,
+			ctx,
+		);
 		if (
 			queueItem &&
 			!(await this.queueRepository.linkExecution(
@@ -208,7 +255,50 @@ export class AgentExecutionService {
 		) {
 			throw new AgentTurnAlreadyRunningError();
 		}
-		return { execution: inserted, needsTitleSync: prepared.created || !prepared.thread.title };
+		return {
+			execution: inserted,
+			needsTitleSync: prepared.created || !prepared.thread.title,
+			inputMessageIds,
+		};
+	}
+
+	private async reserveInput(
+		params: StartExecutionParams,
+		executionId: string,
+		predecessorId: string | undefined,
+		queuedMessageId: string | undefined,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (predecessorId) {
+			return await this.messageRepository.copyExecutionInputs(
+				executionId,
+				predecessorId,
+				params.threadId,
+				ctx,
+			);
+		}
+		if (params.resumeRunId || params.userMessage === null) return [];
+		if (queuedMessageId) {
+			await this.messageRepository.linkExecutionInput(executionId, queuedMessageId, params, ctx);
+			return [queuedMessageId];
+		}
+		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
+		const message = await this.messageRepository.createInput(
+			{
+				threadId: params.threadId,
+				resourceId: params.resourceId,
+				content,
+				author: params.author,
+				origin: {
+					...params.messageOrigin,
+					source: params.source ?? null,
+					...(params.hideUserMessageFromTranscript && { hidden: true }),
+				},
+			},
+			ctx,
+		);
+		await this.messageRepository.linkExecutionInput(executionId, message.id, params, ctx);
+		return [message.id];
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
@@ -232,7 +322,12 @@ export class AgentExecutionService {
 			) {
 				throw new AgentTurnAlreadyRunningError();
 			}
-			return active;
+			const inputExecutionId =
+				checkpoint.checkpoint.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
+			return {
+				queueItem: active,
+				predecessorId: typeof inputExecutionId === 'string' ? inputExecutionId : undefined,
+			};
 		}
 		if (
 			running.length ||
@@ -243,7 +338,7 @@ export class AgentExecutionService {
 		}
 		const head = await this.queueRepository.findHead(threadId, ctx);
 		if (head?.id !== queueItemId && (head || queueItemId)) throw new AgentTurnAlreadyRunningError();
-		return head;
+		return { queueItem: head, predecessorId: undefined };
 	}
 
 	/** Activate only after the reservation transaction commits. */
@@ -441,7 +536,7 @@ export class AgentExecutionService {
 	async prepareThread(
 		params: StartExecutionParams,
 		ctx: OperationContext,
-	): Promise<{ userMessage: string | null; created: boolean; thread: AgentExecutionThread }> {
+	): Promise<{ created: boolean; thread: AgentExecutionThread }> {
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
 			params.threadId,
 			params.agentId,
@@ -455,7 +550,7 @@ export class AgentExecutionService {
 			params.sessionMode,
 		);
 		if (!created) await this.agentExecutionThreadRepository.bumpUpdatedAt(params.threadId, ctx);
-		return { userMessage: cleanUserMessage(params.userMessage, params.agentName), created, thread };
+		return { created, thread };
 	}
 
 	private async completeRecordedExecution(
@@ -634,7 +729,7 @@ export class AgentExecutionService {
 			return {
 				...t,
 				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
-				firstMessage: messageMap.get(t.id) ?? null,
+				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
@@ -657,8 +752,64 @@ export class AgentExecutionService {
 		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	private async hydrateExecutionInputs(
+		executions: AgentExecution[],
+		agentName: string,
+	): Promise<void> {
+		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
+		const seen = new Set<string>();
+		for (const execution of executions) {
+			const messages = inputs.get(execution.id);
+			if (!messages) continue;
+			execution.inputMessageIds = messages.map(({ id }) => id);
+			execution.inputMessages = [];
+			for (const message of messages) {
+				if (seen.has(message.id)) continue;
+				seen.add(message.id);
+				if (message.origin?.hidden) continue;
+				const dto = this.inputMessageToDto(message, execution.id, agentName);
+				if (!dto) continue;
+				execution.inputMessages.push(dto);
+			}
+			const parts = execution.inputMessages.flatMap(({ content }) => content);
+			execution.userMessage =
+				parts
+					.filter((part) => part.type === 'text' && part.text)
+					.map((part) => part.text)
+					.join('\n') || null;
+			execution.author = execution.inputMessages[0]?.author ?? null;
+			execution.attachments = parts.flatMap((part) => {
+				if (part.type !== 'file' || !part.fileId) return [];
+				return [
+					{
+						id: part.fileId,
+						fileName: part.fileName ?? '',
+						mimeType: part.mimeType ?? 'application/octet-stream',
+						sizeBytes: part.sizeBytes ?? 0,
+					},
+				];
+			});
+		}
+	}
+
+	private inputMessageToDto(message: AgentMessageEntity, executionId: string, agentName: string) {
+		const dto = messageToDto({ ...message.content, id: message.id, createdAt: message.createdAt });
+		if (!dto) return null;
+		dto.author = message.author ?? undefined;
+		dto.executionId = executionId;
+		dto.content = dto.content.filter((part) => {
+			if (part.type !== 'text' || part.text === undefined) return true;
+			const text = cleanUserMessage(part.text, agentName);
+			if (text === null) return false;
+			part.text = text;
+			return true;
+		});
+		return dto;
 	}
 
 	/**
@@ -732,6 +883,26 @@ export class AgentExecutionService {
 		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
 	}
 
+	async canUseProductionChatThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		sessionMode: AgentSessionMode,
+	): Promise<boolean> {
+		const thread = await this.findThreadById(threadId);
+		if (!thread) return sessionMode === 'new';
+		if (
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			!canUseTopLevelDraftThread(thread, userId) ||
+			thread.taskId !== null
+		)
+			return false;
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
+	}
+
 	private async canUseUnrecordedDraftThread(
 		threadId: string,
 		agentId: string,
@@ -765,7 +936,29 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
-		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
+		// Drain in-flight side-call cost recordings before the terminal UPDATE
+		// so a process exit right after finalization cannot lose side-call cost.
+		const inFlight = this.sideCallUsageInFlightByExecution.get(executionId);
+		if (inFlight) {
+			this.sideCallUsageInFlightByExecution.delete(executionId);
+			await Promise.allSettled(inFlight);
+		}
+		// The terminal status write and the main-loop cost increment run as one
+		// atomic UPDATE (`status = ... , cost = COALESCE(cost, 0) + :costIncrement`),
+		// so they commit or roll back together. Cost is applied additively rather
+		// than assigned, so a side-call `incrementCost` that lands before this
+		// terminal write is not overwritten. `record.totalCost` is the main-loop
+		// cost only; side calls price themselves onto the same column.
+		//
+		// A transient failure (DB blip, deadlock) leaves the row `running`. The
+		// heartbeat is already stopped at this point, so without a retry the row
+		// would stay `running` until the sweeper marks it `interrupted` and the
+		// main-loop cost would be lost. Retry a bounded number of times with linear
+		// backoff; the total worst-case wait stays under the sweeper's 2-min grace
+		// so a finalized row is never prematurely reaped. The one error that is
+		// definitive — `OperationalError('Agent execution is no longer running')`
+		// — means another path already finalized the row, so it is not retried.
+		const terminalValues = {
 			status,
 			stoppedAt,
 			duration: record.duration,
@@ -773,18 +966,44 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
-			storedAt: 'db',
+			storedAt: 'db' as const,
 			error: record.error,
 			failureSummary,
 			hitlStatus: hitlStatus ?? null,
-		});
-		if (!finalized) {
-			throw new OperationalError('Agent execution is no longer running', {
-				extra: { executionId },
-			});
+		};
+		const maxAttempts = 3;
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const finalized = await this.agentExecutionRepository.updateIfRunning(
+					executionId,
+					terminalValues,
+					undefined,
+					{},
+					record.totalCost ?? undefined,
+				);
+				if (!finalized) {
+					throw new OperationalError('Agent execution is no longer running', {
+						extra: { executionId },
+					});
+				}
+				return;
+			} catch (error) {
+				if (
+					error instanceof OperationalError &&
+					error.message === 'Agent execution is no longer running'
+				) {
+					throw error;
+				}
+				lastError = error;
+				if (attempt < maxAttempts) {
+					const delay = 100 * attempt;
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
 		}
+		throw lastError;
 	}
 
 	private async moveFinalTimelineToBlob(
@@ -871,6 +1090,82 @@ export class AgentExecutionService {
 					error: result.reason,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Apply a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto its execution row
+	 * and thread totals. The SDK prices the call and sends `{ task, model,
+	 * usage, cost, reportId }`; the host only adds `cost`. Best-effort: a
+	 * failure logs a warning and never breaks the run.
+	 *
+	 * Both totals are updated in one transaction. Concurrent deliveries of the
+	 * same `reportId` coalesce onto a single in-flight transaction so they
+	 * cannot each run their own and double-count. The in-flight entry is
+	 * removed when the attempt settles, so the map does not grow unbounded.
+	 * The SDK calls `onSideCallUsage` once per model call with a fresh
+	 * `reportId`, so a sequential replay is not expected; cross-process
+	 * idempotency would need a DB-backed unique constraint, not a process-local
+	 * set.
+	 */
+	async recordSideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		// Register the in-flight promise synchronously (before any await) so a
+		// concurrent delivery observes it and waits on the same attempt rather
+		// than starting a second transaction that would double-count.
+		let attempt = this.sideCallReportInFlight.get(report.reportId);
+		if (attempt === undefined) {
+			const created = this.applySideCallUsage(executionId, threadId, report);
+			attempt = created;
+			this.sideCallReportInFlight.set(report.reportId, created);
+			let bucket = this.sideCallUsageInFlightByExecution.get(executionId);
+			if (!bucket) {
+				bucket = new Set();
+				this.sideCallUsageInFlightByExecution.set(executionId, bucket);
+			}
+			bucket.add(created);
+			void created.finally(() => bucket?.delete(created));
+		}
+		try {
+			await attempt;
+		} finally {
+			// Only the caller that created the attempt clears the slot, so a
+			// coalesced delivery does not delete a later attempt's entry.
+			if (this.sideCallReportInFlight.get(report.reportId) === attempt) {
+				this.sideCallReportInFlight.delete(report.reportId);
+			}
+		}
+	}
+
+	private async applySideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);
+				await this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					0,
+					0,
+					report.cost,
+					0,
+					ctx,
+				);
+			});
+		} catch (error) {
+			this.logger.warn('Failed to record agent side-call usage', {
+				executionId,
+				threadId,
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
 		}
 	}
 

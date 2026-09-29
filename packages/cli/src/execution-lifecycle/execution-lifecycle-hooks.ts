@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -35,7 +36,6 @@ import {
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';

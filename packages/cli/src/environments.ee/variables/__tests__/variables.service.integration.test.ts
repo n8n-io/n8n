@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { VariablesRepository } from '@n8n/db';
@@ -6,7 +7,6 @@ import type { AssignableProjectRole } from '@n8n/permissions';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { createAdmin, createMember } from '@test-integration/db/users';

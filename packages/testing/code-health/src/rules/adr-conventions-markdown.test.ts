@@ -193,9 +193,21 @@ describe('ADR convention Markdown', () => {
 	});
 
 	describe('findAdrReferences', () => {
+		it('finds date-only ADR references in prose and link text', () => {
+			const parsed = parseMarkdown(
+				'The note in ADR-20260904 stays open. See [ADR-20260905](./ADR-20260905-other-choice.md).',
+			);
+
+			expect(findAdrReferences(parsed).map(({ reference }) => reference)).toEqual([
+				'ADR-20260904',
+				'ADR-20260905-other-choice',
+				'ADR-20260905',
+			]);
+		});
+
 		it('finds local references and ignores external repository URLs', () => {
 			const parsed = parseMarkdown(
-				'See ADR-20260922-local, https://github.com/acme/example/ADR-20260921-external.md, and https://github.com/n8n-io/n8n/blob/master/docs/adr/ADR-20260920-n8n.md.\n',
+				'See ADR-20260922-local, https://github.com/acme/example/ADR-20260921-external.md, https://github.com/acme/example/ADR-20260918, and https://github.com/n8n-io/n8n/blob/master/docs/adr/ADR-20260920-n8n.md.\n',
 			);
 
 			expect(findAdrReferences(parsed).map(({ reference }) => reference)).toEqual([

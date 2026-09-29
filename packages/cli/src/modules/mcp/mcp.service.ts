@@ -5,10 +5,9 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -28,7 +27,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
@@ -44,7 +42,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -63,7 +60,11 @@ import {
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import {
+	areAgentToolsAvailable,
+	arePreferenceToolsEnabled,
+	isCommunityNodeInstallAvailable,
+} from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -285,8 +286,7 @@ export class McpService {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
-			// Multivariate flag: only the `variant` arm enables the feature.
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			aiPreferencesEnabled: arePreferenceToolsEnabled(flags),
 		};
 	}
 

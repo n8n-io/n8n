@@ -62,3 +62,9 @@ export class CreateDataTablePublicDto extends Z.class({
 export class UpdateDataTablePublicDto extends Z.class({
 	name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
 }) {}
+
+const dataTableListColumnPublicSchema = dataTableColumnPublicSchema.extend({
+	dataTableId: z.string().openapi(dataTableColumnFieldDocs.dataTableId),
+});
+
+export class DataTableColumnListPublicDto extends Z.array(dataTableListColumnPublicSchema) {}

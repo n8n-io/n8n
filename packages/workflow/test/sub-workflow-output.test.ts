@@ -1,6 +1,6 @@
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { UnexpectedError } from '../src/errors/base/unexpected.error';
 import {
 	NodeConnectionTypes,
 	type INode,

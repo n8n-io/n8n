@@ -12,6 +12,7 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -22,8 +23,7 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError } from '@n8n/errors';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -180,7 +180,10 @@ export class AgentsService {
 		schema: AgentJsonConfig,
 		projectId: string,
 		user: User,
-	): Promise<{ schemaConfig: AgentJsonConfig; integrations: AgentIntegrationConfig[] }> {
+	): Promise<{
+		schemaConfig: AgentJsonConfig;
+		integrations: AgentIntegrationConfig[];
+	}> {
 		const accessibleCredentialIds = new Set(
 			(await createAgentCredentialProvider(this.credentialsService, projectId, user).list()).map(
 				(credential) => credential.id,
@@ -195,10 +198,9 @@ export class AgentsService {
 		// The credential-claim check ignores publish state, so a copy holding the
 		// source's channel credentialId would block the original from republishing
 		// or reconnecting (and the reconciler records that 409 on the source's row).
-		const draftIntegrations = integrations.map((integration) => ({
-			...integration,
-			credentialId: '',
-		}));
+		const draftIntegrations = integrations.map((integration) =>
+			integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
+		);
 		return { schemaConfig, integrations: draftIntegrations };
 	}
 
@@ -215,6 +217,10 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	}
+
+	async isN8nChatPublished(agentId: string, projectId: string): Promise<boolean> {
+		return await this.agentRepository.isN8nChatPublished(agentId, projectId);
 	}
 
 	/**

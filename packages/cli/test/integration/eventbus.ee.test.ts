@@ -336,16 +336,10 @@ test('should send message to sentry ', async () => {
 	sentryDestination.enabled = true;
 
 	const mockedSentryCaptureMessage = vi.spyOn(sentryDestination.sentryClient!, 'captureMessage');
-	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
-		eventBus.confirmMessageDelivered(testMessage, {
-			id: sentryDestination.id,
-			name: sentryDestination.label,
-		});
-		return testMessage.id;
-	});
+	mockedSentryCaptureMessage.mockReturnValue(testMessage.id);
 
 	await eventBus.send(testMessage);
-	await onFirstWorkerMessage('confirmMessageSent', async () => {
+	await vi.waitFor(async () => {
 		await confirmIdInAll(testMessage.id);
 		await confirmIdSent(testMessage.id);
 		expect(mockedSentryCaptureMessage).toHaveBeenCalled();

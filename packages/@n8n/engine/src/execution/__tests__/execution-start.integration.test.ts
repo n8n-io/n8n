@@ -150,6 +150,7 @@ describe('execution start (integration)', () => {
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

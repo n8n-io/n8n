@@ -17,6 +17,22 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
+	test('accepts an optional workflow description', () => {
+		const payload = { ...validPayload, description: 'What this workflow does' };
+
+		expect(CreateWorkflowPublicDto.safeParse(payload)).toMatchObject({
+			success: true,
+			data: { description: payload.description },
+		});
+		expect(CreateWorkflowPublicDto.safeParse(validPayload).success).toBe(true);
+	});
+
+	test('rejects a non-string workflow description', () => {
+		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, description: 42 }).success).toBe(
+			false,
+		);
+	});
+
 	test('rejects an unknown key through both the DTO and its schema', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
 
@@ -71,6 +87,18 @@ describe('CreateWorkflowPublicDto', () => {
 		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, staticData });
 
 		expect(result.success).toBe(true);
+	});
+
+	test('accepts node.extendsCredential but ignores it', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodes: [{ ...validPayload.nodes[0], extendsCredential: 'datadogApi' }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.nodes[0]).not.toHaveProperty('extendsCredential');
+		}
 	});
 
 	test.each([

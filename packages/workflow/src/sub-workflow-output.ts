@@ -1,4 +1,5 @@
-import { UnexpectedError } from './errors/base/unexpected.error';
+import { UnexpectedError } from '@n8n/errors';
+
 import {
 	NodeConnectionTypes,
 	type INode,

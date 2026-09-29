@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -21,14 +22,15 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import {
+	BadRequestError,
+	ConflictError,
+	NotFoundError,
+	UnprocessableRequestError,
+} from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import type { EventService } from '@/events/event.service';
 import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';

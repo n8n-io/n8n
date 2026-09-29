@@ -5,6 +5,7 @@ import {
 	type HttpRequestClient,
 	type SsrfBridge,
 } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -23,13 +24,10 @@ import {
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	AuthError as OAuth2AuthError,
@@ -66,7 +64,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { CacheService } from '@/services/cache/cache.service';

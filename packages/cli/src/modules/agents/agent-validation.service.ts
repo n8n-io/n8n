@@ -210,9 +210,8 @@ export class AgentValidationService {
 	/**
 	 * Same as {@link validateAgentConfiguration}, but against a specific
 	 * published history snapshot instead of the live draft. Used before
-	 * re-publishing a previously published version. Integrations are not
-	 * versioned, so the agent's *current* integrations are always validated,
-	 * regardless of which historical schema is checked.
+	 * re-publishing a previously published version. Credential-backed
+	 * integrations use the current draft; n8n Chat needs no credential check.
 	 */
 	async validateAgentHistoryConfiguration(
 		agentId: string,
@@ -486,6 +485,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
+			if (integration.type === 'n8n_chat') continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',

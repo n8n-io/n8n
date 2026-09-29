@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, Project } from '@n8n/db';
@@ -5,11 +6,11 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { EventService } from '@/events/event.service';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 const project = mock<Project>({ id: 'project-1' });
@@ -24,6 +25,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	const executionService = mock<ExecutionService>();
 	const executionCrashService = mock<ExecutionCrashService>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const eventService = mock<EventService>();
 
@@ -35,6 +37,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			executionService,
 			executionCrashService,
 			ownershipService,
+			workflowPublisherService,
 			workflowRunner,
 			eventService,
 		);

@@ -1,19 +1,12 @@
 import { useI18n } from '@n8n/i18n';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
-import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS } from '@/experiments/exposeAllWorkflowsToMcp/modals';
-import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
-import { MCP_JSON_NUDGE_MODALS } from '@/experiments/mcpJsonNudge/modals';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
 	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
-	MCP_CONNECT_AGENTS_MODAL_KEY,
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
-
-const i18n = useI18n();
 
 const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/SettingsMCPView.vue');
 const SettingsMCPWorkflowsView = async () =>
@@ -82,29 +75,19 @@ export const MCPModule = defineFrontendModule({
 		{
 			id: 'settings-mcp',
 			icon: 'mcp',
-			label: i18n.baseText('settings.mcp'),
+			get label() {
+				return useI18n().baseText('settings.mcp');
+			},
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
-				});
+				return useRBACStore().hasScope([
+					'mcp:manage',
+					'mcp:oauth',
+					'mcpApiKey:create',
+					'mcpApiKey:rotate',
+				]);
 			},
 		},
-	],
-	modals: [
-		{
-			key: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-			component: async () => await import('./modals/MCPConnectWorkflowsModal.vue'),
-			initialState: { open: false },
-		},
-		{
-			key: MCP_CONNECT_AGENTS_MODAL_KEY,
-			component: async () => await import('./modals/MCPConnectAgentsModal.vue'),
-			initialState: { open: false },
-		},
-		...SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS,
-		...EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS,
-		...MCP_JSON_NUDGE_MODALS,
 	],
 });

@@ -3687,12 +3687,14 @@ describe('useAgentChatStream — queued submissions', () => {
 			{
 				type: 'execution-started',
 				executionId: 'A',
+				inputMessageIds: ['stored-input'],
 				sessionId: 'thread-1',
 				message: 'edited in another tab',
 			},
 		]);
 		await flushPromises();
 		expect(hook.messages.value.map(({ content }) => content)).toEqual(['edited in another tab']);
+		expect(hook.messages.value[0].id).toBe('stored-input');
 		hook.detachStream();
 	});
 

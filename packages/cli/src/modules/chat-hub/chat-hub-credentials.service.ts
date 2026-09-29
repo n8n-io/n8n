@@ -10,8 +10,7 @@ import type { INodeCredentials } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 @Service()
 export class ChatHubCredentialsService {
