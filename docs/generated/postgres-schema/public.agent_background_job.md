@@ -10,14 +10,14 @@
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
-| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent agent consumed this settled job |
+| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
 | parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
-| status | varchar(16) |  | false |  |  |  |
+| status | varchar(16) |  | false |  |  | running: child works; suspended: child waits for an approval; completed, failed, cancelled: terminal |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
 | title | varchar(255) |  | false |  |  | Task name or workflow name, echoed in status-check listings |
