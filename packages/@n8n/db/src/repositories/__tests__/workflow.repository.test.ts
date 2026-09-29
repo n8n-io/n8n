@@ -605,6 +605,27 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('getIdsPage', () => {
+		it('should return only the ids of one page, ordered by id', async () => {
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValue([
+					Object.assign(new WorkflowEntity(), { id: 'a' }),
+					Object.assign(new WorkflowEntity(), { id: 'b' }),
+				]);
+
+			const result = await workflowRepository.getIdsPage({ skip: 100, take: 100 });
+
+			expect(result).toEqual(['a', 'b']);
+			expect(findSpy).toHaveBeenCalledWith({
+				select: { id: true },
+				skip: 100,
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+	});
+
 	describe('findPreExistingWorkflows', () => {
 		it('merges workflows returned from different chunks', async () => {
 			const first = Object.assign(new WorkflowEntity(), { id: 'first' });

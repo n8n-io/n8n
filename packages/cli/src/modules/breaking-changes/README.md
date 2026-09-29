@@ -26,6 +26,7 @@ breaking-changes/
       repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings
+      migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API

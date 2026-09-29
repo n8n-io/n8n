@@ -509,6 +509,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * One page of workflow ids, ordered by id so a caller can page through every
+	 * workflow with a stable order. Used by scans that need the ids only.
+	 */
+	async getIdsPage({ skip, take }: { skip: number; take: number }): Promise<string[]> {
+		const workflows = await this.find({
+			select: { id: true },
+			skip,
+			take,
+			order: { id: 'ASC' },
+		});
+
+		return workflows.map(({ id }) => id);
+	}
+
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];
