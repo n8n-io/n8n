@@ -80,7 +80,26 @@ export interface N8NStack {
 	 * which cannot reach the host-mapped ports in `baseUrl`/`mainUrls`.
 	 */
 	internalMainUrls: string[];
+	/**
+	 * Direct host-mapped URL of every n8n process (mains, workers, webhook procs),
+	 * for per-process diagnostics such as `/metrics` and `/rest/e2e/internals`.
+	 */
+	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
+}
+
+export interface N8NProcessUrl {
+	role: 'main' | 'worker' | 'webhook';
+	/** Container name, e.g. `<project>-n8n-worker-1`. */
+	name: string;
+	url: string;
+}
+
+function n8nProcessRole(containerName: string): N8NProcessUrl['role'] | undefined {
+	if (containerName.endsWith('-n8n') || containerName.includes('-n8n-main-')) return 'main';
+	if (containerName.includes('-n8n-worker-')) return 'worker';
+	if (containerName.includes('-n8n-webhook-')) return 'webhook';
+	return undefined;
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -464,6 +483,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
 
+		const processUrls: N8NProcessUrl[] = [];
+		for (const container of containers) {
+			const name = container.getName().replace(/^\//, '');
+			const role = n8nProcessRole(name);
+			if (role) {
+				processUrls.push({ role, name, url: `http://localhost:${container.getMappedPort(5678)}` });
+			}
+		}
+
 		// Run verification hooks (e.g. keycloak connectivity check)
 		const n8nContainers = containers.filter((c) => {
 			const name = c.getName();
@@ -617,6 +645,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 			mainUrls,
 			internalMainUrls,
+			processUrls,
 			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {

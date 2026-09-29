@@ -2,7 +2,7 @@ import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwri
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
-import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
+import type { N8NConfig, N8NProcessUrl, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
@@ -42,6 +42,11 @@ type TestFixtures = {
 	 * Index 0 = main-1, Index 1 = main-2, etc.
 	 */
 	mainUrls: string[];
+	/**
+	 * Direct URL of every n8n process (mains, workers, webhook procs). Outside
+	 * container mode this is the backend URL as a single main.
+	 */
+	processUrls: N8NProcessUrl[];
 	/**
 	 * Create an API helper for a specific main instance (bypasses load balancer).
 	 * Useful for multi-main testing scenarios.
@@ -299,6 +304,10 @@ export const test = base.extend<
 	mainUrls: async ({ n8nContainer }, use) => {
 		const urls = n8nContainer?.mainUrls ?? [];
 		await use(urls);
+	},
+
+	processUrls: async ({ n8nContainer, backendUrl }, use) => {
+		await use(n8nContainer?.processUrls ?? [{ role: 'main', name: 'main', url: backendUrl }]);
 	},
 
 	createApiForMain: async ({ n8nContainer, n8nStackConfig }, use, testInfo) => {
