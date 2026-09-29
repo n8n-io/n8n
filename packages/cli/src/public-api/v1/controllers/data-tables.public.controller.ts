@@ -64,10 +64,8 @@ function handleError(error: unknown): never {
 	if (error instanceof DataTableAccessDeniedError) {
 		throw new ForbiddenError();
 	}
-	if (error instanceof DataTableNameConflictError) {
-		throw new ConflictError(error.message);
-	}
 	if (
+		error instanceof DataTableNameConflictError ||
 		error instanceof DataTableColumnNameConflictError ||
 		error instanceof DataTableSystemColumnNameConflictError
 	) {
