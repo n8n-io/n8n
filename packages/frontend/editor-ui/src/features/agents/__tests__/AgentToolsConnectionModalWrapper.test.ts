@@ -1242,6 +1242,38 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(onConfirm).not.toHaveBeenCalled();
 		});
 
+		it('warns and adds nothing when the tool becomes restricted while its configure step is open', async () => {
+			mockRestrictedNodeTypes();
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+			emitConnect(slack!);
+			await flushPromises();
+
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			await saveConfiguration(toolRef(SLACK.name));
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', message: expect.stringContaining('Slack') }),
+			);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('flags a connected tool that a policy now restricts', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			expect(connected).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+		});
+
 		it('leaves the list untouched when nothing is restricted', async () => {
 			mockRestrictedNodeTypes();
 

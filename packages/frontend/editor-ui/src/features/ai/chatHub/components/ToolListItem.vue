@@ -94,6 +94,22 @@ const rowRef = ref<HTMLElement | null>(null);
 		</div>
 
 		<div :class="$style.actions">
+			<span
+				v-if="restriction"
+				:class="$style.restrictedMarker"
+				tabindex="0"
+				role="img"
+				:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+				data-test-id="chat-tool-restricted"
+			>
+				<RestrictedNodePopover
+					:node-type-name="nodeType.displayName"
+					:scope="restriction.scope"
+					:anchor="rowRef"
+				/>
+			</span>
+
+			<!-- A configured tool keeps its actions: the user needs Remove to clear a tool that a policy now blocks. -->
 			<template v-if="mode === 'configured'">
 				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
@@ -130,23 +146,9 @@ const rowRef = ref<HTMLElement | null>(null);
 				</N8nTooltip>
 			</template>
 
-			<template v-else>
-				<span
-					v-if="restriction"
-					:class="$style.restrictedMarker"
-					tabindex="0"
-					role="img"
-					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
-					data-test-id="chat-tool-restricted"
-				>
-					<RestrictedNodePopover
-						:node-type-name="nodeType.displayName"
-						:scope="restriction.scope"
-						:anchor="rowRef"
-					/>
-				</span>
+			<template v-else-if="!restriction">
 				<N8nTooltip
-					v-else-if="communityPreview && installDisabled && !installing"
+					v-if="communityPreview && installDisabled && !installing"
 					:content="i18n.baseText('communityNodeInfo.contact.admin')"
 					placement="top"
 				>

@@ -40,7 +40,10 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import {
+	describeNodeTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
@@ -96,6 +99,22 @@ watch(
 
 function restrictionFor(nodeType: INodeTypeDescription) {
 	return getNodeItemRestriction(nodeType.name) ?? undefined;
+}
+
+/**
+ * The settings view closes on Save whether or not the tool was added, so a
+ * restriction found at that point needs its own explanation.
+ */
+function notifyRestricted(nodeType: INodeTypeDescription): boolean {
+	const restriction = getNodeItemRestriction(nodeType.name);
+	if (!restriction) return false;
+
+	toast.showMessage({
+		type: 'warning',
+		title: i18n.baseText('typeAvailabilityPolicies.restrictedNode.title'),
+		message: describeNodeTypeRestriction(nodeType.displayName, restriction.scope),
+	});
+	return true;
 }
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
@@ -317,7 +336,7 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 		existingNames,
 		async (configuredNode: INode) => {
 			// The policy can finish loading while the settings view is open.
-			if (isNodeItemRestricted(configuredNode.type)) return;
+			if (notifyRestricted(nodeType)) return;
 
 			try {
 				await chatStore.addConfiguredTool(configuredNode);
@@ -445,6 +464,7 @@ function handleSettingsChangeName(name: string) {
 							:node-type="getNodeType(tool)!"
 							:configured-node="tool.definition"
 							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
+							:restriction="restrictionFor(getNodeType(tool)!)"
 							mode="configured"
 							@configure="handleConfigureTool(tool)"
 							@remove="handleRemoveTool(tool.definition.id)"

@@ -1,4 +1,5 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
+import type { NodeTypeAvailability, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
@@ -10,6 +11,24 @@ export function getNodeTypeRestriction(nodeType: string): NodeTypeAvailability |
 
 export function isNodeTypeRestricted(nodeType: string): boolean {
 	return getNodeTypeRestriction(nodeType) !== null;
+}
+
+const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.restrictedNode.description.instance',
+	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
+};
+
+/** One sentence that names the blocked node and tells the user to contact an admin. */
+export function describeNodeTypeRestriction(
+	nodeTypeName: string,
+	scope?: NodeTypeAvailabilityScope,
+): string {
+	const i18n = useI18n();
+	const nextStep = i18n.baseText('typeAvailabilityPolicies.restrictedNode.nextStep.contact');
+	return i18n.baseText(
+		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
+		{ interpolate: { nodeType: nodeTypeName, nextStep } },
+	);
 }
 
 export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null | undefined>) {

@@ -39,7 +39,10 @@ import {
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import {
+	describeNodeTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -340,9 +343,26 @@ function commit() {
 	});
 }
 
+/**
+ * The picker closes on Save whether or not the tool was added, so a restriction
+ * found at that point needs its own explanation.
+ */
+function notifyRestricted(nodeTypeName: string): boolean {
+	const restriction = getNodeItemRestriction(nodeTypeName);
+	if (!restriction) return false;
+
+	const displayName = nodeTypesStore.getNodeType(nodeTypeName)?.displayName ?? nodeTypeName;
+	toast.showMessage({
+		type: 'warning',
+		title: i18n.baseText('typeAvailabilityPolicies.restrictedNode.title'),
+		message: describeNodeTypeRestriction(displayName, restriction.scope),
+	});
+	return true;
+}
+
 function addToolRef(savedRef: AgentJsonToolRef) {
 	// The policy can finish loading while the config form is open.
-	if (savedRef.type === 'node' && getNodeItemRestriction(savedRef.node.nodeType)) return;
+	if (savedRef.type === 'node' && notifyRestricted(savedRef.node.nodeType)) return;
 
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
@@ -664,6 +684,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
+		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
 	};
 	return item;
 }
@@ -683,6 +704,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
+		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
 	};
 	return item;
 }

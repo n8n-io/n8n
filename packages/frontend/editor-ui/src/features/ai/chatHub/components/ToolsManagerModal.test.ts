@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { defineComponent, onMounted } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
@@ -65,8 +66,9 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: mockShowError }),
+	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 
 vi.mock('@/app/utils/rbac/checks/hasRole', () => ({
@@ -157,10 +159,16 @@ const renderComponent = createComponentRenderer(ToolsManagerModal, {
 	global: {
 		stubs: {
 			ElDialog: ElDialogStub,
-			NodeToolSettingsContent: {
-				template: '<div data-test-id="tool-settings-content" />',
+			NodeToolSettingsContent: defineComponent({
 				props: ['initialNode', 'existingToolNames'],
-			},
+				emits: ['update:valid', 'update:nodeName'],
+				setup(props, { emit, expose }) {
+					expose({ node: props.initialNode });
+					onMounted(() => emit('update:valid', true));
+					return {};
+				},
+				template: '<div data-test-id="tool-settings-content" />',
+			}),
 			NodeIcon: { template: '<div />' },
 		},
 	},
@@ -524,6 +532,40 @@ describe('ToolsManagerModal', () => {
 
 			expect(queryByTestId('tool-settings-content')).toBeNull();
 			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('warns and adds nothing when the tool becomes restricted while the settings view is open', async () => {
+			mockRestrictedNodeTypes();
+
+			const { getAllByText, getByText, queryByTestId } = renderComponent({
+				props: defaultProps(),
+			});
+
+			await userEvent.click(getAllByText('chatHub.toolsManager.add')[0]);
+			await waitFor(() => {
+				expect(queryByTestId('tool-settings-content')).toBeTruthy();
+			});
+
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			await userEvent.click(getByText('chatHub.toolSettings.confirm'));
+
+			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', message: expect.stringContaining('Tool A') }),
+			);
+			expect(queryByTestId('tool-settings-content')).toBeNull();
+		});
+
+		it('marks a configured tool that a policy restricts and keeps its actions', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const [configured] = getConfiguredItems(container);
+			expect(configured.querySelector('[data-test-id="chat-tool-restricted"]')).toBeTruthy();
+			expect(getActionButtons(configured)).toHaveLength(2);
+			expect(getToggle(configured)).toBeTruthy();
 		});
 
 		it('keeps the list as it is when nothing is restricted', () => {
