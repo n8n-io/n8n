@@ -183,12 +183,12 @@ export const NoDynamicRegExpRule = ESLintUtils.RuleCreator.withoutDocs<Options, 
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow RegExp constructors from dynamic values; use safeInternalRegex instead.',
+				'Disallow RegExp constructors from dynamic values; use safeInternalRegex (or safeUserRegex for a user-authored pattern) instead.',
 		},
 		schema: [],
 		messages: {
 			noDynamicRegExp:
-				'Use safeInternalRegex for dynamic regular expressions. Only literal or statically resolvable RegExp patterns are allowed.',
+				'Use safeInternalRegex (or safeUserRegex for a user-authored pattern) for dynamic regular expressions. Only literal or statically resolvable RegExp patterns are allowed.',
 		},
 	},
 	defaultOptions: [],

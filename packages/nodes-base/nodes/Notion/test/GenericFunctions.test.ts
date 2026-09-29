@@ -296,6 +296,41 @@ describe('Test Notion, extractDatabaseMentionRLC', () => {
 
 		expect(blockValues[0].text.text[0].database).toBe('3ab5bc794647496dac48feca926813fd');
 	});
+
+	it('throws when the extraction regex does not match the resource-locator value', () => {
+		const blockValues: Array<{
+			richText: boolean;
+			text: {
+				text: Array<{
+					textType: string;
+					mentionType: string;
+					database: string | { __rl: boolean; mode: string; value: string; __regex: string };
+				}>;
+			};
+		}> = [
+			{
+				richText: true,
+				text: {
+					text: [
+						{
+							textType: 'mention',
+							mentionType: 'database',
+							database: {
+								__rl: true,
+								mode: 'url',
+								value: 'not-a-notion-url',
+								__regex: '([0-9a-f]{32})$',
+							},
+						},
+					],
+				},
+			},
+		];
+
+		expect(() => extractDatabaseMentionRLC(blockValues)).toThrow(
+			'Could not extract the database ID from "not-a-notion-url"',
+		);
+	});
 });
 
 describe('Test Notion, getPageId', () => {
