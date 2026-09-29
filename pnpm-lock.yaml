@@ -7880,18 +7880,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
-      '@sentry/node':
-        specifier: catalog:sentry
-        version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.221.0(@opentelemetry/api@1.9.1))(supports-color@8.1.1)
       ast-types:
         specifier: 0.16.1
         version: 0.16.1
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
-      callsites:
-        specifier: 'catalog:'
-        version: 3.1.0
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
