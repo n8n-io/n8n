@@ -159,7 +159,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		if (cursor) {
 			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
 		}
-		this.applyListFilters(query, filters);
+		this.applyListFilters(query, filters, userId);
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
@@ -173,7 +173,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private applyListFilters(
 		query: SelectQueryBuilder<AgentExecutionThread>,
 		filters: AgentSessionQueryFilters,
+		userId: string,
 	) {
+		if (filters.scope === 'mine') {
+			query.andWhere('thread.ownerId = :userId', { userId });
+		}
 		if (filters.updatedAfter) {
 			query.andWhere('thread.updatedAt >= :updatedAfter', {
 				updatedAfter: filters.updatedAfter,

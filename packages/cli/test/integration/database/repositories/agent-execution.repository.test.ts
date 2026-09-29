@@ -74,6 +74,7 @@ import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/age
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
 
@@ -2629,6 +2630,11 @@ describe('AgentExecutionRepository', () => {
 				{ sessionNumber: 5, source: null, expected: 'preview' },
 				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
 				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
+				{
+					sessionNumber: 8,
+					source: N8N_CHAT_PRODUCTION_SOURCE,
+					expected: N8N_CHAT_PRODUCTION_SOURCE,
+				},
 			];
 			const expectedIds = new Map<AgentSessionOrigin, string[]>();
 
@@ -2664,6 +2670,33 @@ describe('AgentExecutionRepository', () => {
 				);
 				expect(new Set(result.threads.map(({ id }) => id))).toEqual(new Set(ids));
 			}
+		});
+
+		it('keeps only the sessions owned by the requesting user with scope=mine', async () => {
+			const owner = await createMember();
+			const other = await createMember();
+			const mine = await createThread({ sessionNumber: 1, ownerId: owner.id });
+			const theirs = await createThread({ sessionNumber: 2, ownerId: other.id });
+			const unowned = await createThread({ sessionNumber: 3 });
+			for (const thread of [mine, theirs, unowned]) {
+				await createExecution({ threadId: thread.id, source: N8N_CHAT_PRODUCTION_SOURCE });
+			}
+			const list = async (filters: AgentSessionQueryFilters) =>
+				(
+					await threadRepo.findByProjectIdPaginated(
+						projectId,
+						agentId,
+						owner.id,
+						20,
+						undefined,
+						filters,
+					)
+				).threads.map(({ id }) => id);
+
+			expect(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE, scope: 'mine' })).toEqual([mine.id]);
+			expect(new Set(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE }))).toEqual(
+				new Set([mine.id, theirs.id, unowned.id]),
+			);
 		});
 
 		it('applies inclusive date and status filters before cursor pagination', async () => {
