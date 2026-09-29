@@ -50,48 +50,10 @@ interface QueueRow {
 export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			schemaBuilder: { addNotNull, dropColumns, addForeignKey, createIndex },
+			schemaBuilder: { addColumns, column, addNotNull, dropColumns, addForeignKey, createIndex },
 			escape,
 			runQuery,
 		} = ctx;
-		// SQLite rebuilds the table for NOT NULL and otherwise forgets deleted queue IDs.
-		const sequence = await this.readQueueSequence(ctx);
-		await this.addMessageReference(ctx);
-		await this.backfillQueue(ctx);
-		if (ctx.isSqlite) {
-			await runQuery(
-				`ALTER TABLE ${escape.tableName('agent_message_queue')} DROP COLUMN ${escape.columnName('source')}`,
-			);
-		} else {
-			await dropColumns('agent_message_queue', ['source'], { recreatesOnSqlite: true });
-		}
-		await addNotNull('agent_message_queue', 'messageId', { recreatesOnSqlite: true });
-		await addForeignKey(
-			'agent_message_queue',
-			'messageId',
-			['agents_messages', 'id'],
-			'FK_agent_message_queue_messageId',
-			'CASCADE',
-		);
-		if (ctx.isPostgres) {
-			await runQuery(`COMMENT ON COLUMN ${escape.tableName('agent_message_queue')}.${escape.columnName('payload')}
-				IS 'Dispatch, authorization, and reply context. Input is stored on the message'`);
-		}
-		await createIndex('agent_message_queue', ['messageId'], true);
-		await this.restoreQueueSequence(ctx, sequence);
-	}
-
-	private async addMessageReference({
-		isSqlite,
-		escape,
-		runQuery,
-		schemaBuilder: { addColumns, column },
-	}: MigrationContext) {
-		if (isSqlite) {
-			await runQuery(`ALTER TABLE ${escape.tableName('agent_message_queue')}
-				ADD COLUMN ${escape.columnName('messageId')} varchar(36)`);
-			return;
-		}
 		await addColumns(
 			'agent_message_queue',
 			[
@@ -101,9 +63,22 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 			],
 			{ recreatesOnSqlite: true },
 		);
+		await this.backfillQueue(ctx);
+		await dropColumns('agent_message_queue', ['source'], { recreatesOnSqlite: true });
+		await addNotNull('agent_message_queue', 'messageId', { recreatesOnSqlite: true });
+		await addForeignKey(
+			'agent_message_queue',
+			'messageId',
+			['agents_messages', 'id'],
+			'FK_agent_message_queue_messageId',
+			'CASCADE',
+		);
+		await runQuery(`COMMENT ON COLUMN ${escape.tableName('agent_message_queue')}.${escape.columnName('payload')}
+				IS 'Dispatch, authorization, and reply context. Input is stored on the message'`);
+		await createIndex('agent_message_queue', ['messageId'], true);
 	}
 
-	private async backfillQueue(ctx: MigrationContext) {
+	protected async backfillQueue(ctx: MigrationContext) {
 		const { escape, runInBatches } = ctx;
 		await runInBatches<QueueRow>(
 			`SELECT CAST(queue.${escape.columnName('id')} AS TEXT) AS ${escape.columnName('id')},
@@ -237,54 +212,24 @@ export class AddAgentQueueMessageReferences1790605116208 implements ReversibleMi
 			runQuery,
 		} = ctx;
 		await this.requireEmptyQueue(ctx);
-		const sequence = await this.readQueueSequence(ctx);
 		await dropIndex('agent_message_queue', ['messageId']);
-		if (ctx.isPostgres) {
-			await dropForeignKey(
-				'agent_message_queue',
-				'messageId',
-				['agents_messages', 'id'],
-				'FK_agent_message_queue_messageId',
-			);
-		}
-		await dropColumns('agent_message_queue', ['messageId'], { recreatesOnSqlite: true });
-		if (ctx.isSqlite) {
-			await runQuery(
-				`ALTER TABLE ${escape.tableName('agent_message_queue')} ADD COLUMN ${escape.columnName('source')} varchar(32) NOT NULL`,
-			);
-		} else {
-			await addColumns(
-				'agent_message_queue',
-				[column('source').varchar(32).notNull.comment('Preview or integration source')],
-				{ recreatesOnSqlite: true },
-			);
-			await runQuery(`COMMENT ON COLUMN ${escape.tableName('agent_message_queue')}.${escape.columnName('payload')}
-				IS 'Input, attachment references, identity, and reply context'`);
-		}
-		await this.restoreQueueSequence(ctx, sequence);
-	}
-
-	private async readQueueSequence({ isSqlite, runQuery, tablePrefix }: MigrationContext) {
-		if (!isSqlite) return undefined;
-		const [sequence] = await runQuery<Array<{ seq: string }>>(
-			'SELECT CAST(seq AS TEXT) AS seq FROM sqlite_sequence WHERE name = :tableName',
-			{ tableName: `${tablePrefix}agent_message_queue` },
+		await dropForeignKey(
+			'agent_message_queue',
+			'messageId',
+			['agents_messages', 'id'],
+			'FK_agent_message_queue_messageId',
 		);
-		return sequence?.seq;
+		await dropColumns('agent_message_queue', ['messageId'], { recreatesOnSqlite: true });
+		await addColumns(
+			'agent_message_queue',
+			[column('source').varchar(32).notNull.comment('Preview or integration source')],
+			{ recreatesOnSqlite: true },
+		);
+		await runQuery(`COMMENT ON COLUMN ${escape.tableName('agent_message_queue')}.${escape.columnName('payload')}
+				IS 'Input, attachment references, identity, and reply context'`);
 	}
 
-	private async restoreQueueSequence(
-		{ runQuery, tablePrefix }: MigrationContext,
-		sequence: string | undefined,
-	) {
-		if (sequence === undefined) return;
-		await runQuery('UPDATE sqlite_sequence SET seq = :seq WHERE name = :tableName', {
-			seq: sequence,
-			tableName: `${tablePrefix}agent_message_queue`,
-		});
-	}
-
-	private async requireEmptyQueue({ runQuery, escape }: MigrationContext) {
+	protected async requireEmptyQueue({ runQuery, escape }: MigrationContext) {
 		const rows = await runQuery<Array<{ id: string }>>(
 			`SELECT ${escape.columnName('id')} FROM ${escape.tableName('agent_message_queue')} LIMIT 1`,
 		);
