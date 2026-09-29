@@ -679,7 +679,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	/** A stack's items before mapping and sorting, without entries that open an empty list. */
 	function collectStackItems(stack: ViewStack): INodeCreateElement[] {
-		return listedStackItems(stack).flatMap((item) => {
+		return listedStackItems(stack).flatMap((item): INodeCreateElement[] => {
 			if (item.type !== 'section') return opensNodes(item, stack.rootView) ? [item] : [];
 			const children = item.children.filter((child) => opensNodes(child, stack.rootView));
 			return children.length > 0 ? [{ ...item, children }] : [];
