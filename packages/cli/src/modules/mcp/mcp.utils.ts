@@ -84,6 +84,9 @@ export const getToolName = (body: unknown): string => {
  * tool after an upgrade. Scope filtering is unaffected: the request is served
  * under the current name, which is the name `TOOLS_BY_SCOPE` gates.
  *
+ * A call the current tool cannot answer faithfully is left alone, so it fails
+ * as it does today rather than returning something the client did not ask for.
+ *
  * Returns the body to serve, and the old name when one was rewritten.
  */
 export const resolveRenamedToolCall = (body: unknown): { body: unknown; renamedFrom?: string } => {
@@ -92,11 +95,17 @@ export const resolveRenamedToolCall = (body: unknown): { body: unknown; renamedF
 	const requestedName = body.params?.name;
 	if (typeof requestedName !== 'string') return { body };
 
-	const currentName = RENAMED_TOOLS[requestedName];
-	if (currentName === undefined) return { body };
+	const renamed = RENAMED_TOOLS[requestedName];
+	if (renamed === undefined) return { body };
+
+	const args = body.params?.arguments;
+	const carriesDroppedArgument = renamed.droppedArguments?.some(
+		(argument) => isRecord(args) && argument in args,
+	);
+	if (carriesDroppedArgument) return { body };
 
 	return {
-		body: { ...body, params: { ...body.params, name: currentName } },
+		body: { ...body, params: { ...body.params, name: renamed.currentName } },
 		renamedFrom: requestedName,
 	};
 };

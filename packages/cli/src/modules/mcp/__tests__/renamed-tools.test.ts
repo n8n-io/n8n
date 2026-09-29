@@ -6,16 +6,16 @@ import { RENAMED_TOOLS } from '../renamed-tools';
 
 const CURRENT_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 
-const toolCall = (name: unknown) => ({
+const toolCall = (name: unknown, args: Record<string, unknown> = { workflowId: 'wf-1' }) => ({
 	jsonrpc: '2.0',
 	id: 1,
 	method: 'tools/call',
-	params: { name, arguments: { workflowId: 'wf-1' } },
+	params: { name, arguments: args },
 });
 
 describe('RENAMED_TOOLS', () => {
 	it('points every former name at a tool the instance still exposes', () => {
-		for (const currentName of Object.values(RENAMED_TOOLS)) {
+		for (const { currentName } of Object.values(RENAMED_TOOLS)) {
 			expect(CURRENT_TOOLS).toContain(currentName);
 		}
 	});
@@ -63,12 +63,34 @@ describe('resolveRenamedToolCall', () => {
 		expect(renamedFrom).toBeUndefined();
 	});
 
+	// `search_executions` took `lastId`; `search_workflow_executions` takes an
+	// opaque `cursor`. The input schema strips an unknown key rather than
+	// rejecting it, so rewriting a paging call would answer the first page
+	// again instead of the page the client asked for.
+	it('leaves a paging call for a renamed tool that dropped the argument', () => {
+		const request = toolCall('search_executions', { workflowId: 'wf-1', lastId: '42' });
+
+		const { body, renamedFrom } = resolveRenamedToolCall(request);
+
+		expect(body).toBe(request);
+		expect(renamedFrom).toBeUndefined();
+	});
+
+	it('rewrites the same call when it does not page', () => {
+		const { body, renamedFrom } = resolveRenamedToolCall(
+			toolCall('search_executions', { workflowId: 'wf-1' }),
+		);
+
+		expect(renamedFrom).toBe('search_executions');
+		expect(body).toMatchObject({ params: { name: 'search_workflow_executions' } });
+	});
+
 	it('does not mutate the original request', () => {
-		const request = toolCall('search_executions');
+		const request = toolCall('get_execution');
 
 		resolveRenamedToolCall(request);
 
-		expect(request.params.name).toBe('search_executions');
+		expect(request.params.name).toBe('get_execution');
 	});
 });
 
