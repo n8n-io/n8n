@@ -8305,7 +8305,7 @@
 	"agents.builder.memory.episodicMemory.credentialDialog.title": "Select an OpenAI credential",
 	"agents.builder.knowledge.advanced.title": "Advanced",
 	"agents.builder.files.title": "Knowledge base",
-	"agents.builder.files.titleTooltip": "Files uploaded to this agent. n8n stores them so the agent can search their contents and read them when answering.",
+	"agents.builder.files.titleTooltip": "n8n stores files uploaded to this agent so it can search and read their contents when answering.",
 	"agents.builder.files.description": "Add CSV, PDF, Markdown, or TXT files this agent can search and read. Upload up to {maxFiles} files at a time, {maxSizeMb} MB each. Knowledge base size is limited to {maxTotalGb} GB.",
 	"agents.builder.files.count": "{count} file uploaded | {count} files uploaded",
 	"agents.builder.files.upload": "Upload file",
