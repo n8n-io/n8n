@@ -9,9 +9,9 @@ import fs from 'fs/promises';
 import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
-import validator from 'validator';
 
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
+import { publicApiValidatorFormats } from './public-api-validator-formats';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -290,33 +290,7 @@ function createLazyValidatorMiddleware(
 						validateRequests: true,
 						validateApiSpec: true,
 						fileUploader: createN8nPackageMulterOptions(globalConfig),
-						formats: {
-							email: {
-								type: 'string',
-								validate: (email: string) => validator.isEmail(email),
-							},
-							identifier: {
-								type: 'string',
-								validate: (identifier: string) =>
-									validator.isUUID(identifier) || validator.isEmail(identifier),
-							},
-							jsonString: {
-								validate: (data: string) => {
-									try {
-										JSON.parse(data);
-										return true;
-									} catch (e) {
-										return false;
-									}
-								},
-							},
-							nanoid: {
-								type: 'string',
-								validate: (id: string) => {
-									return /^[A-Za-z0-9]{16}$/.test(id);
-								},
-							},
-						},
+						formats: publicApiValidatorFormats,
 						validateSecurity: {
 							handlers: {
 								ApiKeyAuth: authenticate,
