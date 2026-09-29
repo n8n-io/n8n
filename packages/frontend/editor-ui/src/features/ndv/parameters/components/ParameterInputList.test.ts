@@ -60,8 +60,8 @@ import {
 	TEST_NODE_WITH_ISSUES,
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INode, INodeProperties } from 'n8n-workflow';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, getChildNodes } from 'n8n-workflow';
+import type { IConnections, INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
@@ -1036,14 +1036,14 @@ describe('ParameterInputList', () => {
 	describe('updateFormTriggerParameters', () => {
 		const formTriggerParameters: INodeProperties[] = [
 			{
-				displayName: 'Response Mode',
+				displayName: 'Respond When',
 				name: 'responseMode',
 				type: 'options',
 				options: [
-					{ name: 'On Form Submit', value: 'onFormSubmit' },
-					{ name: 'Response Message', value: 'responseMessage' },
+					{ name: 'Form Is Submitted', value: 'onReceived' },
+					{ name: 'Workflow Finishes', value: 'lastNode' },
 				],
-				default: 'onFormSubmit',
+				default: 'onReceived',
 			},
 			{
 				displayName: 'Options',
@@ -1144,6 +1144,56 @@ describe('ParameterInputList', () => {
 			// Parameters should be rendered (options type goes through stub)
 			expect(getAllByTestId('parameter-item').length).toBeGreaterThan(0);
 		});
+
+		// ADO-5843: A Form page later in the chain must not hide the trigger's response control.
+		it.each([
+			{ lastNode: 'No Operation', lastNodeType: 'n8n-nodes-base.noOp' },
+			{ lastNode: 'Form', lastNodeType: FORM_NODE_TYPE },
+		])(
+			'keeps Respond When available when Gmail leads to $lastNode',
+			async ({ lastNode, lastNodeType }) => {
+				ndvStore.activeNode = {
+					...TEST_NODE_NO_ISSUES,
+					name: 'Form Trigger',
+					type: FORM_TRIGGER_NODE_TYPE,
+					parameters: { responseMode: 'onReceived' },
+				};
+
+				const connections: IConnections = {
+					'Form Trigger': { main: [[{ node: 'Gmail', type: 'main', index: 0 }]] },
+					Gmail: { main: [[{ node: 'Code', type: 'main', index: 0 }]] },
+					Code: { main: [[{ node: lastNode, type: 'main', index: 0 }]] },
+				};
+				workflowDocumentStoreMock.getChildNodes.mockImplementation(
+					getChildNodes.bind(null, connections),
+				);
+				workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => ({
+					type: name === lastNode ? lastNodeType : 'n8n-nodes-base.noOp',
+				}));
+
+				const { getByTestId, queryByText } = renderComponent({
+					props: {
+						parameters: [formTriggerParameters[0]],
+						nodeValues: { responseMode: 'onReceived' },
+					},
+					global: {
+						stubs: {
+							ParameterInputFull: {
+								props: ['parameter', 'isReadOnly'],
+								template:
+									'<button :data-test-id="parameter.name" :disabled="isReadOnly">{{ parameter.displayName }}</button>',
+							},
+						},
+					},
+				});
+				await flushPromises();
+
+				expect(getByTestId('responseMode')).toBeEnabled();
+				expect(
+					queryByText('On submission, the user will be taken to the next form node'),
+				).not.toBeInTheDocument();
+			},
+		);
 	});
 
 	/**
