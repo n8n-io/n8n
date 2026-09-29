@@ -17,6 +17,7 @@ import {
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	synthesizeBinaryFixture,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import {
 	type IBinaryData,
@@ -38,6 +39,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
+	type IWorkflowIssues,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -62,6 +64,7 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
+import { applyDataTableReadParameters } from './data-table-pin-filter';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -70,6 +73,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -88,6 +92,18 @@ const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 interface RunBudget {
 	totalMs: number;
 	deadlineAt: number;
+}
+
+/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
+function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = node.parameters?.dataTableId as
+		| { mode?: unknown; value?: unknown }
+		| string
+		| undefined;
+	const value = typeof locator === 'string' ? locator : locator?.value;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const byName = typeof locator !== 'string' && locator?.mode === 'name';
+	return { mode: byName ? 'name' : 'id', value };
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +208,13 @@ export class EvalExecutionService {
 		const timings = new EvalTimings();
 		let hints: MockHints;
 		try {
-			hints = await this.analyzeWorkflow(workflowEntity, timings, options.scenarioHints, unpinSet);
+			hints = await this.analyzeWorkflow(
+				workflowEntity,
+				timings,
+				options.scenarioHints,
+				unpinSet,
+				options.seededDataTableIds,
+			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(
@@ -236,6 +258,7 @@ export class EvalExecutionService {
 		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
+		seededDataTableIds?: string[],
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -256,6 +279,14 @@ export class EvalExecutionService {
 				}),
 		);
 
+		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
+		const triggerStart = this.triggerStartNode(workflowEntity, hints);
+		if (triggerStart && lacksTriggerContent(hints)) {
+			throw new Error(
+				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
+			);
+		}
+
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
 				'[EvalMock] Phase 1 hint generation returned empty — mock responses will lack cross-node consistency',
@@ -267,7 +298,11 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet);
+		const liveReads = await this.liveDataTableReads(workflowEntity, seededDataTableIds);
+		if (liveReads.size > 0) {
+			this.logger.debug(`[EvalMock] Reading seeded Data Tables live: ${[...liveReads].join(', ')}`);
+		}
+		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet, liveReads);
 		const bypassNodeNames = bypassNodes.map((n) => n.name);
 
 		if (bypassNodeNames.length > 0) {
@@ -279,6 +314,7 @@ export class EvalExecutionService {
 				bypassNodeNames,
 				hints.globalContext,
 				timings,
+				hints.warnings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -301,6 +337,7 @@ export class EvalExecutionService {
 		bypassNodeNames: string[],
 		globalContext: string,
 		timings: EvalTimings,
+		warnings: string[],
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
@@ -344,6 +381,15 @@ export class EvalExecutionService {
 				}
 			}
 
+			const bypassSet = new Set(bypassNodeNames);
+			for (const node of workflowEntity.nodes) {
+				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
+				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
+				normalized[node.name] = filtered.items;
+				for (const warning of filtered.warnings) this.logger.warn(`[EvalMock] ${warning}`);
+				warnings.push(...filtered.flags);
+			}
+
 			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
@@ -378,32 +424,13 @@ export class EvalExecutionService {
 		let projectId: string | undefined;
 		for (const node of readNodes) {
 			try {
-				const locator = node.parameters?.dataTableId as
-					| { mode?: unknown; value?: unknown }
-					| string
-					| undefined;
-				const locatorValue = typeof locator === 'string' ? locator : locator?.value;
-				if (typeof locatorValue !== 'string' || locatorValue.length === 0) continue;
-
 				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
-
-				// `name` mode carries a table name, not an id (the node runtime resolves
-				// it via `resolveDataTableId`) — passing it straight to an id lookup
-				// dropped named tables to prompt-only generation. Exact name match only;
-				// a near-miss still degrades gracefully below.
-				let tableId = locatorValue;
-				if ((typeof locator === 'string' ? 'id' : locator?.mode) === 'name') {
-					const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
-						locatorValue,
-					]);
-					const resolved = matches.at(0)?.id;
-					if (!resolved) {
-						this.logger.warn(
-							`[EvalMock] No Data Table named "${locatorValue}" for node "${node.name}" — pinned rows fall back to prompt-only generation`,
-						);
-						continue;
-					}
-					tableId = resolved;
+				const tableId = await this.resolveDataTableNodeId(node, projectId);
+				if (!tableId) {
+					this.logger.warn(
+						`[EvalMock] No Data Table found for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+					);
+					continue;
 				}
 
 				const columns = await this.dataTableService.getColumns(tableId, projectId);
@@ -417,6 +444,52 @@ export class EvalExecutionService {
 		}
 
 		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
+	}
+
+	/** Data Table reads bound to a table the caller reseeded for this scenario. That
+	 *  table holds the scenario's rows, so the read runs live and also sees the
+	 *  writes the run makes before it. */
+	private async liveDataTableReads(
+		workflowEntity: IWorkflowBase,
+		seededDataTableIds: string[] | undefined,
+	): Promise<Set<string>> {
+		const live = new Set<string>();
+		if (!seededDataTableIds?.length) return live;
+		const seeded = new Set(seededDataTableIds);
+		// The node resolves a `name` locator case-insensitively at run time
+		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
+		// same way, or a read spelt in another case would stay pinned.
+		const seededByLowerName = new Map<string, string>();
+		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
+			seededByLowerName.set(table.name.toLowerCase(), table.id);
+		}
+		for (const node of workflowEntity.nodes) {
+			if (!isDataTableRead(node)) continue;
+			const locator = dataTableLocator(node);
+			if (!locator) continue;
+			const tableId =
+				locator.mode === 'name'
+					? seededByLowerName.get(locator.value.toLowerCase())
+					: locator.value;
+			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
+		}
+		return live;
+	}
+
+	/** The table a Data Table node binds, for the column shapes. `name` mode is
+	 *  looked up in the project the way the node does, case-insensitively. */
+	private async resolveDataTableNodeId(
+		node: INode,
+		projectId: string,
+	): Promise<string | undefined> {
+		const locator = dataTableLocator(node);
+		if (!locator) return undefined;
+		if (locator.mode !== 'name') return locator.value;
+		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+			locator.value,
+		]);
+		const wanted = locator.value.toLowerCase();
+		return (matches.find((m) => m.name.toLowerCase() === wanted) ?? matches.at(0))?.id;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────
@@ -503,6 +576,20 @@ export class EvalExecutionService {
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+
+		// The engine drops a refused execution before the runner can await it, so report the refusal first.
+		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
+		if (blockingIssues) {
+			const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
+			this.logger.warn(`[EvalMock] Workflow cannot start: ${reason}`);
+			return this.buildPartialFailureResult(
+				randomUUID(),
+				new Error(`n8n refused to start the workflow: ${reason}`),
+				nodeResults,
+				hints,
+				undefined,
+			);
+		}
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -649,6 +736,40 @@ export class EvalExecutionService {
 	 */
 	private findStartNode(workflow: Workflow): INode | undefined {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
+	}
+
+	private triggerStartNode(workflowEntity: IWorkflowBase, hints: MockHints): INode | undefined {
+		const hinted = hints.startNodeName
+			? workflowEntity.nodes.find((node) => node.name === hints.startNodeName)
+			: undefined;
+		return (
+			this.asTriggerNode(hinted) ??
+			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
+		);
+	}
+
+	// Same rule as `WorkflowExecute.checkReadyForExecution`.
+	private issuesBlockingRun(
+		workflow: Workflow,
+		startNode: INode,
+		pinDataNodeNames: string[],
+	): IWorkflowIssues | null {
+		const issues: IWorkflowIssues = {};
+		for (const nodeName of [...workflow.getChildNodes(startNode.name), startNode.name]) {
+			const node = workflow.nodes[nodeName];
+			if (!node || node.disabled) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeIssues = nodeType
+				? NodeHelpers.getNodeParametersIssues(
+						nodeType.description.properties,
+						node,
+						nodeType.description,
+						pinDataNodeNames,
+					)
+				: { typeUnknown: true };
+			if (nodeIssues) issues[node.name] = nodeIssues;
+		}
+		return Object.keys(issues).length > 0 ? issues : null;
 	}
 
 	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
@@ -1158,6 +1279,10 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+function lacksTriggerContent(hints: MockHints): boolean {
+	return !hints.triggerEmitsNoItems && Object.keys(hints.triggerContent).length === 0;
 }
 
 /** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */

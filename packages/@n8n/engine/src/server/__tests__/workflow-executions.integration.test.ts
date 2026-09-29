@@ -72,6 +72,11 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		await search(body).expect(400);
 	});
 
+	// An execution reports `waiting`, so the control plane filters the list by it.
+	it('accepts a search for waiting executions', async () => {
+		await search({ workflowIds: 'all', status: ['waiting'] }).expect(200);
+	});
+
 	it('rejects a cursor paired with a status-first sort at the store', async () => {
 		const { executionViewStore } = createStores(dataSource);
 		await expect(
@@ -297,6 +302,49 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.findOneOrFail({ where: { id: body.executionId } });
 		expect(row.callerContext).toEqual(callerContext);
 	});
+
+	it('stores the response expectation with the row', async () => {
+		const body = startBody({ responseExpectation: { kind: 'stepResponse' } });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.responseExpectation).toEqual({ kind: 'stepResponse' });
+	});
+
+	it('stores the expectation none when the body has no response expectation', async () => {
+		const body = startBody();
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.responseExpectation).toEqual({ kind: 'none' });
+	});
+
+	it.each([{ kind: 'stream' }, { kind: 'none', extra: true }, 'none'])(
+		'rejects the response expectation %j with 400',
+		async (responseExpectation) => {
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send(startBody({ responseExpectation }));
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
 
 	it('rejects a body without a caller context with 400', async () => {
 		const response = await request(url)

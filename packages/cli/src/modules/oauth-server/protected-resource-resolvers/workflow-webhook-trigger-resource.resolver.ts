@@ -8,7 +8,7 @@ import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -19,6 +19,7 @@ import {
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
@@ -173,6 +174,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,

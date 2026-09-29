@@ -8,12 +8,13 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseSender } from '../response-channel';
+import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
+	isLiveExecutionStatus,
 	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
@@ -75,10 +76,10 @@ export class StepReadyHandler {
 		const executor =
 			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
 
-		if (execution.status !== 'running') {
-			// The execution is no longer running, so we don't run the step.
-			// The step is left `running` for reconciliation (CAT-2938) or
-			// internal consistency checks (CAT-3930) to resolve.
+		if (!isLiveExecutionStatus(execution.status)) {
+			// The execution has ended, so we don't run the step. The step is left
+			// `running` for reconciliation (CAT-2938) or internal consistency
+			// checks (CAT-3930) to resolve.
 			return;
 		}
 
@@ -137,9 +138,13 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows. TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		// planning follows.
+		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
 		if (run.kind === 'wait') {
+			// Nudge first, so the sweeper's re-arm read runs beside the status
+			// write rather than after it. Either order is correct.
 			this.onStepSuspended();
+			await this.executionStore.refreshLiveStatus(execution.id);
 			return;
 		}
 
@@ -181,7 +186,7 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
-			respond: this.responseSender.emitterFor(execution.id),
+			respond: createResponseEmitter(this.responseSender, execution),
 		});
 
 		if (result.wait) validateWaitDeclaration(step.id, result.wait);

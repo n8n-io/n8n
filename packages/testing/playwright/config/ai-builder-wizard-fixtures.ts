@@ -439,7 +439,7 @@ export function createBuilderResponseNodeGroupWithSlack(): string {
 export const builderWizardRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 			aiBuilder: { enabled: true, setup: true },
 		},
 		moduleSettings: INSTANCE_AI_DISABLED,

@@ -34,8 +34,6 @@ export default defineConfig(
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
-			'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
 			// `vi.importActual<typeof import('x')>('x')` needs inline import types.
 			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 		},

@@ -34,6 +34,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -52,6 +53,14 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
+export {
+	AuditPublicDto,
+	GenerateAuditPublicDto,
+	SECURITY_AUDIT_CATEGORIES,
+	auditPublicSchema,
+	type AuditPublic,
+} from './audit/audit-public.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -260,6 +269,16 @@ export {
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
+export {
+	CommunityPackageListPublicDto,
+	CommunityPackagePublicDto,
+	InstallCommunityPackagePublicDto,
+	ListCommunityPackagesQueryDto,
+	UpdateCommunityPackagePublicDto,
+	communityPackagePublicSchema,
+	type CommunityPackagePublic,
+} from './community-packages/community-package-public.dto';
+
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
 export {
@@ -392,12 +411,28 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export {
+	OidcConfigurationPublicDto,
+	oidcConfigurationPublicSchema,
+	UpdateOidcConfigurationPublicDto,
+} from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
-export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
+export {
+	CreateDataTableColumnPublicDto,
+	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
+	DataTableListPublicDto,
+	DataTablePublicDto,
+	UpdateDataTableColumnPublicDto,
+	UpdateDataTablePublicDto,
+	dataTablePublicSchema,
+	type DataTablePublic,
+} from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
@@ -414,16 +449,14 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
-export {
-	updateDataTableColumnSchema,
-	type UpdateDataTableColumnDto,
-} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
@@ -554,6 +587,10 @@ export {
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export {
+	GetOtelSettingsQueryPublicDto,
+	OtelSettingsPublicDto,
+} from './otel/otel-settings-public.dto';
 
 export {
 	PromotionChangesDto,
@@ -562,6 +599,7 @@ export {
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,

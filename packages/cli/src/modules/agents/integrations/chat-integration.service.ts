@@ -1,16 +1,23 @@
-import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentIntegrationConfig,
+	isCredentialAgentIntegration,
+	type AgentIntegrationSettings,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { OnLeaderStepdown, OnPubSubEvent } from '@n8n/decorators';
+import { Time } from '@n8n/constants';
+import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
+import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import {
@@ -69,6 +76,8 @@ export interface ChatInstance {
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge?: AgentChatBridge;
+	disconnecting?: boolean;
+	queueConsumers?: Set<Promise<void>>;
 	/**
 	 * Which channel this connection is. The map key encodes the same thing, but
 	 * as one string — this keeps callers that need the parts from parsing it back.
@@ -103,12 +112,39 @@ interface DisconnectChannelOptions {
 	deleteSubscriptions?: boolean;
 }
 
+/**
+ * How long shutdown waits for an in-flight leader operation before closing what
+ * it can see. Matches `AgentChannelReconciler`'s own settle bound, and stays well
+ * inside the process-wide graceful shutdown budget.
+ */
+const SHUTDOWN_DRAIN_MS = 5 * Time.seconds.toMilliseconds;
+
 async function getAgentExecutionOrchestratorService() {
 	// eslint-disable-next-line import-x/no-cycle
 	const { AgentExecutionOrchestratorService } = await import(
 		'../agent-execution-orchestrator.service.js'
 	);
 	return Container.get(AgentExecutionOrchestratorService);
+}
+
+/**
+ * Teams renders a reply progressively by editing a posted message, not through
+ * the platform's own streaming protocol.
+ *
+ * That protocol needs a handle the adapter holds only for the life of the
+ * inbound request, and a turn runs later, from the queue. Giving the SDK a
+ * placeholder makes the Teams adapter decline to stream and hand back to the
+ * SDK's post-and-edit path, which uses ordinary proactive calls.
+ *
+ * The interval trades smoothness against Teams' edit throttling. The SDK waits
+ * for each edit to land before scheduling the next, so a throttled tenant paces
+ * itself, and a skipped interval edit is invisible — but the SDK's final edit is
+ * not guarded, so a rejection there would surface instead of the last chunk.
+ * Hence a little above the SDK's 500ms default rather than at it.
+ */
+function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type !== 'teams') return {};
+	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
 }
 
 /**
@@ -138,6 +174,9 @@ export class ChatIntegrationService {
 		string,
 		{ action: 'connect' | 'disconnect'; done: Promise<void> }
 	>();
+
+	/** One-way: set when shutdown starts, and this main connects nothing after. */
+	private shuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -191,6 +230,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		// Deliberately not `validateConfig`: publishing already validates the whole
 		// configuration, and running it again here would newly reject an agent whose
@@ -208,6 +248,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
@@ -243,6 +284,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const ingress = options.ingressEnabled ?? true;
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
@@ -288,6 +330,19 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
+		// The choke point every connect path reaches, so the one place that can
+		// refuse a late one: a pubsub broadcast or a tool call landing after the
+		// drain would leave an instance nothing closes.
+		//
+		// Throws rather than returns, because every caller reads a resolved connect
+		// as a running channel: a relayed request would acknowledge success for a
+		// channel no main is running, and the user would be told it is connected.
+		if (this.shuttingDown) {
+			throw new OperationalError('This instance is shutting down and cannot start a channel', {
+				extra: { agentId, integrationType: integration.type },
+			});
+		}
+
 		const ingressEnabled = options.ingressEnabled ?? true;
 		if (!ingressEnabled) {
 			// An outbound Preview connection is not a channel, so it has no status.
@@ -427,6 +482,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const { deleteSubscriptions = true } = options;
 
 		try {
@@ -457,23 +513,41 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Disconnect every active integration regardless of type. Used by tests and
-	 * for explicit shutdown paths; the leader-stepdown lifecycle uses
-	 * {@link disconnectLeaderOnlyIntegrations} so webhook integrations keep
-	 * answering on the demoted main (now a follower).
+	 * Close every Chat instance this main holds, live and outbound. The
+	 * leader-stepdown lifecycle uses {@link disconnectLeaderOnlyIntegrations}
+	 * instead, so webhook integrations keep answering on the demoted main (now a
+	 * follower).
+	 *
+	 * Lowest shutdown priority, so `AgentChannelReconciler` has stopped starting
+	 * channels first: at the same priority a pass still running would outlive the
+	 * drain.
 	 */
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async disconnectAll(): Promise<void> {
-		const keys = new Set([
-			...this.connections.keys(),
-			...this.outboundConnections.keys(),
-			...this.outboundConnectionInitializations.keys(),
-		]);
-		for (const key of keys) {
+		// After this no connect stores anything: one that has not reached its startup
+		// is refused, and one already running is refused when it tries to register.
+		// So the sweep below only has to close what is there when it looks.
+		this.shuttingDown = true;
+
+		// Bounded — an operation is only as bounded as the platform call inside it,
+		// and budget spent waiting is budget not spent closing.
+		await this.settleLeaderOperations(SHUTDOWN_DRAIN_MS);
+
+		for (const key of this.localRuntimeKeys()) {
 			// Graceful shutdown should only clear local runtime state. Cluster-wide
 			// remote state must survive so another main can keep receiving events.
 			await this.disconnectOne(key, { skipExternalHooks: true });
 			await this.disconnectOutboundOne(key);
 		}
+	}
+
+	/** Every key this main holds runtime for: live, outbound, and still starting. */
+	private localRuntimeKeys(): Set<string> {
+		return new Set([
+			...this.connections.keys(),
+			...this.outboundConnections.keys(),
+			...this.outboundConnectionInitializations.keys(),
+		]);
 	}
 
 	/**
@@ -522,16 +596,20 @@ export class ChatIntegrationService {
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
-		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
+		const previousExternal = previous.filter(isCredentialAgentIntegration);
+		const nextExternal = next.filter(isCredentialAgentIntegration);
+		const previousKeys = new Set(previousExternal.map(buildIntegrationConnectionId));
+		const nextKeys = new Set(nextExternal.map(buildIntegrationConnectionId));
 
-		for (const integration of previous) {
+		for (const integration of previousExternal) {
 			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
 				await this.disconnectChannel(agent.id, integration);
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
+		const additions = nextExternal.filter(
+			(integration) => !previousKeys.has(buildIntegrationConnectionId(integration)),
+		);
 
 		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
@@ -588,6 +666,24 @@ export class ChatIntegrationService {
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
 	}
 
+	/** Keep the bridge alive from queue admission through response delivery. */
+	acquireQueueBridge(agentId: string, integrationType: string, credentialId: string) {
+		const connection = this.connections.get(
+			agentChannelKey({ agentId, integrationType, credentialId }),
+		);
+		if (!connection?.bridge || connection.disconnecting) return undefined;
+		const done = createDeferredPromise();
+		connection.queueConsumers ??= new Set();
+		connection.queueConsumers.add(done.promise);
+		return {
+			bridge: connection.bridge,
+			release: () => {
+				connection.queueConsumers?.delete(done.promise);
+				done.resolve();
+			},
+		};
+	}
+
 	/** First live connection for an agent, optionally pinned to one platform. */
 	private findConnection(
 		agentId: string,
@@ -617,8 +713,13 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Return a Chat instance for integration tools, creating a no-ingress
-	 * outbound connection on demand for a persisted draft integration.
+	 * Return a Chat instance for integration tools, creating a no-ingress outbound
+	 * connection on demand.
+	 *
+	 * Two cases have nothing to send with: a draft integration, which runs nowhere,
+	 * and a published leader-only channel seen from a follower, which runs on the
+	 * leader. Both get the same connection — no bridge, no state adapter, no
+	 * external hooks — so the leader keeps sole ownership of ingress.
 	 */
 	async getChatInstanceForTools(
 		agentId: string,
@@ -637,7 +738,15 @@ export class ChatIntegrationService {
 			(candidate) =>
 				candidate.type === integration.type && candidate.credentialId === integration.credentialId,
 		);
-		if (!agent || agent.activeVersionId !== null || !persistedIntegration) {
+		// A published channel runs on this main already, so an absent connection means
+		// a failed start and a fallback would paper over it. The exception is a
+		// channel this main handed to the leader: absent here by design.
+		const ingressOwnedByLeader = this.shouldRouteToLeader(integration.type, true);
+		if (
+			!agent ||
+			!persistedIntegration ||
+			(agent.activeVersionId !== null && !ingressOwnedByLeader)
+		) {
 			await this.disconnectOutboundOne(key);
 			return undefined;
 		}
@@ -885,8 +994,13 @@ export class ChatIntegrationService {
 	 * it and a stepdown cannot wait forever. A straggler that lands after the
 	 * deadline releases itself: the connect path re-checks leadership and tears its
 	 * own connection down.
+	 *
+	 * Shutdown passes a shorter bound than a stepdown: waiting there spends the
+	 * same budget the teardown itself needs.
 	 */
-	private async settleLeaderOperations(): Promise<void> {
+	private async settleLeaderOperations(
+		timeoutMs = LEADER_CHANNEL_REQUEST_TIMEOUT_MS,
+	): Promise<void> {
 		const running = [...this.leaderOperations.values()];
 		if (running.length === 0) return;
 
@@ -895,7 +1009,7 @@ export class ChatIntegrationService {
 			await Promise.race([
 				Promise.allSettled(running.map(async ({ done }) => await done)),
 				new Promise<void>((resolve) => {
-					expire = setTimeout(resolve, LEADER_CHANNEL_REQUEST_TIMEOUT_MS);
+					expire = setTimeout(resolve, timeoutMs);
 				}),
 			]);
 		} finally {
@@ -947,6 +1061,8 @@ export class ChatIntegrationService {
 	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
+		conn.disconnecting = true;
+		if (conn.queueConsumers) await Promise.all(conn.queueConsumers);
 
 		// External teardown runs while the chat is still live — symmetric with
 		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are
@@ -1090,11 +1206,13 @@ export class ChatIntegrationService {
 				: memoryState;
 
 			chat = new Chat({
+				concurrency: 'concurrent',
 				userName: `n8n-agent-${agentId}`,
 				// Use the platform type as the adapter key (e.g. 'slack') so that
 				// bot.webhooks.slack maps correctly to the handler.
 				adapters: { [integration.type]: adapter } as Record<string, never>,
 				state,
+				...streamingOptionsFor(integration.type),
 			});
 
 			if (ingressEnabled) bridge = await this.createChatBridge(chat, ctx);
@@ -1104,6 +1222,15 @@ export class ChatIntegrationService {
 
 			if (ingressEnabled && integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 				await integrationImpl.onAfterConnect(ctx);
+			}
+
+			// A startup that began before the shutdown flag was set can outlast the
+			// teardown sweep, and returning it now would leave runtime nothing closes.
+			// Throwing hands it to the catch below, which tears down what we built.
+			if (this.shuttingDown) {
+				throw new OperationalError(
+					'This instance started shutting down while the channel was starting up',
+				);
 			}
 		} catch (error) {
 			await this.cleanupFailedConnection(chat, state, initializeStarted);

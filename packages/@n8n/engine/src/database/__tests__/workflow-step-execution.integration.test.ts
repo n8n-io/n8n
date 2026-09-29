@@ -53,6 +53,7 @@ describe('workflow_step_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 			finishedAt: null,
 		});
 		await repo.save(execution);
@@ -1096,6 +1097,8 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(byName.idx_workflow_step_execution_wait_till).toContain(
 			"WHERE ((status)::text = 'waiting'",
 		);
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
 
 		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
 			`SELECT is_nullable, column_default FROM information_schema.columns

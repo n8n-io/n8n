@@ -32,6 +32,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'tag:read',
 	'communityPackage:install',
 	'aiPreference:read',
+	'aiPreference:write',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];

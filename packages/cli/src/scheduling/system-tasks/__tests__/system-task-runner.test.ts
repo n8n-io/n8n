@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
@@ -8,8 +9,6 @@ import type { ClaimedTask } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import { Tracing, type ErrorReporter, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { DurableScheduler } from '../../durable-scheduler';
 import { SystemTaskHandler } from '../system-task-handler';
@@ -117,6 +116,17 @@ describe('SystemTaskRunner', () => {
 				name: 'dummy',
 				schedule: { kind: 'interval', intervalSeconds: 60 },
 			});
+		});
+
+		it('fires a cluster-scoped task with a sub-second interval every whole second', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(2);
 		});
 
 		it('fires a task registered after it took over the registry', async () => {
@@ -1330,6 +1340,18 @@ describe('SystemTaskRunner', () => {
 
 			expect(perInstance.runCount).toBe(1);
 			expect(dummy.runCount).toBe(0);
+		});
+
+		it('fires an instance-scoped task with a sub-second interval on its sub-second cadence', async () => {
+			const { runner, metadata, errorReporter } = setup();
+			perInstance.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(PerInstanceDummySystemTask);
+
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(perInstance.runCount).toBe(4);
 		});
 
 		it('fires an instance-scoped task on a worker, which has no role at all', async () => {

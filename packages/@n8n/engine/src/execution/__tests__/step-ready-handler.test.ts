@@ -81,6 +81,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
 		...overrides,
 	};
 	return {
@@ -88,6 +89,8 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		cancelExecution: vi.fn().mockResolvedValue(true),
+		refreshLiveStatus: vi.fn(),
 	};
 }
 
@@ -201,6 +204,44 @@ describe('StepReadyHandler', () => {
 			}),
 		);
 	});
+
+	it.each([
+		['stepResponse', true],
+		['runEnd', false],
+		['none', false],
+	] as const)(
+		'gives the step an emitter that obeys the stored expectation %s',
+		async (kind, sends) => {
+			const responseSender: ExecutionResponseSender = { send: vi.fn(), stop: vi.fn() };
+			const executor: IStepExecutor = {
+				execute: vi.fn(async (request) => {
+					await Promise.resolve();
+					request.respond.send(() => ({ ok: true }));
+					return { outputs: [[{ json: { ok: true } }]] };
+				}),
+			};
+			const handler = makeHandler(
+				makeExecutionStore({ responseExpectation: { kind } }),
+				makeStepStore(),
+				makeQueue(),
+				{ v1StepExecutor: executor },
+				makeLifecycleEventPublisher(),
+				responseSender,
+			);
+
+			await handler.handle(event);
+
+			if (sends) {
+				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+					type: 'response',
+					executionId: 'exec-1',
+					payload: { ok: true },
+				});
+			} else {
+				expect(responseSender.send).not.toHaveBeenCalled();
+			}
+		},
+	);
 
 	it('reads inputs from the predecessor step outputs when the predecessor is not the trigger', async () => {
 		const executor = makeExecutor();
@@ -523,6 +564,25 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	it('runs the step when the execution is waiting', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ status: 'waiting' }), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(executor.execute).toHaveBeenCalledOnce();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	it('does not report completion when the lifecycle event is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
@@ -737,7 +797,8 @@ describe('StepReadyHandler waits', () => {
 	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
-		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+		const executionStore = makeExecutionStore();
+		const handler = makeHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: makeExecutor({ wait: timeWait }),
 		});
 
@@ -749,6 +810,7 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('reports the suspension once the row is written, so the sweeper can re-arm', async () => {

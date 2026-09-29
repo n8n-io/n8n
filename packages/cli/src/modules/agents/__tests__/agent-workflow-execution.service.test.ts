@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -14,6 +15,7 @@ import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -121,6 +123,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
+	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
@@ -130,7 +133,11 @@ function makeService() {
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
 	integrationMessageContextService.getLatest.mockResolvedValue(null);
 
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+		executionId: 'execution-1',
+		startedAt,
+		inputMessageIds: ['message-1'],
+	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
@@ -146,6 +153,8 @@ function makeService() {
 			mockLogger(),
 			executionService,
 			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
 		),
 		telemetry,
 		credentialsService,
@@ -201,7 +210,11 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'agent-execution-1',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
@@ -214,7 +227,7 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({
 				// resourceId is the memory store's read scope: it must be stable
 				// across executions (NOT the execution id) or a reused session id
@@ -222,7 +235,10 @@ describe('AgentWorkflowExecutionService', () => {
 				persistence: {
 					resourceId: 'thread-1',
 					threadId: 'thread-1',
-					hostMetadata: { n8nIntegrationMessageContext: messageContext },
+					hostMetadata: {
+						n8nIntegrationMessageContext: messageContext,
+						n8nExecutionId: 'agent-execution-1',
+					},
 				},
 			}),
 		);
@@ -306,12 +322,13 @@ describe('AgentWorkflowExecutionService', () => {
 
 		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][7]).toBe(principalHash);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({
 				persistence: expect.objectContaining({
 					hostMetadata: {
 						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
 						n8nIntegrationMessageContext: null,
+						n8nExecutionId: 'execution-1',
 					},
 				}),
 			}),
@@ -337,7 +354,11 @@ describe('AgentWorkflowExecutionService', () => {
 		else integrationMessageContextService.getLatest.mockRejectedValue(error);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'fallback-execution-1',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 
 		await expect(
 			service.executeForWorkflow(
@@ -429,7 +450,11 @@ describe('AgentWorkflowExecutionService', () => {
 			});
 			executionService.startExecutionRecording.mockImplementation(async ({ sessionMode }) => {
 				if (sessionMode === 'existing') throw cause;
-				return 'execution-1';
+				return {
+					executionId: 'execution-1',
+					startedAt: new Date(),
+					inputMessageIds: ['message-1'],
+				};
 			});
 			if (compilation === 'successful') {
 				reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
@@ -511,7 +536,7 @@ describe('AgentWorkflowExecutionService', () => {
 		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
 
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 	});

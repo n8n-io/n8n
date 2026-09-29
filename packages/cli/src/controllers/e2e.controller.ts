@@ -32,7 +32,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -128,6 +128,7 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_CREDITS]: false,
 		[LICENSE_FEATURES.AI_GATEWAY]: false,
 		[LICENSE_FEATURES.AI_GATEWAY_CLOUD_UBB]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT_CLOUD_UBB_ENTITLEMENT]: false,
 		[LICENSE_FEATURES.FOLDERS]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,

@@ -1,9 +1,9 @@
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
 import type { SystemTaskMode } from '@/events/maps/system-task-metrics.event-map';
 
 import type { PrometheusMetricsCollector } from './base';

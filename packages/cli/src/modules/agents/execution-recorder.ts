@@ -262,6 +262,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'input'; messageId: string; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
@@ -329,7 +330,9 @@ export class ExecutionRecorder {
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
 		backgroundJobSignal?: AgentBackgroundJobSignal,
+		startedAt: Date = new Date(),
 	) {
+		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
 		if (backgroundJobSignal) {
 			this.timeline.push({
@@ -377,9 +380,20 @@ export class ExecutionRecorder {
 
 	private error: string | null = null;
 
-	private readonly startTime = Date.now();
+	private readonly startTime: number;
 
 	private childTraceChars = new Map<string, number>();
+
+	/** Record additional input only after its transaction commits. */
+	recordInputs(events: Array<Extract<TimelineEvent, { type: 'input' }>>): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		for (const event of events) {
+			if (this.timeline.some((item) => item.type === 'input' && item.messageId === event.messageId))
+				continue;
+			this.appendCompletedEvent(event);
+		}
+	}
 
 	/** Record the human response that caused a suspended tool call to resume. */
 	recordHitlResponse(toolCallId: string, response: unknown): void {

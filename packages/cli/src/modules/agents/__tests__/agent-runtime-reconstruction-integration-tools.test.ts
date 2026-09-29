@@ -1,3 +1,5 @@
+import type { EventService } from '@n8n/backend-services';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -17,7 +19,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -32,8 +33,11 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -217,6 +221,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
@@ -281,6 +286,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
+				mock<AgentMessageQueueService>(),
+				mock<AgentMessageSteeringService>(),
 			),
 			telemetry,
 			runtimeCacheService,
@@ -291,6 +298,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			mock<AiConfig>(),
 			mock<AgentChatExecutionService>(),
+			mock<AgentBackgroundJobRepository>(),
+			mock<AgentBackgroundJobService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

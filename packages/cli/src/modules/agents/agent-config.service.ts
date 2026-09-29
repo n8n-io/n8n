@@ -9,14 +9,14 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError } from '@n8n/errors';
 
 import {
 	type AgentConfigPart,
@@ -323,7 +323,13 @@ export class AgentConfigService {
 			previousIntegrations,
 			nextIntegrations,
 		);
-		return { nextSchema, nextIntegrations, previousSchema, previousIntegrations, changedParts };
+		return {
+			nextSchema,
+			nextIntegrations,
+			previousSchema,
+			previousIntegrations,
+			changedParts,
+		};
 	}
 
 	private mergeConfigSchema(

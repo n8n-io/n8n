@@ -103,7 +103,8 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 
 /** Data Table row-read operations. Their output is the scenario's "stored state" — left
  * unpinned they read the REAL eval-instance table, polluted by the builder's own
- * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
+ * verification runs, so scenario outcomes become a coin flip on build-phase leftovers.
+ * A table the harness reseeded for the scenario holds only its rows, so reads of it run live. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
 /** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
@@ -130,10 +131,11 @@ export function emitsDataTableRows(node: INode): boolean {
 	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
+	liveReads?: Set<string>,
 ): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
@@ -141,7 +143,7 @@ export function identifyNodesForPinData(
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
-		if (isDataTableRead(node)) return true;
+		if (isDataTableRead(node)) return !liveReads?.has(node.name);
 		return false;
 	});
 }
@@ -592,6 +594,9 @@ export interface GenerateMockHintsOptions {
 	scenarioHints?: string;
 }
 
+export const TRIGGER_CONTENT_CORRECTION =
+	'The previous answer left "triggerContent" empty. The Test Scenario describes the event that fires the workflow\'s trigger or start node, so "triggerContent" must carry that event as the node\'s output object and must not be {}. Set "triggerEmitsNoItems": true only when the scenario says the trigger has nothing to emit.';
+
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
 RULES:
@@ -703,11 +708,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 	const warnings: string[] = [];
+	let lastReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
+		const userPrompt = lastReason
+			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
+			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
@@ -776,6 +785,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		}
 
 		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		lastReason = reason;
 		if (attempt < MAX_HINT_ATTEMPTS) {
 			Container.get(Logger).warn(
 				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
@@ -787,4 +797,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
 	return { ...emptyResult, warnings };
+}
+
+function correctionFor(reason: string): string {
+	if (reason === 'empty triggerContent') return TRIGGER_CONTENT_CORRECTION;
+	return `The previous answer was unusable: ${reason}. Return only the JSON object described under "Expected Output".`;
 }
