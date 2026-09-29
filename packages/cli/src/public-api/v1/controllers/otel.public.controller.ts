@@ -33,6 +33,8 @@ export class OtelPublicController {
 		@Query _query: GetOtelSettingsQueryPublicDto,
 	): Promise<OtelSettingsPublicDto> {
 		await this.settingsService.loadSettings();
-		return toOtelSettingsResponse(this.settingsService.getSettings());
+		const settings = this.settingsService.getSettings();
+
+		return toOtelSettingsResponse(settings);
 	}
 }

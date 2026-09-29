@@ -80,7 +80,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				...validSettings,
 				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
 			});
