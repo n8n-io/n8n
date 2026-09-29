@@ -380,6 +380,11 @@ describe('EngineV2WebhookResponder', () => {
 
 			expect(responseStream.write).toHaveBeenCalledTimes(1);
 			expect(responseStream.write).toHaveBeenCalledWith(expect.stringContaining('"type":"error"'));
+			// The error message stays out of the stream.
+			expect(responseStream.write).toHaveBeenCalledWith(
+				expect.stringContaining('"content":"Workflow execution failed"'),
+			);
+			expect(responseStream.write).not.toHaveBeenCalledWith(expect.stringContaining('it broke'));
 			expect(responseStream.flush).toHaveBeenCalledTimes(1);
 			expect(responseStream.write.mock.invocationCallOrder[0]).toBeLessThan(
 				responseStream.end.mock.invocationCallOrder[0],

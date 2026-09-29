@@ -212,10 +212,11 @@ export class V1StepExecutor implements IStepExecutor {
 	}
 
 	/**
-	 * The text of the error chunk for a failed node. A node error's
-	 * `description` comes first, because it is the text meant for the user.
+	 * The text of the error chunk for a failed node. Only a node error's
+	 * `description` goes to the caller, as in v1. The `message` can hold
+	 * request details, so it stays in the logs and the execution data.
 	 */
-	private describeNodeError(error: unknown): string {
+	private describeNodeError(error: unknown): string | undefined {
 		if (
 			typeof error === 'object' &&
 			error !== null &&
@@ -225,6 +226,6 @@ export class V1StepExecutor implements IStepExecutor {
 			return error.description;
 		}
 
-		return error instanceof Error ? error.message : String(error);
+		return undefined;
 	}
 }

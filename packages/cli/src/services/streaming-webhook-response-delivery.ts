@@ -47,9 +47,11 @@ export class StreamingWebhookResponseDelivery implements WebhookResponseDelivery
 
 			case 'ended':
 				if (received.status === 'failed' && !this.deliveredError) {
+					// The error message can hold request details, so the caller gets a
+					// generic text. The non-streaming modes do the same.
 					this.writeChunk(
 						this.errorChunk(
-							received.lastStep.error?.message ?? 'Workflow execution failed',
+							'Workflow execution failed',
 							received.lastStep.nodeId,
 							received.lastStep.nodeName,
 						),

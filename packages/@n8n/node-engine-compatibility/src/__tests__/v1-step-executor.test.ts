@@ -182,9 +182,9 @@ describe('V1StepExecutor', () => {
 		request.respond = respond;
 		const execution = testStepExecutor(graph).execute(request);
 		await expect(execution).rejects.toThrow('boom from node');
+		// Only a description goes to the caller, as in v1. A plain error has none.
 		expect(chunks).toContainEqual({
 			type: 'error',
-			content: 'boom from node',
 			metadata: {
 				nodeId: 'n',
 				nodeName: 'Subject',
@@ -193,6 +193,21 @@ describe('V1StepExecutor', () => {
 				timestamp: expect.any(Number),
 			},
 		});
+	});
+
+	it("streams the node error's description but not its message", async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('key=secret');
+
+		expect(chunks).toEqual([
+			expect.objectContaining({ type: 'error', content: 'The service rejected the request' }),
+		]);
+		expect(JSON.stringify(chunks)).not.toContain('secret');
 	});
 
 	it('keeps the node error when its error chunk cannot be sent', async () => {
@@ -241,9 +256,8 @@ describe('V1StepExecutor', () => {
 
 		const result = await testStepExecutor(graph).execute(request);
 		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
-		expect(chunks).toContainEqual(
-			expect.objectContaining({ type: 'error', content: 'boom from node' }),
-		);
+		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
+		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
 
 	it('propagates cleanup errors when the node succeeded', async () => {
