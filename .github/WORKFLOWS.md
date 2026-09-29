@@ -26,7 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
-│   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── link-check/                       # Weekly link check config and report
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
@@ -789,7 +789,7 @@ Scripts in `.github/scripts/`:
 
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
-| `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
