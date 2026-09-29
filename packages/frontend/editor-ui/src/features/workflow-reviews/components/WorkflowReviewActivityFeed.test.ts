@@ -27,6 +27,20 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 	},
 }));
 
+// jsdom has no ResizeObserver, so the test calls the composer's resize callback itself.
+const resize = vi.hoisted(() => ({ onResize: (_entries: ResizeObserverEntry[]) => {} }));
+
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
+	useResizeObserver: (_target: unknown, callback: (entries: ResizeObserverEntry[]) => void) => {
+		resize.onResize = callback;
+	},
+}));
+
+function resizeComposer(height: number) {
+	resize.onResize([{ borderBoxSize: [{ blockSize: height }] } as unknown as ResizeObserverEntry]);
+}
+
 const renderComponent = createComponentRenderer(WorkflowReviewActivityFeed);
 
 type CommentEntry = Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -51,6 +65,10 @@ function makeComment(overrides: Partial<CommentEntry> = {}): WorkflowReviewActiv
 		],
 		...overrides,
 	};
+}
+
+function isEntering(element: HTMLElement) {
+	return element.classList.contains('itemEntering');
 }
 
 /** Every non-comment entry shares these fields; `type` and `data` are per row. */
@@ -254,6 +272,90 @@ describe('WorkflowReviewActivityFeed', () => {
 		await nextTick();
 
 		expect(observer.observe).not.toHaveBeenCalled();
+	});
+
+	// One element for all states, so the input keeps its focus and draft.
+	it('keeps the same composer after the entries through loading and a failed first page', async () => {
+		store.loading = true;
+		const { getByTestId } = renderComponent({
+			slots: { composer: '<textarea data-test-id="feed-composer" />' },
+		});
+		const composer = getByTestId('feed-composer');
+
+		store.loading = false;
+		store.error = new Error('boom');
+		await nextTick();
+		expect(getByTestId('feed-composer')).toBe(composer);
+
+		store.error = null;
+		store.entries = [makeComment({ id: '1' })];
+		await nextTick();
+
+		const lastEntry = getByTestId('workflow-review-activity-entry');
+		expect(getByTestId('feed-composer')).toBe(composer);
+		expect(composer.closest('[role="list"]')).toBeNull();
+		expect(lastEntry.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('follows a growing composer only when the feed is at the bottom', async () => {
+		store.entries = [makeComment({ id: '1' })];
+		const { getByTestId } = renderComponent({ slots: { composer: '<textarea />' } });
+		await nextTick();
+
+		const container = getByTestId('workflow-review-activity-feed');
+		Object.defineProperty(container, 'clientHeight', { value: 300, configurable: true });
+		Object.defineProperty(container, 'scrollHeight', { value: 524, configurable: true });
+
+		// A restored draft sizes the input after the feed scrolled to the bottom.
+		container.scrollTop = 184;
+		resizeComposer(40);
+		expect(container.scrollTop).toBe(524);
+
+		// Scrolled up to older entries.
+		container.scrollTop = 50;
+		resizeComposer(64);
+		expect(container.scrollTop).toBe(50);
+	});
+
+	it('fades in entries newer than the last one shown, also after a refetch', async () => {
+		store.entries = [makeComment({ id: '1' }), makeComment({ id: '2' })];
+		const { getAllByTestId } = renderComponent();
+		await nextTick();
+
+		store.entries = [...store.entries, makeComment({ id: '3' })];
+		await nextTick();
+
+		expect(getAllByTestId('workflow-review-activity-entry').map(isEntering)).toEqual([
+			false,
+			false,
+			true,
+		]);
+
+		// A refetch returns only the newest page, so the first entry changes too.
+		store.entries = [makeComment({ id: '2' }), makeComment({ id: '3' }), makeComment({ id: '4' })];
+		await nextTick();
+
+		expect(getAllByTestId('workflow-review-activity-entry').map(isEntering)).toEqual([
+			false,
+			false,
+			true,
+		]);
+	});
+
+	it('does not fade in the first entries or an older page', async () => {
+		store.loading = true;
+		const { getAllByTestId } = renderComponent();
+
+		store.loading = false;
+		store.entries = [makeComment({ id: '2' })];
+		await nextTick();
+		store.entries = [makeComment({ id: '1' }), ...store.entries];
+		await nextTick();
+
+		expect(getAllByTestId('workflow-review-activity-entry').map(isEntering)).toEqual([
+			false,
+			false,
+		]);
 	});
 
 	describe('review lifecycle entries', () => {

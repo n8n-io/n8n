@@ -1,4 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
@@ -19,7 +20,6 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 import { isBillableExecution } from '@/utils/is-billable-execution';
 

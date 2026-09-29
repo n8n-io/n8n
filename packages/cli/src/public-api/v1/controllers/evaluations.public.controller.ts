@@ -1,4 +1,5 @@
 import {
+	CancelledTestRunPublicDto,
 	CreatedTestRunPublicDto,
 	ListTestCasesQueryPublicDto,
 	ListTestRunsQueryPublicDto,
@@ -29,9 +30,7 @@ import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import {
@@ -198,8 +197,6 @@ export class EvaluationsPublicController {
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('runId', testRunIdParamSchema) runId: string,
 	): Promise<TestRunSummaryPublicDto> {
-		// Scoped lookup: a run of another workflow returns null (404), so a caller cannot reach it
-		// by guessing ids.
 		const summary = await this.evaluationTestRunService.findSummaryByWorkflowId(runId, workflowId);
 		if (!summary) throw new NotFoundError('Test run not found');
 
@@ -237,6 +234,38 @@ export class EvaluationsPublicController {
 			data: result.testCases.map(toTestCaseExecutionPublicDto),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: result.count }),
 		};
+	}
+
+	@Post('/:runId/cancel')
+	@ApiKeyScope('testRun:cancel')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Cancel a test run')
+	@ApiDescription(
+		'Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project ' +
+			'scope in addition to the `testRun:cancel` API key scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(202, CancelledTestRunPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async cancelTestRun(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('runId', testRunIdParamSchema) runId: string,
+	): Promise<CancelledTestRunPublicDto> {
+		this.assertEvaluationsEnabled();
+
+		const testRun = await this.evaluationTestRunService.findOneByIdAndWorkflowId(runId, workflowId);
+		if (!testRun) throw new NotFoundError('Test run not found');
+
+		if (this.testRunnerService.canBeCancelled(testRun)) {
+			throw new ConflictError(`The test run "${runId}" cannot be cancelled`);
+		}
+
+		await this.testRunnerService.cancelTestRun(runId);
+
+		return { id: runId, status: 'cancelled' };
 	}
 
 	// The quota doubles as the feature flag: 0 = disabled. Cheap in-memory gate.

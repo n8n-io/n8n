@@ -45,6 +45,7 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
+	attributionUserId?: string;
 	/**
 	 * Build for the in-app preview chat, which gets an extra instruction saying
 	 * the agent cannot change its own setup. It makes the runtime unusable for
@@ -132,6 +133,7 @@ export class AgentRuntimeCacheService {
 		if (params.previewChat) parts.push('preview');
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
+		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -309,6 +311,7 @@ export class AgentRuntimeCacheService {
 			sandboxPrincipalHash,
 			allowBackgroundTasks,
 			previewChat,
+			attributionUserId,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -343,7 +346,7 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks },
+			{ previewChat, allowBackgroundTasks, attributionUserId },
 		);
 		const {
 			agent: agentInstance,

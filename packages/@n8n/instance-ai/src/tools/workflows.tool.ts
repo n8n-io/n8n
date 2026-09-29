@@ -32,7 +32,8 @@ import {
 	describeSavedPublishState,
 	type SavedWorkflowState,
 } from './workflows/saved-workflow-state';
-import { isSetupPanelEnabled } from './workflows/setup-items';
+import { filterSatisfiedSetupCredentialTypes } from './workflows/setup-credential-selections';
+import { isSetupPanelEnabled, requestsCredentialReplacement } from './workflows/setup-items';
 import {
 	describeSetupItem,
 	rememberWorkflowSetupState,
@@ -1586,8 +1587,13 @@ async function handleSetup(
 		// The setup panel lists bound slots too (rendered as done), so its snapshot
 		// needs the settled requests the card logic below must not see.
 		const setupPanelEnabled = isSetupPanelEnabled(context);
+		const preferNewCredentialTypes = await filterSatisfiedSetupCredentialTypes(
+			context,
+			input.workflowId,
+			input.preferNewCredentials,
+		);
 		const analyzedRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			...preferNewCredentialOptions(input),
+			...(preferNewCredentialTypes?.length ? { preferNewCredentialTypes } : {}),
 			...(setupPanelEnabled ? { includeSettled: true } : {}),
 		});
 		const allSetupRequests = setupPanelEnabled
@@ -1735,8 +1741,11 @@ async function handleSetup(
 
 		// Setup panel v2: announce the final checklist and return. The user
 		// completes it in the panel; the turn ends with the agent's summary.
-		// Replacement needs an explicit selection. A saved binding already appears done in the panel.
-		if (isSetupPanelEnabled(context) && !input.preferNewCredentials?.length) {
+		// Only a bound account needs the explicit replacement card.
+		if (
+			isSetupPanelEnabled(context) &&
+			!requestsCredentialReplacement(analyzedRequests, preferNewCredentialTypes)
+		) {
 			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 

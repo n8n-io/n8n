@@ -1,11 +1,10 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import {
 	getCompactionWindowDeltas,
@@ -105,10 +104,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'compactHistories')
-			.mockImplementation((() => {}) as never);
+		vi.spyOn(compactingService, 'compactHistories').mockImplementation((() => {}) as never);
 
 		const trimLongRunningHistoriesSpy = vi.spyOn(compactingService, 'trimLongRunningHistories');
 

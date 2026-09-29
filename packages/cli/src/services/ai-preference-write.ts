@@ -3,10 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { ResponseError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -49,6 +47,11 @@ export function toAiPreferenceWriteRejection(error: unknown): AiPreferenceWriteR
 /** A client error the service raised on purpose, not a fault in the code. */
 export function isExpectedAiPreferenceRefusal(error: unknown): error is ResponseError {
 	return error instanceof ResponseError && error.httpStatusCode < 500;
+}
+
+/** Whole seconds between the write and now, for the undo-rate reading. */
+export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
+	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
 }
 
 export type AssistantPreferenceWrite = {

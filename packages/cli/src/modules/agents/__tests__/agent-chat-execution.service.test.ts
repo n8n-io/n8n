@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -5,7 +6,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
@@ -55,20 +56,22 @@ const checkpoint = mock<SerializableAgentState>({
 	},
 });
 
-function makeService() {
+function makeService(isMultiMain = true) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const publisher = mock<Publisher>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
+	const steering = mock<AgentMessageSteeringService>();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
 		executionService,
 		checkpointStorage,
 		publisher,
-		mock<InstanceSettings>({ isMultiMain: true }),
+		mock<InstanceSettings>({ isMultiMain }),
 		updates,
+		steering,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -80,10 +83,30 @@ function makeService() {
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 	checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
-	return { service, repository, executionService, checkpointStorage, publisher, updates };
+	return { service, repository, executionService, checkpointStorage, publisher, updates, steering };
 }
 
 beforeEach(() => Container.reset());
+
+it('closes steering admission before signaling Stop', async () => {
+	const { service, steering } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	const committed = createDeferredPromise();
+	steering.close.mockReturnValue(committed.promise);
+	const stopping = service.requestCancel(context);
+	await vi.waitFor(() =>
+		expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId),
+	);
+	try {
+		expect(controller.signal.aborted).toBe(false);
+	} finally {
+		committed.resolve();
+	}
+	await stopping;
+	expect(controller.signal.aborted).toBe(true);
+	await service.settle(context.executionId, async () => {});
+});
 
 it.each([
 	{ userId: 'other-user' },
@@ -126,6 +149,28 @@ it('relays Stop to the owning main and leaves other and later executions running
 	await mainA.service.handleCancel(context);
 	expect(next.signal.aborted).toBe(false);
 });
+
+it.each(['local', 'remote', 'during validation'] as const)(
+	'applies an early %s Stop when the execution registers',
+	async (arrival) => {
+		const { service, repository } = makeService(arrival !== 'local');
+		const controller = new AbortController();
+		if (arrival === 'during validation') {
+			repository.findOneBy.mockImplementationOnce(async () => {
+				service.register(context, controller);
+				return running;
+			});
+		}
+		if (arrival === 'local') expect(await service.requestCancel(context)).toBe(true);
+		else await service.handleCancel(context);
+		if (arrival !== 'during validation') service.register(context, controller);
+		expect(controller.signal.aborted).toBe(true);
+		await service.settle(context.executionId, async () => {});
+		const next = new AbortController();
+		service.register({ ...context, executionId: 'execution-2' }, next);
+		expect(next.signal.aborted).toBe(false);
+	},
+);
 
 it.each([false, true])(
 	'cleans a raced suspension before releasing control, finalization failed=%s',
@@ -205,4 +250,52 @@ it('leaves a checkpoint claimed by a later execution intact during cleanup', asy
 	expect(resumed.signal.aborted).toBe(false);
 	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 	expect(checkpointStorage.delete).not.toHaveBeenCalled();
+});
+
+it('requires the production source before cancelling a suspended run', async () => {
+	const { service, executionService, checkpointStorage } = makeService();
+	checkpointStorage.getStatus.mockResolvedValue({
+		status: 'active',
+		checkpoint: {
+			...checkpoint,
+			persistence: {
+				threadId: context.threadId,
+				resourceId: 'n8n-chat-production:user-1',
+			},
+		},
+	});
+	executionService.canUseProductionChatThread.mockResolvedValue(false);
+	expect(
+		await service.cancelSuspended({
+			agentId: context.agentId,
+			runId: 'run-1',
+			resourceId: 'n8n-chat-production:user-1',
+		}),
+	).toBe(false);
+	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+	executionService.canUseProductionChatThread.mockResolvedValue(true);
+	expect(
+		await service.cancelSuspended({
+			agentId: context.agentId,
+			runId: 'run-1',
+			resourceId: 'n8n-chat-production:user-1',
+		}),
+	).toBe(true);
+	expect(executionService.canUseProductionChatThread).toHaveBeenCalledWith(
+		context.threadId,
+		context.projectId,
+		context.agentId,
+		context.userId,
+		'existing',
+	);
+});
+
+it('rejects preview and foreign executions on the production cancel route', async () => {
+	const { service, repository } = makeService();
+	const production = { ...context, productionN8nChat: true };
+	await expect(service.requestCancel(production)).rejects.toBeInstanceOf(NotFoundError);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
+	await expect(
+		service.requestCancel({ ...production, userId: 'other-user' }),
+	).rejects.toBeInstanceOf(NotFoundError);
 });

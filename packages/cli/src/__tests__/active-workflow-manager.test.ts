@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -33,7 +34,6 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
@@ -262,10 +262,13 @@ describe('ActiveWorkflowManager', () => {
 			// Registration fails here (no real node types); the check runs before it.
 			await activeWorkflowManager.add('wf-1', 'activate').catch(() => {});
 
-			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
+					projectId: 'project-1',
+				},
+				{ kind: 'system', reason: 'activation' },
+			);
 		});
 
 		test('registers nothing and records an activation error when policy blocks', async () => {
@@ -889,7 +892,8 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // nodeTypes
 				pollCursorService,
 				mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
-				mock(), // engineV2ActiveTriggers
+				mock(), // engineV2ActiveTriggers,
+				mock(), // workflowPublisherService
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -948,7 +952,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					undefined,
@@ -991,7 +995,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
@@ -1336,7 +1340,7 @@ describe('ActiveWorkflowManager', () => {
 			realScheduledTaskManager = new ScheduledTaskManager(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
-				mock(),
+				mock(), // workflowPublisherService
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),

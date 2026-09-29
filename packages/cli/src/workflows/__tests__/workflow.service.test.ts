@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -21,14 +22,15 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import {
+	BadRequestError,
+	ConflictError,
+	NotFoundError,
+	UnprocessableRequestError,
+} from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import type { EventService } from '@/events/event.service';
 import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
@@ -53,7 +55,9 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
@@ -131,6 +135,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -440,6 +445,7 @@ describe('WorkflowService', () => {
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
+		let nodeGroupRulesFlagGateMock: MockProxy<NodeGroupRulesFlagGate>;
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
@@ -460,6 +466,10 @@ describe('WorkflowService', () => {
 			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
 			);
+
+			// Default: the user is outside both rollouts, so today's group rules apply.
+			nodeGroupRulesFlagGateMock = mock<NodeGroupRulesFlagGate>();
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(NO_RULES_RELAXED);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -499,6 +509,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 			);
 
 			vi.clearAllMocks();
@@ -636,7 +647,67 @@ describe('WorkflowService', () => {
 					nodeGroups: existingNodeGroups,
 				}),
 				getNodeTypeStub,
+				expect.anything(),
 			);
+		});
+
+		test('relaxes the group rules for a user inside the rollout', async () => {
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).toHaveBeenCalledWith(user);
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual(ALL_RULES_RELAXED);
+		});
+
+		test('keeps the group rules for a user outside the rollout', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+
+			await workflowService.update(
+				mock<User>(),
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual(NO_RULES_RELAXED);
+		});
+
+		test('does not read the flag for a workflow without groups', async () => {
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
+			setupExistingWorkflow();
+
+			const changedNodes = [
+				{ id: 'n1', name: 'N1', type: 't', typeVersion: 1, position: [0, 0], parameters: {} },
+			];
+			await workflowService.update(
+				mock<User>(),
+				{ nodes: changedNodes } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).not.toHaveBeenCalled();
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({});
 		});
 
 		test('skips nodeGroup validation on a metadata-only edit (nodes/connections/groups unchanged)', async () => {
@@ -1282,6 +1353,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 
 			// Bypass validation internals
@@ -1811,7 +1883,7 @@ describe('WorkflowService', () => {
 				arrangeSuccessfulActivation(workflow);
 				workflowHistoryServiceMock.getVersion.mockResolvedValue(versionToActivate);
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1824,6 +1896,7 @@ describe('WorkflowService', () => {
 						},
 						projectId: 'project-1',
 					},
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -1841,7 +1914,7 @@ describe('WorkflowService', () => {
 					candidate.nodes.push({ name: 'Injected by hook' } as INode);
 				});
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1849,6 +1922,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: originalNodes }),
 					}),
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -1865,7 +1939,7 @@ describe('WorkflowService', () => {
 					candidate.nodes = [{ name: 'Rewritten by hook' } as INode];
 				});
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1873,6 +1947,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: versionToActivate.nodes }),
 					}),
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -2038,6 +2113,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -2178,6 +2254,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -2483,6 +2560,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -2652,6 +2730,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -2664,11 +2743,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		// A partial update (e.g. renaming only) omits `nodes` entirely. The check still needs
@@ -2680,11 +2762,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		it('updates the workflow unchanged when the check clears', async () => {
@@ -2832,6 +2917,7 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 
@@ -2934,6 +3020,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
 			);
 		});
 

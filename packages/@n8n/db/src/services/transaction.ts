@@ -1,4 +1,5 @@
 import type { EnforcementPoint, PolicyCleared } from '@n8n/decorators';
+import type { SecurityContext } from '@n8n/permissions';
 
 /**
  * Transaction ports — the TypeORM-agnostic surface business logic depends on.
@@ -35,12 +36,13 @@ export abstract class Transaction {
 
 /**
  * Ambient operation context, created at the edge and threaded through the call chain as
- * `ctx`. Carries the active `trx` (if any); reserved to grow actor/scope fields for the
- * access-control follow-up. Immutable — the runner augments it by producing a copy.
+ * `ctx`. Carries the active `trx` (if any) and the caller's `security` context (if
+ * authenticated). Immutable — the runner augments it by producing a copy.
  */
 export interface OperationContext {
 	readonly trx?: Transaction;
 	readonly policyCleared?: PolicyCleared<EnforcementPoint>;
+	readonly security?: SecurityContext; // owner: the authentication edge
 }
 
 export interface RunOptions {

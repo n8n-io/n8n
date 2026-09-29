@@ -39,6 +39,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -127,6 +128,7 @@ beforeAll(async () => {
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
+		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 	);
 });
 
@@ -154,6 +156,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -369,14 +372,17 @@ describe('activateWorkflow()', () => {
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
-			workflow: {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: expect.any(Array),
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					nodes: expect.any(Array),
+				},
+				projectId: expect.any(String),
 			},
-			projectId: expect.any(String),
-		});
+			{ kind: 'user', user: expect.objectContaining({ id: owner.id }) },
+		);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 
