@@ -12,6 +12,12 @@ import { STORES } from '@n8n/stores';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 
+const modalBusEmit = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/utils/event-bus', () => ({
+	createEventBus: () => ({ emit: modalBusEmit }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return {
@@ -413,6 +419,8 @@ describe('WorkflowDescriptionModal', () => {
 					'Problem updating workflow description',
 				);
 			});
+
+			expect(modalBusEmit).not.toHaveBeenCalledWith('close');
 		});
 
 		it('should keep text on error', async () => {
