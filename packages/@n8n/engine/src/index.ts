@@ -40,7 +40,6 @@ export {
 	noopExecutionResponseSender,
 	noopResponseEmitter,
 	RESPONSE_EXPECTATION_KINDS,
-	ResponseNotExpectedError,
 	responseExpectationSchema,
 } from './response-channel';
 export type {

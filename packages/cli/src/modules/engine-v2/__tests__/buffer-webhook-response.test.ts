@@ -8,7 +8,6 @@ import {
 } from '@n8n/engine';
 import { attachResponseHooks } from '@n8n/node-engine-compatibility';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
@@ -86,20 +85,16 @@ describe('a Buffer webhook response through the response channel', () => {
 		});
 	});
 
-	it.each([
-		['none', 'Nothing waits for a response from this node.'],
-		['runEnd', 'The Webhook node answers when the last node finishes, not with this node.'],
-	] as const)(
-		'fails the node and sends nothing when the caller expects %s',
-		async (kind, message) => {
+	it.each(['none', 'runEnd'] as const)(
+		'sends nothing and does not fail the node when the caller expects %s',
+		async (kind) => {
 			const { additionalData, publish } = await buildPath({ kind });
 
-			const error: unknown = await additionalData.hooks
-				?.runHook('sendResponse', [{ body: Buffer.from(bytes), headers, statusCode: 201 }])
-				.catch((e: unknown) => e);
-
-			expect(error).toBeInstanceOf(UserError);
-			expect(error).toMatchObject({ message });
+			await expect(
+				additionalData.hooks?.runHook('sendResponse', [
+					{ body: Buffer.from(bytes), headers, statusCode: 201 },
+				]),
+			).resolves.toBeUndefined();
 			expect(publish).not.toHaveBeenCalled();
 		},
 	);

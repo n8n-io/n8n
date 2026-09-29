@@ -1,12 +1,11 @@
 import {
-	ResponseNotExpectedError,
+	noopResponseEmitter,
 	type JsonValue,
 	type ResponseEmitter,
 	type StepExecutionRequest,
 } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { attachResponseHooks } from '../v1-response-hooks';
@@ -78,45 +77,17 @@ describe('attachResponseHooks', () => {
 		expect(respond.send).toHaveBeenCalledOnce();
 	});
 
-	describe('when the caller does not expect a step response', () => {
-		const refusingRequest = (kind: 'none' | 'runEnd') => {
-			// Like the engine's emitter: it refuses without calling the builder.
-			const respond: ResponseEmitter = {
-				send: vi.fn(() => ({ ok: false as const, error: new ResponseNotExpectedError(kind) })),
-			};
-			const { request } = newRequest();
-			return { request: { ...request, respond } };
-		};
+	it('does not build a payload the emitter drops', async () => {
+		// Like the engine's emitter for a caller that expects no step response.
+		const respond: ResponseEmitter = { send: noopResponseEmitter.send };
+		const { request } = newRequest();
+		const additionalData = newAdditionalData();
+		attachResponseHooks(additionalData, { ...request, respond });
 
-		it.each([
-			['none', 'Nothing waits for a response from this node.'],
-			['runEnd', 'The Webhook node answers when the last node finishes, not with this node.'],
-		] as const)('fails the node with a user error for %s', async (kind, message) => {
-			const { request } = refusingRequest(kind);
-			const additionalData = newAdditionalData();
-			attachResponseHooks(additionalData, request);
-
-			const error: unknown = await additionalData.hooks
-				?.runHook('sendResponse', [{ body: { ok: true }, statusCode: 200 }])
-				.catch((e: unknown) => e);
-
-			expect(error).toBeInstanceOf(UserError);
-			expect(error).toMatchObject({
-				message,
-				description:
-					"Set the Webhook node's Respond option to 'Using Respond to Webhook Node', or remove this node.",
-			});
-		});
-
-		it('fails with the expectation error, not the binary error, for a Buffer payload', async () => {
-			const { request } = refusingRequest('none');
-			const additionalData = newAdditionalData();
-			attachResponseHooks(additionalData, request);
-
-			await expect(
-				additionalData.hooks?.runHook('sendResponse', [Buffer.from('hi')]),
-			).rejects.toThrow('Nothing waits for a response from this node.');
-		});
+		// A bare Buffer has no JSON form, so building it would throw.
+		await expect(
+			additionalData.hooks?.runHook('sendResponse', [Buffer.from('hi')]),
+		).resolves.toBeUndefined();
 	});
 
 	describe('a Buffer body', () => {

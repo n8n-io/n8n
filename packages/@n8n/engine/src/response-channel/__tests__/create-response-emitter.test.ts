@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createResponseEmitter } from '../create-response-emitter';
 import type { ExecutionResponseSender } from '../execution-response-sender';
-import { ResponseNotExpectedError } from '../response-not-expected.error';
 
 const newSender = (): ExecutionResponseSender => ({
 	send: vi.fn(() => ({ ok: true as const, result: undefined })),
@@ -40,7 +39,7 @@ describe('createResponseEmitter', () => {
 	});
 
 	it.each(['none', 'runEnd'] as const)(
-		'rejects the response without building it when the caller expects %s',
+		'drops the response without building it when the caller expects %s',
 		(kind) => {
 			const sender = newSender();
 			const build = vi.fn(() => ({ ok: true }));
@@ -51,10 +50,7 @@ describe('createResponseEmitter', () => {
 
 			const result = emitter.send(build);
 
-			expect(result.ok).toBe(false);
-			if (result.ok) return;
-			expect(result.error).toBeInstanceOf(ResponseNotExpectedError);
-			expect(result.error).toMatchObject({ kind });
+			expect(result.ok).toBe(true);
 			expect(build).not.toHaveBeenCalled();
 			expect(sender.send).not.toHaveBeenCalled();
 		},

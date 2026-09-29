@@ -1,4 +1,4 @@
-import { ResponseNotExpectedError, type JsonValue, type StepExecutionRequest } from '@n8n/engine';
+import type { JsonValue, StepExecutionRequest } from '@n8n/engine';
 import { encodeBufferBody, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IBinaryData, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -45,24 +45,9 @@ export function attachResponseHooks(
 		const result = respond.send(() => toJsonPayload(response));
 		if (!result.ok) {
 			// Fail the node so the caller can see the response error.
-			throw toNodeError(result.error);
+			throw result.error;
 		}
 	});
-}
-
-const RESPOND_OPTION_FIX =
-	"Set the Webhook node's Respond option to 'Using Respond to Webhook Node', or remove this node.";
-
-/** Tells the user why the response was refused and how to fix the workflow. */
-function toNodeError(error: Error): Error {
-	if (!(error instanceof ResponseNotExpectedError)) return error;
-
-	const message =
-		error.kind === 'runEnd'
-			? 'The Webhook node answers when the last node finishes, not with this node.'
-			: 'Nothing waits for a response from this node.';
-
-	return new UserError(message, { description: RESPOND_OPTION_FIX });
 }
 
 /**
