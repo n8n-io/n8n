@@ -236,6 +236,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
+		const { AgentExecutionMessageLink } = await import(
+			'./entities/agent-execution-message-link.entity.js'
+		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
@@ -278,6 +281,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			AgentExecutionMessageLink,
 			AgentExecutionThread,
 			AgentExecution,
 			AgentMessageQueue,

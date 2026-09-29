@@ -1,6 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { WorkflowImportPlan } from '../../entities/workflow/workflow-import.types';
 import { assertArchiveTransitionsAllowed } from '../import-gates';

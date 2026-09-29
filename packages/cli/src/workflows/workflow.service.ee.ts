@@ -30,12 +30,12 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -114,10 +114,6 @@ export class EnterpriseWorkflowService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			currentUser,
-			{ workflowId: workflow.id },
-		);
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -131,11 +127,15 @@ export class EnterpriseWorkflowService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await this.credentialsRepository.getManyByIds(
-			Array.from(credentialIdsUsedByWorkflow),
-			{ withSharings: true },
+		const credentialIds = Array.from(credentialIdsUsedByWorkflow);
+		const workflowCredentials = await this.credentialsRepository.getManyByIds(credentialIds, {
+			withSharings: true,
+		});
+		const usableCredentialIds = await this.findUsableCredentialIds(
+			currentUser,
+			credentialIds,
+			workflow.id,
 		);
-		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
 			const filledCred = this.ownershipService.addOwnedByAndSharedWith(credential);
@@ -143,11 +143,34 @@ export class EnterpriseWorkflowService {
 				id: credentialId,
 				name: credential.name,
 				type: credential.type,
-				currentUserHasAccess: userCredentialIds.includes(credentialId),
+				currentUserCanUse: usableCredentialIds.has(credentialId),
 				homeProject: filledCred.homeProject,
 				sharedWithProjects: filledCred.sharedWithProjects,
 			});
 		});
+	}
+
+	private async findUsableCredentialIds(
+		user: User,
+		credentialIds: string[],
+		workflowId: WorkflowId,
+	): Promise<ReadonlySet<string>> {
+		if (credentialIds.length === 0) return new Set();
+
+		if (isCredSharingEnabled()) {
+			const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
+				user,
+				credentialIds,
+			);
+			const unusableIds = new Set(unusable.map((c) => c.id));
+			return new Set(credentialIds.filter((id) => !unusableIds.has(id)));
+		}
+
+		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ workflowId },
+		);
+		return new Set(userCredentials.map((credential) => credential.id));
 	}
 
 	validateCredentialPermissionsToUser(
@@ -497,10 +520,10 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 6. validate against the destination project's policy
-		await this.policyEnforcementService.enforceWorkflowTransfer({
-			workflow,
-			targetProjectId: destinationProject.id,
-		});
+		await this.policyEnforcementService.enforceWorkflowTransfer(
+			{ workflow, targetProjectId: destinationProject.id },
+			{ kind: 'user', user },
+		);
 
 		const wasActive = this.isActiveWorkflow(workflow);
 
@@ -656,7 +679,9 @@ export class EnterpriseWorkflowService {
 
 	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
+				actor: { kind: 'user', user: { id: userId } },
+			});
 
 			return;
 		} catch (error) {

@@ -4,7 +4,7 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { Publisher } from '../publisher.service';
 import type { PubSub } from '../pubsub.types';

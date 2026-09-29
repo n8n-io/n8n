@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
+import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -75,6 +76,16 @@ const scheduleNode = (suffix: string, id = `node-${suffix}`): INode => ({
 	parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] } },
 });
 
+/** A legacy Cron node whose generated seconds field must not change the job across republishes. */
+const cronNode = (suffix: string, id = `node-${suffix}`): INode => ({
+	id,
+	name: `Cron ${suffix}`,
+	type: 'n8n-nodes-base.cron',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: { triggerTimes: { item: [{ mode: 'everyHour', minute: 15 }] } },
+});
+
 /** Run the one pending publication record, as the leader's consumer would. */
 const applyNextRecord = async () => {
 	const record = await outboxRepository.claimNextPendingRecord();
@@ -125,6 +136,7 @@ beforeAll(async () => {
 	await testDb.init();
 
 	const nodes: INodeTypeData = {
+		'n8n-nodes-base.cron': { type: new Cron(), sourcePath: '' },
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
 	};
 	await utils.initNodeTypes(nodes);
@@ -230,6 +242,23 @@ describe('scheduled job lifecycle across publish, unpublish and republish', () =
 		const jobs = await jobsOf(workflow.id);
 		expect(jobs).toHaveLength(2);
 		expect(jobs.find((job) => job.ownerMemberId === trigger.id)?.id).toBe(first.id);
+	});
+
+	it('re-activating a Cron node converges on the same generated cron and job name', async () => {
+		const trigger = cronNode('a');
+		const workflow = await createWorkflow([trigger]);
+		await publish(workflow);
+		const [first] = await jobsOf(workflow.id);
+		expect(first.cronExpression).toMatch(/^\d+ 15 \* \* \* \*$/);
+		await unpublish(workflow, workflow.versionId);
+
+		// Runs the node's `trigger()` again, which the legacy engine lets pick a
+		// fresh random second on every activation.
+		await republish(workflow, [trigger]);
+
+		const jobs = await jobsOf(workflow.id);
+		expect(jobs).toHaveLength(1);
+		expect(jobs[0]).toMatchObject({ name: first.name, cronExpression: first.cronExpression });
 	});
 
 	it('republishing without a trigger node deletes that node’s rows', async () => {

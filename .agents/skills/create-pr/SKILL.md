@@ -43,7 +43,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 - Capitalize first letter
 - No period at the end
 - No ticket IDs (e.g., N8N-1234)
-- Add `(no-changelog)` suffix to exclude from changelog
+- Add `(no-changelog)` suffix to exclude from changelog, unless the type already excludes it
 
 ## Steps
 
@@ -147,7 +147,7 @@ feat(API)!: Remove deprecated v1 endpoints
 
 ### No changelog entry
 ```
-refactor(core): Simplify error handling (no-changelog)
+feat(core): Experimental feature not enabled yet (no-changelog)
 ```
 
 ### No scope (affects multiple areas)

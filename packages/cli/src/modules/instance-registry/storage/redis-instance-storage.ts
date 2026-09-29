@@ -6,7 +6,7 @@ import type { Cluster, Redis } from 'ioredis';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 
 import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from './instance-storage.interface';
