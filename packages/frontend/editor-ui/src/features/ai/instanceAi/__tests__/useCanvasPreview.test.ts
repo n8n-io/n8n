@@ -141,8 +141,6 @@ function createMockRoute(threadId = 'thread-1') {
 function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
-	previewOpenState?: () => boolean | undefined;
-	onPreviewOpenChange?: (open: boolean) => void;
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
@@ -154,8 +152,6 @@ function setup(options?: {
 		thread: thread as any,
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
-		previewOpenState: options?.previewOpenState,
-		onPreviewOpenChange: options?.onPreviewOpenChange,
 		tabsStorage: options?.tabsStorage,
 	});
 
@@ -1205,7 +1201,7 @@ describe('useCanvasPreview', () => {
 		});
 
 		test('restores the attached agent instead of an earlier helper workflow', async () => {
-			const ctx = setup({ previewOpenState: () => true });
+			const ctx = setup();
 			ctx.thread.isHydratingThread = true;
 			registerWorkflow(ctx.thread, 'workflow-1', 'Helper workflow');
 			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
@@ -1391,7 +1387,7 @@ describe('useCanvasPreview', () => {
 					}),
 				save: vi.fn().mockResolvedValue(undefined),
 			};
-			const ctx = setup({ previewOpenState: () => true, tabsStorage });
+			const ctx = setup({ tabsStorage });
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
 			registerWorkflow(ctx.thread, 'wf-3');
@@ -1426,11 +1422,8 @@ describe('useCanvasPreview', () => {
 				{ type: 'workflow' as const, id: 'wf-2', name: 'Workflow wf-2' },
 			];
 
-			test('keeps the preview closed when it was stored as closed', async () => {
-				const onPreviewOpenChange = vi.fn();
+			test('restores the active tab with the preview closed when it was stored as closed', async () => {
 				const ctx = setup({
-					previewOpenState: () => true,
-					onPreviewOpenChange,
 					tabsStorage: storageWith({
 						tabs: storedTabs,
 						closedTabs: [],
@@ -1442,15 +1435,12 @@ describe('useCanvasPreview', () => {
 				registerWorkflow(ctx.thread, 'wf-2');
 				await flushPromises();
 
+				expect(ctx.activeTabId.value).toBe('wf-2');
 				expect(ctx.isPreviewVisible.value).toBe(false);
-				expect(onPreviewOpenChange).toHaveBeenCalledWith(false);
 			});
 
 			test('opens the preview on the stored tab when it was stored as open', async () => {
-				const onPreviewOpenChange = vi.fn();
 				const ctx = setup({
-					previewOpenState: () => false,
-					onPreviewOpenChange,
 					tabsStorage: storageWith({
 						tabs: storedTabs,
 						closedTabs: [],
@@ -1464,22 +1454,44 @@ describe('useCanvasPreview', () => {
 
 				expect(ctx.isPreviewVisible.value).toBe(true);
 				expect(ctx.activeTabId.value).toBe('wf-2');
-				expect(onPreviewOpenChange).toHaveBeenCalledWith(true);
 			});
 
-			test('keeps the browser value when no preview state was stored', async () => {
-				const onPreviewOpenChange = vi.fn();
+			test('does not open the preview for an attached artifact when it was stored as closed', async () => {
+				let resolveLoad: (state: Awaited<ReturnType<ThreadTabsStorage['load']>>) => void = () => {};
+				const tabsStorage: ThreadTabsStorage = {
+					load: async () =>
+						await new Promise((resolve) => {
+							resolveLoad = resolve;
+						}),
+					save: vi.fn().mockResolvedValue(undefined),
+				};
+				const ctx = setup({ tabsStorage });
+				registerWorkflow(ctx.thread, 'wf-1');
+				ctx.thread.messages = [
+					makeMessage({
+						role: 'user',
+						attachments: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					}),
+				];
+				await nextTick();
+				expect(ctx.isPreviewVisible.value).toBe(false);
+
+				resolveLoad({ tabs: storedTabs, closedTabs: [], activeTab: null, previewOpen: false });
+				await flushPromises();
+
+				expect(ctx.activeTabId.value).toBe('wf-1');
+				expect(ctx.isPreviewVisible.value).toBe(false);
+			});
+
+			test('keeps the preview closed when no preview state was stored', async () => {
 				const ctx = setup({
-					previewOpenState: () => true,
-					onPreviewOpenChange,
 					tabsStorage: storageWith({ tabs: storedTabs, closedTabs: [], activeTab: null }),
 				});
 				registerWorkflow(ctx.thread, 'wf-1');
 				registerWorkflow(ctx.thread, 'wf-2');
 				await flushPromises();
 
-				expect(ctx.isPreviewVisible.value).toBe(true);
-				expect(onPreviewOpenChange).not.toHaveBeenCalled();
+				expect(ctx.isPreviewVisible.value).toBe(false);
 			});
 
 			test('saves the preview as open when the agent opens it over a stored closed preview', async () => {
@@ -1512,7 +1524,7 @@ describe('useCanvasPreview', () => {
 				}
 			});
 
-			test('does not store the tabs when the agent opens the preview in an untouched thread', async () => {
+			test('saves the open preview when the agent opens it in an untouched thread', async () => {
 				vi.useFakeTimers();
 				try {
 					const tabsStorage = storageWith(null);
@@ -1526,7 +1538,9 @@ describe('useCanvasPreview', () => {
 					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
 
 					expect(ctx.isPreviewVisible.value).toBe(true);
-					expect(tabsStorage.save).not.toHaveBeenCalled();
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: true }),
+					);
 				} finally {
 					vi.useRealTimers();
 				}
@@ -1564,7 +1578,7 @@ describe('useCanvasPreview', () => {
 					}),
 				save: vi.fn().mockResolvedValue(undefined),
 			};
-			const ctx = setup({ previewOpenState: () => true, tabsStorage });
+			const ctx = setup({ tabsStorage });
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
 			ctx.selectTab('wf-1');

@@ -10,7 +10,6 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import {
-	StorageSerializers,
 	onClickOutside,
 	useDebounceFn,
 	useElementSize,
@@ -20,11 +19,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	DEBOUNCE_TIME,
-	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
-	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
-} from '@/app/constants';
+import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -202,22 +197,11 @@ watch(
 );
 
 // --- Canvas / data table preview ---
-// null = no preference yet, so the first artifact still opens the preview.
-// Sync flush keeps a thread switch from exposing the old thread's value for a tick.
-const persistedArtifactPreviewOpen = useLocalStorage<boolean | null>(
-	() => LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(props.threadId),
-	null,
-	{ serializer: StorageSerializers.boolean, writeDefaults: false, flush: 'sync' },
-);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
-	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
-	onPreviewOpenChange: (open) => {
-		persistedArtifactPreviewOpen.value = open;
-	},
 	tabsStorage: {
 		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {

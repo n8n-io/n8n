@@ -38,8 +38,6 @@ interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
-	previewOpenState?: () => boolean | undefined;
-	onPreviewOpenChange?: (open: boolean) => void;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
 	tabsStorage?: ThreadTabsStorage;
 }
@@ -60,35 +58,20 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 	return undefined;
 }
 
-export function useCanvasPreview({
-	thread,
-	initialAgentId,
-	previewOpenState,
-	onPreviewOpenChange,
-	tabsStorage,
-}: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
-	const isPreviewOpen = ref(previewOpenState?.() ?? false);
+	// The stored tabs of the thread remember this. It applies once they load.
+	const isPreviewOpen = ref(false);
 	const linkedAgentTarget = ref<LinkedAgentTarget>();
 
 	function setPreviewOpen(open: boolean, persist = true) {
 		if (isPreviewOpen.value === open) return;
 		isPreviewOpen.value = open;
-		if (!persist) return;
-		onPreviewOpenChange?.(open);
-		// Keep a stored preview state in step, so a reload does not undo this change,
-		// for example when the agent opens the preview.
-		tabs.saveTabs(activeTabId.value, { onlyWhenStored: true });
+		// Save the change, so a reload shows the preview as it was, also when the
+		// agent opened it.
+		if (persist) tabs.saveTabs(activeTabId.value);
 	}
-
-	watch(
-		() => previewOpenState?.(),
-		(open) => {
-			if (typeof open === 'boolean') setPreviewOpen(open, false);
-		},
-		{ immediate: true },
-	);
 
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
 	const isAgentWorking = useIsAgentWorking(thread);
@@ -240,24 +223,19 @@ export function useCanvasPreview({
 
 	// Open the arriving resource. Only when nothing is open, so it never steals
 	// focus from an agent-driven open or a user selection.
+	// Wait for the stored tabs, so a preview the user closed does not open for a moment.
 	watch(
-		initialArtifactId,
-		(id) => {
-			if (!id || activeTabId.value !== undefined) return;
+		[initialArtifactId, tabs.isLoaded],
+		([id, isLoaded]) => {
+			if (!id || !isLoaded || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
-			if (previewOpenState?.() !== false) setPreviewOpen(true, false);
+			if (tabs.storedPreviewOpen.value !== false) setPreviewOpen(true, false);
 		},
 		{ immediate: true },
 	);
 
 	watch(
-		[
-			() => previewOpenState?.(),
-			openTabs,
-			() => thread.isHydratingThread,
-			initialArtifactId,
-			tabs.isLoaded,
-		],
+		[isPreviewOpen, openTabs, () => thread.isHydratingThread, initialArtifactId, tabs.isLoaded],
 		([open, currentTabs, isHydrating, initialId, isLoaded]) => {
 			// Wait for the stored tabs, so a closed tab does not open first.
 			if (isHydrating || !isLoaded) return;
@@ -282,9 +260,7 @@ export function useCanvasPreview({
 		}
 		const storedPreviewOpen = tabs.storedPreviewOpen.value;
 		if (storedPreviewOpen !== undefined && storedPreviewOpen !== isPreviewOpen.value) {
-			// The stored state wins over this browser's value, which only renders the first frame.
 			setPreviewOpen(storedPreviewOpen, false);
-			onPreviewOpenChange?.(storedPreviewOpen);
 		}
 	});
 
