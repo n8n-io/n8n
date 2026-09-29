@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
 	classify,
 	collectFailures,
+	groupByHost,
 	isBrowserPass,
 	isInGracePeriod,
 	parseBlameTime,
@@ -85,4 +86,11 @@ test('isInGracePeriod applies only to recent docs.n8n.io lines', () => {
 	assert.equal(isInGracePeriod(docs, now - 31 * day, now), false);
 	assert.equal(isInGracePeriod(docs, null, now), false);
 	assert.equal(isInGracePeriod({ url: 'https://example.org/' }, now - day, now), false);
+});
+
+test('groupByHost keeps the URLs of one host together', () => {
+	assert.deepEqual(groupByHost(['https://a.com/1', 'https://b.com/1', 'https://a.com/2']), [
+		['https://a.com/1', 'https://a.com/2'],
+		['https://b.com/1'],
+	]);
 });
