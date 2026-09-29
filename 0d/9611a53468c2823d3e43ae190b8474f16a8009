@@ -1,0 +1,52 @@
+packages/cli/src/public-api/v1/controllers/sso-saml.public.controller.ts
+  s_b061c71f859f81::t_164ec7a65e60de 1
+  s_b061c71f859f81::t_1a2ef974d058d0 2-3,5-17,19-57,60-72
+  s_b061c71f859f81::t_3e72e70e2f4b9b 18
+  s_b061c71f859f81::t_fd63e0f9a49541 58-59
+  s_b061c71f859f81::t_b7958dcfcdeaa8 4
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_b061c71f859f81::t_ef5bde6fe2af34 22
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_b061c71f859f81::t_a8b752fd45c0c6 311-322
+  s_b061c71f859f81::t_ad751da944f2f6 116-124
+  s_b061c71f859f81::t_4cfb4e86b082aa 246-256
+  s_b061c71f859f81::t_2e4081c8e2c963 13
+packages/cli/src/public-api/v1/controllers/sso-saml.mapper.ts
+  s_b061c71f859f81::t_1262bb0af916d8 1-5
+  s_b061c71f859f81::t_845cc993f1aa86 6-65,67,76,81-83,96-100
+  s_b061c71f859f81::t_9a85eb8765b161 66,68-75,77-80,84-95
+packages/@n8n/api-types/src/dto/saml/saml-configuration-public.dto.ts
+  s_b061c71f859f81::t_56b587c412f90c 1-30,35-37,39-62,64-252
+  s_b061c71f859f81::t_1ad2cc40755782 63
+  s_b061c71f859f81::t_b5fcaa5f86b6f4 31-34
+  s_b061c71f859f81::t_fedc103f5f27da 38
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-configuration-public.dto.test.ts
+  s_b061c71f859f81::t_a5b05806cbd108 1-42,44,47-83
+  s_b061c71f859f81::t_f9fbd7e89d23f3 43,45-46
+packages/@n8n/api-types/src/dto/index.ts
+  s_b061c71f859f81::t_2ce7b5ae84bf13 112-115
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getSamlConfiguration.generated.yml
+  s_b061c71f859f81::t_1ce4764712f406 1-12,16-20
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateSamlConfiguration.generated.yml
+  s_b061c71f859f81::t_84fa5071c96c6f 1-14,17-86,88-89,91-174
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_b061c71f859f81::t_9b6323104688be 274-278
+packages/cli/src/public-api/v1/shared/spec/schemas/samlConfigurationPublicDto.generated.yml
+  s_b061c71f859f81::t_8445d76560957e 6,11,36-44,47,58-60,85,89,93-95,112-116,118-126,131-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d9611a53468c2823d3e43ae190b8474f16a8009",
+  "prompts": {},
+  "sessions": {
+    "s_b061c71f859f81": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "deabd09b-3174-4973-aa9d-f13b5d8ca837",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
