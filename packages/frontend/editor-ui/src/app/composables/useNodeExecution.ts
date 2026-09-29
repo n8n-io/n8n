@@ -104,6 +104,7 @@ export function useNodeExecution(
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
 	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
@@ -198,6 +199,15 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.generatingCode');
 		}
 
+		// A run is checked against the person it acts as, so a credential this user
+		// cannot use stops the whole workflow, not just the node that holds it.
+		// It outranks every per-node reason below, because no per-node fix makes
+		// the run possible. Only an action already in flight on this node ranks
+		// higher. Refused by the backend either way; said here before the click.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
+		}
+
 		if (nodeRef.value?.disabled) {
 			return i18n.baseText('ndv.execute.nodeIsDisabled');
 		}
@@ -208,13 +218,6 @@ export function useNodeExecution(
 
 		if (workflowExecutionStateStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
-		}
-
-		// A run is checked against the person it acts as, so a credential this user
-		// cannot use stops the whole workflow, not just the node that holds it.
-		// Refused by the backend either way; said here before the click.
-		if (unusableCredentialReason.value) {
-			return unusableCredentialReason.value;
 		}
 
 		return '';

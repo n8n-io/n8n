@@ -82,6 +82,7 @@ useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
 
 const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
 );
 const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
 	props.isNewWorkflow ? undefined : props.id,
@@ -374,6 +375,14 @@ const onOpenReviewFromBanner = async () => {
 };
 
 const onPublishButtonClick = async () => {
+	// The NDV and the command bar reach this handler through the event bus, past
+	// the button's disabled state. There is nothing to hover on those paths, so
+	// the reason is shown as a toast instead of a tooltip.
+	if (unusableCredentialReason.value) {
+		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
@@ -575,6 +584,22 @@ const shouldDisablePublishButton = computed(() => {
 		!publishButtonConfig.value.enabled ||
 		!hasPublishPermission.value ||
 		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
+	);
+});
+
+/**
+ * A workflow that is ready to publish has nothing to explain, so the tooltip
+ * stays off. A credential this user cannot use is the exception: the button is
+ * disabled in that state too, and the reason is the only way to learn why.
+ */
+const isPublishTooltipDisabled = computed(() => {
+	if (unusableCredentialReason.value) return false;
+
+	return (
+		(workflowPublishState.value === 'not-published-eligible' &&
+			props.workflowPermissions.publish) ||
+		(!publishButtonConfig.value.tooltip &&
+			!(publishButtonConfig.value.showVersionInfo && activeVersion.value))
 	);
 });
 
@@ -830,16 +855,7 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
-				<N8nTooltip
-					:disabled="
-						(workflowPublishState === 'not-published-eligible' &&
-							props.workflowPermissions.publish) ||
-						(!publishButtonConfig.tooltip &&
-							!(publishButtonConfig.showVersionInfo && activeVersion))
-					"
-					:show-after="300"
-					:offset="15"
-				>
+				<N8nTooltip :disabled="isPublishTooltipDisabled" :show-after="300" :offset="15">
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">

@@ -3,6 +3,9 @@ import { setActivePinia } from 'pinia';
 import type { FrontendSettings } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+import type { INodeUi } from '@/Interface';
+
+import { createTestNode } from '@/__tests__/mocks';
 import type { IUsedCredential } from '../credentials.types';
 import { useUnusableWorkflowCredentials } from './useUnusableWorkflowCredentials';
 
@@ -29,16 +32,29 @@ describe('useUnusableWorkflowCredentials', () => {
 		},
 	};
 
+	/** A node that uses every credential passed in, so the workflow references them. */
+	const nodeUsing = (credentials: IUsedCredential[], { disabled = false } = {}) =>
+		createTestNode({
+			name: 'Gmail',
+			disabled,
+			credentials: Object.fromEntries(
+				credentials.map((c) => [c.credentialType, { id: c.id, name: c.name }]),
+			),
+		});
+
 	const setup = (
 		credentials: IUsedCredential[],
-		{ flagEnabled = true }: { flagEnabled?: boolean } = {},
+		{ flagEnabled = true, nodes }: { flagEnabled?: boolean; nodes?: INodeUi[] } = {},
 	) => {
 		setActivePinia(createTestingPinia());
 		useSettingsStore().settings = {
 			granularCredentialSharing: flagEnabled,
 		} as FrontendSettings;
 
-		return useUnusableWorkflowCredentials(Object.fromEntries(credentials.map((c) => [c.id, c])));
+		return useUnusableWorkflowCredentials(
+			Object.fromEntries(credentials.map((c) => [c.id, c])),
+			nodes ?? [nodeUsing(credentials)],
+		);
 	};
 
 	it('blocks nothing when every credential is usable', () => {
@@ -91,5 +107,28 @@ describe('useUnusableWorkflowCredentials', () => {
 
 		expect(isBlocked.value).toBe(false);
 		expect(reason.value).toBe('');
+	});
+
+	// The used-credential metadata only changes on load and on save, so the
+	// block has to follow the nodes instead.
+	it('unblocks as soon as the node switches to another credential', () => {
+		const { isBlocked } = setup([personallyOwned], { nodes: [nodeUsing([usable])] });
+
+		expect(isBlocked.value).toBe(false);
+	});
+
+	it('unblocks when the node that used the credential is gone', () => {
+		const { isBlocked } = setup([personallyOwned], { nodes: [] });
+
+		expect(isBlocked.value).toBe(false);
+	});
+
+	// A disabled node does not run, and the backend skips it too.
+	it('does not block on a disabled node', () => {
+		const { isBlocked } = setup([personallyOwned], {
+			nodes: [nodeUsing([personallyOwned], { disabled: true })],
+		});
+
+		expect(isBlocked.value).toBe(false);
 	});
 });

@@ -1,6 +1,7 @@
 import { computed, toValue, type DeepReadonly, type MaybeRefOrGetter } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
+import type { INodeUi } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { IUsedCredential } from '../credentials.types';
@@ -22,18 +23,42 @@ import { useCredentialSharing } from './useCredentialSharing';
  *
  * @param usedCredentials the workflow's used credentials, as a getter so the
  * caller can supply them from whichever store it already holds.
+ * @param nodes the workflow's current nodes, to keep the answer live between
+ * saves.
  */
 export function useUnusableWorkflowCredentials(
 	usedCredentials: MaybeRefOrGetter<DeepReadonly<Record<string, IUsedCredential>> | undefined>,
+	nodes: MaybeRefOrGetter<INodeUi[] | undefined>,
 ) {
 	const i18n = useI18n();
 	const { isEnabled } = useCredentialSharing();
+
+	/**
+	 * The credential ids the nodes reference now. The used-credential metadata
+	 * only changes when the workflow is loaded or saved, so a credential the user
+	 * has just switched away from is still in it. A disabled node does not run,
+	 * and the backend skips it too.
+	 */
+	const referencedIds = computed(() => {
+		const ids = new Set<string>();
+
+		for (const node of toValue(nodes) ?? []) {
+			if (node.disabled) continue;
+
+			for (const credential of Object.values(node.credentials ?? {})) {
+				if (credential.id) ids.add(credential.id);
+			}
+		}
+
+		return ids;
+	});
 
 	const unusable = computed(() => {
 		if (!isEnabled.value) return [];
 
 		return Object.values(toValue(usedCredentials) ?? {}).filter(
-			(credential) => credential.currentUserCanUse === false,
+			(credential) =>
+				credential.currentUserCanUse === false && referencedIds.value.has(credential.id),
 		);
 	});
 
