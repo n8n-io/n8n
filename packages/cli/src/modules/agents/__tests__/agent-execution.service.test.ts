@@ -86,7 +86,7 @@ describe('AgentExecutionService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		messageRepository.createExecutionInput.mockResolvedValue('message-1');
+		messageRepository.createInput.mockResolvedValue(mock<AgentMessageEntity>({ id: 'message-1' }));
 		messageRepository.findExecutionInputs.mockResolvedValue(new Map());
 		messageRepository.copyExecutionInputs.mockResolvedValue([]);
 

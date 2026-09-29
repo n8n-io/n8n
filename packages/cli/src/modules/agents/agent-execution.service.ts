@@ -192,8 +192,12 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
-		const prepared = await this.prepareThread(params, ctx);
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
@@ -218,7 +222,13 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
-		const inputMessageIds = await this.reserveInput(params, inserted.id, predecessorId, ctx);
+		const inputMessageIds = await this.reserveInput(
+			params,
+			inserted.id,
+			predecessorId,
+			queueItem?.messageId,
+			ctx,
+		);
 		if (
 			queueItem &&
 			!(await this.queueRepository.linkExecution(
@@ -241,6 +251,7 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		executionId: string,
 		predecessorId: string | undefined,
+		queuedMessageId: string | undefined,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (predecessorId) {
@@ -252,10 +263,13 @@ export class AgentExecutionService {
 			);
 		}
 		if (params.resumeRunId || params.userMessage === null) return [];
+		if (queuedMessageId) {
+			await this.messageRepository.linkExecutionInput(executionId, queuedMessageId, params, ctx);
+			return [queuedMessageId];
+		}
 		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
-		const id = await this.messageRepository.createExecutionInput(
+		const message = await this.messageRepository.createInput(
 			{
-				executionId,
 				threadId: params.threadId,
 				resourceId: params.resourceId,
 				content,
@@ -268,7 +282,8 @@ export class AgentExecutionService {
 			},
 			ctx,
 		);
-		return [id];
+		await this.messageRepository.linkExecutionInput(executionId, message.id, params, ctx);
+		return [message.id];
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
