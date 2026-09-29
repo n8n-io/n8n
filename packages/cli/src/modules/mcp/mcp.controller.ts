@@ -25,7 +25,12 @@ import type {
 	McpAuthenticatedRequest,
 	UserConnectedToMCPEventPayload,
 } from './mcp.types';
-import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
+import {
+	getClientInfo,
+	getProtocolVersion,
+	isConnectionHandshake,
+	resolveRenamedToolCall,
+} from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -124,8 +129,13 @@ export class McpController {
 		// Set CORS headers for all responses
 		this.setCorsHeaders(res);
 
-		const body = req.body;
+		// A client that cached the tool list from a pre-rename instance still calls
+		// the old names, so those calls are served under the current name.
+		const { body, renamedFrom } = resolveRenamedToolCall(req.body);
 		this.logger.debug('MCP Request', { body });
+		if (renamedFrom) {
+			this.logger.debug('MCP tool call used a former tool name', { renamedFrom });
+		}
 		// The 2026-07-28 revision drops `initialize`; a modern client's first
 		// request is `server/discover`, so both mark the connection handshake for
 		// telemetry. Legacy clients on the stateless fallback still send
@@ -151,7 +161,7 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, body);
 			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
@@ -176,7 +186,7 @@ export class McpController {
 					}),
 				});
 			} else if (isToolCallRequest) {
-				this.logger.debug('MCP Tool Call request', body);
+				this.logger.debug('MCP Tool Call request', { body });
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
