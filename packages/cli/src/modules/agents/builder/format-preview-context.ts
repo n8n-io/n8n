@@ -1,3 +1,5 @@
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
+
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
@@ -33,7 +35,22 @@ function stringifyToolValue(value: unknown): string {
 	return truncate(serialized, MAX_TOOL_VALUE_CHARS);
 }
 
-function formatTimelineEvent(event: TimelineEvent): string {
+function formatInput(message: AgentPersistedMessageDto): string {
+	const text = message.content
+		.flatMap((part) => {
+			if (part.type === 'text') return [part.text];
+			if (part.type === 'file') return [`[Attachment: ${part.fileName ?? part.fileId ?? 'file'}]`];
+			return [];
+		})
+		.join('\n');
+	return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+}
+
+function formatTimelineEvent(event: TimelineEvent, execution: AgentExecution): string {
+	if (event.type === 'input') {
+		const message = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		return message ? formatInput(message) : '';
+	}
 	if (event.type === 'background-task-signal') {
 		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
 	}
@@ -73,11 +90,19 @@ function formatExecution(execution: AgentExecution): string {
 	if (execution.error) headerParts.push(`error=${execution.error}`);
 
 	const lines = [`## Turn (${headerParts.join(', ')})`];
-	if (execution.userMessage !== null) {
+	if (execution.inputMessages !== undefined) {
+		const steeredIds = new Set(
+			execution.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
+		);
+		for (const message of execution.inputMessages) {
+			if (!steeredIds.has(message.id)) lines.push(formatInput(message));
+		}
+	} else if (execution.userMessage !== null) {
 		lines.push(`User: ${truncate(execution.userMessage, MAX_TEXT_CHARS)}`);
 	}
 	for (const event of execution.timeline ?? []) {
-		lines.push(formatTimelineEvent(event));
+		const line = formatTimelineEvent(event, execution);
+		if (line) lines.push(line);
 	}
 	return lines.join('\n');
 }
