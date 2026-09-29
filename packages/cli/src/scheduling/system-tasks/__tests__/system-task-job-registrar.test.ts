@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
@@ -9,7 +10,6 @@ import { inc } from 'semver';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import type { EventService } from '@/events/event.service';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import { SystemTaskJobRegistrar, systemTaskProvisionRequest } from '../system-task-job-registrar';

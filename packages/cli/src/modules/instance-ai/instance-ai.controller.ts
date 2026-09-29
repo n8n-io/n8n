@@ -5,6 +5,7 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
@@ -32,6 +33,7 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
+	InstanceAiThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -81,15 +83,13 @@ import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.servi
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -129,6 +129,7 @@ export class InstanceAiController {
 		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
+		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -988,6 +989,34 @@ export class InstanceAiController {
 		return { thread };
 	}
 
+	@Get('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async getThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
+	}
+
+	@Put('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async saveThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiThreadTabsRequestDto,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		// The DTO strips unknown keys, so the payload is the state to save.
+		const state = { ...payload };
+		await this.threadTabsService.saveState(threadId, req.user.id, state);
+		return { state };
+	}
+
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
@@ -1271,6 +1300,7 @@ export class InstanceAiController {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
+				req.user,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 				folderIdMap,

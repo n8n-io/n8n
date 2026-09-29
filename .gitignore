@@ -38,6 +38,7 @@ build.log
 tcr-dry.log
 .agent-setup/
 .agent-recordings/
+.vitest-profile/
 .pi-subagents/
 sbom-source.cdx.json
 *.junit.xml

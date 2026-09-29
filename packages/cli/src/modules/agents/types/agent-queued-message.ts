@@ -18,6 +18,7 @@ interface QueuedMessageInput {
 export interface QueuedPreviewMessage extends QueuedMessageInput {
 	kind: 'preview';
 	userId: string;
+	messageId?: string;
 }
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
@@ -34,6 +35,19 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 }
 
 export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage;
+
+/** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
+export type AgentQueueDispatch =
+	| { kind: 'preview' }
+	| (Omit<
+			QueuedIntegrationMessage,
+			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'
+	  > & {
+			messageContext: Omit<
+				IntegrationMessageContext,
+				'platform' | 'integrationConnectionId' | 'messageId'
+			>;
+	  });
 
 /** A committed execution reservation. Runtime preparation must reuse it. */
 export interface AgentExecutionAdmission {

@@ -5,7 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowInfoMetricsService } from '../workflow-info-metrics.service';
 

@@ -14,7 +14,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -23,6 +23,7 @@ import type {
 	QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
@@ -139,7 +140,7 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
 		},
-	): AsyncGenerator<StreamChunk>;
+	): AsyncGenerator<AgentExecutionStreamChunk>;
 
 	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
@@ -505,7 +506,7 @@ export class AgentChatBridge {
 
 	async deliverWakeResponse(
 		threadId: string,
-		chunks: StreamChunk[],
+		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(
@@ -775,6 +776,7 @@ export class AgentChatBridge {
 				isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
+		let accepted = false;
 		try {
 			const [context, subject] = await Promise.all([
 				this.resolveBridgeExecutionContext(
@@ -797,7 +799,7 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
-			await this.messageQueue.enqueue({
+			const result = await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				threadId: session.memory.threadId.id,
@@ -822,9 +824,11 @@ export class AgentChatBridge {
 					slackThreadContext: context.slackThreadContext,
 				},
 			});
-		} catch (error) {
-			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			throw error;
+			accepted = result.status === 'accepted';
+		} finally {
+			if (!accepted) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
 		}
 	}
 
