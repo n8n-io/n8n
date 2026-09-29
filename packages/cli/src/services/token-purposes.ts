@@ -21,6 +21,7 @@ export const TOKEN_PURPOSES = {
 	oidcNonce: 'n8n:oidc-nonce',
 	oauthSession: 'n8n:oauth-session',
 	tokenExchange: 'n8n:token-exchange',
+	teamsArmTemplate: 'n8n:teams-arm-template',
 	publicApiKey: 'public-api',
 	mcpApiKey: 'mcp-server-api',
 } as const satisfies Record<string, string> & {
