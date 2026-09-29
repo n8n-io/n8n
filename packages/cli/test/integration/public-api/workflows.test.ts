@@ -69,7 +69,7 @@ const globalConfig = Container.get(GlobalConfig);
 
 mockInstance(ExecutionService);
 
-// The API response omits the parent folder, so read the persisted placement directly.
+// Placement tests verify persistence directly instead of relying on route-specific response shapes.
 const getStoredParentFolderId = async (workflowId: string) => {
 	const stored = await workflowRepository.findOne({
 		where: { id: workflowId },
@@ -220,6 +220,7 @@ describe('GET /workflows', () => {
 				triggerCount,
 				meta,
 				tags,
+				parentFolderId,
 			} = workflow;
 
 			expect(id).toBeDefined();
@@ -238,7 +239,30 @@ describe('GET /workflows', () => {
 			expect(versionId).toBeDefined();
 			expect(triggerCount).toBeDefined();
 			expect(meta).toBeDefined();
+			expect(parentFolderId).toBeNull();
 		}
+	});
+
+	test('should return the parent folder ID for each workflow', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'Workflow Folder' });
+		const workflowInFolder = await createWorkflowWithHistory({ parentFolder: folder }, member);
+		const workflowAtRoot = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: workflowInFolder.id,
+					parentFolderId: folder.id,
+				}),
+				expect.objectContaining({
+					id: workflowAtRoot.id,
+					parentFolderId: null,
+				}),
+			]),
+		);
 	});
 
 	test('should include node groups when returning owned workflows', async () => {

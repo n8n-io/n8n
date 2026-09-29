@@ -22,6 +22,7 @@ export type FindWorkflowsForUserOptions = {
 	includeTags?: boolean;
 	includeProjects?: boolean;
 	includeActiveVersion?: boolean;
+	includeParentFolder?: boolean;
 };
 
 @Service()
@@ -426,6 +427,7 @@ export class WorkflowFinderService {
 			includeTags = false,
 			includeProjects = false,
 			includeActiveVersion = false,
+			includeParentFolder = false,
 		} = options;
 		const { name, active, tagNames, folderId, projectId } = filters;
 
@@ -458,6 +460,7 @@ export class WorkflowFinderService {
 			// `shared` = share rows only without project relation.
 			...(includeProjects ? { ownedBy: true } : { shared: true }),
 			...(includeActiveVersion && { activeVersion: true }),
+			...(includeParentFolder && { parentFolder: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeTags && { tags: true }),
 		};

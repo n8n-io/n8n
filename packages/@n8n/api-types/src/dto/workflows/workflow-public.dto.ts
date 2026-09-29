@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
 	connectionsOpenApi,
 	workflowCreateFieldDocs,
+	workflowListFieldDocs,
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
@@ -165,6 +166,7 @@ export const workflowListItemPublicSchema = workflowPublicSchema
 		activeVersion: true,
 	})
 	.extend({
+		parentFolderId: z.string().nullable().openapi(workflowListFieldDocs.parentFolderId),
 		shared: z.array(workflowListItemSharedPublicSchema),
 		activeVersion: workflowListItemActiveVersionPublicSchema.nullable(),
 	});
