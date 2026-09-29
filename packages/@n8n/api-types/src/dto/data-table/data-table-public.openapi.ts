@@ -48,7 +48,7 @@ export const createDataTableColumnFieldDocs = {
 		example: 'Email Address',
 	},
 	name: { description: dataTableColumnNameDescription },
-	type: { enum: [...dataTableColumnTypeSchema.options], description: 'Column data type' },
+	type: { description: 'Column data type' },
 	index: { description: 'Column position (optional, appended to end if omitted)' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
