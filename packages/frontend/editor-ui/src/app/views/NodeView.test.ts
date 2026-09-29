@@ -45,7 +45,6 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
