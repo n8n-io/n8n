@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import type { NodeTypeAvailability } from '@n8n/api-types';
+import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
@@ -18,7 +18,6 @@ const props = defineProps<{
 	installing?: boolean;
 	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
 	installDisabled?: boolean;
-	restriction?: NodeTypeAvailability;
 }>();
 
 const emit = defineEmits<{
@@ -55,6 +54,7 @@ const actionDisabled = computed(
 );
 
 const rowRef = ref<HTMLElement | null>(null);
+const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 </script>
 
 <template>

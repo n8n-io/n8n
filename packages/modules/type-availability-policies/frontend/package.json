@@ -35,6 +35,7 @@
     "@n8n/frontend-vite-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@pinia/testing": "^0.1.6",
     "@testing-library/jest-dom": "catalog:frontend",

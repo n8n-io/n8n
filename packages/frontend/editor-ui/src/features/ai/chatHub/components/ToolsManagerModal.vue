@@ -33,17 +33,14 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
-	getNodeItemRestriction,
 	isNodeItemRestricted,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import {
-	describeNodeTypeRestriction,
-	useTypeAvailabilityPoliciesStore,
-} from '@n8n/frontend-module-type-availability-policies';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
@@ -86,6 +83,7 @@ const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 // Chat tools run as workflows in the personal project, so that project's policy applies.
@@ -96,22 +94,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function restrictionFor(nodeType: INodeTypeDescription) {
-	return getNodeItemRestriction(nodeType.name) ?? undefined;
-}
-
-function notifyRestricted(nodeType: INodeTypeDescription): boolean {
-	const restriction = getNodeItemRestriction(nodeType.name);
-	if (!restriction) return false;
-
-	toast.showMessage({
-		type: 'warning',
-		title: i18n.baseText('typeAvailabilityPolicies.restrictedNode.title'),
-		message: describeNodeTypeRestriction(nodeType.displayName, restriction.scope),
-	});
-	return true;
-}
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -332,7 +314,7 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 		existingNames,
 		async (configuredNode: INode) => {
 			// The policy can finish loading while the settings view is open.
-			if (notifyRestricted(nodeType)) return;
+			if (warnIfRestricted(configuredNode.type)) return;
 
 			try {
 				await chatStore.addConfiguredTool(configuredNode);
@@ -361,11 +343,7 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
-			const projectId = projectsStore.personalProject?.id;
-			if (projectId) {
-				await typeAvailabilityPoliciesStore.fetchForProject(projectId, { force: true });
-			}
-			if (notifyRestricted(installed)) return;
+			if (warnIfRestricted(installed.name)) return;
 			openSettingsFor(installed);
 		} finally {
 			installingToolName.value = null;
@@ -465,7 +443,6 @@ function handleSettingsChangeName(name: string) {
 							:node-type="getNodeType(tool)!"
 							:configured-node="tool.definition"
 							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
-							:restriction="restrictionFor(getNodeType(tool)!)"
 							mode="configured"
 							@configure="handleConfigureTool(tool)"
 							@remove="handleRemoveTool(tool.definition.id)"
@@ -490,7 +467,6 @@ function handleSettingsChangeName(name: string) {
 							:community-preview="isCommunityPreviewTool(nodeType)"
 							:installing="installingToolName === nodeType.name"
 							:install-disabled="!isAdminOrOwner"
-							:restriction="restrictionFor(nodeType)"
 							mode="available"
 							@add="handleAddTool(nodeType)"
 						/>

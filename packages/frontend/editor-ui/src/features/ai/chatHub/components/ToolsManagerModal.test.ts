@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { defineComponent, onMounted } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
@@ -16,6 +15,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { ChatHubToolDto } from '@n8n/api-types';
+import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -159,16 +159,7 @@ const renderComponent = createComponentRenderer(ToolsManagerModal, {
 	global: {
 		stubs: {
 			ElDialog: ElDialogStub,
-			NodeToolSettingsContent: defineComponent({
-				props: ['initialNode', 'existingToolNames'],
-				emits: ['update:valid', 'update:nodeName'],
-				setup(props, { emit, expose }) {
-					expose({ node: props.initialNode });
-					onMounted(() => emit('update:valid', true));
-					return {};
-				},
-				template: '<div data-test-id="tool-settings-content" />',
-			}),
+			NodeToolSettingsContent: createToolSettingsStub(true),
 			NodeIcon: { template: '<div />' },
 		},
 	},

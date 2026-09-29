@@ -26,21 +26,29 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
 		);
 
-		/** `force` refetches the loaded project after the server's node set changed. */
-		async function fetchForProject(
-			projectId: string,
-			{ force = false }: { force?: boolean } = {},
-		): Promise<void> {
+		async function fetchForProject(projectId: string): Promise<void> {
 			if (!isEnabled.value) return;
 
 			requestedProjectId.value = projectId;
-			const request = ++latestRequest;
+			latestRequest++;
 
-			if (projectId === loadedProjectId.value && !force) {
+			if (projectId === loadedProjectId.value) {
 				isLoading.value = false;
 				return;
 			}
 
+			await load(projectId);
+		}
+
+		/** Refetches the current project after the server's node set changed. */
+		async function reload(): Promise<void> {
+			if (!isEnabled.value || requestedProjectId.value === null) return;
+
+			await load(requestedProjectId.value);
+		}
+
+		async function load(projectId: string): Promise<void> {
+			const request = ++latestRequest;
 			isLoading.value = true;
 			try {
 				const entries = await fetchAvailableTypes(rootStore.restApiContext, projectId);
@@ -84,6 +92,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isLoading,
 			loadedProjectId,
 			fetchForProject,
+			reload,
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
 			reset,

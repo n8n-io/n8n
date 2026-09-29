@@ -39,10 +39,8 @@ import {
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import {
-	describeNodeTypeRestriction,
-	useTypeAvailabilityPoliciesStore,
-} from '@n8n/frontend-module-type-availability-policies';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -137,6 +135,7 @@ const {
 	resolveToolNodeType,
 } = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
 
 const searchQuery = ref('');
@@ -343,22 +342,9 @@ function commit() {
 	});
 }
 
-function notifyRestricted(nodeTypeName: string): boolean {
-	const restriction = getNodeItemRestriction(nodeTypeName);
-	if (!restriction) return false;
-
-	const displayName = nodeTypesStore.getNodeType(nodeTypeName)?.displayName ?? nodeTypeName;
-	toast.showMessage({
-		type: 'warning',
-		title: i18n.baseText('typeAvailabilityPolicies.restrictedNode.title'),
-		message: describeNodeTypeRestriction(displayName, restriction.scope),
-	});
-	return true;
-}
-
 function addToolRef(savedRef: AgentJsonToolRef) {
 	// The policy can finish loading while the config form is open.
-	if (savedRef.type === 'node' && notifyRestricted(savedRef.node.nodeType)) return;
+	if (savedRef.type === 'node' && warnIfRestricted(savedRef.node.nodeType)) return;
 
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
@@ -454,10 +440,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (props.data.projectId) {
-			await typeAvailabilityPoliciesStore.fetchForProject(props.data.projectId, { force: true });
-		}
-		if (notifyRestricted(installed.name)) return;
+		if (warnIfRestricted(installed.name)) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -684,7 +667,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
-		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -704,7 +687,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
-		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -726,7 +709,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
-		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 }
 

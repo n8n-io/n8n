@@ -18,21 +18,20 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
 };
 
-const NEXT_STEP_KEY = {
-	contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
-	replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.replace',
-} satisfies Record<string, BaseTextKey>;
-
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
 	scope?: NodeTypeAvailabilityScope,
-	nextStepKind: keyof typeof NEXT_STEP_KEY = 'contact',
+	nextStep: 'contact' | 'replace' = 'contact',
 ): string {
 	const i18n = useI18n();
-	const nextStep = i18n.baseText(NEXT_STEP_KEY[nextStepKind]);
+	const nextStepText = i18n.baseText(
+		nextStep === 'replace'
+			? 'typeAvailabilityPolicies.restrictedNode.nextStep.replace'
+			: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
+	);
 	return i18n.baseText(
 		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: { nodeType: nodeTypeName, nextStep } },
+		{ interpolate: { nodeType: nodeTypeName, nextStep: nextStepText } },
 	);
 }
 
