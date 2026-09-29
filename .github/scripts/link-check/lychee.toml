@@ -1,7 +1,9 @@
 # Weekly link check for product code. See .github/workflows/test-link-check-weekly.yml.
 # Run from the repository root:
-#   git grep -lE "https?://|documentationUrl = '|DOCS_DOMAIN" -- 'packages/**/*.'{ts,vue,json,mjs,js} \
-#     | lychee --config .github/scripts/link-check/lychee.toml --files-from -
+#   dir=$(mktemp -d)
+#   node .github/scripts/link-check/extract.mjs "$dir" \
+#     | (cd "$dir" && lychee --config "$OLDPWD/.github/scripts/link-check/lychee.toml" --files-from - --output "$OLDPWD/report.json")
+#   node .github/scripts/link-check/check-report.mjs report.json
 
 no_progress = true
 mode = "plain"
@@ -21,8 +23,6 @@ exclude_all_private = true
 
 # npmjs.com shows GitHub runners a bot challenge, also in a browser. The registry API does not.
 remap = ['^https://www\.npmjs\.com/package/(.+)$ https://registry.npmjs.org/$1']
-
-preprocess = { command = ".github/scripts/link-check/preprocess.sh" }
 
 exclude_path = [
 	'\.(test|spec)\.',

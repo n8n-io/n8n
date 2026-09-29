@@ -45,8 +45,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git grep -lE "https?://|documentationUrl = '|DOCS_DOMAIN" -- 'packages/**/*.ts' 'packages/**/*.vue' 'packages/**/*.json' 'packages/**/*.mjs' 'packages/**/*.js' \
-            | lychee --config .github/scripts/link-check/lychee.toml --files-from - --output lychee-report.json \
+          # Lychee runs on filtered copies of the files, so its report shows the repository paths.
+          dir="$RUNNER_TEMP/link-check"
+          mkdir -p "$dir"
+          node .github/scripts/link-check/extract.mjs "$dir" \
+            | (cd "$dir" && lychee --config "$GITHUB_WORKSPACE/.github/scripts/link-check/lychee.toml" --files-from - --output "$GITHUB_WORKSPACE/lychee-report.json") \
             2> >(grep -v 'No files found for this input source' >&2) || status=$?
           # Lychee exits 2 when it finds failing links. Any other failure stops the job.
           if [ "${status:-0}" -ne 0 ] && [ "${status:-0}" -ne 2 ]; then exit "$status"; fi
