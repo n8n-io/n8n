@@ -94,6 +94,14 @@ packages/cli/src/services/engine-v2-dispatcher.service.ts
     }
   },
   "sessions": {
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_270aabb0735a56": {
       "agent_id": {
         "tool": "codex",
