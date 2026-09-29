@@ -50,4 +50,19 @@ describe('useCloudUbbActive', () => {
 
 		expect(isActive.value).toBe(true);
 	});
+
+	// A tab kept open across the GA cutoff must flip on its own; `useNow` is why
+	// this composable exists over a plain `Date.now()`. Mount before GA, then
+	// advance the fake clock past it and past one poll interval to trigger the tick.
+	test('reactively flips isActive when the clock crosses GA while mounted', async () => {
+		settingsStore.setSettings(settingsFor({ cloudUbbEnabled: false }));
+
+		const { isActive } = useCloudUbbActive();
+		expect(isActive.value).toBe(false);
+
+		vi.setSystemTime(new Date(ASSISTANT_CLOUD_UBB_GA_DATE.getTime() + 1_000));
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		expect(isActive.value).toBe(true);
+	});
 });
