@@ -92,6 +92,15 @@ export class MigrationFindingSyncService {
 			const workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			if (workflowIds.length === 0) break;
 
+			// The scan can take long. A follower must not write, so leadership is
+			// checked again before every batch; the sync record stays unwritten.
+			if (!this.instanceSettings.isLeader) {
+				this.logger.info('Stopping migration finding sync, this instance is no longer the leader', {
+					targetVersion,
+				});
+				return;
+			}
+
 			await this.syncBatch(
 				targetVersion,
 				workflowIds.filter((id) => !failed.has(id)),

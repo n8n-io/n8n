@@ -79,8 +79,15 @@ describe('MigrationFindingSyncService', () => {
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
 	let txRunner: MockProxy<TransactionRunner>;
-	let instanceSettings: MockProxy<InstanceSettings>;
+	let isLeader: boolean;
 	let service: MigrationFindingSyncService;
+
+	// A getter, so a test can take leadership away while a sync is running.
+	const instanceSettings = {
+		get isLeader() {
+			return isLeader;
+		},
+	} as InstanceSettings;
 
 	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
@@ -101,7 +108,7 @@ describe('MigrationFindingSyncService', () => {
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
 		txRunner = mock<TransactionRunner>();
-		instanceSettings = mock<InstanceSettings>({ isLeader: true });
+		isLeader = true;
 
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
@@ -285,17 +292,7 @@ describe('MigrationFindingSyncService', () => {
 	});
 
 	it('computes and writes nothing when the instance is not the leader', async () => {
-		instanceSettings = mock<InstanceSettings>({ isLeader: false });
-		service = new MigrationFindingSyncService(
-			breakingChangeService,
-			ruleRegistry,
-			workflowRepository,
-			findingRepository,
-			syncRepository,
-			txRunner,
-			instanceSettings,
-			mockLogger(),
-		);
+		isLeader = false;
 		givenWorkflows(3);
 
 		await service.sync(TARGET_VERSION);
@@ -303,6 +300,20 @@ describe('MigrationFindingSyncService', () => {
 		expect(breakingChangeService.detect).not.toHaveBeenCalled();
 		expect(workflowRepository.getIdsAfter).not.toHaveBeenCalled();
 		expect(txRunner.run).not.toHaveBeenCalled();
+		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+	});
+
+	it('stops writing and records no sync when leadership is lost between batches', async () => {
+		givenWorkflows(250);
+		txRunner.run.mockImplementation(async (ctx, fn) => {
+			const result = await fn(ctx);
+			isLeader = false;
+			return result;
+		});
+
+		await service.sync(TARGET_VERSION);
+
+		expect(txRunner.run).toHaveBeenCalledTimes(1);
 		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 	});
 
