@@ -145,6 +145,7 @@ export type PubSubCommandMap = {
 		threadId: string;
 		executionId: string;
 		userId: string;
+		productionN8nChat?: boolean;
 	};
 
 	'relay-agent-message-queue-update': {

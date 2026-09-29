@@ -69,6 +69,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---

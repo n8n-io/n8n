@@ -119,9 +119,15 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
 	 * unattended sync and a hand-run import are held to the same policy, and each host already
 	 * picks its own fail posture.
+	 *
+	 * A credential import is judged on its own type, with nothing to grandfather.
 	 */
-	async onContentImport({ workflow, projectId }: ContentImportContext): Promise<PolicyCheckResult> {
-		return await this.checkWorkflow(workflow, projectId, NOTHING_GRANDFATHERED);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		if ('credential' in context) {
+			return await this.checkTypes([context.credential.type], context.projectId);
+		}
+
+		return await this.checkWorkflow(context.workflow, context.projectId, NOTHING_GRANDFATHERED);
 	}
 
 	/**

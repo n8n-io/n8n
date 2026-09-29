@@ -257,6 +257,7 @@ export class MemoryOrchestrator {
 		resourceId: string,
 		messages: AgentDbMessage[],
 		telemetry: BuiltTelemetry | undefined,
+		hostMetadata: AgentPersistenceOptions['hostMetadata'],
 	): Promise<void> {
 		await withMemorySpan(
 			'save_memory',
@@ -264,7 +265,7 @@ export class MemoryOrchestrator {
 			telemetry,
 			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
-				await saveMessagesToThread(memory, threadId, resourceId, messages);
+				await saveMessagesToThread(memory, threadId, resourceId, messages, hostMetadata);
 				return {
 					result: undefined,
 					attributes: {
@@ -341,6 +342,7 @@ export class MemoryOrchestrator {
 				options.persistence.resourceId,
 				input,
 				telemetry,
+				options.persistence.hostMetadata,
 			);
 		} catch (error) {
 			// Best-effort: the end-of-turn save still persists the input on a
@@ -400,6 +402,7 @@ export class MemoryOrchestrator {
 				options.persistence.resourceId,
 				delta,
 				telemetry,
+				options.persistence.hostMetadata,
 			);
 			const last = unpersisted[unpersisted.length - 1];
 			const lastCreatedAt = getCreatedAt(last);
@@ -440,6 +443,7 @@ export class MemoryOrchestrator {
 			options.persistence.resourceId,
 			delta,
 			telemetry,
+			options.persistence.hostMetadata,
 		);
 
 		// Memory jobs receive the execution counter so their LLM and embedding

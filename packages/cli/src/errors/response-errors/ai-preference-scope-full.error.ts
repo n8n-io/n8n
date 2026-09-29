@@ -1,6 +1,6 @@
 import type { AiPreferenceScope } from '@n8n/api-types';
 
-import { BadRequestError } from './bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 /** The per-scope cap refused a preference write. `meta` stays out of the REST body. */
 export class AiPreferenceScopeFullError extends BadRequestError {

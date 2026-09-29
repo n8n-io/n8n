@@ -1,8 +1,7 @@
 import { AddDataTableColumnDto, updateDataTableColumnSchema } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
@@ -23,23 +22,12 @@ const handleError = (error: unknown) => {
 };
 
 type DataTableColumnsHandlers = {
-	listDataTableColumns: PublicAPIEndpoint<DataTableRequest.ListColumns>;
 	createDataTableColumn: PublicAPIEndpoint<DataTableRequest.CreateColumn>;
 	deleteDataTableColumn: PublicAPIEndpoint<DataTableRequest.DeleteColumn>;
 	updateDataTableColumn: PublicAPIEndpoint<DataTableRequest.UpdateColumn>;
 };
 
 const dataTableColumnsHandlers: DataTableColumnsHandlers = {
-	listDataTableColumns: [
-		publicApiScope('dataTableColumn:read'),
-		projectScope('dataTable:readColumn', 'dataTable'),
-		async (req, res) => {
-			const { dataTableId } = req.params;
-			const projectId = await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
-			return res.json(await Container.get(DataTableService).getColumns(dataTableId, projectId));
-		},
-	],
-
 	createDataTableColumn: [
 		publicApiScope('dataTableColumn:create'),
 		projectScope('dataTable:writeColumn', 'dataTable'),

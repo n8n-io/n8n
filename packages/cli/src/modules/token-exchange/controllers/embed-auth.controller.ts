@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { TokenExchangeService } from '../services/token-exchange.service';

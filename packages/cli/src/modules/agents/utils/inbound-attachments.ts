@@ -1,4 +1,4 @@
-import type { AgentMessage, Message } from '@n8n/agents';
+import type { Message } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
 
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
@@ -51,7 +51,7 @@ export async function resolveInboundMimeType(
 export function buildInboundUserMessage(
 	text: string,
 	attachments: StoredAttachmentRef[],
-): AgentMessage[] {
+): [Message] {
 	const content: Message['content'] = [];
 	if (text) {
 		content.push({ type: 'text', text });
