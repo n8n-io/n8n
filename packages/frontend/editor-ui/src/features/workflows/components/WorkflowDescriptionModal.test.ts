@@ -194,6 +194,7 @@ describe('WorkflowDescriptionModal', () => {
 				workflow_id: 'test-workflow-id',
 				description: 'New description',
 			});
+			await vi.waitFor(() => expect(modalBusEmit).toHaveBeenCalledWith('close'));
 		});
 
 		it('should save empty string when description is cleared', async () => {
