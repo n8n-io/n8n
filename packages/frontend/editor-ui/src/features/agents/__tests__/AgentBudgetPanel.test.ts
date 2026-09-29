@@ -72,6 +72,13 @@ describe('AgentBudgetPanel', () => {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 			},
+			global: {
+				stubs: {
+					I18nT: {
+						template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+					},
+				},
+			},
 		});
 		await flushPromises();
 

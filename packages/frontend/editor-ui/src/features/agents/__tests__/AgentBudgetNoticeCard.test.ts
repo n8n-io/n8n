@@ -71,11 +71,12 @@ describe('AgentBudgetNoticeCard', () => {
 		expect(wrapper.emitted('increase')).toBeUndefined();
 	});
 
-	it('emits the new amount from Increase cap', async () => {
+	it('emits the new amount from Increase cap and hides the card', async () => {
 		const wrapper = mountCard('budget.session');
 		wrapper.getComponent({ name: 'N8nInputNumber' }).vm.$emit('update:modelValue', 12);
 		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
 		expect(wrapper.emitted('increase')?.[0]).toEqual([{ field: 'sessionCostCapUsd', amount: 12 }]);
+		expect(wrapper.find('[data-testid="agent-budget-notice-card"]').exists()).toBe(false);
 	});
 
 	it('does not emit when the amount is empty', async () => {

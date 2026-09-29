@@ -500,6 +500,12 @@ watch(
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.finalMessage?.budgetNotices ?? []"
+						:key="notice.id"
+						:code="notice.code"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"

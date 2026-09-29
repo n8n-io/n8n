@@ -8301,7 +8301,7 @@
 	"agents.builder.budget.usage.spent": "{spent} of {budget} used",
 	"agents.builder.budget.usage.none": "No monthly budget",
 	"agents.builder.budget.usage.unavailable": "Usage unavailable",
-	"agents.builder.budget.usage.estimate": "This figure is an estimate. It covers this process only.",
+	"agents.builder.budget.usage.estimate": "This figure is an estimate. It covers this agent's executions only.",
 	"agents.builder.budget.monthly.label": "Monthly budget",
 	"agents.builder.budget.monthly.hint": "Maximum this agent can spend across all sessions each month.",
 	"agents.builder.budget.monthly.value": "{amount}/month",

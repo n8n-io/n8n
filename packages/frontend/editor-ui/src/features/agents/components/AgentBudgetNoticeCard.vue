@@ -43,6 +43,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const dismissed = ref(false);
+const raised = ref(false);
 const amount = ref<number | undefined>();
 
 const copy = computed(() => COPY[props.code]);
@@ -57,12 +58,13 @@ function onAmount(value: number | null | undefined) {
 function increase() {
 	const value = amount.value;
 	if (value === undefined) return;
+	raised.value = true;
 	emit('increase', { field: field.value, amount: value });
 }
 </script>
 
 <template>
-	<N8nCard :class="$style.card" data-testid="agent-budget-notice-card">
+	<N8nCard v-if="!raised" :class="$style.card" data-testid="agent-budget-notice-card">
 		<div :class="$style.body">
 			<N8nText tag="p" bold :class="$style.title" data-testid="agent-budget-notice-title">
 				{{ i18n.baseText(copy.title) }}

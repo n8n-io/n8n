@@ -198,7 +198,7 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
 		props: ['messages'],
-		emits: ['send-to-assistant'],
+		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
 
@@ -1449,6 +1449,53 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	it('blocks sending while a budget stop card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(false);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await nextTick();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('still allows sending when only the budget alert card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: 'still going',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.alert' }],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'continue');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];

@@ -1215,6 +1215,66 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.isStreaming.value).toBe(false);
 	});
 
+	it('keeps the budget stop card after history replaces the transcript', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.content).toBe('partial');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('keeps a budget stop card when the stop persisted no assistant text', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.monthly');
+	});
+
 	it('attaches a budget stop card on a guardrail finish chunk', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'partial' },

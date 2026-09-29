@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -112,17 +113,20 @@ const sessionValue = computed(() => {
 				</N8nText>
 				<template v-else-if="spendState === 'ready' && spentUsd !== undefined">
 					<div :class="$style.usageLine">
-						<N8nText size="small">
-							{{
-								i18n.baseText('agents.builder.budget.usage.spent', {
-									interpolate: {
-										spent: formatBudgetUsd(spentUsd),
-										budget: formatBudgetUsd(monthlyBudget),
-									},
-								})
-							}}
-						</N8nText>
-						<N8nText size="small">{{ usagePercent }}%</N8nText>
+						<I18nT
+							keypath="agents.builder.budget.usage.spent"
+							scope="global"
+							tag="span"
+							:class="$style.spent"
+						>
+							<template #spent>
+								<span :class="$style.amount">{{ formatBudgetUsd(spentUsd) }}</span>
+							</template>
+							<template #budget>
+								<span :class="$style.amount">{{ formatBudgetUsd(monthlyBudget) }}</span>
+							</template>
+						</I18nT>
+						<N8nText size="small" color="text-light">{{ usagePercent }}%</N8nText>
 					</div>
 					<div
 						:class="$style.track"
@@ -221,16 +225,30 @@ const sessionValue = computed(() => {
 	align-content: space-between;
 }
 
-.usageLine,
-.rowValue {
+.spent {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+}
+
+.amount {
+	color: var(--text-color);
+	font-weight: var(--font-weight--bold);
+}
+
+.usageLine {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	width: 100%;
 	gap: var(--spacing--xs);
 }
 
 .rowValue {
+	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
+	gap: var(--spacing--xs);
 }
 
 .track {

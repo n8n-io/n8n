@@ -225,7 +225,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
-				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+				messages.value = restoreBudgetNotices(
+					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
+					messages.value,
+				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -550,6 +553,51 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const notices = msg.budgetNotices ?? [];
 		if (notices.some((notice) => notice.code === code)) return;
 		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+	}
+
+	/**
+	 * Budget cards are live-stream only. The history read that follows `done`
+	 * replaces the transcript, so copy the notices onto the persisted turn.
+	 * A stop before any assistant text has no persisted message to land on.
+	 */
+	function restoreBudgetNotices(next: ChatMessage[], previous: ChatMessage[]): ChatMessage[] {
+		const pending = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
+		for (const message of previous) {
+			if (!message.budgetNotices?.length) continue;
+			const key = message.executionId ?? message.id;
+			const notices = pending.get(key) ?? [];
+			for (const notice of message.budgetNotices) {
+				if (!notices.some((item) => item.code === notice.code)) notices.push(notice);
+			}
+			pending.set(key, notices);
+		}
+		if (pending.size === 0) return next;
+
+		const restored = next.map((message) => ({ ...message }));
+		for (let index = restored.length - 1; index >= 0; index--) {
+			const message = restored[index];
+			if (message.role !== 'assistant' || message.executionId === undefined) continue;
+			const notices = pending.get(message.executionId);
+			if (!notices) continue;
+			message.budgetNotices = notices;
+			pending.delete(message.executionId);
+		}
+
+		for (const [key, notices] of pending) {
+			const source = previous.find(
+				(message) => (message.executionId ?? message.id) === key && message.budgetNotices?.length,
+			);
+			if (!source) continue;
+			const anchor =
+				source.executionId === undefined
+					? -1
+					: restored.findLastIndex((message) => message.executionId === source.executionId);
+			restored.splice(anchor === -1 ? restored.length : anchor + 1, 0, {
+				...source,
+				budgetNotices: notices,
+			});
+		}
+		return restored;
 	}
 
 	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
