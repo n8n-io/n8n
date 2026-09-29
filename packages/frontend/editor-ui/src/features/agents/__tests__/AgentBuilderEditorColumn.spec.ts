@@ -113,6 +113,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentBudgetPanel.vue', () => ({
+	default: {
+		name: 'AgentBudgetPanel',
+		template: '<div data-testid="agent-budget-panel-stub" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
+	},
+}));
+
 vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	default: {
 		name: 'AgentSubAgentsPanel',
