@@ -117,8 +117,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(container.querySelector('a[href="https://example.com"]')).toBeInTheDocument();
 	});
 
-	it('collapses a long answer behind a toggle, capped at 500px', async () => {
-		vi.spyOn(HTMLDivElement.prototype, 'scrollHeight', 'get').mockReturnValue(800);
+	it('renders the answer inside a fixed-height scrollable container regardless of length', async () => {
 		const store = useAgentEvalsStore();
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
@@ -129,39 +128,13 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
 		vi.spyOn(store, 'getReview').mockReturnValue({
 			run: { status: 'completed' } as never,
-			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
-			resultsCount: 1,
-			ratingsByResultId: {},
-			pendingByResultId: {},
-			draftsByResultId: {},
-			counts: null,
-			loading: false,
-			loadingMore: false,
-		});
-		const user = userEvent.setup();
-
-		const { findByTestId, getByText } = renderComponent();
-
-		const toggle = await findByTestId('instance-ai-test-agent-preview-toggle-answer');
-		expect(getByText('Show more')).toBeInTheDocument();
-
-		await user.click(toggle);
-
-		expect(getByText('Show less')).toBeInTheDocument();
-	});
-
-	it('shows no toggle for an answer that fits within the cap', async () => {
-		const store = useAgentEvalsStore();
-		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
-			datasetId: 'dataset-1',
-			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
-		});
-		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
-		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
-		vi.spyOn(store, 'getReview').mockReturnValue({
-			run: { status: 'completed' } as never,
-			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			results: [
+				{
+					status: 'success',
+					input: { input: 'x' },
+					output: { finalText: 'a very long answer that would otherwise grow the card' },
+				} as never,
+			],
 			resultsCount: 1,
 			ratingsByResultId: {},
 			pendingByResultId: {},
@@ -171,10 +144,10 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			loadingMore: false,
 		});
 
-		const { findByText, queryByTestId } = renderComponent();
+		const { findByText, container } = renderComponent();
 
-		await findByText('y');
-		expect(queryByTestId('instance-ai-test-agent-preview-toggle-answer')).not.toBeInTheDocument();
+		await findByText(/very long answer/);
+		expect(container.querySelector('[class*="answerContent"]')).toBeInTheDocument();
 	});
 
 	it('emits dismiss when "Needs work" is clicked', async () => {
