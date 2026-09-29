@@ -148,7 +148,6 @@ function maximise() {
 	right: var(--n8n-agent-setup-task-list--padding);
 	display: flex;
 	flex-direction: column;
-	aspect-ratio: 4/3;
 	transform: translateY(0);
 	transition: transform var(--duration--snappy) var(--easing--ease-out);
 
@@ -196,7 +195,7 @@ function maximise() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	padding-block-start: calc(var(--n8n-agent-setup-task-list--padding) / 1.25);
+	padding-block: calc(var(--n8n-agent-setup-task-list--padding) / 1.25);
 	padding-inline: var(--n8n-agent-setup-task-list--padding);
 
 	@include mixins.hoverable-scroll-bar;
