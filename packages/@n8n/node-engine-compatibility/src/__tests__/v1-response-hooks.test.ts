@@ -146,6 +146,20 @@ describe('attachResponseHooks', () => {
 		});
 	});
 
+	it.each(['none', 'runEnd', 'stream'] as const)(
+		'registers no response handler when the caller expects %s',
+		async (kind) => {
+			const { request, respond } = newRequest({ kind });
+			const additionalData = newAdditionalData();
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [{ body: { ok: true } }]);
+
+			expect(additionalData.hooks?.handlers.sendResponse).toHaveLength(0);
+			expect(respond.send).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each(['none', 'runEnd', 'stepResponse'] as const)(
 		'leaves streaming off when the caller expects %s',
 		(kind) => {

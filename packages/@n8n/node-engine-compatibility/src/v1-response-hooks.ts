@@ -40,19 +40,19 @@ export function attachResponseHooks(
 		stubWorkflow(context.workflowId),
 	);
 
-	additionalData.hooks.addHandler('sendResponse', (response) => {
-		// The payload is built only if the caller expects it.
-		const result = respond.send(() => toJsonPayload(response));
-		if (!result.ok) {
-			// Fail the node so the caller can see the response error.
-			throw result.error;
-		}
-	});
+	const { kind } = context.responseExpectation;
 
-	// Only when the caller expects a stream. `isStreaming()` reads both this
-	// flag and the handler, and a node that streams never calls `sendResponse`,
-	// so setting it unconditionally would break the `responseNode` mode.
-	if (context.responseExpectation.kind === 'stream') {
+	if (kind === 'stepResponse') {
+		additionalData.hooks.addHandler('sendResponse', (response) => {
+			const result = respond.send(() => toJsonPayload(response));
+			if (!result.ok) {
+				// Fail the node so the caller can see the response error.
+				throw result.error;
+			}
+		});
+	}
+
+	if (kind === 'stream') {
 		additionalData.streamingEnabled = true;
 		additionalData.hooks.addHandler('sendChunk', (chunk) => {
 			const result = respond.chunk(() => toJsonPayload(chunk));
