@@ -1,0 +1,42 @@
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_20f4a06721c4ff::t_31ae974b3d0000 4,84-86
+  s_20f4a06721c4ff::t_ac21f51af1f89d 6-8
+  s_20f4a06721c4ff::t_fa3255b4febfa8 77-78,87-95
+  s_20f4a06721c4ff::t_a44ee43d307082 79-83
+packages/cli/src/workflows/restricted-node-types-provider-proxy.service.ts
+  s_20f4a06721c4ff::t_43d3552cfda1de 1,4-9,15-16,27-28
+  s_20f4a06721c4ff::t_4031cf5db00266 2-3,10-14,17-26,29-30
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  ai_agent 4,29-40
+packages/cli/src/modules/type-availability-policies/restricted-node-types.provider.ts
+  s_20f4a06721c4ff::t_d8a9a0cdd953d0 1-2,8-9,14-15,25-37,39,70-71
+  s_20f4a06721c4ff::t_026ea9fed3b26e 3-7,10-13,16-22,38,40-45,68-69
+  s_20f4a06721c4ff::t_793fb3ee801928 23-24,46-67
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository.ts
+  s_20f4a06721c4ff::t_f85859bb017dc4 1,59-96
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_20f4a06721c4ff::t_793fb3ee801928 149-163,340,999-1042
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository.ts
+  s_20f4a06721c4ff::t_026ea9fed3b26e 148,153-158
+  s_20f4a06721c4ff::t_f85859bb017dc4 149-152
+packages/cli/src/modules/type-availability-policies/__tests__/restricted-node-types.provider.test.ts
+  s_20f4a06721c4ff::t_5336cb0115222b 1-12,24-37,39-40,47,50-53,60-66,69-70
+  s_20f4a06721c4ff::t_f8f1ef5c29cbb7 13,15-23,38,41-43,45-46,48,54-59,67-68
+  s_20f4a06721c4ff::t_793fb3ee801928 14,44,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d11991aec4143674d6f4ee910a5bcd052971878",
+  "prompts": {},
+  "sessions": {
+    "s_20f4a06721c4ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f90ca28d-05ac-40f5-bdb1-276d6414762d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
