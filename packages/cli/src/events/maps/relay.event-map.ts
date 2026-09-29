@@ -29,6 +29,7 @@ import type {
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
@@ -639,6 +640,25 @@ export type RelayEventMap = {
 		reason: CancellationReason;
 	};
 
+<<<<<<< HEAD
+=======
+	'execution-crashed': {
+		executionId: string;
+		workflowId: string;
+		workflowName?: string;
+		mode: WorkflowExecuteMode;
+		startedAt?: Date;
+		stoppedAt: Date;
+		detector: CrashDetector;
+		hostId: string;
+		tracingContext?: TracingContext;
+		workflowVersionId?: string;
+		retryOf?: string;
+		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
+	};
+
+>>>>>>> dfd7a522 (fix(API): Return an execution when its stored trace context is incomplete (#39715))
 	'execution-deleted': {
 		user: UserLike;
 		executionIds: string[];
