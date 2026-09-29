@@ -58,7 +58,7 @@ security/                                               @n8n-io/qa-dx
 OWNERS                                                  @n8n-io/qa-dx required
 
 # @n8n/cli
-packages/@n8n/cli/                                      core-experience
+packages/@n8n/cli/                                      @n8n-io/adore
 packages/@n8n/cli/src/commands/credential/              @n8n-io/iam
 packages/@n8n/cli/src/commands/user/                    @n8n-io/iam
 packages/@n8n/cli/src/commands/data-table/              @n8n-io/adore
@@ -198,12 +198,12 @@ packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 
 # AI
 
-packages/@n8n/instance-ai/                              ai
-packages/@n8n/nodes-langchain/                          ai
+packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/                          @n8n-io/ai
 packages/@n8n/ai-utilities/                             @n8n-io/ai
 packages/@n8n/ai-node-sdk/                              @n8n-io/ai
 packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai
-packages/@n8n/agents/                                   ai
+packages/@n8n/agents/                                   @n8n-io/ai
 packages/frontend/@n8n/chat/                            @n8n-io/ai
 
 # Chat
