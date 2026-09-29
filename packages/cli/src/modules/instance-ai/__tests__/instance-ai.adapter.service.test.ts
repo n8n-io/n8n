@@ -66,6 +66,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -6992,7 +6993,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+		[INSTANCE_AI_NODE_USAGE_FLAG]: INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
@@ -7020,17 +7021,19 @@ describe('resolveExperimentGates', () => {
 	});
 
 	it.each([true, false])(
-		'returns instance activity %s for users with different user flags',
+		'returns instance activity %s with independent node-usage and folder assignments',
 		async (instanceFlag) => {
 			const getFeatureFlags = stubContainer({}, instanceFlag);
 			getFeatureFlags
 				.mockResolvedValueOnce({
 					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
-					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
+					[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 				})
 				.mockResolvedValueOnce({
 					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
-					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: 'control',
+					[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 				});
 			const adapter = createAdapter();
 
@@ -7043,6 +7046,8 @@ describe('resolveExperimentGates', () => {
 			expect(second.instanceContextEnabled).toBe(instanceFlag);
 			expect(first.nodeUsageEnabled).toBe(true);
 			expect(second.nodeUsageEnabled).toBe(false);
+			expect(first.folderExplorationEnabled).toBe(false);
+			expect(second.folderExplorationEnabled).toBe(true);
 			expect(getFeatureFlagForInstance.mock.calls).toEqual([
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
@@ -7089,7 +7094,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
-			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+			[INSTANCE_AI_NODE_USAGE_FLAG]: 'control',
 			[CANVAS_NODE_CONTEXT_FLAG]: false,
 			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
