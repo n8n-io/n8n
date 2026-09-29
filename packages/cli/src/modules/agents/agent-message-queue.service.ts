@@ -177,6 +177,12 @@ export class AgentMessageQueueService {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
 				.filter((item) => item.payload.kind === 'preview')
+				// Show the next inputs first. Keep unreserved messages in their original FIFO order.
+				.sort(
+					(a, b) =>
+						(a.steeringOrder ?? Number.MAX_SAFE_INTEGER) -
+						(b.steeringOrder ?? Number.MAX_SAFE_INTEGER),
+				)
 				.map((item) => ({
 					id: item.id,
 					...readInboundUserMessage(item.message.content),

@@ -1307,6 +1307,11 @@ describe('AgentExecutionRepository', () => {
 			const c = await enqueue(local, data);
 			const original = await local.messageRepository.findOneByOrFail({ id: c.messageId });
 			const d = await enqueue(local, input(threadId, 'D'));
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				b.id,
+				c.id,
+				d.id,
+			]);
 			await local.queue.steer({ ...target, queueId: d.id, executionId });
 			const concurrent = await Promise.allSettled([
 				local.queue.steer({ ...target, queueId: c.id, executionId }),
@@ -1322,9 +1327,9 @@ describe('AgentExecutionRepository', () => {
 				remote.queue.updatePending({ ...target, queueId: c.id, message: 'changed' }),
 			).rejects.toThrow();
 			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
-				b.id,
-				c.id,
 				d.id,
+				c.id,
+				b.id,
 			]);
 			expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
 			const recorder = local.turns.createRecorder(undefined, () => executionId, target);
@@ -1486,6 +1491,10 @@ describe('AgentExecutionRepository', () => {
 				const b = await enqueue(local, input(threadId, 'B'));
 				const c = await enqueue(local, input(threadId, 'C'));
 				await remote.queue.steer({ ...target, queueId: c.id, executionId });
+				expect((await local.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+					c.id,
+					b.id,
+				]);
 				if (reason === 'stop') await remote.steering.close(threadId, executionId);
 				if (reason === 'limit') {
 					await local.steering.consume(
@@ -1529,6 +1538,12 @@ describe('AgentExecutionRepository', () => {
 					await finish(local, active, 'error');
 				} else {
 					await finish(local, active);
+				}
+				if (reason !== 'restart') {
+					expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+						b.id,
+						c.id,
+					]);
 				}
 				const next = await remote.queue.claimNext(threadId, async () => true);
 				expect(
