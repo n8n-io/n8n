@@ -472,19 +472,15 @@ describe('union types', () => {
 });
 
 describe('mcp server schema regression', () => {
-	it('renders authentication and discriminated unions with descriptions', () => {
+	it('renders authentication and tool permissions', () => {
 		const schema = zodSchemaToJsonSchema(McpServerConfigSchema);
 		const output = jsonSchemaToCompactText(schema);
 
 		expect(output).toContain(
 			'authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: ^(?:oAuth2Api|.*OAuth2(?:Api)?)$] (default: "none") — Auth method. Named variants or an OAuth2 credential type returned by the registry',
 		);
-		expect(output).toContain(
-			'toolFilter?: one of <discriminated by "mode"> — Restricts which tools are surfaced. Tools matched by original un-prefixed name',
-		);
-		expect(output).toContain(
-			'approval?: one of <discriminated by "mode"> — Human-in-the-loop approval. Absent = no approval required',
-		);
+		expect(output).toContain('toolPermissions?: object');
+		expect(output).toContain('read: "always_allow" | "require_approval" | "blocked" (required)');
 		expect(output).not.toContain('authentication?: one of <discriminated by "type">');
 		expect(output).not.toContain('| ?: {  }');
 	});
