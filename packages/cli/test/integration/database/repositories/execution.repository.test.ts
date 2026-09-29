@@ -4,8 +4,6 @@ import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 
-import type { TracingContext } from '@/modules/otel/tracing-context';
-
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
 		await testDb.init();
@@ -188,23 +186,8 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('markAsCrashed', () => {
-<<<<<<< HEAD
 		const createExecution = async (status: ExecutionStatus, extra: { waitTill?: Date } = {}) => {
 			const workflow = await createWorkflow();
-=======
-		const createExecution = async (
-			status: ExecutionStatus,
-			extra: {
-				waitTill?: Date;
-				tracingContext?: TracingContext;
-				workflowVersionId?: string;
-				retryOf?: string;
-			} = {},
-			existingWorkflow?: WorkflowEntity,
-		) => {
-			const workflow = existingWorkflow ?? (await createWorkflow());
-			const startedAt = new Date();
->>>>>>> dfd7a522 (fix(API): Return an execution when its stored trace context is incomplete (#39715))
 			const { identifiers } = await Container.get(ExecutionRepository).insert({
 				workflowId: workflow.id,
 				mode: 'manual',
