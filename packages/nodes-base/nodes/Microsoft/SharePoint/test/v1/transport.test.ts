@@ -3,8 +3,8 @@ import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { credentials } from './credentials';
-import { microsoftSharePointApiRequest } from '../v1/transport';
+import { credentials } from '../credentials';
+import { microsoftSharePointApiRequest } from '../../v1/transport';
 
 describe('Microsoft SharePoint Node', () => {
 	describe('Transport', () => {
