@@ -35,6 +35,7 @@ export function createTestLogTreeCreationContext(
 		isSubExecution: false,
 		nodeGroups,
 		subWorkflowNodeGroups: {},
+		liveSubExecutions: {},
 	};
 }
 

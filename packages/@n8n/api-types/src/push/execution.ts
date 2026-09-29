@@ -7,6 +7,16 @@ import type {
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
+/**
+ * The node run that started a sub-workflow execution, so the editor can bind the
+ * sub-execution's live events to it. `runIndex` distinguishes loop iterations.
+ */
+export type SubExecutionParent = {
+	executionId: string;
+	nodeName: string;
+	runIndex: number;
+};
+
 export type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
@@ -22,6 +32,8 @@ export type ExecutionStarted = {
 		workflowName?: string;
 		retryOf?: string;
 		flattedRunData: string;
+		/** Set only when this execution is a sub-workflow of another one. */
+		parent?: SubExecutionParent;
 	};
 };
 
