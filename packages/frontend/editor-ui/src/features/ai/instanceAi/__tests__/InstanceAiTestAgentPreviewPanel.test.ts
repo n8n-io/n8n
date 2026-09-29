@@ -94,7 +94,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
 		vi.spyOn(store, 'getReview').mockReturnValue({
 			run: { status: 'completed' } as never,
-			results: [{ input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
 			resultsCount: 1,
 			ratingsByResultId: {},
 			pendingByResultId: {},
@@ -136,7 +136,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
 		vi.spyOn(store, 'getReview').mockReturnValue({
 			run: { status: 'completed' } as never,
-			results: [{ input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
 			resultsCount: 1,
 			ratingsByResultId: {},
 			pendingByResultId: {},
@@ -212,7 +212,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
 		vi.spyOn(store, 'getReview').mockReturnValue({
 			run: { status: 'completed' } as never,
-			results: [{ input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
 			resultsCount: 1,
 			ratingsByResultId: {},
 			pendingByResultId: {},
@@ -236,6 +236,95 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await fireEvent.click(button);
 
 		expect(store.generateDraftCases).toHaveBeenCalledTimes(2); // 1 preview + 1 suite, not 3
+	});
+
+	it('does not confirm on an empty review before the run has loaded', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		// `isRunInFlight` reads a run that was never loaded, so it is not
+		// "pending" either — the empty review itself (`run: null`) is the only
+		// signal that nothing has loaded yet.
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: null,
+			results: [],
+			resultsCount: 0,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(store.openRun).toHaveBeenCalled());
+		expect(getByTestId('instance-ai-test-agent-preview-generating')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-test-agent-preview-looks-good')).not.toBeInTheDocument();
+	});
+
+	it('dismisses when the preview case settles without succeeding', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: { status: 'completed' } as never,
+			results: [{ status: 'error', input: { input: 'x' }, output: null } as never],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		const { emitted } = renderComponent();
+
+		await waitFor(() => expect(emitted().dismiss).toEqual([[]]));
+	});
+
+	it('does not resume generation after the panel unmounts mid-flight', async () => {
+		const store = useAgentEvalsStore();
+		let resolveGenerate!: (value: {
+			datasetId: string;
+			dataTableId: string;
+			cases: Array<{ input: string; whatToCheck: string }>;
+		}) => void;
+		vi.spyOn(store, 'generateDraftCases').mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveGenerate = resolve;
+				}),
+		);
+		const startRun = vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+
+		const { unmount } = renderComponent();
+		await waitFor(() => expect(store.generateDraftCases).toHaveBeenCalled());
+
+		unmount();
+		resolveGenerate({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(startRun).not.toHaveBeenCalled();
 	});
 
 	it('stops polling when unmounted mid-generation', async () => {

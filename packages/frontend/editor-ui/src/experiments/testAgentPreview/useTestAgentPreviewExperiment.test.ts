@@ -1,18 +1,39 @@
-import { createPinia, setActivePinia } from 'pinia';
-import { INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+import {
+	EXPERIMENTS_TO_TRACK,
+	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT,
+} from '@/app/constants/experiments';
+
 import { useTestAgentPreviewExperiment } from './useTestAgentPreviewExperiment';
 
-describe('useTestAgentPreviewExperiment', () => {
-	beforeEach(() => setActivePinia(createPinia()));
+const getVariant = vi.fn();
 
-	it.each([true, false, undefined, 'true', 'variant'])(
-		'enables only boolean true (%s)',
-		(value) => {
-			const posthog = usePostHog();
-			posthog.overrides =
-				value === undefined ? {} : { [INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name]: { value } };
-			expect(useTestAgentPreviewExperiment().isFeatureEnabled.value).toBe(value === true);
-		},
-	);
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		getVariant,
+	})),
+}));
+
+describe('useTestAgentPreviewExperiment', () => {
+	beforeEach(() => {
+		getVariant.mockReset();
+	});
+
+	it.each([
+		{ variant: INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.variant, enabled: true },
+		{ variant: INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.control, enabled: false },
+		{ variant: undefined, enabled: false },
+	])('returns $enabled when PostHog variant is $variant', ({ variant, enabled }) => {
+		getVariant.mockReturnValue(variant);
+
+		const { isFeatureEnabled } = useTestAgentPreviewExperiment();
+
+		expect(isFeatureEnabled.value).toBe(enabled);
+		expect(getVariant).toHaveBeenCalledWith(INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name);
+	});
+
+	it('registers the experiment for centralized enrollment tracking', () => {
+		expect(EXPERIMENTS_TO_TRACK).toContain(INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name);
+	});
 });

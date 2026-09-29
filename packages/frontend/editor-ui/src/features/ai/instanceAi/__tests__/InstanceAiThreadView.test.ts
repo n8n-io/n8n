@@ -2451,8 +2451,10 @@ describe('InstanceAiThreadView', () => {
 		}
 
 		function seedPreviewVariant() {
-			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
-				(flag) => flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name,
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name
+					? INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.variant
+					: undefined,
 			);
 			const evalsStore = mockedStore(useAgentEvalsStore);
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
@@ -2466,7 +2468,11 @@ describe('InstanceAiThreadView', () => {
 			evalsStore.getReview.mockReturnValue({
 				run: { status: 'completed' } as never,
 				results: [
-					{ input: { input: 'Summarize the thread' }, output: { finalText: 'Done.' } } as never,
+					{
+						status: 'success',
+						input: { input: 'Summarize the thread' },
+						output: { finalText: 'Done.' },
+					} as never,
 				],
 				resultsCount: 1,
 				ratingsByResultId: {},
@@ -2487,6 +2493,20 @@ describe('InstanceAiThreadView', () => {
 
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+		});
+
+		it('persists the dismissal on "Needs work" without requesting the evals focus', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
+
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+				dismissedContextKeys: ['test-agent:agent-1'],
+			});
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
 		it('persists the dismissal on "Looks good" without requesting the evals focus yet', async () => {

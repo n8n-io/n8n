@@ -42,7 +42,14 @@ const previewResult = computed(() =>
 const previewInput = computed(() => readCaseRequest(previewResult.value?.input));
 const previewOutput = computed(() => readAgentAnswer(previewResult.value?.output ?? null));
 
+// Not reactive by design — nothing templates off it. It only guards async
+// continuations against acting after the panel is gone, since the store's
+// poll timer is a single global watcher: a stale continuation calling
+// `startPollingRun` would cancel whatever the next thread's panel just started.
+let isMounted = true;
+
 function failAndDismiss(error: unknown) {
+	if (!isMounted) return;
 	toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
 	emit('dismiss');
 }
@@ -51,9 +58,12 @@ async function generatePreviewCase() {
 	try {
 		const { projectId, agentId } = props.target;
 		const result = await store.generateDraftCases(projectId, agentId, { count: 1 });
+		if (!isMounted) return;
 		const run = await store.startRun(projectId, agentId, result.datasetId);
+		if (!isMounted) return;
 		previewRunId.value = run.id;
 		await store.openRun(projectId, agentId, run.id);
+		if (!isMounted) return;
 		if (store.isRunInFlight(run.id)) {
 			store.startPollingRun(projectId, agentId, run.id);
 		}
@@ -67,19 +77,33 @@ async function generatePreviewCase() {
 // reactive state — same pattern `AgentEvalResultsPanel` uses.
 function checkPreviewSettled() {
 	if (phase.value !== 'generating-preview') return;
-	if (previewRunId.value && store.hasLostTrackOfRun(previewRunId.value)) {
+	if (!previewRunId.value) return;
+	if (store.hasLostTrackOfRun(previewRunId.value)) {
 		failAndDismiss(new Error('Lost track of the preview run'));
 		return;
 	}
-	if (previewRunId.value && !isPreviewInFlight.value) {
-		phase.value = 'awaiting-confirmation';
+	// `getReview` returns an empty review (`run: null`) before `openRun` has
+	// loaded anything — that empty state is not "in flight" either, so without
+	// this check the watcher would confirm on a preview that never loaded.
+	const review = store.getReview(previewRunId.value);
+	if (!review.run) return;
+	if (isPreviewInFlight.value) return;
+	// A settled run can still fail — an error/cancelled case has no answer to
+	// confirm, so it gets the same treatment as losing track of the run.
+	if (review.results[0]?.status !== 'success') {
+		failAndDismiss(new Error('Preview run did not complete successfully'));
+		return;
 	}
+	phase.value = 'awaiting-confirmation';
 }
 
 watchEffect(checkPreviewSettled);
 
 onMounted(generatePreviewCase);
-onBeforeUnmount(() => store.stopPollingRun());
+onBeforeUnmount(() => {
+	isMounted = false;
+	store.stopPollingRun();
+});
 
 /**
  * Intentionally a no-op today. Wiring this to `store.startRun(projectId,
@@ -102,6 +126,7 @@ async function onConfirm() {
 		// Explicit `{}` (rather than omitting the argument) so call-site assertions
 		// in tests can match on a stable arity.
 		const result = await store.generateDraftCases(projectId, agentId, {});
+		if (!isMounted) return;
 		suiteCaseCount.value = result.cases.length;
 		maybeAutoRunGeneratedCases(projectId, agentId, result.datasetId);
 		phase.value = 'suite-ready';
