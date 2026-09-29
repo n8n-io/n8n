@@ -163,36 +163,22 @@ describe('ExecutionsView', () => {
 			mockedStore(useExecutionsStore).initialize.mockResolvedValue();
 		});
 
-		async function renderAndSelectError() {
-			const { getByTestId, unmount } = renderComponent();
+		it('keeps separate filters for Overview and projects after navigating away and back', async () => {
+			const overview = renderComponent();
 			await waitAllPromises();
-			await fireEvent.click(getByTestId('filter-error-stub'));
-			unmount();
-		}
-
-		it('keeps the filters after navigating away and back', async () => {
-			await renderAndSelectError();
-
-			const { getByTestId } = renderComponent();
-			await waitAllPromises();
-
-			expect(getByTestId('filter-status-stub')).toHaveTextContent('error');
-		});
-
-		it('keeps separate filters for each project', async () => {
-			route.params.projectId = 'project-1';
-			await renderAndSelectError();
-
-			route.params.projectId = 'project-2';
-			const otherProject = renderComponent();
-			await waitAllPromises();
-			expect(otherProject.getByTestId('filter-status-stub')).toHaveTextContent('all');
-			otherProject.unmount();
+			await fireEvent.click(overview.getByTestId('filter-error-stub'));
+			overview.unmount();
 
 			route.params.projectId = 'project-1';
-			const sameProject = renderComponent();
+			const project = renderComponent();
 			await waitAllPromises();
-			expect(sameProject.getByTestId('filter-status-stub')).toHaveTextContent('error');
+			expect(project.getByTestId('filter-status-stub')).toHaveTextContent('all');
+			project.unmount();
+
+			route.params = {};
+			const overviewAgain = renderComponent();
+			await waitAllPromises();
+			expect(overviewAgain.getByTestId('filter-status-stub')).toHaveTextContent('error');
 		});
 
 		it('loads the filters of the new project when only the project changes', async () => {
