@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e5a64625bc5cd1::t_89cb7af94c9190 301-302,325
+  s_e5a64625bc5cd1::t_6b7cddab515ea9 299-300,303-324,326-365,1552,1557-1589
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_e5a64625bc5cd1::t_fc2b7cf7b18a39 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "343504eb7d6a29bf3ff7c1f942eced31030a6981",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
