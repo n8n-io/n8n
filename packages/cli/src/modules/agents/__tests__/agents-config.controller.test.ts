@@ -1,13 +1,15 @@
+import { budgetMonthKey } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsConfigController } from '../agents-config.controller';
+import type { AgentSpendLedger } from '../budget-guardrail';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -23,6 +25,7 @@ describe('AgentsConfigController route access scopes', () => {
 		['putConfig', 'agent:update'],
 		['deleteTool', 'agent:update'],
 		['getValidation', 'agent:read'],
+		['getBudget', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -40,6 +43,7 @@ describe('AgentsConfigController getValidation', () => {
 			mock<CredentialsService>(),
 			agentRepository,
 			mock<CollaborationService>(),
+			mock<AgentSpendLedger>(),
 		);
 
 		await expect(
@@ -50,5 +54,30 @@ describe('AgentsConfigController getValidation', () => {
 		).rejects.toThrow('Agent not found');
 		expect(agentValidationService.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentsConfigController getBudget', () => {
+	it('returns the ledger total for the current month key', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: 'agent-1' } as never);
+		const agentSpendLedger = mock<AgentSpendLedger>();
+		agentSpendLedger.ledger.read.mockResolvedValue(12.5);
+		const controller = new AgentsConfigController(
+			mock<AgentConfigService>(),
+			mock<AgentCustomToolsService>(),
+			mock<AgentValidationService>(),
+			mock<CredentialsService>(),
+			agentRepository,
+			mock<CollaborationService>(),
+			agentSpendLedger,
+		);
+
+		await expect(
+			controller.getBudget({
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+			} as never),
+		).resolves.toEqual({ spentUsd: 12.5 });
+		expect(agentSpendLedger.ledger.read).toHaveBeenCalledWith(budgetMonthKey('agent-1'));
 	});
 });

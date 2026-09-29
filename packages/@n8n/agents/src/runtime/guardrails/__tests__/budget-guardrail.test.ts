@@ -1,5 +1,5 @@
 import type { GuardrailModelCallContext, TokenUsage } from '../../../types';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../budget-guardrail';
+import { budgetMonthKey, createBudgetGuardrail, InMemorySpendLedger } from '../budget-guardrail';
 
 const usage = (cost?: number): TokenUsage => ({
 	promptTokens: 1,
@@ -13,7 +13,7 @@ function ctx(callId: string): GuardrailModelCallContext {
 }
 
 function monthKey(agentId: string): string {
-	return `${agentId}:${new Date().toISOString().slice(0, 7)}`;
+	return budgetMonthKey(agentId);
 }
 
 describe('InMemorySpendLedger', () => {

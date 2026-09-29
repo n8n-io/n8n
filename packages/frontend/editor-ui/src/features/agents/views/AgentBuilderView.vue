@@ -2880,10 +2880,12 @@ useKeybindings({
 					:can-send-to-assistant="instanceAiAvailable"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
+					budget-cards
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
+					@update:config="onConfigFieldUpdate"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -2983,6 +2985,7 @@ useKeybindings({
 						:can-send-to-assistant="instanceAiAvailable"
 						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
+						budget-cards
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
 						@delete-session="onDeletePreviewSession"
@@ -2992,6 +2995,7 @@ useKeybindings({
 						@session-created="markSessionCreated"
 						@send-to-assistant="onSendPreviewToAssistant"
 						@initial-consumed="taskPreviewPrompt = undefined"
+						@update:config="onConfigFieldUpdate"
 					/>
 				</N8nResizeWrapper>
 			</template>

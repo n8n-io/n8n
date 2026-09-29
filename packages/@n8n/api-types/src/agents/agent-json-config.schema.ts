@@ -575,6 +575,11 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
+
+/** In-memory monthly spend for one agent. This process only. */
+export interface AgentBudgetSpend {
+	spentUsd: number;
+}
 export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;

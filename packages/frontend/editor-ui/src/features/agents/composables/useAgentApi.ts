@@ -1,5 +1,6 @@
 import type {
 	AgentApproval,
+	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
@@ -445,6 +446,18 @@ export const listAgentVersions = async (
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/versions`,
 		params,
+	);
+};
+
+export const getAgentBudgetSpend = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentBudgetSpend> => {
+	return await makeRestApiRequest<AgentBudgetSpend>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/budget`,
 	);
 };
 

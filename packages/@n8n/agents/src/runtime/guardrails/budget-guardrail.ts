@@ -59,8 +59,9 @@ const MONTHLY_STOP: GuardrailDecision = { action: 'stop', code: 'budget.monthly'
 const MISCONFIGURED: GuardrailDecision = { action: 'stop', code: 'budget.misconfigured' };
 const ALLOW: GuardrailDecision = { action: 'allow' };
 
-function monthKey(agentId: string): string {
-	return `${agentId}:${new Date().toISOString().slice(0, 7)}`;
+/** UTC month bucket shared by the guardrail and the settings spend read. */
+export function budgetMonthKey(agentId: string, now: Date = new Date()): string {
+	return `${agentId}:${now.toISOString().slice(0, 7)}`;
 }
 
 function hasId(value: string | undefined): value is string {
@@ -96,7 +97,7 @@ export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGua
 				if (spent >= sessionCostCapUsd) return SESSION_STOP;
 			}
 			if (monthlyBudgetUsd !== undefined && hasId(agentId)) {
-				const spent = await ledger.read(monthKey(agentId));
+				const spent = await ledger.read(budgetMonthKey(agentId));
 				if (spent >= monthlyBudgetUsd) return MONTHLY_STOP;
 			}
 			return ALLOW;
@@ -110,7 +111,7 @@ export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGua
 			if (sessionCostCapUsd !== undefined && hasId(sessionId)) {
 				entries.push({ key: sessionId, usd: cost });
 			}
-			const month = hasId(agentId) ? monthKey(agentId) : undefined;
+			const month = hasId(agentId) ? budgetMonthKey(agentId) : undefined;
 			if (monthlyBudgetUsd !== undefined && month !== undefined) {
 				entries.push({ key: month, usd: cost });
 			}

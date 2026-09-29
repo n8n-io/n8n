@@ -26,6 +26,8 @@ export interface BudgetAttachInput {
 	 * budget from `budget` when that guardrail is on.
 	 */
 	useRootSessionCap?: boolean;
+	/** Preview chat shows the approaching card. Nothing else subscribes. */
+	onNotice?: (notice: { code: 'budget.alert' }) => void;
 }
 
 interface ResolvedBudgetLimits {
@@ -68,7 +70,11 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	if (!limits) return options;
 
 	const ledger = input.ledger ?? Container.get(AgentSpendLedger).ledger;
-	const hook = createBudgetGuardrail({ ledger, ...limits });
+	const hook = createBudgetGuardrail({
+		ledger,
+		...limits,
+		...(input.onNotice ? { onNotice: input.onNotice } : {}),
+	});
 	const existing = options.guardrails;
 	return {
 		...options,

@@ -44,6 +44,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
+import { isBudgetStopCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
@@ -70,6 +71,8 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
+	budgetCards?: boolean;
 }
 
 type ResumePayload =
@@ -539,6 +542,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return msg;
 	}
 
+	function attachBudgetNotice(
+		session: StreamSession,
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+	): void {
+		const msg = ensureCurrent(session);
+		const notices = msg.budgetNotices ?? [];
+		if (notices.some((notice) => notice.code === code)) return;
+		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+	}
+
 	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
 		const existing = session.openReasoning.get(id);
 		if (existing) return existing;
@@ -977,6 +990,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'finish': {
+				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
+				const code = event.guardrail?.code;
+				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
+				break;
+			}
+			case 'budget-notice': {
+				if (params.budgetCards) attachBudgetNotice(session, event.code);
+				break;
+			}
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
 				// tools were skipped). The run continues; surfaced as a callout.

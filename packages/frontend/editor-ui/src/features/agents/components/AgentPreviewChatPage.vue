@@ -8,6 +8,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import { increasedBudgetConfig, type BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
 
 const props = withDefaults(
@@ -26,8 +27,15 @@ const props = withDefaults(
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
+		budgetCards?: boolean;
 	}>(),
-	{ visible: true, newSession: false, layout: 'dock', dismissedFixToolCallIds: () => [] },
+	{
+		visible: true,
+		newSession: false,
+		layout: 'dock',
+		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+	},
 );
 
 const emit = defineEmits<{
@@ -36,6 +44,7 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'update:config': [changes: Partial<AgentJsonConfig>];
 }>();
 
 const inputDraft = ref('');
@@ -47,6 +56,11 @@ function focusInput(options?: FocusOptions) {
 
 function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	const update = increasedBudgetConfig(props.localConfig, payload.field, payload.amount);
+	if (update) emit('update:config', update);
 }
 
 watch(
@@ -86,6 +100,8 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:can-send-to-assistant="canSendToAssistant"
 				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
+				:budget-cards="budgetCards"
+				@increase-budget="onIncreaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
