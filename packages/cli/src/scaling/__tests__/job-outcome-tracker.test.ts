@@ -1,10 +1,10 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { EventService } from '@n8n/backend-services';
 import type { ExecutionRepository } from '@n8n/db';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { EventService } from '@/events/event.service';
 
 import { JOB_WAIT_RECHECK_INTERVAL_MS } from '../constants';
 import { JobOutcomeTracker } from '../job-outcome-tracker';

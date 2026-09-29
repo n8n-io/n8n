@@ -181,7 +181,7 @@ describe('ScalingService', () => {
 
 			it('should recheck pending job waits when the Redis connection recovers', async () => {
 				await scalingService.setupQueue();
-				const { RedisClientService } = await import('@/services/redis-client.service.js');
+				const { RedisClientService } = await import('@n8n/backend-services');
 
 				// Completion events sent while the connection was down are lost
 				// The service debounces its emits, so the event lands on the next second
