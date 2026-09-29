@@ -7,16 +7,16 @@ import type {
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
-	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, type FindManyOptions } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -69,7 +69,6 @@ export class WorkflowDependencyQueryService {
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -173,22 +172,34 @@ export class WorkflowDependencyQueryService {
 				maps.allAgentIds.size > 0 ? this.getAccessibleAgentProjectIds(user) : new Set<string>(),
 			]);
 
+		// Only a credential's dependency details need each workflow's owning
+		// project (to link a "used in" workflow back to its project), and only
+		// while the feature that surfaces that link is enabled — so this never
+		// adds work to workflow/data-table dependency lookups or flag-off
+		// instances (e.g. the credentials list's pre-existing "N workflows" pill).
+		const needsWorkflowProject = resourceType === 'credential' && isCredSharingEnabled();
+		const workflowFindOptions: FindManyOptions<WorkflowEntity> = needsWorkflowProject
+			? {
+					where: { id: In([...maps.allWfIds]) },
+					select: { id: true, name: true, shared: { role: true, project: { id: true } } },
+					relations: { shared: { project: true } },
+				}
+			: {
+					where: { id: In([...maps.allWfIds]) },
+					select: ['id', 'name'],
+				};
+
 		// Load all referenced resources (not just accessible ones) so that ids whose
 		// resource has been deleted — the index may still reference them — can be
 		// dropped instead of being reported as inaccessible.
-		const [credentials, workflows, dataTables, agents, workflowOwnerProjects] = await Promise.all([
+		const [credentials, workflows, dataTables, agents] = await Promise.all([
 			maps.allCredIds.size > 0
 				? this.credentialsRepository.find({
 						where: { id: In([...maps.allCredIds]), usageScope: 'project' },
 						select: ['id', 'name'],
 					})
 				: [],
-			maps.allWfIds.size > 0
-				? this.workflowRepository.find({
-						where: { id: In([...maps.allWfIds]) },
-						select: ['id', 'name'],
-					})
-				: [],
+			maps.allWfIds.size > 0 ? this.workflowRepository.find(workflowFindOptions) : [],
 			maps.allDtIds.size > 0
 				? this.dataTableRepository.find({
 						where: { id: In([...maps.allDtIds]) },
@@ -198,7 +209,6 @@ export class WorkflowDependencyQueryService {
 			maps.allAgentIds.size > 0
 				? this.agentUsageProvider.findAgentSummaries([...maps.allAgentIds])
 				: [],
-			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([...maps.allWfIds]),
 		]);
 
 		const accessibleWfIdSet = new Set(accessibleWfIds);
@@ -231,9 +241,10 @@ export class WorkflowDependencyQueryService {
 		for (const w of workflows) {
 			existingWfIds.add(w.id);
 			if (accessibleWfIdSet.has(w.id)) {
+				const ownerShare = w.shared?.find((s) => s.role === 'workflow:owner');
 				wfNames.set(w.id, {
 					name: w.name ?? w.id,
-					projectId: workflowOwnerProjects.get(w.id)?.id,
+					projectId: ownerShare?.project?.id,
 				});
 			}
 		}
