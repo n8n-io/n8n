@@ -552,6 +552,40 @@ function boxesFromSubgraphs(
 	return boundingBoxByNodeId;
 }
 
+/** Top-align AI subtrees when their corrected bounds do not collide with others. */
+function alignAiSubgraphs(
+	subgraphs: readonly LayoutSubgraph[],
+	boundingBoxByNodeId: Record<string, BoundingBox>,
+): void {
+	subgraphs
+		.flatMap(({ aiGraphs }) => aiGraphs)
+		.forEach(({ graph }) => {
+			const aiNodes = graph.nodes();
+			const boxes = aiNodes
+				.map((id) => boundingBoxByNodeId[id])
+				.filter((b): b is BoundingBox => b !== undefined);
+			if (boxes.length === 0) return;
+
+			const aiGraphBoundingBox = compositeBoundingBox(boxes);
+			const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - DEFAULT_NODE_SIZE[0] / 2;
+			aiGraphBoundingBox.y += aiNodeVerticalCorrection;
+
+			const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
+				.filter(([id]) => !graph.hasNode(id))
+				.some(([, nodeBoundingBox]) =>
+					intersects(aiGraphBoundingBox, nodeBoundingBox, NODE_Y_SPACING),
+				);
+
+			if (!hasConflictingNodes) {
+				for (const aiNode of aiNodes) {
+					if (boundingBoxByNodeId[aiNode]) {
+						boundingBoxByNodeId[aiNode].y += aiNodeVerticalCorrection;
+					}
+				}
+			}
+		});
+}
+
 // ---------------------------------------------------------------------------
 // Sticky note repositioning
 // ---------------------------------------------------------------------------
@@ -850,34 +884,7 @@ export function calculateNodePositionsDagre(
 
 	const boundingBoxByNodeId = boxesFromSubgraphs(subgraphs, compositeGraph, groupByGraphId);
 
-	// Post-process: top-align AI subtrees when no conflicts
-	subgraphs
-		.flatMap(({ aiGraphs }) => aiGraphs)
-		.forEach(({ graph }) => {
-			const aiNodes = graph.nodes();
-			const boxes = aiNodes
-				.map((id) => boundingBoxByNodeId[id])
-				.filter((b): b is BoundingBox => b !== undefined);
-			if (boxes.length === 0) return;
-
-			const aiGraphBoundingBox = compositeBoundingBox(boxes);
-			const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - DEFAULT_NODE_SIZE[0] / 2;
-			aiGraphBoundingBox.y += aiNodeVerticalCorrection;
-
-			const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
-				.filter(([id]) => !graph.hasNode(id))
-				.some(([, nodeBoundingBox]) =>
-					intersects(aiGraphBoundingBox, nodeBoundingBox, NODE_Y_SPACING),
-				);
-
-			if (!hasConflictingNodes) {
-				for (const aiNode of aiNodes) {
-					if (boundingBoxByNodeId[aiNode]) {
-						boundingBoxByNodeId[aiNode].y += aiNodeVerticalCorrection;
-					}
-				}
-			}
-		});
+	alignAiSubgraphs(subgraphs, boundingBoxByNodeId);
 
 	// Snap to grid and build result (skip nodes with explicit positions)
 	for (const [name, box] of Object.entries(boundingBoxByNodeId)) {
