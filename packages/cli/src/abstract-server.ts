@@ -12,6 +12,7 @@ import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-cor
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
+import { METRICS_PATH } from '@/metrics/prometheus/constant';
 import { ServiceUnavailableError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
@@ -163,12 +164,26 @@ export abstract class AbstractServer {
 			}
 		});
 
-		this.app.use((_req, res, next) => {
+		this.app.use((req, res, next) => {
+			if (this.isMetricsScrapeAllowedWithoutDatabase(req)) {
+				next();
+				return;
+			}
 			if (connectionState.connected) {
 				if (connectionState.migrated) next();
 				else res.send('n8n is starting up. Please wait');
 			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
+	}
+
+	/** Recovery metrics must remain accessible while the database is unavailable. */
+	private isMetricsScrapeAllowedWithoutDatabase(req: express.Request) {
+		return (
+			this.globalConfig.endpoints.metrics.enable &&
+			this.dbConnection.connectionState.migrated &&
+			(req.method === 'GET' || req.method === 'HEAD') &&
+			(req.path === METRICS_PATH || req.path === `${METRICS_PATH}/`)
+		);
 	}
 
 	async init(): Promise<void> {
