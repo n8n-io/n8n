@@ -154,7 +154,7 @@ function getAiConfigNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 function getAllConnectedAiConfigNodes(
 	graph: dagre.graphlib.Graph,
 	rootId: string,
-	aiConfigNames: Set<string>,
+	aiConfigNames: ReadonlySet<string>,
 ): string[] {
 	const predecessors = (graph.predecessors(rootId) as unknown as string[]) ?? [];
 	return predecessors
@@ -411,6 +411,66 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 		.forEach((edge) => graph.setEdge(edge.w, edge.v));
 
 	return graph;
+}
+
+interface AiGraphLayout {
+	graph: dagre.graphlib.Graph;
+	boundingBox: BoundingBox;
+	aiParentId: string;
+}
+
+interface LayoutSubgraph {
+	graph: dagre.graphlib.Graph;
+	aiGraphs: AiGraphLayout[];
+	boundingBox: BoundingBox;
+}
+
+/** Lay out each connected component after folding groups and AI subgraphs. */
+function layoutSubgraphs(
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+): LayoutSubgraph[] {
+	return dagre.graphlib.alg.components(parentGraph).map((nodeIds) => {
+		const subgraph = createSubGraph(nodeIds, parentGraph);
+		const aiParentsInSubgraph = subgraph.nodes().filter((id) => aiParentNames.has(id));
+
+		const aiGraphs = aiParentsInSubgraph.map((aiParentId): AiGraphLayout => {
+			const configNodeIds = getAllConnectedAiConfigNodes(subgraph, aiParentId, aiConfigNames);
+			const allAiNodeIds = configNodeIds.concat(aiParentId);
+			const aiGraph = createAiSubGraph(subgraph, allAiNodeIds);
+
+			// Capture edges connecting the AI parent to non-AI nodes BEFORE removing config nodes
+			const configNodeIdSet = new Set(configNodeIds);
+			const rootEdges = subgraph
+				.edges()
+				.filter(
+					(edge) =>
+						(edge.v === aiParentId || edge.w === aiParentId) &&
+						!configNodeIdSet.has(edge.v) &&
+						!configNodeIdSet.has(edge.w),
+				);
+
+			// Remove config nodes from main subgraph (keep parent)
+			configNodeIds.forEach((id) => subgraph.removeNode(id));
+
+			dagre.layout(aiGraph, { disableOptimalOrderHeuristic: true });
+			const aiBoundingBox = boundingBoxFromGraph(aiGraph);
+
+			// Replace parent node with bounding box of entire AI subtree
+			subgraph.setNode(aiParentId, {
+				width: aiBoundingBox.width,
+				height: aiBoundingBox.height,
+			});
+			rootEdges.forEach((edge) => subgraph.setEdge(edge));
+
+			return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentId };
+		});
+
+		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
+
+		return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -705,52 +765,7 @@ export function calculateNodePositionsDagre(
 		: [];
 	const groupByGraphId = new Map(collapsedGroups.map((group) => [group.graphId, group]));
 
-	// Divide into disconnected subgraphs
-	const components = dagre.graphlib.alg.components(parentGraph);
-
-	const subgraphs = components.map((nodeIds) => {
-		const subgraph = createSubGraph(nodeIds, parentGraph);
-
-		// Find AI parent nodes in this subgraph
-		const aiParentsInSubgraph = subgraph.nodes().filter((id) => aiParentNames.has(id));
-
-		// Process each AI parent: create TB sub-layout, replace with bounding box
-		const aiGraphs = aiParentsInSubgraph.map((aiParentId) => {
-			const configNodeIds = getAllConnectedAiConfigNodes(subgraph, aiParentId, aiConfigNames);
-			const allAiNodeIds = configNodeIds.concat(aiParentId);
-			const aiGraph = createAiSubGraph(subgraph, allAiNodeIds);
-
-			// Capture edges connecting the AI parent to non-AI nodes BEFORE removing config nodes
-			const configNodeIdSet = new Set(configNodeIds);
-			const rootEdges = subgraph
-				.edges()
-				.filter(
-					(edge) =>
-						(edge.v === aiParentId || edge.w === aiParentId) &&
-						!configNodeIdSet.has(edge.v) &&
-						!configNodeIdSet.has(edge.w),
-				);
-
-			// Remove config nodes from main subgraph (keep parent)
-			configNodeIds.forEach((id) => subgraph.removeNode(id));
-
-			dagre.layout(aiGraph, { disableOptimalOrderHeuristic: true });
-			const aiBoundingBox = boundingBoxFromGraph(aiGraph);
-
-			// Replace parent node with bounding box of entire AI subtree
-			subgraph.setNode(aiParentId, {
-				width: aiBoundingBox.width,
-				height: aiBoundingBox.height,
-			});
-			rootEdges.forEach((edge) => subgraph.setEdge(edge));
-
-			return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentId };
-		});
-
-		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
-
-		return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
-	});
+	const subgraphs = layoutSubgraphs(parentGraph, aiParentNames, aiConfigNames);
 
 	// Arrange subgraphs vertically (skip composite layout for single subgraph)
 	let compositeGraph: dagre.graphlib.Graph | undefined;
