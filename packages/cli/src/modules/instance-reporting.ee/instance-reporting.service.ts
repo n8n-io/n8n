@@ -14,8 +14,12 @@ import { License } from '@/license';
 import { InsightsConfig } from '@/modules/insights/insights.config';
 import { InsightsService } from '@/modules/insights/insights.service';
 
-import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
+import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
 
@@ -28,6 +32,12 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
  * a fresh one.
  */
 const MAX_ATTEMPTS = 3;
+
+/** How long a pending report waits after a failed attempt before the next one. */
+const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
+
+/** Longer than the HTTP timeout, so a stopped main does not hold a report forever. */
+const SEND_CLAIM_TIMEOUT_MS = 2 * Time.minutes.toMilliseconds;
 
 /** The receiver rejects the payload itself, which a pending report resends unchanged. */
 const PAYLOAD_REJECTED_STATUSES = new Set([400, 413]);
@@ -47,6 +57,11 @@ export class InstanceReportAlreadyCreatedError extends OperationalError {
 
 type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
 
+export interface DueReportWork {
+	expiredReport: InstanceMonitoringReport | null;
+	reportDue: boolean;
+}
+
 const SKIP_MESSAGES: Record<SkipReason, string> = {
 	'max-retries': 'Giving up on the instance report after repeated delivery failures',
 	'slot-passed': 'Giving up on the instance report because its slot has passed',
@@ -55,7 +70,7 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 
 /**
  * Measures and delivers one instance report. *When* that happens is
- * {@link InstanceReportingScheduler}'s concern.
+ * {@link InstanceReportingTask}'s concern.
  */
 @Service()
 export class InstanceReportingService {
@@ -64,6 +79,7 @@ export class InstanceReportingService {
 	constructor(
 		private readonly config: InstanceReportingConfig,
 		private readonly reportRepository: InstanceMonitoringReportRepository,
+		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly insightsService: InsightsService,
 		private readonly insightsConfig: InsightsConfig,
 		private readonly instanceSettings: InstanceSettings,
@@ -88,6 +104,42 @@ export class InstanceReportingService {
 			}),
 			timeout: REQUEST_TIMEOUT_MS,
 		});
+	}
+
+	/**
+	 * The work due at `now`, from the report time and the stored report rows.
+	 * A pending report inside its slot is due once its retry delay has elapsed.
+	 * A new slot expires the pending report, even during the retry delay. Then a
+	 * report is due once today's slot has passed, unless today is settled.
+	 */
+	async findDueWork(now: Date): Promise<DueReportWork> {
+		const reportTime = await this.settingsService.getReportTime();
+		let pending = await this.reportRepository.findPending();
+		const retryNow = pending ? await this.reportRepository.readDbNow() : now;
+		if (pending?.status === 'sending') {
+			if (
+				pending.lastAttemptAt === null ||
+				retryNow.getTime() - pending.lastAttemptAt.getTime() >= SEND_CLAIM_TIMEOUT_MS
+			) {
+				await this.reportRepository.releaseStaleSend(pending.id, pending.lastAttemptAt);
+				pending = await this.reportRepository.findPending();
+			}
+		}
+
+		let work: DueReportWork = { expiredReport: null, reportDue: false };
+		if (pending?.status !== 'sending') {
+			const current =
+				pending && now.getTime() < slotOn(reportTime, pending.createdAt) + Time.days.toMilliseconds
+					? pending
+					: null;
+			const reportDue = current
+				? !isInRetryDelay(current, retryNow)
+				: now.getTime() >= slotOn(reportTime, now) &&
+					!(await this.reportRepository.hasSettledToday(now));
+			work = { expiredReport: current ? null : pending, reportDue };
+		}
+
+		return work;
 	}
 
 	/**
@@ -124,30 +176,40 @@ export class InstanceReportingService {
 			this.logger.warn(
 				'Skipping the instance report because this instance has no license certificate.',
 			);
-			return;
-		}
-
-		const now = new Date();
-		let report = await this.reportRepository.findPending();
-
-		// A crash between recording a failure and skipping the report leaves an
-		// exhausted row pending, so the budget is re-checked before sending rather
-		// than only after. Settling it here also ends the day for the scheduler.
-		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
-			return;
-		}
-
-		if (!report) {
-			const days = await this.missedDays(now);
-			if (days.length === 0) return;
-
-			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
-			if (!report) {
-				throw new InstanceReportAlreadyCreatedError();
+		} else {
+			const report = await this.findOrCreateReport();
+			if (report?.status === 'pending' && report.attempts >= MAX_ATTEMPTS) {
+				// Recover a stop between recording the last failure and settling the row.
+				await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
+			} else if (report?.status === 'pending') {
+				const claimedAt = await this.reportRepository.claimForSend(report.id);
+				if (claimedAt) {
+					await this.deliverReport(report, claimedAt, licenseCert);
+				}
 			}
 		}
+	}
 
+	private async findOrCreateReport(): Promise<InstanceMonitoringReport | null> {
+		let report = await this.reportRepository.findPending();
+		if (!report) {
+			const now = new Date();
+			const days = await this.missedDays(now);
+			if (days.length > 0) {
+				report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
+				if (!report) {
+					throw new InstanceReportAlreadyCreatedError();
+				}
+			}
+		}
+		return report;
+	}
+
+	private async deliverReport(
+		report: InstanceMonitoringReport,
+		claimedAt: Date,
+		licenseCert: string | undefined,
+	): Promise<void> {
 		const payload = {
 			instanceId: this.instanceSettings.instanceId,
 			batchId: report.id,
@@ -157,6 +219,7 @@ export class InstanceReportingService {
 			...(licenseCert ? { licenseCert } : {}),
 		};
 
+		let accepted = false;
 		try {
 			const response = await this.http.request<unknown>({
 				url: INSTANCE_REPORTS_PATH,
@@ -186,29 +249,40 @@ export class InstanceReportingService {
 					`Instance report was rejected with status ${response.statusCode}`,
 				);
 			}
-			this.eventService.emit('instance-report-delivered');
+			accepted = true;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.eventService.emit('instance-report-failed');
-			await this.reportRepository.recordFailure(report.id, message, new Date());
-
-			// `recordFailure` incremented the count, so the in-memory row is one behind.
-			const attempts = report.attempts + 1;
-
-			if (error instanceof InstanceReportRejectedError) {
-				await this.skip(report.id, attempts, 'rejected', message);
-				return;
+			const recorded = await this.reportRepository.recordFailure(
+				report.id,
+				claimedAt,
+				message,
+				await this.reportRepository.readDbNow(),
+			);
+			if (recorded) {
+				this.eventService.emit('instance-report-failed');
+				const attempts = report.attempts + 1;
+				if (error instanceof InstanceReportRejectedError) {
+					await this.skip(report.id, attempts, 'rejected', message);
+				} else if (attempts >= MAX_ATTEMPTS) {
+					await this.skip(report.id, attempts, 'max-retries', message);
+				}
 			}
 
-			if (attempts >= MAX_ATTEMPTS) {
-				await this.skip(report.id, attempts, 'max-retries', message);
+			if (!(error instanceof InstanceReportRejectedError)) {
+				throw error;
 			}
-
-			throw error;
 		}
 
-		await this.reportRepository.markDelivered(report.id, new Date());
-		this.logger.debug('Sent instance report', { batchId: report.id });
+		if (accepted) {
+			const recorded = await this.reportRepository.markDelivered(
+				report.id,
+				await this.reportRepository.readDbNow(),
+			);
+			if (recorded) {
+				this.eventService.emit('instance-report-delivered');
+				this.logger.debug('Sent instance report', { batchId: report.id });
+			}
+		}
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
@@ -218,9 +292,9 @@ export class InstanceReportingService {
 		reason: SkipReason,
 		lastError: string | null,
 	): Promise<void> {
-		await this.reportRepository.markSkipped(id);
-
-		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
+		if (await this.reportRepository.markSkipped(id)) {
+			this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
+		}
 	}
 
 	/**
@@ -311,6 +385,18 @@ export class InstanceReportingService {
 			})),
 		];
 	}
+}
+
+/** Epoch milliseconds of the configured time on this UTC day. */
+function slotOn(reportTime: string, day: Date): number {
+	const [hour, minute] = reportTime.split(':').map(Number);
+	return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, minute);
+}
+
+function isInRetryDelay(report: InstanceMonitoringReport, now: Date): boolean {
+	return (
+		report.lastAttemptAt !== null && now.getTime() - report.lastAttemptAt.getTime() < RETRY_DELAY_MS
+	);
 }
 
 /** The UTC calendar day `count` days before `instant`, as `YYYY-MM-DD`. */

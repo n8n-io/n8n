@@ -5,6 +5,7 @@ import type {
 	HttpRequestClientOptions,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import type { LicenseMetricsRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
@@ -17,6 +18,7 @@ import type { InsightsService } from '@/modules/insights/insights.service';
 
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
+import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import {
 	InstanceReportAlreadyCreatedError,
@@ -82,6 +84,7 @@ function makeReport(overrides: Partial<InstanceMonitoringReport> = {}): Instance
 interface Harness {
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
+	settingsService: Mocked<InstanceReportingSettingsService>;
 	insightsService: Mocked<InsightsService>;
 	insightsConfig: InsightsConfig;
 	license: Mocked<License>;
@@ -93,12 +96,20 @@ interface Harness {
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.findPending.mockResolvedValue(null);
+	reportRepository.claimForSend.mockImplementation(async () => new Date());
+	reportRepository.readDbNow.mockImplementation(async () => new Date());
+	reportRepository.markDelivered.mockResolvedValue(true);
+	reportRepository.recordFailure.mockResolvedValue(true);
+	reportRepository.markSkipped.mockResolvedValue(true);
 	// A report already covers the day before the one under test, so the default
 	// harness reports exactly one day.
 	reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-24');
 	reportRepository.createPending.mockImplementation(async (dataPoints) =>
 		makeReport({ dataPoints }),
 	);
+
+	const settingsService = mock<InstanceReportingSettingsService>();
+	settingsService.getReportTime.mockResolvedValue('07:42');
 
 	const insightsService = mock<InsightsService>();
 	// The reported day held 42 executions.
@@ -130,6 +141,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
+		settingsService,
 		insightsService,
 		insightsConfig,
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
@@ -143,6 +155,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	return {
 		service,
 		reportRepository,
+		settingsService,
 		insightsService,
 		insightsConfig,
 		license,
@@ -153,6 +166,140 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 }
 
 describe('InstanceReportingService', () => {
+	describe('findDueWork', () => {
+		const BEFORE_SLOT = new Date('2026-03-26T07:41:00.000Z');
+		const AT_SLOT = new Date('2026-03-26T07:42:00.000Z');
+		const AFTER_SLOT = new Date('2026-03-26T07:43:00.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(AFTER_SLOT);
+		});
+
+		afterEach(() => vi.useRealTimers());
+
+		it('waits for the configured UTC slot', async () => {
+			const { service } = makeHarness();
+			expect(await service.findDueWork(BEFORE_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+			expect(await service.findDueWork(AT_SLOT)).toEqual({ expiredReport: null, reportDue: true });
+		});
+
+		it('catches up after the slot and leaves a settled day alone', async () => {
+			const { service, reportRepository } = makeHarness();
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(true);
+			reportRepository.hasSettledToday.mockResolvedValue(true);
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+		});
+
+		it('uses the current report time on every call', async () => {
+			const { service, settingsService } = makeHarness();
+			settingsService.getReportTime.mockResolvedValueOnce('08:00');
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(true);
+			settingsService.getReportTime.mockResolvedValue('08:00');
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+		});
+
+		it('waits out the persisted retry delay of a pending report', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({
+					createdAt: AFTER_SLOT,
+					lastAttemptAt: new Date(AFTER_SLOT.getTime() - 3 * Time.minutes.toMilliseconds),
+				}),
+			);
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+			const afterDelay = new Date(AFTER_SLOT.getTime() + 2 * Time.minutes.toMilliseconds);
+			vi.setSystemTime(afterDelay);
+			expect(await service.findDueWork(afterDelay)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+			});
+			expect(reportRepository.hasSettledToday).not.toHaveBeenCalled();
+		});
+
+		it('expires a stale report before applying its retry delay', async () => {
+			const { service, reportRepository } = makeHarness();
+			const pending = makeReport({
+				createdAt: new Date('2026-03-25T07:42:00.000Z'),
+				lastAttemptAt: new Date(AFTER_SLOT.getTime() - Time.minutes.toMilliseconds),
+			});
+			reportRepository.findPending.mockResolvedValue(pending);
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: pending,
+				reportDue: true,
+			});
+		});
+
+		it('keeps a claimed report active across its next slot', async () => {
+			const { service, reportRepository } = makeHarness();
+			const sending = makeReport({
+				status: 'sending',
+				createdAt: new Date('2026-03-25T07:42:00.000Z'),
+				lastAttemptAt: new Date('2026-03-26T07:41:30.000Z'),
+			});
+			reportRepository.findPending.mockResolvedValue(sending);
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+			expect(reportRepository.releaseStaleSend).not.toHaveBeenCalled();
+		});
+
+		it('releases a claim left by a stopped main', async () => {
+			const { service, reportRepository } = makeHarness();
+			const startedAt = new Date('2026-03-26T07:40:00.000Z');
+			const sending = makeReport({
+				status: 'sending',
+				createdAt: AFTER_SLOT,
+				lastAttemptAt: startedAt,
+			});
+			reportRepository.findPending
+				.mockResolvedValueOnce(sending)
+				.mockResolvedValue(makeReport({ createdAt: AFTER_SLOT, lastAttemptAt: startedAt }));
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+			expect(reportRepository.releaseStaleSend).toHaveBeenCalledWith(BATCH_ID, startedAt);
+		});
+
+		it('releases a sending row with no claim timestamp', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending
+				.mockResolvedValueOnce(makeReport({ status: 'sending', lastAttemptAt: null }))
+				.mockResolvedValue(makeReport({ createdAt: AFTER_SLOT }));
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+			});
+			expect(reportRepository.releaseStaleSend).toHaveBeenCalledWith(BATCH_ID, null);
+		});
+
+		it('uses the database clock to check claim age', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({ status: 'sending', lastAttemptAt: AFTER_SLOT }),
+			);
+			reportRepository.readDbNow.mockResolvedValue(AFTER_SLOT);
+
+			expect(await service.findDueWork(new Date('2026-03-27T07:43:00.000Z'))).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+			expect(reportRepository.releaseStaleSend).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('sendReport', () => {
 		beforeEach(() => {
 			// Pinned so the previous UTC day the service derives is deterministic.
@@ -357,6 +504,7 @@ describe('InstanceReportingService', () => {
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				'Network error',
 				expect.any(Date),
 			);
@@ -371,6 +519,7 @@ describe('InstanceReportingService', () => {
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				expect.stringContaining('200'),
 				expect.any(Date),
 			);
@@ -385,6 +534,7 @@ describe('InstanceReportingService', () => {
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				expect.stringContaining('500'),
 				expect.any(Date),
 			);
@@ -407,6 +557,26 @@ describe('InstanceReportingService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-report-delivered');
 			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-failed');
+		});
+
+		test('does not emit another delivery event for an already delivered report', async () => {
+			const { service, reportRepository, eventService } = makeHarness();
+			reportRepository.markDelivered.mockResolvedValue(false);
+
+			await service.sendReport();
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('does not settle a rejected report after losing the claim', async () => {
+			const { service, reportRepository, eventService, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 413, body: '', headers: {} });
+			reportRepository.recordFailure.mockResolvedValue(false);
+
+			await service.sendReport();
+
+			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('emits a failed event when a delivery attempt fails', async () => {
