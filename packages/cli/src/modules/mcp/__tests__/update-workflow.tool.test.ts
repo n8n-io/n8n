@@ -2118,6 +2118,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'draft-only-wf',
 							name: 'Draft Only Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: null,
@@ -2184,6 +2185,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'no-trigger-wf',
 							name: 'Not An Error Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: 'no-trigger-wf-v1',

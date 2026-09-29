@@ -62,7 +62,7 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
@@ -417,6 +417,7 @@ async function assertErrorWorkflowIsUsable({
 			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
 		);
 	}
+	validateMcpWorkflow(errorWorkflow);
 
 	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
 	// resolves it differently depending on the publication service flag — mirror
