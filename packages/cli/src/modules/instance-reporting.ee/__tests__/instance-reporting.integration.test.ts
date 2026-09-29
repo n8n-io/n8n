@@ -1,4 +1,5 @@
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -14,7 +15,6 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 import { InsightsConfig } from '@/modules/insights/insights.config';

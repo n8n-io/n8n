@@ -1,5 +1,6 @@
 import { Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -22,7 +23,6 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { NotFoundError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	markPublicApiController,

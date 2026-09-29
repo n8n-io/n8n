@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
@@ -9,7 +10,6 @@ import promClient from 'prom-client';
 
 import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service';
 
-import type { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
 vi.mock('prom-client');

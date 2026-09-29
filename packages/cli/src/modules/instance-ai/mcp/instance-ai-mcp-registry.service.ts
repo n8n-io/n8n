@@ -8,6 +8,7 @@ import type {
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -19,7 +20,6 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,

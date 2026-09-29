@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -69,7 +70,6 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';

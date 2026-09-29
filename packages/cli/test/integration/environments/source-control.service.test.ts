@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
@@ -21,7 +22,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,

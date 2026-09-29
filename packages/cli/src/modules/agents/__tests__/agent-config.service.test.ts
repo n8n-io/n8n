@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -6,7 +7,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 
 import type { Telemetry } from '@/telemetry';
 
