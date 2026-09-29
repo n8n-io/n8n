@@ -2362,11 +2362,13 @@ describe('useAgentChatStream — done executionId', () => {
 
 			expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
 				message: 'hi',
+				messageId: expect.any(String),
 				sessionId: 'thread-new',
 				newSession: true,
 			});
 			expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
 				message: 'try again',
+				messageId: expect.any(String),
 				sessionId: 'thread-new',
 			});
 			expect(onSessionCreated).toHaveBeenCalledOnce();
@@ -3438,6 +3440,76 @@ describe('useAgentChatStream — queued submissions', () => {
 		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 	});
 	afterEach(() => vi.unstubAllGlobals());
+
+	it('keeps the original request UUID and stream when another delivery completes as a duplicate', async () => {
+		const clientId = 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a';
+		vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce(clientId);
+		let original: ReturnType<typeof makeControllableSseResponse>;
+		let originalSignal: AbortSignal | null | undefined;
+		const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: RequestInit) =>
+			makeSseResponse([{ type: 'done' }], false),
+		);
+		fetchMock.mockImplementationOnce(async (_url, init: RequestInit) => {
+			originalSignal = init.signal;
+			original = makeControllableSseResponse(
+				[
+					{ type: 'message-queued', queueId: '1', sessionId: 'thread-1' },
+					{
+						type: 'execution-started',
+						executionId: 'A',
+						sessionId: 'thread-1',
+						inputMessageIds: ['canonical-input'],
+					},
+				],
+				init.signal ?? null,
+			);
+			return original.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('Hello');
+		await flushPromises();
+		expect(hook.messages.value.find(({ role }) => role === 'user')?.id).toBe('canonical-input');
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({
+			message: 'Hello',
+			sessionId: 'thread-1',
+			messageId: clientId,
+		});
+		const historyCalls = getChatMessagesMock.mock.calls.length;
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: 'A',
+		});
+		await hook.sendMessage('Hello again');
+		await flushPromises();
+		expect(JSON.parse(String(fetchMock.mock.calls[1][1].body)).messageId).not.toBe(clientId);
+		expect(getChatMessagesMock.mock.calls.length).toBe(historyCalls);
+		expect(hook.activeExecutionId.value).toBe('A');
+		expect(hook.isStreaming.value).toBe(true);
+		expect(hook.isSubmitting.value).toBe(false);
+		expect(hook.fatalError.value).toBeNull();
+		expect(originalSignal?.aborted).toBe(false);
+		original!.emit([{ type: 'text-delta', id: 'reply', delta: 'Original reply' }]);
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello', 'Original reply']);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{ id: 'canonical-input', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+				{
+					id: 'A:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Original reply' }],
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		original!.close([{ type: 'done', executionId: 'A' }]);
+		await vi.waitFor(() =>
+			expect(hook.messages.value.map(({ id }) => id)).toEqual(['canonical-input', 'A:assistant']),
+		);
+	});
 
 	it('keeps B and C out of the conversation, stops only A, and removes pending C', async () => {
 		const pending = [

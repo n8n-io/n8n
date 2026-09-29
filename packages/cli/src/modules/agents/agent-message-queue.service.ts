@@ -17,7 +17,10 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
-import { AgentMessageRepository } from './repositories/agent-message.repository';
+import {
+	AgentMessageIdConflictError,
+	AgentMessageRepository,
+} from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import type {
 	AgentExecutionAdmission,
@@ -28,10 +31,11 @@ import type {
 } from './types/agent-queued-message';
 import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
+import { queuedMessageId } from './utils/queued-message-id';
 
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
-	payload: Omit<QueuedPreviewMessage, 'userId'> | QueuedIntegrationMessage;
+	payload: Omit<QueuedPreviewMessage, 'userId' | 'messageId'> | QueuedIntegrationMessage;
 	thread: AgentExecutionThread;
 	/** Admission identifies the committed execution that the turn pipeline must reuse. */
 	admission: AgentExecutionAdmission;
@@ -67,32 +71,48 @@ export class AgentMessageQueueService {
 			payload: AgentQueuedMessage;
 		},
 		onInserted?: (queueId: string) => void,
-	): Promise<AgentMessageQueue> {
+	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
 		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
-		const item = await this.txRunner.run({}, async (ctx) => {
-			await this.executionService.prepareThread(
-				{
-					...input,
-					agentName: agent.name,
-					userMessage: payload.message,
-					resourceId: payload.resourceId,
-					access:
-						payload.kind === 'preview'
-							? { accessScope: 'user', ownerId: payload.userId }
-							: { accessScope: 'project', ownerId: null },
-				},
-				ctx,
-			);
-			const inserted = await this.enqueueMessage(input.threadId, input.source, payload, ctx);
-			// Register delivery before another main can see the committed item.
-			onInserted?.(inserted.id);
-			return inserted;
-		});
+		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
+		let item: AgentMessageQueue;
+		try {
+			item = await this.txRunner.run({}, async (ctx) => {
+				await this.executionService.prepareThread(
+					{
+						...input,
+						agentName: agent.name,
+						userMessage: payload.message,
+						resourceId: payload.resourceId,
+						access:
+							payload.kind === 'preview'
+								? { accessScope: 'user', ownerId: payload.userId }
+								: { accessScope: 'project', ownerId: null },
+					},
+					ctx,
+				);
+				const inserted = await this.enqueueMessage(
+					input.threadId,
+					input.source,
+					payload,
+					ctx,
+					messageId,
+				);
+				// Register delivery before another main can see the committed item.
+				onInserted?.(inserted.id);
+				return inserted;
+			});
+		} catch (error) {
+			// A duplicate must roll back session and thread creation before it returns.
+			if (error instanceof AgentMessageIdConflictError && error.messageId === messageId) {
+				return { status: 'duplicate' };
+			}
+			throw error;
+		}
 		if (payload.kind === 'preview') this.updates.notifyQueueUpdated(item.threadId);
 		this.onAvailable?.(item.threadId);
-		return item;
+		return { status: 'accepted', item };
 	}
 
 	private async enqueueMessage(
@@ -100,6 +120,7 @@ export class AgentMessageQueueService {
 		source: string,
 		payload: AgentQueuedMessage,
 		ctx: OperationContext,
+		messageId?: string,
 	): Promise<AgentMessageQueue> {
 		const { message, resourceId, attachments = [], ...dispatch } = payload;
 		const [content] = buildInboundUserMessage(message, attachments);
@@ -118,7 +139,7 @@ export class AgentMessageQueueService {
 			const {
 				platform: _platform,
 				integrationConnectionId,
-				messageId,
+				messageId: platformMessageId,
 				...messageContext
 			} = fullContext;
 			queueDispatch = { ...integrationDispatch, messageContext };
@@ -127,12 +148,12 @@ export class AgentMessageQueueService {
 			origin = {
 				source,
 				integrationConnectionId,
-				platformMessageId: messageId,
+				platformMessageId,
 				platformThreadId,
 			};
 		}
 		const input = await this.messages.createInput(
-			{ threadId, resourceId, content, modelContent, author, origin },
+			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },
 			ctx,
 		);
 		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);

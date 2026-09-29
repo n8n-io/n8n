@@ -56,7 +56,7 @@ function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>
 			payload: deepCopy(payload),
 			threadId,
 		});
-		return mock<AgentMessageQueue>();
+		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
 	const bridge = new AgentChatBridge(
 		bot,
@@ -1269,6 +1269,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				findOpenSuspension: vi.fn().mockResolvedValue({ suspendPayload: {} }),
 			};
 			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
@@ -1754,6 +1755,57 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			return handlers;
 		}
+
+		it('cleans only retry attachments and gives no reply for a duplicate delivery', async () => {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue
+				.mockResolvedValueOnce({ status: 'accepted', item: mock<AgentMessageQueue>() })
+				.mockResolvedValue({ status: 'duplicate' });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				undefined,
+				attachmentService as never,
+				undefined,
+				queue,
+			);
+			const thread = makeThread();
+			const message = {
+				id: 'native-message',
+				text: 'look at this',
+				author: { userId: 'allowed-user', userName: 'Ada' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: async () => pngBytes,
+					},
+				],
+			};
+			await handlers.mention!(thread, message);
+			expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
+			await handlers.mention!(thread, message);
+			expect(attachmentService.deleteByIds).toHaveBeenCalledExactlyOnceWith(['att-2']);
+			expect(thread.post).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await handlers.mention!(thread, {
+				...message,
+				author: { userId: 'other-user', userName: 'Other' },
+			});
+			expect(queue.enqueue).toHaveBeenCalledTimes(2);
+			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(2);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
 
 		// PNG magic bytes so the mime sniff confirms the declared type.
 		const pngBytes = Buffer.from([
@@ -3190,6 +3242,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const executor = makeAgentExecutor([finishChunk]);
 			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
