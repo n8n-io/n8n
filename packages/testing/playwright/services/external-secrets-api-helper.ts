@@ -1,12 +1,7 @@
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
-interface ExternalSecretsProviderSettings {
-	region: string;
-	authMethod: string;
-	accessKeyId: string;
-	secretAccessKey: string;
-}
+type ExternalSecretsProviderSettings = Record<string, string>;
 
 interface SecretProviderConnectionDto {
 	providerKey: string;
@@ -17,6 +12,15 @@ interface SecretProviderConnectionDto {
 
 export class ExternalSecretsApiHelper {
 	constructor(private api: ApiHelpers) {}
+
+	async getProviderState(providerName: string): Promise<string> {
+		const response = await this.api.request.get(`/rest/external-secrets/providers/${providerName}`);
+		if (!response.ok()) {
+			throw new TestError(`Failed to get provider: ${await response.text()}`);
+		}
+		const { data } = await response.json();
+		return data.state;
+	}
 
 	async getSecrets(providerName: string): Promise<string[]> {
 		const response = await this.api.request.get('/rest/external-secrets/secrets');

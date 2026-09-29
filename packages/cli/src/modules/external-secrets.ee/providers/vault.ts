@@ -13,6 +13,7 @@ import {
 	type IHttpRequestOptions,
 	type IN8nHttpFullResponse,
 	type INodeProperties,
+	OperationalError,
 } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -23,6 +24,7 @@ import {
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
+import { ExternalSecretsRetryManager } from '../retry-manager.service';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -293,13 +295,13 @@ export class VaultProvider extends SecretsProvider {
 
 	#currentToken: string | null = null;
 
-	#tokenInfo: VaultTokenInfo | null = null;
-
 	#http: HttpRequestClient;
 
 	private refreshTimeout: NodeJS.Timeout | null = null;
 
 	private refreshAbort = new AbortController();
+
+	private readonly retryManager: ExternalSecretsRetryManager;
 
 	constructor(
 		readonly logger = Container.get(Logger),
@@ -307,6 +309,8 @@ export class VaultProvider extends SecretsProvider {
 	) {
 		super();
 		this.logger = this.logger.scoped('external-secrets');
+		// A shared retry manager would let providers and the connection manager cancel each other's 'vault' retries.
+		this.retryManager = new ExternalSecretsRetryManager(logger);
 	}
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
@@ -352,9 +356,12 @@ export class VaultProvider extends SecretsProvider {
 			}
 
 			// Setup token refresh
-			[this.#tokenInfo] = await this.getTokenInfo();
+			const [tokenInfo] = await this.getTokenInfo();
+			if (!tokenInfo) {
+				throw new OperationalError('Failed to fetch Vault token info');
+			}
 			if (!this.refreshAbort.signal.aborted) {
-				this.setupTokenRefresh();
+				this.setupTokenRefresh(tokenInfo);
 			}
 		} catch (error) {
 			if (!this.isVaultAuthFailure(error)) {
@@ -372,6 +379,7 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
+		this.retryManager.cancelRetry(this.name);
 		this.clearTokenRefresh();
 		this.refreshAbort.abort();
 	}
@@ -383,24 +391,20 @@ export class VaultProvider extends SecretsProvider {
 		}
 	}
 
-	private setupTokenRefresh() {
-		// A failed lookup keeps the chain that exists.
-		if (!this.#tokenInfo) {
-			return;
-		}
+	private setupTokenRefresh(tokenInfo: VaultTokenInfo) {
 		this.clearTokenRefresh();
 		// Token never expires
-		if (this.#tokenInfo.expire_time === null) {
+		if (tokenInfo.expire_time === null) {
 			return;
 		}
 		// A configured token cannot be replaced by logging in again.
-		if (!this.#tokenInfo.renewable && this.settings.authMethod === 'token') {
+		if (!tokenInfo.renewable && this.settings.authMethod === 'token') {
 			return;
 		}
 
-		const expireDate = new Date(this.#tokenInfo.expire_time);
+		const expireDate = new Date(tokenInfo.expire_time);
 		this.refreshTimeout = setTimeout(
-			this.#tokenInfo.renewable ? this.tokenRefresh : this.tokenReauthenticate,
+			tokenInfo.renewable ? this.tokenRefresh : this.tokenReauthenticate,
 			(expireDate.valueOf() - Date.now()) / 2,
 		);
 	}
@@ -410,7 +414,16 @@ export class VaultProvider extends SecretsProvider {
 		if (this.refreshAbort.signal.aborted) {
 			return;
 		}
-		await this.connect();
+		await this.retryManager.runWithRetry(this.name, async () => {
+			if (this.refreshAbort.signal.aborted) {
+				return { success: true };
+			}
+			await this.connect();
+			return {
+				success: this.refreshAbort.signal.aborted || this.state === 'connected',
+				error: this.lastError,
+			};
+		});
 	};
 
 	private tokenRefresh = async () => {
@@ -423,20 +436,17 @@ export class VaultProvider extends SecretsProvider {
 			// return an expire_time
 			await this.#http.request({ url: 'auth/token/renew-self', method: 'POST' });
 
-			[this.#tokenInfo] = await this.getTokenInfo();
+			const [tokenInfo] = await this.getTokenInfo();
 
-			if (!this.#tokenInfo) {
-				this.logger.error(
-					'Failed to fetch token info during renewal. Cancelling all future renewals.',
-				);
-				return;
+			if (!tokenInfo) {
+				throw new OperationalError('Failed to fetch Vault token info');
 			}
 
 			if (this.refreshAbort.signal.aborted) {
 				return;
 			}
 
-			this.setupTokenRefresh();
+			this.setupTokenRefresh(tokenInfo);
 		} catch (error) {
 			this.logOperationFailure('Failed to renew Vault token. Attempting to reconnect.', {
 				operation: 'tokenRefresh',
@@ -446,7 +456,7 @@ export class VaultProvider extends SecretsProvider {
 					authMethod: this.settings.authMethod,
 				},
 			});
-			void this.connect();
+			await this.tokenReauthenticate();
 		}
 	};
 

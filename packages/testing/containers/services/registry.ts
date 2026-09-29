@@ -19,6 +19,7 @@ import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
 import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
+import { vault, createVaultHelper } from './vault';
 import { vector } from './vector';
 import { victoriaLogs } from './victoria-logs';
 import { victoriaMetrics } from './victoria-metrics';
@@ -43,6 +44,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kafka,
 	mysql: mysqlService,
 	localstack,
+	vault,
 	kent,
 	postgresExporter,
 	cadvisor,
@@ -60,5 +62,6 @@ export const helperFactories: Partial<HelperFactories> = {
 	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
+	vault: createVaultHelper,
 	kent: createKentHelper,
 };
