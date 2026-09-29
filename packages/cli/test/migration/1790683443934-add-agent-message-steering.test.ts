@@ -117,6 +117,12 @@ describe('AddAgentMessageSteering migration', () => {
 			expect(
 				await ctx.runQuery(`SELECT "id" FROM ${ctx.escape.tableName('agents_messages')}`),
 			).toHaveLength(3);
+			await expect(
+				ctx.runQuery(
+					`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload") VALUES (:threadId, :messageId, '{"kind":"preview"}')`,
+					{ threadId, messageId: messageIds[0] },
+				),
+			).rejects.toThrow();
 			await ctx.runQuery(
 				`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload", "steeringExecutionId", "steeringOrder") VALUES (:threadId, :messageId, '{"kind":"preview"}', :steeringExecutionId, 1)`,
 				{ threadId, steeringExecutionId, messageId: messageIds[1] },
@@ -137,6 +143,15 @@ describe('AddAgentMessageSteering migration', () => {
 					{ steeringExecutionId },
 				),
 			).rejects.toThrow();
+			await ctx.runQuery(
+				`DELETE FROM ${ctx.escape.tableName('agents_messages')} WHERE "id" = :messageId`,
+				{ messageId: messageIds[0] },
+			);
+			expect(
+				await ctx.runQuery(
+					`SELECT "messageId" FROM ${ctx.escape.tableName('agent_message_queue')}`,
+				),
+			).toEqual([{ messageId: messageIds[1] }]);
 			await ctx.runQuery(
 				`DELETE FROM ${ctx.escape.tableName('agent_execution_threads')} WHERE "id" = :threadId`,
 				{ threadId },
