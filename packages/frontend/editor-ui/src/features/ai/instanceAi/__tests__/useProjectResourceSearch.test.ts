@@ -186,6 +186,29 @@ describe('useProjectResourceSearch', () => {
 		expect(ids(results.value)).toEqual(['workflow:wf-new']);
 	});
 
+	it('drops a running search when the project goes away', async () => {
+		let resolveWorkflows: (rows: unknown[]) => void = () => {};
+		mocks.searchWorkflows.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveWorkflows = resolve;
+			}),
+		);
+		const projectId = ref<string | undefined>(PROJECT_ID);
+		const search = useProjectResourceSearch({
+			projectId: () => projectId.value,
+			excludedTabs: () => [],
+		});
+
+		const running = search.search();
+		projectId.value = undefined;
+		await search.search();
+		resolveWorkflows([row('wf-old', '2026-09-24T10:00:00.000Z')]);
+		await running;
+
+		expect(search.results.value).toEqual([]);
+		expect(search.isLoading.value).toBe(false);
+	});
+
 	it('does not search when the thread has no project', async () => {
 		const { results, search } = setup({ projectId: undefined });
 

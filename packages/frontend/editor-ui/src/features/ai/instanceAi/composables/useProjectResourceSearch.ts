@@ -106,7 +106,10 @@ export function useProjectResourceSearch({
 	async function search(query = '') {
 		const project = projectId();
 		if (!project) {
+			// Also drop any search that is still running for the previous project.
+			generation++;
 			resources.value = [];
+			isLoading.value = false;
 			return;
 		}
 
