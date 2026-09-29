@@ -13,7 +13,7 @@ describe('GET /.well-known/jwks.json', () => {
 		const encKeys = keys.filter((key) => key.use === 'enc');
 		const sigKeys = keys.filter((key) => key.use === 'sig');
 		expect(encKeys).toEqual([expect.objectContaining({ kty: 'RSA', alg: 'RSA-OAEP-256' })]);
-		expect(sigKeys).toEqual([expect.objectContaining({ kty: 'RSA', alg: 'RS256' })]);
+		expect(sigKeys).toEqual([expect.objectContaining({ kty: 'EC', crv: 'P-256', alg: 'ES256' })]);
 		expect(new Set(keys.map((key) => key.kid)).size).toBe(keys.length);
 		expect(response.headers['cache-control']).toBe('public, max-age=3600, must-revalidate');
 	});

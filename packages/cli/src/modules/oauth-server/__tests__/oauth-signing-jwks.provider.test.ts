@@ -7,12 +7,13 @@ import { OAuthSigningJwksProvider } from '../oauth-signing-jwks.provider';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';
 
 const validSigningJwk: JWK = {
-	kty: 'RSA',
+	kty: 'EC',
 	kid: 'row-sig',
 	use: 'sig',
-	alg: 'RS256',
-	n: 'modulus-base64url',
-	e: 'AQAB',
+	alg: 'ES256',
+	crv: 'P-256',
+	x: 'x-coordinate',
+	y: 'y-coordinate',
 };
 
 describe('OAuthSigningJwksProvider', () => {
@@ -25,7 +26,7 @@ describe('OAuthSigningJwksProvider', () => {
 		vi.resetAllMocks();
 	});
 
-	test('returns an RS256 signing key', async () => {
+	test('returns an ES256 signing key', async () => {
 		signingKeyService.getPublicJwks.mockResolvedValue([validSigningJwk]);
 
 		await expect(provider.getPublicJwks()).resolves.toEqual([validSigningJwk]);
@@ -41,14 +42,22 @@ describe('OAuthSigningJwksProvider', () => {
 	});
 
 	test('drops a key with another algorithm', async () => {
-		const rs512Jwk: JWK = { ...validSigningJwk, kid: 'row-rs512', alg: 'RS512' };
-		signingKeyService.getPublicJwks.mockResolvedValue([rs512Jwk]);
+		const es384Jwk: JWK = { ...validSigningJwk, kid: 'row-es384', alg: 'ES384' };
+		signingKeyService.getPublicJwks.mockResolvedValue([es384Jwk]);
 
 		await expect(provider.getPublicJwks()).resolves.toEqual([]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to parse public signing JWK',
 			expect.objectContaining({ error: expect.anything() }),
 		);
+	});
+
+	test('drops a key on another curve', async () => {
+		const p384Jwk: JWK = { ...validSigningJwk, kid: 'row-p384', crv: 'P-384' };
+		signingKeyService.getPublicJwks.mockResolvedValue([validSigningJwk, p384Jwk]);
+
+		await expect(provider.getPublicJwks()).resolves.toEqual([validSigningJwk]);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 
 	test('drops a key with private members', async () => {

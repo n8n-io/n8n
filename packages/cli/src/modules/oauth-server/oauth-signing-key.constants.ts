@@ -2,10 +2,10 @@ import { Time } from '@n8n/constants';
 
 export { OAUTH_SIGNING_KEY_TYPE } from '@n8n/db';
 
-/** RFC 9068 requires every access-token verifier to support RS256. */
-export const OAUTH_SIGNING_ALGORITHM = 'RS256';
+/** ECDSA with the P-256 curve and SHA-256 (RFC 7518 §3.4). */
+export const OAUTH_SIGNING_ALGORITHM = 'ES256';
 export const OAUTH_SIGNING_KEY_USE = 'sig';
-export const OAUTH_SIGNING_MODULUS_LENGTH = 2048;
+export const OAUTH_SIGNING_CURVE = 'P-256';
 
 /**
  * Public signing keys only. The private key stays in process memory.
