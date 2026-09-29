@@ -213,11 +213,7 @@ onMounted(() => {
 			</div>
 		</template>
 		<!-- Outside the loading and error states, so the composer stays mounted through them. -->
-		<div
-			v-if="$slots.composer"
-			ref="composer"
-			:class="[$style.composer, { [$style.composerAfterEntries]: entries.length > 0 }]"
-		>
+		<div v-if="$slots.composer" ref="composer" :class="$style.composer">
 			<slot name="composer" />
 		</div>
 	</div>
@@ -300,16 +296,6 @@ onMounted(() => {
 	/* Room for the input's focus ring, which the scroll container would clip. */
 	padding-inline: var(--focus--border-width);
 	background-color: var(--color--background--light-2);
-}
-
-/* Continues the timeline rail from the last entry to the composer. */
-.composerAfterEntries::before {
-	content: '';
-	position: absolute;
-	top: var(--spacing--5xs);
-	height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
-	left: calc(var(--spacing--sm) + var(--review-activity--avatar-size) / 2);
-	border-left: var(--border);
 }
 
 .errorRow {
