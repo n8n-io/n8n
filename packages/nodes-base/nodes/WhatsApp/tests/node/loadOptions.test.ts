@@ -47,5 +47,21 @@ describe('WhatsApp Business Cloud load options', () => {
 				qs: { fields: 'name,language', after: 'next-page' },
 			},
 		);
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('loads templates when the response has no paging information', async () => {
+		const context = mockDeep<ILoadOptionsFunctions>();
+		context.getCredentials.mockResolvedValue({ businessAccountId: 'business-account-id' });
+		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce({
+			data: [{ name: 'status_update', language: 'en_US' }],
+		});
+
+		const result = await new WhatsApp().methods.loadOptions.getTemplates.call(context);
+
+		expect(result.map(({ name, value }) => [name, value])).toEqual([
+			['status_update - en_US', 'status_update|en_US'],
+		]);
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });
