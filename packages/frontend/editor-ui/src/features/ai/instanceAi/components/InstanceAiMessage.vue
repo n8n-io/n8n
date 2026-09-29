@@ -18,6 +18,7 @@ import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssista
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -111,6 +112,27 @@ const attachments = computed(() =>
 	}),
 );
 
+/**
+ * Answered questions that end the timeline, like the onboarding card that the host answers with
+ * no model turn. They render below the actions, so copy and read aloud stay under the assistant
+ * text and not under the user's answer.
+ */
+const trailingAnswer = computed(() => {
+	const tree = props.message.agentTree;
+	const last = tree?.timeline.at(-1);
+	if (last?.type !== 'tool-call') return undefined;
+	const toolCall = tree?.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
+		? toolCall
+		: undefined;
+});
+
+const activityTree = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || !trailingAnswer.value) return tree;
+	return { ...tree, timeline: tree.timeline.slice(0, -1) };
+});
+
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
 	if (!isStreaming.value || !props.message.agentTree) return '';
@@ -181,8 +203,8 @@ function formatJson(value: unknown): string {
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
 			<AgentActivityTree
-				v-if="props.message.agentTree"
-				:agent-node="props.message.agentTree"
+				v-if="activityTree"
+				:agent-node="activityTree"
 				:message-id="props.message.id"
 				:run-id="props.message.runId"
 			/>
@@ -273,6 +295,10 @@ function formatJson(value: unknown): string {
 					/>
 				</N8nTooltip>
 			</N8nChatActions>
+		</template>
+
+		<template v-if="trailingAnswer" #after-actions>
+			<AnsweredQuestions :tool-call="trailingAnswer" />
 		</template>
 	</N8nChatMessage>
 </template>
