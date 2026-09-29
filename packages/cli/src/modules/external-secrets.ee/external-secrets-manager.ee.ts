@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 

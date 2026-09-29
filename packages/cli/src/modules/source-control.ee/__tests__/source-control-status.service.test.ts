@@ -16,7 +16,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';

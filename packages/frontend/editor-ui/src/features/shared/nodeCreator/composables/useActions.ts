@@ -22,9 +22,9 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	isNodeCreatorOpenFromConnection,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
-	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -61,11 +61,6 @@ export const useActions = () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const i18n = useI18n();
-	const singleNodeOpenSources = [
-		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-	];
 
 	const actionsCategoryLocales = computed(() => {
 		return {
@@ -260,11 +255,10 @@ export const useActions = () => {
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 
-		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
-		// then we do not want to append the manual trigger
-		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
+		// Connection-based openings already have a source node, so do not prepend a trigger.
+		const isAddingFromConnection = isNodeCreatorOpenFromConnection(openSource);
 		return (
-			!isSingleNodeOpenSource &&
+			!isAddingFromConnection &&
 			!hasTrigger &&
 			!workflowContainsTrigger &&
 			isTriggerPanel &&

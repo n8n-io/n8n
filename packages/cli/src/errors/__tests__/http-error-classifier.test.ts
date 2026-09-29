@@ -1,9 +1,13 @@
 import { BadRequest, Unauthorized } from 'express-openapi-validator/dist/framework/types';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import {
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier';
 

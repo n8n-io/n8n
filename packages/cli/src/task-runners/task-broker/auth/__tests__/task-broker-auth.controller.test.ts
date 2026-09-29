@@ -3,8 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AuthlessRequest } from '../../../../requests';
 import { TaskBrokerAuthController } from '../task-broker-auth.controller';
 import { TaskBrokerAuthService } from '../task-broker-auth.service';

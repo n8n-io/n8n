@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { Agent } from '../../entities/agent.entity';

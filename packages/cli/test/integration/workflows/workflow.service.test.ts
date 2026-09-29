@@ -156,6 +156,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',

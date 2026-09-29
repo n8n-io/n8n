@@ -2,10 +2,10 @@ import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/a
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import * as WorkflowHelpers from '@/workflow-helpers';

@@ -8,10 +8,8 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource, In, LessThan } from '@n8n/typeorm';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';

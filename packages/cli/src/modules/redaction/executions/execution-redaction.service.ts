@@ -9,8 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,

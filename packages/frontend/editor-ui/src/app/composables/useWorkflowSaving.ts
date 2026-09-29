@@ -46,6 +46,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
 import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
@@ -577,6 +578,7 @@ export function useWorkflowSaving({
 			requestNewId,
 			data,
 			autosaved,
+			stripEmptyCanvasGroups = false,
 		}: {
 			name?: string;
 			tags?: string[];
@@ -588,6 +590,7 @@ export function useWorkflowSaving({
 			uiContext?: string;
 			data?: WorkflowDataCreate;
 			autosaved?: boolean;
+			stripEmptyCanvasGroups?: boolean;
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
@@ -607,6 +610,9 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
+			if (stripEmptyCanvasGroups) {
+				removeEmptyCanvasGroupsFromWorkflowData(workflowDataRequest);
+			}
 			// A description staged on an unsaved workflow (via the description and
 			// tags modal) is not part of serialize(), so carry it into the first save.
 			if (!data && currentDocumentStore.description) {

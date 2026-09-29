@@ -39,6 +39,7 @@ export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage
 export interface AgentExecutionAdmission {
 	executionId: string;
 	startedAt: Date;
+	inputMessageIds: string[];
 }
 
 export const EXECUTION_METADATA_KEY = 'n8nExecutionId';

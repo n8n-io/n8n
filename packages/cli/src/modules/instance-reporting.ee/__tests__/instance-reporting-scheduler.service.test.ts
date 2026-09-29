@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
+import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -38,8 +39,6 @@ function makeHarness({
 	autoStart = true,
 } = {}): Harness {
 	const reportingService = mock<InstanceReportingService>();
-	// No attempt has been made yet, so nothing is holding the next one back.
-	reportingService.msUntilRetryAllowed.mockResolvedValue(0);
 
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.hasSettledToday.mockResolvedValue(false);
@@ -285,8 +284,13 @@ describe('InstanceReportingScheduler', () => {
 			// A crash between attempts would otherwise let the fresh process attempt at
 			// once, and a crash loop would spend the whole budget in seconds.
 			vi.setSystemTime(new Date(AFTER_SLOT));
-			const { scheduler, reportingService } = makeHarness();
-			reportingService.msUntilRetryAllowed.mockResolvedValueOnce(2 * Time.minutes.toMilliseconds);
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				mock<InstanceMonitoringReport>({
+					createdAt: new Date(AFTER_SLOT),
+					lastAttemptAt: new Date(Date.now() - 3 * Time.minutes.toMilliseconds),
+				}),
+			);
 
 			scheduler.init();
 			await settle();

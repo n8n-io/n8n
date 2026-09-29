@@ -8,14 +8,12 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { TransactionRunner, UserRepository } from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 

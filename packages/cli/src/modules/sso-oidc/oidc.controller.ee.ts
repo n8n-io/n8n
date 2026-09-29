@@ -8,8 +8,7 @@ import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
@@ -17,7 +16,7 @@ import {
 } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 

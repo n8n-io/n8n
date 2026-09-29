@@ -3476,6 +3476,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.

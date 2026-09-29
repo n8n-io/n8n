@@ -1,4 +1,4 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { resolveOffsetPagination } from '../pagination.service';
 

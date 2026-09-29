@@ -1,11 +1,25 @@
+import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
 import type { McpConfig } from './mcp.config';
+
+/**
+ * Whether the preference tools should be registered for a caller with these
+ * flags. Multivariate experiment: only the `variant` arm enables them.
+ *
+ * Consent uses this same predicate: a control user must not see the
+ * `aiPreference:*` scopes on the consent screen, or the arm that is meant to
+ * be unaware of the feature has been shown it.
+ */
+export function arePreferenceToolsEnabled(flags: FeatureFlags): boolean {
+	return flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT;
+}
 
 export function areAgentToolsAvailable(
 	globalConfig: GlobalConfig,

@@ -33,7 +33,7 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ExecutionOptions, RunOptions } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
-import type { AgentRuntimeConfig } from '../loop/agent-runtime';
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -44,7 +44,7 @@ import {
 	type MemorySpanAttributes,
 	type RuntimeTelemetry,
 } from '../telemetry/runtime-telemetry';
-import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
+import { sanitizeOffloadedToolResultsForMemory } from './tool-result-memory';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 /** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
@@ -241,6 +241,7 @@ export class MemoryOrchestrator {
 		resourceId: string,
 		messages: AgentDbMessage[],
 		telemetry: BuiltTelemetry | undefined,
+		hostMetadata: AgentPersistenceOptions['hostMetadata'],
 	): Promise<void> {
 		await withMemorySpan(
 			'save_memory',
@@ -248,7 +249,7 @@ export class MemoryOrchestrator {
 			telemetry,
 			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
-				await saveMessagesToThread(memory, threadId, resourceId, messages);
+				await saveMessagesToThread(memory, threadId, resourceId, messages, hostMetadata);
 				return {
 					result: undefined,
 					attributes: {
@@ -325,6 +326,7 @@ export class MemoryOrchestrator {
 				options.persistence.resourceId,
 				input,
 				telemetry,
+				options.persistence.hostMetadata,
 			);
 		} catch (error) {
 			// Best-effort: the end-of-turn save still persists the input on a
@@ -384,6 +386,7 @@ export class MemoryOrchestrator {
 				options.persistence.resourceId,
 				delta,
 				telemetry,
+				options.persistence.hostMetadata,
 			);
 			const last = unpersisted[unpersisted.length - 1];
 			const lastCreatedAt = getCreatedAt(last);
@@ -424,6 +427,7 @@ export class MemoryOrchestrator {
 			options.persistence.resourceId,
 			delta,
 			telemetry,
+			options.persistence.hostMetadata,
 		);
 
 		// Memory jobs receive the execution counter so their LLM and embedding
