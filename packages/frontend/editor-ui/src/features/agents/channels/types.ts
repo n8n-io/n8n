@@ -24,6 +24,7 @@ export interface AgentChannelViewExpose {
 	validationError?: string | null;
 	loading?: boolean;
 	beforeSave?: () => Promise<void>;
+	description?: string;
 }
 
 export interface AgentChannelRuntimeContext {
