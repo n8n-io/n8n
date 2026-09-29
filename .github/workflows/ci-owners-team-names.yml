@@ -1,0 +1,24 @@
+name: 'CI: Validate OWNERS team names'
+
+on:
+  pull_request:
+    paths:
+      - 'OWNERS'
+      - 'GROUPS.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate team names
+        env:
+          GITHUB_TOKEN: ${{ secrets.N8N_ORG_READ_TOKEN || github.token }}
+        run: node .github/scripts/owners/validate-team-names.mjs

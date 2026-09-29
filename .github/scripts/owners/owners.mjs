@@ -30,25 +30,6 @@ export const GROUPS_FILE = join(REPO_ROOT, "GROUPS.json");
 // GitHub team handle, e.g. `@n8n-io/catalysts`.
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
 const GROUP_TOKEN = /^[\w.-]+$/;
-const KNOWN_TEAM_SLUGS = new Set([
-	"adore",
-	"ai",
-	"ai-assistant",
-	"ai-trust",
-	"agents",
-	"catalysts",
-	"community-engineering",
-	"design-engineering",
-	"frontend",
-	"governance-and-observability",
-	"iam",
-	"instance-ai",
-	"ligo",
-	"migrations-review",
-	"nodes",
-	"qa-dx",
-	"relay",
-]);
 
 /**
  * Parse the ordered group definitions in GROUPS.json.
@@ -88,12 +69,6 @@ export function parseGroupsContent(content) {
 		for (const member of members) {
 			if (!TEAM_TOKEN.test(member) && !GROUP_TOKEN.test(member)) {
 				throw new Error(`GROUPS.json: invalid handle "${member}" in group "${group}"`);
-			}
-			if (!groups.has(member)) {
-				const slug = member.replace(/^@[^/]+\//, "");
-				if (!KNOWN_TEAM_SLUGS.has(slug)) {
-					throw new Error(`GROUPS.json: unknown team "${member}" in group "${group}"`);
-				}
 			}
 		}
 	}

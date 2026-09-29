@@ -120,13 +120,6 @@ describe('parseGroupsContent', () => {
 		]);
 	});
 
-	it('rejects unknown team slugs', () => {
-		assert.throws(
-			() => parseGroupsContent(JSON.stringify({ platform: ['not-a-team'] })),
-			/GROUPS\.json: unknown team "not-a-team" in group "platform"/,
-		);
-	});
-
 	it('allows a group to include groups defined earlier', () => {
 		const groups = parseGroupsContent(JSON.stringify({
 			'@n8n-io/first': ['@n8n-io/catalysts'],
