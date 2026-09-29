@@ -1,7 +1,8 @@
-import type {
-	InstanceAiThreadTab,
-	InstanceAiThreadTabRef,
-	InstanceAiThreadTabsState,
+import {
+	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
+	type InstanceAiThreadTab,
+	type InstanceAiThreadTabRef,
+	type InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -20,9 +21,6 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	'data-table': 'table',
 	agent: 'robot',
 };
-
-// Matches the limits of the stored state schema.
-const MAX_CLOSED_TABS = 500;
 
 type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
 
@@ -121,7 +119,7 @@ export function useOpenArtifactTabs({
 			closedTabs: [
 				...closedTabs.filter((tab) => tabKey(tab) !== closedKey),
 				{ type: closed.type, id: closed.id },
-			].slice(-MAX_CLOSED_TABS),
+			].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
 		};
 		return (tabs[index + 1] ?? tabs[index - 1])?.id;
 	}
