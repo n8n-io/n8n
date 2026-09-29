@@ -226,8 +226,8 @@ function declaredStickySize(graphNode: GraphNode): { width: number; height: numb
 
 export function getNodeDimensions(
 	nodeName: string,
-	aiParentNames: Set<string>,
-	aiConfigNames: Set<string>,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
 ): { width: number; height: number } {
 	const graphNode = nodes.get(nodeName);
@@ -344,6 +344,29 @@ function centerHorizontally(container: BoundingBox, target: BoundingBox): number
 // ---------------------------------------------------------------------------
 // Dagre graph builders
 // ---------------------------------------------------------------------------
+
+function createParentGraph(
+	nonStickyNames: readonly string[],
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): dagre.graphlib.Graph {
+	const parentGraph = new dagre.graphlib.Graph();
+	parentGraph.setGraph({});
+	parentGraph.setDefaultEdgeLabel(() => ({}));
+
+	for (const name of nonStickyNames) {
+		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const explicitPosition = nodes.get(name)?.instance.config?.position;
+		parentGraph.setNode(name, {
+			width,
+			height,
+			...(explicitPosition ? { x: explicitPosition[0], y: explicitPosition[1] } : {}),
+		});
+	}
+
+	return parentGraph;
+}
 
 function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.graphlib.Graph {
 	const subGraph = new dagre.graphlib.Graph();
@@ -825,20 +848,7 @@ export function calculateNodePositionsDagre(
 
 	if (!needsLayout) return positions;
 
-	// Build parent dagre graph with all non-sticky nodes
-	const parentGraph = new dagre.graphlib.Graph();
-	parentGraph.setGraph({});
-	parentGraph.setDefaultEdgeLabel(() => ({}));
-
-	for (const name of nonStickyNames) {
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
-		const explicitPosition = nodes.get(name)?.instance.config?.position;
-		parentGraph.setNode(name, {
-			width,
-			height,
-			...(explicitPosition ? { x: explicitPosition[0], y: explicitPosition[1] } : {}),
-		});
-	}
+	const parentGraph = createParentGraph(nonStickyNames, aiParentNames, aiConfigNames, nodes);
 
 	// Add edges from connections
 	const nonStickySet = new Set(nonStickyNames);
