@@ -38,6 +38,8 @@ import { useQuickConnect } from '@/features/credentials/quickConnect/composables
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
+import CustomNodeCreatorFooter from '@/features/customNodes/components/CustomNodeCreatorFooter.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
@@ -102,6 +104,14 @@ const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 
 const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.communityNodeDetails);
+
+// Custom nodes mockup: the node type whose actions are listed, for "add a custom action to <node>"
+const customActionParent = computed(() => {
+	if (!useSettingsStore().isCustomNodesMockupEnabled || communityNodeDetails.value) return null;
+	const first = useViewStacks().activeViewStack.items?.[0] as ActionCreateElement | undefined;
+	const nodeType = first?.properties.name;
+	return nodeType ? { nodeType, displayName: subcategory.value ?? first.properties.displayName } : null;
+});
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 
@@ -367,6 +377,11 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 				@click.prevent="addHttpNode"
 			/>
 		</div>
+		<CustomNodeCreatorFooter
+			v-if="customActionParent"
+			:parent-node-type="customActionParent.nodeType"
+			:parent-display-name="customActionParent.displayName"
+		/>
 		<CommunityNodeFooter
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"

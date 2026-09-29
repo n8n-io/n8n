@@ -145,3 +145,6 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
       Slack; 3 nodes: Acme Billing, Open-Meteo Weather, Feature Flags) with automatic
       re-seed on an outdated set and a "Reset demo data" button in Settings
 - [x] Remove the feature flag; the module is always active on this branch
+- [x] "Add custom action" at the end of each node's actions list in the panel, wizard opens with
+      that node pre-selected (2026-09-29)
+- [ ] Post-MVP idea: AI assistant pre-fills a custom action (Context7 MCP for API docs), see DESIGN.md open question 7

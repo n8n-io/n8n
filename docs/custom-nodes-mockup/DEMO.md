@@ -128,7 +128,9 @@ Settings → Custom nodes to hit the mock).
   panel rebuilds from `types/nodes.json`, which the backend regenerates on
   every save and announces through the `nodeDescriptionUpdated` push event.
 - **Where is "Create custom node"?** At the very bottom of the nodes panel
-  list, and highlighted when a search has no results. There is also
-  Settings → Custom nodes → *Create custom node*.
+  list, and highlighted when a search has no results. Every node's actions
+  list ends with *Add custom action*, which opens the wizard with that node
+  pre-selected. There is also Settings → Custom nodes → *Create custom
+  node*.
 - **Mock returns 404**: the mock workflow must be *active*; test URLs
   (`/webhook-test/…`) only work while "Listen for test event" runs.

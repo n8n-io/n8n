@@ -270,6 +270,14 @@ their operations as options of one `operation` parameter.
    the definition schema should mirror `INodeTypeDescription` more closely?
 6. Telemetry: how do we count usage of custom operations per parent node to
    learn which built-in operations are missing?
+7. **AI-assisted setup (post-MVP)**: let the n8n assistant pre-fill a custom
+   action from a sentence ("add a Stripe action that creates a payment
+   link"). The definition is plain JSON, so this is a structured-output
+   prompt over the wizard draft. API knowledge could come from an MCP
+   documentation source such as Context7, so the assistant proposes method,
+   URL, auth and typed inputs from the vendor docs instead of guessing.
+   Same mechanism could later suggest actions when a search in the panel
+   finds nothing.
 
 ## Naming
 

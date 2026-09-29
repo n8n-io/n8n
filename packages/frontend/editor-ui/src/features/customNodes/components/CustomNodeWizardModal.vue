@@ -46,6 +46,8 @@ import {
 interface ModalData {
 	httpNodeParameters?: INodeParameters;
 	editOperation?: CustomOperationDefinition;
+	/** Pre-select "add action to existing node" for this node type (from the panel). */
+	parentNodeType?: string;
 }
 
 type Step = 'choose' | 'request' | 'fields' | 'review';
@@ -143,6 +145,10 @@ onMounted(async () => {
 	if (data?.httpNodeParameters) {
 		Object.assign(draft, draftFromHttpRequestParameters(data.httpNodeParameters));
 		suggestParentFromAuth();
+	}
+	if (data?.parentNodeType) {
+		draft.mode = 'operation';
+		draft.parentNodeType = data.parentNodeType;
 	}
 });
 
