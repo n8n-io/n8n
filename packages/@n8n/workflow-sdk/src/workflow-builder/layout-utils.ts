@@ -32,17 +32,8 @@ import {
 	STICKY_PADDING,
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
-	GROUP_PADDING_X,
-	GROUP_PADDING_Y_TOP,
-	GROUP_HEADER_HEIGHT,
-	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './constants';
-import {
-	collapseNodeGroups,
-	memberOriginFor,
-	type BoundingBox,
-	type CollapsedGroup,
-} from './group-layout-utils';
+import { collapseNodeGroups, placeGroupMembers, type BoundingBox } from './group-layout-utils';
 import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
@@ -613,33 +604,6 @@ export function resolveStickyGeometry(
 // Helpers: Node groups
 // ---------------------------------------------------------------------------
 
-/** Vertical drop from a group's title bar to the top of its members. */
-const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
-
-/**
- * Unfold a group: place its members below and right of where the layout put the
- * chip, at the offsets the canvas expects the frame to sit at.
- */
-function placeGroupMembers(
-	group: CollapsedGroup,
-	headerBox: BoundingBox,
-	boundingBoxByNodeId: Record<string, BoundingBox>,
-): void {
-	const memberBox = boundingBoxFromGraph(group.graph);
-	const offsetX = memberOriginFor(headerBox.x, GROUP_PADDING_X, snapToGrid) - memberBox.x;
-	const offsetY = memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y, snapToGrid) - memberBox.y;
-
-	for (const key of group.graph.nodes()) {
-		const member = group.graph.node(key);
-		boundingBoxByNodeId[key] = {
-			x: member.x - member.width / 2 + offsetX,
-			y: member.y - member.height / 2 + offsetY,
-			width: member.width,
-			height: member.height,
-		};
-	}
-}
-
 // ---------------------------------------------------------------------------
 // Dagre layout function
 // ---------------------------------------------------------------------------
@@ -825,7 +789,10 @@ export function calculateNodePositionsDagre(
 
 			const group = groupByGraphId.get(nodeId);
 			if (group) {
-				placeGroupMembers(group, box, boundingBoxByNodeId);
+				placeGroupMembers(group, box, boundingBoxByNodeId, {
+					boundingBoxFromGraph,
+					snapToGrid,
+				});
 			} else if (aiParentIds.has(nodeId)) {
 				const aiGraphInfo = aiGraphs.find(({ aiParentId }) => aiParentId === nodeId);
 				if (!aiGraphInfo) continue;

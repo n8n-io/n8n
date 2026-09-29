@@ -1,6 +1,12 @@
 import dagre from '@dagrejs/dagre';
 
-import { GRID_SIZE, GROUP_HEADER_HEIGHT, GROUP_HEADER_WIDTH_COLLAPSED } from './constants';
+import {
+	GRID_SIZE,
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+} from './constants';
 import type { ResolvedNodeGroup } from './plugins/types';
 
 export interface BoundingBox {
@@ -19,6 +25,11 @@ export interface CollapsedGroup {
 
 interface FoldNodeGroupsDependencies {
 	createSubGraph: (nodeIds: string[], parent: dagre.graphlib.Graph) => dagre.graphlib.Graph;
+}
+
+interface PlaceGroupMembersDependencies {
+	boundingBoxFromGraph: (graph: dagre.graphlib.Graph) => BoundingBox;
+	snapToGrid: (value: number) => number;
 }
 
 /**
@@ -123,3 +134,31 @@ export function collapseNodeGroups(
 }
 
 const GROUP_GRAPH_ID_PREFIX = '__nodeGroup__:';
+
+/** Vertical drop from a group's title bar to the top of its members. */
+const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
+
+/**
+ * Unfold a group: place its members below and right of where the layout put the
+ * chip, at the offsets the canvas expects the frame to sit at.
+ */
+export function placeGroupMembers(
+	group: CollapsedGroup,
+	headerBox: BoundingBox,
+	boundingBoxByNodeId: Record<string, BoundingBox>,
+	{ boundingBoxFromGraph, snapToGrid }: PlaceGroupMembersDependencies,
+): void {
+	const memberBox = boundingBoxFromGraph(group.graph);
+	const offsetX = memberOriginFor(headerBox.x, GROUP_PADDING_X, snapToGrid) - memberBox.x;
+	const offsetY = memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y, snapToGrid) - memberBox.y;
+
+	for (const key of group.graph.nodes()) {
+		const member = group.graph.node(key);
+		boundingBoxByNodeId[key] = {
+			x: member.x - member.width / 2 + offsetX,
+			y: member.y - member.height / 2 + offsetY,
+			width: member.width,
+			height: member.height,
+		};
+	}
+}
