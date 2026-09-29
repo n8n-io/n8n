@@ -193,15 +193,7 @@ export class V1StepExecutor implements IStepExecutor {
 		}
 
 		if (!result.ok) {
-			const description =
-				typeof result.error === 'object' &&
-				result.error !== null &&
-				'description' in result.error &&
-				typeof result.error.description === 'string'
-					? result.error.description
-					: result.error instanceof Error
-						? result.error.message
-						: String(result.error);
+			const description = this.describeNodeError(result.error);
 			try {
 				await context.sendChunk('error', 0, description);
 			} catch {
@@ -217,5 +209,22 @@ export class V1StepExecutor implements IStepExecutor {
 		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
 
 		throw new EngineRequestNotSupportedError(context.getNode().type);
+	}
+
+	/**
+	 * The text of the error chunk for a failed node. A node error's
+	 * `description` comes first, because it is the text meant for the user.
+	 */
+	private describeNodeError(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'description' in error &&
+			typeof error.description === 'string'
+		) {
+			return error.description;
+		}
+
+		return error instanceof Error ? error.message : String(error);
 	}
 }
