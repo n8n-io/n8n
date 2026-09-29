@@ -1,5 +1,5 @@
 import {
-	computeGroupFrameRects,
+	computeGroupFrameRects as computeSharedGroupFrameRects,
 	type ExecutionStatus,
 	type IWorkflowGroup,
 	type NodeGroupRect,
@@ -28,7 +28,10 @@ import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 export type NodesRect = NodeGroupRect;
-export { computeGroupFrameRects };
+
+export function computeGroupFrameRects(nodesRect: NodesRect) {
+	return computeSharedGroupFrameRects(nodesRect, GROUP_HEADER_HEIGHT);
+}
 
 /**
  * Size lookup for nodes that aren't the default size

@@ -255,6 +255,7 @@ export {
 export {
 	GRID_SIZE,
 	DEFAULT_NODE_SIZE,
+	GROUP_HEADER_HEIGHT,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
 } from './workflow-builder/constants';

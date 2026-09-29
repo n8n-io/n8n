@@ -1,10 +1,13 @@
+import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+
 export {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_HEADER_WIDTH_COLLAPSED,
-	GROUP_HEADER_HEIGHT,
 } from 'n8n-workflow';
+/** Keep the group header aligned with the default canvas node height. */
+export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 /** Character cap on a group description; shared with the backend so validation matches. */
 export { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 /** Below this zoom level all group descriptions and their affordances are hidden. */

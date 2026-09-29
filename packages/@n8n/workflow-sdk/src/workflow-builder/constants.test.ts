@@ -1,6 +1,7 @@
 import {
 	GRID_SIZE,
 	DEFAULT_NODE_SIZE,
+	GROUP_HEADER_HEIGHT,
 	CONFIGURATION_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	NODE_X_SPACING,
@@ -20,6 +21,10 @@ describe('workflow-builder/constants', () => {
 
 		it('DEFAULT_NODE_SIZE is 96x96', () => {
 			expect(DEFAULT_NODE_SIZE).toEqual([96, 96]);
+		});
+
+		it('GROUP_HEADER_HEIGHT matches the default node height', () => {
+			expect(GROUP_HEADER_HEIGHT).toBe(DEFAULT_NODE_SIZE[1]);
 		});
 
 		it('CONFIGURATION_NODE_SIZE is 80x80', () => {

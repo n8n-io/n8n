@@ -9,6 +9,8 @@ export const GRID_SIZE = 16;
 
 // Node dimensions (defaults — can be refined with node type descriptions later)
 export const DEFAULT_NODE_SIZE: [number, number] = [GRID_SIZE * 6, GRID_SIZE * 6]; // 96x96
+/** Title bar height; matches the default canvas node height. */
+export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 export const CONFIGURATION_NODE_RADIUS = (GRID_SIZE * 5) / 2; // 40
 export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
