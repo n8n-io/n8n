@@ -421,10 +421,9 @@ function onListBackgroundClick() {
 	padding: var(--spacing--xs);
 	align-items: stretch;
 	border: var(--border-width) solid var(--border-color);
-	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
-		background-color: var(--background--active);
+		background-color: var(--background--hover);
 		border-color: transparent;
 	}
 
