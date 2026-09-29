@@ -242,6 +242,22 @@ describe('JobOutcomeTracker', () => {
 			expect(otherSettled).toBe(false);
 		});
 
+		it('should not count a wait that an event settled while the DB read was in flight', async () => {
+			let releaseRead: (rows: Array<{ id: string; status: ExecutionStatus }>) => void = () => {};
+			executionRepository.findStatusesByIds.mockReturnValue(
+				new Promise((resolve) => (releaseRead = resolve)),
+			);
+
+			const wait = tracker.waitFor(job);
+			const recheck = tracker.recheckAll();
+			tracker.recordFinished('exec-1', result);
+			releaseRead(statusRows({ 'exec-1': 'success' }));
+			await recheck;
+
+			await expect(wait).resolves.toBeUndefined();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('should recheck at once on demand, e.g. when Redis reconnects', async () => {
 			executionRepository.findStatusesByIds.mockResolvedValue(statusRows({ 'exec-1': 'success' }));
 

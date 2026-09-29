@@ -874,7 +874,6 @@ export class WorkflowRunner {
 					} catch (error) {
 						// An async executor's throw would never settle this promise, and the
 						// active execution would keep the request alive until restart
-						this.errorReporter.error(error, { executionId });
 						await this.processError(
 							error,
 							new Date(),

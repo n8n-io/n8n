@@ -165,6 +165,8 @@ export class JobOutcomeTracker {
 
 		for (const [executionId, status] of statusById) {
 			if (IN_FLIGHT_STATUSES.has(status)) continue;
+			// An event may have settled the wait while the DB read was in flight
+			if (!this.pendingWaits.has(executionId)) continue;
 
 			this.logger.warn(
 				`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,

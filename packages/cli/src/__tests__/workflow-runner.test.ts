@@ -15,7 +15,7 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { DirectedGraph, ErrorReporter, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -1100,7 +1100,6 @@ describe('enqueueExecution', () => {
 			workflowExecution = execution;
 		});
 		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
-		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -1117,7 +1116,6 @@ describe('enqueueExecution', () => {
 		await runner.enqueueExecution('1', 'workflow-xyz', data);
 
 		await expect(workflowExecution).rejects.toThrowError(readError);
-		expect(reportError).toHaveBeenCalledWith(readError, { executionId: '1' });
 		// A failed run makes the webhook answer with an error instead of a success without data
 		expect(processError).toHaveBeenCalledWith(
 			readError,
@@ -1128,14 +1126,13 @@ describe('enqueueExecution', () => {
 		);
 	});
 
-	it('should fail the execution without reporting when its record is gone after the job ended', async () => {
+	it('should fail the execution when its record is gone after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
 			workflowExecution = execution;
 		});
 		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
-		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -1152,7 +1149,6 @@ describe('enqueueExecution', () => {
 
 		// An unsaved execution is deleted by the worker, so a missing record is not a bug
 		await expect(workflowExecution).rejects.toThrowError('Could not find execution with id "1"');
-		expect(reportError).not.toHaveBeenCalled();
 		expect(processError).toHaveBeenCalledWith(
 			expect.any(WorkflowOperationError),
 			expect.any(Date),

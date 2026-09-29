@@ -2,6 +2,7 @@ import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	ExecutionStatus,
 	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -1102,7 +1103,7 @@ export type RelayEventMap = {
 	'job-completion-missed': {
 		executionId: string;
 		/** Execution status found in the DB, or `deleted` when its row was gone. */
-		status: string;
+		status: ExecutionStatus | 'deleted';
 	};
 
 	// #endregion

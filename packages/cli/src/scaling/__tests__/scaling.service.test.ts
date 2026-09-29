@@ -178,6 +178,19 @@ describe('ScalingService', () => {
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
 			});
+
+			it('should recheck pending job waits when the Redis connection recovers', async () => {
+				await scalingService.setupQueue();
+				const { RedisClientService } = await import('@/services/redis-client.service.js');
+
+				// Completion events sent while the connection was down are lost
+				// The service debounces its emits, so the event lands on the next second
+				vi.useFakeTimers();
+				Container.get(RedisClientService).emit('connection-recovered');
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(jobOutcomeTracker.recheckAll).toHaveBeenCalled();
+			});
 		});
 
 		describe('if follower main', () => {
@@ -341,6 +354,17 @@ describe('ScalingService', () => {
 				expect(queue.pause).toHaveBeenCalledWith(true, true);
 				expect(stopQueueRecoverySpy).toHaveBeenCalled();
 				expect(stopQueueMetricsSpy).toHaveBeenCalled();
+			});
+
+			it('should keep pending job waits so the active executions drain can settle them', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'main';
+				await scalingService.setupQueue();
+
+				await scalingService.stop();
+
+				expect(jobOutcomeTracker.clear).not.toHaveBeenCalled();
+				expect(jobOutcomeTracker.drop).not.toHaveBeenCalled();
 			});
 		});
 
