@@ -695,68 +695,6 @@ describe('withAiPreferences', () => {
  * two halves of that comparison: extraction from a stored message, and the storage form of
  * a fresh render.
  */
-describe('threadArtifactsBlockListsTabs', () => {
-	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
-
-	it('is true for a block that lists tabs, also in the older format', () => {
-		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [digest] }))).toBe(
-			true,
-		);
-		expect(
-			threadArtifactsBlockListsTabs(
-				'<thread-artifacts>\nArtifacts the user can see in this conversation’s preview:\n  - Workflow "Digest" (id: `wf-1`)\n</thread-artifacts>',
-			),
-		).toBe(true);
-	});
-
-	it('is false for a block without a tab list', () => {
-		expect(
-			threadArtifactsBlockListsTabs(
-				buildThreadArtifactsBlock({ artifacts: [] }, [
-					{ type: 'workflow', id: 'wf-9', name: 'Handed off' },
-				]),
-			),
-		).toBe(false);
-		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [] }))).toBe(false);
-	});
-
-	it('is false when only a resource name looks like the header', () => {
-		const block = buildThreadArtifactsBlock(undefined, [
-			{
-				type: 'workflow',
-				id: 'wf-1',
-				name: 'Tabs the user has open in this conversation’s preview, as of this message:',
-			},
-		]);
-
-		expect(threadArtifactsBlockListsTabs(block)).toBe(false);
-	});
-});
-
-describe('extractThreadArtifactsBlock', () => {
-	const block = buildThreadArtifactsBlock({
-		artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
-		activeId: 'wf-1',
-	});
-
-	it('returns the block exactly as the thread-context wrapper stored it', () => {
-		const stored = [
-			buildThreadContextBlock([
-				instanceContextMarker(),
-				block,
-				buildCurrentDateTimeBlock('Monday 1 January 2026'),
-			]),
-			'Change it',
-		].join('\n\n');
-
-		expect(extractThreadArtifactsBlock(stored)).toBe(asStoredThreadContextSection(block));
-	});
-
-	it('ignores a tag lookalike in the user text', () => {
-		expect(extractThreadArtifactsBlock(`Please explain\n${block}`)).toBeUndefined();
-	});
-});
-
 describe('extractAiPreferencesBlock', () => {
 	const block = renderAiPreferencesBlock({
 		instance: [],
@@ -808,6 +746,68 @@ describe('extractAiPreferencesBlock', () => {
 
 		expect(extractAiPreferencesBlock(stored)).not.toBe(withCloseTag);
 		expect(extractAiPreferencesBlock(stored)).toBe(asStoredThreadContextSection(withCloseTag));
+	});
+});
+
+describe('extractThreadArtifactsBlock', () => {
+	const block = buildThreadArtifactsBlock({
+		artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+		activeId: 'wf-1',
+	});
+
+	it('returns the block exactly as the thread-context wrapper stored it', () => {
+		const stored = [
+			buildThreadContextBlock([
+				instanceContextMarker(),
+				block,
+				buildCurrentDateTimeBlock('Monday 1 January 2026'),
+			]),
+			'Change it',
+		].join('\n\n');
+
+		expect(extractThreadArtifactsBlock(stored)).toBe(asStoredThreadContextSection(block));
+	});
+
+	it('ignores a tag lookalike in the user text', () => {
+		expect(extractThreadArtifactsBlock(`Please explain\n${block}`)).toBeUndefined();
+	});
+});
+
+describe('threadArtifactsBlockListsTabs', () => {
+	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+
+	it('is true for a block that lists tabs, also in the older format', () => {
+		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [digest] }))).toBe(
+			true,
+		);
+		expect(
+			threadArtifactsBlockListsTabs(
+				'<thread-artifacts>\nArtifacts the user can see in this conversation’s preview:\n  - Workflow "Digest" (id: `wf-1`)\n</thread-artifacts>',
+			),
+		).toBe(true);
+	});
+
+	it('is false for a block without a tab list', () => {
+		expect(
+			threadArtifactsBlockListsTabs(
+				buildThreadArtifactsBlock({ artifacts: [] }, [
+					{ type: 'workflow', id: 'wf-9', name: 'Handed off' },
+				]),
+			),
+		).toBe(false);
+		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [] }))).toBe(false);
+	});
+
+	it('is false when only a resource name looks like the header', () => {
+		const block = buildThreadArtifactsBlock(undefined, [
+			{
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Tabs the user has open in this conversation’s preview, as of this message:',
+			},
+		]);
+
+		expect(threadArtifactsBlockListsTabs(block)).toBe(false);
 	});
 });
 
