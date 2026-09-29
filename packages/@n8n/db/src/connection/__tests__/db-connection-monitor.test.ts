@@ -599,6 +599,9 @@ describe('DbConnectionMonitor', () => {
 
 			expect(dataSource.destroy).toHaveBeenCalled();
 			expect(dataSource.initialize).toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledExactlyOnceWith(
+				'success',
+			);
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 			// @ts-expect-error private property
 			expect(monitor.consecutiveFailures).toBe(0);
@@ -645,6 +648,7 @@ describe('DbConnectionMonitor', () => {
 
 			expect(sqliteDataSource.destroy).not.toHaveBeenCalled();
 			expect(sqliteDataSource.initialize).not.toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).not.toHaveBeenCalled();
 		});
 
 		it('should back off between failed recovery attempts and eventually succeed', async () => {
@@ -665,6 +669,10 @@ describe('DbConnectionMonitor', () => {
 			await monitor.recoverDataSource();
 
 			expect(dataSource.initialize).toHaveBeenCalledTimes(3);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledTimes(3);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(1, 'failure');
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(2, 'failure');
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(3, 'success');
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 			// First backoff = 1000ms (1s * 2^0); second = 2000ms (1s * 2^1).
 			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
@@ -702,6 +710,43 @@ describe('DbConnectionMonitor', () => {
 
 			expect(errorReporter.error).toHaveBeenCalledWith(firstError);
 			expect(errorReporter.error).toHaveBeenCalledWith(secondError);
+		});
+
+		it('should complete recovery when its metrics observer throws', async () => {
+			const metricsError = new Error('metrics unavailable');
+			const observer = vi.fn(() => {
+				throw metricsError;
+			});
+			dbConnectionMetrics.recoveryAttemptObserver = observer;
+			dataSource.initialize
+				.mockRejectedValueOnce(new Error('still down'))
+				.mockResolvedValueOnce(dataSource);
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+
+			await monitor['recoverDataSource']();
+
+			expect(dataSource.initialize).toHaveBeenCalledTimes(2);
+			expect(observer.mock.calls).toEqual([['failure'], ['success']]);
+			expect(errorReporter.error).toHaveBeenCalledWith(metricsError);
+			expect(monitor['recovering']).toBe(false);
+		});
+
+		it('should recover without a metrics observer', async () => {
+			const metrics = new DbConnectionMetrics();
+			const unobservedMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				metrics,
+			);
+			dataSource.initialize.mockResolvedValueOnce(dataSource);
+
+			await unobservedMonitor['recoverDataSource']();
+
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(unobservedMonitor['recovering']).toBe(false);
 		});
 
 		it('should cap exponential backoff at the configured maximum', async () => {
@@ -844,6 +889,9 @@ describe('DbConnectionMonitor', () => {
 
 			// AbortError is swallowed; the loop exits on the next iteration without retrying.
 			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledExactlyOnceWith(
+				'failure',
+			);
 			// @ts-expect-error private property
 			expect(monitor.recovering).toBe(false);
 		});
@@ -936,6 +984,7 @@ describe('DbConnectionMonitor', () => {
 			expect(stopResolved).toBe(true);
 			// The post-destroy `if (this.stopped) break;` prevents reinitialization.
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1585,6 +1634,28 @@ describe('DbConnectionMonitor', () => {
 	});
 
 	describe('setConnected', () => {
+		it('should count each disconnection once until the connection recovers', () => {
+			monitor['setConnected'](false);
+			monitor['setConnected'](false);
+			expect(dbConnectionMetrics.disconnectionObserver).toHaveBeenCalledTimes(1);
+
+			monitor['setConnected'](true);
+			monitor['setConnected'](false);
+			expect(dbConnectionMetrics.disconnectionObserver).toHaveBeenCalledTimes(2);
+		});
+
+		it('should update the connection state when the disconnection observer throws', () => {
+			const metricsError = new Error('metrics unavailable');
+			dbConnectionMetrics.disconnectionObserver = vi.fn(() => {
+				throw metricsError;
+			});
+
+			expect(() => monitor['setConnected'](false)).not.toThrow();
+
+			expect(onConnectedChange).toHaveBeenCalledWith(false);
+			expect(errorReporter.error).toHaveBeenCalledWith(metricsError);
+		});
+
 		it('should only fire onConnectedChange on a transition', () => {
 			// @ts-expect-error private property
 			monitor.connected = true;

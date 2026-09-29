@@ -128,7 +128,7 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
 
-	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	/** Whether to include database pool metrics for usage, acquisition, connection state, and recovery. */
 	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
 	includeDbPoolMetrics: boolean = false;
 
