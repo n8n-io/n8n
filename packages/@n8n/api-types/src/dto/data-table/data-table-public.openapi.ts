@@ -49,8 +49,6 @@ export const createDataTableColumnFieldDocs = {
 	},
 	name: { description: dataTableColumnNameDescription },
 	type: { enum: [...dataTableColumnTypeSchema.options], description: 'Column data type' },
-	// No explicit `type: 'integer'` override here: `.int()` on the schema already derives it, and
-	// an explicit override on a constrained (`.min()`) schema drops the derived `minimum`.
 	index: { description: 'Column position (optional, appended to end if omitted)' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
