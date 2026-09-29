@@ -58,4 +58,30 @@ export default workflow('id', 'name').add(transform);
 			true,
 		);
 	});
+
+	it('passes the execution mode to the Python linter', () => {
+		const source = `
+const transform = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Transform',
+    parameters: {
+      mode: 'runOnceForEachItem',
+      language: 'pythonNative',
+      pythonCode: 'return _items[0]',
+    },
+  },
+});
+export default workflow('id', 'name').add(transform);
+`;
+		expect(lintWorkflowSource(source)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					lintTarget: 'pythonCode',
+					code: 'CODE_MODE_API_MISUSE',
+				}),
+			]),
+		);
+	});
 });

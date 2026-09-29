@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import { extractResourceId } from '../../../shared/GenericFunctions';
 import {
@@ -71,7 +72,13 @@ export const description: INodeProperties[] = [
 		description: 'Text to search databases/data sources for',
 	},
 	...returnAllOrLimit('dataSource', 'search'),
-	simplify('dataSource', ['get', 'search']),
+	{
+		...simplify('dataSource', ['get', 'search']),
+		builderHint: {
+			propertyHint:
+				'When true, each data source returns only id, name, and url. Set false to retain native fields such as properties, which describes the data source schema. To read page values, use Database Page operations. Match verification output fixtures to the selected output mode.',
+		},
+	},
 	searchOptions('dataSource', 'search'),
 ];
 
@@ -87,7 +94,7 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/data_sources/${dataSourceId}`,
+				`/data_sources/${toPathSegment(dataSourceId)}`,
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
 				response = simplifyObjects(response, false, 3);

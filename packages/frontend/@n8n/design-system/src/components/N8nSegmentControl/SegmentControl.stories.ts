@@ -1,6 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, watch } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import type { SegmentControlSize, SegmentOption } from './SegmentControl.types';
@@ -8,6 +8,7 @@ import N8nSegmentControl from './SegmentControl.vue';
 import type { IconName } from '../N8nIcon/icons';
 
 const sizeOptions: SegmentControlSize[] = ['mini', 'small', 'default', 'large', 'xlarge'];
+const playgroundItemCounts = [2, 3, 4, 5, 6] as const;
 
 export default {
 	title: 'Core/SegmentControl',
@@ -17,6 +18,8 @@ export default {
 			control: 'select',
 			options: sizeOptions,
 		},
+		disabled: { control: 'boolean' },
+		squareButtons: { control: 'boolean' },
 	},
 	parameters: {
 		docs: {
@@ -58,6 +61,98 @@ const Template: StoryFn = (args, { argTypes }) => ({
 export const Default = Template.bind({});
 Default.args = {
 	options: defaultOptions,
+};
+
+type PlaygroundItemCount = (typeof playgroundItemCounts)[number];
+
+type PlaygroundArgs = {
+	itemCount: PlaygroundItemCount;
+	size: SegmentControlSize;
+	disabled: boolean;
+	squareButtons: boolean;
+	options?: Array<SegmentOption<string>>;
+	modelValue?: string;
+	defaultValue?: string;
+};
+
+const playgroundOptionsByCount: Record<PlaygroundItemCount, Array<SegmentOption<string>>> = {
+	2: [
+		{ label: 'Item 1', value: '1' },
+		{ label: 'Item 2', value: '2' },
+	],
+	3: [
+		{ label: 'Item 1', value: '1' },
+		{ label: 'Item 2', value: '2' },
+		{ label: 'Item 3', value: '3' },
+	],
+	4: [
+		{ label: 'Item 1', value: '1' },
+		{ label: 'Item 2', value: '2' },
+		{ label: 'Item 3', value: '3' },
+		{ label: 'Item 4', value: '4' },
+	],
+	5: [
+		{ label: 'Item 1', value: '1' },
+		{ label: 'Item 2', value: '2' },
+		{ label: 'Item 3', value: '3' },
+		{ label: 'Item 4', value: '4' },
+		{ label: 'Item 5', value: '5' },
+	],
+	6: [
+		{ label: 'Item 1', value: '1' },
+		{ label: 'Item 2', value: '2' },
+		{ label: 'Item 3', value: '3' },
+		{ label: 'Item 4', value: '4' },
+		{ label: 'Item 5', value: '5' },
+		{ label: 'Item 6', value: '6' },
+	],
+};
+
+/** itemCount is a Figma-style variant: each value swaps in a hard-coded options list. */
+export const Playground: StoryFn<PlaygroundArgs> = (args) => ({
+	components: { N8nSegmentControl },
+	setup() {
+		const value = ref('1');
+
+		watch(
+			() => args.itemCount,
+			(itemCount) => {
+				const next = playgroundOptionsByCount[itemCount];
+				if (!next.some((option) => option.value === value.value)) {
+					value.value = next[0]?.value ?? '1';
+				}
+			},
+		);
+
+		return { args, value, playgroundOptionsByCount, onInput: action('update:modelValue') };
+	},
+	template: `
+		<N8nSegmentControl
+			v-model="value"
+			:options="playgroundOptionsByCount[args.itemCount]"
+			:size="args.size"
+			:disabled="args.disabled"
+			:square-buttons="args.squareButtons"
+			@update:model-value="onInput"
+		/>
+	`,
+});
+Playground.args = {
+	itemCount: 3,
+	size: 'default',
+	disabled: false,
+	squareButtons: false,
+};
+Playground.argTypes = {
+	itemCount: {
+		control: 'radio',
+		options: [...playgroundItemCounts],
+		description:
+			'Variant for how many segments to show. Map to the Figma "number of items" property.',
+	},
+	options: { table: { disable: true } },
+	modelValue: { table: { disable: true } },
+	defaultValue: { table: { disable: true } },
 };
 
 export const Sizes: StoryFn = () => ({

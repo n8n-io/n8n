@@ -12,9 +12,9 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 /**
@@ -80,7 +80,14 @@ const registerTestWebhook = async (
 const mintTokenFor = async (resourceUrl: string, user: User) => {
 	const tokenService = Container.get(OAuthTokenService);
 	const pair = tokenService.generateTokenPair(user.id, clientId, resourceUrl, []);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, user.id, []);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		user.id,
+		[],
+		pair.audience,
+	);
 	return pair.accessToken;
 };
 

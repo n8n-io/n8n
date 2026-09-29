@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
-import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -57,7 +57,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(true),
 		credential: EpisodicMemoryCredentialSchema,
-		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
@@ -218,6 +217,8 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'mcpOAuth2Api',
 ]);
 
+export const McpOAuth2CredentialTypeSchema = z.string().regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
@@ -238,11 +239,12 @@ export const McpServerConfigSchema = z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
 			.describe('Transport protocol'),
+		// todo: make McpOAuth2CredentialTypeSchema an object?
 		authentication: z
-			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 			.default('none')
 			.describe(
-				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+				'Auth method. Named variants or an OAuth2 credential type returned by the registry',
 			),
 		credential: z
 			.string()
@@ -278,18 +280,9 @@ export const McpServerConfigSchema = z
 			])
 			.optional()
 			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: z
-			.discriminatedUnion('mode', [
-				z.object({ mode: z.literal('global') }).strict(),
-				z
-					.object({
-						mode: z.literal('selected'),
-						tools: z.array(z.string().min(1)).min(1),
-					})
-					.strict(),
-			])
-			.optional()
-			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		approval: AgentApprovalSchema.optional().describe(
+			'Human-in-the-loop approval. Absent = no approval required',
+		),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -443,6 +436,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id (e.g. `gpt-4o`) is not
+	 * the deployment id, so the agent flow must capture the user's deployment
+	 * name separately. Only meaningful for the `azure-openai` provider with a
+	 * classic endpoint; ignored by Foundry and other providers. An empty
+	 * string is a deliberate clear of a previously stored value.
+	 */
+	modelDeploymentName: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -480,7 +482,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	integrations: z
+		.array(AgentIntegrationConfigSchema)
+		.refine(
+			(integrations) => integrations.filter((entry) => entry.type === 'n8n_chat').length <= 1,
+			{
+				message: 'Only one n8n Chat channel is allowed',
+			},
+		)
+		.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -535,6 +545,7 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;

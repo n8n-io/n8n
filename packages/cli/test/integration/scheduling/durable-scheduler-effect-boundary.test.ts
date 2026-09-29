@@ -20,6 +20,8 @@ import {
 	scheduleTriggerDeduplicationKey,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-task';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * The durable-scheduler effect boundary under the at-least-once contract.
  *
@@ -160,11 +162,11 @@ describe('durable scheduler effect boundary', () => {
 		dispatchSpy.mockClear();
 		releases = [];
 		await testDb.truncate(['ScheduledTask', 'ScheduledJob', 'ExecutionEntity']);
+		const jobName = `job-${Math.random().toString(36).slice(2)}`;
 		job = await jobRepo.save(
 			jobRepo.create({
-				name: `job-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 				payload: {},
 				kind: 'interval',

@@ -487,15 +487,33 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(getByTestId('workflow-review-submit-button')).toBeEnabled();
 	});
 
-	it('keeps submission blocked when loading the reviewers fails', async () => {
-		vi.mocked(fetchEligibleReviewers).mockRejectedValue(new Error('nope'));
+	it('shows error toast and keeps submission blocked when loading the reviewers fails', async () => {
+		const error = new Error('nope');
+		vi.mocked(fetchEligibleReviewers).mockRejectedValue(error);
 		const { getByTestId, goToStep2 } = await renderDialog();
-		await goToStep2();
 
+		await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String)));
+
+		await goToStep2();
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
 
 		expect(getByTestId('workflow-review-submit-button')).toBeDisabled();
 		expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
+	});
+
+	it('stays silent when the reviewer load fails after the dialog has closed', async () => {
+		let rejectLoad!: (error: unknown) => void;
+		const pendingLoad = new Promise<never>((_resolve, reject) => {
+			rejectLoad = reject;
+		});
+		vi.mocked(fetchEligibleReviewers).mockReturnValue(pendingLoad);
+		const { rerender, flushSave } = await renderDialog();
+
+		// Close before the in-flight load settles, then let it fail.
+		await rerender({ open: false, workflowId: 'workflow-1', flushSave });
+		rejectLoad(new Error('nope'));
+		await pendingLoad.catch(() => {});
+
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 

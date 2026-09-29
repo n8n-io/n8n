@@ -17,17 +17,20 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
-import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
+import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
 import { STREAM_SEPARATOR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import {
+	BadRequestError,
+	ContentTooLargeError,
+	InternalServerError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -59,6 +62,19 @@ export class AiController {
 			default:
 				return new InternalServerError(error.message, error);
 		}
+	}
+
+	/** Maps a failure from a service call to the HTTP error the client should see. */
+	private toResponseError(error: unknown) {
+		// The AI assistant service could not be reached (DNS, refused connection, timeout).
+		if (error instanceof NetworkError) {
+			return new ServiceUnavailableError(error.message);
+		}
+		if (error instanceof APIResponseError) {
+			return this.toAiAssistantResponseError(error);
+		}
+		assert(error instanceof Error);
+		return new InternalServerError(error.message, error);
 	}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -179,11 +195,7 @@ export class AiController {
 			if (e instanceof DOMException && e.name === 'AbortError') {
 				return;
 			}
-			if (e instanceof APIResponseError) {
-				throw this.toAiAssistantResponseError(e);
-			}
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -196,12 +208,17 @@ export class AiController {
 		try {
 			return await this.aiService.applySuggestion(payload, req.user);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
-	@Post('/ask-ai')
+	/**
+	 * @deprecated Both callers are deprecated: the Code node's "Ask AI" tab is
+	 * hidden, and the AI Transform node is hidden and has an automated migration
+	 * to the Code node. Removed in v3.
+	 */
+	@Licensed('feat:askAi')
+	@Post('/ask-ai', { ipRateLimit: { limit: 100 } })
 	async askAi(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -210,12 +227,7 @@ export class AiController {
 		try {
 			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
-			if (e instanceof APIResponseError) {
-				throw this.toAiAssistantResponseError(e);
-			}
-
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -224,8 +236,7 @@ export class AiController {
 		try {
 			return await this.freeAiCreditsService.claim(req.user, payload?.projectId);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -244,8 +255,7 @@ export class AiController {
 			);
 			return sessions;
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -256,8 +266,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -268,8 +277,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -284,8 +292,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -298,8 +305,7 @@ export class AiController {
 		try {
 			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -319,8 +325,7 @@ export class AiController {
 			);
 			return { success };
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -335,8 +340,7 @@ export class AiController {
 			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
 			return { success: true };
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -350,8 +354,7 @@ export class AiController {
 		try {
 			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 }

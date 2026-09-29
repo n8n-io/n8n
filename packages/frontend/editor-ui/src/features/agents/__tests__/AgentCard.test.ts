@@ -27,7 +27,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string) => (key === 'agents.new.defaultName' ? 'Untitled' : key),
+	}),
 }));
 
 const favoritesStoreMock = {
@@ -162,6 +164,21 @@ describe('AgentCard', () => {
 		trackMcpAccessEnabledForAgentMock.mockClear();
 	});
 
+	it('styles the default Untitled name as a placeholder', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'Untitled' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.text()).toContain('Untitled');
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(true);
+	});
+
+	it('keeps a named agent title in the normal heading style', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'My Agent' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(false);
+	});
+
 	it('hides the read-only badge when canUpdate is true', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.find('[data-test-id="agent-card-readonly-badge"]').exists()).toBe(false);
@@ -174,6 +191,15 @@ describe('AgentCard', () => {
 		const badge = wrapper.find('[data-test-id="agent-card-readonly-badge"]');
 		expect(badge.exists()).toBe(true);
 		expect(badge.text()).toBe('agents.list.readonly');
+	});
+
+	it('starts a new chat from the dedicated button', async () => {
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="newChat"]').exists()).toBe(false);
+		await wrapper.find('[data-test-id="agent-card-new-chat"]').trigger('click');
+
+		expect(wrapper.emitted('new-chat')).toEqual([['agent-1', 'project-1']]);
 	});
 
 	it('shows only the favorite toggle when no scopes grant publish or delete', async () => {

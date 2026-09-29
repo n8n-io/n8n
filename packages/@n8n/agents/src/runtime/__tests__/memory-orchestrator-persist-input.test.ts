@@ -45,6 +45,44 @@ function textsOf(messages: AgentDbMessage[]): string[] {
 	});
 }
 
+describe('MemoryOrchestrator.discardRejectedInput', () => {
+	it('removes selected input from storage and state without changing history or accepted input', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const history: AgentDbMessage = {
+			id: 'history',
+			createdAt: new Date('2026-01-01'),
+			...userMsg('Earlier message'),
+		};
+		await store.saveMessages({ threadId: THREAD_ID, resourceId: RESOURCE_ID, messages: [history] });
+		const list = new AgentMessageList();
+		list.addHistory([history]);
+		list.addInput([
+			{ ...userMsg('Accepted message'), id: 'accepted', createdAt: new Date() },
+			{ ...userMsg('Rejected message'), id: 'rejected', createdAt: new Date() },
+		]);
+		const accepted = list.inputDelta()[0];
+		const orchestrator = buildOrchestrator(store);
+		await orchestrator.persistInputMessages(list, PERSIST);
+
+		await orchestrator.discardRejectedInput(list, ['rejected'], PERSIST);
+		await orchestrator.discardRejectedInput(list, ['rejected'], PERSIST);
+		await orchestrator.persistInputMessages(list, PERSIST);
+		await orchestrator.persistTurnDelta(list, PERSIST);
+		await orchestrator.saveToMemory(list, PERSIST);
+
+		expect(list.inputDelta()).toEqual([accepted]);
+		expect(list.turnDelta()).toEqual([accepted]);
+		expect(list.serialize()).toMatchObject({
+			messages: [history, accepted],
+			inputIds: ['accepted'],
+			historyIds: ['history'],
+		});
+		expect(AgentMessageList.deserialize(list.serialize()).turnDelta()).toEqual([accepted]);
+		expect(await store.getMessages(THREAD_ID)).toEqual([history, accepted]);
+	});
+});
+
 describe('MemoryOrchestrator.persistInputMessages', () => {
 	it('persists only the input delta, not history or responses', async () => {
 		const store = new InMemoryMemory();
@@ -284,6 +322,24 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 						},
 						{
 							type: 'tool-call',
+							toolCallId: 'content-result-call',
+							toolName: 'content-result-tool',
+							input: {},
+							state: 'resolved',
+							output: {
+								type: 'content',
+								value: [
+									{ type: 'text', text: JSON.stringify(envelope('result')) },
+									{
+										type: 'file-data',
+										data: 'base64-pdf',
+										mediaType: 'application/pdf',
+									},
+								],
+							},
+						},
+						{
+							type: 'tool-call',
 							toolCallId: 'error-call',
 							toolName: 'error-tool',
 							input: {},
@@ -304,6 +360,23 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 				expect.objectContaining({
 					state: 'resolved',
 					output: EXPIRED_OFFLOADED_TOOL_RESULT,
+				}),
+				expect.objectContaining({
+					state: 'resolved',
+					output: {
+						type: 'content',
+						value: [
+							{
+								type: 'text',
+								text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
+							},
+							{
+								type: 'file-data',
+								data: 'base64-pdf',
+								mediaType: 'application/pdf',
+							},
+						],
+					},
 				}),
 				expect.objectContaining({
 					state: 'rejected',

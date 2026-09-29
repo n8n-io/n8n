@@ -13,8 +13,7 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -187,8 +186,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(pushMsg, userIds);
+	sendToUsers(
+		pushMsg: PushMessage,
+		userIds: Array<User['id']>,
+		options?: { excludePushRef?: string },
+	) {
+		this.backend.sendToUsers(pushMsg, userIds, options);
 	}
 
 	@OnShutdown()

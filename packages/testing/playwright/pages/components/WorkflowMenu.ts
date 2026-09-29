@@ -59,6 +59,10 @@ export class WorkflowMenu {
 		return this.page.getByTestId('workflow-menu-item-push');
 	}
 
+	getChangeOwnerItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-change-owner');
+	}
+
 	getUnpublishItem(): Locator {
 		return this.page.getByTestId('workflow-menu-item-unpublish');
 	}
@@ -73,6 +77,11 @@ export class WorkflowMenu {
 	async openDuplicate(): Promise<void> {
 		await this.open();
 		await this.getDuplicateItem().click();
+	}
+
+	async openChangeOwner(): Promise<void> {
+		await this.open();
+		await this.getChangeOwnerItem().click();
 	}
 
 	async clickDelete(): Promise<void> {

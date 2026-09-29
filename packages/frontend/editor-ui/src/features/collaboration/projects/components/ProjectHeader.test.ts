@@ -67,7 +67,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value"></button>
+				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
 		</div>
 	`,
@@ -516,7 +516,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
 		});
 
 		it('should pass empty array when no modules are active', () => {

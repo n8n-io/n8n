@@ -1,4 +1,66 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeConnectionTypes, type INodeParameters, type WorkflowTestData } from 'n8n-workflow';
+import nock from 'nock';
+import type { Mock } from 'vitest';
+
+export const entraGuid = '87d349ed-44d7-43e1-9a83-5f2406dee5bd';
+export const entraGroupGuid = 'a8eb60e3-0145-4d7e-85ef-c6259784761b';
+
+/** A manual trigger feeding one Microsoft Entra ID node, so a case only has to state parameters. */
+export const entraWorkflow = (
+	parameters: INodeParameters,
+): WorkflowTestData['input']['workflowData'] => ({
+	nodes: [
+		{
+			parameters: {},
+			id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+			name: 'When clicking ‘Execute workflow’',
+			type: 'n8n-nodes-base.manualTrigger',
+			position: [820, 380],
+			typeVersion: 1,
+		},
+		{
+			parameters: { requestOptions: {}, ...parameters },
+			type: 'n8n-nodes-base.microsoftEntra',
+			typeVersion: 1,
+			position: [220, 0],
+			id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
+			name: 'Microsoft Entra ID',
+			credentials: {
+				microsoftEntraOAuth2Api: {
+					id: 'Hot2KwSMSoSmMVqd',
+					name: 'Microsoft Entra ID (Azure Active Directory) account',
+				},
+			},
+		},
+	],
+	connections: {
+		'When clicking ‘Execute workflow’': {
+			main: [[{ node: 'Microsoft Entra ID', type: NodeConnectionTypes.Main, index: 0 }]],
+		},
+	},
+});
+
+/**
+ * Catches every request to the Graph host for the surrounding describe block and fails the case
+ * if one arrives. A rejected ID must never be sent.
+ */
+export const expectNoGraphRequests = () => {
+	let requests: Mock;
+
+	beforeEach(() => {
+		requests = vi.fn().mockReturnValue({});
+		for (const method of ['GET', 'POST', 'PATCH', 'DELETE'] as const) {
+			nock('https://graph.microsoft.com').persist().intercept(/.*/, method).reply(200, requests);
+		}
+	});
+
+	afterEach(() => {
+		const requestsSeen = requests.mock.calls.length;
+		nock.cleanAll();
+		expect(requestsSeen, 'a rejected ID must never reach Graph').toBe(0);
+	});
+};
 
 export const microsoftEntraApiResponse = {
 	postGroup: {

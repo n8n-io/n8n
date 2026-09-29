@@ -1,3 +1,23 @@
+output:
+  - execution_out
+  - failure
+
+post-merge:
+  commands:
+    check-pnpm:
+      run: sh .githooks/check-pnpm.sh
+
+post-rewrite:
+  commands:
+    check-pnpm:
+      run: sh .githooks/check-pnpm.sh
+
+post-checkout:
+  commands:
+    check-pnpm:
+      # $3 is 1 for a branch checkout, 0 for a file checkout — skip the latter
+      run: '[ "{3}" = "0" ] || sh .githooks/check-pnpm.sh'
+
 pre-commit:
   commands:
     biome_check:
@@ -29,13 +49,6 @@ pre-commit:
     workspace_deps_check:
       glob: '**/package.json'
       run: node scripts/check-workspace-deps.mjs {staged_files}
-      skip:
-        - merge
-        - rebase
-    # Supersedes the zod-only peer check: same guard, generalized to every curated library.
-    single_instance_libs_check:
-      glob: '**/package.json'
-      run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts --rule=single-instance-libs
       skip:
         - merge
         - rebase

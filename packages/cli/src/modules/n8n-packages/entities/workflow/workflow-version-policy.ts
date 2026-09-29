@@ -60,9 +60,15 @@ const WORKFLOW_VERSION_POLICIES: Record<
 		workflows.filter(isPublished).map(atPublishedVersion),
 };
 
+/**
+ * Archived workflows have no published version, so the policy only applies to the active ones.
+ * Archived workflows always export at their latest version.
+ */
 export function applyWorkflowVersionPolicy(
 	workflows: WorkflowEntity[],
 	policy: WorkflowVersionPolicy,
 ): WorkflowEntity[] {
-	return WORKFLOW_VERSION_POLICIES[policy](workflows);
+	const archived = workflows.filter((workflow) => workflow.isArchived);
+	const active = workflows.filter((workflow) => !workflow.isArchived);
+	return [...WORKFLOW_VERSION_POLICIES[policy](active), ...archived];
 }

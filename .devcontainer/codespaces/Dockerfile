@@ -4,6 +4,7 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-bookworm
 
 ARG PLAYWRIGHT_VERSION=1.62.1
+ARG OPENCODE_VERSION=1.18.25
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux sudo less jq ripgrep postgresql-client \
@@ -14,7 +15,7 @@ RUN npx -y playwright@${PLAYWRIGHT_VERSION} install-deps chromium
 
 # Agent harnesses. Self-update is off: the image is the update mechanism
 ENV DISABLE_AUTOUPDATER=1
-RUN npm install -g @anthropic-ai/claude-code opencode-ai
+RUN npm install -g @anthropic-ai/claude-code opencode-ai@${OPENCODE_VERSION}
 
 COPY codespaces-env.sh /usr/local/lib/codespaces-env.sh
 COPY codespaces-secrets.sh /etc/profile.d/codespaces-secrets.sh
@@ -24,8 +25,8 @@ COPY gitcredential-refresh.sh /usr/local/bin/gitcredential-refresh.sh
 COPY gh-shim.sh /usr/local/bin/gh
 RUN chmod +x /usr/local/bin/gitcredential-refresh.sh /usr/local/bin/gh
 
-# VS Code terminals are non-login shells: they read bashrc, not profile.d
-RUN echo '. /usr/local/lib/codespaces-env.sh' >> /etc/bash.bashrc
+# VS Code terminals load secrets here because they do not read profile.d.
+RUN echo '[ "${N8N_SKIP_CODESPACE_SECRETS:-}" = "1" ] || . /usr/local/lib/codespaces-env.sh' >> /etc/bash.bashrc
 
 COPY tmux.conf /etc/tmux.conf
 
@@ -37,4 +38,7 @@ ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH
 
 USER node
-RUN mkdir -p $PNPM_HOME ~/.pnpm-store && pnpm config set store-dir ~/.pnpm-store --global
+# The store must sit on the same filesystem as the worktrees (/workspaces is its own
+# mount), or pnpm copies node_modules into every worktree instead of hardlinking.
+# The directory is created on the first install: Codespaces mounts /workspaces at runtime.
+RUN mkdir -p $PNPM_HOME && pnpm config set store-dir /workspaces/.pnpm-store --global

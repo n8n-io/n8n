@@ -16,3 +16,5 @@ export const BLOCK_ACCESS_ASSIGNMENT = 'block:access';
 export const SSO_ERROR_QUERY_PARAM = 'ssoError';
 
 export const SSO_ERROR_ACCESS_DENIED = 'access-denied';
+
+export const SSO_ERROR_LOGIN_FAILED = 'login-failed';

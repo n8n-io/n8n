@@ -67,8 +67,10 @@ export class McpOAuthApiHelper {
 		return { verifier, challenge };
 	}
 
-	async getAuthorizationServerMetadata(): Promise<APIResponse> {
-		return await this.api.request.get('/.well-known/oauth-authorization-server');
+	async getAuthorizationServerMetadata(issuerPath = ''): Promise<APIResponse> {
+		return await this.api.request.get(
+			`/.well-known/oauth-authorization-server${issuerPath.replace(/\/+$/, '')}`,
+		);
 	}
 
 	/**

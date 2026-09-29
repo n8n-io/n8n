@@ -122,6 +122,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -130,6 +133,9 @@
                         "properties": {
                             "new_drop_down": {
                                 "type": "boolean"
+                            },
+                            "number_format": {
+                                "type": "string"
                             },
                             "options": {
                                 "type": "array",
@@ -170,6 +176,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "chain_id": {
+                        "type": "string"
+                    },
                     "date_created": {
                         "type": "string"
                     },
@@ -217,7 +226,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "email": {
                         "type": "string"
@@ -418,5 +427,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

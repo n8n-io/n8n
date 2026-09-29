@@ -10,7 +10,11 @@ Forbidden:
   $ref: './forbidden.yml'
 PaymentRequired:
   $ref: './paymentRequired.yml'
+UnsupportedMediaType:
+  $ref: './unsupportedMediaType.yml'
 UnprocessableEntity:
   $ref: './unprocessableEntity.yml'
+InternalServerError:
+  $ref: './internalServerError.yml'
 ServiceUnavailable:
   $ref: './serviceUnavailable.yml'

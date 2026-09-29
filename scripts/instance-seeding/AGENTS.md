@@ -1,5 +1,161 @@
 # Seed n8n instance
 
+Four dev-tooling scripts, none of them product code:
+
+| Script | Command | What it does |
+| --- | --- | --- |
+| `seedInstance.mjs` | `pnpm seed:account` | Builds the estate via the public API. Two profiles. |
+| `seedHistory.mjs` | `pnpm seed:history` | Executions, assistant threads, activity entries via SQLite. |
+| `inspectActivity.mjs` | `pnpm inspect:activity` | Read-only viewer of `activity_event`. |
+| `checkPreferenceProfile.mjs` | `pnpm seed:account:check` | Checks top-level parameter names against node definitions. |
+
+`pnpm seed:preference` chains the first two. That is the single command that leaves
+a usable instance.
+
+## Two profiles
+
+`PROFILE` picks the shape of the estate. They exist for opposite reasons.
+
+**`estate`** (default) is ~500 workflows across 30 projects, varied and random, built
+to stress the workflow dependency graph. The rest of this document describes it.
+
+**`preference`** is 10 hand-written workflows in one house style, so an agent can be
+asked "what does this org normally do?" and be graded on the answer. Diversity is the
+bug here, not the feature.
+
+```sh
+N8N_API_KEY=… PROFILE=preference pnpm seed:account
+```
+
+The ten live in `preference-profile.mjs` and are written out, not generated. At n=10
+generation buys nothing, and a generated workflow whose name does not match its nodes
+teaches the reader something false.
+
+### The house style
+
+Five rules, no exceptions. Each is a place n8n offers a real choice and this estate
+always makes the same one, because a rule with no alternative is a constraint rather
+than a preference.
+
+| Rule | What it rejects |
+| --- | --- |
+| OpenAI `gpt-4o-mini` chat model (5/5 AI workflows) | Anthropic, Gemini, Mistral, Ollama |
+| Linear for tracking (6/6 tracker workflows) | Jira, GitHub Issues, Asana, Trello |
+| Slack for notifications (10/10 workflows) | Discord, Teams, Telegram, email |
+| Cron expressions on every schedule | the `interval` rule form |
+| Every workflow ends writing to `automation_runs` | no audit trail |
+
+### Determinism
+
+Every random choice goes through one seeded PRNG, and seeded runs pin the clock too.
+`PROFILE=preference` sets `SEED=1`, so two runs give byte-identical estates. That is
+what lets an A/B eval compare two arms against one instance. Set `SEED` explicitly for
+the estate profile.
+
+### Credentials
+
+`preference` builds credentials from the developer's own tokens:
+
+| Env var | Credential |
+| --- | --- |
+| `SEED_OPENAI_API_KEY` | `openAiApi` |
+| `SEED_LINEAR_API_KEY` | `linearApi` |
+| `SEED_SLACK_TOKEN` | `slackApi` |
+| `SEED_GMAIL_OAUTH` | `gmailOAuth2` |
+| `SEED_ENRICHMENT_TOKEN` | `httpHeaderAuth` |
+| `SEED_LINEAR_TEAM_ID` | Linear team the issue nodes target |
+
+A missing token is not an error. It gives a placeholder named `(seed, fake key)`, so
+the workflows stay wired and openable but visibly not runnable. Supply the token later
+and re-run: the credential is upgraded in place and keeps its id, so nodes keep
+pointing at it.
+
+Two things make that work. The upgrade is a `PATCH`, because the public API has no
+`PUT` for credentials and its 405 fails quietly enough to look like success. And the
+`preference` profile skips `clearSeeded()`, which deletes credentials and would change
+every id on every run; it removes only the workflows.
+
+Secrets go through the public API, so n8n does the encryption and this tooling never
+touches the instance key. Token lengths are logged, never values.
+
+## `seedHistory.mjs`
+
+Writes what the public API cannot: executions have no create route, threads and
+activity entries have none at all. Run it after `seed:account`.
+
+A live instance is fine. SQLite serialises writers, so n8n's inserts queue behind the
+script. Prefer an idle one: an instance actively executing workflows can hold the write
+lock long enough to fail.
+
+A default run gives 175 executions over 14 days, 10 threads with 22 messages, and 35
+activity entries. `[seed] Invoice Dunning` fails its three most recent runs, so a "what
+broke?" probe has a definite answer.
+
+### The window ends at the current time
+
+n8n prunes on age: threads after 30 days, executions past `EXECUTIONS_DATA_MAX_AGE`
+(336 hours). A fixed past date puts the fortnight beyond both cutoffs and the next
+startup deletes it. This was observed, not predicted: a hardcoded clock lost all 10
+threads on the first restart.
+
+Determinism survives. The seeded PRNG still decides which workflow fails, on which
+run, at which node, and every message body. Only absolute timestamps move. `HISTORY_NOW`
+pins the window if you accept the pruning.
+
+### Errors match their workflow
+
+An error names a node, and that node must exist in the workflow the error is attached
+to and say something a node of that type could say. One shared error message produced
+self-contradicting records, such as a Gmail auth failure on a workflow with no Gmail
+node. `NODE_FAILURES` maps node type to a plausible message.
+
+### Clearing
+
+Clear and rewrite are one transaction, so a failed insert cannot leave the previous
+history deleted and nothing in its place. Threads and activity are cleared by project
+id, not workflow id: re-seeding replaces the workflows with fresh ids, which orphans
+rows keyed on the old ones and then collides on the seeded primary keys. Executions
+cascade when their workflow is deleted.
+
+## `inspectActivity.mjs`
+
+```sh
+pnpm inspect:activity                                  # ~/.n8n/database.sqlite
+DB_SQLITE_DATABASE=/path/to/database.sqlite pnpm inspect:activity
+PORT=5700 pnpm inspect:activity
+```
+
+Every column of `activity_event`, paginated, sortable on any column, with a free-text
+filter spanning all columns including the JSON `data` blob.
+
+Read-only three times over, since a later edit can undo any one layer alone:
+
+1. The connection is opened `readOnly`, so SQLite refuses writes.
+2. Every statement is a SELECT.
+3. The sort column comes from an allowlist derived from the table, because a column
+   name cannot be a bound parameter.
+
+Non-GET methods return 405. A request whose `Host` is not loopback returns 403, which
+closes DNS rebinding. Nothing else authenticates.
+
+**A debug surface.** Unauthenticated, serving the whole table including who did what in
+which project. Loopback only. Do not tunnel or port-forward it.
+
+No dependencies: `node:sqlite` and `node:http` are built into Node 24.
+
+## Note on `activity_event`
+
+`activityEventCategories` is `['workflow', 'credential']`. Executions are deliberately
+absent, because `execution_entity` already indexes `(workflowId, status, id)` for the
+read a feed wants, so a row per run would duplicate it and pay an insert on the
+execution hot path. A reader queries that table instead. The execution and activity
+phases of the seed are therefore independent, with no ordering between them.
+
+---
+
+# The estate profile
+
+
 `seedInstance.mjs` fills a local n8n instance with a realistic-looking spread of
 projects, workflows, credentials, and data tables via the **public API**. The
 resulting dependency graph is designed to render like a real org's automation

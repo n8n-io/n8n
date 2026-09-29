@@ -85,7 +85,7 @@ class ContainerClass {
 			throw new DIError(`${type.name} is not decorated with ${Service.name}`);
 		}
 
-		if (metadata?.instance) return metadata.instance as T;
+		if (metadata?.instance) return metadata.instance;
 
 		// Add current type to resolution stack before resolving dependencies
 		resolutionStack.push(type);

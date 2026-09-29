@@ -1,6 +1,6 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 
-import { test } from '../../fixtures/base';
+import { expect, test } from '../../fixtures/base';
 
 /**
  * Smoke tests that catch app-wide regressions where the editor-ui fails to boot —
@@ -123,6 +123,30 @@ test.describe(
 			await navigateAndAssertNoErrors(n8n.page, 'home', async () => {
 				await n8n.start.fromHome();
 			});
+		});
+
+		// The dev frontend proxies REST calls to N8N_PORT. Assert that the browser
+		// makes same-origin requests to the frontend and receives successful responses
+		// from the backend via the proxy.
+		test('REST calls route through the dev server proxy to backend', async ({ n8n }) => {
+			const restRequests: string[] = [];
+
+			n8n.page.on('request', (request) => {
+				const url = new URL(request.url());
+				if (url.pathname.startsWith('/rest/')) {
+					restRequests.push(url.origin);
+				}
+			});
+
+			// Verify that an API call through the helper routes to the backend successfully
+			const activeModules = await n8n.api.getActiveModules();
+			expect(Array.isArray(activeModules)).toBe(true);
+
+			await n8n.start.fromHome();
+
+			const frontendOrigin = new URL(n8n.page.url()).origin;
+			expect(new Set(restRequests)).toEqual(new Set([frontendOrigin]));
+			expect(restRequests.length).toBeGreaterThan(0);
 		});
 
 		test('blank canvas boots cleanly', async ({ n8n }) => {

@@ -14,8 +14,7 @@ import { type IBinaryData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -226,8 +225,9 @@ export class ChatHubAgentService {
 		try {
 			const settings = await this.ensureSemanticSearchOptions();
 
-			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
-				async (trx) => {
+			const { workflowData, executionData } = await this.chatAgentRepository.runInTransaction(
+				{},
+				async (trx, ctx) => {
 					const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 					return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
@@ -236,7 +236,7 @@ export class ChatHubAgentService {
 						files,
 						agentId,
 						settings,
-						trx,
+						ctx,
 						workflowId,
 					);
 				},

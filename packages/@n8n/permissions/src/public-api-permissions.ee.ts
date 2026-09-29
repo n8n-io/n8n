@@ -13,6 +13,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:changeRole',
 	'user:delete',
 	'sourceControl:pull',
+	'sourceControl:push',
+	'sourceControl:read',
 	'gitConnection:create',
 	'gitConnection:read',
 	'gitConnection:update',
@@ -21,6 +23,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'gitConnection:clone',
 	'gitConnection:push',
 	'gitConnection:manageProjects',
+	'gitConnection:pull',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',
@@ -101,8 +104,11 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'role:list',
 	'role:read',
 	'roleMappingRule:create',
+	'roleMappingRule:delete',
 	'roleMappingRule:list',
 	'roleMappingRule:update',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -159,6 +165,8 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -208,10 +216,17 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'folder:create',
+	'folder:delete',
+	'folder:read',
+	'folder:update',
+	'folder:list',
 	'dataTableColumn:create',
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {

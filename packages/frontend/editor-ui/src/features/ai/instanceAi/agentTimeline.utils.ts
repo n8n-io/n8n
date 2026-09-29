@@ -3,10 +3,13 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+/** Tool calls that are internal bookkeeping and should not be shown to the user.
+ *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  that reply a user-facing final message instead of narration before a tool call. */
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -15,6 +18,19 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 /** Streamed tail text up to this length is treated as thinking narration;
  *  beyond it, it is likely the final answer and renders outside the block. */
 const TAIL_NARRATION_MAX_LENGTH = 200;
+
+/**
+ * How long the transcript must stay quiet before the activity indicator shows.
+ *
+ * Short silences are normal — the tail of a streamed answer, a run wrapping up
+ * after its last token — and calling those "Thinking" is noise on every reply.
+ * A real stall is an order of magnitude longer: a provider that buffers tool
+ * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ *
+ * A threshold rather than a signal, because the client cannot tell the two
+ * apart on its own; the server knowing it is mid-generation would replace this.
+ */
+export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
 
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 
@@ -35,7 +51,9 @@ export type TimelineBlock =
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'child'; key: string; child: InstanceAiAgentNode };
+	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'child'; key: string; child: InstanceAiAgentNode }
+	| { type: 'activity'; key: string };
 
 type ToolCallKind =
 	| 'hidden'
@@ -44,12 +62,13 @@ type ToolCallKind =
 	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
+	| 'preference'
 	| 'trace';
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`mcp-connect`/`questions` render standalone UI; `hidden`
- * calls are dropped without splitting a run.
+ * `tasks`/`plan-review`/`mcp-connect`/`questions`/`preference` render standalone
+ * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
  * child agent section represents them. In-thread builds (`build-workflow`)
@@ -60,6 +79,11 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
+	// The card is the whole render for a finished preference write, saved or refused.
+	// A call still in flight drops instead of joining the thinking block.
+	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
+		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
+	}
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.renderHint === 'planner') return 'hidden';
@@ -116,6 +140,8 @@ export function buildTimelineBlocks(
 			if (
 				tc &&
 				classifyToolCall(tc) === 'trace' &&
+				// Keep the explanation before a confirmation outside the trace.
+				tc.confirmation === undefined &&
 				!(
 					tc.toolName === 'build-agent' &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
@@ -175,6 +201,12 @@ export function buildTimelineBlocks(
 			return;
 		}
 
+		// Keep the context summary inside the trace, not in a separate message.
+		if (entry.type === 'instance-context') {
+			pushTrace(entry, idx);
+			return;
+		}
+
 		if (entry.type === 'text') {
 			if (isIntermediateText(entry, idx)) pushTrace(entry, idx);
 			else pushStandalone({ type: 'text', key: `text-${idx}`, entry });
@@ -213,6 +245,9 @@ export function buildTimelineBlocks(
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
 				return;
+			case 'preference':
+				pushStandalone({ type: 'preference', key: `preference-${idx}`, toolCall: tc });
+				return;
 			case 'trace':
 				pushTrace(entry, idx);
 				return;
@@ -230,14 +265,30 @@ export function buildTimelineBlocks(
 	// that outgrew the narration cap: it is a committed answer, so keeping the
 	// block behind it "thinking" reads as lag.
 	if (agentStatus === 'active') {
+		let activated = false;
+		let settledByNarrationCap = false;
 		for (let i = blocks.length - 1; i >= 0; i--) {
 			const block = blocks[i];
 			if (block.type === 'thinking') {
 				block.active = true;
+				activated = true;
 				break;
 			}
 			if (block.type !== 'text') break;
-			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) break;
+			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) {
+				settledByNarrationCap = true;
+				break;
+			}
+		}
+		// A committed answer settles the block behind it, but the run is still
+		// going — and with a provider that emits nothing while it generates a
+		// tool call, the next trace entry can be a minute away. Without this the
+		// transcript reads as finished while the composer still shows stop
+		// (INS-1224). Only the narration-cap exit gets an indicator: the other
+		// exits are cards, questions and child agents, which carry their own
+		// state or are waiting on the user.
+		if (!activated && settledByNarrationCap) {
+			blocks.push({ type: 'activity', key: 'activity' });
 		}
 	}
 
@@ -275,14 +326,21 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	const seenIds = new Set<string>();
 
 	// Check targetResource first (single-resource agents)
-	if (node.targetResource?.id && node.targetResource.type) {
+	if (
+		node.targetResource?.id &&
+		node.targetResource.type &&
+		(node.targetResource.type !== 'agent' ||
+			node.agentChange === 'created' ||
+			node.agentChange === 'updated' ||
+			node.agentChange === undefined)
+	) {
 		const type = node.targetResource.type;
 		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);
 			const artifact: ArtifactInfo = {
 				type,
 				resourceId: node.targetResource.id,
-				name: node.targetResource.name ?? node.subtitle ?? 'Untitled',
+				name: firstNonBlank(node.targetResource.name, node.subtitle) ?? 'Untitled',
 				completedAt: undefined,
 			};
 			if (node.targetResource.projectId) artifact.projectId = node.targetResource.projectId;
@@ -303,11 +361,12 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		) {
 			seenIds.add(result.workflowId);
 			const name =
-				(typeof result.workflowName === 'string' ? result.workflowName : undefined) ??
-				(typeof (tc.args as Record<string, unknown>)?.name === 'string'
-					? ((tc.args as Record<string, unknown>).name as string)
-					: undefined) ??
-				'Untitled';
+				firstNonBlank(
+					typeof result.workflowName === 'string' ? result.workflowName : undefined,
+					typeof (tc.args as Record<string, unknown>)?.name === 'string'
+						? ((tc.args as Record<string, unknown>).name as string)
+						: undefined,
+				) ?? 'Untitled';
 			artifacts.push({
 				type: 'workflow',
 				resourceId: result.workflowId,
@@ -341,7 +400,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 			artifacts.push({
 				type: 'data-table',
 				resourceId: tableId,
-				name: tableName ?? 'Untitled',
+				name: firstNonBlank(tableName) ?? 'Untitled',
 				projectId: tableProjectId,
 				completedAt: tc.completedAt,
 			});

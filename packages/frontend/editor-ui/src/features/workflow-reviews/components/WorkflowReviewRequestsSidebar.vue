@@ -248,8 +248,7 @@ function onListBackgroundClick() {
 								<div :class="$style.cardMeta">
 									<N8nBadge
 										v-if="item.workflowName"
-										theme="tertiary"
-										:show-border="false"
+										variant="outline"
 										:class="$style.workflowBadge"
 										data-test-id="workflow-review-request-workflow-badge"
 									>
@@ -322,13 +321,10 @@ function onListBackgroundClick() {
 
 <style lang="scss" module>
 .sidebar {
-	--review-sidebar--width: clamp(15rem, 25vw, 25rem);
-
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 var(--review-sidebar--width);
+	width: 100%;
 	min-width: 0;
-	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--border-color);
 }

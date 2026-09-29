@@ -1,5 +1,5 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 const ADM_ZIP_LAZY_IMPORT_MESSAGE =
@@ -7,7 +7,7 @@ const ADM_ZIP_LAZY_IMPORT_MESSAGE =
 
 export default defineConfig(
 	globalIgnores(['test-fixtures/**', 'scripts/**']),
-	nodeConfig,
+	backendConfig,
 	{
 		plugins: {
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,

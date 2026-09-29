@@ -10,11 +10,17 @@ import type {
 import type { DesiredJob, ProvisionSummary, ScheduleDefinition } from '@n8n/scheduler';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
+import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
+const OWNER = { ownerType: 'workflow', ownerId: 'wf', ownerMemberId: 'node' };
+const OWNER_REF = { ownerType: 'workflow', ownerId: 'wf' };
 const FIRE_AT = new Date('2026-02-01T00:00:00.000Z');
 
 const cronSchedule: ScheduleDefinition = {
@@ -29,23 +35,31 @@ const desiredJob = (
 	firstRunAt: Date | null = CLOCK,
 ): DesiredJob => ({ name, schedule, firstRunAt });
 
-/** A stored cron job row; override the fields a test cares about. */
-const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
-	mock<ScheduledJob>({
-		id: 10,
-		name: 'wf:node:0',
-		kind: 'cron',
-		cronExpression: '0 0 9 * * *',
-		timezone: 'UTC',
-		recurrenceUnit: null,
-		recurrenceSize: null,
-		intervalSeconds: null,
-		fireAt: null,
-		nextRunAt: CLOCK,
-		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: 90,
-		...over,
-	});
+/**
+ * A stored cron job row; override the fields a test cares about. The payload is
+ * assigned after the mock is built so it stays a plain object rather than a proxy.
+ */
+const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): ScheduledJob =>
+	Object.assign(
+		mock<ScheduledJob>({
+			id: 10,
+			name: 'wf:node:0',
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *',
+			timezone: 'UTC',
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: CLOCK,
+			maxAttempts: 5,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 90,
+			concurrencyLimit: null,
+			...over,
+		}),
+		{ payload },
+	);
 
 describe('DurableJobProvisioner', () => {
 	const manager = mock<EntityManager>();
@@ -53,6 +67,9 @@ describe('DurableJobProvisioner', () => {
 	const jobs = mock<ScheduledJobRepository>();
 	const tasks = mock<ScheduledTaskRepository>();
 	const tracing = mock<Tracing>();
+	const workflowOwner = mock<WorkflowScheduledJobOwner>();
+	const agentOwner = mock<AgentScheduledJobOwner>();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -77,9 +94,21 @@ describe('DurableJobProvisioner', () => {
 			jobs,
 			tasks,
 			globalConfig,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
 			tracing,
 		);
 	};
+
+	/** Provision `OWNER`'s jobs; the owner mapping itself is asserted separately. */
+	const provision = async (
+		taskType: string,
+		payload: Record<string, unknown>,
+		desired: DesiredJob[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({ owner: OWNER, taskType, payload, desired, misfirePolicy });
 
 	/**
 	 * Provision one job with a node-supplied grace, through a widened signature: the
@@ -90,26 +119,41 @@ describe('DurableJobProvisioner', () => {
 		misfireGraceSeconds: unknown,
 		desired: DesiredJob[] = [desiredJob('wf:node:0')],
 	): Promise<ProvisionSummary> =>
-		await (
-			provisioner.provision as unknown as (
-				workflowId: string,
-				nodeId: string,
-				taskType: string,
-				payload: Record<string, unknown>,
-				desired: DesiredJob[],
-				misfirePolicy: ScheduledJobMisfirePolicy,
-				misfireGraceSeconds?: unknown,
-			) => Promise<ProvisionSummary>
-		).call(
-			provisioner,
-			'wf',
-			'node',
-			'schedule-trigger',
-			{},
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
 			desired,
-			ScheduledJobMisfirePolicy.Coalesce,
-			misfireGraceSeconds,
-		);
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: misfireGraceSeconds as number | undefined,
+		});
+
+	/** Provision one job with a request-supplied retry ceiling. */
+	const provisionWithAttempts = async (
+		maxAttempts: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			maxAttempts,
+		});
+
+	const provisionWithConcurrencyLimit = async (
+		concurrencyLimit: number | null | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			concurrencyLimit,
+		});
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -123,7 +167,7 @@ describe('DurableJobProvisioner', () => {
 			(async (_options: unknown, run: (span: unknown) => Promise<unknown>) =>
 				await run({ setAttribute() {}, setStatus() {} })) as typeof tracing.startSpan,
 		);
-		jobs.findManyByWorkflowNode.mockResolvedValue([]);
+		jobs.findManyByOwner.mockResolvedValue([]);
 		jobs.findManyByIds.mockResolvedValue([]);
 		jobs.insertMany.mockResolvedValue([]);
 		tasks.insertIgnoringDuplicates.mockImplementation(async (_manager, occurrences) => ({
@@ -137,9 +181,7 @@ describe('DurableJobProvisioner', () => {
 		it('inserts a new job, mapping the schedule and scope onto the row', async () => {
 			jobs.insertMany.mockResolvedValue([100]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{ foo: 'bar' },
 				[desiredJob('wf:node:0')],
@@ -149,8 +191,7 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				{
 					name: 'wf:node:0',
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					taskType: 'schedule-trigger',
 					payload: { foo: 'bar' },
 					kind: 'cron',
@@ -164,17 +205,16 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 				},
 			]);
 			expect(summary.inserted).toEqual([{ id: 100, name: 'wf:node:0' }]);
 		});
 
 		it('leaves an unchanged job untouched, keeping its id', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -184,25 +224,56 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
-		it('reconciles the policy of a job whose schedule is unchanged', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+		it('rewrites the payload of a job whose stored payload differs, keeping its schedule', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ payload: { n8nVersion: '1.0.0' } })]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
+				'system:prune',
+				{ n8nVersion: '2.0.0' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [10], { n8nVersion: '2.0.0' });
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('leaves the payload of a job alone when it already matches', async () => {
+			jobs.findManyByOwner.mockResolvedValue([
+				jobRow({ payload: { workflowId: 'wf', nodeId: 'node' } }),
+			]);
+
+			await provision(
+				'schedule-trigger',
+				{ workflowId: 'wf', nodeId: 'node' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+
+		it('reconciles the policy of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			const summary = await provision(
 				'poll-trigger',
 				{},
 				[desiredJob('wf:node:0')],
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			// The schedule is untouched, so the job keeps its queued tasks.
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
@@ -211,47 +282,43 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it("leaves the deadline of a policy-only change's queued tasks untouched", async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'poll-trigger',
 				{},
 				[desiredJob('wf:node:0')],
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], expect.anything());
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
 		});
 
 		it('reconciles the grace of a job whose schedule is unchanged', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
 				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 		});
 
 		it("recomputes the deadline of a reconciled job's already-queued tasks", async () => {
 			// The row's grace is now current; tasks queued under the old grace
 			// would keep honouring it until claimed or reaped.
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -262,11 +329,9 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it("does not touch other jobs' queued tasks when nothing is outdated", async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -277,11 +342,9 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('rewrites a changed job in place and withdraws its pending tasks', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[
@@ -303,19 +366,19 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
 			expect(summary.redefined).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
 		it('treats a job whose stored clock died as changed', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ nextRunAt: null })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ nextRunAt: null })]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -331,11 +394,9 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('deletes a job no longer desired', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ id: 11, name: 'wf:node:1' })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ id: 11, name: 'wf:node:1' })]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[],
@@ -349,9 +410,7 @@ describe('DurableJobProvisioner', () => {
 		it('stamps the given policy and the configured grace onto inserted rows', async () => {
 			jobs.insertMany.mockResolvedValue([100]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'poll-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -368,9 +427,7 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('runs all writes inside a single transaction', async () => {
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -393,7 +450,7 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it("writes a node-supplied grace onto a redefined job's row", async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
 
 			await provisionWithGrace(300, [
 				desiredJob('wf:node:0', {
@@ -457,9 +514,7 @@ describe('DurableJobProvisioner', () => {
 		it('leaves an instance-configured grace below the floors unclamped', async () => {
 			provisioner = makeProvisioner({ misfireGraceSeconds: 10 });
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0')],
@@ -511,8 +566,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised a node's misfire grace to the scheduler's minimum",
 				{
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					requestedMisfireGraceSeconds: 30.7,
 					misfireGraceSeconds: 60,
 				},
@@ -528,8 +582,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Lowered a node's misfire grace to the scheduler's maximum",
 				{
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 500,
 					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
 				},
@@ -545,8 +598,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Lowered a node's misfire grace to the scheduler's maximum",
 				{
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 0.5,
 					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
 				},
@@ -566,8 +618,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised a node's misfire grace to the scheduler's minimum",
 				{
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					requestedMisfireGraceSeconds: 300,
 					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
 				},
@@ -597,7 +648,7 @@ describe('DurableJobProvisioner', () => {
 		);
 
 		it('treats a row already stored at the clamped grace as unchanged, leaving its queued tasks alone', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 60 })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 60 })]);
 
 			await provisionWithGrace(30);
 
@@ -605,30 +656,183 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('reconciles a row stored at the raw node-supplied grace up to the clamped grace', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
 
 			await provisionWithGrace(30);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 60);
 		});
 
 		it('lists a job whose grace and policy both changed once in the policy reconciliation', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([
+			jobs.findManyByOwner.mockResolvedValue([
 				jobRow({ misfirePolicy: ScheduledJobMisfirePolicy.Skip, misfireGraceSeconds: 90 }),
 			]);
 
 			await provisionWithGrace(300);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
 		});
+	});
+
+	describe('attempts resolution', () => {
+		it('stamps a request-supplied ceiling onto the inserted row, in place of the configured one', async () => {
+			await provisionWithAttempts(1);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 1 }),
+			]);
+		});
+
+		it('stamps the configured ceiling onto the inserted row when the request omits one', async () => {
+			await provisionWithAttempts(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 5 }),
+			]);
+		});
+
+		it("writes a request-supplied ceiling onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithAttempts(1, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ maxAttempts: 1 }),
+			);
+		});
+
+		it('reconciles the ceiling of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 5 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 1,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			// The grace is unchanged, so queued tasks keep their deadline.
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
+		it('leaves a job already stored at the requested ceiling out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 1 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+	});
+
+	describe('concurrency limit resolution', () => {
+		it('stamps a request-supplied limit onto the inserted row', async () => {
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			]);
+		});
+
+		it('leaves the inserted row unlimited when the request omits a limit', async () => {
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: null }),
+			]);
+		});
+
+		it("writes a request-supplied limit onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithConcurrencyLimit(2, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			);
+		});
+
+		it('reconciles the limit of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 1 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: 2,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+		});
+
+		it('lifts the limit of a job the request no longer limits', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(
+				manager,
+				[10],
+				expect.objectContaining({ concurrencyLimit: null }),
+			);
+		});
+
+		it('leaves a job already stored at the requested limit out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+
+		it('stores the largest limit the column holds', async () => {
+			await provisionWithConcurrencyLimit(2_147_483_647);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: 2_147_483_647 }),
+			]);
+		});
+
+		// 2_147_483_648 overflows the column on Postgres while SQLite would take it.
+		it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(
+			'rejects a limit of %s',
+			async (concurrencyLimit) => {
+				await expect(provisionWithConcurrencyLimit(concurrencyLimit)).rejects.toThrow(UserError);
+
+				expect(jobs.insertMany).not.toHaveBeenCalled();
+				expect(dataSource.transaction).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('seeding a freshly provisioned job', () => {
@@ -641,8 +845,7 @@ describe('DurableJobProvisioner', () => {
 			({
 				id,
 				name: 'wf:node:0',
-				workflowId: 'wf',
-				nodeId: 'node',
+				...OWNER,
 				kind: 'interval',
 				cronExpression: null,
 				timezone: null,
@@ -695,9 +898,7 @@ describe('DurableJobProvisioner', () => {
 			jobs.findManyByIds.mockResolvedValue([intervalRow(100, firstRunAt)]);
 			jobs.insertMany.mockResolvedValue([100]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt)],
@@ -722,7 +923,7 @@ describe('DurableJobProvisioner', () => {
 		it('re-seeds a redefined job, recording its new window only after the stale tasks are withdrawn', async () => {
 			const firstRunAt = at(30);
 			// An existing job with a different definition, so the desired rule redefines it.
-			jobs.findManyByWorkflowNode.mockResolvedValue([
+			jobs.findManyByOwner.mockResolvedValue([
 				mock<ScheduledJob>({
 					id: 10,
 					name: 'wf:node:0',
@@ -738,9 +939,7 @@ describe('DurableJobProvisioner', () => {
 			]);
 			jobs.findManyByIds.mockResolvedValue([intervalRow(10, firstRunAt)]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt)],
@@ -769,9 +968,7 @@ describe('DurableJobProvisioner', () => {
 			jobs.findManyByIds.mockResolvedValue([deadRow]);
 			jobs.insertMany.mockResolvedValue([101]);
 
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', cronSchedule, null)],
@@ -817,9 +1014,7 @@ describe('DurableJobProvisioner', () => {
 				columns: { fireAt: FIRE_AT },
 			},
 		])('flattens a $name schedule onto the inserted row', async ({ name, schedule, columns }) => {
-			await provisioner.provision(
-				'wf',
-				'node',
+			await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', schedule)],
@@ -829,8 +1024,7 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				{
 					name: 'wf:node:0',
-					workflowId: 'wf',
-					nodeId: 'node',
+					...OWNER,
 					taskType: 'schedule-trigger',
 					payload: {},
 					kind: name,
@@ -844,6 +1038,7 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 					...columns,
 				},
 			]);
@@ -922,11 +1117,9 @@ describe('DurableJobProvisioner', () => {
 		];
 
 		it.each(cases)('leaves an unchanged $name job untouched', async ({ row, same }) => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
+			jobs.findManyByOwner.mockResolvedValue([row()]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', same)],
@@ -938,11 +1131,9 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it.each(cases)('rewrites a changed $name job in place', async ({ row, changed }) => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
+			jobs.findManyByOwner.mockResolvedValue([row()]);
 
-			const summary = await provisioner.provision(
-				'wf',
-				'node',
+			const summary = await provision(
 				'schedule-trigger',
 				{},
 				[desiredJob('wf:node:0', changed)],
@@ -958,14 +1149,10 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('throws on a stored row whose kind it does not recognise', async () => {
-			jobs.findManyByWorkflowNode.mockResolvedValue([
-				jobRow({ kind: 'made_up' as ScheduledJob['kind'] }),
-			]);
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ kind: 'made_up' as ScheduledJob['kind'] })]);
 
 			await expect(
-				provisioner.provision(
-					'wf',
-					'node',
+				provision(
 					'schedule-trigger',
 					{},
 					[desiredJob('wf:node:0')],
@@ -976,41 +1163,106 @@ describe('DurableJobProvisioner', () => {
 	});
 
 	describe('deprovision', () => {
-		it('deletes the whole node scope inside a transaction and reports the count', async () => {
-			jobs.deleteByWorkflowNode.mockResolvedValue(3);
+		it('deletes one owner member inside a transaction and reports the count', async () => {
+			jobs.deleteByOwnerMember.mockResolvedValue(3);
 
-			const result = await provisioner.deprovision('wf', 'node');
+			const result = await provisioner.deprovisionOwnerMember(OWNER);
 
-			expect(jobs.deleteByWorkflowNode).toHaveBeenCalledWith(manager, 'wf', 'node');
+			expect(jobs.deleteByOwnerMember).toHaveBeenCalledWith(manager, OWNER);
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ removed: 3 });
 		});
-	});
 
-	describe('deprovisionWorkflow', () => {
-		it('deletes the whole workflow scope inside a transaction and reports the count', async () => {
-			jobs.deleteByWorkflowTaskType.mockResolvedValue(5);
+		it('deletes every job an owner holds when given no member', async () => {
+			jobs.deleteByOwnerRef.mockResolvedValue(7);
 
-			const result = await provisioner.deprovisionWorkflow('wf', 'schedule-trigger');
+			const result = await provisioner.deprovisionOwner(OWNER_REF);
 
-			expect(jobs.deleteByWorkflowTaskType).toHaveBeenCalledWith(manager, 'wf', 'schedule-trigger');
+			expect(jobs.deleteByOwnerRef).toHaveBeenCalledWith(manager, OWNER_REF);
+			expect(jobs.deleteByOwnerMember).not.toHaveBeenCalled();
+			expect(result).toEqual({ removed: 7 });
+		});
+
+		it("deletes an owner's jobs of one task type inside a transaction", async () => {
+			jobs.deleteByOwnerTaskType.mockResolvedValue(5);
+
+			const result = await provisioner.deprovisionOwnerTaskType(OWNER_REF, 'schedule-trigger');
+
+			expect(jobs.deleteByOwnerTaskType).toHaveBeenCalledWith(
+				manager,
+				OWNER_REF,
+				'schedule-trigger',
+			);
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ removed: 5 });
 		});
+
+		it('deletes one job as it was read, inside a transaction, and reports the count', async () => {
+			jobs.deleteIfPayloadUnchanged.mockResolvedValue(1);
+
+			const result = await provisioner.deprovisionUnchangedJob({
+				id: 10,
+				payload: { n8nVersion: '1.0.0' },
+			});
+
+			expect(jobs.deleteIfPayloadUnchanged).toHaveBeenCalledWith(manager, 10, {
+				n8nVersion: '1.0.0',
+			});
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 1 });
+		});
+
+		it('deprovisions an owner type with no registered resolver, so cleanup is never blocked', async () => {
+			jobs.deleteByOwnerRef.mockResolvedValue(1);
+
+			await expect(
+				provisioner.deprovisionOwner({ ownerType: 'unknown-thing', ownerId: 'thing-1' }),
+			).resolves.toEqual({ removed: 1 });
+		});
 	});
 
-	describe('deprovisionWorkflowInTransaction', () => {
-		it("deletes the whole workflow scope through the caller's manager, without opening a transaction of its own", async () => {
+	describe('deprovisioning inside a caller-owned transaction', () => {
+		it("deletes every job an owner holds through the caller's manager, opening no transaction of its own", async () => {
 			const callerManager = mock<EntityManager>();
 
-			await provisioner.deprovisionWorkflowInTransaction(callerManager, 'wf', 'schedule-trigger');
+			await provisioner.deprovisionOwnerInTransaction(callerManager, OWNER_REF);
 
-			expect(jobs.deleteByWorkflowTaskType).toHaveBeenCalledWith(
+			expect(jobs.deleteByOwnerRef).toHaveBeenCalledWith(callerManager, OWNER_REF);
+			expect(dataSource.transaction).not.toHaveBeenCalled();
+		});
+
+		it("deletes one task type through the caller's manager", async () => {
+			const callerManager = mock<EntityManager>();
+
+			await provisioner.deprovisionOwnerTaskTypeInTransaction(
 				callerManager,
-				'wf',
+				OWNER_REF,
+				'schedule-trigger',
+			);
+
+			expect(jobs.deleteByOwnerTaskType).toHaveBeenCalledWith(
+				callerManager,
+				OWNER_REF,
 				'schedule-trigger',
 			);
 			expect(dataSource.transaction).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('owner guardrail wiring', () => {
+		it('refuses an owner type the manifest registry does not declare', async () => {
+			await expect(
+				provisioner.provision({
+					owner: { ownerType: 'unknown-thing', ownerId: 'thing-1', ownerMemberId: null },
+					taskType: 'unknown-thing:task',
+					payload: {},
+					desired: [desiredJob('thing-1:0')],
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				}),
+			).rejects.toThrow('no registered liveness resolver');
+
+			expect(dataSource.transaction).not.toHaveBeenCalled();
+			expect(jobs.insertMany).not.toHaveBeenCalled();
 		});
 	});
 });

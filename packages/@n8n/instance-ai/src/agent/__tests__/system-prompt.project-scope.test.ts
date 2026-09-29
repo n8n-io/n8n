@@ -35,6 +35,18 @@ describe('getSystemPrompt — project scope', () => {
 		expect(promptA).not.toContain('project-1');
 	});
 
+	// `<project-context>` is best-effort (the lookup can fail) and resume paths compose
+	// no new turn at all, so the section must not promise the block unconditionally —
+	// and must leave the agent a way to identify its project when the block is absent.
+	it('treats the project-context block as present-when-available, with a fallback', () => {
+		const prompt = getSystemPrompt({ projectId: 'project-1' });
+
+		expect(prompt).toContain('<project-context>');
+		expect(prompt).toMatch(/when .{0,30}block is present|whenever that block is present/i);
+		// The pre-build check must still be reachable without the block.
+		expect(prompt).toMatch(/BEFORE you build[\s\S]{0,200}list-projects/);
+	});
+
 	it('forbids answering inventory questions from a filtered lookup', () => {
 		const prompt = getSystemPrompt({ projectId: 'project-1' });
 

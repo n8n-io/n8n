@@ -168,10 +168,10 @@ const title = computed<{ key: string; text: string }>(() => {
 @use '@n8n/design-system/css/mixins/motion';
 
 .header {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
+	max-width: 90%;
 	border: 0;
 	background: transparent;
 	padding: var(--spacing--4xs) 0;

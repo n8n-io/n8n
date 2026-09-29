@@ -5,7 +5,11 @@ import { computed } from 'vue';
 import type { TestTableColumn } from '../shared/TestTableBase.vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import TestTableBase from '../shared/TestTableBase.vue';
-import { statusDictionary, getErrorBaseKey } from '../../evaluation.constants';
+import {
+	statusDictionary,
+	getErrorBaseKey,
+	resolveCompilationFailureReason,
+} from '../../evaluation.constants';
 import { I18nT } from 'vue-i18n';
 import { N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
@@ -53,6 +57,16 @@ const runSummaries = computed(() => {
 		};
 	});
 });
+
+function errorDescription(row: {
+	errorCode?: string;
+	errorDetails?: Record<string, string | number>;
+}): string | undefined {
+	const reason = resolveCompilationFailureReason(row.errorCode, row.errorDetails);
+	if (reason) return reason;
+	const descriptionKey = `${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey;
+	return locale.exists(descriptionKey) ? locale.baseText(descriptionKey) : undefined;
+}
 </script>
 
 <template>
@@ -90,41 +104,17 @@ const runSummaries = computed(() => {
 						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
 								<I18nT :keypath="`${getErrorBaseKey(row.errorCode)}`" scope="global">
-									<template
-										v-if="
-											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
-										"
-										#description
-									>
-										{{
-											locale.baseText(
-												`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
-											) && '. '
-										}}
-										{{
-											locale.baseText(
-												`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
-											)
-										}}
+									<template v-if="errorDescription(row) !== undefined" #description>
+										{{ errorDescription(row) && '. ' }}
+										{{ errorDescription(row) }}
 									</template>
 								</I18nT>
 							</template>
 
 							<N8nText :class="[$style.alertText, $style.errorText]">
 								<I18nT :keypath="`${getErrorBaseKey(row.errorCode)}`" scope="global">
-									<template
-										v-if="
-											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
-										"
-										#description
-									>
-										<p :class="$style.grayText">
-											{{
-												locale.baseText(
-													`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
-												)
-											}}
-										</p>
+									<template v-if="errorDescription(row) !== undefined" #description>
+										<p :class="$style.grayText">{{ errorDescription(row) }}</p>
 									</template>
 								</I18nT>
 							</N8nText>

@@ -9,17 +9,17 @@ function wf(overrides: Partial<WorkflowEntity>): WorkflowEntity {
 	return {
 		id: 'wf-1',
 		name: 'Workflow',
-		active: false,
+		activeVersionId: null,
 		nodes: [],
 		updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 		...overrides,
 	} as WorkflowEntity;
 }
 
-const manualTrigger = { type: 'n8n-nodes-base.manualTrigger' } as WorkflowEntity['nodes'][number];
-const scheduleTrigger = {
-	type: 'n8n-nodes-base.scheduleTrigger',
+const executeWorkflowTrigger = {
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
 } as WorkflowEntity['nodes'][number];
+const manualTrigger = { type: 'n8n-nodes-base.manualTrigger' } as WorkflowEntity['nodes'][number];
 const noTrigger = { type: 'n8n-nodes-base.set' } as WorkflowEntity['nodes'][number];
 
 function setup() {
@@ -43,28 +43,35 @@ describe('AttachableWorkflowsService', () => {
 		);
 	});
 
-	it('returns only workflows with a supported trigger and stable ids', async () => {
+	it('returns only workflows with the execute-workflow trigger and stable ids', async () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findWorkflowsForUser.mockResolvedValue({
 			workflows: [
-				wf({ id: 'a', name: 'Has trigger', active: true, nodes: [noTrigger, manualTrigger] }),
+				wf({
+					id: 'a',
+					name: 'Has trigger',
+					activeVersionId: 'v-a',
+					nodes: [noTrigger, executeWorkflowTrigger],
+				}),
 				wf({ id: 'b', name: 'No trigger', nodes: [noTrigger] }),
-				wf({ id: 'c', name: 'Schedule only', nodes: [scheduleTrigger] }),
+				wf({ id: 'c', name: 'Manual only', nodes: [manualTrigger] }),
 			],
 			count: 3,
 		});
 
 		const result = await service.list(user, 'project-1');
 
-		expect(result).toEqual([{ id: 'a', name: 'Has trigger', active: true, triggerType: 'manual' }]);
+		expect(result).toEqual([
+			{ id: 'a', name: 'Has trigger', published: true, triggerType: 'executeWorkflow' },
+		]);
 	});
 
 	it('dedupes workflows that surface via multiple share paths', async () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findWorkflowsForUser.mockResolvedValue({
 			workflows: [
-				wf({ id: 'dup', name: 'Dup', nodes: [manualTrigger] }),
-				wf({ id: 'dup', name: 'Dup', nodes: [manualTrigger] }),
+				wf({ id: 'dup', name: 'Dup', nodes: [executeWorkflowTrigger] }),
+				wf({ id: 'dup', name: 'Dup', nodes: [executeWorkflowTrigger] }),
 			],
 			count: 2,
 		});
@@ -78,8 +85,8 @@ describe('AttachableWorkflowsService', () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findWorkflowsForUser.mockResolvedValue({
 			workflows: [
-				wf({ id: 'a', name: 'Billing follow-up', nodes: [manualTrigger] }),
-				wf({ id: 'b', name: 'Sales outreach', nodes: [manualTrigger] }),
+				wf({ id: 'a', name: 'Billing follow-up', nodes: [executeWorkflowTrigger] }),
+				wf({ id: 'b', name: 'Sales outreach', nodes: [executeWorkflowTrigger] }),
 			],
 			count: 2,
 		});
@@ -87,7 +94,7 @@ describe('AttachableWorkflowsService', () => {
 		const result = await service.list(user, 'project-1', 'billing');
 
 		expect(result).toEqual([
-			{ id: 'a', name: 'Billing follow-up', active: false, triggerType: 'manual' },
+			{ id: 'a', name: 'Billing follow-up', published: false, triggerType: 'executeWorkflow' },
 		]);
 	});
 
@@ -97,7 +104,7 @@ describe('AttachableWorkflowsService', () => {
 			wf({
 				id: `wf-${index}`,
 				name: `Workflow ${index}`,
-				nodes: [manualTrigger],
+				nodes: [executeWorkflowTrigger],
 				updatedAt: new Date(Date.UTC(2026, 0, index + 1)),
 			}),
 		);
@@ -112,14 +119,14 @@ describe('AttachableWorkflowsService', () => {
 		expect(result[0]).toEqual({
 			id: 'wf-59',
 			name: 'Workflow 59',
-			active: false,
-			triggerType: 'manual',
+			published: false,
+			triggerType: 'executeWorkflow',
 		});
 		expect(result.at(-1)).toEqual({
 			id: 'wf-50',
 			name: 'Workflow 50',
-			active: false,
-			triggerType: 'manual',
+			published: false,
+			triggerType: 'executeWorkflow',
 		});
 	});
 
@@ -136,7 +143,7 @@ describe('AttachableWorkflowsService', () => {
 			wf({
 				id: `wf-${i}`,
 				name: `Workflow ${i}`,
-				nodes: [manualTrigger],
+				nodes: [executeWorkflowTrigger],
 				updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
 			}),
 		);
@@ -160,7 +167,7 @@ describe('AttachableWorkflowsService', () => {
 			wf({
 				id: `wf-${i}`,
 				name: `Workflow ${i}`,
-				nodes: i >= 10 ? [noTrigger] : [manualTrigger],
+				nodes: i >= 10 ? [noTrigger] : [executeWorkflowTrigger],
 				updatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)),
 			}),
 		);
@@ -174,7 +181,7 @@ describe('AttachableWorkflowsService', () => {
 		// A cap applied before filtering would waste slots on the newest
 		// no-trigger entries and return fewer than 10.
 		expect(result).toHaveLength(10);
-		expect(result.every((w) => w.triggerType === 'manual')).toBe(true);
+		expect(result.every((w) => w.triggerType === 'executeWorkflow')).toBe(true);
 		expect(result[0].name).toBe('Workflow 9');
 	});
 });

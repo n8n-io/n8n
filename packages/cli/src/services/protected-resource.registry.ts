@@ -50,10 +50,22 @@ export interface ProtectedResource {
 	scopes: string[];
 
 	/**
+	 * Scopes *this user* may actually grant, narrowing {@link scopes}. Omit when
+	 * every authenticated user can grant everything the resource supports.
+	 *
+	 * Kept separate from {@link scopes} because the two answer different
+	 * questions: discovery metadata is unauthenticated and must describe what the
+	 * resource supports, while the consent screen must only offer what the person
+	 * in front of it could exercise. Offering a scope the caller's role cannot
+	 * use produces a grant that silently does nothing.
+	 */
+	getGrantableScopes?(user: User): Promise<string[]>;
+
+	/**
 	 * Tool names unlocked by each grantable scope, for display on the consent
 	 * screen. Omit when the resource has no per-tool scope mapping.
 	 */
-	getScopeTools?(): Record<string, string[]>;
+	getScopeTools?(): Record<string, string[]> | Promise<Record<string, string[]>>;
 
 	/**
 	 * Fallback audience for token requests that omit an RFC 8707 `resource`
@@ -71,6 +83,18 @@ export interface ProtectedResource {
 	getAllowedRedirectUris?(): Promise<string[]>;
 
 	isFirstParty?: boolean;
+
+	/**
+	 * Whether the resource currently serves requests. An unavailable resource is
+	 * hidden from RFC 9728 discovery, so clients see no authorization server to
+	 * authenticate against. Treated as always available when not implemented.
+	 *
+	 * Discovery and the token/consent gates apply this automatically (the latter
+	 * via {@link ProtectedResource.authorize}); answering 404 on the resource's
+	 * own endpoint, rather than an authentication challenge, remains up to
+	 * whoever serves it.
+	 */
+	isAvailable?(): Promise<boolean>;
 
 	/**
 	 * Determine whether the given user is authorized to access this resource.

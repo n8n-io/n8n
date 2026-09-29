@@ -32,7 +32,7 @@ import { createResultOk } from '@n8n/utils/result';
 import { NodeConnectionTypes, type IBinaryData, type INodeExecutionData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';

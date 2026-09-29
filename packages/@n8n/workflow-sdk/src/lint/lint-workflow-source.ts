@@ -48,7 +48,7 @@ export function lintWorkflowSource(source: string): SourceLintIssue[] {
 			);
 		} else {
 			embeddedIssues.push(
-				...lintPythonCode(snippet.code).map((issue) => ({
+				...lintPythonCode(snippet.code, { mode: snippet.mode }).map((issue) => ({
 					...issue,
 					...base,
 				})),

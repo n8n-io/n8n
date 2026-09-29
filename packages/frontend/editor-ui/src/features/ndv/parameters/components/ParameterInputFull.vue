@@ -38,6 +38,7 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -109,9 +110,16 @@ const activeNode = computed(() => {
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
+// A module-contributed input declares the same capabilities the built-in
+// resource-locator family behaves with, so both go through one value here.
+const { capabilities: inputCapabilities } = useParameterInputContribution(
+	computed(() => props.parameter.type),
+);
+
 const canCreateContentOverride = computed(() => {
-	// The resourceLocator handles overrides separately
-	if (props.disableFromAi || !activeNode.value || isResourceLocator.value) return false;
+	// An input that owns the from-AI override handles it separately
+	if (props.disableFromAi || !activeNode.value || inputCapabilities.value.ownsFromAiOverride)
+		return false;
 
 	return canBeContentOverride(props, activeNode.value);
 });
@@ -134,7 +142,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
 		props.isReadOnly ||
-		isResourceLocator.value ||
+		inputCapabilities.value.disableDrop ||
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
@@ -151,8 +159,8 @@ const parameterTooltipText = computed(() =>
 const showExpressionSelector = computed(() => {
 	if (props.optionsOverrides?.hideExpressionSelector) return false;
 
-	if (isResourceLocator.value) {
-		// The resourceLocator handles overrides itself, so we use this hack to
+	if (inputCapabilities.value.ownsExpressionRendering) {
+		// The input handles overrides itself, so we use this hack to
 		// infer whether it's overridden and we should hide the toggle
 		const value =
 			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;

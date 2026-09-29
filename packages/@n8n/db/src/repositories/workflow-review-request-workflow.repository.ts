@@ -136,7 +136,11 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		});
 	}
 
-	/** One workflow per review for now; multi-workflow "primary" selection can wait. */
+	/**
+	 * One workflow per review today, so one name per request is enough. With
+	 * several rows the Map below would keep an arbitrary one — the inbox card
+	 * needs a different treatment (and query) before multi-workflow lands.
+	 */
 	async findLinkedWorkflowsByRequestIds(
 		requestIds: string[],
 	): Promise<Map<string, WorkflowReviewRequestLinkedWorkflow>> {

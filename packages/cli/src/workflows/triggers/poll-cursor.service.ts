@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { PollCursor } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type {
 	PollCursorCommitOperation,
 	PollCursorCommitResult,
@@ -92,6 +92,10 @@ export class PollCursorService {
 	 * @param nodeId - Poll trigger node to resolve the cursor for.
 	 * @param nodeStaticData - Node's current cursor value, used to seed the new
 	 *   storage the first time this node migrates.
+	 * @param prefetchedCursor - Cursor the task handler already read at the start
+	 *   of the tick. When present, it is returned as-is and the row is not read
+	 *   again. When absent, the read-or-insert path runs as before: nothing was
+	 *   prefetched, or the row does not exist yet.
 	 * @returns The cursor to use if this node is on the new storage, otherwise
 	 *   `{ migrated: false }` to keep using the node's own static data.
 	 */
@@ -99,6 +103,7 @@ export class PollCursorService {
 		workflowId: string,
 		nodeId: string,
 		nodeStaticData: PollCursor,
+		prefetchedCursor?: PollerCursor,
 	): Promise<{ migrated: true; cursor: PollCursor } | { migrated: false }> {
 		if (!this.enabled) {
 			const existing = await this.pollerStateRepository.findCursor(workflowId, nodeId);
@@ -106,6 +111,10 @@ export class PollCursorService {
 				return { migrated: false };
 			}
 			return { migrated: true, cursor: toPollCursor(existing) };
+		}
+
+		if (prefetchedCursor !== undefined) {
+			return { migrated: true, cursor: toPollCursor(prefetchedCursor) };
 		}
 
 		const stored = await this.transactionRunner.run(

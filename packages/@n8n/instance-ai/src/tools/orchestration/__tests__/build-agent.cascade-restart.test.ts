@@ -178,10 +178,8 @@ function toTurnStream(result: StreamResult): BuilderTurnStream {
 }
 
 /**
- * Build the agent-builder sub-agent: `write_config` (a mutation tool whose
- * name drives `configUpdated` via `CONFIG_MUTATION_TOOL_NAMES`) and
- * `ask_questions` and `call_agent` interruptible tools. On resume, `onResume`
- * records the exact `ctx.resumeData` the SDK handed back after validation.
+ * Build the agent-builder sub-agent with a config mutation tool and two
+ * interruptible tools. On resume, `onResume` records the validated data.
  */
 function createBuilderAgent(
 	checkpointStore: CheckpointStore,
@@ -191,8 +189,8 @@ function createBuilderAgent(
 	const writeConfigTool = new Tool('write_config')
 		.description('Persist the agent configuration')
 		.input(z.object({}))
-		.output(z.object({ ok: z.boolean() }))
-		.handler(async () => await Promise.resolve({ ok: true }));
+		.output(z.object({ ok: z.boolean(), configMutated: z.literal(true) }))
+		.handler(async () => await Promise.resolve({ ok: true, configMutated: true as const }));
 
 	const askQuestionsTool = new Tool('ask_questions')
 		.description('Ask the user clarifying questions; suspends until answered')
@@ -289,8 +287,6 @@ function createBuilderDelegate(
 			await store.delete(runId);
 		},
 
-		listAgents: async () => await Promise.resolve([]),
-
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
@@ -314,10 +310,6 @@ function createEventBusStub(): InstanceAiEventBus {
 	return {
 		publish: () => {},
 		subscribe: () => () => {},
-		getEventsAfter: () => [],
-		getEventsForRun: () => [],
-		getEventsForRuns: () => [],
-		getNextEventId: async () => await Promise.resolve(1),
 	};
 }
 
@@ -340,6 +332,9 @@ function createOrchestrationContext(params: {
 	domainContext.threadId = 'thread-1';
 	domainContext.threadMemory = createThreadMemoryStub(params.threadRecords);
 	domainContext.agentBuilderTarget = params.agentBuilderTarget;
+	domainContext.agentPreviewSession = undefined;
+	domainContext.currentUserAttachments = undefined;
+	domainContext.resolvedUserDecisions = undefined;
 	domainContext.logger = createLoggerStub();
 
 	const context = mock<OrchestrationContext>();
@@ -353,6 +348,7 @@ function createOrchestrationContext(params: {
 	context.modelId = 'anthropic/test-model';
 	// Tracing-off is the default; tracing tests set their own stub.
 	context.tracing = undefined;
+	context.currentUserMessage = undefined;
 
 	return context;
 }

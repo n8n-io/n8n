@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -23,22 +25,6 @@ import type {
 } from 'n8n-workflow';
 import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { RedactableExecution } from '@/executions/execution-redaction';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
-import { ExternalHooks } from '@/external-hooks';
-import { Push } from '@/push';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { isWorkflowIdValid } from '@/utils';
-import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getLastExecutedNodeData } from '@/workflow-helpers';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-// `no-cycle` still reports a cycle here, but only through the dynamic import
-// in `execute-error-workflow`, which creates no evaluation-order edge.
-// eslint-disable-next-line import-x/no-cycle
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
@@ -48,8 +34,19 @@ import {
 	updateExistingExecution,
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
-
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { RedactableExecution } from '@/executions/execution-redaction';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExternalHooks } from '@/external-hooks';
+import { Push } from '@/push';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { isWorkflowIdValid } from '@/utils';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+import { getLastExecutedNodeData, getLastExecutedNodeRuns } from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 @Service()
 class ModulesHooksRegistry {
@@ -479,15 +476,25 @@ function hookFunctionsPush(
 	});
 }
 
-function hookFunctionsExternalHooks(
+function hookFunctionsPreExecute(
 	hooks: ExecutionLifecycleHooks,
 	source?: IWorkflowExecutionDataProcess['source'],
 ) {
+	if (!Container.get(ExecutionsConfig).preExecuteErrorCreatesExecution) {
+		return;
+	}
+
 	const externalHooks = Container.get(ExternalHooks);
 	const workflowContext = Container.get(WorkflowHookContextService);
 	hooks.addHandler('workflowExecuteBefore', async function (workflow) {
 		await externalHooks.run('workflow.preExecute', [workflow, this.mode, workflowContext, source]);
 	});
+}
+
+function hookFunctionsPostExecute(hooks: ExecutionLifecycleHooks) {
+	const externalHooks = Container.get(ExternalHooks);
+	const workflowContext = Container.get(WorkflowHookContextService);
+
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 		await externalHooks.run('workflow.postExecute', [
 			fullRunData,
@@ -542,8 +549,12 @@ async function duplicateBinaryDataToParent(
 	parentExecution: RelatedExecution,
 	binaryDataService: BinaryDataService,
 ) {
-	const outputData = getLastExecutedNodeData(fullRunData);
-	if (outputData?.data?.main) {
+	const outputRuns =
+		fullRunData.data.subWorkflowOutput?.lastRunOnly === false
+			? getLastExecutedNodeRuns(fullRunData)
+			: [getLastExecutedNodeData(fullRunData)];
+	for (const outputData of outputRuns) {
+		if (!outputData?.data?.main) continue;
 		const duplicatedData = await binaryDataService.duplicateBinaryData(
 			FileLocation.ofExecution(parentExecution.workflowId, parentExecution.executionId),
 			outputData.data.main,
@@ -585,8 +596,9 @@ function hookFunctionsSave(
 		// If this is a subworkflow execution, duplicate binary data to the parent's
 		// execution. This must happen before any potential deletion of this execution's
 		// data, and updates the binary data IDs in fullRunData to point to the parent location.
-		if (parentExecution) {
-			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+		const parent = parentExecution ?? fullRunData.data.parentExecution;
+		if (parent) {
+			await duplicateBinaryDataToParent(fullRunData, parent, binaryDataService);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -709,6 +721,7 @@ function hookFunctionsSaveWorker(
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
+	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData, newStaticData) {
@@ -717,7 +730,14 @@ function hookFunctionsSaveWorker(
 			workflowId: this.workflowData.id,
 		});
 
+		const { parentExecution } = fullRunData.data;
+		if (parentExecution) {
+			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+		}
+
 		const isManualMode = this.mode === 'manual';
+
+		let wasUpdated = true;
 
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -775,17 +795,23 @@ function hookFunctionsSaveWorker(
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
-			await updateExistingExecution({
+			// The guard only applies for a non-canceled outcome. This run's own canceled
+			// completion must still persist its accumulated data.
+			wasUpdated = await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData,
+				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
 		} finally {
-			workflowStatisticsService.emit('workflowExecutionCompleted', {
-				workflowData: this.workflowData,
-				fullRunData,
-				source,
-			});
+			// Counted only when the write above lands, so completions stay in sync with the database.
+			if (wasUpdated) {
+				workflowStatisticsService.emit('workflowExecutionCompleted', {
+					workflowData: this.workflowData,
+					fullRunData,
+					source,
+				});
+			}
 		}
 	});
 }
@@ -811,7 +837,8 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
-	hookFunctionsExternalHooks(hooks);
+	hookFunctionsPreExecute(hooks);
+	hookFunctionsPostExecute(hooks);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
@@ -854,7 +881,8 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsSaveWorker(hooks, optionalParameters);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
-	hookFunctionsExternalHooks(hooks, source);
+	hookFunctionsPreExecute(hooks, source);
+	hookFunctionsPostExecute(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
@@ -896,7 +924,8 @@ export function getLifecycleHooksForScalingMain(
 
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
-	hookFunctionsExternalHooks(hooks, source);
+	hookFunctionsPreExecute(hooks, source);
+	hookFunctionsPostExecute(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
@@ -993,7 +1022,8 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsPush(hooks, optionalParameters, userId, source);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
-	hookFunctionsExternalHooks(hooks, source);
+	hookFunctionsPreExecute(hooks, source);
+	hookFunctionsPostExecute(hooks);
 	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
 	return hooks;
 }

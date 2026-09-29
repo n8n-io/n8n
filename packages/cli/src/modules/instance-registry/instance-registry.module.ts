@@ -1,4 +1,4 @@
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -24,12 +24,24 @@ export class InstanceRegistryModule implements ModuleInterface {
 		);
 		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
 
-		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service.js');
-		Container.get(StaleMemberCleanupService).init();
-
 		await import('./checks/index.js');
 		const { CheckService } = await import('./checks/check.service.js');
 		Container.get(CheckService).init();
+	}
+
+	async systemTasks(): Promise<SystemTaskClass[]> {
+		const { InstanceRegistryReconciliationTask } = await import(
+			'./checks/instance-registry-reconciliation.task.js'
+		);
+
+		// The in-memory storage never holds a stale member.
+		const { InstanceRegistryService } = await import('./instance-registry.service.js');
+		if (Container.get(InstanceRegistryService).storageBackend !== 'redis') {
+			return [InstanceRegistryReconciliationTask];
+		}
+
+		const { StaleMemberCleanupTask } = await import('./stale-member-cleanup.task.js');
+		return [StaleMemberCleanupTask, InstanceRegistryReconciliationTask];
 	}
 
 	@OnShutdown()

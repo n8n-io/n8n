@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHAT_TRIGGER_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
 import {
-	detectWorkflowToolTrigger,
 	formatWorkflowToolFixedValue,
 	listWorkflowToolInputFields,
 	parseWorkflowToolFixedValue,
@@ -26,29 +25,6 @@ function workflowWithTrigger(parameters: Record<string, unknown>): IWorkflowDb {
 				parameters,
 			},
 		],
-		connections: {},
-		settings: {},
-		versionId: 'v1',
-	} as unknown as IWorkflowDb;
-}
-
-function workflowWithNodes(
-	...nodes: Array<{
-		id: string;
-		name: string;
-		type: string;
-		typeVersion: number;
-		position: number[];
-		parameters: Record<string, unknown>;
-	}>
-): IWorkflowDb {
-	return {
-		id: 'wf-1',
-		name: 'Tool Workflow',
-		active: false,
-		createdAt: '',
-		updatedAt: '',
-		nodes,
 		connections: {},
 		settings: {},
 		versionId: 'v1',
@@ -100,32 +76,6 @@ describe('listWorkflowToolInputFields', () => {
 			{ name: 'orderId', type: 'string' },
 			{ name: 'qty', type: 'number' },
 		]);
-	});
-
-	it('returns no fields when a supported trigger precedes the Execute Workflow Trigger', () => {
-		const chatTrigger = {
-			id: 'c1',
-			name: 'Chat Trigger',
-			type: CHAT_TRIGGER_NODE_TYPE,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-		const executeWorkflowTrigger = {
-			id: 'e1',
-			name: 'When Executed by Another Workflow',
-			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-			typeVersion: 1.1,
-			position: [200, 0],
-			parameters: {
-				inputSource: 'workflowInputs',
-				workflowInputs: { values: [{ name: 'chatId', type: 'string' }] },
-			},
-		};
-		const workflow = workflowWithNodes(chatTrigger, executeWorkflowTrigger);
-
-		expect(detectWorkflowToolTrigger(workflow)?.type).toBe(CHAT_TRIGGER_NODE_TYPE);
-		expect(listWorkflowToolInputFields(workflow)).toEqual([]);
 	});
 });
 

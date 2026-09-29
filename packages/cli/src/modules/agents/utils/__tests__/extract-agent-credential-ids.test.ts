@@ -78,6 +78,19 @@ describe('extractAgentCredentialIds', () => {
 		expect(result).toEqual(new Set(['real-credential']));
 	});
 
+	it('skips null and array values where a credential record is expected', () => {
+		const result = extractAgentCredentialIds({
+			credential: 'main-model-credential',
+			tools: [
+				{ node: { credentials: null } },
+				{ node: { credentials: [{ id: 'array-credential' }] } },
+				{ node: { credentials: { openAiApi: null } } },
+			],
+		});
+
+		expect(result).toEqual(new Set(['main-model-credential']));
+	});
+
 	it('lets callers extract draft and published snapshots separately and union them', () => {
 		const draftIds = extractAgentCredentialIds({
 			credential: 'draft-credential',

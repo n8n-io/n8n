@@ -162,6 +162,29 @@ describe('wrapLangChainParserError', () => {
 			expect(wrapped.message).not.toBe('[object Object]');
 		});
 
+		it('uses a caller-supplied fallback message instead of the agent wording', () => {
+			const cases = [new Error('Error'), new Error(''), { code: 500 }] as const;
+
+			for (const original of cases) {
+				const wrapped = wrapLangChainParserError(original, node, undefined, {
+					enrichNonParserErrors: true,
+					fallbackMessage: 'Model execution failed',
+				});
+
+				expect(wrapped.message).toBe('Model execution failed');
+			}
+		});
+
+		it('keeps a useful original message even when a fallback message is supplied', () => {
+			const wrapped = wrapLangChainParserError(new TypeError('fetch failed'), node, undefined, {
+				enrichNonParserErrors: true,
+				fallbackMessage: 'Model execution failed',
+			});
+
+			expect(wrapped.message).toBe('fetch failed');
+			expect((wrapped as NodeOperationError).description).toBe('Original error: TypeError');
+		});
+
 		it('still wraps parser errors when the option is set', () => {
 			const error = new Error('Failed to parse. Text: "x"');
 

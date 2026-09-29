@@ -1,34 +1,31 @@
 import type {
 	ContentImportContext,
 	CredentialDecryptContext,
+	CredentialSaveContext,
 	EnforcementPoint,
-	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
 	WorkflowStartContext,
 	WorkflowTransferContext,
+	PolicyCleared,
+	PolicySubject,
 } from '@n8n/decorators';
+import {
+	credentialContentSubject,
+	credentialSubject,
+	workflowContentSubject,
+	workflowSubject,
+} from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 
-import { mintPolicyCleared, type PolicyCleared, type PolicySubject } from './policy-cleared';
 import type { PolicyContext, PolicyEnforcementBackend } from './policy-enforcement-backend';
 import { hasViolations, PolicyViolationError } from './policy-violation.error';
 
 /** Fresh each time — `violations` is mutable. */
 const emptyDecision = (): PolicyDecision => ({ violations: [] });
-
-/** A workflow being created has no id yet, so it binds to its nodes instead. */
-function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
-	if (workflow.id !== null) return { type: 'workflow', id: workflow.id };
-
-	// Same object within one request, so key order is stable.
-	const nodes = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
-
-	return { type: 'workflow', id: nodes };
-}
 
 /**
  * The policy enforcement point every host call site talks to.
@@ -52,8 +49,22 @@ export class PolicyEnforcementService {
 		this.implementation = implementation;
 	}
 
+	/**
+	 * Whether any check would run at `point`. Only for skipping expensive work needed to build
+	 * a context — `enforce*` already clears, so a host holding its context should just call it.
+	 */
+	hasChecksFor(point: EnforcementPoint): boolean {
+		return this.implementation?.hasChecksFor(point) ?? false;
+	}
+
 	async enforceWorkflowSave(context: WorkflowSaveContext): Promise<PolicyCleared<'workflowSave'>> {
-		return await this.enforce('workflowSave', context, workflowSubject(context.workflow));
+		// A create has no committed id to bind to, so it binds to its content — even when a client
+		// supplied an id, which is no proof of what was checked. An update binds to the row id.
+		const subject =
+			context.storedWorkflow === null
+				? workflowContentSubject(context.workflow)
+				: workflowSubject(context.workflow);
+		return await this.enforce('workflowSave', context, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {
@@ -90,6 +101,21 @@ export class PolicyEnforcementService {
 		return await this.evaluate('workflowTransfer', context);
 	}
 
+	async enforceCredentialSave(
+		context: CredentialSaveContext,
+	): Promise<PolicyCleared<'credentialSave'>> {
+		// Same rule as a workflow save: a create binds to its content, an update to the row id.
+		const subject =
+			context.storedCredential === null
+				? credentialContentSubject(context.credential)
+				: credentialSubject(context.credential);
+		return await this.enforce('credentialSave', context, subject);
+	}
+
+	async evaluateCredentialSave(context: CredentialSaveContext): Promise<PolicyDecision> {
+		return await this.evaluate('credentialSave', context);
+	}
+
 	async enforceCredentialDecrypt(
 		context: CredentialDecryptContext,
 	): Promise<PolicyCleared<'credentialDecrypt'>> {
@@ -106,7 +132,11 @@ export class PolicyEnforcementService {
 	async enforceContentImport(
 		context: ContentImportContext,
 	): Promise<PolicyCleared<'contentImport'>> {
-		return await this.enforce('contentImport', context, workflowSubject(context.workflow));
+		const subject =
+			'workflow' in context
+				? workflowSubject(context.workflow)
+				: credentialSubject(context.credential);
+		return await this.enforce('contentImport', context, subject);
 	}
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {

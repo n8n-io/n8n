@@ -68,13 +68,39 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built)).toEqual({ A: [320, 480], B: [528, 480] });
 		});
 
-		it('ignores a workflow whose nodes were all renamed, leaving the fresh layout', async () => {
+		it('ignores a workflow whose nodes were all replaced, leaving the fresh layout', async () => {
 			const saved = workflow([node('Old name', [4000, 900])]);
 			const built = workflow([node('New name', [0, 0])]);
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
 			expect(positionsByName(built)).toEqual({ 'New name': [0, 0] });
+		});
+
+		it('follows a renamed node by its id', async () => {
+			const saved = workflow([node('Old name', [4000, 900]), node('Other', [4208, 900])]);
+			const built = workflow([
+				{ ...node('New name', [0, 0]), id: 'old-name' },
+				node('Other', [208, 0]),
+			]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual({ 'New name': [4000, 900], Other: [4208, 900] });
+		});
+
+		it('does not hand a position claimed by id out again by name', async () => {
+			// "A" was renamed to "B" (same id) and a new node took the name "A".
+			const saved = workflow([node('A', [4000, 900])]);
+			const built = workflow([
+				{ ...node('B', [0, 0]), id: 'a' },
+				{ ...node('A', [208, 0]), id: 'fresh' },
+			]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built).B).toEqual([4000, 900]);
+			expect(positionsByName(built).A).not.toEqual([4000, 900]);
 		});
 	});
 

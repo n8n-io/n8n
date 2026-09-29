@@ -62,7 +62,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 
 		await expect(
 			resolveCredentialAwareModelConfig('openai/gpt-5', AI_GATEWAY_MANAGED_TAG, credentialProvider),
-		).rejects.toThrow('cannot resolve n8n credits');
+		).rejects.toThrow('cannot resolve Gateway credits');
 		expect(resolve).not.toHaveBeenCalled();
 	});
 });

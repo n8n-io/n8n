@@ -147,7 +147,8 @@ function buildMessageContent(
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
 	// Anthropic thinking mode: build content blocks
-	if (thinkingContent && thinkingType) {
+	// Empty thinking text is valid because the signature carries the reasoning.
+	if (thinkingContent !== undefined && thinkingType) {
 		return buildAnthropicContentBlocks(
 			thinkingContent,
 			thinkingType,
@@ -360,17 +361,14 @@ export function buildSteps(
 	for (const tool of responses) {
 		if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
 
-		const toolInput: IDataObject = {
-			...tool.action.input,
-			id: tool.action.id,
-		};
+		const toolInput = tool.action.input;
 		if (!tool.data) continue;
 
-		const existingStep = steps.find((s) => s.action.toolCallId === toolInput.id);
+		const existingStep = steps.find((s) => s.action.toolCallId === tool.action.id);
 		if (existingStep) continue;
 
 		const providerMetadata = extractProviderMetadata(tool.action.metadata);
-		const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
+		const toolId = tool.action.id;
 		const toolName = resolveToolName(tool);
 
 		batchTools.push({
@@ -423,7 +421,7 @@ export function buildSteps(
 				toolInput: toolInputForResult,
 				log: toolInput.log || logFallback,
 				messageLog,
-				toolCallId: toolInput?.id,
+				toolCallId: toolId,
 				type: toolInput.type || 'tool_call',
 			},
 			observation,

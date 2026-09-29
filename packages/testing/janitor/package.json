@@ -38,6 +38,7 @@
   "dependencies": {
     "@n8n/rules-engine": "workspace:*",
     "@n8n/test-impact": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "glob": "^10.0.0",
     "ts-morph": "catalog:",
     "yaml": "catalog:"
@@ -48,8 +49,6 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "fast-check": "catalog:",
-    "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   }

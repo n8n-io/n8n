@@ -2,7 +2,7 @@ import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from 
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI chat basics @capability:proxy',
+	'Instance AI chat basics',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

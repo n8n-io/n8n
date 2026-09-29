@@ -1,11 +1,9 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { baseConfig } from '@n8n/eslint-config/base';
 
-export default defineConfig(nodeConfig, {
+export default defineConfig(baseConfig, {
 	rules: {
 		// TODO: Remove this
 		'no-prototype-builtins': 'warn',
-		'@typescript-eslint/require-await': 'warn',
-		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 	},
 });

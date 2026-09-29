@@ -7,7 +7,6 @@ import type {
 	IClusterCheck,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { InstanceSettings } from 'n8n-core';
 import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,7 +15,6 @@ import type { Push } from '@/push';
 
 import { CheckService, computeDiff } from '../checks/check.service';
 import type { InstanceRegistryService } from '../instance-registry.service';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 
 const makeLogger = () => {
 	const logger = mock<Logger>();
@@ -44,7 +42,6 @@ const namedClass = (name: string) => {
 
 describe('CheckService', () => {
 	let logger: ReturnType<typeof makeLogger>;
-	let instanceSettings: InstanceSettings;
 	let registryService: Mocked<InstanceRegistryService>;
 	let clusterCheckMetadata: Mocked<ClusterCheckMetadata>;
 	let messageEventBus: Mocked<MessageEventBus>;
@@ -53,19 +50,10 @@ describe('CheckService', () => {
 	let service: CheckService | undefined;
 
 	const buildService = () =>
-		new CheckService(
-			logger,
-			instanceSettings,
-			registryService,
-			clusterCheckMetadata,
-			messageEventBus,
-			push,
-		);
+		new CheckService(logger, registryService, clusterCheckMetadata, messageEventBus, push);
 
 	beforeEach(() => {
-		vi.useFakeTimers();
 		logger = makeLogger();
-		instanceSettings = mock<InstanceSettings>({ isLeader: false });
 		registryService = mock<InstanceRegistryService>();
 		clusterCheckMetadata = mock<ClusterCheckMetadata>();
 		messageEventBus = mock<MessageEventBus>();
@@ -81,10 +69,8 @@ describe('CheckService', () => {
 	});
 
 	afterEach(() => {
-		service?.shutdown();
 		service = undefined;
 		containerGet.mockRestore();
-		vi.useRealTimers();
 	});
 
 	it('discovers checks via metadata and DI, skipping failures', () => {
@@ -115,57 +101,6 @@ describe('CheckService', () => {
 		});
 	});
 
-	it('runs reconcile immediately on takeover, again every 180s, and stops on stepdown', async () => {
-		const TickCheck = namedClass('TickCheck');
-		const runMock = vi
-			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
-			.mockResolvedValue({});
-		const tickInstance: IClusterCheck = {
-			checkDescription: { name: 'cluster.tick' },
-			run: runMock,
-		};
-		clusterCheckMetadata.getClasses.mockReturnValue([TickCheck]);
-		containerGet.mockReturnValue(tickInstance);
-
-		service = buildService();
-		service.init();
-		expect(runMock).not.toHaveBeenCalled();
-
-		service.startReconciliation();
-		await vi.advanceTimersByTimeAsync(0);
-		expect(runMock).toHaveBeenCalledTimes(1);
-
-		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
-		expect(runMock).toHaveBeenCalledTimes(2);
-
-		service.stopReconciliation();
-		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
-		expect(runMock).toHaveBeenCalledTimes(2);
-	});
-
-	it('does not reconcile when not leader, nor after shutdown', async () => {
-		const NoOp = namedClass('NoOp');
-		const runMock = vi
-			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
-			.mockResolvedValue({});
-		clusterCheckMetadata.getClasses.mockReturnValue([NoOp]);
-		containerGet.mockReturnValue({
-			checkDescription: { name: 'cluster.noop' },
-			run: runMock,
-		});
-
-		Object.assign(instanceSettings, { isLeader: false });
-		service = buildService();
-		service.init();
-		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
-		expect(runMock).not.toHaveBeenCalled();
-
-		service.shutdown();
-		service.startReconciliation();
-		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
-		expect(runMock).not.toHaveBeenCalled();
-	});
-
 	it('reconcile forwards warnings/audit/push from runChecks and saves current state', async () => {
 		const WorkingCheck = namedClass('WorkingCheck');
 		const workingRun = vi
@@ -186,8 +121,7 @@ describe('CheckService', () => {
 
 		service = buildService();
 		service.init();
-		service.startReconciliation();
-		await vi.advanceTimersByTimeAsync(0);
+		await service.reconcile(new AbortController().signal);
 
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Cluster check warning',
@@ -199,6 +133,33 @@ describe('CheckService', () => {
 		});
 		expect(push.broadcast).toHaveBeenCalledWith({ type: 'cluster-foo', data: { b: 2 } });
 		expect(registryService.saveLastKnownState).toHaveBeenCalledWith(new Map([['k1', inst]]));
+	});
+
+	it('reconcile is a no-op without registered checks', async () => {
+		service = buildService();
+		service.init();
+
+		await service.reconcile(new AbortController().signal);
+
+		expect(registryService.getAllInstances).not.toHaveBeenCalled();
+		expect(registryService.saveLastKnownState).not.toHaveBeenCalled();
+	});
+
+	it('reconcile stops early when the signal is already aborted', async () => {
+		const WorkingCheck = namedClass('WorkingCheck');
+		const workingRun = vi.fn();
+		clusterCheckMetadata.getClasses.mockReturnValue([WorkingCheck]);
+		containerGet.mockReturnValue({
+			checkDescription: { name: 'cluster.work' },
+			run: workingRun,
+		});
+
+		service = buildService();
+		service.init();
+		await service.reconcile(AbortSignal.abort());
+
+		expect(workingRun).not.toHaveBeenCalled();
+		expect(registryService.saveLastKnownState).not.toHaveBeenCalled();
 	});
 
 	describe('runChecks', () => {
@@ -288,7 +249,6 @@ describe('CheckService', () => {
 			expect(context.diff.added.map((x) => x.instanceKey)).toEqual(['new']);
 			expect(context.diff.removed.map((x) => x.instanceKey)).toEqual(['old']);
 
-			service.shutdown();
 			service = undefined;
 			registryService.getAllInstances.mockClear();
 			registryService.getLastKnownState.mockClear();

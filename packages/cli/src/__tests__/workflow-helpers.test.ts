@@ -6,6 +6,7 @@ import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
+	INodeCredentialsDetails,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
@@ -15,6 +16,7 @@ import type {
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -31,10 +33,15 @@ import {
 	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
+	const ownershipService = mockInstance(OwnershipService);
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: '1', name: 'project' }),
+	);
+
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
@@ -64,12 +71,6 @@ describe('workflow-helpers', () => {
 				] as Variables[];
 			},
 		});
-
-		mockInstance(OwnershipService, {
-			async getWorkflowProjectCached(_workflowId: string) {
-				return { id: '1', name: 'project' } as unknown as Project;
-			},
-		});
 	});
 
 	describe('getVariables', () => {
@@ -96,6 +97,12 @@ describe('workflow-helpers', () => {
 		it('should let a project variable override a same-key global regardless of order', async () => {
 			const variables = await getVariables(undefined, '1');
 			expect(variables.VAR2).toBe('value1Project');
+		});
+
+		it('should reject when the owning project cannot be resolved', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('not found'));
+
+			await expect(getVariables('1')).rejects.toThrow('not found');
 		});
 	});
 });
@@ -290,6 +297,70 @@ describe('replaceInvalidCredentials', () => {
 		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
 			id: 'cred-new',
 			name: 'My Cred',
+		});
+	});
+
+	it('should reuse a shared credential cache across workflows', async () => {
+		const credential = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(credential);
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).not.toBe(
+			secondWorkflow.nodes[0].credentials!.httpHeaderAuth,
+		);
+	});
+
+	it('should cache a name fallback for the stale credential id and name', async () => {
+		const credential = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValue([credential]);
+		const cache = new Map<string, INodeCredentialsDetails>();
+
+		for (let index = 0; index < 2; index++) {
+			await replaceInvalidCredentials(
+				makeWorkflow({ httpHeaderAuth: { id: 'cred-stale', name: 'My Cred' } }),
+				'project-1',
+				cache,
+			);
+		}
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledTimes(1);
+	});
+
+	it('should resolve the same stale credential id independently when names differ', async () => {
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject
+			.mockResolvedValueOnce([{ id: 'resolved-First', name: 'First' } as CredentialsEntity])
+			.mockResolvedValueOnce([{ id: 'resolved-Second', name: 'Second' } as CredentialsEntity]);
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'First' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'Second' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-First',
+			name: 'First',
+		});
+		expect(secondWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-Second',
+			name: 'Second',
 		});
 	});
 
@@ -686,7 +757,7 @@ describe('validateWorkflowNodeGroups', () => {
 						getNodeType,
 					),
 				).toThrow(
-					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit (no path from "Node n1" to "Node n2").',
 				);
 			});
 		});
@@ -949,17 +1020,108 @@ describe('updateParentExecutionWithChildResults', () => {
 	};
 
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
-	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
+	async function resumeWith(
+		child: IRun,
+		childExecution?: RelatedExecution,
+		workflowData?: IWorkflowBase,
+	) {
 		const executionPersistence = mockInstance(ExecutionPersistence);
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
 
-		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution, workflowData);
 
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
 		return (payload as IExecutionResponse).data.executionData!
 			.nodeExecutionStack[0] as unknown as StackEntry;
 	}
+
+	function savedWorkflow(outputCount: number): IWorkflowBase {
+		mockInstance(NodeTypes).getByNameAndVersion.mockReturnValue({
+			description: {
+				name: 'test',
+				displayName: 'Test',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: ['main'],
+				outputs: Array.from({ length: outputCount }, () => 'main'),
+				properties: [],
+			},
+		});
+		return {
+			...mock<IWorkflowBase>(),
+			nodes: [
+				{
+					id: 'last',
+					name: 'Last',
+					type: 'test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: {},
+			staticData: undefined,
+		};
+	}
+
+	it.each([false, true])('uses the saved lastRunOnly=%s policy on resume', async (lastRunOnly) => {
+		const child = childRun('success', 'Last', {
+			executionIndex: 1,
+			data: { main: [[], [{ json: { id: 57 } }]] },
+		});
+		child.data.resultData.runData.Last.unshift({
+			startTime: 0,
+			executionTime: 0,
+			source: [],
+			executionIndex: 0,
+			data: { main: [[], [{ json: { id: 55 } }]] },
+		});
+		if (!lastRunOnly) child.data.resultData.runData.Last.reverse();
+		child.data.subWorkflowOutput = { lastRunOnly };
+		const entry = await resumeWith(child, undefined, savedWorkflow(2));
+		expect(entry.data).toEqual({
+			main: [lastRunOnly ? [{ json: { id: 57 } }] : [{ json: { id: 55 } }, { json: { id: 57 } }]],
+		});
+	});
+
+	it.each([true, false])(
+		'excludes discarded items on resume when Filter keeps items: %s',
+		async (keepsItems) => {
+			const kept = keepsItems ? [{ json: { id: 55 } }] : [];
+			const child = childRun('success', 'Last', { data: { main: [kept, [{ json: { id: 56 } }]] } });
+			child.data.subWorkflowOutput = { lastRunOnly: false };
+			const entry = await resumeWith(child, undefined, savedWorkflow(1));
+			expect(entry.data).toEqual({ main: [kept] });
+		},
+	);
+
+	it('keeps the final run and branch shape for an execution without a saved policy', async () => {
+		const child = childRun('success', 'Last', { data: { main: [[], [{ json: { id: 57 } }]] } });
+		child.data.resultData.runData.Last.unshift({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [],
+			data: { main: [[{ json: { id: 55 } }]] },
+		});
+		const entry = await resumeWith(child, undefined, savedWorkflow(2));
+		expect(entry.data).toEqual({ main: [[], [{ json: { id: 57 } }]] });
+	});
+
+	it('requires the execution snapshot for a saved output policy', async () => {
+		const child = childRun('success', 'Last', { data: { main: [[{ json: {} }]] } });
+		child.data.subWorkflowOutput = { lastRunOnly: false };
+		const persistence = mockInstance(ExecutionPersistence);
+		persistence.findSingleExecution.mockResolvedValue(waitingParent());
+		await expect(updateParentExecutionWithChildResults(PARENT_ID, child)).rejects.toThrow(
+			'saved child workflow',
+		);
+		expect(persistence.updateExistingExecution).not.toHaveBeenCalled();
+	});
 
 	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
 		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
@@ -1148,4 +1310,55 @@ describe('updateParentExecutionWithChildResults', () => {
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
 		},
 	);
+
+	describe('when the parent names the children its current wait is parked on', () => {
+		const parentWaitingOn = (childExecutionIds: string[]): IExecutionResponse => {
+			const parent = waitingParent();
+			parent.data.executionData!.nodeExecutionStack[0].metadata = {
+				waitingChildExecutionIds: childExecutionIds,
+			};
+			return parent;
+		};
+
+		const child = () => childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } });
+
+		it('patches for a child the parent is waiting on', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-2',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves the parent alone for a child left over from an earlier wait', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(false);
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		});
+
+		it('patches for any child when the parent names none', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+	});
 });

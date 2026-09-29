@@ -94,7 +94,7 @@ describe('DataTableExporter', () => {
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -104,9 +104,9 @@ describe('DataTableExporter', () => {
 				},
 			]);
 
-			expect(writer.directories).toEqual(['data-tables/customers']);
+			expect(writer.directories).toEqual(['data-tables/customers-dt1']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('data-tables/customers/data-table.json');
+			expect(writer.files[0].path).toBe('data-tables/customers-dt1/data-table.json');
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
@@ -134,7 +134,7 @@ describe('DataTableExporter', () => {
 				'dataTable:read',
 			]);
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -164,11 +164,11 @@ describe('DataTableExporter', () => {
 			});
 
 			const targets = result.entries.map((e) => e.target);
-			expect(targets).toEqual(['data-tables/same-name', 'data-tables/same-name-2']);
+			expect(targets).toEqual(['data-tables/same-name-dta', 'data-tables/same-name-dtb']);
 
 			const writtenPaths = writer.files.map((f) => f.path);
-			expect(writtenPaths).toContain('data-tables/same-name/data-table.json');
-			expect(writtenPaths).toContain('data-tables/same-name-2/data-table.json');
+			expect(writtenPaths).toContain('data-tables/same-name-dta/data-table.json');
+			expect(writtenPaths).toContain('data-tables/same-name-dtb/data-table.json');
 		});
 
 		it('namespaces a table under its owner project when that project is part of the export', async () => {
@@ -186,10 +186,10 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'projects/sales/data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'projects/sales/data-tables/customers-dt1' },
 			]);
 			expect(writer.files.map((f) => f.path)).toContain(
-				'projects/sales/data-tables/customers/data-table.json',
+				'projects/sales/data-tables/customers-dt1/data-table.json',
 			);
 		});
 
@@ -208,7 +208,7 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 		});
 
@@ -235,8 +235,8 @@ describe('DataTableExporter', () => {
 
 			const targets = result.entries.map((e) => e.target).sort();
 			expect(targets).toEqual([
-				'projects/team-a/data-tables/users',
-				'projects/team-b/data-tables/users',
+				'projects/team-a/data-tables/users-dta',
+				'projects/team-b/data-tables/users-dtb',
 			]);
 		});
 	});

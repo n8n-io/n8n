@@ -11,7 +11,7 @@ export class WorkflowReviewRequestReviewerRepository extends BaseRepository<Work
 		super(WorkflowReviewRequestReviewer, dataSource.manager, transactionRunner);
 	}
 
-	/** Unlike `setReviewers`, this runs in the caller's transaction and only appends rows. */
+	/** Runs in the caller's transaction and only appends rows. */
 	async addReviewers(
 		input: {
 			workflowReviewRequestId: string;
@@ -34,32 +34,6 @@ export class WorkflowReviewRequestReviewerRepository extends BaseRepository<Work
 		return await this.managerFor(ctx).save(WorkflowReviewRequestReviewer, entities);
 	}
 
-	async setReviewers(
-		requestId: string,
-		userIds: string[],
-	): Promise<WorkflowReviewRequestReviewer[]> {
-		const uniqueUserIds = [...new Set(userIds)];
-
-		return await this.manager.transaction(async (tx) => {
-			await tx.delete(WorkflowReviewRequestReviewer, {
-				workflowReviewRequestId: requestId,
-			});
-
-			if (uniqueUserIds.length === 0) {
-				return [];
-			}
-
-			const entities = uniqueUserIds.map((userId) =>
-				this.create({
-					workflowReviewRequestId: requestId,
-					userId,
-				}),
-			);
-
-			return await tx.save(WorkflowReviewRequestReviewer, entities);
-		});
-	}
-
 	async isReviewer(
 		input: {
 			workflowReviewRequestId: string;
@@ -70,13 +44,6 @@ export class WorkflowReviewRequestReviewerRepository extends BaseRepository<Work
 		return await this.managerFor(ctx).existsBy(WorkflowReviewRequestReviewer, {
 			workflowReviewRequestId: input.workflowReviewRequestId,
 			userId: input.userId,
-		});
-	}
-
-	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestReviewer[]> {
-		return await this.find({
-			where: { workflowReviewRequestId: requestId },
-			order: { userId: 'ASC' },
 		});
 	}
 

@@ -226,6 +226,26 @@ describe('ToolRow', () => {
 		expect(emitted().connect?.[0]).toEqual([item]);
 	});
 
+	it('renders a Free credits pill for a gateway-backed item and no Connect button', () => {
+		const item: NodeConnectionItem = { ...baseNode, freeCredits: true };
+		const { getByTestId, queryByTestId } = render(item);
+
+		const pill = getByTestId('tools-connection-row-free-credits');
+		expect(pill.textContent).toContain('Free credits');
+		// Gateway tools are ready to use: added, never connected.
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+	});
+
+	it('omits the Free credits pill for a regular item', () => {
+		const { queryByTestId } = render(baseNode);
+		expect(queryByTestId('tools-connection-row-free-credits')).toBeNull();
+	});
+
+	it('shows the warning of a workflow row', () => {
+		const { getByTestId } = render({ ...baseWorkflow, warning: 'Not published' });
+		expect(getByTestId('tools-connection-row-warning').textContent).toContain('Not published');
+	});
+
 	it('keeps the verified badge on an installed community node', () => {
 		const item: NodeConnectionItem = { ...baseNode, verified: true };
 		const { getByTestId, queryByTestId } = render(item);
@@ -279,6 +299,61 @@ describe('ToolRow', () => {
 			const { getByTestId } = render(disabledWorkflow);
 
 			expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		});
+	});
+
+	describe('restricted rows', () => {
+		const restrictedNode: NodeConnectionItem = {
+			...baseNode,
+			restriction: { name: baseNode.nodeTypeName, available: false, scope: 'instance' },
+		};
+
+		it('renders a lock instead of a connect or install action', () => {
+			const { getByTestId, queryByTestId } = render(restrictedNode);
+
+			expect(getByTestId('node-restricted-icon')).toBeTruthy();
+			expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+			expect(queryByTestId('tools-connection-row-disabled')).toBeNull();
+		});
+
+		it('keeps the main action focusable but marks it disabled for assistive tech', () => {
+			const { getByTestId } = render(restrictedNode);
+
+			const main = getByTestId('tools-connection-row-main');
+			expect(main).not.toBeDisabled();
+			expect(main.getAttribute('aria-disabled')).toBe('true');
+		});
+
+		it('emits nothing on click or keyboard activation', async () => {
+			const { getByTestId, emitted } = render(restrictedNode);
+
+			const main = getByTestId('tools-connection-row-main');
+			await fireEvent.click(main);
+			main.focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(emitted()['open-detail']).toBeUndefined();
+			expect(emitted().connect).toBeUndefined();
+		});
+
+		it('shows the lock, not the install action, for a restricted community node', () => {
+			const item: NodeConnectionItem = {
+				...restrictedNode,
+				verified: true,
+				communityPreview: true,
+			};
+			const { getByTestId, queryByTestId } = render(item);
+
+			expect(getByTestId('node-restricted-icon')).toBeTruthy();
+			expect(getByTestId('tools-connection-row-verified-badge')).toBeTruthy();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+		});
+
+		it('renders no lock for an unrestricted node', () => {
+			const { queryByTestId } = render(baseNode);
+
+			expect(queryByTestId('node-restricted-icon')).toBeNull();
 		});
 	});
 });

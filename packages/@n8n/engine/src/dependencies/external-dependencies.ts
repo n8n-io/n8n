@@ -1,5 +1,7 @@
-import type { ExecutionMode, StepSlots } from '../execution';
+import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
+import type { LifecycleEventCallback } from '../lifecycle-events';
+import type { ResponseEmitter } from '../response-channel';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -29,6 +31,9 @@ export interface StepExecutionContext {
 	stepId: string;
 	workflowId: string;
 	mode: ExecutionMode;
+	iteration: number;
+	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
+	callerContext: CallerContext;
 }
 
 /** A single step handed to an executor. */
@@ -38,12 +43,32 @@ export interface StepExecutionRequest {
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
 	context: StepExecutionContext;
+	/**
+	 * Response emitter allows the step executor to send messages to the control
+	 * plane side via the execution response channel.
+	 */
+	respond: ResponseEmitter;
 }
 
-export interface StepExecutionResult {
-	/** Output slots; persisted by the engine without inspecting slot contents. */
-	outputs: StepSlots;
-}
+/**
+ * What running a step produced: its output slots, or a declaration that it is
+ * not done. Exclusive — a step that waits has no outputs yet, and the outputs
+ * a deadline would emit ride inside the declaration.
+ *
+ * The `?: never` members give both branches the same keys, so `result.wait`
+ * reads on the union and narrows it — without them a caller could only test
+ * `'wait' in result`, and a value carrying both fields would type-check.
+ */
+export type StepExecutionResult =
+	| {
+			/** Output slots; persisted by the engine without inspecting slot contents. */
+			outputs: StepSlots;
+			wait?: never;
+	  }
+	| {
+			wait: WaitDeclaration;
+			outputs?: never;
+	  };
 
 /**
  * Executes a step whose behaviour the engine does not implement itself.
@@ -61,8 +86,7 @@ export interface IStepExecutor {
 /**
  * Capabilities the host injects at engine construction time. Standalone mode
  * omits them and falls back to default behaviour; concrete shapes for other
- * hooks (pre-fetch, status callbacks) are introduced with the tickets that
- * first need them.
+ * hooks (pre-fetch) are introduced with the tickets that first need them.
  *
  * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
  * do not go through this interface.
@@ -70,4 +94,6 @@ export interface IStepExecutor {
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
+	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
+	lifecycleEventCallback?: LifecycleEventCallback;
 }

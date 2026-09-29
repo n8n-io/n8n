@@ -59,6 +59,48 @@ describe('AgentRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('published n8n Chat availability', () => {
+		it('uses the active version instead of the mutable draft switch', async () => {
+			const agent = await createAgent();
+			expect(agent.integrations).toEqual([]);
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			const firstVersion = uuid();
+			await agentHistoryRepo.saveVersion({
+				versionId: firstVersion,
+				agentId: agent.id,
+				schema: agent.schema
+					? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
+					: null,
+				tools: {},
+				skills: {},
+				publishedBy: 'test',
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+			await agentRepo.update({ id: agent.id }, { integrations: [] });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+
+			const secondVersion = uuid();
+			await agentHistoryRepo.saveVersion({
+				versionId: secondVersion,
+				agentId: agent.id,
+				schema: agent.schema,
+				tools: {},
+				skills: {},
+				publishedBy: 'test',
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: secondVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: null });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			expect(await agentRepo.isN8nChatPublished(agent.id, uuid())).toBe(false);
+			await agentRepo.delete({ id: agent.id });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+		});
+	});
+
 	describe('saveDraftFenced', () => {
 		it('persists draft columns and bumps revision when the fence is won', async () => {
 			const agent = await createAgent();
@@ -313,6 +355,40 @@ describe('AgentRepository', () => {
 					'version-2',
 				),
 			).resolves.toBe(false);
+		});
+	});
+
+	describe('findPublishedIds', () => {
+		/** An agent with a published version, so it owns scheduled jobs. */
+		async function createPublishedAgent(): Promise<Agent> {
+			const versionId = uuid();
+			const agent = await createAgent();
+			await createHistory(agent.id, versionId);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
+			return agent;
+		}
+
+		it('keeps the agents that have a published version and drops the drafts', async () => {
+			const published = await createPublishedAgent();
+			const draft = await createAgent();
+
+			const ids = await agentRepo.findPublishedIds([published.id, draft.id]);
+
+			expect(ids).toEqual(new Set([published.id]));
+		});
+
+		it('drops an id that belongs to no agent', async () => {
+			const published = await createPublishedAgent();
+
+			const ids = await agentRepo.findPublishedIds([published.id, uuid()]);
+
+			expect(ids).toEqual(new Set([published.id]));
+		});
+
+		it('answers an empty list without a query', async () => {
+			await createPublishedAgent();
+
+			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
 		});
 	});
 });

@@ -1,4 +1,7 @@
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
@@ -17,12 +20,14 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 import { authorizeAgainstGrant } from './resource-gate';
+import { isSameProtectedResource } from './resource-identity';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -46,18 +51,24 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
 	}
 
+	/**
+	 * Mints an access/refresh pair. Returns the `audience` it resolved, so the
+	 * caller can persist the grant's resource alongside the refresh token — the
+	 * resolved value, not the (optional) request one, is what the token is bound to.
+	 */
 	generateTokenPair(
 		userId: string,
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
-	): { accessToken: string; refreshToken: string } {
+	): { accessToken: string; refreshToken: string; audience: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
 		const audience = resource ?? this.resourceRegistry.getDefaultResource()?.getResourceUrl();
@@ -67,25 +78,34 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign({
-			sub: userId,
-			aud: audience,
-			client_id: clientId,
-			jti: randomUUID(),
-			iat: Math.floor(Date.now() / 1000),
-			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
-			// RFC 9068 space-delimited scope claim. Always present on new tokens
-			// (empty string for scope-less grants), so an absent claim
-			// unambiguously identifies a token minted before scoping shipped.
-			scope: scopes.join(' '),
-			meta: {
-				isOAuth: true,
+		const accessToken = this.jwtService.sign(
+			{
+				iss: this.urlService.getInstanceBaseUrl(),
+				sub: userId,
+				aud: audience,
+				client_id: clientId,
+				jti: randomUUID(),
+				iat: Math.floor(Date.now() / 1000),
+				exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+				// RFC 9068 space-delimited scope claim. Always present on new tokens
+				// (empty string for scope-less grants), so an absent claim
+				// unambiguously identifies a token minted before scoping shipped.
+				scope: scopes.join(' '),
+				meta: {
+					isOAuth: true,
+				},
 			},
-		});
+			{
+				header: {
+					typ: 'at+jwt',
+					alg: 'HS256',
+				},
+			},
+		);
 
 		const refreshToken = randomBytes(32).toString('hex');
 
-		return { accessToken, refreshToken };
+		return { accessToken, refreshToken, audience };
 	}
 
 	async saveTokenPair(
@@ -94,6 +114,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		userId: string,
 		scopes: string[],
+		resource: string,
 	): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
@@ -104,12 +125,18 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					userId,
 					expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
 					scope: scopes,
+					resource,
 				},
 				ctx,
 			);
 		});
 	}
 
+	/**
+	 * Rotates a refresh token into a fresh pair, reissuing the grant's scopes and
+	 * its resource. `resource`, when the client sends one, must name the resource
+	 * the grant was approved for (RFC 8707 §2.2).
+	 */
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
@@ -130,6 +157,23 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
+			// The resource approved at authorization bounds every later token request on
+			// the grant (RFC 8707 §2.2), so a request naming another one is refused and a
+			// request naming none reuses the grant's own — never the default resource.
+			// Checked before the row is consumed, so a refused request leaves the refresh
+			// token usable.
+			const grantedResource = refreshTokenRecord.resource;
+			if (
+				resource &&
+				!(await isSameProtectedResource(this.resourceRegistry, resource, grantedResource))
+			) {
+				this.logger.warn('Refresh token request denied: resource is outside the grant', {
+					clientId,
+					userId: refreshTokenRecord.userId,
+				});
+				throw new InvalidTargetError('Requested resource is not part of this grant');
+			}
+
 			const numAffected = await this.refreshTokenRepository.deleteValidByToken(
 				refreshToken,
 				clientId,
@@ -142,10 +186,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			const scopes = refreshTokenRecord.scope;
 
+			// Minted from the stored resource, not the requested spelling, so the binding
+			// cannot drift across rotations.
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
-				resource,
+				grantedResource,
 				scopes,
 			);
 
@@ -161,6 +207,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					userId: refreshTokenRecord.userId,
 					expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
 					scope: scopes,
+					resource: grantedResource,
 				},
 				ctx,
 			);

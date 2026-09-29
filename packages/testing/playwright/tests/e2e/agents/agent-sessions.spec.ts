@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 
 import { expect, test } from '../../../fixtures/base';
 
-const CHILD_TRIGGER_NAME = 'Manual Trigger';
+const CHILD_TRIGGER_NAME = 'When Executed by Another Workflow';
 const CHILD_INPUT_NODE_NAME = 'Prepare workflow tool input';
 const CHILD_OUTPUT_NODE_NAME = 'Prepare workflow tool output';
 const NODE_TOOL_NAME = 'Node tool';
@@ -33,10 +33,10 @@ function childWorkflow(): Partial<IWorkflowBase> {
 			{
 				id: nanoid(),
 				name: CHILD_TRIGGER_NAME,
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.1,
 				position: [0, 0],
-				parameters: {},
+				parameters: { inputSource: 'passthrough' },
 			},
 			{
 				id: nanoid(),

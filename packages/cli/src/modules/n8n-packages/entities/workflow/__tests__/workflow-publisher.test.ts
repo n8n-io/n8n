@@ -3,8 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -90,6 +89,7 @@ describe('WorkflowPublisher', () => {
 			sourceWorkflowId: 'wf-1',
 			decidedId: 'wf-1',
 			sourcePublished,
+			sourceArchived: false,
 			parentFolderId: null,
 			entity: mock<WorkflowEntity>(),
 		});
@@ -178,8 +178,10 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
@@ -235,8 +237,10 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
@@ -270,8 +274,10 @@ describe('WorkflowPublisher', () => {
 
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
+				archiveTransition: null,
 				sourceWorkflowId: 'wf-broken',
 				sourcePublished: true,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
@@ -308,6 +314,7 @@ describe('WorkflowPublisher', () => {
 				sourceWorkflowId,
 				decidedId: `local-${sourceWorkflowId}`,
 				sourcePublished: false,
+				sourceArchived: false,
 				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 			},

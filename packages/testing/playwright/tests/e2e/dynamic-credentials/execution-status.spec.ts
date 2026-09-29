@@ -10,10 +10,7 @@ import { DYNAMIC_CRED_ENDPOINT_TOKEN } from '../../../services/dynamic-credentia
  *   - capability: 'dynamic-credentials' (Keycloak container + env vars)
  *   - api.enableFeature('dynamicCredentials') (license feature)
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
-});
+test.use({ capability: 'dynamic-credentials' });
 
 /**
  * Tests for the execution-status endpoint: external (marketplace) users
@@ -27,7 +24,7 @@ test.use({
  *     → Credential status returned (missing / configured)
  */
 test.describe(
-	'Dynamic Credentials: execution-status @capability:dynamic-credentials @licensed',
+	'Dynamic Credentials: execution-status @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

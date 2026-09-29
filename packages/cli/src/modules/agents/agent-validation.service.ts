@@ -1,4 +1,4 @@
-import { type CredentialProvider, type ToolDescriptor } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
@@ -6,6 +6,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
+	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
@@ -21,14 +22,18 @@ import {
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import {
+	isMcpOAuth2Authentication,
+	NodeHelpers,
+	type INodeParameters,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -37,6 +42,7 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 
 type AgentValidationScope = 'runtime' | 'publish';
@@ -45,7 +51,7 @@ type FindCredential = (
 	credentialId: string,
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
-type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
+type CustomToolEntries = Agent['tools'];
 type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {
@@ -190,7 +196,7 @@ export class AgentValidationService {
 			{
 				agentId: agent.id,
 				projectId,
-				config: agent.schema as unknown as AgentJsonConfig | null,
+				config: agent.schema,
 				skills: agent.skills ?? {},
 				customTools: agent.tools ?? {},
 				integrations: agent.integrations ?? [],
@@ -204,9 +210,8 @@ export class AgentValidationService {
 	/**
 	 * Same as {@link validateAgentConfiguration}, but against a specific
 	 * published history snapshot instead of the live draft. Used before
-	 * re-publishing a previously published version. Integrations are not
-	 * versioned, so the agent's *current* integrations are always validated,
-	 * regardless of which historical schema is checked.
+	 * re-publishing a previously published version. Credential-backed
+	 * integrations use the current draft; n8n Chat needs no credential check.
 	 */
 	async validateAgentHistoryConfiguration(
 		agentId: string,
@@ -225,7 +230,7 @@ export class AgentValidationService {
 			{
 				agentId,
 				projectId,
-				config: history.schema as unknown as AgentJsonConfig | null,
+				config: history.schema,
 				skills: history.skills ?? {},
 				customTools: history.tools ?? {},
 				integrations: currentIntegrations,
@@ -273,7 +278,7 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
-		await this.collectMainCredentialIssues(config, findCredential, issues);
+		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -290,7 +295,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -301,17 +306,11 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowRefs: AgentJsonWorkflowToolConfig[] = [];
+		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter((ref) => ref.workflow);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
 				subAgentIds.add(ref.agentId);
-			}
-		}
-
-		for (const tool of ctx.config.tools ?? []) {
-			if (tool.type === 'workflow' && tool.workflow) {
-				workflowRefs.push(tool);
 			}
 		}
 
@@ -353,6 +352,7 @@ export class AgentValidationService {
 	private async collectMainCredentialIssues(
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
+		credentialProvider: CredentialProvider,
 		issues: AgentConfigValidationIssue[],
 	) {
 		if (!config.credential?.trim()) {
@@ -392,11 +392,13 @@ export class AgentValidationService {
 		) {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
+
+		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
 	}
 
 	private collectSubAgentRefIssues(
 		ctx: ConfigurationValidationContext,
-		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>,
+		agentsById: Map<string, Pick<Agent, 'id'>>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const refs = ctx.config.subAgents?.agents ?? [];
@@ -417,11 +419,6 @@ export class AgentValidationService {
 			const target = agentsById.get(ref.agentId);
 			if (!target) {
 				issues.push(issue('missing_reference', path, capability));
-				continue;
-			}
-
-			if (!target.activeVersionId) {
-				issues.push(issue('incompatible_reference', path, capability));
 			}
 		}
 	}
@@ -488,6 +485,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
+			if (integration.type === 'n8n_chat') continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -518,27 +516,19 @@ export class AgentValidationService {
 		findCredential: FindCredential,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
 	) {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
 
 			if (tool.type === 'custom') {
-				if (!ctx.customTools[tool.id]) {
-					issues.push(
-						issue('missing_reference', `tools.${index}.id`, {
-							kind: 'tool',
-							id: tool.id,
-							index,
-							toolType: 'custom',
-						}),
-					);
-				}
+				this.collectCustomToolIssues(tool.id, index, ctx.customTools, issues);
 				continue;
 			}
 
 			if (tool.type === 'workflow') {
-				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues, scope);
 				continue;
 			}
 
@@ -553,6 +543,7 @@ export class AgentValidationService {
 		index: number,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
 	) {
 		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
 		const capability: AgentConfigValidationIssue['capability'] = {
@@ -572,6 +563,14 @@ export class AgentValidationService {
 		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 		if (incompatibility) {
 			issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
+			return;
+		}
+
+		// Production runs load the published workflow version, so an unpublished
+		// workflow blocks publishing the agent. Preview runs the draft and is not
+		// affected, hence publish scope only.
+		if (scope === 'publish' && !workflow.activeVersionId) {
+			issues.push(issue('incompatible_reference', path, capability, 'not_published'));
 		}
 	}
 
@@ -608,51 +607,16 @@ export class AgentValidationService {
 				{ typeVersion: tool.node.nodeTypeVersion },
 				nodeType.description,
 			) ?? {};
-		const requiredSlots = getRequiredNodeCredentialSlots(nodeType.description);
-		for (const slot of requiredSlots) {
-			const credentialDefinition = nodeType.description.credentials?.find(
-				(credential) => credential.name === slot.credentialType,
+		const visibleSlots = this.getVisibleCredentialSlots(tool, nodeType.description, nodeParameters);
+		for (const slot of visibleSlots) {
+			await this.collectNodeCredentialIssues(
+				tool,
+				index,
+				slot.credentialType,
+				nodeParameters,
+				findCredential,
+				issues,
 			);
-
-			if (
-				credentialDefinition &&
-				!NodeHelpers.displayParameter(
-					nodeParameters,
-					credentialDefinition,
-					{ typeVersion: tool.node.nodeTypeVersion },
-					nodeType.description,
-				)
-			) {
-				continue;
-			}
-
-			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
-			const credentialRef = tool.node.credentials?.[slot.credentialType];
-
-			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
-				// Only flag a definitive "gateway does not cover this slot". An
-				// indeterminate gateway state must not fail closed, mirroring the
-				// managed main-credential policy in collectMainCredentialIssues.
-				if (
-					(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters)) ===
-					false
-				) {
-					issues.push(issue('invalid_credential', path, capabilityBase));
-				}
-				continue;
-			}
-
-			const credentialId = credentialRef?.id?.trim();
-
-			if (!credentialId) {
-				issues.push(issue('missing_credential', path, capabilityBase));
-				continue;
-			}
-
-			const credential = await this.findCredentialSafe(findCredential, credentialId);
-			if (!credential || credential.type !== slot.credentialType) {
-				issues.push(issue('invalid_credential', path, capabilityBase));
-			}
 		}
 	}
 
@@ -730,13 +694,17 @@ export class AgentValidationService {
 				return credentialType === 'httpHeaderAuth';
 			case 'multipleHeadersAuth':
 				return credentialType === 'httpMultipleHeadersAuth';
+			case 'mcpOAuth2Api':
+				return credentialType === 'mcpOAuth2Api';
 			default:
 				return isMcpOAuth2Authentication(authentication) ? credentialType === authentication : true;
 		}
 	}
 
 	private credentialSupportsModel(credentialType: string, model: string) {
-		return LLM_PROVIDER_DEFAULTS[credentialType]?.provider === getProviderPrefix(model);
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		return getAgentModelProviderCredentialTypes(provider).includes(credentialType);
 	}
 
 	/**
@@ -754,5 +722,109 @@ export class AgentValidationService {
 		} catch {
 			return undefined;
 		}
+	}
+
+	private async collectAzureDeploymentIssues(
+		config: AgentJsonConfig,
+		credentialId: string,
+		credentialProvider: CredentialProvider,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const model = config.model?.trim();
+		const provider = model ? getProviderPrefix(model) : undefined;
+		if (provider !== 'azure-openai' || config.modelDeploymentName?.trim()) return;
+		let endpointType: unknown;
+		try {
+			const data = await credentialProvider.resolve(credentialId);
+			endpointType = data?.endpointType;
+		} catch {
+			// A credential that can't be resolved here will already be reported
+			// elsewhere; don't let a transient resolve failure block publish
+			// by assuming Classic and requiring a deployment name.
+			return;
+		}
+		if (endpointType !== 'foundry') {
+			issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+		}
+	}
+
+	private collectCustomToolIssues(
+		id: string,
+		index: number,
+		customTools: CustomToolEntries,
+		issues: AgentConfigValidationIssue[],
+	): void {
+		if (customTools[id]) return;
+		issues.push(
+			issue('missing_reference', `tools.${index}.id`, {
+				kind: 'tool',
+				id,
+				index,
+				toolType: 'custom',
+			}),
+		);
+	}
+
+	private async collectNodeCredentialIssues(
+		tool: AgentJsonNodeToolConfig,
+		index: number,
+		credentialType: string,
+		nodeParameters: INodeParameters,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const capabilityBase: AgentConfigValidationIssue['capability'] = {
+			kind: 'tool',
+			id: tool.name,
+			index,
+			toolType: 'node',
+		};
+		const path = `tools.${index}.node.credentials.${credentialType}`;
+		const credentialRef = tool.node.credentials?.[credentialType];
+
+		if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+			// Only flag a definitive "gateway does not cover this slot". An
+			// indeterminate gateway state must not fail closed, mirroring the
+			// managed main-credential policy in collectMainCredentialIssues.
+			if (
+				(await this.gatewayCoversNodeToolSlot(tool.node, credentialType, nodeParameters)) === false
+			) {
+				issues.push(issue('invalid_credential', path, capabilityBase));
+			}
+			return;
+		}
+
+		const credentialId = credentialRef?.id?.trim();
+
+		if (!credentialId) {
+			issues.push(issue('missing_credential', path, capabilityBase));
+			return;
+		}
+
+		const credential = await this.findCredentialSafe(findCredential, credentialId);
+		if (!credential || credential.type !== credentialType) {
+			issues.push(issue('invalid_credential', path, capabilityBase));
+		}
+	}
+
+	private getVisibleCredentialSlots(
+		tool: AgentJsonNodeToolConfig,
+		description: INodeTypeDescription,
+		nodeParameters: INodeParameters,
+	) {
+		return getRequiredNodeCredentialSlots(description).filter((slot) => {
+			const definition = description.credentials?.find(
+				(credential) => credential.name === slot.credentialType,
+			);
+			return (
+				!definition ||
+				NodeHelpers.displayParameter(
+					nodeParameters,
+					definition,
+					{ typeVersion: tool.node.nodeTypeVersion },
+					description,
+				)
+			);
+		});
 	}
 }

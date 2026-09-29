@@ -1,10 +1,8 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { EventService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { DurableLogMetrics } from '../durable-log-metrics';
 import {
@@ -87,7 +85,6 @@ interface Setup {
 	checkpoints?: InstanceAiCheckpoint[];
 	isMultiMain?: boolean;
 	lastFactAt?: Date | null;
-	durableLog?: boolean;
 	host?: Partial<InterruptedRunResumeHost>;
 }
 
@@ -142,7 +139,6 @@ function buildSweeper(setup: Setup) {
 		checkpointRepo,
 		eventBus as never,
 		metrics,
-		{ instanceAi: { durableLog: setup.durableLog ?? true } } as GlobalConfig,
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);
@@ -192,18 +188,6 @@ describe('InterruptedRunSweeper', () => {
 		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
 			AGENT_INTERRUPTED_MESSAGE,
 		);
-	});
-
-	it('does nothing when the durable log is disabled', async () => {
-		const { sweeper, published, eventLogRepo } = buildSweeper({
-			events: [runStart()],
-			durableLog: false,
-		});
-
-		await sweeper.sweep();
-
-		expect(eventLogRepo.findUnfinishedRuns).not.toHaveBeenCalled();
-		expect(published).toHaveLength(0);
 	});
 
 	it('is idempotent: a second sweep after the first is a no-op', async () => {
@@ -408,17 +392,6 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		});
 		expect(await activeSibling.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(activeSibling.published).toHaveLength(0);
-	});
-
-	it('does nothing when the durable log is off', async () => {
-		const { sweeper, published, eventLogRepo } = buildSweeper({
-			events: [runStart()],
-			durableLog: false,
-		});
-
-		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
-		expect(eventLogRepo.findUnfinishedRuns).not.toHaveBeenCalled();
-		expect(published).toHaveLength(0);
 	});
 
 	it('never appends a second terminal fact when one landed mid-race', async () => {

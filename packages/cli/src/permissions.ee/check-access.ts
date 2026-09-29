@@ -15,7 +15,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { RoleService } from '@/services/role.service';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
@@ -23,6 +23,26 @@ const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:update',
 	'credential:delete',
 ]);
+
+/**
+ * Global credentials bypass per-recipient sharing rows, so they are checked
+ * separately: read-only access for any global credential, plus connect
+ * access when the credential is an end-user (resolvable) credential.
+ */
+async function hasGlobalCredentialAccess(
+	credentialsFinderService: CredentialsFinderService,
+	credentialId: string,
+	scopes: Scope[],
+): Promise<boolean> {
+	const isReadOnlyRequest = credentialsFinderService.hasGlobalReadOnlyAccess(scopes);
+	const isConnectRequest = credentialsFinderService.hasGlobalConnectAccess(scopes);
+	if (!isReadOnlyRequest && !isConnectRequest) return false;
+
+	const globalCredential = await credentialsFinderService.findGlobalCredentialById(credentialId);
+	if (!globalCredential) return false;
+
+	return isReadOnlyRequest || globalCredential.isResolvable;
+}
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -115,18 +135,8 @@ export async function userHasScopes(
 			return true;
 		}
 
-		// Check for global credentials with read-only access
 		const credentialsFinderService = Container.get(CredentialsFinderService);
-		if (credentialsFinderService.hasGlobalReadOnlyAccess(scopes)) {
-			const globalCredential =
-				await credentialsFinderService.findGlobalCredentialById(credentialId);
-
-			if (globalCredential) {
-				return true;
-			}
-		}
-
-		return false;
+		return await hasGlobalCredentialAccess(credentialsFinderService, credentialId, scopes);
 	}
 
 	if (workflowId) {

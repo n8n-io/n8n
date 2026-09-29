@@ -1,7 +1,13 @@
 import { isValidTimeZone } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { parseListQuerySortBy, sql, SharedWorkflowRepository } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	parseListQuerySortBy,
+	sql,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
@@ -11,7 +17,7 @@ import { z } from 'zod';
 
 import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
+import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
@@ -25,7 +31,13 @@ const displayTypeName = {
 const summaryParser = z
 	.object({
 		period: z.enum(['previous', 'current']),
-		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+		type: z.union([
+			z.literal(TypeToNumber.time_saved_min),
+			z.literal(TypeToNumber.runtime_ms),
+			z.literal(TypeToNumber.success),
+			z.literal(TypeToNumber.failure),
+			z.literal(TypeToNumber.billable),
+		]),
 
 		// depending on db engine, sum(value) can be a number or a string - because of big numbers
 		total_value: z.union([z.number(), z.string()]),
@@ -53,21 +65,23 @@ const optionalNumberLike = z
 	.optional()
 	.transform((value) => (value !== undefined ? Number(value) : undefined));
 
+/** A raw `periodStart`: a `Date` on Postgres, a UTC SQL datetime string on SQLite. */
+const periodStartParser = z.union([z.date(), z.string()]).transform((value): string => {
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
+	if (parsedDatetime.isValid) {
+		return parsedDatetime.toISO() ?? new Date(value).toISOString();
+	}
+
+	return new Date(value).toISOString();
+});
+
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.union([z.date(), z.string()]).transform((value) => {
-			if (value instanceof Date) {
-				return value.toISOString();
-			}
-
-			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
-			if (parsedDatetime.isValid) {
-				return parsedDatetime.toISO();
-			}
-
-			// fallback on native date parsing
-			return new Date(value).toISOString();
-		}),
+		periodStart: periodStartParser,
 		runTime: optionalNumberLike,
 		succeeded: optionalNumberLike,
 		failed: optionalNumberLike,
@@ -92,6 +106,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	constructor(
 		dataSource: DataSource,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly dbLockService: DbLockService,
 	) {
 		super(InsightsByPeriod, dataSource.manager);
 	}
@@ -320,7 +335,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				DROP TABLE rows_to_compact;
 			`;
 
-			const result = await this.manager.transaction(async (trx) => {
+			// One batch transaction at a time across all instances.
+			const result = await this.dbLockService.withLock(DbLock.INSIGHTS_COMPACTION, async (trx) => {
 				await trx.query(getBatchAndStoreInTemporaryTable);
 
 				await trx.query<Array<{ type: any; value: number }>>(upsertEvents);
@@ -354,7 +370,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}): Promise<
 		Array<{
 			period: 'previous' | 'current';
-			type: 0 | 1 | 2 | 3;
+			type: TypeUnitNumber;
 			total_value: string | number;
 		}>
 	> {
@@ -500,7 +516,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		accessFilter,
 	}: {
 		periodUnit: PeriodUnit;
-		insightTypes: TypeUnit[];
+		insightTypes: ByTimeInsightType[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
@@ -561,6 +577,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const result = await this.createQueryBuilder('ibp')
 			.select('MIN(ibp.periodStart)', 'minDate')
 			.getRawOne<{ minDate: Date | string | null }>();
-		return result?.minDate ? new Date(result.minDate) : null;
+		// SQLite returns a UTC datetime string without a zone, which `new Date()`
+		// would read as local time.
+		return result?.minDate ? new Date(periodStartParser.parse(result.minDate)) : null;
 	}
 }

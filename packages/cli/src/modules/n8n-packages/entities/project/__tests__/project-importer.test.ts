@@ -42,7 +42,7 @@ describe('ProjectImporter.apply — custom span attributes', () => {
 		);
 	});
 
-	it('passes customTelemetryTags to updateProject on update', async () => {
+	it('preserves package tags on update', async () => {
 		const { importer, projectService } = makeImporter();
 		const item: ProjectPlanItem = {
 			action: 'update',
@@ -54,8 +54,10 @@ describe('ProjectImporter.apply — custom span attributes', () => {
 		await importer.apply(user, [item]);
 
 		expect(projectService.updateProject).toHaveBeenCalledWith(
+			user,
 			'proj-1',
 			expect.objectContaining({ customTelemetryTags: tags }),
+			{ preserveCustomTelemetryTags: true },
 		);
 	});
 
@@ -70,8 +72,10 @@ describe('ProjectImporter.apply — custom span attributes', () => {
 		await importer.apply(user, [item]);
 
 		expect(projectService.updateProject).toHaveBeenCalledWith(
+			user,
 			'proj-1',
 			expect.objectContaining({ customTelemetryTags: undefined }),
+			{ preserveCustomTelemetryTags: true },
 		);
 	});
 });

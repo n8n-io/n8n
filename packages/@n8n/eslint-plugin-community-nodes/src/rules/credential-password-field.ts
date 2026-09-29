@@ -69,10 +69,7 @@ export const CredentialPasswordFieldRule = createRule({
 				}
 
 				const propertiesProperty = findClassProperty(node, 'properties');
-				if (
-					!propertiesProperty?.value ||
-					propertiesProperty.value.type !== TSESTree.AST_NODE_TYPES.ArrayExpression
-				) {
+				if (propertiesProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ArrayExpression) {
 					return;
 				}
 

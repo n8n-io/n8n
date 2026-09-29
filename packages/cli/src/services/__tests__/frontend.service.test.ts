@@ -16,7 +16,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -38,6 +38,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
+		expressionEngine: { frontendEngine: 'legacy' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
 			enabled: false,
@@ -81,6 +82,7 @@ describe('FrontendService', () => {
 		},
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -168,6 +170,7 @@ describe('FrontendService', () => {
 		isOidcLicensed: vi.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
 		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
+		isWorkerPoolsLicensed: vi.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: vi.fn().mockReturnValue(0),
 	});
 
@@ -316,6 +319,28 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
+			globalConfig.aiAssistant.baseUrl = '';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
 		});
 
 		it('should normalize configured postMessage origins', async () => {
@@ -530,6 +555,36 @@ describe('FrontendService', () => {
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
 		});
 
+		it('should enable worker pools when both the config flag and the license are on', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(true);
+		});
+
+		it('should keep worker pools disabled when the config flag is on but the feature is not licensed', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(false);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
+		});
+
+		it('should keep worker pools disabled when licensed but the config flag is off', async () => {
+			globalConfig.queue = { workerPool: { enabled: false } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
+		});
+
 		it('should surface useWorkflowPublicationService from workflows config', async () => {
 			globalConfig.workflows = {
 				...globalConfig.workflows,
@@ -633,6 +688,22 @@ describe('FrontendService', () => {
 
 			// Restore default
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
+		});
+
+		it('reports granular credential sharing off unless the env flag is set', async () => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
+		});
+
+		it('reports granular credential sharing on when the env flag is set', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
@@ -745,6 +816,27 @@ describe('FrontendService', () => {
 					N8N_ENV_FEAT_NEW_FLAG: 'true',
 				});
 			});
+		});
+	});
+
+	describe('expressionEngine setting', () => {
+		afterEach(() => {
+			globalConfig.expressionEngine.frontendEngine = 'legacy';
+		});
+
+		it('should surface the frontend expression engine from config', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('legacy');
+		});
+
+		// The default alone would still pass if the value were hard-coded.
+		it('should surface quickjs when the config selects it', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('quickjs');
 		});
 	});
 

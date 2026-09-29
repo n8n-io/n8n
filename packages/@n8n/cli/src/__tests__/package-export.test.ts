@@ -19,6 +19,7 @@ interface ExportFlags {
 	missingWorkflowDependencyPolicy?: string;
 	workflowVersionPolicy?: string;
 	credentialExportPolicy?: string;
+	includeArchivedWorkflows?: string;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -170,6 +171,25 @@ describe('package export command', () => {
 			includeTags: true,
 			missingWorkflowDependencyPolicy: 'fail',
 			workflowVersionPolicy: 'ignore-unpublished',
+		});
+	});
+
+	it('forwards includeArchivedWorkflows when set to true', async () => {
+		const { command, exportPackage } = stubCommand({
+			workflowId: ['wf-1'],
+			output: '/tmp/archive.n8np',
+			includeArchivedWorkflows: 'true',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			includeVariableValues: true,
+			includeTags: true,
+			missingWorkflowDependencyPolicy: 'fail',
+			includeArchivedWorkflows: true,
 		});
 	});
 

@@ -31,6 +31,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
+	deriveHomeProject,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
@@ -113,7 +114,7 @@ export function useWorkflowInitialization() {
 			options = { projectId };
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow(options);
+		await credentialsStore.fetchUsableCredentials(options);
 	}
 
 	/**
@@ -174,8 +175,28 @@ export function useWorkflowInitialization() {
 		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
-			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
-			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
+			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+			documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
+
+			// The header derives every permission from the document store scopes.
+			// Without them, the first save turns the whole header read-only
+			// (Publish and Save hidden, actions menu disabled).
+			try {
+				await projectsStore.refreshCurrentProject();
+			} catch (error) {
+				// A stale project is recoverable; a rejection here would leave the
+				// route handler's caller with isLoading stuck on the loading view.
+				console.error('Failed to refresh current project during template import', { error });
+			}
+
+			// Navigation during the refresh can dispose or replace the store.
+			// Only stamp the store this import created.
+			if (currentWorkflowDocumentStore.value === workflowDocumentStore) {
+				const { currentProject, personalProject } = projectsStore;
+				workflowDocumentStore.setHomeProject(currentProject ?? personalProject ?? null);
+				workflowDocumentStore.setScopes(currentProject?.scopes ?? personalProject?.scopes ?? []);
+			}
 		}
 
 		return true;
@@ -282,7 +303,7 @@ export function useWorkflowInitialization() {
 			const workflowDocumentId = createWorkflowDocumentId(data.id);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 			currentWorkflowDocumentStore.value.setName(data.name);
-			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
+			currentWorkflowDocumentStore.value.setHomeProject(deriveHomeProject(data));
 			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
 			return;
 		}
@@ -322,18 +343,20 @@ export function useWorkflowInitialization() {
 		);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
-		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
-		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
 
 		const { currentProject, personalProject } = projectsStore;
+		// Must read the project after the refresh: a `?projectId=` deep link isn't fetched
+		// into the store until then, so an earlier read stamps personal as the owner.
+		currentWorkflowDocumentStore.value.setHomeProject(currentProject ?? personalProject ?? null);
 		currentWorkflowDocumentStore.value.setScopes(
 			currentProject?.scopes ?? personalProject?.scopes ?? [],
 		);
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
+		currentWorkflowDocumentStore.value.setHydrated(true);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;

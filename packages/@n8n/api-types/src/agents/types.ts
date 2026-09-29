@@ -1,28 +1,37 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	getChildNodes,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	type IConnections,
-} from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
-import type { AgentIntegrationSettings } from './agent-integration.schema';
+import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentBackgroundJobSignal } from './background-job';
 
-export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-] as const;
+export type AgentActor = 'user' | 'builder' | 'mcp';
 
-export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
-	'n8n-nodes-base.wait',
-	'n8n-nodes-base.form',
-] as const;
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+
+export interface AgentSessionPreviewAccess {
+	canContinueInPreview: boolean;
+}
+
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
+
+/** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */
+const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES: Record<
+	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
+	string
+> = {
+	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'When Executed by Another Workflow',
+};
+
+/** Display name of the trigger a workflow tool has to start with, for backend copy. */
+export const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME =
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE];
+
+/**
+ * Body nodes a workflow tool cannot run. The Wait node is absent by design — the
+ * tool hands its suspension off to HITL. The Form node has no such path, needing
+ * an interactive browser session mid-execution.
+ */
+export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = ['n8n-nodes-base.form'] as const;
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
@@ -115,17 +124,47 @@ export interface ChatIntegrationDescriptor {
 	capabilities?: string[];
 	useIntegrationWhen?: string[];
 	useNodeToolWhen?: string[];
+	/** Actions a user can hold for approval, in the order they should be listed. */
+	approvableActions?: ChatIntegrationApprovableAction[];
 }
+
+export interface ChatIntegrationApprovableAction {
+	name: string;
+	/** Pre-selected when a user turns approval on for this channel. */
+	sensitive: boolean;
+}
+
+/**
+ * What one configured channel is doing.
+ *
+ * - `configured` — set up, but its agent is not published, so it must not run.
+ * - `starting`  — should be running; no startup attempt has reported back yet.
+ * - `connected` — running.
+ * - `error`     — the last startup attempt failed; `errorMessage` says why, and
+ *                 it is being retried.
+ */
+export type AgentChannelRuntimeStatus = 'configured' | 'starting' | 'connected' | 'error';
 
 export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
 	settings?: AgentIntegrationSettings;
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
+	/** Authoritative per-channel state; prefer this over the response rollup. */
+	status: AgentChannelRuntimeStatus;
+	/** Present only when `status` is `error`. */
+	errorMessage?: string;
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'configured' | 'connected' | 'disconnected';
+	/**
+	 * Rollup across `integrations`, for callers that only need one word:
+	 * `disconnected` with none configured, `partial` when the channels disagree.
+	 */
+	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
 export interface AgentDisconnectIntegrationResponse {
@@ -143,6 +182,15 @@ export interface AgentIntegrationDisconnectWarning {
 	details?: Record<string, string>;
 }
 
+/**
+ * The state a connect left the one channel it touched in. Narrower than the
+ * status rollup: a successful connect either started the channel or persisted it
+ * for a still-unpublished agent, and any other outcome is an error response.
+ */
+export interface AgentIntegrationConnectResponse {
+	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;
@@ -156,9 +204,20 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+export interface AgentConfigResponse {
+	config: AgentJsonConfig;
+	configHash: string;
+}
+
+export interface AgentConfigMutationResponse extends AgentConfigResponse {
+	updatedAt: string;
+	versionId: string | null;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
+	skillHash: string;
 	versionId: string | null;
 }
 
@@ -288,14 +347,31 @@ export interface AgentPersistedMessageContentPart {
 	childTrace?: PersistedChildTrace;
 }
 
+/** Platform user who wrote a turn in a shared integration thread. */
+export interface AgentMessageAuthor {
+	id: string;
+	name: string;
+}
+
 export interface AgentPersistedMessageDto {
+	/** Background results that started this turn. */
+	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Set on user turns that came in through a chat integration. */
+	author?: AgentMessageAuthor;
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	executionStatus?: AgentExecutionStatus;
+	/**
+	 * The recorded run error for a turn that ended in `error` or `interrupted`,
+	 * so history renders the same error bubble the live stream showed.
+	 */
+	executionError?: string;
+	/** ISO timestamp of when this turn was recorded. Absent on older history. */
+	createdAt?: string;
 }
 
 export interface AgentBuilderOpenSuspension {
@@ -305,10 +381,27 @@ export interface AgentBuilderOpenSuspension {
 	suspendPayload?: unknown;
 }
 
+export interface AgentChatQueueItem {
+	id: string;
+	message: string;
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	createdAt: string;
+}
+
+export interface AgentChatQueueResponse {
+	items: AgentChatQueueItem[];
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+	/**
+	 * Running preview turn, including a turn with no recorded output yet.
+	 * `null` means that the server found no running execution.
+	 * An omitted value means that the endpoint does not report execution state.
+	 */
+	activeExecutionId?: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {
@@ -316,8 +409,8 @@ export interface AgentSessionLangSmithExportResponse {
 }
 
 /**
- * Internal integration type for the in-app chat channel. Injected per-run for
- * `/chat` executions — never persisted in an agent's `integrations` array.
+ * Integration type for n8n Chat. Preview injects its tools per run. A configured
+ * channel entry enables production chat after publish.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */

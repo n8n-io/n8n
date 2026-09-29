@@ -72,7 +72,7 @@ export function createReadinessProbe(
 
 /**
  * Polls a container's HTTP endpoint until it returns a 200 status.
- * Logs a warning if the endpoint does not return 200 within the specified timeout.
+ * Throws if the endpoint does not return 200 within the specified timeout.
  *
  * @param container The started container.
  * @param endpoint The HTTP health check endpoint (e.g., '/healthz/readiness').
@@ -82,27 +82,117 @@ export async function pollContainerHttpEndpoint(
 	container: StartedTestContainer,
 	endpoint: string,
 	timeoutMs: number = 60000,
+	signal?: AbortSignal,
 ): Promise<void> {
 	const startTime = Date.now();
 	const url = `http://${container.getHost()}:${container.getFirstMappedPort()}${endpoint}`;
 	const retryIntervalMs = 1000;
 
 	while (Date.now() - startTime < timeoutMs) {
+		signal?.throwIfAborted();
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { signal });
 			if (response.status === 200) {
 				return;
 			}
 		} catch {
-			// Don't log errors, just retry
+			if (signal?.aborted) signal.throwIfAborted();
 		}
 
-		await wait(retryIntervalMs);
+		await wait(retryIntervalMs, { signal });
 	}
 
-	console.error(
-		`WARNING: HTTP endpoint at ${url} did not return 200 within ${
-			timeoutMs / 1000
-		} seconds. Proceeding with caution.`,
+	console.error(`HTTP endpoint at ${url} did not return 200 within ${timeoutMs / 1000} seconds.`);
+	throw new Error(
+		`HTTP endpoint at ${url} did not become ready within ${timeoutMs / 1000} seconds`,
 	);
+}
+
+/**
+ * Waits until a container's logs have matched every pattern in `patterns` at
+ * least once. Throws on timeout, since callers use this to establish a
+ * precondition rather than to observe one.
+ *
+ * @param container The started container.
+ * @param patterns The patterns to look for. Each must match at least one line.
+ * @param options.since Unix timestamp in seconds. Only lines logged from then on
+ * count. A reused container carries the logs of the run before it, so a caller
+ * whose precondition must hold for the current run has to pass this.
+ * @param options.timeoutMs Total timeout in milliseconds (default: 60,000ms).
+ */
+export async function waitForContainerLogMessages(
+	container: StartedTestContainer,
+	patterns: RegExp[],
+	options: { since?: number; timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<void> {
+	const { since = 0, timeoutMs = 60000, signal } = options;
+	signal?.throwIfAborted();
+	const logsPromise = container.logs({ since });
+	let removeAbortListener: (() => void) | undefined;
+	const abortPromise = new Promise<never>((_, reject) => {
+		const abort = () =>
+			reject(signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'));
+		if (signal?.aborted) abort();
+		else if (signal) {
+			signal.addEventListener('abort', abort, { once: true });
+			removeAbortListener = () => signal.removeEventListener('abort', abort);
+		}
+	});
+	void logsPromise
+		.then((lateStream) => {
+			if (signal?.aborted) lateStream.destroy();
+		})
+		.catch(() => undefined);
+	let stream: Awaited<typeof logsPromise>;
+	try {
+		stream = await Promise.race([logsPromise, abortPromise]);
+	} finally {
+		removeAbortListener?.();
+	}
+	const pending = new Set(patterns);
+
+	try {
+		await new Promise<void>((resolve, reject) => {
+			const timer = setTimeout(() => {
+				const missing = [...pending].map(String).join(', ');
+				reject(
+					new Error(
+						`Container ${container.getName()} did not log ${missing} within ${timeoutMs / 1000} seconds`,
+					),
+				);
+			}, timeoutMs);
+
+			const abort = () =>
+				finish(
+					signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'),
+				);
+			const finish = (error?: Error) => {
+				clearTimeout(timer);
+				signal?.removeEventListener('abort', abort);
+				if (error) reject(error);
+				else resolve();
+			};
+			signal?.addEventListener('abort', abort, { once: true });
+
+			let partialLine = '';
+			stream.on('data', (chunk: Buffer | string) => {
+				// A chunk can split a line, so hold the trailing fragment back until
+				// the rest of it arrives.
+				const lines = (partialLine + chunk.toString()).split('\n');
+				partialLine = lines.pop() ?? '';
+				for (const line of lines) {
+					for (const pattern of pending) {
+						if (pattern.test(line)) pending.delete(pattern);
+					}
+					if (pending.size === 0) {
+						finish();
+						return;
+					}
+				}
+			});
+			stream.on('error', finish);
+		});
+	} finally {
+		stream.destroy();
+	}
 }

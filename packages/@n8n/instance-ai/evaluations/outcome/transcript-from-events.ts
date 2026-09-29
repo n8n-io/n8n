@@ -148,6 +148,7 @@ function buildTurn(
 	}
 
 	flushText();
+	const runIds = collectRunIds(events);
 	// The transcript leaves the machine via eval-results.json — content-scrub
 	// the user message HERE, the boundary both capture paths share (the
 	// marker path's extracted turn text AND the legacy fallback's raw
@@ -155,7 +156,17 @@ function buildTurn(
 	return {
 		userMessage: userMessage === undefined ? undefined : redactSecretsInText(userMessage),
 		steps,
+		...(runIds.length > 0 ? { runIds } : {}),
 	};
+}
+
+/** Every distinct `runId` in this turn — the main run plus any resumes. */
+function collectRunIds(events: CapturedEvent[]): string[] {
+	return [
+		...new Set(
+			events.map((e) => getString(e.data, 'runId')).filter((id): id is string => Boolean(id)),
+		),
+	];
 }
 
 interface ToolOutcome {
@@ -446,10 +457,14 @@ export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 		if (!isRecord(item)) continue;
 		const id = typeof item.id === 'string' ? item.id : '';
 		const question = typeof item.question === 'string' ? item.question : '';
+		const type =
+			item.type === 'single' || item.type === 'multi' || item.type === 'text'
+				? item.type
+				: undefined;
 		const options = Array.isArray(item.options)
 			? item.options.filter((o): o is string => typeof o === 'string')
 			: undefined;
-		if (id || question) questions.push({ id, question, options });
+		if (id || question) questions.push({ id, question, type, options });
 	}
 	return questions;
 }

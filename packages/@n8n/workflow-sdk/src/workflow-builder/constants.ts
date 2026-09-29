@@ -15,6 +15,7 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // 80x80
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6]; // 256x96
+export const AGENT_NODE_SIZE: [number, number] = [GRID_SIZE * 20, GRID_SIZE * 8]; // 320x128
 export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
 
 // Layout spacing (matching FE useCanvasLayout)
@@ -26,6 +27,7 @@ export const AI_Y_SPACING = GRID_SIZE * 8; // 128
 export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 
 /** Matches the StickyNote node's own width/height defaults. */
 export const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];
@@ -43,3 +45,20 @@ export const MAX_STICKY_SEPARATION_STEPS = 50;
 export const NODE_SPACING_X = 200;
 export const DEFAULT_Y = 300;
 export const START_X = 100;
+
+// Node group geometry. Mirrors
+// packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+// A collapsed group is drawn as a fixed-size chip, so that is the footprint
+// layout reserves; the canvas pushes neighbours aside when a group is expanded.
+
+/** Gap between the group frame's edge and its member nodes. */
+export const GROUP_PADDING_X = 56;
+
+/** Headroom between the group's title bar and its member nodes. */
+export const GROUP_PADDING_Y_TOP = 40;
+
+/** Title bar height; matches node height. */
+export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1]; // 96
+
+/** Fixed title bar width while collapsed. */
+export const GROUP_HEADER_WIDTH_COLLAPSED = 400;

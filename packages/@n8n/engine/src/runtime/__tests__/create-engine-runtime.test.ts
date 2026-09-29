@@ -1,10 +1,12 @@
 import type { DataSource } from '@n8n/typeorm';
 import request from 'supertest';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import type { EngineStores } from '../../database';
+import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -13,15 +15,21 @@ const fakeDataSource = () => ({ getRepository: vi.fn(() => ({})) }) as unknown a
 const secret = 'a'.repeat(32);
 const identityVerifier = new SharedSecretIdentityVerifier(secret);
 const token = mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' });
+const responseSender = noopExecutionResponseSender;
 
 const runtime = () =>
 	createEngineRuntime({
 		dataSource: fakeDataSource(),
 		admittance: new AllowAllAdmittance(),
 		identityVerifier,
+		responseSender,
 	});
 
 describe('createEngineRuntime', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('mounts the execution API behind authentication', async () => {
 		const unauthenticated = await request(runtime().app).post('/api/workflow-executions').send({});
 		expect(unauthenticated.status).toBe(401);
@@ -59,6 +67,7 @@ describe('createEngineRuntime', () => {
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
+			responseSender,
 			externalDependencies: (given) => {
 				stores = given;
 				return {};
@@ -67,6 +76,40 @@ describe('createEngineRuntime', () => {
 
 		expect(stores?.executionStore).toBeDefined();
 		expect(stores?.stepStore).toBeDefined();
+	});
+
+	it('builds the external dependencies exactly once', () => {
+		// Three handlers share the result, so building twice would split them.
+		const build = vi.fn().mockReturnValue({});
+
+		createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			externalDependencies: build,
+		});
+
+		expect(build).toHaveBeenCalledOnce();
+	});
+
+	it('stops the batching publisher it builds for a host lifecycle event callback', async () => {
+		// Only the wiring is this test's business: a host callback gets a batching
+		// publisher, and stopping the engine stops it.
+		const flushOnStop = vi.spyOn(BatchingLifecycleEventPublisher.prototype, 'stop');
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			externalDependencies: () => ({
+				lifecycleEventCallback: vi.fn().mockResolvedValue(undefined),
+			}),
+		});
+		engine.start();
+
+		await expect(engine.stop()).resolves.toBeUndefined();
+		expect(flushOnStop).toHaveBeenCalledOnce();
 	});
 
 	it('starts and stops both workers', async () => {

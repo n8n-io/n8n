@@ -2,8 +2,12 @@ import type { EvaluationMetric } from '@n8n/api-types';
 import type { EvaluationConfig } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	applyAccessPatterns,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	NODES_WITH_RENAMABLE_CONTENT,
+	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
+	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	NodeConnectionTypes,
 	NodeHelpers,
 	UserError,
@@ -54,7 +58,6 @@ const DATASET_SOURCED_INPUTS: Record<EvaluationMetric['type'], string[]> = {
 type UserTriggerEdge = {
 	fromNode: string;
 	fromBucketIndex: number;
-	edgeIndex: number;
 };
 
 @Service()
@@ -67,23 +70,59 @@ export class WorkflowCompilerService {
 	compile(workflow: IWorkflowBase, config: EvaluationConfig): IWorkflowBase {
 		this.assertNoReservedNames(workflow);
 
+		const removedTriggerNames = new Set(
+			workflow.nodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
+
+		// `findUserTriggerEdgeTo` and `findReplacedUpstreamNode` need the graph as it
+		// existed BEFORE pruning below: once a pre-existing EvaluationTrigger is removed,
+		// its outgoing edge goes with it, so there'd be no incoming connection left to
+		// attach the newly-injected trigger to, and no name left to rewrite stale
+		// expressions from. Snapshotting the connections (rather than deferring the prune
+		// itself) lets `resolveEntryNode`'s auto-detect path run against the PRUNED node
+		// list, so a pre-existing EvaluationTrigger that feeds a different node than the
+		// real trigger doesn't get counted as a second candidate entry point.
+		const originalConnections = workflow.connections;
+
 		// Neutralise evaluation nodes the saved workflow already had so the
 		// compiled output doesn't end up with duplicate triggers / metrics.
-		workflow = this.prepareExistingEvaluationNodes(workflow);
+		workflow = this.prepareExistingEvaluationNodes(workflow, removedTriggerNames);
 
 		const entryNodeName = this.resolveEntryNode(workflow, config);
+		const userTriggerEdge = this.findUserTriggerEdgeTo(
+			originalConnections,
+			entryNodeName,
+			removedTriggerNames,
+		);
+
+		// The EvaluationTrigger is always added as a NEW node; the user's original
+		// upstream node is left intact so expressions referencing it still read naturally
+		// in the editor. We then rewrite any reference to it across the workflow to point
+		// at the new `__eval_trigger` so it resolves at runtime. Prefers a kept
+		// (non-evaluation) node when one also fed the entry node alongside a pre-existing
+		// EvaluationTrigger — that trigger's own edge is being replaced regardless and
+		// shouldn't count as a second "upstream node" candidate — but falls back to the
+		// pre-existing trigger's name when it was the only feeder, so e.g. a metric's
+		// reference to it (captured from a workflow built entirely around evaluation)
+		// still gets rewritten before that node is deleted.
+		const replacedNodeName = this.findReplacedUpstreamNode(
+			originalConnections,
+			entryNodeName,
+			removedTriggerNames,
+		);
+
+		// Every removed Evaluation Trigger's name also needs retargeting, not just the
+		// one that fed the entry node: a workflow can carry expressions elsewhere (e.g.
+		// on a disabled Set Metrics node kept from an earlier wizard run) that reference
+		// a pre-existing trigger by name regardless of where it sat in the graph.
+		const rewriteTargets = new Set(removedTriggerNames);
+		if (replacedNodeName) rewriteTargets.add(replacedNodeName);
+
 		const entryPos = this.positionOf(workflow, entryNodeName) ?? [0, 0];
 		const endPos = this.positionOf(workflow, config.endNodeName) ?? [
 			entryPos[0] + NODE_STEP_X,
 			entryPos[1],
 		];
-
-		// The EvaluationTrigger is always added as a NEW node; the user's original
-		// upstream node is left intact so expressions referencing it still read naturally
-		// in the editor. We then rewrite any `$("<replacedNode>")` references across the
-		// workflow to point at the new `__eval_trigger` so they resolve at runtime.
-		const replacedNodeName = this.findReplacedUpstreamNode(workflow, entryNodeName);
-		const userTriggerEdge = this.findUserTriggerEdgeTo(workflow.connections, entryNodeName);
 
 		// Anchor metric nodes clear of the user's entire workflow so they don't overlap
 		// existing nodes in the execution view. Vertical spacing per row depends on the
@@ -103,12 +142,14 @@ export class WorkflowCompilerService {
 			this.buildChatModelNodeIfNeeded(m, metricColumnX, metricRowYs[i]),
 		);
 
-		const userNodesOut = replacedNodeName
-			? workflow.nodes.map((n) => this.rewriteExpressionsOnNode(n, replacedNodeName))
-			: workflow.nodes;
-		const metricNodesOut = replacedNodeName
-			? metricNodes.map((n) => this.rewriteExpressionsOnNode(n, replacedNodeName))
-			: metricNodes;
+		const userNodesOut =
+			rewriteTargets.size > 0
+				? workflow.nodes.map((n) => this.rewriteExpressionsOnNode(n, rewriteTargets))
+				: workflow.nodes;
+		const metricNodesOut =
+			rewriteTargets.size > 0
+				? metricNodes.map((n) => this.rewriteExpressionsOnNode(n, rewriteTargets))
+				: metricNodes;
 
 		const nodes: INode[] = [...userNodesOut, triggerNode, ...metricNodesOut, ...chatModelNodes];
 		const connections = this.rewireConnections({
@@ -122,18 +163,27 @@ export class WorkflowCompilerService {
 		return { ...workflow, nodes, connections };
 	}
 
-	private findReplacedUpstreamNode(workflow: IWorkflowBase, entryNodeName: string): string | null {
+	private findReplacedUpstreamNode(
+		connections: IConnections,
+		entryNodeName: string,
+		removedTriggerNames: Set<string>,
+	): string | null {
 		const upstreamNames = new Set<string>();
-		for (const [fromNode, conn] of Object.entries(workflow.connections)) {
+		for (const [fromNode, conn] of Object.entries(connections)) {
 			for (const bucket of conn.main ?? []) {
 				for (const edge of bucket ?? []) {
 					if (edge?.node === entryNodeName) upstreamNames.add(fromNode);
 				}
 			}
 		}
-		if (upstreamNames.size !== 1) return null;
-		const [name] = upstreamNames;
-		return name;
+
+		// A kept (non-evaluation) node is "the user's original upstream node" whose
+		// references get rewritten; a pre-existing EvaluationTrigger feeding the same
+		// entry node alongside it doesn't count towards ambiguity.
+		const keptCandidates = [...upstreamNames].filter((name) => !removedTriggerNames.has(name));
+		if (keptCandidates.length === 1) return keptCandidates[0];
+		if (keptCandidates.length === 0 && upstreamNames.size === 1) return [...upstreamNames][0];
+		return null;
 	}
 
 	private computeMetricRowYs(metrics: EvaluationMetric[], baseY: number): number[] {
@@ -146,11 +196,12 @@ export class WorkflowCompilerService {
 		return ys;
 	}
 
-	private rewriteExpressionsOnNode(node: INode, fromName: string): INode {
-		return {
-			...node,
-			parameters: rewriteExpressionRefs(node.parameters, fromName) as INodeParameters,
-		};
+	private rewriteExpressionsOnNode(node: INode, fromNames: Set<string>): INode {
+		let parameters = node.parameters;
+		for (const fromName of fromNames) {
+			parameters = rewriteExpressionRefs(parameters, fromName, node.type);
+		}
+		return { ...node, parameters };
 	}
 
 	/**
@@ -170,11 +221,10 @@ export class WorkflowCompilerService {
 	 * feeding the entry node — the normal case for a workflow that gained eval
 	 * nodes on top of a complete flow.
 	 */
-	private prepareExistingEvaluationNodes(workflow: IWorkflowBase): IWorkflowBase {
-		const removedTriggerNames = new Set(
-			workflow.nodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
-		);
-
+	private prepareExistingEvaluationNodes(
+		workflow: IWorkflowBase,
+		removedTriggerNames: Set<string>,
+	): IWorkflowBase {
 		const nodes = workflow.nodes
 			.filter((n) => !removedTriggerNames.has(n.name))
 			.map((n) =>
@@ -251,21 +301,34 @@ export class WorkflowCompilerService {
 		return /trigger|webhook|manual/i.test(node.type);
 	}
 
-	private findUserTriggerEdgeTo(connections: IConnections, entryNodeName: string): UserTriggerEdge {
+	private findUserTriggerEdgeTo(
+		connections: IConnections,
+		entryNodeName: string,
+		removedTriggerNames: Set<string>,
+	): UserTriggerEdge {
+		const matches: UserTriggerEdge[] = [];
 		for (const [fromNode, conn] of Object.entries(connections)) {
 			const buckets = conn.main ?? [];
 			for (let bIdx = 0; bIdx < buckets.length; bIdx++) {
 				const edges = buckets[bIdx] ?? [];
-				for (let eIdx = 0; eIdx < edges.length; eIdx++) {
-					if (edges[eIdx]?.node === entryNodeName) {
-						return { fromNode, fromBucketIndex: bIdx, edgeIndex: eIdx };
-					}
+				if (edges.some((edge) => edge?.node === entryNodeName)) {
+					matches.push({ fromNode, fromBucketIndex: bIdx });
 				}
 			}
 		}
-		throw new UserError(
-			`No incoming connection to entry node "${entryNodeName}"; cannot inject evaluation trigger`,
-		);
+		if (matches.length === 0) {
+			throw new UserError(
+				`No incoming connection to entry node "${entryNodeName}"; cannot inject evaluation trigger`,
+			);
+		}
+
+		// Prefer the edge from a kept (non-evaluation) node — deterministic regardless
+		// of key order in `connections` — so a pre-existing EvaluationTrigger listed
+		// before the real trigger doesn't have its edge spliced out in its place,
+		// leaving the real trigger's edge dangling. Falls back to the Evaluation
+		// Trigger's own edge when it was the sole feeder (TRUST-407).
+		const nonEvalMatch = matches.find((m) => !removedTriggerNames.has(m.fromNode));
+		return nonEvalMatch ?? matches[0];
 	}
 
 	private positionOf(workflow: IWorkflowBase, nodeName: string): [number, number] | undefined {
@@ -475,11 +538,17 @@ export class WorkflowCompilerService {
 	}): IConnections {
 		const out: IConnections = deepCopy(args.original);
 
-		// Remove the replaced node's edge into entry; the injected trigger takes its place.
-		const { fromNode, fromBucketIndex, edgeIndex } = args.userTriggerEdge;
+		// Remove the replaced node's edge into entry; the injected trigger takes its
+		// place. Filtered by target name rather than a recorded index: `out` may have
+		// been pruned since `userTriggerEdge` was captured (a removed EvaluationTrigger's
+		// bucket is dropped wholesale, never reordered — but matching by name means that
+		// invariant doesn't have to hold for this to stay correct).
+		const { fromNode, fromBucketIndex } = args.userTriggerEdge;
 		const buckets = out[fromNode]?.main;
 		if (buckets?.[fromBucketIndex]) {
-			buckets[fromBucketIndex].splice(edgeIndex, 1);
+			buckets[fromBucketIndex] = buckets[fromBucketIndex].filter(
+				(edge) => edge?.node !== args.entryNodeName,
+			);
 			if (buckets.every((b) => (b ?? []).length === 0)) {
 				delete out[fromNode];
 			}
@@ -548,26 +617,128 @@ function coerceBooleanExpression(expression: string): string {
 }
 
 /**
- * Walks a node parameters tree and replaces `$("<fromName>")` references with
- * `$("__eval_trigger")` so expressions authored against the user's trigger node still
- * resolve at runtime after the trigger edge has been redirected to the injected one.
- * Handles both single and double quotes with optional surrounding whitespace.
+ * Collapses incidental whitespace inside a `$(...)`, `$node[...]`, or
+ * `$items(...)` argument referencing `fromName` specifically — e.g.
+ * `$( 'fromName' )` → `$('fromName')` — so a hand-typed expression with extra
+ * spacing still matches `applyAccessPatterns`'s access patterns, which (like
+ * n8n's own node-rename flow) expect the tight form. Whitespace in these
+ * positions never changes what the expression evaluates to, so this is purely
+ * cosmetic ahead of the actual rewrite. Scoped to `fromName` (rather than any
+ * name) so it can't reshape an unrelated `$(...)`-shaped string literal that
+ * happens to appear elsewhere in the same expression.
  */
-function rewriteExpressionRefs(value: unknown, fromName: string): unknown {
-	const escaped = fromName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const pattern = new RegExp(`\\$\\(\\s*(['"])${escaped}\\1\\s*\\)`, 'g');
-	const replacement = `$("${TRIGGER_NAME}")`;
+function tightenAccessPatternSpacing(value: string, fromName: string): string {
+	const name = fromName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return value
+		.replace(
+			// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node name is escaped before pattern construction
+			new RegExp(`\\$\\(\\s*(['"])\\s*${name}\\s*\\1\\s*\\)`, 'g'),
+			(_m, q: string) => `$(${q}${fromName}${q})`,
+		)
+		.replace(
+			// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node name is escaped before pattern construction
+			new RegExp(`\\$node\\[\\s*(['"])\\s*${name}\\s*\\1\\s*\\]`, 'g'),
+			(_m, q: string) => `$node[${q}${fromName}${q}]`,
+		)
+		.replace(
+			// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node name is escaped before pattern construction
+			new RegExp(`\\$items\\(\\s*(['"])\\s*${name}\\s*\\1\\s*([,)])`, 'g'),
+			(_m, q: string, tail: string) => `$items(${q}${fromName}${q}${tail}`,
+		);
+}
 
-	const walk = (v: unknown): unknown => {
-		if (typeof v === 'string') return v.replace(pattern, replacement);
-		if (Array.isArray(v)) return v.map(walk);
-		if (v && typeof v === 'object') {
-			const out: Record<string, unknown> = {};
-			for (const [k, child] of Object.entries(v)) out[k] = walk(child);
-			return out;
+/** Rewrites `fromName` references via `applyAccessPatterns`, tightening spacing first. */
+function rewriteExpressionValue(value: string, fromName: string): string {
+	return applyAccessPatterns(tightenAccessPatternSpacing(value, fromName), fromName, TRIGGER_NAME);
+}
+
+/**
+ * Walks a value tree and rewrites every `=`-prefixed expression's reference to
+ * `fromName` — via `$("<fromName>")`, `$node["<fromName>"]`, `$node.<fromName>`,
+ * or `$items("<fromName>")` — to point at `__eval_trigger`. Never touches a
+ * plain literal (non-expression) string, so sample data that happens to
+ * contain `$(...)`-shaped text isn't corrupted.
+ */
+function walkExpressions(value: unknown, fromName: string): unknown {
+	if (typeof value === 'string') {
+		return value.startsWith('=') ? rewriteExpressionValue(value, fromName) : value;
+	}
+	if (Array.isArray(value)) return value.map((item) => walkExpressions(item, fromName));
+	if (value && typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [k, child] of Object.entries(value)) out[k] = walkExpressions(child, fromName);
+		return out;
+	}
+	return value;
+}
+
+/**
+ * Rewrites the `html` field of each Form-field entry whose `fieldType` is
+ * `'html'` — mirrors `renameFormFields` in `n8n-workflow`, which the canvas
+ * rename flow uses for the same node type. Not exported from `n8n-workflow`,
+ * so reimplemented here against the same shape.
+ */
+function rewriteFormFieldsHtml(parameters: INodeParameters, fromName: string): INodeParameters {
+	const formFields = parameters.formFields;
+	if (
+		!formFields ||
+		typeof formFields !== 'object' ||
+		!('values' in formFields) ||
+		// TypeScript thinks this is `Array.values` and gets very confused here
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		!Array.isArray(formFields.values)
+	) {
+		return parameters;
+	}
+
+	const values: INodeParameters[] = formFields.values.map((entry: unknown): INodeParameters => {
+		if (
+			entry &&
+			typeof entry === 'object' &&
+			(entry as { fieldType?: unknown }).fieldType === 'html' &&
+			typeof (entry as { html?: unknown }).html === 'string'
+		) {
+			return {
+				...(entry as INodeParameters),
+				html: rewriteExpressionValue((entry as { html: string }).html, fromName),
+			};
 		}
-		return v;
-	};
+		return entry as INodeParameters;
+	});
 
-	return walk(value) as INodeParameters;
+	return { ...parameters, formFields: { ...formFields, values } as INodeParameters };
+}
+
+/**
+ * Rewrites every reference to `fromName` across a node's parameters to point
+ * at `__eval_trigger`, using the same `applyAccessPatterns` helper the editor
+ * uses when a node is renamed. Beyond ordinary `=`-prefixed expressions
+ * (handled everywhere), mirrors the node-type-specific categories
+ * `Workflow.renameNode` also treats as renamable without a leading `=`: a
+ * Code/Function/AiTransform node's `jsCode`, an HTML/Mailgun node's top-level
+ * `html`, and a Form node's per-field `html` content — so a reference to the
+ * replaced trigger inside a template doesn't dangle just because it isn't a
+ * plain expression.
+ */
+function rewriteExpressionRefs(
+	parameters: INodeParameters,
+	fromName: string,
+	nodeType: string,
+): INodeParameters {
+	let result = walkExpressions(parameters, fromName) as INodeParameters;
+
+	if (NODES_WITH_RENAMABLE_CONTENT.has(nodeType) && typeof result.jsCode === 'string') {
+		result = { ...result, jsCode: rewriteExpressionValue(result.jsCode, fromName) };
+	}
+	if (
+		NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT.has(nodeType) &&
+		typeof result.html === 'string'
+	) {
+		result = { ...result, html: rewriteExpressionValue(result.html, fromName) };
+	}
+	if (NODES_WITH_RENAMABLE_FORM_HTML_CONTENT.has(nodeType)) {
+		result = rewriteFormFieldsHtml(result, fromName);
+	}
+
+	return result;
 }

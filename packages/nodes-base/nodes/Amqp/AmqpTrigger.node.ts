@@ -6,11 +6,14 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { ConnectionOptions, EventContext, ReceiverOptions } from 'rhea';
+import type { ConnectionOptions, EventContext, Receiver, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
 
 import { handleMessage } from './helpers/handleMessage';
 import type { AmqpCredential } from './types';
+
+const INITIAL_REATTACH_DELAY_MS = 100;
+const MAX_REATTACH_DELAY_MS = 60_000;
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -146,7 +149,7 @@ export class AmqpTrigger implements INodeType {
 		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
-		const containerReconnect = (options.reconnect as boolean) || true;
+		const containerReconnect = (options.reconnect as boolean) ?? true;
 		// Keep reconnecting (exponential backoff) forever unless user sets a limit
 		const containerReconnectLimit = (options.reconnectLimit as number) ?? undefined;
 
@@ -167,13 +170,37 @@ export class AmqpTrigger implements INodeType {
 		// rhea resets link credit when a reconnect attempt starts, so credit added
 		// between disconnect and reattach would double-count with the grant below
 		let receiverReady = true;
+		// a peer-forced detach replaces the link, so credit has to be granted to
+		// whichever receiver is attached now and not to the one that delivered
+		let receiver: Receiver | undefined = undefined;
+		let reattachAttempts = 0;
+		let reattachTimer: NodeJS.Timeout | undefined = undefined;
 
-		container.on('disconnected', () => {
+		container.on('disconnected', (context: EventContext) => {
 			receiverReady = false;
+			// rhea sets reconnecting: false once it has exhausted reconnect_limit, and
+			// leaves it unset when reconnect is off - either way nothing will come back
+			if (!containerReconnect || context.reconnecting === false) {
+				this.logger.error('AMQP connection was lost and will not be reconnected', {
+					error: context.error?.message,
+				});
+				this.emitError(
+					new NodeOperationError(
+						this.getNode(),
+						context.error ?? new Error('AMQP connection lost'),
+						{ description: 'The connection will not be re-established, reactivate the workflow' },
+					),
+				);
+			}
 		});
 
 		container.on('receiver_open', (context: EventContext) => {
+			receiver = context.receiver;
 			receiverReady = true;
+			reattachAttempts = 0;
+			// a link is attached, so a still pending reattach would open a second one
+			clearTimeout(reattachTimer);
+			reattachTimer = undefined;
 			// on reconnect, executions from before the disconnect may still hold slots
 			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
 		});
@@ -196,7 +223,7 @@ export class AmqpTrigger implements INodeType {
 					() => {
 						inFlightMessages--;
 						// while the link is down its freed slot is granted by receiver_open instead
-						if (receiverReady) context.receiver?.add_credit(1);
+						if (receiverReady) (receiver ?? context.receiver)?.add_credit(1);
 					},
 					(options.sleepTime as number) || 10,
 				);
@@ -244,14 +271,69 @@ export class AmqpTrigger implements INodeType {
 		};
 		connection.open_receiver(clientOptions);
 
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
+		const canReattach = () =>
+			containerReconnect &&
+			(containerReconnectLimit === undefined || reattachAttempts < containerReconnectLimit);
+
+		const scheduleReattach = () => {
+			if (reattachTimer) return;
+
+			const delay = Math.min(
+				INITIAL_REATTACH_DELAY_MS * 2 ** reattachAttempts,
+				MAX_REATTACH_DELAY_MS,
+			);
+			reattachAttempts++;
+			reattachTimer = setTimeout(() => {
+				reattachTimer = undefined;
+				connection.open_receiver(clientOptions);
+			}, delay);
+		};
+
+		// Brokers such as Azure Service Bus detach an idle link and keep the
+		// connection open, so nothing at connection level notices the stall
+		container.on('receiver_close', (context: EventContext) => {
+			receiverReady = false;
+			receiver = undefined;
+
+			const error = context.receiver?.error;
+			const detachError = error && 'condition' in error ? error : undefined;
+			const detail = {
+				condition: detachError?.condition,
+				description: detachError?.description,
+			};
+
+			if (!canReattach()) {
+				this.logger.error('AMQP receiver link was detached and will not be reattached', detail);
+				this.emitError(
+					new NodeOperationError(
+						this.getNode(),
+						'AMQP receiver link was detached and could not be reattached',
+						{ description: detachError?.description ?? detachError?.condition },
+					),
+				);
+				return;
+			}
+
+			const message = 'AMQP receiver link was detached by the peer, reattaching';
+			// a second detach with no attach in between means the link is not just idling out
+			if (reattachAttempts === 0) this.logger.info(message, detail);
+			else this.logger.warn(message, detail);
+
+			scheduleReattach();
+		});
+
+		const teardown = () => {
+			clearTimeout(reattachTimer);
 			container.removeAllListeners('disconnected');
 			container.removeAllListeners('receiver_open');
+			container.removeAllListeners('receiver_close');
 			container.removeAllListeners('message');
 			connection.close();
-		}
+		};
+
+		// The "closeFunction" function gets called by n8n whenever
+		// the workflow gets deactivated and can so clean up.
+		const closeFunction = async () => teardown();
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
@@ -264,10 +346,7 @@ export class AmqpTrigger implements INodeType {
 				container.removeAllListeners('message');
 
 				const timeoutHandler = setTimeout(() => {
-					container.removeAllListeners('disconnected');
-					container.removeAllListeners('receiver_open');
-					container.removeAllListeners('message');
-					connection.close();
+					teardown();
 
 					reject(
 						new NodeOperationError(

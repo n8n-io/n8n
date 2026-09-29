@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import { computed, inject, ref } from 'vue';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
 	type ToolConnectionItem,
 } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	showConnectAction?: boolean;
+	connectLabel?: string;
+	connectAriaLabel?: string;
+	connectedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -27,6 +32,21 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
+
+/**
+ * Gateway-backed rows share the credits pill copy with the node creator and
+ * model selector: "Free credits" until a top-up or a depleted allowance flips
+ * it to a blue "n8n credits" pill. Defaults to "Free credits" when no consumer
+ * injects the store-backed key.
+ */
+const creditsPill = computed(() => {
+	const key = creditsLabelKey?.value ?? 'generic.freeCredits';
+	return {
+		text: i18n.baseText(key),
+		type: key === 'generic.freeCredits' ? ('default' as const) : ('info' as const),
+	};
+});
 
 /**
  * The picker needs both credential definitions and an injected adapter.
@@ -63,21 +83,25 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
-const actionLabel = computed(() =>
-	props.item.communityPreview
-		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText(
-				props.item.status === 'disconnected'
-					? 'tools.connection.action.reconnect'
-					: 'tools.connection.action.connect',
-			),
-);
+const actionLabel = computed(() => {
+	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return props.connectLabel ?? i18n.baseText('tools.connection.action.connect');
+});
 
 const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+
+const restriction = computed(() =>
+	props.item.kind === 'node' ? props.item.restriction : undefined,
+);
+
+const rowRef = ref<HTMLElement | null>(null);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -86,11 +110,15 @@ const isDisabled = computed(() => Boolean(props.item.disabled));
  * its detail view.
  */
 const hasDirectAction = computed(
-	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+	() =>
+		props.showConnectAction ||
+		Boolean(props.item.communityPreview) ||
+		props.item.kind === 'mcp-server',
 );
 
 function handleRowClick() {
 	if (props.item.disabled) return;
+	if (restriction.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -105,7 +133,12 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
+		ref="rowRef"
+		:class="[
+			$style.row,
+			$style[`row--${item.kind}`],
+			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
+		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
@@ -113,6 +146,7 @@ function handleConnect() {
 			type="button"
 			:class="$style.mainAction"
 			:disabled="isDisabled || item.status === 'connecting'"
+			:aria-disabled="!!restriction || undefined"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -121,6 +155,16 @@ function handleConnect() {
 					<N8nIcon icon="workflow" :size="20" />
 				</span>
 				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+				<N8nText
+					v-if="item.warning"
+					:class="$style.workflowWarning"
+					tag="span"
+					size="small"
+					color="warning"
+					data-test-id="tools-connection-row-warning"
+				>
+					{{ item.warning }}
+				</N8nText>
 			</template>
 
 			<template v-else>
@@ -133,13 +177,22 @@ function handleConnect() {
 							:content="i18n.baseText('communityNodeInfo.approved')"
 							placement="top"
 						>
-							<ShieldIcon
+							<N8nIcon
+								icon="shield-half"
+								:size="14"
 								:class="$style.verifiedIcon"
-								role="img"
 								:aria-label="i18n.baseText('communityNodeInfo.approved')"
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
+						<N8nBadge
+							v-if="item.freeCredits"
+							size="xxsmall"
+							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
+							data-test-id="tools-connection-row-free-credits"
+						>
+							{{ creditsPill.text }}
+						</N8nBadge>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -155,8 +208,14 @@ function handleConnect() {
 		</button>
 
 		<div :class="$style.action">
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="item.title"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+			/>
 			<N8nTooltip
-				v-if="isDisabled"
+				v-else-if="isDisabled"
 				:content="item.disabledReason ?? ''"
 				:disabled="!item.disabledReason"
 				placement="top"
@@ -190,7 +249,7 @@ function handleConnect() {
 				data-test-id="tools-connection-row-connected"
 			>
 				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.connected') }}
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
 				v-else-if="item.status === 'connecting'"
@@ -221,6 +280,7 @@ function handleConnect() {
 					variant="outline"
 					size="small"
 					:loading="item.installing"
+					:aria-label="connectAriaLabel"
 					:data-test-id="
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
@@ -279,6 +339,20 @@ function handleConnect() {
 	}
 }
 
+.rowRestricted {
+	.mainAction {
+		cursor: not-allowed;
+
+		> * {
+			opacity: 0.45;
+		}
+	}
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -331,6 +405,10 @@ function handleConnect() {
 	font-weight: var(--font-weight--medium);
 }
 
+.workflowWarning {
+	flex-shrink: 0;
+}
+
 .titleRow {
 	display: flex;
 	align-items: center;
@@ -344,15 +422,15 @@ function handleConnect() {
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 
 .description {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	// Wrap onto further lines rather than truncating; the virtual scroller
+	// measures each row's real height, so taller rows lay out correctly.
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .action {

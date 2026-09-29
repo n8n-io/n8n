@@ -1,14 +1,21 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import {
+	endpointRouteKey,
+	guardOpenAiRoutes,
+	withChatCompletionsFallback,
+} from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
+import { getModelIdString } from '../../utils/model';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -36,6 +43,12 @@ function isLanguageModel(config: unknown): config is LanguageModel {
  * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
  * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
+/**
+ * Resolves `globalThis.fetch` per request, the same way the SDK does when no
+ * `fetch` is passed, so a transport installed after the model was built is used.
+ */
+const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
+
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
@@ -43,12 +56,12 @@ function getProxyFetch(): FetchFn | undefined {
 	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
-	return (async (url, init) =>
+	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,
 			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
 			dispatcher,
-		})) as FetchFn;
+		});
 }
 
 type EntryBuilder<P extends ProviderId> = (
@@ -130,10 +143,32 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
-type OpenAiCompatibleProviderId = 'nvidia' | 'moonshotai';
+type OpenAiCompatibleProviderId = 'nvidia';
 
-function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+/** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
+export function supportsSplitSystemMessages(model: ModelConfig): boolean {
+	switch (getModelIdString(model).split('/')[0]) {
+		case 'anthropic':
+		case 'google-vertex-anthropic':
+		case 'openrouter':
+			return true;
+		case 'openai': {
+			if (typeof model === 'string') return true;
+			const baseURL =
+				'baseURL' in model && typeof model.baseURL === 'string'
+					? model.baseURL
+					: 'url' in model && typeof model.url === 'string'
+						? model.url
+						: undefined;
+			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+		}
+		default:
+			return false;
+	}
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
@@ -157,18 +192,35 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
-			const provider = createOpenAI({ ...providerCreds, fetch });
-			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
-			// vLLM, Ollama), which speaks /chat/completions; the provider's default
-			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. OpenAI credentials also carry the official
-			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
-			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
-			return useChat ? provider.chat(model) : provider(model);
+			const { baseURL } = providerCreds;
+			// The official API serves /responses, which the provider's default model
+			// targets. OpenAI credentials also carry that base URL. `isOpenAiCustomEndpoint`
+			// reads the model-discovery host list, so a host added there to fix a model
+			// dropdown also stops this endpoint from being probed.
+			if (baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
+				const provider = createOpenAI({ ...providerCreds, fetch });
+				return apiStyle === 'chat' ? provider.chat(model) : provider(model);
+			}
+			// A custom baseURL can sit behind a reverse proxy whose catch-all answers
+			// 200 with an HTML page, which the SDK stream parser accepts as an empty
+			// stream. Every route through such an endpoint runs on the guarded
+			// transport, whichever API the user pinned.
+			const guarded = createOpenAI({
+				...providerCreds,
+				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
+			});
+			// `apiStyle` is the explicit override and wins over the automatic choice:
+			// it pins the route, so a refusal on it surfaces instead of falling back.
+			if (apiStyle === 'chat') return guarded.chat(model);
+			if (apiStyle === 'responses') return guarded(model);
+			// Without it, only the endpoint knows whether it is a proxy for real
+			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
+			// transport and the first answer decides.
+			return withChatCompletionsFallback(
+				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
+				guarded(model),
+				guarded.chat(model),
+			);
 		},
 	},
 	custom: {
@@ -213,7 +265,15 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	google: {
 		build: (creds, model, fetch) => {
 			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogle({ ...creds, fetch })(model);
+			// The SDK expects a version-qualified base (its own default ends in
+			// `/v1beta`), but `googlePalmApi.host` stores the bare host — the Gemini
+			// node's SDK appends the API version itself. Passing the host through
+			// unqualified drops the version from every request path, and Google
+			// answers 404 for any model.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/v1beta')
+				: creds.baseURL;
+			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	xai: {
@@ -260,14 +320,62 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
-	moonshotai: openAiCompatibleEntry('moonshotai', 'https://api.moonshot.ai/v1', {
-		includeUsage: true,
-		supportsStructuredOutputs: true,
-	}),
+	moonshotai: {
+		build: (creds, model, fetch) => {
+			const { createMoonshotAI } =
+				require('@ai-sdk/moonshotai') as typeof import('@ai-sdk/moonshotai');
+			return createMoonshotAI({ ...creds, fetch })(model);
+		},
+	},
+	alibaba: {
+		build: (creds, model, fetch) => {
+			const { createAlibaba } = require('@ai-sdk/alibaba') as typeof import('@ai-sdk/alibaba');
+			// The SDK expects the OpenAI-compatible base, but n8n Alibaba credentials
+			// store the region's bare host — Alibaba serves its native and its
+			// OpenAI-compatible API under different paths on that host.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/compatible-mode/v1')
+				: creds.baseURL;
+			return createAlibaba({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	minimax: {
+		build: (creds, model, fetch) => {
+			const { createMiniMax } = require('@ai-sdk/minimax') as typeof import('@ai-sdk/minimax');
+			// The SDK speaks MiniMax's Anthropic-compatible API, which MiniMax also
+			// recommends, but n8n MiniMax credentials store the OpenAI-compatible base.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/anthropic/v1', { stripSuffix: '/v1' })
+				: creds.baseURL;
+			return createMiniMax({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+
+			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
+			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
+			// classic `*.openai.azure.com` shape (it appends `/openai` and injects
+			// `/deployments/{id}`), which mangles the Foundry URL into
+			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
+			// so the configured base is used verbatim.
+			if (endpointType === 'foundry') {
+				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+			}
+
+			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
+			// Use chat completions over deployment-based URLs so the credential's
+			// date-based `apiVersion` (e.g. `2025-03-01-preview`) matches the URL
+			// scheme Azure expects — mirroring the LangChain Azure node, which
+			// forces `useResponsesApi: false`. The SDK's default `provider(model)`
+			// selects the Responses API + the `/v1/` path, which Azure rejects with
+			// "API version not supported" for date-based versions.
+			//
+			// Azure deployments are user-named and surfaced in the deployment-based
+			// URL path. The catalog model id is not the deployment id, so prefer the
+			// user's `deploymentName` when provided and fall back to the model id.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
-			const { baseURL, resourceName, apiVersion, apiKey } = creds;
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
 			if (normalizedBaseURL) {
@@ -277,9 +385,14 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
-			return createAzure({ resourceName, apiKey, baseURL: normalizedBaseURL, apiVersion, fetch })(
-				model,
-			);
+			return createAzure({
+				resourceName,
+				apiKey,
+				baseURL: normalizedBaseURL,
+				apiVersion,
+				useDeploymentBasedUrls: true,
+				fetch,
+			}).chat(deploymentName ?? model);
 		},
 	},
 	'aws-bedrock': {
@@ -330,7 +443,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Collect credential fields: strip `id`, pass the rest to Zod validation.
 	let credFields: Record<string, unknown> = {};
 	if (typeof config !== 'string') {
-		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
+		const { id: _id, ...rest } = config;
 		credFields = rest;
 	}
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
@@ -355,11 +468,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
 	const resolvedFetch = fetch ?? getProxyFetch();
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(
-		parsed.data as never,
-		modelName,
-		resolvedFetch,
-	);
+	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }
 
 /**

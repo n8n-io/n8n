@@ -1,15 +1,22 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
 	In,
 	IsNull,
+	Not,
 	Repository,
 	type EntityManager,
 	type SelectQueryBuilder,
 } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
+
+export interface AgentListResult {
+	count: number;
+	data: Agent[];
+}
 
 export type AgentSummary = Pick<
 	Agent,
@@ -85,7 +92,7 @@ export class AgentRepository extends Repository<Agent> {
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
@@ -157,6 +164,15 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
+		const agent = await this.findByIdAndProjectId(id, projectId);
+		return (
+			agent?.activeVersion?.schema?.integrations?.some(
+				(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
+			) ?? false
+		);
+	}
+
 	/**
 	 * Finds an agent by ID alone. Agent IDs are globally unique, so this is safe
 	 * for callers whose access check does not hinge on a specific project (e.g.
@@ -169,7 +185,7 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	async findCredentialIndexAgentIdsBatch(
+	async findDependencyIndexAgentIdsBatch(
 		afterId: string | null,
 		batchSize: number,
 	): Promise<Array<Pick<Agent, 'id'>>> {
@@ -207,6 +223,15 @@ export class AgentRepository extends Repository<Agent> {
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
 		return await this.exists({ where: { id, projectId } });
+	}
+
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id },
+		});
+		return result?.projectId ?? null;
 	}
 
 	async findByIdsAndProjectId(
@@ -302,6 +327,64 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
 			.getMany();
+	}
+
+	/** The ids of all agents with a published version. Loads no version rows. */
+	async findPublishedAgentIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * The published version id of an agent, or `null` when the agent is missing
+	 * or unpublished. Loads no version row, so callers that only need the id do
+	 * not pay for the version's JSON columns.
+	 */
+	async findActiveVersionId(agentId: string): Promise<string | null> {
+		const row = await this.findOne({
+			where: { id: agentId },
+			select: ['id', 'activeVersionId'],
+		});
+		return row?.activeVersionId ?? null;
+	}
+
+	/** The ids, from the given list, that belong to an agent with a published version. */
+	async findPublishedIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+
+		const rows = await this.find({
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching the
+	 * given `type` + `credentialId`, anywhere on the instance, excluding
+	 * `excludeAgentId`.
+	 *
+	 * Instance-wide, unlike `findByIntegrationCredential`: a vendor app such as an
+	 * Entra or Slack registration is bound to one bot at the vendor, so an agent
+	 * in another project breaks a setup just as surely as one in this project.
+	 *
+	 * Reads only the columns the predicate and the caller need, so an instance
+	 * with large agent configurations does not transfer and parse all of them.
+	 */
+	async findByIntegrationCredentialAnyProject(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({ select: ['id', 'name', 'integrations'] });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
 	}
 
 	/**

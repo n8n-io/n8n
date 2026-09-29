@@ -8,6 +8,13 @@ export default {
 	title: 'Core/Pagination',
 	component: Pagination,
 	tags: ['autodocs'],
+	parameters: {
+		docs: {
+			description: {
+				component: 'A page navigation control for stepping through paginated results.',
+			},
+		},
+	},
 	argTypes: {
 		page: {
 			control: 'number',

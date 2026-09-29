@@ -44,7 +44,7 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getCurrentNodeParameter(

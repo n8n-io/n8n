@@ -30,16 +30,33 @@ interface EditSnapshot {
 	connectedTriggers: string[];
 }
 
+/**
+ * The config says which channels exist, not whether they are running — only the
+ * status endpoint knows that. A published agent's channels are therefore seeded
+ * as `starting` rather than `connected`: claiming connected here is what let a
+ * channel that never started show a green dot until something refetched.
+ */
 function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
+	isPublished: boolean,
 ): Array<AgentIntegrationStatusEntry & { credentialId: string }> {
 	const knownTypes = new Set(knownTriggerTypes);
 	const entries: Array<AgentIntegrationStatusEntry & { credentialId: string }> = [];
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
-		entries.push({ type: integration.type, credentialId: integration.credentialId });
+		// Settings and approval ride along so a config seed does not blank what the
+		// status endpoint reported. The edit modal saves from that cache.
+		entries.push({
+			type: integration.type,
+			credentialId: integration.credentialId,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
+			status: isPublished ? 'starting' : 'configured',
+		});
 	}
 
 	return entries;
@@ -114,6 +131,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		const integrations = integrationStatusEntriesFromConfig(
 			deps.localConfig.value,
 			knownTriggerTypes,
+			!!deps.agent.value?.activeVersionId,
 		);
 		const configured = integrations.map((integration) => integration.type).sort();
 		const configuredIntegrations = integrations.filter(
@@ -124,7 +142,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.agentId.value,
 			knownTriggerTypes,
 			configuredIntegrations,
-			deps.agent.value?.activeVersionId ? 'connected' : 'configured',
 		);
 		return configured;
 	}

@@ -33,6 +33,12 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			workflow: savedWorkflow,
 			targetProjectId: 'proj-2',
 		}),
+	credentialSave: async () =>
+		await service.enforceCredentialSave({
+			credential: { id: null, type: 'slackApi' },
+			storedCredential: null,
+			projectId: 'proj-1',
+		}),
 	credentialDecrypt: async () =>
 		await service.enforceCredentialDecrypt({
 			credentialType: 'slackApi',
@@ -41,7 +47,11 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.enforceContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.enforceContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 const evaluateCalls = (service: PolicyEnforcementService) => ({
@@ -60,6 +70,12 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			workflow: savedWorkflow,
 			targetProjectId: 'proj-2',
 		}),
+	credentialSave: async () =>
+		await service.evaluateCredentialSave({
+			credential: { id: null, type: 'slackApi' },
+			storedCredential: null,
+			projectId: 'proj-1',
+		}),
 	credentialDecrypt: async () =>
 		await service.evaluateCredentialDecrypt({
 			credentialType: 'slackApi',
@@ -68,7 +84,11 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			projectId: 'proj-1',
 		}),
 	contentImport: async () =>
-		await service.evaluateContentImport({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.evaluateContentImport({
+			workflow: savedWorkflow,
+			projectId: 'proj-1',
+			transport: 'cli',
+		}),
 });
 
 describe('PolicyEnforcementService', () => {
@@ -106,6 +126,11 @@ describe('PolicyEnforcementService', () => {
 
 			expect(second.violations).toEqual([]);
 		});
+
+		it('reports no checks for any point', () => {
+			expect(service.hasChecksFor('workflowStart')).toBe(false);
+			expect(service.hasChecksFor('credentialDecrypt')).toBe(false);
+		});
 	});
 
 	describe('setImplementation', () => {
@@ -127,6 +152,13 @@ describe('PolicyEnforcementService', () => {
 			backend = mock<PolicyEnforcementBackend>();
 			service = new PolicyEnforcementService();
 			service.setImplementation(backend);
+		});
+
+		it('asks the implementation about the point it was given', () => {
+			backend.hasChecksFor.mockReturnValue(true);
+
+			expect(service.hasChecksFor('workflowStart')).toBe(true);
+			expect(backend.hasChecksFor).toHaveBeenCalledExactlyOnceWith('workflowStart');
 		});
 
 		it('throws with every violation instead of minting', async () => {
@@ -162,7 +194,7 @@ describe('PolicyEnforcementService', () => {
 				checkErrors: [{ checkId: 'flaky', correlationId: 'abc' }],
 			};
 			backend.evaluate.mockResolvedValue(decision);
-			const context = { workflow: savedWorkflow, projectId: null };
+			const context = { workflow: savedWorkflow, projectId: null, transport: 'cli' } as const;
 
 			expect(await service.evaluateContentImport(context)).toBe(decision);
 			expect(backend.evaluate).toHaveBeenCalledWith('contentImport', context);
@@ -194,6 +226,21 @@ describe('PolicyEnforcementService', () => {
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
 		});
 
+		// A create can carry a client-supplied id (POST /workflows allows it), but that id is no
+		// proof of what was checked, so the save still binds to the content.
+		it('binds a create with a supplied id to a hash of its nodes', async () => {
+			const withClientId: PolicedWorkflow = { id: 'wf-client', name: 'New', nodes: [] };
+
+			const token = await service.enforceWorkflowSave({
+				workflow: withClientId,
+				storedWorkflow: null,
+				projectId: null,
+			});
+
+			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+			expect(token.subject.id).not.toBe('wf-client');
+		});
+
 		it('gives two unsaved workflows with different nodes different subjects', async () => {
 			const enforce = async (nodes: PolicedWorkflow['nodes']) =>
 				await service.enforceWorkflowSave({
@@ -206,6 +253,27 @@ describe('PolicyEnforcementService', () => {
 			const withNode = await enforce([mock<PolicedWorkflow['nodes'][number]>({ type: 'slack' })]);
 
 			expect(empty.subject.id).not.toBe(withNode.subject.id);
+		});
+
+		it('binds a credential create to a hash of its type', async () => {
+			const token = await service.enforceCredentialSave({
+				credential: { id: null, type: 'slackApi' },
+				storedCredential: null,
+				projectId: null,
+			});
+
+			expect(token.subject.type).toBe('credential');
+			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		it('binds a credential update to the row id', async () => {
+			const token = await service.enforceCredentialSave({
+				credential: { id: 'cred-1', type: 'slackApi' },
+				storedCredential: { id: 'cred-1', type: 'slackApi' },
+				projectId: null,
+			});
+
+			expect(token.subject).toEqual({ type: 'credential', id: 'cred-1' });
 		});
 
 		it('binds a credential decrypt to the credential', async () => {

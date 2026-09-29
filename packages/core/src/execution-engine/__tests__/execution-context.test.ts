@@ -833,6 +833,60 @@ describe('establishExecutionContext', () => {
 				'parent-execution-id',
 			);
 		});
+
+		it('re-runs sub-execution hooks for inheritance via start-item metadata (error workflow)', async () => {
+			// Error workflows inherit through `startItem.metadata.parentExecution`, not
+			// the top-level `parentExecution`, so the child's own hooks must still run.
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({
+								name: 'Error Trigger',
+								type: 'n8n-nodes-base.errorTrigger',
+							}),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+							metadata: {
+								parentExecution: {
+									executionId: 'parent-execution-id',
+									workflowId: 'parent-workflow-id',
+									executionContext: {
+										version: 1,
+										establishedAt: 1000,
+										source: 'manual',
+										redaction: { version: 2, production: false, manual: false },
+									},
+								},
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+			const rederived: IExecutionContext = {
+				version: 1,
+				establishedAt: 2000,
+				source: 'error',
+				parentExecutionId: 'parent-execution-id',
+				usesDynamicCredentials: true,
+			};
+			mockExecutionContextService.augmentSubExecutionContext.mockResolvedValue(rederived);
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).toHaveBeenCalledWith(
+				mockWorkflow,
+				runExecutionData.executionData!.nodeExecutionStack[0],
+				expect.objectContaining({ parentExecutionId: 'parent-execution-id' }),
+			);
+			expect(runExecutionData.executionData!.runtimeData).toBe(rederived);
+		});
 	});
 
 	describe('error workflow context inheritance', () => {

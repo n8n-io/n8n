@@ -29,10 +29,7 @@ import type { McpSession } from '../../../services/mcp-api-helper';
  * (`N8N_ENV_FEAT_DYNAMIC_CREDENTIALS=true`, which seeds the `system-n8n`
  * resolver) and provides Keycloak as the credential's OAuth2 provider.
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
-});
+test.use({ capability: 'dynamic-credentials' });
 
 interface GatedWorkflowSetup {
 	mainApi: ApiHelpers;
@@ -91,8 +88,10 @@ async function provisionGatedWorkflow(
 		{
 			projectId: project.id,
 			transform: (wf) => {
-				// Attach the resolvable credential to the Private API node so the
-				// workflow carries an unconnected private credential.
+				// Attach the resolvable credential to the Private API tool so the
+				// workflow carries an unconnected private credential on a node the
+				// trigger can reach (the gate ignores nodes that can't run on this
+				// trigger, so a disconnected carrier node would not be checked).
 				const privateApiNode = wf.nodes?.find((n) => n.name === 'Private API');
 				if (privateApiNode) {
 					privateApiNode.credentials = {
@@ -146,7 +145,7 @@ async function provisionGatedWorkflow(
 }
 
 test.describe(
-	'MCP Trigger credential gate @capability:dynamic-credentials @licensed @mode:multi-main',
+	'MCP Trigger credential gate @licensed @mode:multi-main',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

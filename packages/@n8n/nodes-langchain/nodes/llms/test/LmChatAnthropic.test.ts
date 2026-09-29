@@ -426,16 +426,22 @@ describe('LmChatAnthropic', () => {
 			let mockLoadContext: ILoadOptionsFunctions;
 			let mockGetCredentials: Mock;
 			let fetchSpy: Mock;
+			let egressFilter: { createSecureLookup: Mock };
+			const secureLookup = vi.fn();
 
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();
 				fetchSpy = vi.fn();
+				egressFilter = { createSecureLookup: vi.fn().mockReturnValue(secureLookup) };
 				vi.mocked(proxyFetch).mockImplementation(
 					fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
 				);
 
 				mockLoadContext = {
 					getCredentials: mockGetCredentials,
+					helpers: {
+						getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter),
+					},
 				} as unknown as ILoadOptionsFunctions;
 			});
 
@@ -481,12 +487,15 @@ describe('LmChatAnthropic', () => {
 				const result = await searchModels.call(mockLoadContext);
 
 				expect(fetchSpy).toHaveBeenCalledWith(
-					'https://api.anthropic.com/v1/models',
 					expect.objectContaining({
-						headers: expect.objectContaining({
-							'x-api-key': 'test-api-key',
-							'anthropic-version': '2023-06-01',
+						input: 'https://api.anthropic.com/v1/models',
+						init: expect.objectContaining({
+							headers: expect.objectContaining({
+								'x-api-key': 'test-api-key',
+								'anthropic-version': '2023-06-01',
+							}),
 						}),
+						egressFilter,
 					}),
 				);
 
@@ -562,7 +571,9 @@ describe('LmChatAnthropic', () => {
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				await searchModels.call(mockLoadContext);
 
-				expect(fetchSpy).toHaveBeenCalledWith(`${customURL}/v1/models`, expect.anything());
+				expect(fetchSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ input: `${customURL}/v1/models` }),
+				);
 			});
 
 			it('should handle empty model list', async () => {

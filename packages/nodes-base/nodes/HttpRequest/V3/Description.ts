@@ -1,6 +1,34 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
+const webdavMethodOptions: INodePropertyOptions[] = [
+	'COPY',
+	'MKCOL',
+	'MOVE',
+	'PROPFIND',
+	'REPORT',
+].flatMap((method) => [
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			show: {
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			hide: {
+				method: [{ _cnd: { not: method } }],
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+]);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -42,6 +70,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'PUT',
 				value: 'PUT',
 			},
+			...webdavMethodOptions,
 		],
 		default: 'GET',
 		description: 'The request method to use',
@@ -992,7 +1021,7 @@ For what a template cannot express, use the matching type for new and existing c
 							},
 							{
 								displayName:
-									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest" target="_blank">docs</a> for more info about pagination/',
+									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest#pagination" target="_blank">docs</a> for more info about pagination/',
 								name: 'webhookNotice',
 								displayOptions: {
 									hide: {
@@ -1221,6 +1250,14 @@ For what a template cannot express, use the matching type for new and existing c
 				default: false,
 				description:
 					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
+			},
+			{
+				displayName: 'Enable WebDAV Methods',
+				name: 'webdavMethods',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY and REPORT to the Method list',
 			},
 		],
 	},

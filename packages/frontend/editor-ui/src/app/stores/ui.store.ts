@@ -443,14 +443,24 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			workflowId?: string;
+			contextNode?: INodeUi;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
+			notice: undefined,
+			initialName: undefined,
+			initialData: undefined,
+			destination: undefined,
+			createCredential: undefined,
+			onInitializeError: undefined,
 			projectId: undefined,
-			contextNode: undefined,
+			contextNode: options.contextNode,
 			closeOnSave: false,
+			workflowId: options.workflowId,
+			onCredentialCreated: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -470,9 +480,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
+			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			notice?: () => string;
+			initialName?: NewCredentialsModal['initialName'];
+			initialData?: NewCredentialsModal['initialData'];
+			destination?: NewCredentialsModal['destination'];
+			createCredential?: NewCredentialsModal['createCredential'];
+			onInitializeError?: NewCredentialsModal['onInitializeError'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -480,8 +498,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
+			onCredentialCreated: options.onCredentialCreated,
 			projectId,
 			suggestedName,
+			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
@@ -489,6 +509,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 			usageScope: options.usageScope,
 			credentialSetupHint: options.credentialSetupHint,
+			notice: options.notice,
+			initialName: options.initialName,
+			initialData: options.initialData,
+			destination: options.destination,
+			createCredential: options.createCredential,
+			onInitializeError: options.onInitializeError,
 		} as Partial<NewCredentialsModal>);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

@@ -4,14 +4,16 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
+import { computeFirstRunAt } from '@n8n/scheduler';
 import { PollJobManager } from 'n8n-core';
-import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
+import type { INode, TriggerTime } from 'n8n-workflow';
 
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 
+import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { seededCron } from '../seeded-cron';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
 
@@ -30,6 +32,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		globalConfig: GlobalConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
 		private readonly pollBackoffService: PollBackoffService,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
@@ -54,14 +57,13 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
 		// Skip, not coalesce: a poll fetches everything new since it last ran, so
 		// replaying missed polls would just repeat the same fetch.
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			node.id,
-			POLL_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, node.id),
+			taskType: POLL_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Skip,
-		);
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		});
 
 		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {
 			workflowId,
@@ -91,30 +93,25 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		seed: string,
 		timezone: string,
 	): DesiredJob[] {
-		const seen = new Map<string, number>();
-		return pollTimes.map((item): DesiredJob => {
-			const schedule: Schedule = {
-				kind: 'cron',
-				cronExpression: seededCron(item, seed),
-				timezone,
-			};
-			// `computeFirstRunAt` validates the expression/timezone, throwing on a
-			// malformed rule.
-			const firstRunAt = computeFirstRunAt(schedule, new Date());
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${node.id}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
+		return nameDesiredJobs(
+			workflowId,
+			node.id,
+			pollTimes.map((item) => {
+				const schedule: Schedule = {
+					kind: 'cron',
+					cronExpression: seededCron(item, seed),
+					timezone,
+				};
+				// `computeFirstRunAt` validates the expression/timezone, throwing on a
+				// malformed rule.
+				return { schedule, firstRunAt: computeFirstRunAt(schedule, new Date()) };
+			}),
+		);
 	}
 
 	/** Delete the node's poll jobs on deactivation. No-op when none exist. */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -123,7 +120,10 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 * when none exist, so it is safe on the legacy deactivation paths too.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, POLL_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			POLL_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
@@ -131,9 +131,9 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 * commits atomically with the `active = false` write. Keyed and idempotent like {@link removeWorkflow}.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			POLL_TRIGGER_TASK_TYPE,
 		);
 	}
@@ -146,46 +146,4 @@ export class PollTriggerJobRegistrar extends PollJobManager {
  */
 function resolveTimezone(timezone: string, defaultTimezone: string): string {
 	return !timezone || timezone === 'DEFAULT' ? defaultTimezone : timezone;
-}
-
-/**
- * Deterministic integer in `[min, max)` from `seed`+`label`, filling a generated poll
- * time's unspecified cron fields. Seeded on node identity so the cron string (and thus the
- * job's reconcile-in-place identity) stays stable across re-activation.
- */
-function stableInt(seed: string, label: string, min: number, max: number): number {
-	const hash = createHash('sha256').update(`${seed}:${label}`).digest();
-	return min + (hash.readUInt32BE(0) % (max - min));
-}
-
-/**
- * Build a 6-field cron for a poll time. Generated cadences get a node-seeded (not random)
- * seconds field for a stable job identity; a custom cron is used as-is, widened from 5 to
- * 6 fields when it omits seconds, so every stored expression is one shape.
- */
-function seededCron(item: TriggerTime, seed: string): CronExpression {
-	if (item.mode === 'custom') {
-		const trimmed = item.cronExpression.trim();
-		return (trimmed.split(/\s+/).length === 5 ? `0 ${trimmed}` : trimmed) as CronExpression;
-	}
-
-	const second = stableInt(seed, 'second', 0, 60);
-
-	switch (item.mode) {
-		case 'everyMinute':
-			return `${second} * * * * *`;
-		case 'everyHour':
-			return `${second} ${item.minute} * * * *`;
-		case 'everyX': {
-			if (item.unit === 'minutes') return `${second} */${item.value} * * * *`;
-			const minute = stableInt(seed, 'minute', 0, 60);
-			return `${second} ${minute} */${item.value} * * *`;
-		}
-		case 'everyDay':
-			return `${second} ${item.minute} ${item.hour} * * *`;
-		case 'everyWeek':
-			return `${second} ${item.minute} ${item.hour} * * ${item.weekday}`;
-		case 'everyMonth':
-			return `${second} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
-	}
 }

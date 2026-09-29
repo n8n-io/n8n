@@ -8348,7 +8348,17 @@
 		{
 			"id": 9607,
 			"name": "AI-powered multi-channel lead outreach with JotForm, Gemini AI & HeyReach",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID",
+					"nodeName": "Structured Output Parser"
+				},
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID",
+					"nodeName": "Structured Output Parser1"
+				}
+			]
 		},
 		{
 			"id": 9839,
@@ -17341,7 +17351,13 @@
 		{
 			"id": 4578,
 			"name": "AI-powered Asana task prioritization with GPT-4 and Pinecone memory",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID",
+					"nodeName": "Priority Output Parser"
+				}
+			]
 		},
 		{
 			"id": 4577,

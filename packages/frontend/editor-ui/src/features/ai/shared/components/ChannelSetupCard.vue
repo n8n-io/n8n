@@ -60,6 +60,7 @@ const {
 	fetchStatus,
 	connectedCredentials,
 	integrationSettings,
+	integrationApproval,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -207,7 +208,11 @@ async function saveChannelConfig() {
 	connectionInFlight.value = true;
 	try {
 		await channelViewRef.value?.beforeSave?.();
-		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings);
+		// Connect replaces the whole entry, so an approval already on it must ride along.
+		const approval = integrationApproval.value[props.integrationType];
+		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings, {
+			...(approval ? { approval } : {}),
+		});
 		notifyAgentUpdated();
 		finish(true);
 	} catch {
@@ -362,11 +367,9 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	/* Waiting-for-input highlight (#33959) — ported from InstanceAiChannelSetup
-	   when the card body moved here, so both surfaces get it. */
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

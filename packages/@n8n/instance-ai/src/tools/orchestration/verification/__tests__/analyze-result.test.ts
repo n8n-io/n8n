@@ -1,5 +1,9 @@
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
-import { analyzeVerificationResult } from '../analyze-result';
+import {
+	analyzeVerificationResult,
+	INJECTED_TRIGGER_SIMULATION_REASON,
+	WORKFLOW_PIN_SIMULATION_REASON,
+} from '../analyze-result';
 import type { ExecutionRunResult } from '../types';
 
 function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
@@ -62,7 +66,10 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		// covers time-based Wait and Form gates), and non-gate dead ends keep the
 		// seed-and-re-run guidance instead of being attributed to the gate.
 		expect(analysis.coverageNote).not.toContain('human decision');
-		expect(analysis.coverageNote).toContain('NOT behind the gate');
+		expect(analysis.coverageNote).toContain('Other unreached nodes remain unverified');
+		expect(analysis.coverageNote).toContain('not behind a wait gate');
+		expect(analysis.coverageNote).toContain('seed matching test data');
+		expect(analysis.coverageNote).toContain('only when the user has authorized that write');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {
@@ -136,6 +143,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.guidance).toContain('Prefer one of: "gemini-3-flash"');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 
@@ -178,7 +186,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
-		expect(analysis.remediation?.guidance).toContain('n8n credits');
+		expect(analysis.remediation?.guidance).toContain('Gateway credits');
 	});
 
 	it('omits n8n credits from quota guidance when the instance has no gateway coverage', () => {
@@ -201,6 +209,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 		expect(analysis.remediation?.guidance).toContain('another provider or key');
 	});
@@ -250,6 +259,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 		expect(analysis.remediation?.guidance).toContain('another provider or key');
 	});
@@ -270,6 +280,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('Gateway credits');
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 });
@@ -319,5 +330,177 @@ describe('analyzeVerificationResult — workflow-pinned nodes', () => {
 		expect(analysis.reachedSimulatedNodes).toEqual([
 			{ nodeName: 'Get Job Alert Emails', reason: 'Mocked credentials' },
 		]);
+	});
+});
+
+describe('analyzeVerificationResult — injected trigger output', () => {
+	const injectedRunResult = {
+		executionId: 'exec-1',
+		status: 'success',
+		executedNodeNames: ['Webhook', 'Format'],
+		lastNodeExecuted: 'Format',
+		data: { Webhook: [{}], Format: [{}] },
+		injectedTriggerNodeName: 'Webhook',
+	} as unknown as ExecutionRunResult;
+
+	it('counts the injected trigger as simulated so the run is not a live trigger test', () => {
+		const analysis = analyzeVerificationResult({
+			result: injectedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: INJECTED_TRIGGER_SIMULATION_REASON },
+		]);
+		expect(analysis.simulationNote).toContain('Webhook');
+	});
+
+	it('does not duplicate a trigger that workflow pins already disclose', () => {
+		const analysis = analyzeVerificationResult({
+			result: { ...injectedRunResult, workflowPinnedNodeNames: ['Webhook'] },
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: WORKFLOW_PIN_SIMULATION_REASON },
+		]);
+	});
+});
+
+describe('analyzeVerificationResult — trigger-scoped coverage', () => {
+	const twoBranchOutcome = makeBuildOutcome({
+		nodeSimulationPlan: [
+			{
+				nodeName: 'Post Movers',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+			{
+				nodeName: 'Post Summary',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		],
+	});
+	const weekdayPass = {
+		executionId: 'exec-weekday',
+		status: 'success',
+		executedNodeNames: ['Every Weekday 9am', 'Build Movers Message', 'Post Movers'],
+		lastNodeExecuted: 'Post Movers',
+		data: { 'Post Movers': [{ ok: true }] },
+	} as unknown as ExecutionRunResult;
+
+	it('attributes the unreached nodes to the other triggers when a trigger was named', () => {
+		const analysis = analyzeVerificationResult({
+			result: weekdayPass,
+			buildOutcome: twoBranchOutcome,
+			simulatedNodes: [{ nodeName: 'Post Movers', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+			triggerNodeName: 'Every Weekday 9am',
+		});
+
+		expect(analysis.nodesNotReached).toEqual(['Post Summary']);
+		expect(analysis.coverageNote).toContain('Every Weekday 9am');
+		expect(analysis.coverageNote).toContain('triggerNodeName');
+		expect(analysis.coverageNote).toContain('union of those passes');
+		expect(analysis.coverageNote).toContain('For unreached main-flow nodes on this branch');
+		// The generic "a lookup returned nothing" cause would send the agent
+		// editing a workflow whose other branch is simply not on this path.
+		expect(analysis.coverageNote).not.toContain('lookup or query returned nothing');
+	});
+
+	it('keeps the wait-gate guidance when a named-trigger pass halts at a gate', () => {
+		const gateOutcome = makeBuildOutcome({
+			nodeSimulationPlan: [
+				{
+					nodeName: 'Email Approval',
+					verdict: 'simulate',
+					reason: 'Send-and-wait gate on a loop',
+					confidence: 'high',
+					source: 'deterministic',
+					haltBranch: true,
+				},
+				{
+					nodeName: 'Publish',
+					verdict: 'simulate',
+					reason: 'Sends a message',
+					confidence: 'high',
+					source: 'deterministic',
+				},
+			],
+		});
+		const gatedPass = {
+			executionId: 'exec-gated',
+			status: 'success',
+			executedNodeNames: ['1st of Month', 'Format Draft', 'Email Approval'],
+			lastNodeExecuted: 'Email Approval',
+			data: { 'Email Approval': [] },
+		} as unknown as ExecutionRunResult;
+
+		const analysis = analyzeVerificationResult({
+			result: gatedPass,
+			buildOutcome: gateOutcome,
+			simulatedNodes: [{ nodeName: 'Email Approval', reason: 'Send-and-wait gate on a loop' }],
+			haltedGateNames: ['Email Approval'],
+			stateBefore: undefined,
+			runId: 'run-1',
+			triggerNodeName: '1st of Month',
+		});
+
+		// Nodes behind the gate can never be covered by verification, so the
+		// gate guidance must survive alongside the per-trigger scoping.
+		expect(analysis.coverageNote).toContain('pauses at wait gate');
+		expect(analysis.coverageNote).toContain('live end-to-end test');
+		expect(analysis.coverageNote).toContain('1st of Month');
+	});
+
+	it('gives neutral coverage guidance when no trigger was named', () => {
+		const analysis = analyzeVerificationResult({
+			result: weekdayPass,
+			buildOutcome: twoBranchOutcome,
+			simulatedNodes: [{ nodeName: 'Post Movers', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.coverageNote).toContain('Agent tool calls');
+	});
+});
+
+describe('analyzeVerificationResult — uncalled tools', () => {
+	it('keeps an uncalled tool unverified without diagnosing an empty Agent result', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-agent',
+				status: 'success',
+				executedNodeNames: ['Agent'],
+				lastNodeExecuted: 'Agent',
+				data: { Agent: [{ output: 'No tool call needed' }] },
+			},
+			buildOutcome,
+			simulatedNodes: [{ nodeName: 'Publish', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([]);
+		expect(analysis.nodesNotReached).toContain('Publish');
+		expect(analysis.coverageNote).toContain(
+			'A tool can remain uncalled even when its Agent succeeds',
+		);
+		expect(analysis.coverageNote).not.toContain('because it produced no output items');
+		expect(analysis.coverageNote).toContain('if a simulated or pinned lookup returned no items');
+		expect(analysis.coverageNote).toContain('inspect its fixture');
 	});
 });

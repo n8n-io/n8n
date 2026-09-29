@@ -3,25 +3,19 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 import { BaseSandbox } from './base-sandbox';
+import { toShellCommand } from './shell-command';
 import { raceWithAbort } from '../../sdk/abort';
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
 	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
 	id?: string;
+	/** When true, the service deletes the sandbox once it goes idle instead of stopping it. */
+	ephemeral?: boolean;
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
 	env?: Record<string, string>;
-}
-
-function shellEscape(value: string): string {
-	return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function toShellCommand(command: string, args: string[] = []): string {
-	if (args.length === 0) return command;
-	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
 /** Native agents sandbox adapter backed by the n8n sandbox service HTTP API. */
@@ -141,9 +135,10 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	private async createSandbox() {
 		const existingId = this.sandboxId;
-		const creation = existingId
-			? this.client.createSandbox({ id: existingId })
-			: this.client.createSandbox();
+		const creation = this.client.createSandbox({
+			id: existingId,
+			ephemeral: this.options.ephemeral,
+		});
 		try {
 			return await this.withLifecycleTimeout(creation);
 		} catch (error) {

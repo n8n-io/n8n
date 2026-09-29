@@ -1,17 +1,19 @@
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	IRequestOptions,
+	NodeEgressFilter,
 } from 'n8n-workflow';
 import type http from 'node:http';
 import type https from 'node:https';
 import type { Readable } from 'node:stream';
 import type { Dispatcher } from 'undici';
 
-import { SsrfProtectionService } from '../ssrf';
+import { passthroughEgressFilter, SsrfProtectionService } from '../ssrf';
 import { httpRequest } from './axios/request';
 import { withClientDefaults } from './client-default-headers';
 import { HttpRequestClientOptions } from './client-options';
@@ -25,6 +27,7 @@ import {
 	type RequestAuthorizer,
 	type TransportTimeoutOptions,
 } from './undici/transport';
+import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpTransportOptions {
 	/**
@@ -36,10 +39,10 @@ export interface HttpTransportOptions {
 	 */
 	proxy?: ProxyOption;
 	/**
-	 * SSRF protection level. Defaults to the container's `SsrfProtectionService`.
-	 * Pass `'disabled'` to explicitly opt out.
+	 * Whether this transport enforces the instance's outbound network policy.
+	 * Defaults to `'safe'`. Pass `'unsafe'` to explicitly opt out.
 	 */
-	ssrf?: SsrfOption;
+	useDefaultSsrfPolicy?: UseDefaultSsrfPolicy;
 	/**
 	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
 	 * Used for long-running outbound calls (e.g. LLM completions) that would
@@ -160,20 +163,26 @@ export interface HttpTransport {
  *
  * - {@link requests}: you make a request and get a response (n8n request pipeline).
  * - {@link transport}: you obtain transport primitives to hand to a third-party SDK.
+ *
+ * Every client and transport enforces the instance's outbound network policy by
+ * default (`useDefaultSsrfPolicy: 'safe'`). Whether the SSRF guard actually runs is
+ * resolved here from `SsrfProtectionConfig.enabled` — callers never read that
+ * flag. The only way to bypass the policy is an explicit `useDefaultSsrfPolicy: 'unsafe'`.
  */
 @Service()
 export class OutboundHttp {
 	constructor(
 		private readonly ssrfProtection: SsrfProtectionService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly logger: Logger,
 	) {}
 
 	/**
-	 * A {@link HttpRequestClient} carrying the given SSRF policy.
+	 * A {@link HttpRequestClient} enforcing the given {@link UseDefaultSsrfPolicy}.
 	 * Proxy is resolved per request from `IHttpRequestOptions.proxy` / the environment.
 	 */
 	requests(options?: HttpRequestClientOptions): HttpRequestClient {
-		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
@@ -210,11 +219,12 @@ export class OutboundHttp {
 	}
 
 	/**
-	 * An {@link HttpTransport} carrying the given proxy + SSRF policy.
+	 * An {@link HttpTransport} carrying the given proxy policy and enforcing the
+	 * given {@link UseDefaultSsrfPolicy}.
 	 */
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
-		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const timeouts = options?.timeouts;
 		const authorize = options?.authorize;
 
@@ -230,6 +240,32 @@ export class OutboundHttp {
 			getNodeAgent: (agentOptions) =>
 				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};
+	}
+
+	/**
+	 * The egress filter enforcing the given {@link UseDefaultSsrfPolicy}, for
+	 * callers that hand a filter to a third-party SDK: the container's
+	 * `SsrfProtectionService` when the policy resolves to guarded, a passthrough
+	 * filter otherwise.
+	 */
+	egressFilter(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): NodeEgressFilter {
+		const ssrf = this.resolveSsrf(useDefaultSsrfPolicy);
+		return ssrf === 'disabled' ? passthroughEgressFilter : ssrf;
+	}
+
+	/**
+	 * Resolves a caller's {@link UseDefaultSsrfPolicy} to the SSRF policy to enforce:
+	 * the container's `SsrfProtectionService` always in `'enforced'` mode, and in
+	 * `'safe'` mode when the instance enables protection, nothing otherwise.
+	 */
+	private resolveSsrf(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): SsrfOption {
+		if (useDefaultSsrfPolicy === 'enforced') {
+			return this.ssrfProtection;
+		}
+		if (useDefaultSsrfPolicy === 'unsafe' || !this.ssrfConfig.enabled) {
+			return 'disabled';
+		}
+		return this.ssrfProtection;
 	}
 }
 

@@ -1,6 +1,7 @@
 import type {
 	ContentImportContext,
 	CredentialDecryptContext,
+	CredentialSaveContext,
 	EnforcementPoint,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -15,6 +16,7 @@ type PolicyContexts = {
 	workflowPublish: WorkflowPublishContext;
 	workflowStart: WorkflowStartContext;
 	workflowTransfer: WorkflowTransferContext;
+	credentialSave: CredentialSaveContext;
 	credentialDecrypt: CredentialDecryptContext;
 	contentImport: ContentImportContext;
 };
@@ -38,4 +40,7 @@ export interface PolicyEnforcementBackend {
 		point: Point,
 		context: PolicyContext<Point>,
 	): Promise<PolicyDecision>;
+
+	/** Whether any check would run at this point. Must agree with `enforce` and `evaluate`. */
+	hasChecksFor(point: EnforcementPoint): boolean;
 }

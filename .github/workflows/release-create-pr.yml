@@ -38,9 +38,7 @@ on:
           - experimental
           - premajor
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   create-release-pr:
@@ -64,7 +62,7 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
@@ -80,7 +78,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Bump package versions
@@ -137,6 +135,9 @@ jobs:
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''

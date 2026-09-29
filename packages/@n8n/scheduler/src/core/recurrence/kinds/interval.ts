@@ -1,7 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import { InvalidScheduleError } from '../../errors';
-import type { IntervalSchedule, ScheduledJob } from '../../types';
+import type { IntervalSchedule, StoredSchedule } from '../../types';
 import { required } from '../field';
 
 /**
@@ -48,6 +48,6 @@ export function* intervalOccurrences(schedule: IntervalSchedule, first: Date): G
  * @returns The interval schedule.
  * @throws {CorruptStorageRowError} When the interval field is unset.
  */
-export function resolveInterval(job: ScheduledJob): IntervalSchedule {
+export function resolveInterval(job: StoredSchedule): IntervalSchedule {
 	return { kind: 'interval', intervalSeconds: required(job, 'intervalSeconds') };
 }

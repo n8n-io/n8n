@@ -24,7 +24,7 @@ export class EnvProxyHttpAgent extends http.Agent {
 	private readonly router: EnvProxyRouter<HttpProxyAgent<string>>;
 
 	constructor(lookup?: LookupFunction, agentOptions?: NodeAgentOptions) {
-		super({ ...agentOptions, lookup });
+		super({ ...agentOptions, ...(lookup && { lookup }) });
 		this.router = new EnvProxyRouter('http', 80, (proxyUrl) =>
 			createProxiedHttpAgent(proxyUrl, agentOptions),
 		);

@@ -3,7 +3,7 @@ import { test, expect, chatHubTestConfig } from './fixtures';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Personal agent @capability:proxy',
+	'Personal agent',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

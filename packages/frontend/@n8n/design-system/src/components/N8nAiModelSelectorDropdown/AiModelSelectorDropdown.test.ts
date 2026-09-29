@@ -97,6 +97,30 @@ describe('N8nAiModelSelectorDropdown', () => {
 		expect(getByText('Claude Sonnet 4')).toBeVisible();
 	});
 
+	it('shows the connected label for models that have a connectedLabel value', async () => {
+		const { getByTestId, getByText } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				items: [
+					...baseItems,
+					{
+						id: 'anthropic::claude-opus',
+						label: 'Claude Opus 4',
+						data: {
+							fullName: 'Claude Opus 4',
+							connectedLabel: 'Connected',
+						},
+					},
+				],
+			},
+		});
+
+		await userEvent.click(getByTestId('ai-model-selector'));
+
+		await waitFor(() => expect(getByText('Claude Opus 4')).toBeVisible());
+		expect(getByText('Connected')).toBeVisible();
+	});
+
 	it('emits select and search events', async () => {
 		const { getByTestId, getByText, emitted } = render(N8nAiModelSelectorDropdown, {
 			props: {

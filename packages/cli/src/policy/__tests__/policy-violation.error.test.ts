@@ -4,7 +4,11 @@ import { UserError } from 'n8n-workflow';
 import { classifyHttpError, HttpErrorKind } from '@/errors/http-error-classifier';
 import { serializeInternalRestError } from '@/errors/http-error-serializers';
 
-import { PolicyViolationError, type NonEmptyViolations } from '../policy-violation.error';
+import {
+	isPolicyRefusal,
+	PolicyViolationError,
+	type NonEmptyViolations,
+} from '../policy-violation.error';
 
 const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
 	kind: 'node-type-unavailable',
@@ -86,6 +90,36 @@ describe('PolicyViolationError', () => {
 
 			expect(status).toBe(403);
 			expect(body.meta).toEqual({ violations: [violation()] });
+		});
+	});
+
+	describe('isPolicyRefusal', () => {
+		const violation = () =>
+			new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked' },
+			]);
+
+		it('recognises a live error', () => {
+			expect(isPolicyRefusal(violation())).toBe(true);
+		});
+
+		// `WorkflowRunner.processError` spreads a failed execution's error into a plain
+		// object, dropping the prototype, so `instanceof` no longer holds.
+		it('recognises one flattened by execution failure serialization', () => {
+			const error = violation();
+			const flattened = { ...error, message: error.message, stack: error.stack };
+
+			expect(flattened instanceof PolicyViolationError).toBe(false);
+			expect(isPolicyRefusal(flattened)).toBe(true);
+		});
+
+		it.each([
+			['an ordinary error', new Error('boom')],
+			['an unrelated object', { violations: [] }],
+			['null', null],
+			['undefined', undefined],
+		])('does not recognise %s', (_label, value) => {
+			expect(isPolicyRefusal(value)).toBe(false);
 		});
 	});
 });

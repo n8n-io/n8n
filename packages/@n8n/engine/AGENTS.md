@@ -1,5 +1,12 @@
 # @n8n/engine — structure & modularity intent
 
+## Naming
+
+Refer to this project as **engine v2** (lowercase `v2`). Do not use "Engine
+2.0", "engine 2.0", or "v2.0". In code, use `engine-v2` for filenames and
+`engineV2` for identifiers, as appropriate. Do not confuse engine v2 with n8n
+v2 (the product version) or workflow execution order versions.
+
 ## The blueprint we're following
 
 We structure this package after the **Durable Scheduler modularity blueprint**
@@ -27,9 +34,10 @@ a deployable engine worker) without touching core logic.
   (the `createScheduler(deps)` pattern).
 - **Core interfaces** — interfaces the core depends on, each defined in its own
   core module beside a default/reference use: `AdmittanceService` (`admittance/`),
-  `WorkQueue` (`queue/`), `ExecutionStore` (`execution/`). Adapters implement
-  them; the core never imports the interface from an adapter. Handed in at
-  construction.
+  `WorkQueue` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
+  (`execution/`), `LifecycleEventPublisher` (`lifecycle-events/`). Adapters
+  implement them; the core never imports the interface from an adapter. Handed
+  in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (in-memory default). The Postgres/ORM coupling lives *here only*.
@@ -60,7 +68,7 @@ a deployable engine worker) without touching core logic.
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as
   debatable precisely because it pulls the DI runtime in — keep it out of core.)
 - We go one step stricter than the scheduler's allowlist: **no `n8n-workflow`
-  dependency at all, not even type-only** (per the Engine 2.0 design — the core
+  dependency at all, not even type-only** (per the Engine v2 design — the core
   must stay free of v1 concepts). Shared JSON types are redefined locally in
   `common/`.
 - Arrows point inward: `cli`/`serve` depend on the engine; the engine never
@@ -81,6 +89,21 @@ executions and drives recovery (CAT-2938), not transactions spanning stores and
 queues. So when you find a partial-write window: make the resulting state
 legible to reconciliation, and don't reach for a cross-store transaction. It's a
 recurring review question — this is the standing answer.
+
+## Read path and execution path have their own types
+
+A row is not a type. `ExecutionRecord`/`StepRecord`/`StepSummary` are what
+running an execution needs; `ExecutionView`/`StepView`
+(`execution/execution-view-store.ts`) are what reporting one needs;
+`ExecutionSnapshot`/`StepDetail` (`server/api.types.ts`) are the wire. Put a
+field on the path that reads it. Keep value types (`StepStatus`, `StepError`,
+`StepSlots`, `WorkflowGraph`) shared.
+
+Reads go through `ExecutionViewStore`, so a reader's type cannot reach
+`claimStep` or `finishExecution`, and read-side logic has one seam
+(`ExecutionQueryService`). Name the columns in the query: these types are
+structural, so an adapter returning whole entities still type-checks and still
+ships every column.
 
 ## Known deviations — the seams to clean up on decomposition
 

@@ -4,6 +4,8 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
 
@@ -116,6 +118,64 @@ describe('OAuthConsentView', () => {
 		// A rejected request must not present the broad instance permission grant.
 		expect(queryByText('Test MCP Client wants access to your n8n instance')).toBeNull();
 		expect(queryByText('Get a list of your workflows')).toBeNull();
+	});
+
+	it('should redirect immediately without showing the picker or a success message when the server auto-approves', async () => {
+		// The visitor never clicked anything here — a "success" message would be
+		// confusing for something they didn't consciously trigger, so this must render
+		// the same blank state as the initial fetch, not the manual-approve success screen.
+		const redirectUrl = 'https://legitimate-client.com/callback?code=reused';
+		consentStore.fetchConsentDetails.mockResolvedValue({
+			autoApproved: true,
+			redirectUrl,
+		} as never);
+
+		const { queryByTestId, getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(consentStore.approveConsent).not.toHaveBeenCalled();
+		expect(queryByTestId('consent-allow-button')).toBeNull();
+		expect(queryByTestId('consent-deny-button')).toBeNull();
+		expect(queryByTestId('consent-success-screen')).toBeNull();
+		expect(getByTestId('consent-loading')).toBeVisible();
+		expect(window.location.href).toBe(redirectUrl);
+	});
+
+	it('should not flash the generic instance-wide picker while the details fetch is pending', async () => {
+		// Before the fetch resolves, `consentDetails` is still null (its initial state,
+		// and its value on a fetch error too), so the template must not fall through to
+		// the generic/default-resource copy — that's not known to be correct yet.
+		consentStore.consentDetails = null;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let resolveFetch!: (value: any) => void;
+		consentStore.fetchConsentDetails.mockImplementation(
+			async () =>
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await new Promise<any>((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+
+		const { queryByTestId, getByTestId, queryByText } = renderComponent();
+		await nextTick();
+
+		expect(queryByTestId('consent-content')).toBeNull();
+		expect(queryByText('Test MCP Client wants access to your n8n instance')).toBeNull();
+		expect(getByTestId('consent-loading')).toBeVisible();
+
+		// The real store assigns `consentDetails` as part of resolving the fetch;
+		// mirror that so the template's store-bound `clientDetails` picks it up too.
+		const resolvedDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			scopes: [],
+		};
+		consentStore.consentDetails = resolvedDetails;
+		resolveFetch(resolvedDetails);
+		await waitAllPromises();
+
+		expect(queryByTestId('consent-loading')).toBeNull();
+		expect(getByTestId('consent-content')).toBeVisible();
 	});
 
 	it('should redirect to home page when deny is clicked', async () => {
@@ -346,6 +406,90 @@ describe('OAuthConsentView', () => {
 			await userEvent.click(getByTestId('scopes-tree-toggle'));
 
 			expect(queryByTestId('scope-group-tools-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should open the tools popover on keyboard focus and link it to the pill', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			const pill = getByTestId('scope-group-tools-workflows');
+			expect(pill).toHaveAttribute('tabindex', '0');
+
+			pill.focus();
+			await waitAllPromises();
+
+			const popover = getByTestId('scope-group-tools-popover-workflows');
+			expect(popover).toBeInTheDocument();
+
+			// The trigger is described by a hidden role="tooltip" node holding the
+			// flattened popover text — this is what a screen reader announces.
+			const describedBy = pill.getAttribute('aria-describedby');
+			expect(describedBy).toBeTruthy();
+			const description = document.getElementById(describedBy as string);
+			expect(description).toHaveAttribute('role', 'tooltip');
+			expect(description).toHaveTextContent('3 of 3 tools enabled');
+
+			pill.blur();
+			await waitAllPromises();
+
+			expect(queryByTestId('scope-group-tools-popover-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should expose per-tool enabled state as text in the tools popover', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+
+			const workflowsPill = getByTestId('scope-group-tools-workflows');
+			workflowsPill.focus();
+			await waitAllPromises();
+
+			const workflowsPopover = getByTestId('scope-group-tools-popover-workflows');
+			expect(workflowsPopover).toHaveTextContent('0 of 3 tools enabled');
+			expect(within(workflowsPopover).getAllByText('not enabled')).toHaveLength(3);
+
+			workflowsPill.blur();
+			await waitAllPromises();
+
+			const executionsPill = getByTestId('scope-group-tools-executions');
+			executionsPill.focus();
+			await waitAllPromises();
+
+			const executionsPopover = getByTestId('scope-group-tools-popover-executions');
+			expect(executionsPopover).toHaveTextContent('1 of 1 tools enabled');
+			expect(within(executionsPopover).getAllByText('enabled')).toHaveLength(1);
 		});
 
 		it('should disable Allow when no scopes are selected', async () => {

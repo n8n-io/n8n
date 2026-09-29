@@ -76,6 +76,24 @@ interface ComponentRenderContext {
 }
 
 /**
+ * Shared by the platforms whose rich cards have no select control. Telegram
+ * keeps its own override because it also rewrites images.
+ */
+export function expandSelectsToButtons(components: SuspendComponent[]): SuspendComponent[] {
+	const normalized: SuspendComponent[] = [];
+	for (const c of components) {
+		if (c.type === 'select' || c.type === 'radio_select') {
+			for (const opt of c.options ?? []) {
+				normalized.push({ type: 'button', label: opt.label, value: opt.value });
+			}
+			continue;
+		}
+		normalized.push(c);
+	}
+	return normalized;
+}
+
+/**
  * Converts agent SDK suspend payloads into Chat SDK Card elements.
  *
  * The `chat` package is ESM-only, so every method dynamically imports it
@@ -225,7 +243,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Image({
 				url: component.url as string,
-				alt: (component.altText as string) ?? 'image',
+				alt: component.altText ?? 'image',
 			}),
 		);
 	}

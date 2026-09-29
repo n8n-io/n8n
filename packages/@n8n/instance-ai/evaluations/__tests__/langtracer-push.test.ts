@@ -31,6 +31,8 @@ function inlineSeed(overrides: Record<string, unknown> = {}) {
 		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
+		projects: [],
 		...overrides,
 	};
 }
@@ -422,6 +424,42 @@ describe('comparableDiff (post-write verification)', () => {
 		expect(
 			comparableDiff(body({ seed: inlineSeed() }), item('c', { seed: inlineSeed() }).testCase),
 		).toEqual([]);
+	});
+
+	it('reads an export without the empty `folders` slot as the disk seed that has it', () => {
+		// The push omits an empty `folders` (the write API has no such key), so the
+		// export never carries it, while the loader defaults it to `[]` on disk.
+		const { folders: _absent, ...stored } = inlineSeed();
+		expect(
+			comparableDiff(body({ seed: stored }), item('c', { seed: inlineSeed() }).testCase),
+		).toEqual([]);
+	});
+
+	const table = {
+		id: 'seed-table-1',
+		name: 'Queue',
+		columns: [{ name: 'message', type: 'string' as const }],
+	};
+	const scenario = { name: 'empty-queue', description: 'd', dataSetup: 's', successCriteria: 'ok' };
+
+	it('reads a stored seed table without `rows` as the disk table that declares `rows: []`', () => {
+		const written = item('c', {
+			executionScenarios: [{ ...scenario, seedDataTables: [{ ...table, rows: [] }] }],
+		}).testCase;
+		const stored = body({ executionScenarios: [{ ...scenario, seedDataTables: [table] }] });
+
+		expect(comparableDiff(stored, written)).toEqual([]);
+	});
+
+	it('names `executionScenarios` when the stored table lost the declared rows', () => {
+		const written = item('c', {
+			executionScenarios: [
+				{ ...scenario, seedDataTables: [{ ...table, rows: [{ message: 'hello' }] }] },
+			],
+		}).testCase;
+		const stored = body({ executionScenarios: [{ ...scenario, seedDataTables: [table] }] });
+
+		expect(comparableDiff(stored, written)).toEqual(['executionScenarios']);
 	});
 
 	it('names `seed` when a pre-#113 server dropped it', () => {

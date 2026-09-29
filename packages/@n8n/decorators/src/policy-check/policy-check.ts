@@ -1,5 +1,8 @@
+import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+
+export type { PolicyViolation, PolicyCheckFailure };
 
 /**
  * The points in n8n where a policy can block an action.
@@ -13,6 +16,7 @@ export const ENFORCEMENT_POINTS = [
 	'workflowPublish',
 	'workflowStart',
 	'workflowTransfer',
+	'credentialSave',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -75,6 +79,32 @@ export type WorkflowTransferContext = {
 	readonly targetProjectId: string | null;
 };
 
+/**
+ * The credential as a policy check sees it: its id and its type, nothing else.
+ *
+ * A check never needs the name or the data, and a type this narrow keeps the secret out of
+ * the policy layer altogether.
+ */
+export type PolicedCredential = {
+	/** `null` for a new credential — it has no id until it's saved. */
+	readonly id: string | null;
+	readonly type: string;
+};
+
+export type CredentialSaveContext = {
+	readonly credential: PolicedCredential;
+	/**
+	 * The stored credential this save replaces, or `null` for a new one.
+	 *
+	 * Loaded from the database by the host, never taken from the request. A check compares the
+	 * two types so an edit that keeps a now-blocked type is grandfathered, while a switch to a
+	 * blocked type is not.
+	 */
+	readonly storedCredential: PolicedCredential | null;
+	/** The owning project; `null` for an instance-scoped credential. */
+	readonly projectId: string | null;
+};
+
 export type CredentialDecryptContext = {
 	readonly credentialType: string;
 	readonly credentialId: string;
@@ -83,53 +113,31 @@ export type CredentialDecryptContext = {
 	readonly projectId: string | null;
 };
 
-export type ContentImportContext = {
-	readonly workflow: PolicedWorkflow;
-	readonly projectId: string | null;
-};
+/**
+ * How the content reached the instance.
+ *
+ * A check needs this to hold an unattended sync to a different standard than a hand-run
+ * import, and the host reads it to pick its fail posture — a batch sync reports, a direct
+ * import refuses before writing.
+ */
+export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
 
 /**
- * One reason something was blocked.
+ * What's being imported, plus where it's landing and how it arrived.
  *
- * The same shape is used by the UI, API errors, import reports and the audit log.
- * `kind`, `subjectType` and `scope` are plain strings rather than enums, so later policy
- * features can add values without breaking existing readers — which also means readers
- * must cope with values they don't recognise.
+ * Exactly one of `workflow` / `credential` is set; narrow with `'workflow' in context`. No
+ * `?: never` on the other arm, because that breaks the `in` narrowing.
  */
-export type PolicyViolation = {
-	/** e.g. `'node-type-unavailable'`. Don't assume you know every value. */
-	kind: string;
-
-	/** Id of the check that objected. */
-	checkId: string;
-
-	/** Readable on its own. Don't parse details out of it — use the fields below. */
-	message: string;
-
-	/** What was blocked: a node type name, a credential type name, … */
-	subject?: string;
-
-	/** What kind of name `subject` is — node and credential type names can look alike. */
-	subjectType?: string;
-
-	/** Which level objected. Usually `'instance'` or `'project'`, but treat it as open. */
-	scope?: string;
-
-	/** The rule that decided, if a rule did rather than a fallback default. */
-	matchedRuleId?: string;
-};
+export type ContentImportContext = {
+	readonly projectId: string | null;
+	readonly transport: ContentImportTransport;
+} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {
 	/** Usually `'instance'` or `'project'`. Open, like {@link PolicyViolation.scope}. */
 	scope: string;
 	version: number;
-};
-
-/** A check that failed to run. Deliberately vague — error details stay server-side. */
-export type PolicyCheckFailure = {
-	checkId: string;
-	correlationId: string;
 };
 
 /**
@@ -208,6 +216,7 @@ export interface RegisteredPolicyCheck {
 		ctx: WorkflowTransferContext,
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
+	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -232,6 +241,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	workflowPublish: 'onWorkflowPublish',
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
+	credentialSave: 'onCredentialSave',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

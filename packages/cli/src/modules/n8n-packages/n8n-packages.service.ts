@@ -1,12 +1,13 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
+import { buildImportResult, toPackageSummary } from './engine/import-result';
+import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
@@ -31,7 +32,10 @@ import {
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { DirectoryPackageReader } from './io/directory/directory-package-reader';
 import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import { formatEntityFile } from './io/entity-file-format';
+import type { PackageReader } from './io/package-reader';
 import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
@@ -39,13 +43,24 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
+	type ExportPackageDirectoryResult,
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
+	type ImportPackageSelectionRequest,
+	type ImportRequest,
 	type ImportResult,
+	type ImportSelection,
+	type ImportSelectionRequest,
+	type PackageImportSource,
+	type ResolvedImportPackageRequest,
+	type ResolvedImportRequest,
+	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import {
@@ -56,12 +71,46 @@ import {
 import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
+	manifest: PackageManifest;
 	counts: ExportPackageEventCounts;
 	workflowIds: string[];
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
+	includeArchivedWorkflows: boolean;
 }
+
+type DirectoryProjectPackage =
+	| { status: 'empty'; result: ImportResult }
+	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
+
+/** Merge preserves workflows omitted from the selection. Skip preserves existing shared tags. */
+const CHERRY_PICK_IMPORT_POLICY = {
+	projectConflictPolicy: 'merge',
+	folderConflictPolicy: 'merge',
+	overwriteDeletionPolicy: 'archive',
+	workflowPublishingPolicy: 'match-source',
+	missingNodeTypeMode: 'fail',
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'must-preexist',
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: 'create',
+	dataTableSchemaConflictPolicy: 'fail',
+	variableMissingMode: 'must-preexist',
+	variableConflictPolicy: 'keep-existing',
+	tagMissingMode: 'create',
+	tagConflictPolicy: 'skip',
+} as const satisfies Omit<
+	ResolvedImportRequest,
+	| 'user'
+	| 'projectId'
+	| 'folderId'
+	| 'apiKeyScopes'
+	| 'bindings'
+	| 'selection'
+	| 'workflowConflictPolicy'
+	| 'workflowIdPolicy'
+>;
 
 @Service()
 export class N8nPackagesService {
@@ -99,6 +148,7 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
+			includeArchivedWorkflows: result.includeArchivedWorkflows,
 		});
 
 		return { stream, counts: result.counts };
@@ -112,11 +162,19 @@ export class N8nPackagesService {
 	async exportPackageToDirectory(
 		request: ExportPackageRequest,
 		target: { targetDir: string },
-	): Promise<ExportPackageSummary> {
+	): Promise<ExportPackageDirectoryResult> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
-		const result = await this.writeExport(writer, request);
+		const result = await this.exportPackageToWriter(request, writer);
 		await writer.finalize();
-		return { counts: result.counts };
+		return { counts: result.counts, manifest: result.manifest };
+	}
+
+	async exportPackageToWriter(
+		request: ExportPackageRequest,
+		writer: PackageWriter,
+	): Promise<ExportPackageSummary & { manifest: PackageManifest }> {
+		const { manifest, counts } = await this.writeExport(writer, request);
+		return { manifest, counts };
 	}
 
 	private async writeExport(
@@ -134,6 +192,7 @@ export class N8nPackagesService {
 		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
+		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -143,6 +202,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -167,9 +227,11 @@ export class N8nPackagesService {
 				? await this.projectExporter.export({
 						user: request.user,
 						projectIds,
+						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -328,7 +390,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
+		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
@@ -340,17 +402,153 @@ export class N8nPackagesService {
 		};
 
 		return {
+			manifest,
 			counts,
 			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
+			includeArchivedWorkflows,
 		};
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
+		const { result, scopes } = await this.dispatchImport(
+			request,
+			reader,
+			manifest,
+			'package-import',
+		);
+
+		const resolvedRequest: ResolvedImportPackageRequest = {
+			...request,
+			folderConflictPolicy: resolveFolderConflictPolicy(
+				request,
+				isProjectPackage(manifest) ? 'project' : 'workflow',
+			),
+		};
+		emitPackageImportedEvent(this.eventService, { request: resolvedRequest, manifest, scopes });
+
+		return result;
+	}
+
+	async importPackageFromDirectory(
+		request: ImportRequest,
+		source: { sourceDir: string },
+	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			'git-pull',
+		);
+		return result;
+	}
+
+	async importPackageSelectionFromDirectory(
+		request: ImportSelectionRequest,
+		source: { sourceDir: string },
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchSelectionImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			selection,
+			'git-pull',
+		);
+		return result;
+	}
+
+	/** Emit import telemetry for public API requests. Directory imports use the Git pull path. */
+	async importPackageSelection(
+		request: ImportPackageSelectionRequest,
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (!isProjectPackage(manifest)) {
+			throw new BadRequestError('A selection import requires a project package.');
+		}
+		const { result, scopes, resolvedRequest } = await this.dispatchSelectionImport(
+			request,
+			reader,
+			manifest,
+			selection,
+			'package-import',
+		);
+
+		emitPackageImportedEvent(this.eventService, {
+			request: { ...resolvedRequest, packageBuffer: request.packageBuffer },
+			manifest,
+			scopes,
+		});
+
+		return result;
+	}
+
+	/** An empty working copy needs no import. Reject content without a project. */
+	private async readDirectoryProjectPackage(source: {
+		sourceDir: string;
+	}): Promise<DirectoryProjectPackage> {
+		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
+		await reader.listEntries();
+		const manifest = await this.packageParser.getManifest(reader);
+		if (isProjectPackage(manifest)) {
+			return { status: 'project', reader, manifest };
+		}
+		if (hasContentWithoutProjects(manifest)) {
+			throw new BadRequestError('Directory packages must contain projects');
+		}
+		return { status: 'empty', result: emptyImportResult(manifest) };
+	}
+
+	/** The caller must validate that the manifest describes a project package. */
+	private async dispatchSelectionImport(
+		request: ImportSelectionRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		selection: ImportSelection,
+		importSource: PackageImportSource,
+	): Promise<ImportOutcome & { resolvedRequest: ResolvedImportRequest }> {
+		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
+		if (!packageProjectIds.has(selection.selectedProjectId)) {
+			throw new BadRequestError(
+				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
+			);
+		}
+
+		const resolvedRequest: ResolvedImportRequest = {
+			user: request.user,
+			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
+			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
+			...CHERRY_PICK_IMPORT_POLICY,
+			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			selection,
+		};
+
+		const outcome = await this.projectPackageImporter.import(
+			resolvedRequest,
+			reader,
+			manifest,
+			importSource,
+		);
+		return { ...outcome, resolvedRequest };
+	}
+
+	private async dispatchImport(
+		request: ImportRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		importSource: PackageImportSource,
+	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {
 				throw new BadRequestError(
@@ -363,6 +561,7 @@ export class N8nPackagesService {
 				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
 				reader,
 				manifest,
+				importSource,
 			);
 		}
 
@@ -414,4 +613,33 @@ export class N8nPackagesService {
 
 function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
+}
+
+function hasContentWithoutProjects(manifest: PackageManifest): boolean {
+	return (
+		[
+			manifest.workflows,
+			manifest.folders,
+			manifest.credentials,
+			manifest.dataTables,
+			manifest.variables,
+			manifest.tags,
+		].some((entries) => (entries?.length ?? 0) > 0) || manifest.requirements !== undefined
+	);
+}
+
+function emptyImportResult(manifest: PackageManifest): ImportResult {
+	return buildImportResult({
+		package: toPackageSummary(manifest),
+		workflows: [],
+		removedWorkflows: [],
+		removedFolders: [],
+		folders: [],
+		projects: [],
+		bindings: createBindings(),
+		credentials: { matched: [], stubbed: [] },
+		dataTables: { matched: 0, created: 0 },
+		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
+		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
+	});
 }

@@ -24,6 +24,30 @@ export type ChatModelRecoveryOptions = Pick<
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 
+/** Disclosure for a node whose output came from pin data saved on the workflow. */
+export const WORKFLOW_PIN_SIMULATION_REASON =
+	'Output came from pinned data saved on the workflow — unpin it for a live test';
+
+/** Disclosure for a trigger whose output the assistant injected instead of a real event. */
+export const INJECTED_TRIGGER_SIMULATION_REASON =
+	'Trigger output was injected test input, not a real event — run a live test to prove the trigger';
+
+/** Injected trigger output, deduplicated against the other simulation sources. */
+export function injectedTriggerSimulations(
+	injectedTriggerNodeName: string | undefined,
+	reachedNames: ReadonlySet<string>,
+	alreadySimulatedNames: ReadonlySet<string>,
+): Array<{ nodeName: string; reason: string }> {
+	if (
+		injectedTriggerNodeName === undefined ||
+		!reachedNames.has(injectedTriggerNodeName) ||
+		alreadySimulatedNames.has(injectedTriggerNodeName)
+	) {
+		return [];
+	}
+	return [{ nodeName: injectedTriggerNodeName, reason: INJECTED_TRIGGER_SIMULATION_REASON }];
+}
+
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
 	'unauthorized',
@@ -84,6 +108,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+/** Per-output counts when the adapter grouped a multi-output node's items per output. */
+function countOutputBranchItems(nodeOutput: unknown): VerificationNodePreview['outputs'] {
+	const output = outputForInspection(nodeOutput);
+	if (!isRecord(output) || !Array.isArray(output.outputs)) return undefined;
+	return output.outputs.filter(isRecord).map((branch, position) => ({
+		index: typeof branch.index === 'number' ? branch.index : position,
+		...(typeof branch.name === 'string' ? { name: branch.name } : {}),
+		itemCount: countOutputItems(branch.items),
+	}));
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -105,9 +140,11 @@ export function buildNodePreviews(
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
 		const preview = previewValue(nodeOutput, maxChars);
+		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
 			itemCount: countOutputItems(nodeOutput),
+			...(outputs ? { outputs } : {}),
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,
@@ -126,17 +163,6 @@ export function countProducedOutputRows(
 		if (itemCount !== undefined) count += itemCount;
 	}
 	return count;
-}
-
-function maxEmittedItemCount(resultData: Record<string, unknown> | undefined): number {
-	if (!resultData) return 0;
-
-	let max = 0;
-	for (const nodeOutput of Object.values(resultData)) {
-		const count = countOutputItems(nodeOutput) ?? 0;
-		if (count > max) max = count;
-	}
-	return max;
 }
 
 function messageMatchesAny(normalized: string, keywords: readonly string[]): boolean {
@@ -248,7 +274,7 @@ function classifyVerificationFailure(
 						lastNodeExecuted,
 						chatModelRecovery?.creditsCoveredNodeNames,
 					)
-					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
 					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
 		return createRemediation({
@@ -315,7 +341,7 @@ export function buildSimulationNote(
 ): string | undefined {
 	if (reachedSimulatedNodes.length > 0) {
 		return (
-			`Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+			`Simulated ${reachedSimulatedNodes.length} node(s) with fixture output during verification: ` +
 			reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
 			'. Relay this to the user when presenting the result.'
 		);
@@ -335,8 +361,32 @@ function buildCoverageNote(
 	result: ExecutionRunResult,
 	success: boolean,
 	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
+	const guidance = success
+		? ' Check branch selection, input items, Agent tool calls, and simulated parents. ' +
+			'A tool can remain uncalled even when its Agent succeeds. ' +
+			'For unreached main-flow nodes on this branch that are not behind a wait gate: ' +
+			'if a simulated or pinned lookup returned no items, inspect its fixture and use ' +
+			'representative test input. If a live lookup or query returned no matching records, ' +
+			'seed matching test data only when the user has authorized that write, then re-run verification. ' +
+			'If a Code node dropped a collection, inspect `$input.first().json`; use ' +
+			'`$input.all().map(i => i.json)` when it needs all items. ' +
+			'HTTP Request splits a top-level array into separate items. ' +
+			'Do not report unreached nodes as verified.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -344,20 +394,22 @@ function buildCoverageNote(
 			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
 			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
-			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
-			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
-			'treating it as verified.'
+			'end-to-end test instead. Other unreached nodes remain unverified.' +
+			triggerScopeNote +
+			guidance
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			guidance
 		);
 	}
 	const ending = result.lastNodeExecuted
-		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
+		? `. Execution ended at "${result.lastNodeExecuted}".`
 		: '.';
-	const collapsedFromCollection = success && maxEmittedItemCount(result.data) >= 2;
-	const guidance = success
-		? collapsedFromCollection
-			? ' An upstream node emitted multiple items but the chain collapsed to zero before reaching them. The usual cause is a Code node reading `$input.first().json` (a single split item) instead of `$input.all().map(i => i.json)` — an HTTP Request node splits a top-level array (including a bare array of IDs) into one item per element. Fix the node that dropped the items to read every item, then re-run verification. Do NOT report the workflow as fully verified.'
-			: ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
-		: '';
 	return (
 		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
 		nodesNotReached.join(', ') +
@@ -390,6 +442,7 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;
 	nodesExecuted?: string[];
@@ -415,6 +468,10 @@ export function analyzeVerificationResult(args: {
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
+	/** Main-flow nodes and attached tools that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -425,6 +482,8 @@ export function analyzeVerificationResult(args: {
 		runId,
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
+		triggerNodeName,
+		verificationScope,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -436,16 +495,21 @@ export function analyzeVerificationResult(args: {
 	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
 	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
 		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
-		.map((name) => ({
-			nodeName: name,
-			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
-		}));
+		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
+	// An injected trigger (inputData or verification pin) never fired for real,
+	// so a run that starts from it is not a live test of the trigger either.
 	const reachedSimulatedNodes = [
 		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
 		...workflowPinnedNodes,
+		...injectedTriggerSimulations(
+			result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodes.map((n) => n.nodeName)]),
+		),
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
@@ -476,6 +540,7 @@ export function analyzeVerificationResult(args: {
 		success,
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames: workflowPinnedNodes.map((n) => n.nodeName),
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
@@ -485,6 +550,7 @@ export function analyzeVerificationResult(args: {
 			result,
 			success,
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
 		),
 		errorMessage,
 		nodeErrors,

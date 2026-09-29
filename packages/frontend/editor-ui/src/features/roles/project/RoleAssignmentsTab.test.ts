@@ -70,6 +70,51 @@ describe('RoleAssignmentsTab', () => {
 				expect(getByText('This role is not assigned in any projects yet.')).toBeInTheDocument();
 			});
 		});
+
+		it('should distinguish assignments the caller cannot access from no assignments', async () => {
+			rolesStore.fetchRoleAssignments.mockResolvedValue({
+				projects: [],
+				totalProjects: 4,
+			} as RoleAssignmentsResponse);
+
+			const { getByText, queryByText } = renderComponent({ props: { roleSlug: 'test-role' } });
+
+			await waitFor(() => {
+				expect(
+					getByText("This role is assigned in 4 projects you don't have access to."),
+				).toBeInTheDocument();
+			});
+			expect(queryByText('This role is not assigned in any projects yet.')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Partially visible assignments', () => {
+		it('should note how many projects are shown when some are hidden', async () => {
+			rolesStore.fetchRoleAssignments.mockResolvedValue({
+				projects: [createProject()],
+				totalProjects: 3,
+			} as RoleAssignmentsResponse);
+
+			const { getByText } = renderComponent({ props: { roleSlug: 'test-role' } });
+
+			await waitFor(() => {
+				expect(
+					getByText("Showing 1 of 3 projects. Projects you're not a member of are hidden."),
+				).toBeInTheDocument();
+			});
+		});
+
+		it('should not note anything when every assigned project is visible', async () => {
+			rolesStore.fetchRoleAssignments.mockResolvedValue(
+				createAssignmentsResponse([createProject()]),
+			);
+
+			const { queryByText } = renderComponent({ props: { roleSlug: 'test-role' } });
+
+			await waitFor(() => {
+				expect(queryByText(/Showing \d+ of \d+ projects/)).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	describe('Project listing', () => {

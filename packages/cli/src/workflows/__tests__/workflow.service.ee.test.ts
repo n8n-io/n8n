@@ -1,5 +1,7 @@
 import type {
 	CredentialsEntity,
+	CredentialsRepository,
+	FolderRepository,
 	Project,
 	SharedWorkflow,
 	User,
@@ -13,8 +15,19 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const flags = { credSharingEnabled: false };
+vi.mock('@/constants/credential-sharing', () => ({
+	isCredSharingEnabled: () => flags.credSharingEnabled,
+}));
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -22,24 +35,34 @@ describe('EnterpriseWorkflowService', () => {
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const workflowMutationHooks = mock<WorkflowMutationHooksProxy>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+	const projectService = mock<ProjectService>();
+	const folderRepository = mock<FolderRepository>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialsService = mock<CredentialsService>();
+	const ownershipService = mock<OwnershipService>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		flags.credSharingEnabled = false;
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
 			workflowRepository,
-			mock(), // credentialsRepository
-			mock(), // credentialsService
-			mock(), // ownershipService
-			mock(), // projectService
+			credentialsRepository,
+			credentialsService,
+			ownershipService,
+			projectService,
 			activeWorkflowManager,
-			mock(), // credentialsFinderService
+			credentialsFinderService,
 			mock(), // enterpriseCredentialsService
-			mock(), // workflowFinderService
-			mock(), // folderRepository
+			workflowFinderService,
+			folderRepository,
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
+			policyEnforcementService,
 		);
 	});
 
@@ -241,6 +264,78 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('addCredentialsToWorkflow()', () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		const buildWorkflow = () =>
+			mock<Parameters<EnterpriseWorkflowService['addCredentialsToWorkflow']>[0]>({
+				id: 'workflow-1',
+				nodes: [{ credentials: { googlePalmApi: { id: 'cred-1', name: 'Google' } } }],
+				usedCredentials: undefined,
+			});
+
+		beforeEach(() => {
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', name: 'Google', type: 'googlePalmApi' }),
+			]);
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((entity) =>
+				Object.assign(entity, { homeProject: null, sharedWithProjects: [] }),
+			);
+		});
+
+		it('describes every referenced credential regardless of access', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(workflow.usedCredentials).toMatchObject([
+				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
+			]);
+		});
+
+		it('when the flag is off, asks the project-scoped check', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				workflowId: 'workflow-1',
+			});
+			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
+		});
+
+		it('when the flag is on, asks the identity-based check instead', async () => {
+			flags.credSharingEnabled = true;
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(user, [
+				'cred-1',
+			]);
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
+		});
+
+		it('when the flag is on, a credential the identity check rejects is unusable', async () => {
+			flags.credSharingEnabled = true;
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: false }]);
+		});
+	});
+
 	describe('validateWorkflowCredentialUsage() - unresolved credentials', () => {
 		// Real objects, not mock<IWorkflowBase>, so the explicit null id survives.
 		const nodeWithNullCred = (id: string, name: string) =>
@@ -350,6 +445,96 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result).toBeUndefined();
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(workflowRepository.updateActiveState).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('transferWorkflow()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'My workflow',
+				nodes: [],
+				activeVersionId: null,
+				parentFolder: null,
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: sourceProject })],
+				...overrides,
+			});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let transferOwnershipSpy: ReturnType<typeof vi.spyOn<any, any>>;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let shareCredentialsSpy: ReturnType<typeof vi.spyOn<any, any>>;
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflow());
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
+			// Ownership transfer and credential sharing are exercised by their own
+			// describe blocks below; stubbed here so these tests isolate the
+			// policy-enforcement wiring in `transferWorkflow` itself.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			transferOwnershipSpy = vi
+				.spyOn(service as any, 'transferWorkflowOwnership')
+				.mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			shareCredentialsSpy = vi
+				.spyOn(service as any, 'shareCredentialsWithProject')
+				.mockResolvedValue(undefined);
+		});
+
+		it('calls enforceWorkflowTransfer with the target project, not the source', async () => {
+			const workflow = makeWorkflow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith({
+				workflow,
+				targetProjectId: destinationProject.id,
+			});
+		});
+
+		it('proceeds with the transfer unchanged when the policy check clears', async () => {
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(shareCredentialsSpy).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.update).toHaveBeenCalledWith(
+				{ id: 'wf-1' },
+				{ parentFolder: null },
+			);
+		});
+
+		it('blocks the transfer and performs no mutation when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValue(violation);
+
+			await expect(service.transferWorkflow(user, 'wf-1', 'proj-dest')).rejects.toThrow(violation);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(shareCredentialsSpy).not.toHaveBeenCalled();
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('resolves the destination project before enforcing the policy check', async () => {
+			const callOrder: string[] = [];
+			projectService.getProjectWithScope.mockImplementation(async () => {
+				callOrder.push('getProjectWithScope');
+				return destinationProject;
+			});
+			policyEnforcementService.enforceWorkflowTransfer.mockImplementation(async () => {
+				callOrder.push('enforceWorkflowTransfer');
+				return await mock();
+			});
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(callOrder).toEqual(['getProjectWithScope', 'enforceWorkflowTransfer']);
 		});
 	});
 

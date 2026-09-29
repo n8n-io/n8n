@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import { toPathSegment, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { dataSourceSearchFilterDescriptions, mapDataSourceFilters } from './DataSourceFilters';
 import { downloadFiles, type FileRecord } from '../../../shared/GenericFunctions';
@@ -471,6 +471,10 @@ export const description: INodeProperties[] = [
 			show: { resource: ['databasePage'], operation: ['create', 'get', 'getAll', 'update'] },
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'When true, database property keys use the property_ prefix and snake_case names. For example, Status is $json.property_status and Owner is $json.property_owner. Status values use the status name when present. Rich-text values are strings. People values are arrays of email addresses, with {} for missing emails; handle those entries when mapping to the type the destination expects. Use this same shape for downstream expressions and verification output fixtures. When false, read the native $json.properties structure. To use person display names, set false and read the name fields in the people array.',
+		},
 	},
 	getQueryOptions(),
 ];
@@ -573,7 +577,7 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/pages/${getPageId.call(this, i)}`,
+				`/pages/${toPathSegment(getPageId.call(this, i))}`,
 			);
 			const download = this.getNodeParameter('options.downloadFiles', i, false) as boolean;
 			const simple = this.getNodeParameter('simple', i) as boolean;
@@ -633,7 +637,7 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 				this,
 				'results',
 				'POST',
-				`/data_sources/${dataSourceId}/query`,
+				`/data_sources/${toPathSegment(dataSourceId)}/query`,
 				body,
 				limit ? { limit } : {},
 			);
@@ -678,7 +682,7 @@ export async function update(this: IExecuteFunctions, items: INodeExecutionData[
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${getPageId.call(this, i)}`,
+				`/pages/${toPathSegment(getPageId.call(this, i))}`,
 				body,
 			);
 			if (this.getNodeParameter('simple', i) as boolean)

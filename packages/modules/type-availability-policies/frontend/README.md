@@ -1,0 +1,47 @@
+# @n8n/frontend-module-type-availability-policies
+
+Frontend module for node type availability policies. The editor-ui shell consumes it from
+source through `src/app/modules.manifest.ts`, so there is no build step and no `dist`.
+
+The descriptor `id` must match the backend module id
+(`packages/cli/src/modules/type-availability-policies`). Both `settings.activeModules` and
+`/rest/module-settings` are keyed by that string, and a mismatch fails silently.
+
+The module is license-gated on `feat:typeAvailabilityPolicies` and is not a default module. Enable it
+in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`.
+
+`useTypeAvailabilityPoliciesStore` answers whether a project may use a node type. The store is
+passive: it does not watch the route or the active project, because the projects store lives in the
+shell. The shell calls `fetchForProject(projectId)` when a workflow opens or the active project
+changes, and `reload()` after a community node install, because the server answers only for the
+node types it has loaded. When the module is off, the request fails, a request is in flight for a
+different project, or nothing has loaded yet, every lookup reports "available".
+
+```bash
+pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
+```
+
+Use turbo and not `pnpm --filter`: this package reads its platform dependencies from source,
+and on a cold tree turbo builds them first.
+
+`useNodeTypeRestriction(type)` turns the store answer into `isRestricted` and `restrictionScope`
+for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
+shell reads restriction through these and never through the store directly.
+
+Tests stub the store through `mockRestrictedNodeTypes` from the module's `__tests__/mocks`.
+
+`ContactInstanceAdminModal` lists the instance owners with a mail link. The surfaces below render it
+as a sibling of their own content, so a popover that closes never unmounts the open dialog.
+`RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened
+popover and the dialog. The caller passes the row element and whether the row is keyboard-active.
+`RestrictedNodePanel` is the builder-facing explanation of a blocked node in the NDV, with the
+contact and replace actions. The shell renders the popover and the panel where a restricted node
+appears; the module owns their copy and behaviour.
+
+`getPolicyViolations(error)` reads the structured violations off a refused save, publish or run,
+and `PolicyViolationList` groups them by scope and lists each blocked node or credential type,
+with an optional jump. The shell resolves display names and the nodes to jump to, because only
+it holds the open workflow.
+
+`packages/@n8n/module-cli/frontend-module-guide.md` holds the descriptor contract, the
+registration points, the import boundaries and the setup a module needs to render UI.

@@ -8,7 +8,7 @@ import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from 
  */
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI out of credits @capability:proxy',
+	'Instance AI out of credits',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

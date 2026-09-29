@@ -5,7 +5,7 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import { jsonStringify } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../../instance-registry.types';
 import {
@@ -360,12 +360,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toBe(3);
 		});
 
-		it('should return 0 on error', async () => {
-			client.eval.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the cleanup script fails', async () => {
+			const error = new Error('timeout');
+			client.eval.mockRejectedValueOnce(error);
 
-			const result = await storage.cleanupStaleMembers();
-
-			expect(result).toBe(0);
+			await expect(storage.cleanupStaleMembers()).rejects.toBe(error);
 		});
 	});
 });

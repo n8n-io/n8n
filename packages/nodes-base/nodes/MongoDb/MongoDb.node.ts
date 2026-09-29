@@ -1,17 +1,20 @@
 import type {
+	AnyBulkWriteOperation,
+	Db,
 	FindOneAndReplaceOptions,
 	FindOneAndUpdateOptions,
 	UpdateOptions,
 	Sort,
 	MongoClient,
 } from 'mongodb';
-import { ObjectId } from 'mongodb';
+import { MongoBulkWriteError, ObjectId } from 'mongodb';
 import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INode,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -35,13 +38,144 @@ import type { IMongoParametricCredentials } from './mongoDb.types';
 import { nodeProperties } from './MongoDbProperties';
 import { generatePairedItemData } from '../../utils/utilities';
 
+function resolveIndexDefinition(
+	ctx: IExecuteFunctions,
+	node: INode,
+	itemIndex: number,
+): Record<string, unknown> {
+	return parseAndResolveQueryParameters(
+		ctx.getNodeParameter('indexDefinition', itemIndex) as string,
+		ctx.getNodeParameter('indexDefinitionParameters', itemIndex, []),
+		node,
+		itemIndex,
+		'Index Definition',
+	) as Record<string, unknown>;
+}
+
+interface BulkUpdateEntry {
+	op: AnyBulkWriteOperation;
+	item: IDataObject;
+	originalIndex: number;
+}
+
+/**
+ * Batches update/findOneAndUpdate items into one `bulkWrite` per collection.
+ * Both operations already discard the driver result and echo the prepared
+ * item, so the per-item output contract is unchanged.
+ */
+async function executeBulkUpdate(
+	ctx: IExecuteFunctions,
+	mdb: Db,
+	items: INodeExecutionData[],
+	itemsLength: number,
+	sanitizeErrorMessage: (error: unknown) => string,
+): Promise<INodeExecutionData[]> {
+	const continueOnFail = ctx.continueOnFail();
+	const returnData: INodeExecutionData[] = [];
+	const groups = new Map<string, BulkUpdateEntry[]>();
+
+	for (let i = 0; i < itemsLength; i++) {
+		try {
+			const fields = prepareFields(ctx.getNodeParameter('fields', i) as string);
+			const useDotNotation = Boolean(ctx.getNodeParameter('options.useDotNotation', i, false));
+			const dateFields = prepareFields(ctx.getNodeParameter('options.dateFields', i, '') as string);
+			const updateKey = ((ctx.getNodeParameter('updateKey', i) as string) || '').trim();
+			const upsert = Boolean(ctx.getNodeParameter('upsert', i));
+
+			const [item] = prepareItems({
+				items: [items[i]],
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				isUpdate: true,
+				node: ctx.getNode(),
+			});
+
+			if (!item) {
+				throw new NodeOperationError(ctx.getNode(), 'Item is missing the updateKey field', {
+					itemIndex: i,
+				});
+			}
+
+			const filter: IDataObject = { [updateKey]: item[updateKey] };
+			if (updateKey === '_id') {
+				filter[updateKey] = new ObjectId(item[updateKey] as string);
+				delete item._id;
+			}
+
+			const collection = ctx.getNodeParameter('collection', i) as string;
+			const group = groups.get(collection) ?? [];
+			groups.set(collection, group);
+			group.push({
+				op: { updateOne: { filter, update: { $set: item }, ...(upsert ? { upsert: true } : {}) } },
+				item,
+				originalIndex: i,
+			});
+		} catch (error) {
+			if (!continueOnFail) throw error;
+			returnData.push({
+				json: { error: sanitizeErrorMessage(error) },
+				pairedItem: { item: i },
+			});
+		}
+	}
+
+	for (const [collection, entries] of groups) {
+		try {
+			// Ordered stops at the first failure within a collection (the pre-1.5 per-item
+			// behaviour). Across interleaved collections it does not: groups run one at a
+			// time, so a later group's failure can't stop an already-run group — matches
+			// Insert, and only observable when `collection` is a per-item expression.
+			// Continue-on-fail flips to unordered: attempt every item independently.
+			await mdb.collection(collection).bulkWrite(
+				entries.map((entry) => entry.op),
+				{ ordered: !continueOnFail },
+			);
+			for (const entry of entries) {
+				returnData.push({ json: entry.item, pairedItem: { item: entry.originalIndex } });
+			}
+		} catch (error) {
+			if (!continueOnFail) throw error;
+
+			// writeErrors carry the op's position within this bulkWrite call.
+			// The driver types this as OneOrMore<WriteError>, so normalise to an array.
+			const failedOpIndexes = new Map<number, string>();
+			if (error instanceof MongoBulkWriteError) {
+				const writeErrors = [error.writeErrors].flat();
+				for (const writeError of writeErrors) {
+					failedOpIndexes.set(writeError.index, writeError.errmsg ?? error.message);
+				}
+			}
+
+			for (const [opIndex, entry] of entries.entries()) {
+				const failure = failedOpIndexes.get(opIndex);
+				// No per-op verdicts (e.g. a connection failure): treat the whole group as failed
+				if (failure !== undefined || failedOpIndexes.size === 0) {
+					returnData.push({
+						json: { error: sanitizeErrorMessage(failure ?? error) },
+						pairedItem: { item: entry.originalIndex },
+					});
+				} else {
+					returnData.push({ json: entry.item, pairedItem: { item: entry.originalIndex } });
+				}
+			}
+		}
+	}
+
+	returnData.sort(
+		(a, b) => (a.pairedItem as { item: number }).item - (b.pairedItem as { item: number }).item,
+	);
+	return returnData;
+}
+
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MongoDB',
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
@@ -140,7 +274,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as IDataObject;
@@ -174,7 +308,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as Document;
@@ -204,7 +338,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as IDataObject;
@@ -221,8 +355,23 @@ export class MongoDb implements INodeType {
 						const limit = options.limit as number;
 						const skip = options.skip as number;
 						const projection =
-							options.projection && (JSON.parse(options.projection as string) as Document);
-						const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
+							options.projection &&
+							(parseAndResolveQueryParameters(
+								options.projection as string,
+								options.projectionParameters ?? [],
+								node,
+								i,
+								'Projection',
+							) as Document);
+						const sort =
+							options.sort &&
+							(parseAndResolveQueryParameters(
+								options.sort as string,
+								options.sortParameters ?? [],
+								node,
+								i,
+								'Sort',
+							) as Sort);
 
 						if (skip > 0) {
 							query = query.skip(skip);
@@ -373,7 +522,11 @@ export class MongoDb implements INodeType {
 
 			if (operation === 'findOneAndUpdate') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
-				if (nodeVersion >= 1.3) {
+				if (nodeVersion >= 1.5) {
+					returnData = returnData.concat(
+						await executeBulkUpdate(this, mdb, items, itemsLength, sanitizeErrorMessage),
+					);
+				} else if (nodeVersion >= 1.3) {
 					for (let i = 0; i < itemsLength; i++) {
 						const fields = prepareFields(this.getNodeParameter('fields', i) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -612,7 +765,11 @@ export class MongoDb implements INodeType {
 
 			if (operation === 'update') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
-				if (nodeVersion >= 1.3) {
+				if (nodeVersion >= 1.5) {
+					returnData = returnData.concat(
+						await executeBulkUpdate(this, mdb, items, itemsLength, sanitizeErrorMessage),
+					);
+				} else if (nodeVersion >= 1.3) {
 					for (let i = 0; i < itemsLength; i++) {
 						const fields = prepareFields(this.getNodeParameter('fields', i) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -787,9 +944,7 @@ export class MongoDb implements INodeType {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
 						const indexType = this.getNodeParameter('indexType', i) as string;
-						const definition = JSON.parse(
-							this.getNodeParameter('indexDefinition', i) as string,
-						) as Record<string, unknown>;
+						const definition = resolveIndexDefinition(this, node, i);
 
 						await mdb.collection(collection).createSearchIndex({
 							name: indexName,
@@ -819,9 +974,7 @@ export class MongoDb implements INodeType {
 					try {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
-						const definition = JSON.parse(
-							this.getNodeParameter('indexDefinition', i) as string,
-						) as Record<string, unknown>;
+						const definition = resolveIndexDefinition(this, node, i);
 
 						await mdb.collection(collection).updateSearchIndex(indexName, definition);
 

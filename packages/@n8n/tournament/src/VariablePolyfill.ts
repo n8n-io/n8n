@@ -1,5 +1,5 @@
 import type { namedTypes } from 'ast-types';
-import { builders as b } from 'ast-types';
+import { builders as b, namedTypes as n } from 'ast-types';
 import type { StatementKind, VariableDeclaratorKind } from 'ast-types/lib/gen/kinds';
 import type { NodePath } from 'ast-types/lib/node-path';
 import type { Scope } from 'ast-types/lib/scope';
@@ -13,6 +13,26 @@ function assertNever(_value: never): _value is never {
 	return true;
 }
 
+// Captured at module load so printing stays stable even if the global is later replaced.
+const safeStringify = JSON.stringify;
+
+// A string literal carrying its own printed form. recast's printer emits `extra.raw`
+// verbatim (when it matches the value) instead of stringifying at print time.
+export const rawStringLiteral = (value: string) => {
+	const literal = b.literal(value);
+	// JSON.stringify leaves U+2028/U+2029 unescaped; since the raw form is printed
+	// verbatim, escape them so the emitted literal stays single-line and valid.
+	const raw = safeStringify(value)
+		.replace(/\u2028/g, '\\u2028')
+		.replace(/\u2029/g, '\\u2029');
+	// Attach `extra` in place so the ast-types node identity is preserved.
+	(literal as namedTypes.Literal & { extra?: { raw: string; rawValue: string } }).extra = {
+		raw,
+		rawValue: value,
+	};
+	return literal;
+};
+
 export const globalIdentifier = b.identifier(
 	// @ts-expect-error window not in lib target
 	typeof window !== 'object' ? 'global' : 'window',
@@ -21,7 +41,7 @@ export const globalIdentifier = b.identifier(
 const buildGlobalSwitch = (node: types.namedTypes.Identifier, dataNode: DataNode) => {
 	return b.memberExpression(
 		b.conditionalExpression(
-			b.binaryExpression('in', b.literal(node.name), dataNode),
+			b.binaryExpression('in', rawStringLiteral(node.name), dataNode),
 			dataNode,
 			globalIdentifier,
 		),
@@ -29,11 +49,90 @@ const buildGlobalSwitch = (node: types.namedTypes.Identifier, dataNode: DataNode
 	);
 };
 
+// Narrows a block-scoped declaration below the enclosing function ast-types scopes it to. Loop
+// types count: a loop-head declaration is visible in both the head and the body. StaticBlock and
+// ForAwaitStatement are omitted — esprima-next never emits either.
+const REGION_TYPES: ReadonlySet<string> = new Set<namedTypes.ASTNode['type']>([
+	'BlockStatement',
+	'SwitchStatement',
+	'Program',
+	'ForStatement',
+	'ForInStatement',
+	'ForOfStatement',
+]);
+
+// Node bounding the binding's visibility, or 'scope' for the whole scope. `undefined` is an
+// unmodelled form, treated as not visible so the identifier gets rewritten.
+type BindingRegion = namedTypes.Node | 'scope' | undefined;
+
+const WHOLE_SCOPE: BindingRegion = 'scope';
+
+const lexicalRegionOf = (declaration: NodePath): BindingRegion => {
+	for (let ancestor: NodePath | null = declaration.parent; ancestor; ancestor = ancestor.parent) {
+		const node: namedTypes.Node = ancestor.node;
+		if (REGION_TYPES.has(node.type)) {
+			return node;
+		}
+	}
+	return undefined;
+};
+
+const bindingRegionOf = (binding: NodePath): BindingRegion => {
+	for (let ancestor: NodePath | null = binding.parent; ancestor; ancestor = ancestor.parent) {
+		const node: namedTypes.Node = ancestor.node;
+		if (n.VariableDeclaration.check(node)) {
+			return node.kind === 'var' ? WHOLE_SCOPE : lexicalRegionOf(ancestor);
+		}
+		if (n.ClassDeclaration.check(node)) {
+			return lexicalRegionOf(ancestor);
+		}
+		if (n.FunctionDeclaration.check(node)) {
+			// Params stay scoped to the function itself.
+			if (node.id !== binding.node) {
+				return WHOLE_SCOPE;
+			}
+			// Sloppy mode can also hoist a block-scoped function decl into the enclosing var scope
+			// (Annex B), but only conditionally, so this ignores that and narrows to the block —
+			// same as strict mode. A braceless body (`if (x) function f() {}`) has no block to
+			// narrow to, so it resolves to whichever region encloses the statement.
+			return lexicalRegionOf(ancestor);
+		}
+		if (n.CatchClause.check(node) || n.Function.check(node)) {
+			return WHOLE_SCOPE;
+		}
+	}
+	return undefined;
+};
+
+const regionContains = (region: namedTypes.Node, path: NodePath) => {
+	let child: NodePath = path;
+	for (let ancestor: NodePath | null = path.parent; ancestor; ancestor = ancestor.parent) {
+		if (ancestor.node === region) {
+			// A switch discriminant runs before the case body's environment is entered; a case test doesn't.
+			return !(n.SwitchStatement.check(region) && child.node === region.discriminant);
+		}
+		child = ancestor;
+	}
+	return false;
+};
+
 const isInScope = (path: NodePath<types.namedTypes.Identifier>) => {
+	const { name } = path.node;
 	let scope = path.scope as Scope;
 	while (scope !== null) {
-		if (scope.declares(path.node.name)) {
-			return true;
+		// declares() is hasOwn — must gate the lookup below, since bindings is a plain object and
+		// a name like `constructor` would otherwise read off Object.prototype.
+		if (scope.declares(name)) {
+			const declaringPaths: NodePath[] = scope.getBindings()[name] ?? [];
+			for (const binding of declaringPaths) {
+				const region = bindingRegionOf(binding);
+				if (region === 'scope') {
+					return true;
+				}
+				if (region !== undefined && regionContains(region, path)) {
+					return true;
+				}
+			}
 		}
 		scope = scope.parent as Scope;
 	}

@@ -93,6 +93,7 @@ interface IAgentSessionMetrics {
 interface IAgentSessionMetricsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
+		user_id?: string;
 		agent_type: IAgentTurnFinishedTrackProperties['agent_type'];
 		run_type: IAgentTurnFinishedTrackProperties['run_type'];
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
@@ -106,8 +107,6 @@ export class Telemetry {
 	private rudderStack?: RudderStack;
 
 	private userCloudId?: string;
-
-	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
@@ -190,7 +189,7 @@ export class Telemetry {
 
 			const { httpAgent, httpsAgent } = this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
 				})
 				.getNodeAgent();
 			const axiosConfig: AxiosRequestConfig = {
@@ -208,21 +207,14 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
 	}
 
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
-	}
-
-	private async pulse() {
+	/**
+	 * Sends the events buffered in this process and empties the buffers. Does
+	 * nothing while diagnostics are off, because nothing buffers then.
+	 */
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -230,21 +222,18 @@ export class Telemetry {
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
 		this.flushAgentSessionMetrics();
+		this.flushApiInvocations();
+	}
 
-		// Flush API invocation counts
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
-			}
+	/**
+	 * Sends one `pulse` packet of license and usage counters. The counters
+	 * describe the whole instance, so a second sender reports the same numbers
+	 * again. Does nothing while diagnostics are off.
+	 */
+	async sendPulsePacket(): Promise<void> {
+		if (!this.rudderStack) {
+			return;
 		}
-		this.apiInvocationsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
@@ -264,6 +253,22 @@ export class Telemetry {
 		};
 
 		this.track('pulse', pulsePacket);
+	}
+
+	private flushApiInvocations() {
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -325,6 +330,7 @@ export class Telemetry {
 	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
 		return [
 			properties.agent_id,
+			properties.user_id,
 			properties.run_type,
 			properties.turn_status,
 			JSON.stringify(properties.configuration),
@@ -349,6 +355,7 @@ export class Telemetry {
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
 				agent_id: bucket.agent_id,
+				...(bucket.user_id ? { user_id: bucket.user_id } : {}),
 				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
 				...bucket.configuration,
 				run_type: bucket.run_type,
@@ -460,6 +467,7 @@ export class Telemetry {
 		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
 		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
 			agent_id: properties.agent_id,
+			user_id: properties.user_id,
 			agent_type: properties.agent_type,
 			run_type: properties.run_type,
 			turn_status: properties.turn_status,
@@ -510,8 +518,6 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 

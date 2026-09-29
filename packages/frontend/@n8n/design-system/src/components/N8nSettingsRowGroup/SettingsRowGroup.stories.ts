@@ -8,7 +8,7 @@ import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSwitch from '../N8nSwitch';
 
 const meta = {
-	title: 'Areas/Settings/Settings Row Group',
+	title: 'Areas/Settings/SettingsRowGroup',
 	component: N8nSettingsRowGroup,
 	parameters: {
 		docs: {

@@ -1,16 +1,14 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import type { UrlService } from '@/services/url.service';
+import { BadRequestError, ConflictError } from '@n8n/errors';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
@@ -56,7 +54,6 @@ const makeIntegration = (
 		urlService?: Mocked<UrlService>;
 		agentRepository?: Mocked<AgentRepository>;
 		encryptionKey?: string;
-		ssrfEnabled?: boolean;
 	} = {},
 ) => {
 	const urlService =
@@ -74,16 +71,12 @@ const makeIntegration = (
 	const requestMock = httpClient.request as Mock;
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.requests.mockReturnValue(httpClient);
-	const ssrfConfig = { enabled: opts.ssrfEnabled ?? false } as SsrfProtectionConfig;
-	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const integration = new TelegramIntegration(
 		mock<Logger>(),
 		urlService,
 		agentRepository,
 		instanceSettings,
 		outboundHttp,
-		ssrfConfig,
-		ssrfProtectionService,
 	);
 	return {
 		integration,
@@ -92,7 +85,6 @@ const makeIntegration = (
 		instanceSettings,
 		outboundHttp,
 		requestMock,
-		ssrfProtectionService,
 	};
 };
 
@@ -408,24 +400,13 @@ describe('TelegramIntegration secret token', () => {
 		expect(request.body.secret_token).toBe(expectedSecret('cluster-key', 'agent-Z', 'cred-Z'));
 	});
 
-	it('onAfterConnect applies SSRF protection when enabled (user-configurable Bot API host)', async () => {
-		const { integration, requestMock, outboundHttp, ssrfProtectionService } = makeIntegration({
-			ssrfEnabled: true,
-		});
+	it('onAfterConnect uses the default safe client (user-configurable Bot API host)', async () => {
+		const { integration, requestMock, outboundHttp } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onAfterConnect(makeContext());
 
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
-	});
-
-	it('onAfterConnect disables SSRF protection when the global flag is off', async () => {
-		const { integration, requestMock, outboundHttp } = makeIntegration({ ssrfEnabled: false });
-		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
-
-		await integration.onAfterConnect(makeContext());
-
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(outboundHttp.requests).toHaveBeenCalledWith();
 	});
 
 	it('onAfterConnect throws when Telegram rejects setWebhook', async () => {

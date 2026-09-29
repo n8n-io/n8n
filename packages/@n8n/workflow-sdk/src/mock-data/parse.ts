@@ -32,7 +32,7 @@ export function parsePinDataResponse(responseText: string, expectedNodes: string
 				// The execution engine expects { json: IDataObject } format.
 				// The LLM may return items with or without the json wrapper.
 				if (typeof item === 'object' && item !== null && 'json' in item) {
-					return item as Record<string, unknown>;
+					return item;
 				}
 				// Wrap raw objects in { json: ... } for the execution engine
 				return { json: item ?? {} };

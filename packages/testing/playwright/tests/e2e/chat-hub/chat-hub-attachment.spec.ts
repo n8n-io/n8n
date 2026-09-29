@@ -7,7 +7,7 @@ import { test, expect, chatHubTestConfig } from './fixtures';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'File attachment @capability:proxy',
+	'File attachment',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

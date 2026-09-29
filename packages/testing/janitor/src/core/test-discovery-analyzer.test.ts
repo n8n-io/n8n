@@ -178,43 +178,110 @@ test('outside', async () => {});
 		});
 	});
 
-	describe('capability extraction', () => {
-		it('extracts capability from test title tag', () => {
+	describe('worker requirement extraction', () => {
+		it('extracts a named capability from test.use()', () => {
 			const file = createFile(
 				'tests/email.spec.ts',
-				"test('sends email @capability:email', async () => {});",
+				"test.use({ capability: 'email' }); test('sends email', async () => {});",
 			);
 			const report = discoverWith([file]);
 
 			expect(report.specs[0].capabilities).toEqual(['email']);
+			expect(report.specs[0].services).toEqual([]);
 		});
 
-		it('extracts multiple capabilities', () => {
+		it('extracts services from an inline capability', () => {
 			const file = createFile(
-				'tests/multi.spec.ts',
+				'tests/services.spec.ts',
 				`
-test.describe('multi @capability:proxy', () => {
-	test('also email @capability:email', async () => {});
-});
+	test.use({ capability: { services: ['sandbox', 'proxy'] } });
+	test('uses services', async () => {});
 `,
 			);
 			const report = discoverWith([file]);
 
-			expect(report.specs[0].capabilities).toEqual(['email', 'proxy']);
+			expect(report.specs[0].capabilities).toEqual([]);
+			expect(report.specs[0].services).toEqual(['proxy', 'sandbox']);
 		});
 
-		it('collects capabilities from describe-level tags', () => {
+		it('resolves a shorthand capability property', () => {
 			const file = createFile(
-				'tests/describe-cap.spec.ts',
+				'tests/shorthand.spec.ts',
 				`
-test.describe('email tests @capability:email', () => {
-	test('sends email', async () => {});
-});
+	const capability = { services: ['proxy'] };
+	test.use({ capability });
+	test('uses shorthand config', async () => {});
 `,
 			);
 			const report = discoverWith([file]);
 
-			expect(report.specs[0].capabilities).toEqual(['email']);
+			expect(report.specs[0].services).toEqual(['proxy']);
+		});
+
+		it('resolves an imported shared configuration', () => {
+			createFile(
+				'fixtures/shared.ts',
+				`
+	export const sharedConfig = { capability: { services: ['proxy'] } };
+`,
+			);
+			const file = createFile(
+				'tests/imported.spec.ts',
+				`
+	import { sharedConfig } from '../fixtures/shared';
+	test.use(sharedConfig);
+	test('uses shared config', async () => {});
+`,
+			);
+			const report = discoverWith([file]);
+
+			expect(report.specs[0].services).toEqual(['proxy']);
+		});
+
+		it('resolves a nested property reference', () => {
+			createFile(
+				'fixtures/nested.ts',
+				`
+	export const baseConfig = { capability: { services: ['proxy', 'sandbox'] } };
+	export const nestedConfig = {
+		capability: { services: baseConfig.capability.services },
+	};
+`,
+			);
+			const file = createFile(
+				'tests/nested.spec.ts',
+				`
+	import { nestedConfig } from '../fixtures/nested';
+	test.use(nestedConfig);
+	test('uses nested config', async () => {});
+`,
+			);
+			const report = discoverWith([file]);
+
+			expect(report.specs[0].services).toEqual(['proxy', 'sandbox']);
+		});
+
+		it('uses empty requirements when test.use() is absent', () => {
+			const file = createFile('tests/default.spec.ts', "test('uses defaults', async () => {});");
+			const report = discoverWith([file]);
+
+			expect(report.specs[0].capabilities).toEqual([]);
+			expect(report.specs[0].services).toEqual([]);
+		});
+
+		it('fails when a test.use() configuration cannot be resolved', () => {
+			const file = createFile(
+				'tests/unresolved.spec.ts',
+				`
+	const makeConfig = () => ({ capability: { services: ['proxy'] } });
+	test.use(makeConfig());
+	test('uses computed config', async () => {});
+`,
+			);
+
+			expect(() => discoverWith([file])).toThrow(
+				'Cannot resolve test.use() in tests/unresolved.spec.ts',
+			);
 		});
 	});
 
@@ -288,18 +355,6 @@ test('active', async () => {});
 			const report = discoverWith([file]);
 
 			expect(report.skipTags).toEqual(['@wip', '@local-only']);
-		});
-	});
-
-	describe('template literal titles', () => {
-		it('parses tags from backtick template literals', () => {
-			const file = createFile(
-				'tests/template.spec.ts',
-				'test(`sends email @capability:email`, async () => {});',
-			);
-			const report = discoverWith([file]);
-
-			expect(report.specs[0].capabilities).toEqual(['email']);
 		});
 	});
 });

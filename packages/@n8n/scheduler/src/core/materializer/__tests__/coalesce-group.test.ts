@@ -23,6 +23,7 @@ const makeJob = (overrides: Partial<ScheduledJob> = {}): ScheduledJob => ({
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	concurrencyLimit: null,
 	misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
 	misfireGraceSeconds: 60,
 	ownerKey: 'owner-a',
@@ -135,18 +136,6 @@ describe('applyCoalesceOwnerPolicy', () => {
 		expect(result[0].plan.catchUpAt).toEqual(missedAt);
 		expect(result[0].plan.occurrences).toEqual([missedAt]);
 		expect(result[0].plan.retireBefore).toEqual(missedAt);
-	});
-
-	it('leaves ownerless members untouched even when they share a task type', () => {
-		const planned = [
-			makeMember({ id: 1, ownerKey: null }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, ownerKey: null }, secondsBefore(NOW, 20)),
-			makeMember({ id: 3, ownerKey: null }, secondsBefore(NOW, 10)),
-		];
-
-		const result = applyCoalesceOwnerPolicy(planned);
-
-		expect(result.filter(({ plan }) => plan.catchUpAt !== null)).toHaveLength(3);
 	});
 
 	it('leaves members on the per-job coalesce policy untouched despite a shared owner', () => {

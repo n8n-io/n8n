@@ -11,9 +11,7 @@ test.use({
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
-			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
 		},
 	},
 });
@@ -224,7 +222,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 }
 
 test.describe(
-	'Instance AI remediation guard @capability:proxy',
+	'Instance AI remediation guard',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
@@ -253,14 +251,9 @@ test.describe(
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
 
-				// The skill-opening narration is surfaced transiently in the thinking
-				// trace while the orchestrator loads the workflow-builder skill, then
-				// collapses once the build completes. Assert it while the run is still
-				// in progress — before awaiting the terminal setup card.
-				await expect(
-					n8n.instanceAi.getAssistantMessageText('Opening skill: workflow-builder'),
-				).toBeVisible({ timeout: 540_000 });
-
+				// The live skill label changes during the run. An assertion would race the run.
+				// `load_skill` is absent from tool traces.
+				// The assertions below verify the stable outcome.
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 

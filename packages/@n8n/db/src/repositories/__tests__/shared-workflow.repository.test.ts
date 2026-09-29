@@ -3,7 +3,7 @@ import { In, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Project } from '../../entities';
+import type { Folder, Project, WorkflowEntity } from '../../entities';
 import { SharedWorkflow } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
@@ -24,6 +24,98 @@ describe('SharedWorkflowRepository', () => {
 		queryBuilder.select.mockReturnThis();
 
 		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+	});
+
+	describe('findOwnedWorkflowRemovalCandidates', () => {
+		const rootWorkflow = mock<WorkflowEntity>({
+			id: 'root',
+			name: 'Root workflow',
+			parentFolder: null,
+		});
+		const folderWorkflow = mock<WorkflowEntity>({
+			id: 'nested',
+			name: 'Nested workflow',
+			parentFolder: mock<Folder>({ id: 'folder' }),
+		});
+		const rootRow = mock<SharedWorkflow>({ workflow: rootWorkflow });
+		const folderRow = mock<SharedWorkflow>({ workflow: folderWorkflow });
+
+		it('returns no candidates without querying for an empty list', async () => {
+			expect(
+				await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', []),
+			).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('limits the query to distinct requested ids owned by the project and not archived', async () => {
+			entityManager.find.mockResolvedValue([rootRow, folderRow]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', [
+				'root',
+				'nested',
+				'root',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledExactlyOnceWith(SharedWorkflow, {
+				where: {
+					projectId: 'project',
+					workflowId: In(['root', 'nested']),
+					role: 'workflow:owner',
+					workflow: { isArchived: false },
+				},
+				relations: { workflow: { parentFolder: true } },
+				select: {
+					workflowId: true,
+					workflow: { id: true, name: true, parentFolder: { id: true } },
+				},
+			});
+			expect(result).toEqual([
+				{ id: 'root', name: 'Root workflow', parentFolderId: null },
+				{ id: 'nested', name: 'Nested workflow', parentFolderId: 'folder' },
+			]);
+		});
+
+		it('combines candidates from bounded queries for a large list', async () => {
+			const middleIds = Array.from({ length: 9_999 }, (_, index) => `workflow-${index}`);
+			entityManager.find.mockResolvedValueOnce([rootRow]).mockResolvedValueOnce([folderRow]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', [
+				'root',
+				...middleIds,
+				'root',
+				'nested',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(
+				1,
+				SharedWorkflow,
+				expect.objectContaining({
+					where: {
+						projectId: 'project',
+						workflowId: In(['root', ...middleIds]),
+						role: 'workflow:owner',
+						workflow: { isArchived: false },
+					},
+				}),
+			);
+			expect(entityManager.find).toHaveBeenNthCalledWith(
+				2,
+				SharedWorkflow,
+				expect.objectContaining({
+					where: {
+						projectId: 'project',
+						workflowId: In(['nested']),
+						role: 'workflow:owner',
+						workflow: { isArchived: false },
+					},
+				}),
+			);
+			expect(result).toEqual([
+				{ id: 'root', name: 'Root workflow', parentFolderId: null },
+				{ id: 'nested', name: 'Nested workflow', parentFolderId: 'folder' },
+			]);
+		});
 	});
 
 	describe('getSharedPersonalWorkflowsCount', () => {
@@ -95,6 +187,105 @@ describe('SharedWorkflowRepository', () => {
 			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(['wf-1']);
 
 			expect(result).toEqual(new Map());
+		});
+
+		it('merges owner projects returned from different chunks', async () => {
+			const firstProject = mock<Project>({ id: 'first-project' });
+			const lastProject = mock<Project>({ id: 'last-project' });
+			entityManager.find
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'first', project: firstProject }),
+				])
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'last', project: lastProject }),
+				]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(result).toEqual(
+				new Map([
+					['first', firstProject],
+					['last', lastProject],
+				]),
+			);
+		});
+	});
+
+	describe('findWorkflowIdsInUserProjects', () => {
+		it('returns an empty set without querying when there are no workflow ids', async () => {
+			const result = await sharedWorkflowRepository.findWorkflowIdsInUserProjects([], 'user-1', [
+				'project:admin',
+			]);
+
+			expect(result).toEqual(new Set());
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty set without querying when no project role carries the scope', async () => {
+			const result = await sharedWorkflowRepository.findWorkflowIdsInUserProjects(
+				['workflow-1'],
+				'user-1',
+				[],
+			);
+
+			expect(result).toEqual(new Set());
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('joins through the project relation and returns each id once', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				// Same workflow reachable through two of the user's projects.
+				mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				mock<SharedWorkflow>({ workflowId: 'workflow-2' }),
+			]);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsInUserProjects(
+				['workflow-1', 'workflow-2', 'workflow-3'],
+				'user-1',
+				['project:admin', 'project:viewer'],
+			);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: { workflowId: true },
+				where: {
+					workflowId: In(['workflow-1', 'workflow-2', 'workflow-3']),
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: In(['project:admin', 'project:viewer']) },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(new Set(['workflow-1', 'workflow-2']));
+		});
+
+		it('chunks the workflow ids and issues one query per chunk', async () => {
+			entityManager.find
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-0' })])
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-10000' })]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsInUserProjects(
+				workflowIds,
+				'user-1',
+				['project:admin'],
+			);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedWorkflow, {
+				select: { workflowId: true },
+				where: {
+					workflowId: In(['workflow-10000']),
+					project: {
+						projectRelations: { userId: 'user-1', role: { slug: In(['project:admin']) } },
+					},
+				},
+			});
+			expect(result).toEqual(new Set(['workflow-0', 'workflow-10000']));
 		});
 	});
 });

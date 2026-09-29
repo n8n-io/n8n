@@ -11,7 +11,7 @@ import {
 	type NumericLicenseFeature,
 } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
@@ -106,7 +106,8 @@ export class License implements LicenseProvider {
 				server,
 				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: shouldRenew,
+				autoRenewEnabled: autoRenewalEnabled,
+				autoRenewTimer: false,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
 				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
@@ -243,6 +244,11 @@ export class License implements LicenseProvider {
 		await this.manager.reload();
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
+	}
+
+	/** Runs one auto-renewal pass, gated by the SDK on its auto-renewal flag. */
+	async renewIfDue(): Promise<void> {
+		await this.manager?.renewIfDue();
 	}
 
 	async renew() {
@@ -539,16 +545,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState` instead. */
 	isWithinUsersLimit() {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
-	}
-
-	@OnLeaderTakeover()
-	enableAutoRenewals() {
-		this.manager?.enableAutoRenewals();
-	}
-
-	@OnLeaderStepdown()
-	disableAutoRenewals() {
-		this.manager?.disableAutoRenewals();
 	}
 
 	private onExpirySoon() {

@@ -1,18 +1,12 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { confluenceApiRequest, confluenceApiRequestBinary } from '../../transport';
+import { confluenceApiRequestBinary } from '../../transport';
 import {
-	PAGE_LIMIT,
-	extractNextCursor,
+	fetchPaginatedResults,
 	optionalSpaceRLC,
 	pageRLC,
 	parsePositiveInt,
@@ -21,11 +15,7 @@ import {
 import type { ConfluenceBinaryOperation } from '../router';
 
 const properties: INodeProperties[] = [
-	{
-		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
-	},
+	optionalSpaceRLC,
 	{
 		...pageRLC,
 		description: 'The page whose attachments to fetch',
@@ -82,27 +72,8 @@ export const execute: ConfluenceBinaryOperation = async function (
 	const download = this.getNodeParameter('download', itemIndex, false);
 	const endpoint = `/wiki/api/v2/pages/${encodeURIComponent(pageId)}/attachments`;
 
-	const attachments: IDataObject[] = [];
-	let cursor: string | undefined;
-	const seenCursors = new Set<string>();
-	do {
-		const qs: IDataObject = { limit: Math.min(limit - attachments.length, PAGE_LIMIT) };
-		if (cursor !== undefined) qs.cursor = cursor;
-
-		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, qs);
-		const records = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
-		attachments.push.apply(attachments, records);
-
-		const next = extractNextCursor(response);
-		// A next link revisiting any earlier page would loop forever under Return All
-		if (next === undefined || seenCursors.has(next)) break;
-		seenCursors.add(next);
-		cursor = next;
-	} while (attachments.length < limit);
-
-	const items: INodeExecutionData[] = (returnAll ? attachments : attachments.slice(0, limit)).map(
-		(attachment) => ({ json: attachment }),
-	);
+	const attachments = await fetchPaginatedResults.call(this, endpoint, limit);
+	const items: INodeExecutionData[] = attachments.map((attachment) => ({ json: attachment }));
 
 	if (download) {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex, 'data');

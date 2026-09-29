@@ -73,7 +73,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('picks the most recently updated usable credential of the node type', () => {
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			older: createCredential({
 				id: 'older',
 				name: 'Older',
@@ -93,7 +93,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when the node already has a credential set', () => {
-		credentialsStore.state.credentials = { older: createCredential({ id: 'older' }) };
+		credentialsStore.usableCredentials = { older: createCredential({ id: 'older' }) };
 
 		const node = createNode({
 			credentials: { openAiApi: { id: 'older', name: 'Older' } },
@@ -103,16 +103,41 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when no usable credentials of the required type exist', () => {
-		credentialsStore.state.credentials = {};
+		credentialsStore.usableCredentials = {};
 
 		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
+	});
+
+	it('ignores credentials the scoped fetch left out of the usable slice', () => {
+		// Paste/duplicate into a project must not auto-assign a credential that
+		// project cannot use, which the backend would then reject on save.
+		credentialsStore.state.credentials = { personal: createCredential({ id: 'personal' }) };
+		credentialsStore.usableCredentials = {};
+
+		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
+	});
+
+	it('picks from the host-supplied list when one is given, even with an empty slice', () => {
+		// Must agree with the dropdown, which renders the same list — otherwise
+		// "nothing to auto-select" would fire while rows are visibly listed.
+		credentialsStore.usableCredentials = {};
+
+		expect(
+			getAutoSelectedCredential(createNode(), 'openAiApi', [
+				createCredential({ id: 'older', name: 'Older', updatedAt: '2024-01-01T00:00:00.000Z' }),
+				createCredential({ id: 'newer', name: 'Newer', updatedAt: '2024-06-01T00:00:00.000Z' }),
+			]),
+		).toEqual({
+			credentialType: 'openAiApi',
+			credential: { id: 'newer', name: 'Newer' },
+		});
 	});
 
 	it('returns undefined for a node type without credentials', () => {
 		nodeTypesStore.setNodeTypes([
 			{ ...openAiNodeType, name: 'n8n-nodes-base.noOp', credentials: undefined },
 		]);
-		credentialsStore.state.credentials = { older: createCredential() };
+		credentialsStore.usableCredentials = { older: createCredential() };
 
 		const node = createNode({ type: 'n8n-nodes-base.noOp' });
 
@@ -124,7 +149,7 @@ describe('getAutoSelectedCredential', () => {
 			openAiApi: openAiApiCredentialType,
 			slackApi: { ...openAiApiCredentialType, name: 'slackApi', displayName: 'Slack' },
 		};
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			openai: createCredential({
 				id: 'openai',
 				name: 'OpenAI',

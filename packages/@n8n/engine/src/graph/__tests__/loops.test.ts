@@ -12,7 +12,12 @@ function makeGraph(
 	const typeOf = (id: string): StepType =>
 		id === 'trigger' ? 'trigger' : batch.includes(id) ? 'batch' : 'v1-node';
 	return {
-		nodes: nodeIds.map((id) => ({ id, name: id.toUpperCase(), type: typeOf(id) })),
+		nodes: nodeIds.map((id) => ({
+			id,
+			name: id.toUpperCase(),
+			type: typeOf(id),
+			...(batch.includes(id) ? { config: { batchSize: 1 } } : {}),
+		})),
 		edges: edges.map((edge) => ({ outputIndex: 0, inputIndex: 0, ...edge })),
 	};
 }
@@ -567,6 +572,37 @@ describe('validateLoops', () => {
 		);
 
 		expect(() => validateLoops(graph)).toThrow(/not a batch node/);
+	});
+
+	it('rejects a batch node with no batch size, before any state exists for it', () => {
+		// finding out mid-execution would fail a step that already claimed its work
+		const graph = makeGraph(
+			[
+				{ from: 'trigger', to: 'B' },
+				{ from: 'B', to: 'x', outputIndex: 1 },
+				{ from: 'x', to: 'B', isBackEdge: true },
+			],
+			{ batch: ['B'] },
+		);
+		graph.nodes = graph.nodes.map((node) => (node.id === 'B' ? { ...node, config: {} } : node));
+
+		expect(() => validateLoops(graph)).toThrow(/no batch size/);
+	});
+
+	it('rejects a trigger inside a loop, which could never start', () => {
+		// nothing outside points in, so the loop would open at iteration 1 with no
+		// iteration 0, and its ledger would never close
+		const graph = makeGraph(
+			[
+				{ from: 'B', to: 'trigger', outputIndex: 1 },
+				{ from: 'trigger', to: 'x' },
+				{ from: 'x', to: 'B', isBackEdge: true },
+				{ from: 'B', to: 'd', outputIndex: 0 },
+			],
+			{ batch: ['B'] },
+		);
+
+		expect(() => validateLoops(graph)).toThrow(/could never start/);
 	});
 
 	it('rejects a nested loop (rule 5)', () => {

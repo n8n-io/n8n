@@ -8,7 +8,12 @@ import {
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
+import {
+	WorkflowRepository,
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -484,6 +489,51 @@ describe('WorkflowRepository', () => {
 			expect(workflowIds).not.toContain(workflow3.id);
 		});
 
+		it('should return workflows whose rows an older indexer version wrote', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Indexed at the current version counter, but by an older indexer version.
+			const outdatedWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 3,
+				publishedVersionId: null,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Indexed by the current indexer version.
+			const currentWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			const dependencies = new WorkflowDependencies(currentWorkflow.id, 3);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
+		});
+
 		it('should respect the batch size limit', async () => {
 			//
 			// ARRANGE
@@ -506,6 +556,62 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('findWorkflowsNeedingPublishedVersionIndexing', () => {
+		it('should return active workflows with missing or outdated published rows', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Active, but no published dependency rows exist.
+			const unindexedWorkflow = await createActiveWorkflow();
+
+			// Published rows exist, but an older indexer version wrote them.
+			const outdatedWorkflow = await createActiveWorkflow();
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 1,
+				publishedVersionId: outdatedWorkflow.activeVersionId,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Published rows exist at the current indexer version.
+			const currentWorkflow = await createActiveWorkflow();
+			const dependencies = new WorkflowDependencies(
+				currentWorkflow.id,
+				1,
+				currentWorkflow.activeVersionId,
+			);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing =
+				await workflowRepository.findWorkflowsNeedingPublishedVersionIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(unindexedWorkflow.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
 		});
 	});
 

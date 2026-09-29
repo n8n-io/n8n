@@ -10,11 +10,11 @@ import {
 	evictLeftoverSeedTables,
 	reseedScenarioTables,
 	scenariosRequireSerialSeeding,
-	uniquifyScenarioTableNames,
+	uniquifySeedTableNames,
 } from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
 
-// TRUST-311 follow-up: scenario data tables are created EMPTY before the build
+// Scenario data tables are created EMPTY before the build
 // turn (so the agent discovers the real table and binds its real id), then row-
 // seeded per scenario just before that scenario executes (so build-time row
 // mutations don't leak across scenarios, and scenarios can carry different rows).
@@ -148,6 +148,49 @@ function makeClient(seedDataTableRows: Mock): N8nClient {
 }
 
 describe('reseedScenarioTables', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('reduces the next request budget by the time spent seeding earlier tables', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now += 600;
+			await Promise.resolve();
+		});
+
+		await reseedScenarioTables(
+			makeClient(seedDataTableRows),
+			scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+			'thread-1',
+			{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+			silentLogger,
+			2_000,
+		);
+
+		expect(seedDataTableRows.mock.calls.map((call) => call[3])).toEqual([1_000, 400]);
+	});
+
+	it('does not seed the next table when the previous request consumes the deadline', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now = 2_000;
+			await Promise.resolve();
+		});
+
+		await expect(
+			reseedScenarioTables(
+				makeClient(seedDataTableRows),
+				scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+				'thread-1',
+				{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+				silentLogger,
+				2_000,
+			),
+		).rejects.toThrow('Case timed out');
+		expect(seedDataTableRows).toHaveBeenCalledTimes(1);
+	});
+
 	it('clears + seeds each declared table by its bound real id', async () => {
 		const seedDataTableRows = vi.fn().mockResolvedValue(undefined);
 		const client = makeClient(seedDataTableRows);
@@ -160,7 +203,12 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', jobApplications.rows);
+		expect(seedDataTableRows).toHaveBeenCalledWith(
+			'thread-1',
+			'dt-real-1',
+			jobApplications.rows,
+			undefined,
+		);
 	});
 
 	it('seeds an empty row set when a table declares no rows', async () => {
@@ -176,7 +224,7 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', []);
+		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', [], undefined);
 	});
 
 	it('does nothing when the scenario declares no seed tables', async () => {
@@ -205,10 +253,10 @@ describe('reseedScenarioTables', () => {
 	});
 });
 
-describe('uniquifyScenarioTableNames', () => {
+describe('uniquifySeedTableNames', () => {
 	it('suffixes each table so two runs of one case do not contend for the name', () => {
-		const [first] = uniquifyScenarioTableNames([jobApplications]);
-		const [second] = uniquifyScenarioTableNames([jobApplications]);
+		const [first] = uniquifySeedTableNames([jobApplications]);
+		const [second] = uniquifySeedTableNames([jobApplications]);
 
 		expect(first.name).toMatch(/^Job Applications \[seed [0-9a-f]{8}\]$/);
 		expect(second.name).not.toBe(first.name);
@@ -217,7 +265,7 @@ describe('uniquifyScenarioTableNames', () => {
 
 	it('shares one suffix across a case, and keeps columns and rows intact', () => {
 		const other = { ...jobApplications, id: 'other-1234', name: 'Other' };
-		const [a, b] = uniquifyScenarioTableNames([jobApplications, other]);
+		const [a, b] = uniquifySeedTableNames([jobApplications, other]);
 
 		expect(a.name.replace('Job Applications', '')).toBe(b.name.replace('Other', ''));
 		expect(a.columns).toEqual(jobApplications.columns);
@@ -225,7 +273,7 @@ describe('uniquifyScenarioTableNames', () => {
 	});
 
 	it('keeps the suffixed name inside the 128-char column bound', () => {
-		const [long] = uniquifyScenarioTableNames([{ ...jobApplications, name: 'x'.repeat(200) }]);
+		const [long] = uniquifySeedTableNames([{ ...jobApplications, name: 'x'.repeat(200) }]);
 		expect(long.name.length).toBe(128);
 	});
 });
@@ -274,7 +322,7 @@ describe('evictLeftoverSeedTables', () => {
 	it('matches a leftover whose base was truncated to fit the column bound', async () => {
 		const deleteDataTable = vi.fn();
 		const longName = 'x'.repeat(200);
-		const [stored] = uniquifyScenarioTableNames([{ ...jobApplications, name: longName }]);
+		const [stored] = uniquifySeedTableNames([{ ...jobApplications, name: longName }]);
 		await evictLeftoverSeedTables(
 			evictClient([{ id: 'left-long', name: stored.name }], deleteDataTable),
 			[{ ...jobApplications, name: longName }],

@@ -9,23 +9,14 @@ import {
  * PlanReviewPanel.vue
  *
  * Single-card plan approval UI. Shows planned tasks as an accordion with
- * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
- * "Ask for edits" hands off feedback collection to the main chat input.
+ * expandable specs, dependency info, and approve/deny controls. Edits are asked
+ * for in the chat composer, which stays live for the whole review.
  */
+import type { PlannedTaskArg } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import ConfirmationFooter from './ConfirmationFooter.vue';
-
-export interface PlannedTaskArg {
-	id: string;
-	title: string;
-	kind: string;
-	spec: string;
-	deps: string[];
-	tools?: string[];
-	workflowId?: string;
-}
 
 export type PlanReviewStatus = 'pending' | 'approved' | 'changes-requested' | 'denied';
 
@@ -46,7 +37,6 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	approve: [];
-	'ask-for-edits': [];
 	deny: [];
 }>();
 
@@ -89,12 +79,20 @@ function isTaskExpandedByDefault(task: PlannedTaskArg): boolean {
 	return !isVerificationTask(task);
 }
 
+/**
+ * Plans saved before titles were required can hold a blank one, which would
+ * render a task row with a number and no label.
+ */
+function getTitle(task: PlannedTaskArg): string {
+	return task.title.trim() || i18n.baseText('instanceAi.tasks.untitled');
+}
+
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
 	if (task.deps.length) {
 		const depNames = task.deps.map((depId) => {
 			const dep = props.plannedTasks.find((t) => t.id === depId);
-			return dep?.title ?? depId;
+			return dep ? getTitle(dep) : depId;
 		});
 		text += `\nDepends on: ${depNames.join(', ')}`;
 	}
@@ -106,11 +104,6 @@ function handleApprove() {
 	isResolved.value = true;
 	resolvedAction.value = 'approved';
 	emit('approve');
-}
-
-function handleAskForEdits() {
-	if (isResolved.value) return;
-	emit('ask-for-edits');
 }
 
 function handleDeny() {
@@ -193,7 +186,7 @@ function handleDeny() {
 						<button type="button" :class="$style.taskRow">
 							<span :class="$style.taskNumber">{{ idx + 1 }}</span>
 							<span :class="$style.taskTitleGroup">
-								<N8nText bold size="large" :class="$style.taskTitle">{{ task.title }}</N8nText>
+								<N8nText bold size="large" :class="$style.taskTitle">{{ getTitle(task) }}</N8nText>
 								<N8nIcon
 									icon="chevron-right"
 									size="medium"
@@ -221,26 +214,15 @@ function handleDeny() {
 				>
 					{{ i18n.baseText('instanceAi.planReview.deny') }}
 				</N8nButton>
-				<div :class="$style.footerActions">
-					<N8nButton
-						variant="outline"
-						size="medium"
-						:disabled="disabled"
-						data-test-id="instance-ai-plan-ask-for-edits"
-						@click="handleAskForEdits"
-					>
-						{{ i18n.baseText('instanceAi.planReview.askForEdits') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						size="medium"
-						:disabled="disabled"
-						data-test-id="instance-ai-plan-approve"
-						@click="handleApprove"
-					>
-						{{ i18n.baseText('instanceAi.planReview.approve') }}
-					</N8nButton>
-				</div>
+				<N8nButton
+					variant="solid"
+					size="medium"
+					:disabled="disabled"
+					data-test-id="instance-ai-plan-approve"
+					@click="handleApprove"
+				>
+					{{ i18n.baseText('instanceAi.planReview.approve') }}
+				</N8nButton>
 			</ConfirmationFooter>
 
 			<ConfirmationFooter v-else-if="showChangesRequested" layout="row-end" bordered>
@@ -276,10 +258,11 @@ function handleDeny() {
 	max-width: 90%;
 }
 
-// Highlight that the plan is waiting for the user's review; read-only /
-// resolved / building cards keep the regular border.
+// Elevate the plan while it is waiting for review; read-only / resolved /
+// building cards keep the regular border.
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .expiredHint {
@@ -342,11 +325,6 @@ function handleDeny() {
 	display: flex;
 	flex-direction: column;
 	padding-bottom: var(--spacing--xs);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
 }
 
 .taskItem {

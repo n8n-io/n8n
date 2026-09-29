@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
@@ -8,12 +9,11 @@ import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, randomString } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
-import type { EventService } from '@/events/event.service';
 
 import { BINARY_AD_ATTRIBUTES } from '../constants';
 import {
@@ -355,6 +355,34 @@ describe('LdapService', () => {
 			expect(cipherMock.encryptV2).toHaveBeenCalledTimes(1);
 			expect(cipherMock.encryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
+		});
+
+		it('reuses the stored admin password when the redacted placeholder is submitted', async () => {
+			// loadConfig reads the stored (encrypted) password and deciphers it
+			mockSettingsRespositoryFindOneByOrFail({
+				...ldapConfig,
+				bindingAdminPassword: 'storedEncrypted',
+			});
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('realStoredPassword'),
+				encryptV2: vi.fn().mockResolvedValue('reEncrypted'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, bindingAdminPassword: CREDENTIAL_BLANKING_VALUE };
+			await ldapService.updateConfig(newConfig);
+
+			// The placeholder must never be encrypted and stored as the real password.
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith('realStoredPassword');
 		});
 
 		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {

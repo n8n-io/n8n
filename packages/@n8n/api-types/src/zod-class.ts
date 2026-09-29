@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export interface ZodClass<T = unknown, Shape extends z.ZodRawShape = z.ZodRawShape> {
 	new (data: T): T;
-	schema: z.ZodObject<Shape>;
+	schema: z.ZodObject<Shape, 'strip' | 'strict'>;
 	safeParse(data: unknown): z.SafeParseReturnType<unknown, T>;
 	parse(data: unknown): T;
 	extend<U extends z.ZodRawShape>(shape: U): ZodClass<T & z.infer<z.ZodObject<U>>, Shape & U>;
@@ -33,11 +33,16 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
  * export class ChildDto extends ParentDto.extend({
  *   additionalField: z.string(),
  * }) {}
+ *
+ * export class StrictDto extends Z.class({ email: z.string() }, { strict: true }) {}
  * ```
  */
 export const Z = {
-	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-		const schema = z.object(shape);
+	class: <T extends z.ZodRawShape>(
+		shape: T,
+		options: { strict?: boolean } = {},
+	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
+		const schema = options.strict ? z.object(shape).strict() : z.object(shape);
 		type Output = z.objectOutputType<T, z.ZodTypeAny>;
 
 		const DtoClass = class {
@@ -57,11 +62,11 @@ export const Z = {
 			}
 
 			static extend<U extends z.ZodRawShape>(additionalShape: U) {
-				return Z.class({ ...shape, ...additionalShape });
+				return Z.class({ ...shape, ...additionalShape }, options);
 			}
 		};
 
-		return DtoClass as unknown as ZodClass<Output, T>;
+		return DtoClass as ZodClass<Output, T>;
 	},
 
 	/**

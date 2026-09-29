@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IUser,
 	IWebhookData,
 	IWebhookFunctions,
@@ -20,11 +19,15 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
-import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import {
+	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
@@ -61,8 +64,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 					json: {
 						body: (req.body ?? {}) as IDataObject,
 						headers: req.headers,
-						params: req.params as IDataObject,
-						query: req.query as IDataObject,
+						params: req.params,
+						query: req.query,
 					},
 				},
 			];
@@ -86,20 +89,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getBodyData() {
@@ -166,6 +160,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	isChatSessionTest() {
+		return this.webhookData.isChatSessionTest === true;
+	}
+
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,
@@ -173,6 +171,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			executionId: this.additionalData.executionId,
 			workflowId: this.workflow.id,
 		});
+	}
+
+	async getTestWebhookUser(): Promise<IUser | undefined> {
+		// Only test-webhook registrations record the user who started the run, so this is
+		// `undefined` on a production webhook by construction.
+		const userId = this.webhookData.userId;
+		if (!userId) return undefined;
+		return await this.additionalData.getUserById?.(userId);
 	}
 
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {
@@ -197,6 +203,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('OAuth2 flow is not available');
 		}
 		return await this.additionalData.completeN8nOAuth2Flow(code, state);
+	}
+
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
 	}
 
 	async validateN8nOAuth2Token(
@@ -252,7 +268,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,

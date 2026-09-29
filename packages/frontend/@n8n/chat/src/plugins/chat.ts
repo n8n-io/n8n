@@ -8,6 +8,7 @@ import type {
 	ChatMessage,
 	ChatOptions,
 	ChatMessageText,
+	CredentialStatus,
 	SendMessageResponse,
 } from '@n8n/chat/types';
 import { StreamingMessageManager, createBotMessage } from '@n8n/chat/utils/streaming';
@@ -214,6 +215,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		const currentSessionId = ref<string | null>(null);
 		const waitingForResponse = ref(false);
 		const blockUserInput = ref(false);
+		const credentialStatus = ref<CredentialStatus | null>(null);
 
 		const initialMessages = computed<ChatMessage[]>(() =>
 			(options.initialMessages ?? []).map((text) => ({
@@ -353,6 +355,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			currentSessionId,
 			waitingForResponse,
 			blockUserInput,
+			credentialStatus,
 			loadPreviousSession,
 			startNewSession,
 			sendMessage,

@@ -10,7 +10,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
@@ -51,17 +51,11 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 			new DnsResolver(new InMemoryDnsCache(config)),
 			mockLogger(),
 		);
-		const outboundHttp = new OutboundHttp(ssrfService, mockLogger());
+		const outboundHttp = new OutboundHttp(ssrfService, config, mockLogger());
 		const cache = mock<CacheService>();
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
-		const httpClient = new OAuth2MetadataHttpClient(
-			mockLogger(),
-			cache,
-			outboundHttp,
-			ssrfService,
-			config,
-		);
+		const httpClient = new OAuth2MetadataHttpClient(mockLogger(), cache, outboundHttp);
 		return new OAuth2TokenIntrospectionIdentifier(mockLogger(), cache, httpClient);
 	};
 

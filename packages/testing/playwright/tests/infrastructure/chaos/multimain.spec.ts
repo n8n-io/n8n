@@ -10,7 +10,7 @@ test.use({ capability: 'observability' });
 const getContainerName = (log: LogEntry): string | undefined => log.container_name ?? log.container;
 
 test(
-	'Leader election @mode:multi-main @chaostest @capability:observability',
+	'Leader election @mode:multi-main @chaostest',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

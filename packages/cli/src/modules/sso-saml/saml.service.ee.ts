@@ -17,12 +17,10 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
@@ -312,7 +310,7 @@ export class SamlService {
 		const loginRequest = sp.createLoginRequest(idp, binding);
 		return {
 			binding,
-			context: binding === 'post' ? (loginRequest as PostBindingContext) : loginRequest,
+			context: binding === 'post' ? loginRequest : loginRequest,
 		};
 	}
 
@@ -709,7 +707,7 @@ export class SamlService {
 		try {
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
 				})
 				.request({
 					url,

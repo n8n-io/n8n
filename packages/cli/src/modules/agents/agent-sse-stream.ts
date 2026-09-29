@@ -13,13 +13,7 @@ export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
-interface ChunkHandlerCtx {
-	send: (e: AgentSseEvent) => void;
-}
-
-/**
- * Set up SSE headers and return a typed `send(event)` helper.
- */
+/** The abort signal describes delivery. An accepted execution owns its cancellation. */
 export function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -29,26 +23,50 @@ export function initSseStream(res: FlushableResponse) {
 	res.socket?.setTimeout(0);
 	res.socket?.setNoDelay(true);
 	res.socket?.setKeepAlive(true);
-	res.write(':ok\n\n');
-	res.flush?.();
-
-	const heartbeat = setInterval(() => {
-		if (!res.writableEnded && !res.destroyed) {
-			res.write(':ping\n\n');
+	const abortController = new AbortController();
+	const detach = () => {
+		abortController.abort();
+		clearInterval(heartbeat);
+	};
+	const write = (data: string) => {
+		if (abortController.signal.aborted) return;
+		if (res.writableEnded || res.destroyed) return detach();
+		try {
+			res.write(data);
 			res.flush?.();
+		} catch {
+			detach();
 		}
-	}, SSE_HEARTBEAT_INTERVAL_MS);
+	};
+	const heartbeat = setInterval(() => write(':ping\n\n'), SSE_HEARTBEAT_INTERVAL_MS);
 	heartbeat.unref();
-	const stopHeartbeat = () => clearInterval(heartbeat);
-	res.once('finish', stopHeartbeat);
-	res.once('close', stopHeartbeat);
-
-	const send = (event: AgentSseEvent) => {
-		res.write(`data: ${JSON.stringify(event)}\n\n`);
-		res.flush?.();
+	res.once('finish', detach);
+	res.once('close', detach);
+	res.once('error', detach);
+	write(':ok\n\n');
+	const close = () => {
+		res.off('close', detach);
+		res.off('finish', detach);
+		res.off('error', detach);
+		clearInterval(heartbeat);
+		if (!res.writableEnded && !res.destroyed) res.end();
 	};
 
-	return { send };
+	const send = (event: AgentSseEvent) => {
+		write(`data: ${JSON.stringify(event)}\n\n`);
+	};
+
+	const onChunk = (chunk: StreamChunk) => {
+		if (abortController.signal.aborted) return;
+		try {
+			emitChunkEvents(chunk, send);
+		} catch {
+			detach();
+			close();
+		}
+	};
+
+	return { send, onChunk, abortSignal: abortController.signal, close };
 }
 
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
@@ -111,10 +129,7 @@ function emitTextLikeChunk(
 	}
 }
 
-/**
- * SSE-emit a tool-* chunk and fire any matching builder side-effect callback.
- * Returns `{ suspended: true }` when the chunk was `tool-call-suspended`.
- */
+/** Map tool chunks to SSE events. */
 function emitToolChunk(
 	chunk: Extract<
 		StreamChunk,
@@ -129,10 +144,8 @@ function emitToolChunk(
 				| 'tool-call-suspended';
 		}
 	>,
-	ctx: ChunkHandlerCtx,
-): { suspended: boolean } {
-	const { send } = ctx;
-
+	send: (e: AgentSseEvent) => void,
+): void {
 	switch (chunk.type) {
 		case 'tool-input-start':
 			send({
@@ -172,7 +185,7 @@ function emitToolChunk(
 			});
 			break;
 		case 'tool-result': {
-			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
+			const toolResultChunk = chunk;
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
@@ -191,34 +204,30 @@ function emitToolChunk(
 				input: chunk.suspendPayload,
 			};
 			send({ type: 'tool-call-suspended', payload });
-			return { suspended: true };
+			break;
 		}
 	}
-	return { suspended: false };
 }
 
 /**
  * Translate a single chunk into one or more SSE events.
- *
- * Returns `{ suspended: true }` when the chunk was a `tool-call-suspended`
- * and `{ suspended: false }` for all other chunks.
  */
-function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended: boolean } {
+export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent) => void): void {
 	switch (chunk.type) {
 		case 'start-step':
-			ctx.send({ type: 'start-step' });
-			return { suspended: false };
+			send({ type: 'start-step' });
+			return;
 		case 'finish-step':
-			ctx.send({ type: 'finish-step' });
-			return { suspended: false };
+			send({ type: 'finish-step' });
+			return;
 		case 'text-start':
 		case 'text-delta':
 		case 'text-end':
 		case 'reasoning-start':
 		case 'reasoning-delta':
 		case 'reasoning-end':
-			emitTextLikeChunk(chunk, ctx.send);
-			return { suspended: false };
+			emitTextLikeChunk(chunk, send);
+			return;
 		case 'tool-input-start':
 		case 'tool-input-delta':
 		case 'tool-call':
@@ -226,39 +235,40 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
-			return emitToolChunk(chunk, ctx);
+			emitToolChunk(chunk, send);
+			return;
 		case 'message': {
 			const sseMessage = toAgentSseMessage(chunk.message);
-			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });
-			return { suspended: false };
+			if (sseMessage) send({ type: 'message', message: sseMessage });
+			return;
 		}
 		case 'subagent-chunk': {
-			if (chunk.parentToolCallId === undefined) return { suspended: false };
-			ctx.send({
+			if (chunk.parentToolCallId === undefined) return;
+			send({
 				type: 'subagent-chunk',
 				parentToolCallId: chunk.parentToolCallId,
 				taskPath: chunk.taskPath,
 				chunk: chunk.chunk,
 			});
-			return { suspended: false };
+			return;
 		}
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
-			ctx.send({ type: 'error', message: errMsg });
-			return { suspended: false };
+			send({ type: 'error', message: errMsg });
+			return;
 		}
 		case 'warning': {
-			ctx.send({
+			send({
 				type: 'warning',
 				message: chunk.message,
 				...(chunk.code !== undefined && { code: chunk.code }),
 				...(chunk.source !== undefined && { source: chunk.source }),
 				...(chunk.server !== undefined && { server: chunk.server }),
 			});
-			return { suspended: false };
+			return;
 		}
 		default:
-			return { suspended: false };
+			return;
 	}
 }
 
@@ -301,24 +311,4 @@ function stringifyError(error: unknown): string {
 		LoggerProxy.warn('Failed to stringify agent streaming error');
 	}
 	return 'Unknown error';
-}
-
-/**
- * Pump SDK stream chunks through a typed AgentSseEvent stream.
- *
- * Returns `true` when a suspension was emitted (the run paused), `false`
- * otherwise.
- */
-export async function pumpChunks(
-	chunks: AsyncIterable<StreamChunk>,
-	send: (e: AgentSseEvent) => void,
-): Promise<boolean> {
-	const ctx: ChunkHandlerCtx = { send };
-	let suspended = false;
-
-	for await (const chunk of chunks) {
-		const result = emitChunkEvents(chunk, ctx);
-		suspended ||= result.suspended;
-	}
-	return suspended;
 }

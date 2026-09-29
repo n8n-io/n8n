@@ -1,5 +1,5 @@
 import type { InstanceType } from '@n8n/constants';
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
@@ -38,9 +38,13 @@ export class ModuleRegistry {
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly modulesConfig: ModulesConfig,
+		private readonly systemTaskMetadata: SystemTaskMetadata,
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		// policy-infrastructure leads: it registers the enforcement implementation
+		// that every policy feature's checks are run by.
+		'policy-infrastructure',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -73,6 +77,8 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'instance-ai',
+		'agents',
+		'inbound-auth-core',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -154,9 +160,15 @@ export class ModuleRegistry {
 	 * specific setup.
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
+	 *
+	 * @param only Init only these modules, for a one-off command that needs a few of them.
 	 */
-	async initModules(instanceType: InstanceType) {
+	async initModules(instanceType: InstanceType, only?: ModuleName[]) {
+		const selected = only ? new Set<string>(only) : undefined;
+
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
+			if (selected && !selected.has(moduleName)) continue;
+
 			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 
 			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
@@ -172,6 +184,12 @@ export class ModuleRegistry {
 			}
 
 			await Container.get(ModuleClass).init?.();
+
+			const systemTasks = await Container.get(ModuleClass).systemTasks?.();
+
+			for (const taskClass of systemTasks ?? []) {
+				this.systemTaskMetadata.register(taskClass);
+			}
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 

@@ -26,8 +26,7 @@ import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,
@@ -65,7 +64,7 @@ async function attachSamlIdentity(user: User, providerId: string) {
 }
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['me', 'saml'],
+	endpointGroups: ['me', 'saml', 'changeEmail'],
 	enabledFeatures: ['feat:saml'],
 });
 
@@ -98,17 +97,30 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 		});
+	});
 
+	describe('POST /change-email', () => {
 		test('should throw BadRequestError if email is changed when SAML is enabled', async () => {
 			await enableSaml(true);
 			await authOwnerAgent
-				.patch('/me')
-				.send({
-					email: randomEmail(),
-					firstName: randomName(),
-					lastName: randomName(),
-				})
+				.post('/change-email')
+				.send({ email: randomEmail() })
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
+		});
+
+		test('should allow a user with a SAML auth_identity to change email once SAML is disabled', async () => {
+			// The SAML identity is still attached but inactive, so the SSO guard must pass.
+			await enableSaml(false);
+			const newEmail = randomEmail();
+
+			await authSamlUserAgent
+				.post('/change-email')
+				.send({ email: newEmail, currentPassword: samlUserPassword })
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.email).toBe(newEmail);
+			samlUser.email = newEmail;
 		});
 	});
 
@@ -147,25 +159,6 @@ describe('Instance owner', () => {
 			expect(refreshed.lastName).toBe(newLastName);
 			samlUser.firstName = newFirstName;
 			samlUser.lastName = newLastName;
-		});
-
-		test('should allow email change once SAML is disabled', async () => {
-			await enableSaml(false);
-			const newEmail = randomEmail();
-
-			await authSamlUserAgent
-				.patch('/me')
-				.send({
-					email: newEmail,
-					firstName: samlUser.firstName,
-					lastName: samlUser.lastName,
-					currentPassword: samlUserPassword,
-				})
-				.expect(200);
-
-			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
-			expect(refreshed.email).toBe(newEmail);
-			samlUser.email = newEmail;
 		});
 	});
 

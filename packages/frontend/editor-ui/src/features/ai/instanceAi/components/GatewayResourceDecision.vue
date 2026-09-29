@@ -6,6 +6,7 @@ import { computed } from 'vue';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
@@ -82,7 +83,10 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// `resource` is the host the agent asked to reach — can be an internal
+	// hostname or a URL, so it goes through the egress policy like any other
+	// free-form value.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 	await thread.confirmResourceDecision(props.requestId, decision);
 }
 </script>
@@ -129,9 +133,9 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 
 <style lang="scss" module>
 .root {
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .body {

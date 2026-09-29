@@ -236,4 +236,31 @@ describe('ExportPackageRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 	});
+
+	describe('includeArchivedWorkflows', () => {
+		it.each([true, false])('accepts %s', (includeArchivedWorkflows) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeArchivedWorkflows,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it('defaults to false', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeArchivedWorkflows).toBe(false);
+		});
+
+		it('rejects non-boolean values', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeArchivedWorkflows: 'yes',
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
 });

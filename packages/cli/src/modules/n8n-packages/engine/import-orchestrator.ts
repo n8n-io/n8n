@@ -60,11 +60,13 @@ import type {
 	ImportWorkflowProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
+	PackageImportSource,
 	RemovedFolderSummary,
 	RemovedWorkflowSummary,
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
+import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import { assertVariableWritesAllowed } from './import-gates';
 
@@ -81,6 +83,9 @@ export interface ImportOrchestrationInput {
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
+	importSource?: PackageImportSource;
+	/** Destination workflow IDs to remove, even under `merge`. */
+	explicitDeleteWorkflowIds?: string[];
 }
 
 /**
@@ -131,6 +136,7 @@ export class ImportOrchestrator {
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly contentImportPolicyGate: ContentImportPolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -227,6 +233,8 @@ export class ImportOrchestrator {
 			packageFolderIds,
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
+			importSource: input.importSource,
+			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
 		// Which folders end up empty depends on which workflows survive, so this follows the plan above
@@ -245,6 +253,12 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
+			workflowPlan.items,
+			context.projectId,
+			contentImportTransport(input.importSource),
+		);
+
 		const blockingIssues = this.collectBlockingIssues({
 			workflowPlan,
 			credentialPlan,
@@ -259,6 +273,8 @@ export class ImportOrchestrator {
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
+
+		blockingIssues.push(...refusedByPolicy);
 
 		return {
 			input,
@@ -394,17 +410,26 @@ export class ImportOrchestrator {
 			...workflowPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-conflict', ...conflict }),
 			),
+			...workflowPlan.lineageConflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-lineage-conflict', ...conflict }),
+			),
 			...workflowPlan.idConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-id-conflict', ...conflict }),
 			),
 			...workflowPlan.folderConflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-folder-conflict', ...conflict }),
 			),
+			...workflowPlan.archiveForbidden.map(
+				(failure): BlockingIssue => ({ type: 'workflow-archive-forbidden', ...failure }),
+			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
 			),
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
+			),
+			...removalPlan.conflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-removal-conflict', ...conflict }),
 			),
 			...folderRemovalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),

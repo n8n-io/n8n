@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -7,9 +8,15 @@ import type {
 	WorkerStatus,
 	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
-import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;
@@ -46,11 +53,13 @@ export type PubSubCommandMap = {
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -130,6 +139,51 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+		productionN8nChat?: boolean;
+	};
+
+	'relay-agent-message-queue-update': {
+		data: PushPayload<'agentMessageQueueUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
+	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
+	'resume-agent-workflow-tool': {
+		agentRun: RelatedAgentRun;
+		status: string;
+	};
+
+	/**
+	 * Ask mains to abort a background job's live run. The job row is already
+	 * claimed as cancelled by the publisher; only the main holding the
+	 * in-process abort handle acts on this.
+	 */
+	'cancel-agent-background-job': {
+		jobId: string;
+	};
+
+	/** Ask main instances to deliver background job results to the parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;
@@ -191,6 +245,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

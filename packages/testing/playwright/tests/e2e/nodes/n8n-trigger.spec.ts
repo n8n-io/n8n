@@ -4,6 +4,21 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
+// The node emits from `trigger()` at registration time, so its events depend on
+// how the publication path (re)registers triggers. Run against the publication
+// service, which becomes the default.
+test.use({
+	capability: {
+		env: {
+			TEST_ISOLATION: 'n8n-trigger-publication-service',
+			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
+			// Activation is applied asynchronously by the publication outbox
+			// consumer, so poll frequently to keep the test fast.
+			N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS: '250',
+		},
+	},
+});
+
 type TriggerEventType = 'activate' | 'update';
 
 const makeN8nTriggerWorkflow = (events: TriggerEventType[]) => {

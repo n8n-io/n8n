@@ -1,4 +1,3 @@
-import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type { WorkflowVariableRequirement } from './variable.types';
@@ -17,11 +16,21 @@ import type { RequirementsExtractor } from '../requirements-extractor';
 const VARS_REFERENCE_PATTERN =
 	/\$vars\s*(?:\.\s*([A-Za-z_][A-Za-z0-9_]*)|\[\s*(?:'([^']+)'|"([^"]+)")\s*\])/g;
 
+/**
+ * Describes the workflow fields needed to find variable references.
+ * Accepts data from package files without requiring a database WorkflowEntity.
+ */
+export interface VariableScanSource {
+	id: string;
+	nodes?: Array<{ parameters?: unknown }>;
+	settings?: unknown;
+}
+
 @Service()
 export class VariableRequirementsExtractor
 	implements RequirementsExtractor<WorkflowVariableRequirement>
 {
-	extract(workflow: WorkflowEntity): WorkflowVariableRequirement[] {
+	extract(workflow: VariableScanSource): WorkflowVariableRequirement[] {
 		const names = new Set<string>();
 
 		for (const node of workflow.nodes ?? []) {

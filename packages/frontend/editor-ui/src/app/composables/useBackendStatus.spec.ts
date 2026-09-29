@@ -7,7 +7,7 @@ import { useBackendStatus } from './useBackendStatus';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 const mockStartHeartbeat = vi.fn();
 const mockStopHeartbeat = vi.fn();

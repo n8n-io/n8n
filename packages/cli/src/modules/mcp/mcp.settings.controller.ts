@@ -1,11 +1,11 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -100,14 +100,10 @@ export class McpSettingsController {
 			},
 		};
 
-		const { workflows, count } = await this.workflowService.getMany(
-			req.user,
-			options,
-			false, // includeScopes
-			false, // includeFolders
-			false, // onlySharedWithMe
-			['workflow:update'], // requiredScopes - only return workflows the user can edit
-		);
+		const { workflows, count } = await this.workflowService.getMany(req.user, options, {
+			// Only return workflows the user can edit
+			requiredScopes: ['workflow:update'],
+		});
 
 		res.json({ count, data: workflows });
 	}

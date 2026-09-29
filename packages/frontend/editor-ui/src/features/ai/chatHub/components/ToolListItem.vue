@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed } from 'vue';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -51,10 +52,19 @@ const actionLabel = computed(() =>
 const actionDisabled = computed(
 	() => props.communityPreview && (props.installing || props.installDisabled),
 );
+
+const rowRef = ref<HTMLElement | null>(null);
+const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 </script>
 
 <template>
-	<div :class="[$style.item, { [$style.configured]: mode === 'configured' }]">
+	<div
+		ref="rowRef"
+		:class="[
+			$style.item,
+			{ [$style.configured]: mode === 'configured', [$style.restricted]: !!restriction },
+		]"
+	>
 		<div :class="$style.iconWrapper">
 			<NodeIcon :node-type="nodeType" :size="32" />
 		</div>
@@ -69,7 +79,13 @@ const actionDisabled = computed(
 					:content="i18n.baseText('communityNodeInfo.approved')"
 					placement="top"
 				>
-					<ShieldIcon :class="$style.verifiedIcon" data-test-id="chat-tool-verified-badge" />
+					<N8nIcon
+						icon="shield-half"
+						:size="12"
+						:class="$style.verifiedIcon"
+						:aria-label="i18n.baseText('communityNodeInfo.approved')"
+						data-test-id="chat-tool-verified-badge"
+					/>
 				</N8nTooltip>
 			</div>
 			<N8nText :class="$style.description" size="small" color="text-light">
@@ -78,6 +94,13 @@ const actionDisabled = computed(
 		</div>
 
 		<div :class="$style.actions">
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="nodeType.displayName"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+			/>
+
 			<template v-if="mode === 'configured'">
 				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
@@ -114,7 +137,7 @@ const actionDisabled = computed(
 				</N8nTooltip>
 			</template>
 
-			<template v-else>
+			<template v-else-if="!restriction">
 				<N8nTooltip
 					v-if="communityPreview && installDisabled && !installing"
 					:content="i18n.baseText('communityNodeInfo.contact.admin')"
@@ -171,6 +194,15 @@ const actionDisabled = computed(
 	}
 }
 
+.restricted {
+	cursor: not-allowed;
+
+	.iconWrapper,
+	.content {
+		opacity: 0.45;
+	}
+}
+
 .iconWrapper {
 	flex-shrink: 0;
 	width: 32px;
@@ -196,8 +228,7 @@ const actionDisabled = computed(
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 

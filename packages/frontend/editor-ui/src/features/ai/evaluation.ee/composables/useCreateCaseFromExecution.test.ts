@@ -12,7 +12,7 @@ const mockTrack = vi.fn();
 vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({
 		fetchExecution: mockFetchExecution,
-		fetchExecutions: mockFetchExecutions,
+		fetchExecutionsPage: mockFetchExecutions,
 	}),
 }));
 

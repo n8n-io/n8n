@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	credentialDestinationDecisionSchema,
 	domainAccessActionSchema,
 	instanceAiApprovalResumeSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -47,6 +48,11 @@ const credentialAutoSetupConfirmSchema = z.object({
 	/** Client-generated id shared by the setup-choice telemetry events and the
 	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
 	attemptId: z.string().trim().min(1).max(64).optional(),
+});
+
+const credentialDestinationConfirmSchema = credentialDestinationDecisionSchema.extend({
+	kind: z.literal('credentialDestination'),
+	approved: z.boolean(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
@@ -106,6 +112,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
 	credentialAutoSetupConfirmSchema,
+	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,

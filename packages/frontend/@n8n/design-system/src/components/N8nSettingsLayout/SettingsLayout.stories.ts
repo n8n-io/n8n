@@ -12,7 +12,7 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Areas/Settings/Settings Layout',
+	title: 'Areas/Settings/SettingsLayout',
 	component: N8nSettingsLayout,
 	argTypes: {
 		showBack: { control: 'boolean' },

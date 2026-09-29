@@ -54,7 +54,7 @@ function createCodeNodeWorkflow(): IWorkflowBase {
 }
 
 test.describe(
-	'Code node API execution @capability:task-runner',
+	'Code node API execution',
 	{
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},

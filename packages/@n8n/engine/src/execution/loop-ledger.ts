@@ -3,33 +3,31 @@ import { isSettledStatus, type StepStatus } from './execution.types';
 import { classifyEdge } from './iteration-mapping';
 import type { StepStore, StepSummary } from './step-store';
 
-/** A batch node's output slots: 0 is done, 1 is loop. */
-const LOOP_SLOT = 1;
+/** A batch node's output slots. */
+export const DONE_SLOT = 0;
+export const LOOP_SLOT = 1;
 
 /**
- * A loop's batch node steps form a ledger: one per iteration, written strictly
- * in order, since iteration `i + 1` is planned only once iteration `i` has
- * settled. The last one is the terminal step, and it is what says the loop is
- * over.
+ * A loop's batch node steps form a ledger, one per pass, written strictly in
+ * order: pass `i + 1` is planned only once pass `i` has settled.
  *
- * A step ends the loop when it settles without filling its loop slot: it fired
- * the done slot instead, or it never ran at all, as a skip records. Nothing can
- * advance the loop past it, so it is always the last one.
+ * A step ends the loop when it settles without filling its loop slot, either
+ * because it fired the done slot instead or because it never ran at all. Nothing
+ * can advance the loop past that step, so it is always the last one.
  */
-export function endsLoop(status: StepStatus, loopSlotFilled: boolean): boolean {
+function endsLoop(status: StepStatus, loopSlotFilled: boolean): boolean {
 	return isSettledStatus(status) && !loopSlotFilled;
 }
 
-/** `endsLoop` for a step, which carries both of the facts it asks for. */
 export function isTerminalStep(step: StepSummary): boolean {
 	return endsLoop(step.status, Boolean(step.filledOutputSlots[LOOP_SLOT]));
 }
 
 /**
- * The batch nodes whose loop-ending step has to be read to resolve the edges
- * into `targetNodeIds`. Only an exit edge reads one, so a target with no exit
- * edge into it needs none: every other edge class resolves against the target's
- * own iteration.
+ * Which loops the edges into `targetNodeIds` need a last pass from.
+ *
+ * Only an exit edge reads one. Every other edge reads the target's own pass, so
+ * a target with no exit edge into it needs nothing looked up.
  */
 export function exitSourcesInto(
 	graph: WorkflowGraph,
@@ -47,13 +45,12 @@ export function exitSourcesInto(
 }
 
 /**
- * The terminal iteration of each loop asked about, by batch node id, omitting
- * the loops that have not ended.
+ * The last pass of each loop asked about, by batch node id, leaving out the loops
+ * that have not ended.
  *
- * Only the latest step can be terminal, since they are written in order, so one
- * query over every loop answers this. It reads the slim view because the step
- * ending a loop holds everything that loop accumulated, and this runs on every
- * settlement.
+ * Steps are written in order, so only the latest can be the last one, and a
+ * single query answers for every loop. It reads slot flags rather than payloads,
+ * since the step ending a loop holds everything that loop accumulated.
  */
 export async function loadTerminalIterations(
 	stepStore: StepStore,

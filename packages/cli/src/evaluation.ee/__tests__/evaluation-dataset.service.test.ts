@@ -5,9 +5,7 @@ import type { EvaluationConfigRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { IConnections, IRunData } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -68,6 +66,7 @@ describe('EvaluationDatasetService', () => {
 		mode?: string;
 		runData?: IRunData;
 		connections?: IConnections;
+		nodes?: Array<{ name: string; type: string }>;
 	}): IExecutionResponse {
 		const runData =
 			options.runData ??
@@ -80,7 +79,10 @@ describe('EvaluationDatasetService', () => {
 		return {
 			status: options.status ?? 'success',
 			mode: options.mode ?? 'manual',
-			workflowData: { nodes: [], connections: options.connections ?? connections },
+			workflowData: {
+				nodes: options.nodes ?? [],
+				connections: options.connections ?? connections,
+			},
 			data: { resultData: { runData } },
 		} as unknown as IExecutionResponse;
 	}
@@ -170,6 +172,51 @@ describe('EvaluationDatasetService', () => {
 			const result = await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
 
 			expect(result.fields.inputs).toEqual([{ key: 'question', sample: 'fromStart' }]);
+		});
+
+		it('reads inputs from the real trigger when a pre-existing Evaluation Trigger also feeds the start node (TRUST-407)', async () => {
+			mockExecution(
+				makeExecution({
+					connections: {
+						Trigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+						EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+						Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+					},
+					nodes: [
+						{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+						{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' },
+					],
+					runData: {
+						Trigger: nodeOutput({ question: 'fromRealTrigger' }),
+						EvalTrigger: nodeOutput({ question: 'fromEvalTrigger' }),
+						End: nodeOutput({ answer: 'A1' }),
+					} as unknown as IRunData,
+				}),
+			);
+
+			const result = await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
+
+			expect(result.fields.inputs).toEqual([{ key: 'question', sample: 'fromRealTrigger' }]);
+		});
+
+		it("reads inputs from the Evaluation Trigger when it is the start node's sole parent (TRUST-407)", async () => {
+			mockExecution(
+				makeExecution({
+					connections: {
+						EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+						Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+					},
+					nodes: [{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }],
+					runData: {
+						EvalTrigger: nodeOutput({ question: 'fromEvalTrigger' }),
+						End: nodeOutput({ answer: 'A1' }),
+					} as unknown as IRunData,
+				}),
+			);
+
+			const result = await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
+
+			expect(result.fields.inputs).toEqual([{ key: 'question', sample: 'fromEvalTrigger' }]);
 		});
 
 		it('throws NotFoundError when the config does not exist', async () => {

@@ -196,9 +196,9 @@ export class WorkflowBuilderAgent {
 	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
-		return (await workflow.getState({
+		return await workflow.getState({
 			configurable: { thread_id: threadId },
-		})) as TypedStateSnapshot;
+		});
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {

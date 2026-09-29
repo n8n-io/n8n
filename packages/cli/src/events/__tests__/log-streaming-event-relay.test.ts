@@ -1,10 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
@@ -199,6 +199,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -442,6 +443,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project789',
 				user: {
 					id: '456',
 					email: 'jane@n8n.io',
@@ -1278,6 +1281,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1313,6 +1318,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project707',
 				user: {
 					id: 'user707',
 					email: 'creduser@example.com',
@@ -1342,6 +1349,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',
@@ -3349,6 +3358,24 @@ describe('LogStreamingEventRelay', () => {
 					enabled: false,
 				},
 			});
+		});
+	});
+
+	describe('instance reporting events', () => {
+		it('should log on instance-report-delivered event', () => {
+			eventService.emit('instance-report-delivered');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.success' }),
+			);
+		});
+
+		it('should log on instance-report-failed event', () => {
+			eventService.emit('instance-report-failed');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
+			);
 		});
 	});
 });
