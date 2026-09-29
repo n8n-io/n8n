@@ -131,6 +131,10 @@ export type { SplitInBatchesTarget } from './types/base';
 
 // Loop-back helper for split in batches
 export { nextBatch } from './workflow-builder/control-flow-builders/next-batch';
+export {
+	detectStickyLayoutWarnings,
+	type StickyLayoutWarning,
+} from './workflow-builder/sticky-layout-warnings';
 
 // Expression utilities
 export {

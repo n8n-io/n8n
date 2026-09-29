@@ -19,6 +19,9 @@ import { CodeBuilderAgent } from '../code-builder-agent';
 
 // Mock workflow-sdk to control parse/validate behavior
 vi.mock('@n8n/workflow-sdk', () => ({
+	// Real layout check is exercised in the SDK's own tests; here it only has
+	// to exist so the handler can call it.
+	detectStickyLayoutWarnings: vi.fn(() => []),
 	parseWorkflowCodeToBuilder: vi.fn(),
 	validateWorkflow: vi.fn(),
 	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
