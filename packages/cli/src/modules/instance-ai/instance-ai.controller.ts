@@ -1014,12 +1014,8 @@ export class InstanceAiController {
 	): Promise<InstanceAiThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const state = {
-			tabs: payload.tabs,
-			closedTabs: payload.closedTabs,
-			activeTab: payload.activeTab,
-			...(payload.previewOpen !== undefined ? { previewOpen: payload.previewOpen } : {}),
-		};
+		// The DTO strips unknown keys, so the payload is the state to save.
+		const state = { ...payload };
 		await this.threadTabsService.saveState(threadId, req.user.id, state);
 		return { state };
 	}
