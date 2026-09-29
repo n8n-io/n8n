@@ -941,6 +941,26 @@ describe('NodesListPanel', () => {
 			expect(screen.queryByText('Other AI Nodes')).not.toBeInTheDocument();
 		});
 
+		it('should not list a view inside a section that contains no nodes', async () => {
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent]);
+
+			expect(screen.queryByText('Add another trigger')).not.toBeInTheDocument();
+		});
+
+		it('should list a view inside a section that contains a node', async () => {
+			const trigger = mockSimplifiedNodeType({
+				name: 'otherTrigger',
+				group: ['trigger'],
+				codex: {
+					categories: [CORE_NODES_CATEGORY],
+					subcategories: { [CORE_NODES_CATEGORY]: [OTHER_TRIGGER_NODES_SUBCATEGORY] },
+				},
+			}) as INodeTypeDescription;
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent, trigger]);
+
+			expect(screen.getByText('Add another trigger')).toBeInTheDocument();
+		});
+
 		it('should list a view when one of its subcategories contains a node', async () => {
 			await renderView(AI_NODE_CREATOR_VIEW, [agent, languageModel]);
 
