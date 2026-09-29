@@ -102,7 +102,7 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const { executeReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 		() => workflowDocumentStore.value.usedCredentials,
 	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));

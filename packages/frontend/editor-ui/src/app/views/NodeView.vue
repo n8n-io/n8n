@@ -1272,7 +1272,7 @@ const isExecutionWaitingForWebhook = computed(
 	() => workflowExecutionState.value.executionWaitingForWebhook,
 );
 
-const { executeReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 	() => workflowDocumentStore.value.usedCredentials,
 );
 

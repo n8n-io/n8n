@@ -1,4 +1,4 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, type DeepReadonly, type MaybeRefOrGetter } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -12,7 +12,8 @@ import { useCredentialSharing } from './useCredentialSharing';
  *
  * The backend refuses both already — a run is checked against the person it
  * acts as, and a publish against the publisher. This is the same answer told
- * before the click instead of after it.
+ * before the click instead of after it, and it is one sentence for both:
+ * the credential is not this user's to use either way.
  *
  * Reads `currentUserHasAccess`, which the backend derives from the same
  * question the execution check asks: can this user use this credential here.
@@ -21,7 +22,7 @@ import { useCredentialSharing } from './useCredentialSharing';
  * caller can supply them from whichever store it already holds.
  */
 export function useUnusableWorkflowCredentials(
-	usedCredentials: MaybeRefOrGetter<Record<string, IUsedCredential> | undefined>,
+	usedCredentials: MaybeRefOrGetter<DeepReadonly<Record<string, IUsedCredential>> | undefined>,
 ) {
 	const i18n = useI18n();
 	const { isEnabled } = useCredentialSharing();
@@ -52,30 +53,22 @@ export function useUnusableWorkflowCredentials(
 
 	const credentialName = computed(() => unusable.value[0]?.name ?? '');
 
-	/** Empty when nothing is blocked, so a caller can use it as the whole condition. */
-	const executeReason = computed(() => {
+	/**
+	 * One sentence for both running and publishing: the credential is not this
+	 * user's to use either way. Empty when nothing is blocked, so a caller can
+	 * use it as the whole condition.
+	 */
+	const reason = computed(() => {
 		if (!isBlocked.value) return '';
 
 		return owner.value
-			? i18n.baseText('credentialSharing.blocked.execute', {
+			? i18n.baseText('credentialSharing.blocked', {
 					interpolate: { credential: credentialName.value, owner: owner.value },
 				})
-			: i18n.baseText('credentialSharing.blocked.execute.unknownOwner', {
+			: i18n.baseText('credentialSharing.blocked.unknownOwner', {
 					interpolate: { credential: credentialName.value },
 				});
 	});
 
-	const publishReason = computed(() => {
-		if (!isBlocked.value) return '';
-
-		return owner.value
-			? i18n.baseText('credentialSharing.blocked.publish', {
-					interpolate: { credential: credentialName.value, owner: owner.value },
-				})
-			: i18n.baseText('credentialSharing.blocked.publish.unknownOwner', {
-					interpolate: { credential: credentialName.value },
-				});
-	});
-
-	return { unusable, isBlocked, executeReason, publishReason };
+	return { unusable, isBlocked, reason };
 }

@@ -80,7 +80,7 @@ const workflowDocumentStore = computed(() =>
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
 
-const { publishReason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 	() => workflowDocumentStore.value.usedCredentials,
 );
 const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
