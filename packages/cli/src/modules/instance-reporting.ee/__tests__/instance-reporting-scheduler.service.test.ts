@@ -41,6 +41,7 @@ function makeHarness({
 
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.hasSettledToday.mockResolvedValue(false);
+	reportRepository.findPending.mockResolvedValue(null);
 
 	const settingsService = mock<InstanceReportingSettingsService>();
 	settingsService.getReportTime.mockResolvedValue(REPORT_TIME);
@@ -311,6 +312,82 @@ describe('InstanceReportingScheduler', () => {
 			await vi.advanceTimersByTimeAsync(5 * Time.minutes.toMilliseconds);
 
 			expect(settingsService.getReportTime).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('pending report reads', () => {
+		test('reads the pending report once in a pass that is not due', async () => {
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+
+			scheduler.init();
+			await settle();
+
+			expect(reportRepository.findPending).toHaveBeenCalledTimes(1);
+			expect(reportingService.sendReport).not.toHaveBeenCalled();
+		});
+
+		test('reads the pending report once in a pass that waits between retries', async () => {
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				mock<InstanceMonitoringReport>({
+					createdAt: new Date(AFTER_SLOT),
+					lastAttemptAt: new Date(Date.now() - Time.minutes.toMilliseconds),
+				}),
+			);
+
+			scheduler.init();
+			await settle();
+
+			expect(reportRepository.findPending).toHaveBeenCalledTimes(1);
+			expect(reportingService.sendReport).not.toHaveBeenCalled();
+		});
+
+		test('reads the pending report once in a pass that delivers', async () => {
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+
+			scheduler.init();
+			await settle();
+
+			expect(reportRepository.findPending).toHaveBeenCalledTimes(1);
+			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
+		});
+
+		test('reads the pending report again after a failed delivery', async () => {
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+			reportingService.sendReport.mockRejectedValueOnce(new Error('Network error'));
+
+			scheduler.init();
+			await settle();
+
+			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
+			expect(reportRepository.findPending).toHaveBeenCalledTimes(2);
+		});
+
+		test('skips a stale pending report and delivers a fresh one in the same pass', async () => {
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, reportRepository } = makeHarness();
+			const stale = mock<InstanceMonitoringReport>({
+				id: 'stale-report',
+				attempts: 1,
+				lastError: 'Network error',
+				createdAt: new Date('2026-03-25T07:00:00.000Z'),
+				lastAttemptAt: null,
+			});
+			reportRepository.findPending.mockResolvedValue(stale);
+
+			scheduler.init();
+			await settle();
+
+			expect(reportingService.skip).toHaveBeenCalledWith(
+				'stale-report',
+				1,
+				'slot-passed',
+				'Network error',
+			);
+			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
 		});
 	});
 
