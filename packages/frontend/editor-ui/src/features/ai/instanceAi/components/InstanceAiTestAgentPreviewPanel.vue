@@ -35,9 +35,6 @@ const phase = ref<Phase>('generating-preview');
 const previewRunId = ref<string | null>(null);
 const suiteCaseCount = ref(0);
 
-const isPreviewInFlight = computed(() =>
-	previewRunId.value ? store.isRunInFlight(previewRunId.value) : true,
-);
 const previewResult = computed(() =>
 	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
 );
@@ -94,10 +91,17 @@ function checkPreviewSettled() {
 	// this check the watcher would confirm on a preview that never loaded.
 	const review = store.getReview(previewRunId.value);
 	if (!review.run) return;
-	if (isPreviewInFlight.value) return;
-	// A settled run can still fail — an error/cancelled case has no answer to
+	// Deliberately not gated on `isRunInFlight` (the run's own status): the
+	// store's poll updates `run.status` to its settled value in one patch, then
+	// refreshes `results` in a second, later patch (`pollRunOnce` calls
+	// `settleRun` only after that first patch). Reading here in between would
+	// see a settled run next to a still-pending case and misreport failure.
+	// The case's own status is the only thing that tells us it is done.
+	const resultStatus = review.results[0]?.status;
+	if (resultStatus === undefined || resultStatus === 'new' || resultStatus === 'running') return;
+	// A settled case can still fail — an error/cancelled case has no answer to
 	// confirm, so it gets the same treatment as losing track of the run.
-	if (review.results[0]?.status !== 'success') {
+	if (resultStatus !== 'success') {
 		failAndDismiss(new Error('Preview run did not complete successfully'));
 		return;
 	}

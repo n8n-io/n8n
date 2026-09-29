@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
@@ -268,6 +269,60 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await waitFor(() => expect(store.openRun).toHaveBeenCalled());
 		expect(getByTestId('instance-ai-test-agent-preview-generating')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-preview-looks-good')).not.toBeInTheDocument();
+	});
+
+	it('keeps waiting when the run settles before its case result does', async () => {
+		// Reproduces the store's real two-phase settle: `pollRunOnce` patches
+		// `run.status` to its final value first, then refreshes `results` in a
+		// later, separate patch (via `settleRun`). A mock that returns one fixed
+		// object can't reproduce that gap — these refs back a `getReview` that
+		// updates the same way, in two steps, so the panel's `watchEffect` sees
+		// the same window a real settle produces.
+		const runStatus = ref<'running' | 'completed'>('running');
+		const resultStatus = ref<'new' | 'running' | 'success'>('new');
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'getReview').mockImplementation(
+			() =>
+				({
+					run: { status: runStatus.value },
+					results: [
+						{
+							status: resultStatus.value,
+							input: { input: 'x' },
+							output: resultStatus.value === 'success' ? { finalText: 'y' } : null,
+						},
+					],
+					resultsCount: 1,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				}) as never,
+		);
+
+		const { getByTestId, queryByTestId, findByTestId } = renderComponent();
+		await waitFor(() => expect(store.openRun).toHaveBeenCalled());
+
+		// The run settles first — the case result has not caught up yet. The
+		// panel must not confirm on this window.
+		runStatus.value = 'completed';
+		await Promise.resolve();
+		expect(getByTestId('instance-ai-test-agent-preview-generating')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-test-agent-preview-looks-good')).not.toBeInTheDocument();
+
+		// The second, later patch catches the result up — only now is it safe
+		// to confirm.
+		resultStatus.value = 'success';
+		expect(await findByTestId('instance-ai-test-agent-preview-looks-good')).toBeInTheDocument();
 	});
 
 	it('dismisses when the preview case settles without succeeding', async () => {
