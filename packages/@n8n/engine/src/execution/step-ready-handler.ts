@@ -145,13 +145,6 @@ export class StepReadyHandler {
 			// write rather than after it. Either order is correct.
 			this.onStepSuspended();
 			await this.executionStore.refreshLiveStatus(execution.id);
-			// A cancel that landed while the step ran swept before this wait existed,
-			// so it is swept here instead. Whichever of the two reads the row later
-			// sees it, so no wait outlives its execution.
-			const current = await this.executionStore.loadExecution(execution.id);
-			if (!isLiveExecutionStatus(current.status)) {
-				await this.stepStore.cancelPendingSteps(execution.id);
-			}
 			return;
 		}
 

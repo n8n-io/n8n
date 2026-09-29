@@ -590,6 +590,22 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(later.resumeCause).toBeNull();
 	});
 
+	it('TypeOrmStepStore.resumeDueSteps cancels a due wait whose execution has ended instead of queuing it', async () => {
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const due = new Date('2020-01-01T00:00:00.000Z');
+		// suspended after the cancellation sweep, so the sweep never saw it
+		const ended = await seedWaitingStep(await createExecution('cancelled'), 'a', due);
+		const failed = await seedWaitingStep(await createExecution('failed'), 'a', due);
+		const live = await seedWaitingStep(await createExecution(), 'a', due);
+
+		const resumed = await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10);
+
+		expect(resumed.map((step) => step.id)).toEqual([live.id]);
+		expect((await store.loadStep(ended.id)).status).toBe('cancelled');
+		expect((await store.loadStep(failed.id)).status).toBe('cancelled');
+		expect((await store.loadStep(live.id)).status).toBe('queued');
+	});
+
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

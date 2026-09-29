@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import { ExecutionNotFoundError } from '../execution/execution-store';
 import {
 	isLiveExecutionStatus,
+	LIVE_EXECUTION_STATUSES,
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
 	type ResumeCause,
@@ -53,7 +54,7 @@ type ClaimedStepRow = {
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
 };
-type DueStepRow = { id: string; execution_id: string };
+type DueStepRow = { id: string; execution_id: string; status: StepStatus };
 type ExecutionStatusRow = { id: string; status: ExecutionStatus };
 
 /**
@@ -217,30 +218,34 @@ export class TypeOrmStepStore implements StepStore {
 		// the other's batch. The subquery carries the `wait_till` test, so the row
 		// that is updated is the row that was found due.
 		//
-		// Through the query builder, not `manager.query`: a raw UPDATE resolves to
-		// `[rows, rowCount]`, whereas `.execute()` puts the RETURNING rows in
-		// `result.raw` — as `claimStep` and `createSteps` also rely on.
-		const result = await this.repo
-			.createQueryBuilder()
-			.update(WorkflowStepExecution)
-			.set({ status: 'queued', resumeCause: { kind: 'deadline' } })
-			.where(
-				`id IN (
-					SELECT id FROM workflow_step_execution
-					WHERE status = 'waiting' AND wait_till <= :due
-					ORDER BY wait_till
-					LIMIT :limit
-					FOR UPDATE SKIP LOCKED
-				)`,
-				{ due, limit },
-			)
-			.returning(['id', 'executionId'])
-			.execute();
+		// The execution's status decides the row's next status in the same
+		// statement: a wait that outlived its execution (suspended after the
+		// cancellation sweep) is cancelled here rather than queued, and is not
+		// returned, since there is nothing to dispatch.
+		//
+		// A raw UPDATE resolves to `[rows, rowCount]`, unlike the query builder's
+		// `result.raw`. Raw, because the builder cannot join the execution row.
+		const [rows] = (await this.repo.query(
+			`UPDATE workflow_step_execution step
+			 SET status = CASE WHEN execution.status = ANY($3) THEN 'queued' ELSE 'cancelled' END,
+			     resume_cause = CASE WHEN execution.status = ANY($3) THEN $4::jsonb ELSE step.resume_cause END,
+			     updated_at = now()
+			 FROM workflow_execution execution
+			 WHERE execution.id = step.execution_id
+			   AND step.id IN (
+			     SELECT id FROM workflow_step_execution
+			     WHERE status = 'waiting' AND wait_till <= $1
+			     ORDER BY wait_till
+			     LIMIT $2
+			     FOR UPDATE SKIP LOCKED
+			   )
+			 RETURNING step.id, step.execution_id, step.status`,
+			[due, limit, [...LIVE_EXECUTION_STATUSES], JSON.stringify({ kind: 'deadline' })],
+		)) as [DueStepRow[], number];
 
-		return (result.raw as DueStepRow[]).map(({ id, execution_id: executionId }) => ({
-			id,
-			executionId,
-		}));
+		return rows
+			.filter((row) => row.status === 'queued')
+			.map(({ id, execution_id: executionId }) => ({ id, executionId }));
 	}
 
 	async nextWaitDeadline(): Promise<Date | null> {

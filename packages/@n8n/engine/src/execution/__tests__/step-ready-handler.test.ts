@@ -813,35 +813,6 @@ describe('StepReadyHandler waits', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('sweeps its own wait when the execution ended while the step ran', async () => {
-		const stepStore = makeStepStore();
-		const executionStore = makeExecutionStore();
-		const execution = await executionStore.loadExecution('exec-1');
-		// A cancel that lands while the step runs sweeps before this wait exists.
-		vi.mocked(executionStore.loadExecution)
-			.mockResolvedValueOnce(execution)
-			.mockResolvedValueOnce({ ...execution, status: 'cancelled' });
-		const handler = makeHandler(executionStore, stepStore, makeQueue(), {
-			v1StepExecutor: makeExecutor({ wait: timeWait }),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', timeWait);
-		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-	});
-
-	it('leaves its wait alone while the execution is live', async () => {
-		const stepStore = makeStepStore();
-		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
-			v1StepExecutor: makeExecutor({ wait: timeWait }),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.cancelPendingSteps).not.toHaveBeenCalled();
-	});
-
 	it('reports the suspension once the row is written, so the sweeper can re-arm', async () => {
 		const stepStore = makeStepStore();
 		const onStepSuspended = vi.fn(() => {

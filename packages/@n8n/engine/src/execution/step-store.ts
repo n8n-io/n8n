@@ -154,6 +154,10 @@ export interface StepStore {
 	 *
 	 * `limit` bounds the batch, so a backlog cannot turn one sweep into a single
 	 * long-running update.
+	 *
+	 * A due wait whose execution has ended is cancelled instead of resumed, and
+	 * is not returned. A step that suspends after the execution's cancellation
+	 * sweep ran is the one case that reaches here.
 	 */
 	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
 
