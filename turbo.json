@@ -95,10 +95,19 @@
 		"@n8n/local-gateway#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/node-engine-compatibility#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/scheduler#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/syslog-client#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/task-runner#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-core#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n#lint": {

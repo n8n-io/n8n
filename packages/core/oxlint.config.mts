@@ -43,13 +43,6 @@ export default defineConfig({
 			rules: { 'typescript/no-array-delete': 'warn' },
 		},
 		{
-			files: [
-				'src/execution-engine/__tests__/routing-node.test.ts',
-				'src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts',
-			],
-			rules: { 'no-unsafe-optional-chaining': 'warn' },
-		},
-		{
 			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],
 			jsPlugins: ['@n8n/eslint-config/plugin'],
 			rules: {

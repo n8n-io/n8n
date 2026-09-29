@@ -43,16 +43,7 @@ export default defineConfig(
 	},
 	{
 		files: ['src/execution-engine/__tests__/routing-node.test.ts'],
-		rules: {
-			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'no-unsafe-optional-chaining': 'warn',
-		},
-	},
-	{
-		files: [
-			'src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts',
-		],
-		rules: { 'no-unsafe-optional-chaining': 'warn' },
+		rules: { '@typescript-eslint/prefer-optional-chain': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],
