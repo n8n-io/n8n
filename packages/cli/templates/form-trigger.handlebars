@@ -675,6 +675,13 @@
 					{{/if}}
 				</form>
 
+				<div class='card' id='waiting-form' style='display: none;' role='status' aria-live='polite' aria-atomic='true' tabindex='-1'>
+					<div class='form-header'>
+						<h1>Response received</h1>
+						<p>Preparing the next page…</p>
+					</div>
+				</div>
+
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>
 						{{#if formSubmittedHeader}}
@@ -981,6 +988,12 @@
 			let timeoutId;
 			let formWaitingUrl;
 
+			function showSubmittedForm() {
+				form.style.display = 'none';
+				document.querySelector('#waiting-form').style.display = 'none';
+				document.querySelector('#submitted-form').style.display = 'block';
+			}
+
 			const checkExecutionStatus = async () => {
 				if (!interval) return;
 
@@ -1006,15 +1019,13 @@
 					}
 
 					if (text === "success") {
-						form.style.display = 'none';
-						document.querySelector('#submitted-form').style.display = 'block';
+						showSubmittedForm();
 						clearTimeout(timeoutId);
 						return;
 					}
 
 					if (text === "null") {
-						form.style.display = 'none';
-						document.querySelector('#submitted-form').style.display = 'block';
+						showSubmittedForm();
 						document.querySelector('#submitted-header').textContent = 'Could not get execution status';
 						document.querySelector('#submitted-content').textContent =
 							'Make sure "Save successful production executions" is enabled in your workflow settings';
@@ -1023,8 +1034,7 @@
 					}
 
 					if(["canceled", "crashed", "error" ].includes(text)) {
-						form.style.display = 'none';
-						document.querySelector('#submitted-form').style.display = 'block';
+						showSubmittedForm();
 						document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 						document.querySelector('#submitted-content').textContent =
 							'Please try again or contact support if the problem persists';
@@ -1139,6 +1149,10 @@
 									// Extract signature from URL for subsequent requests
 									const waitingUrl = new URL(json.formWaitingUrl);
 									formSignature = waitingUrl.searchParams.get('signature');
+									form.style.display = 'none';
+									const waitingForm = document.querySelector('#waiting-form');
+									waitingForm.style.display = 'block';
+									waitingForm.focus();
 									clearTimeout(timeoutId);
 									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
@@ -1152,8 +1166,7 @@
 								}
 
 								if (json?.formSubmittedText) {
-									form.style.display = 'none';
-									document.querySelector('#submitted-form').style.display = 'block';
+									showSubmittedForm();
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
 									return;
 								}
@@ -1183,12 +1196,10 @@
 								if (redirectUrl) {
 									redirectTo(redirectUrl.href);
 								} else {
-									form.style.display = 'none';
-									document.querySelector('#submitted-form').style.display = 'block';
+									showSubmittedForm();
 								}
 							} else {
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
+								showSubmittedForm();
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
 									response.status === 413
@@ -1200,8 +1211,7 @@
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
-							form.style.display = 'none';
-							document.querySelector('#submitted-form').style.display = 'block';
+							showSubmittedForm();
 							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 							document.querySelector('#submitted-content').textContent =
 								'The form could not be submitted. Please check your connection and try again, or contact support if the problem persists.';

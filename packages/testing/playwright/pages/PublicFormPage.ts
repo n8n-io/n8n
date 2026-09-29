@@ -86,6 +86,10 @@ export class PublicFormPage extends BasePage {
 		return this.page.locator('#submitted-form');
 	}
 
+	get waitingCard(): Locator {
+		return this.page.getByRole('status');
+	}
+
 	get body(): Locator {
 		return this.page.locator('body');
 	}

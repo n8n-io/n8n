@@ -149,6 +149,22 @@ onErrorCaptured((e, component) => {
 
 const node = computed(() => props.node ?? ndvStore.value.activeNode);
 
+const hasFollowingFormPage = computed(() => {
+	if (node.value?.type !== FORM_TRIGGER_NODE_TYPE) return false;
+
+	return (
+		workflowDocumentStore?.value?.getChildNodes(node.value.name).some((nodeName) => {
+			const child = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			return (
+				child &&
+				!child.disabled &&
+				(child.type === FORM_NODE_TYPE ||
+					(child.type === WAIT_NODE_TYPE && child.parameters.resume === 'form'))
+			);
+		}) ?? false
+	);
+});
+
 // Whether the active Agent v3+ node has a Chat Trigger (or Manual Chat Trigger) in its
 // main-connection ancestry. Used as a reactive dependency of the parameter watch so the
 // prompt-source dropdown re-filters when a chat trigger is wired/removed while the NDV is open.
@@ -188,7 +204,13 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
+	[
+		() => props.parameters,
+		() => props.nodeValues,
+		node,
+		hasChatOrManualChatParent,
+		hasFollowingFormPage,
+	],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -214,7 +236,7 @@ throttledWatch(
 		// Apply node-specific parameter transformations
 		let filteredParameters: INodeProperties[];
 		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
-			filteredParameters = updateFormTriggerParameters(parameters, node.value.name);
+			filteredParameters = updateFormTriggerParameters(parameters);
 		} else if (node.value && node.value.type === FORM_NODE_TYPE) {
 			filteredParameters = updateFormParameters(parameters, node.value.name);
 		} else if (
@@ -240,7 +262,9 @@ throttledWatch(
 			filteredParameters.map(async (parameter) => {
 				const parameterPath = getPath(parameter.name);
 				const isMultipleValues = multipleValues(parameter);
-				const isDisabled = disabledMap[parameterPath] ?? false;
+				const isDisabled =
+					(disabledMap[parameterPath] ?? false) ||
+					(hasFollowingFormPage.value && parameter.name === 'responseMode');
 				const showOptions = shouldShowOptions(parameter);
 				const dependentParametersValues = await getDependentParametersValues(parameter);
 				const issues = getParameterIssues(parameter);
@@ -350,21 +374,15 @@ const indexToShowSlotAt = computed(() => {
 	return Math.min(index, parameterItems.value.length - 1);
 });
 
-function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const connectedNodes = workflowDocumentStore?.value?.getChildNodes(triggerName, 'main', 1);
-
-	const hasFormPage = connectedNodes?.some((nodeName) => {
-		const _node = workflowDocumentStore?.value?.getNodeByName(nodeName);
-		return _node && _node.type === FORM_NODE_TYPE;
-	});
-
-	if (hasFormPage) {
+function updateFormTriggerParameters(parameters: INodeProperties[]) {
+	if (hasFollowingFormPage.value) {
 		const triggerParameters: INodeProperties[] = [];
 
 		for (const parameter of parameters) {
 			if (parameter.name === 'responseMode') {
+				triggerParameters.push(parameter);
 				triggerParameters.push({
-					displayName: 'On submission, the user will be taken to the next form node',
+					displayName: i18n.baseText('parameterInputList.multiPageFormResponseNotice'),
 					name: 'formResponseModeNotice',
 					type: 'notice',
 					default: '',

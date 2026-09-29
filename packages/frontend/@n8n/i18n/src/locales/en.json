@@ -2766,6 +2766,7 @@
 	"parameterInputList.callout.dismiss.confirm.confirmButtonText": "Confirm",
 	"parameterInputList.callout.dismiss.confirm.cancelButtonText": "Cancel",
 	"parameterInputList.autoRequiresChatTriggerDescription": "Available when connected to a Chat Trigger node.",
+	"parameterInputList.multiPageFormResponseNotice": "This setting applies to single-page forms. Your workflow has more form pages. Each submission continues to the next page when it is ready.",
 	"parameterOverride.overridePanelText": "Defined automatically by the <b>model</b>",
 	"parameterOverride.applyOverrideButtonTooltip": "Let the model define this parameter",
 	"parameterOverride.descriptionTooltip": "Explain to the LLM how it should generate this value, a good, specific description would allow LLMs to produce expected results much more often",

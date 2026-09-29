@@ -6,7 +6,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { nextTick, ref, shallowRef } from 'vue';
+import { nextTick, reactive, ref, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
@@ -1091,7 +1091,7 @@ describe('ParameterInputList', () => {
 			});
 
 			expect(
-				await findByText('On submission, the user will be taken to the next form node'),
+				await findByText('parameterInputList.multiPageFormResponseNotice'),
 			).toBeInTheDocument();
 		});
 
@@ -1145,53 +1145,120 @@ describe('ParameterInputList', () => {
 			expect(getAllByTestId('parameter-item').length).toBeGreaterThan(0);
 		});
 
-		// ADO-5843: A Form page later in the chain must not hide the trigger's response control.
 		it.each([
-			{ lastNode: 'No Operation', lastNodeType: 'n8n-nodes-base.noOp' },
-			{ lastNode: 'Form', lastNodeType: FORM_NODE_TYPE },
+			{
+				name: 'a direct Form',
+				type: FORM_NODE_TYPE,
+				direct: true,
+				disabled: false,
+				resume: '',
+				multiPage: true,
+			},
+			{
+				name: 'a later Form',
+				type: FORM_NODE_TYPE,
+				direct: false,
+				disabled: false,
+				resume: '',
+				multiPage: true,
+			},
+			{
+				name: 'a disabled Form',
+				type: FORM_NODE_TYPE,
+				direct: false,
+				disabled: true,
+				resume: '',
+				multiPage: false,
+			},
+			{
+				name: 'a form Wait',
+				type: WAIT_NODE_TYPE,
+				direct: false,
+				disabled: false,
+				resume: 'form',
+				multiPage: true,
+			},
+			{
+				name: 'a timed Wait',
+				type: WAIT_NODE_TYPE,
+				direct: false,
+				disabled: false,
+				resume: 'timeInterval',
+				multiPage: false,
+			},
+			{
+				name: 'a non-Form node',
+				type: 'n8n-nodes-base.noOp',
+				direct: false,
+				disabled: false,
+				resume: '',
+				multiPage: false,
+			},
 		])(
-			'keeps Respond When available when Gmail leads to $lastNode',
-			async ({ lastNode, lastNodeType }) => {
+			'explains the response mode with $name',
+			async ({ type, direct, disabled, resume, multiPage }) => {
+				const responseMode = 'lastNode';
 				ndvStore.activeNode = {
 					...TEST_NODE_NO_ISSUES,
 					name: 'Form Trigger',
 					type: FORM_TRIGGER_NODE_TYPE,
-					parameters: { responseMode: 'onReceived' },
+					parameters: { responseMode },
 				};
-
 				const connections: IConnections = {
-					'Form Trigger': { main: [[{ node: 'Gmail', type: 'main', index: 0 }]] },
-					Gmail: { main: [[{ node: 'Code', type: 'main', index: 0 }]] },
-					Code: { main: [[{ node: lastNode, type: 'main', index: 0 }]] },
+					'Form Trigger': {
+						main: [[{ node: direct ? 'Last' : 'Processing', type: 'main', index: 0 }]],
+					},
+					Processing: { main: [[{ node: 'Last', type: 'main', index: 0 }]] },
 				};
 				workflowDocumentStoreMock.getChildNodes.mockImplementation(
 					getChildNodes.bind(null, connections),
 				);
-				workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => ({
-					type: name === lastNode ? lastNodeType : 'n8n-nodes-base.noOp',
-				}));
+				const lastNode = reactive({ type, disabled, parameters: { resume } });
+				workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) =>
+					name === 'Last' ? lastNode : { type: 'n8n-nodes-base.noOp', parameters: {} },
+				);
 
-				const { getByTestId, queryByText } = renderComponent({
+				const { getByTestId, queryByText, emitted } = renderComponent({
 					props: {
 						parameters: [formTriggerParameters[0]],
-						nodeValues: { responseMode: 'onReceived' },
+						nodeValues: { responseMode },
 					},
 					global: {
 						stubs: {
 							ParameterInputFull: {
-								props: ['parameter', 'isReadOnly'],
+								props: ['parameter', 'isReadOnly', 'value'],
 								template:
-									'<button :data-test-id="parameter.name" :disabled="isReadOnly">{{ parameter.displayName }}</button>',
+									'<button :data-test-id="parameter.name" :disabled="isReadOnly">{{ value }}</button>',
 							},
 						},
 					},
 				});
 				await flushPromises();
 
-				expect(getByTestId('responseMode')).toBeEnabled();
-				expect(
-					queryByText('On submission, the user will be taken to the next form node'),
-				).not.toBeInTheDocument();
+				const control = getByTestId('responseMode');
+				expect(control).toHaveTextContent(responseMode);
+				if (multiPage) {
+					expect(control).toBeDisabled();
+					expect(queryByText('parameterInputList.multiPageFormResponseNotice')).toBeInTheDocument();
+
+					lastNode.disabled = true;
+					await waitFor(() => expect(control).toBeEnabled());
+					expect(
+						queryByText('parameterInputList.multiPageFormResponseNotice'),
+					).not.toBeInTheDocument();
+					expect(control).toHaveTextContent(responseMode);
+				} else {
+					expect(control).toBeEnabled();
+					expect(
+						queryByText('parameterInputList.multiPageFormResponseNotice'),
+					).not.toBeInTheDocument();
+				}
+				expect(ndvStore.activeNode.parameters.responseMode).toBe(responseMode);
+				expect(emitted('valueChanged') ?? []).not.toEqual(
+					expect.arrayContaining([
+						[expect.objectContaining({ name: expect.stringContaining('responseMode') })],
+					]),
+				);
 			},
 		);
 	});
