@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_fa8eafbebdcfa6::t_e33769d75f93c0 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6d68af0d093536196a39e9598a4faaf59d9a5222",
+  "prompts": {},
+  "sessions": {
+    "s_fa8eafbebdcfa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b335a80-065e-4758-9096-cf89626d305d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
