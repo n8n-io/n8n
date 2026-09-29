@@ -125,12 +125,11 @@ function handleOpenInEditor(tab: ArtifactTab) {
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
-const { getSummary, refresh: refreshSummaries } = useArtifactTabSummaries(() => props.tabs);
-
-/** The current name from the tab details, or the tab's own name until they load. */
-function tabName(tab: ArtifactTab): string {
-	return getSummary(tab)?.name ?? tab.name;
-}
+const {
+	getSummary,
+	displayName: tabName,
+	refresh: refreshSummaries,
+} = useArtifactTabSummaries(() => props.tabs);
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {

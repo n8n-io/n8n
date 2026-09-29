@@ -226,29 +226,27 @@ describe('useArtifactTabSummaries', () => {
 		expect(getSummary(dataTableTab('dt-2'))).toBeNull();
 	});
 
-	it('drops the loaded name and loads again when a tab is renamed', async () => {
-		mocks.searchWorkflows.mockResolvedValue([workflowRow('wf-1', 'version-1')]);
-		const { tabs, getSummary } = setup([workflowTab('wf-1')]);
+	it('uses the loaded name only to correct a stale name from the page load', async () => {
+		mocks.searchWorkflows.mockResolvedValue([{ ...workflowRow('wf-1'), name: 'Current name' }]);
+		const { displayName } = setup([{ ...workflowTab('wf-1'), name: 'Stale name' }]);
 		await flushPromises();
-		expect(getSummary(workflowTab('wf-1'))?.name).toBe('Workflow wf-1');
+
+		expect(displayName({ ...workflowTab('wf-1'), name: 'Stale name' })).toBe('Current name');
+	});
+
+	it('shows a rename from this session even when the refresh returns the old name', async () => {
+		mocks.searchWorkflows.mockResolvedValue([{ ...workflowRow('wf-1'), name: 'Name 2' }]);
+		const { tabs, displayName } = setup([{ ...workflowTab('wf-1'), name: 'Name 2' }]);
+		await flushPromises();
 		mocks.searchWorkflows.mockClear();
 
-		let resolveRefresh: (rows: unknown[]) => void = () => {};
-		mocks.searchWorkflows.mockReturnValue(
-			new Promise((resolve) => {
-				resolveRefresh = resolve;
-			}),
-		);
-		tabs.value = [{ ...workflowTab('wf-1'), name: 'Renamed' }];
+		// The refresh runs before the rename is saved, so the server still has the old name.
+		tabs.value = [{ ...workflowTab('wf-1'), name: 'Name 3' }];
 		await nextTick();
-
-		// Until the refresh ends, the tab shows its own new name.
-		expect(getSummary(workflowTab('wf-1'))?.name).toBeUndefined();
-		expect(mocks.searchWorkflows).toHaveBeenCalledWith(expect.objectContaining({ ids: ['wf-1'] }));
-
-		resolveRefresh([{ ...workflowRow('wf-1', 'version-1'), name: 'Renamed' }]);
 		await flushPromises();
-		expect(getSummary(workflowTab('wf-1'))?.name).toBe('Renamed');
+
+		expect(mocks.searchWorkflows).toHaveBeenCalledWith(expect.objectContaining({ ids: ['wf-1'] }));
+		expect(displayName({ ...workflowTab('wf-1'), name: 'Name 3' })).toBe('Name 3');
 	});
 
 	it('does not load details for agent tabs', async () => {

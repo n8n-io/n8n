@@ -394,9 +394,10 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalled());
-			mockSearchWorkflows.mockReturnValue(new Promise(() => {}));
 
 			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
+			// The refresh after the rename still returns the old name from the server.
+			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalledTimes(2));
 
 			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
 		});

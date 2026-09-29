@@ -5,11 +5,10 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
 import type { ArtifactTab } from './useCanvasPreview';
 
-// `name` is the current name. The tab's own name can be stale after a rename.
-// It is empty while a rename that reached the tab is not loaded yet.
+// `name` is the name the server had when the details loaded.
 export type ArtifactTabSummary =
-	| { type: 'workflow'; name?: string; updatedAt: string; published: boolean }
-	| { type: 'data-table'; name?: string; updatedAt: string; columnCount: number };
+	| { type: 'workflow'; name: string; updatedAt: string; published: boolean }
+	| { type: 'data-table'; name: string; updatedAt: string; columnCount: number };
 
 /** `null` means the artifact was checked but has no details, e.g. it is deleted. */
 export type ArtifactTabSummaryEntry = ArtifactTabSummary | null;
@@ -153,9 +152,11 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 		},
 	);
 
-	// A rename during the session reaches the tab before its details refresh. Drop
-	// the older loaded name, so the tab shows its own new name, and load again.
+	// After a rename in this session, the tab's own name is newer than the server
+	// can be: a refresh can run before the rename is saved. So the loaded name only
+	// corrects a stale name that the tab had when the page loaded.
 	const seenNames = new Map<string, string>();
+	const renamedKeys = reactive(new Set<string>());
 	watch(
 		() => summarizedTabs().map((tab) => `${summaryKey(tab.type, tab.id)}\n${tab.name}`),
 		() => {
@@ -165,14 +166,20 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 				const previousName = seenNames.get(key);
 				seenNames.set(key, tab.name);
 				if (previousName === undefined || previousName === tab.name) continue;
-				const summary = summaries.get(key);
-				if (summary) summaries.set(key, { ...summary, name: undefined });
+				renamedKeys.add(key);
 				renamed.push(tab);
 			}
+			// A rename changes the edited time too.
 			if (renamed.length > 0) void refresh(renamed);
 		},
 		{ immediate: true },
 	);
 
-	return { getSummary, refresh };
+	/** The name to show for a tab. */
+	function displayName(tab: ArtifactTab): string {
+		if (!hasTabSummary(tab) || renamedKeys.has(summaryKey(tab.type, tab.id))) return tab.name;
+		return getSummary(tab)?.name ?? tab.name;
+	}
+
+	return { getSummary, displayName, refresh };
 }
