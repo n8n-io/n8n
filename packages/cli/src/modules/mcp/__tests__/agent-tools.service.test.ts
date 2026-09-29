@@ -2115,7 +2115,7 @@ describe('McpAgentToolsService', () => {
 					requestUrl: slackManifest.settings.event_subscriptions.request_url,
 					manifest: slackManifest,
 				},
-				warning: expect.stringContaining('did not build the Slack app'),
+				warning: expect.stringContaining('could not confirm'),
 			});
 		});
 
@@ -2129,8 +2129,11 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				configured: true,
-				slackApp: { configuredForAgent: false },
-				warning: expect.stringContaining('did not build the Slack app'),
+				slackApp: {
+					configuredForAgent: false,
+					requestUrl: slackManifest.settings.event_subscriptions.request_url,
+				},
+				warning: expect.stringContaining('could not confirm'),
 			});
 		});
 
@@ -2162,6 +2165,11 @@ describe('McpAgentToolsService', () => {
 
 	describe('update_agent_integration Slack managed setup', () => {
 		const input = { agentId: 'agent-1', action: 'connect', type: 'slack' };
+
+		beforeEach(() => {
+			// A fresh install stores this Agent's ID on the new bot credential.
+			slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(true);
+		});
 		const managerCredential = {
 			id: 'manager-1',
 			name: 'Workspace credentials',
@@ -2394,6 +2402,35 @@ describe('McpAgentToolsService', () => {
 				configured: true,
 				appId: 'A1',
 				slackApp: { configuredForAgent: true },
+			});
+		});
+
+		it('rejects an existing bot credential whose Slack app belongs to another Agent', async () => {
+			slackManagedSetup.installApp.mockResolvedValue({
+				status: 'connected',
+				appId: 'A0',
+				credentialId: 'leftover-bot',
+			});
+			slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(false);
+
+			const result = await callTool('update_agent_integration', {
+				...input,
+				managerCredentialId: 'manager-1',
+				workspaceId: 'T1',
+			});
+
+			expect(slackManagedSetup.isAppConfiguredForAgent).toHaveBeenCalledWith(
+				'leftover-bot',
+				expect.objectContaining({ id: 'agent-1' }),
+				user,
+			);
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				code: 'slack_app_built_for_another_agent',
+				configured: false,
+				integration: { type: 'slack', credentialId: 'leftover-bot' },
+				nextStep: expect.stringContaining('action=disconnect'),
 			});
 		});
 

@@ -185,7 +185,9 @@ Slack in this order:
 2. Call update_agent_integration again with the chosen managerCredentialId and workspaceId. n8n
    creates the Slack app, installs it, and connects the channel. If the result has
    status=install_approval_required, give the user installUrl; n8n connects the channel after they
-   approve the install. Call get_agent to confirm.
+   approve the install. Call get_agent to confirm. If the result has
+   code=slack_app_built_for_another_agent, the Agent already uses a bot credential from another
+   Slack app: disconnect that credential, then install again.
 
 When you connect with an explicit slackApi credential, the result has slackApp.configuredForAgent. It
 is true only when n8n built the Slack app for this Agent. If it is false, relay the warning and

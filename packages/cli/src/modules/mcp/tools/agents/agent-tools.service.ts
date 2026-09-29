@@ -1826,6 +1826,22 @@ export class McpAgentToolsService {
 			};
 		}
 
+		// installApp returns a bot credential that this Agent already has instead of
+		// building a new app. That credential can come from another Agent's app.
+		if (!(await this.slackSetup.isAppConfiguredForAgent(agent, user, result.credentialId))) {
+			return {
+				ok: false,
+				code: 'slack_app_built_for_another_agent',
+				agentId: agent.id,
+				configured: false,
+				integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
+				error:
+					'This Agent already uses a Slack bot credential that n8n did not build for this Agent.',
+				nextStep:
+					'Disconnect integration.credentialId from this Agent with update_agent_integration action=disconnect. Then call the install again, and n8n builds a new Slack app for this Agent.',
+			};
+		}
+
 		const installed = {
 			ok: true,
 			agentId: agent.id,

@@ -16,7 +16,7 @@ const RECONNECT_WORKSPACE_STEP =
 	'Ask the user to open the Agent in n8n, choose Add channel, pick Slack, and reconnect the listed Slack workspace credential. Then call update_agent_integration again without credentialId.';
 
 const UNVERIFIED_APP_WARNING =
-	'n8n did not build the Slack app behind this credential for this Agent, so the Agent may receive no events. This happens for an app made for another use, such as a Slack Trigger, or for an app that n8n built for another Agent. Make sure the app sends Event Subscriptions and Interactivity to slackApp.requestUrl, with Socket Mode off and the bot events in slackApp.manifest. To let n8n build a correct app, disconnect this credential and call update_agent_integration without credentialId.';
+	'n8n could not confirm that it built the Slack app behind this credential for this Agent, so the Agent may receive no events. This happens for an app made for another use, such as a Slack Trigger, or for an app that n8n built for another Agent. Make sure the app sends Event Subscriptions and Interactivity to slackApp.requestUrl, with Socket Mode off and the bot events in slackApp.manifest. To let n8n build a correct app, disconnect this credential and call update_agent_integration without credentialId.';
 
 /**
  * Slack setup steps for MCP clients.
@@ -129,25 +129,32 @@ export class McpAgentSlackSetup {
 	/**
 	 * n8n cannot read a Slack app's request URL with a bot token, so for a
 	 * credential that n8n did not build for this Agent, return what the app must
-	 * be set to. The connect is already saved when this runs, so a failed check
-	 * reports the app as unverified instead of failing the tool call.
+	 * be set to.
 	 */
 	async describeBotCredential(agent: Agent, user: User, credentialId: string) {
+		if (await this.isAppConfiguredForAgent(agent, user, credentialId)) {
+			return { slackApp: { configuredForAgent: true } };
+		}
+		return {
+			slackApp: { configuredForAgent: false, ...(await this.appRequirements(agent)) },
+			warning: UNVERIFIED_APP_WARNING,
+		};
+	}
+
+	/**
+	 * A failed check counts as unverified: the caller has already saved the
+	 * connect, or can only report the result.
+	 */
+	async isAppConfiguredForAgent(agent: Agent, user: User, credentialId: string) {
 		try {
-			if (await this.managedSetup.isAppConfiguredForAgent(credentialId, agent, user)) {
-				return { slackApp: { configuredForAgent: true } };
-			}
-			return {
-				slackApp: { configuredForAgent: false, ...(await this.appRequirements(agent)) },
-				warning: UNVERIFIED_APP_WARNING,
-			};
+			return await this.managedSetup.isAppConfiguredForAgent(credentialId, agent, user);
 		} catch (error) {
 			this.logger.warn('[McpAgentSlackSetup] Could not check the Slack app of a credential', {
 				agentId: agent.id,
 				credentialId,
 				error,
 			});
-			return { slackApp: { configuredForAgent: false }, warning: UNVERIFIED_APP_WARNING };
+			return false;
 		}
 	}
 
