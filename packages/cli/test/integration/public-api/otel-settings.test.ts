@@ -143,11 +143,10 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
+			expect(response.body).toStrictEqual({
 				...validSettings,
 				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
 			});
-			expect(Object.keys(response.body).sort()).toEqual(Object.keys(validSettings).sort());
 		});
 
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {

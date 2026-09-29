@@ -3,6 +3,7 @@ import {
 	OtelSettingsQueryPublicDto,
 	UpdateOtelSettingsPublicDto,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -20,9 +21,10 @@ import {
 import { ConflictError } from '@n8n/errors';
 import type { Response } from 'express';
 
-import { OtelSettingsUpdateService } from '@/modules/otel/otel-settings-update.service';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
+import { OtelService } from '@/modules/otel/otel.service';
 import { toOtelSettingsResponse } from '@/public-api/v1/shared/otel.mapper';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const tags = ['SettingsOtel'];
 
@@ -30,7 +32,9 @@ const tags = ['SettingsOtel'];
 export class OtelPublicController {
 	constructor(
 		private readonly settingsService: OtelSettingsService,
-		private readonly settingsUpdateService: OtelSettingsUpdateService,
+		private readonly otelService: OtelService,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly publisher: Publisher,
 	) {}
 
 	@Get('/')
@@ -76,6 +80,13 @@ export class OtelPublicController {
 			);
 		}
 
-		return toOtelSettingsResponse(await this.settingsUpdateService.updateSettings(body));
+		await this.settingsService.saveSettings(body);
+		await this.otelService.restart();
+		await this.moduleRegistry.refreshModuleSettings('otel');
+		void this.publisher.publishCommand({ command: 'reload-otel-config' });
+
+		const updated = this.settingsService.getSettings();
+
+		return toOtelSettingsResponse(updated);
 	}
 }
