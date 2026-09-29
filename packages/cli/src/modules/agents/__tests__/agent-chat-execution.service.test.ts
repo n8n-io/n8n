@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -61,6 +62,7 @@ function makeService(isMultiMain = true) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const publisher = mock<Publisher>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
+	const steering = mock<AgentMessageSteeringService>();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
@@ -69,6 +71,7 @@ function makeService(isMultiMain = true) {
 		publisher,
 		mock<InstanceSettings>({ isMultiMain }),
 		updates,
+		steering,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -80,10 +83,30 @@ function makeService(isMultiMain = true) {
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 	checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
-	return { service, repository, executionService, checkpointStorage, publisher, updates };
+	return { service, repository, executionService, checkpointStorage, publisher, updates, steering };
 }
 
 beforeEach(() => Container.reset());
+
+it('closes steering admission before signaling Stop', async () => {
+	const { service, steering } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	const committed = createDeferredPromise();
+	steering.close.mockReturnValue(committed.promise);
+	const stopping = service.requestCancel(context);
+	await vi.waitFor(() =>
+		expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId),
+	);
+	try {
+		expect(controller.signal.aborted).toBe(false);
+	} finally {
+		committed.resolve();
+	}
+	await stopping;
+	expect(controller.signal.aborted).toBe(true);
+	await service.settle(context.executionId, async () => {});
+});
 
 it.each([
 	{ userId: 'other-user' },

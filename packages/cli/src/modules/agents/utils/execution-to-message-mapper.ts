@@ -149,6 +149,49 @@ function assistantContentFromExecution(
 }
 
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
+	if (!execution.timeline?.some((event) => event.type === 'input')) {
+		return executionSegmentToMessagesDto(execution);
+	}
+	const messages: AgentPersistedMessageDto[] = [];
+	const steeredIds = new Set(
+		execution.timeline.filter((event) => event.type === 'input').map((event) => event.messageId),
+	);
+	let segment: ExecutionTranscript = {
+		...execution,
+		inputMessages: execution.inputMessages?.filter(({ id }) => !steeredIds.has(id)),
+		timeline: [],
+	};
+	let suffix = '';
+	const appendSegment = (value: ExecutionTranscript) => {
+		for (const message of executionSegmentToMessagesDto(value)) {
+			if (message.role === 'assistant') message.id += suffix;
+			messages.push(message);
+		}
+	};
+	for (const event of execution.timeline) {
+		if (event.type !== 'input') {
+			segment.timeline?.push(event);
+			continue;
+		}
+		appendSegment({ ...segment, status: 'success', error: null });
+		const input = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		if (input) messages.push({ ...input, executionId: execution.id });
+		suffix = `:${event.messageId}`;
+		segment = {
+			...execution,
+			userMessage: null,
+			attachments: null,
+			author: null,
+			inputMessages: [],
+			timeline: [],
+			createdAt: new Date(event.timestamp),
+		};
+	}
+	appendSegment(segment);
+	return messages;
+}
+
+function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
 	// Canonical inputs keep their message IDs. Trace messages and legacy inputs
