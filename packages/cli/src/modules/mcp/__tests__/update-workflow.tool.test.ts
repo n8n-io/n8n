@@ -2089,9 +2089,8 @@ describe('update-workflow MCP tool', () => {
 				});
 
 				expect(result.isError).toBe(true);
-				expect(parseResult(result).error).toContain(
-					"Error workflow 'err-wf' is not available in MCP",
-				);
+				expect(parseResult(result).error).toContain('not available in MCP');
+				expect(parseResult(result).error).toContain('/workflow/err-wf?settings=true');
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -2108,7 +2107,7 @@ describe('update-workflow MCP tool', () => {
 				});
 
 				expect(result.isError).toBe(true);
-				expect(parseResult(result).error).toContain("Error workflow 'err-wf' is archived");
+				expect(parseResult(result).error).toContain("Workflow 'err-wf' is archived");
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
