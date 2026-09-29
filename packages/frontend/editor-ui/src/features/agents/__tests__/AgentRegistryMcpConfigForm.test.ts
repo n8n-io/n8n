@@ -5,12 +5,14 @@ import type {
 	McpServerConnectionItem,
 	McpToolSettings,
 } from '@/features/shared/toolsConnection/types';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 
 import AgentRegistryMcpConfigForm from '../components/AgentRegistryMcpConfigForm.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 
 const saveMock = vi.hoisted(() => vi.fn());
 const useAgentRegistryMcpConfigMock = vi.hoisted(() => vi.fn());
+const confirmRemove = vi.hoisted(() => vi.fn());
 
 vi.mock('../composables/useAgentRegistryMcpConfig', () => ({
 	MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS: 1,
@@ -20,7 +22,7 @@ vi.mock('../composables/useAgentRegistryMcpConfig', () => ({
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
+	useMessage: () => ({ confirm: confirmRemove }),
 }));
 
 vi.mock('@n8n/i18n', () => {
@@ -85,10 +87,12 @@ function mountForm({
 	connectionTimeoutMs,
 	status = 'connected',
 	isNew = false,
+	onRemove,
 }: {
 	connectionTimeoutMs?: number;
 	status?: McpServerConnectionItem['status'];
 	isNew?: boolean;
+	onRemove?: () => void;
 } = {}) {
 	const resolvedTimeout = connectionTimeoutMs ?? 60_000;
 	useAgentRegistryMcpConfigMock.mockReturnValue({
@@ -113,6 +117,7 @@ function mountForm({
 		},
 		isNew,
 		onConfirm: vi.fn(),
+		onRemove,
 	};
 
 	return mount(AgentRegistryMcpConfigForm, {
@@ -142,10 +147,19 @@ function confirm(wrapper: ReturnType<typeof mountForm>): boolean {
 	).confirm();
 }
 
+async function remove(wrapper: ReturnType<typeof mountForm>): Promise<boolean> {
+	return await (
+		wrapper.vm as unknown as {
+			remove: () => Promise<boolean>;
+		}
+	).remove();
+}
+
 describe('AgentRegistryMcpConfigForm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		saveMock.mockReturnValue(true);
+		confirmRemove.mockResolvedValue(MODAL_CANCEL);
 	});
 
 	it('defaults a new server timeout to 60,000 ms', () => {
@@ -189,5 +203,22 @@ describe('AgentRegistryMcpConfigForm', () => {
 		expect(timeoutInput(wrapper).element).toBeDisabled();
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.label');
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.help');
+	});
+
+	it('keeps the server when removal is cancelled', async () => {
+		const onRemove = vi.fn();
+		const wrapper = mountForm({ onRemove });
+
+		await expect(remove(wrapper)).resolves.toBe(false);
+		expect(onRemove).not.toHaveBeenCalled();
+	});
+
+	it('removes the server after confirmation', async () => {
+		confirmRemove.mockResolvedValue(MODAL_CONFIRM);
+		const onRemove = vi.fn();
+		const wrapper = mountForm({ onRemove });
+
+		await expect(remove(wrapper)).resolves.toBe(true);
+		expect(onRemove).toHaveBeenCalledOnce();
 	});
 });

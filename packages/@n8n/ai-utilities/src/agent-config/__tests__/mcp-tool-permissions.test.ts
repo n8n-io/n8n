@@ -46,6 +46,10 @@ describe('MCP tool permissions', () => {
 	});
 
 	describe('compileMcpToolPermissions', () => {
+		it('leaves SDK defaults unchanged when no permission policy is configured', () => {
+			expect(compileMcpToolPermissions(undefined, [{ name: 'create_record' }])).toEqual({});
+		});
+
 		it('compiles category permissions and overrides into SDK settings', () => {
 			const policy = {
 				categories: { read: 'always_allow', write: 'require_approval' },

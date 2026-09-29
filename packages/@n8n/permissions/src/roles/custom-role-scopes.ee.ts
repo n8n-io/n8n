@@ -77,10 +77,8 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// Grants access to every instance Settings page, including MCP and n8n
 		// Assistant management. MCP and n8n Assistant also have their own narrower
 		// use/manage options below so a role can be given just those without the
-		// rest of instance Settings — Manage's bundle is a strict superset of all
-		// four, so checking Manage checks them too, and unchecking any one of them
-		// drops Manage out of the fully-checked state. The read scopes every role
-		// holds anyway live in BASELINE_INSTANCE_SCOPES, not in this bundle.
+		// rest of instance Settings. The read scopes every role holds anyway live
+		// in BASELINE_INSTANCE_SCOPES, not in this bundle.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
@@ -115,12 +113,13 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		],
 		'Mcp use': ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
 		'Mcp manage': ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
-		'AiAssistant use': ['instanceAi:message', 'instanceAi:gateway'],
+		'AiAssistant use': ['instanceAi:message', 'instanceAi:gateway', 'mcp:discover'],
 		'AiAssistant manage': [
 			'aiAssistant:manage',
 			'instanceAi:manage',
 			'instanceAi:message',
 			'instanceAi:gateway',
+			'mcp:discover',
 		],
 	},
 	user: {

@@ -74,6 +74,31 @@ function applyDiscoveredConnection(
 	};
 }
 
+function removeApprovalRequirements(toolPermissions: McpToolSettings): McpToolSettings {
+	return {
+		categories: {
+			read:
+				toolPermissions.categories.read === 'require_approval'
+					? 'always_allow'
+					: toolPermissions.categories.read,
+			write:
+				toolPermissions.categories.write === 'require_approval'
+					? 'always_allow'
+					: toolPermissions.categories.write,
+		},
+		...(toolPermissions.tools
+			? {
+					tools: Object.fromEntries(
+						Object.entries(toolPermissions.tools).map(([name, permission]) => [
+							name,
+							permission === 'require_approval' ? 'always_allow' : permission,
+						]),
+					),
+				}
+			: {}),
+	};
+}
+
 export function useAgentRegistryMcpConfig(
 	data: ComputedRef<AgentRegistryMcpModalData | null>,
 	onCredentialDeleted: () => void,
@@ -228,10 +253,15 @@ export function useAgentRegistryMcpConfig(
 			return false;
 		}
 		const connectedServer = applyDiscoveredConnection(draftServer.value, result.connection);
+		// inline agent experiment doesn't support approval
+		const normalizedToolPermissions =
+			data.value?.supportsToolApproval === false
+				? removeApprovalRequirements(toolPermissions)
+				: toolPermissions;
 		data.value?.onConfirm({
 			...connectedServer,
 			name: normalizedTitle.value,
-			toolPermissions,
+			toolPermissions: normalizedToolPermissions,
 			connectionTimeoutMs,
 		});
 		return true;

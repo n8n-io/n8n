@@ -435,6 +435,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		]);
 	});
 
+	it('uses explicit non-blocked tools as the canonical catalog when both categories are blocked', async () => {
+		const config = {
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'Restricted MCP',
+					url: 'https://custom.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'blocked', write: 'blocked' },
+						tools: {
+							search: 'always_allow',
+							update: 'require_approval',
+							delete: 'blocked',
+						},
+					},
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(createMcpMockFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				knownToolsByServer: {
+					'Restricted MCP': [
+						{ name: 'search', description: 'search' },
+						{ name: 'update', description: 'update' },
+					],
+				},
+			}),
+		);
+	});
+
 	it('prunes unmockable features and reports them', async () => {
 		const fullConfig = {
 			...baseConfig,

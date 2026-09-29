@@ -578,11 +578,10 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+	it('falls back to the MCP hostname for native OAuth2 credentials with no domain mode', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({
 			oauthTokenData: { access_token: 'github-token' },
-			allowedHttpRequestDomains: 'none',
 		} as never);
 		const oauthService = mock<OauthService>();
 
@@ -597,6 +596,8 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
+		await expect(configs[0].fetch('https://other.example.test/mcp/')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 

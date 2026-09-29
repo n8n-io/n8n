@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
+import type { McpRegistryServerResponse } from '@n8n/api-types';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -25,7 +26,7 @@ import type { IWorkflowDb } from '@/Interface';
 
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
-import type { AgentToolConfigModalData } from '../components/AgentToolConfigForm.vue';
+import type { AgentToolConfigData } from '../components/AgentToolConfigContent.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
@@ -49,9 +50,13 @@ vi.mock('@/app/api/workflows', () => ({
 	getWorkflow: vi.fn(),
 }));
 
+const { discoverMcpConnectionMock, fetchMcpRegistryCatalogMock } = vi.hoisted(() => ({
+	discoverMcpConnectionMock: vi.fn(),
+	fetchMcpRegistryCatalogMock: vi.fn().mockResolvedValue([]),
+}));
 vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
-	discoverMcpConnection: vi.fn(),
-	fetchMcpRegistryCatalog: vi.fn().mockResolvedValue([]),
+	discoverMcpConnection: discoverMcpConnectionMock,
+	fetchMcpRegistryCatalog: fetchMcpRegistryCatalogMock,
 }));
 
 const getWorkflowMock = vi.mocked(getWorkflow);
@@ -136,7 +141,7 @@ const MCP_TOOL: INodeTypeDescription = {
 
 let modalAttrs: Record<string, unknown> = {};
 let multiStepAttrs: Record<string, unknown> = {};
-let configFormData: AgentToolConfigModalData | null = null;
+let configFormData: AgentToolConfigData | null = null;
 let configuredResult: AgentJsonToolRef | AgentJsonMcpServerConfig | null = null;
 
 const AgentModalMultiStepStub = defineComponent({
@@ -178,22 +183,27 @@ const AgentToolConfigFormStub = defineComponent({
 	props: ['data'],
 	setup(props, { expose }) {
 		watchEffect(() => {
-			configFormData = props.data as AgentToolConfigModalData;
+			configFormData = props.data as AgentToolConfigData;
 		});
 		expose({
 			confirm: () => {
-				const data = props.data as AgentToolConfigModalData;
+				const data = props.data as AgentToolConfigData;
 				const result =
-					configuredResult ?? (data.kind === 'mcpServer' ? data.mcpServer : data.toolRef);
-				if (data.kind === 'mcpServer') {
+					configuredResult ??
+					(data.kind === 'mcpServer' || data.kind === 'registryMcpServer'
+						? data.mcpServer
+						: data.toolRef);
+				if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') {
 					data.onConfirm(result as AgentJsonMcpServerConfig);
 				} else {
 					data.onConfirm(result as AgentJsonToolRef);
 				}
 				return true;
 			},
-			remove: () => (props.data as AgentToolConfigModalData).onRemove?.(),
+			remove: () => (props.data as AgentToolConfigData).onRemove?.(),
 			changeTitle: vi.fn(),
+			saveDisabled: false,
+			titleError: '',
 		});
 		return {};
 	},
@@ -232,6 +242,16 @@ function emitConnect(item: ToolConnectionItem) {
 	(listener as (item: ToolConnectionItem) => void)(item);
 }
 
+function emitSelectCredential(item: ToolConnectionItem, authType: string, credentialId: string) {
+	const listener = modalAttrs.onSelectCredential;
+	if (typeof listener !== 'function') throw new Error('Missing onSelectCredential');
+	(listener as (item: ToolConnectionItem, authType: string, credentialId: string) => void)(
+		item,
+		authType,
+		credentialId,
+	);
+}
+
 function emitOpenDetail(item: ToolConnectionItem) {
 	const listener = modalAttrs.onOpenDetail;
 	if (typeof listener !== 'function') throw new Error('Missing onOpenDetail');
@@ -257,6 +277,7 @@ const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper
 	global: {
 		stubs: {
 			AgentModalMultiStep: AgentModalMultiStepStub,
+			AgentRegistryMcpConfigForm: AgentToolConfigFormStub,
 			AgentToolConfigForm: AgentToolConfigFormStub,
 			ToolsConnectionModal: ToolsConnectionModalStub,
 			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
@@ -280,6 +301,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		multiStepAttrs = {};
 		configFormData = null;
 		configuredResult = null;
+		fetchMcpRegistryCatalogMock.mockResolvedValue([]);
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -364,7 +386,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
-	function getConfigData(): AgentToolConfigModalData {
+	function getConfigData(): AgentToolConfigData {
 		if (!configFormData) throw new Error('The configure step is not open');
 		return configFormData;
 	}
@@ -907,7 +929,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 					allOutputs: false,
 				},
 			});
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'workflow') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'workflow'
+			) {
 				throw new Error('Expected a workflow tool');
 			}
 
@@ -1063,6 +1089,69 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(connectorItems[1]?.id).toBe(`nodeType:${AI_MCP_TOOL_NODE_TYPE}`);
 		});
 
+		it('adds a registry server after credential selection and configuration', async () => {
+			const registryServer: McpRegistryServerResponse = {
+				slug: 'github',
+				nodeTypeName: '@n8n/mcp-registry.github',
+				name: 'io.github',
+				title: 'GitHub',
+				description: 'Manage GitHub repositories',
+				tagline: 'GitHub tools',
+				version: '1.0.0',
+				updatedAt: '2026-09-25T00:00:00.000Z',
+				icons: [],
+				credentials: [
+					{
+						credentialType: 'githubMcpOAuth2Api',
+						name: 'GitHub OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				tools: [{ name: 'list_repositories' }],
+				isTemplated: false,
+				isOfficial: true,
+				status: 'active',
+			};
+			fetchMcpRegistryCatalogMock.mockResolvedValue([registryServer]);
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const item = getItems().find((candidate) => candidate.id === 'registry:github');
+			expect(item).toBeDefined();
+			emitSelectCredential(item!, 'githubMcpOAuth2Api', 'credential-1');
+			await flushPromises();
+
+			expect(getConfigData()).toMatchObject({
+				kind: 'registryMcpServer',
+				isNew: true,
+				mcpServer: {
+					name: 'github',
+					authentication: 'githubMcpOAuth2Api',
+					credential: 'credential-1',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					connectionTimeoutMs: 60_000,
+				},
+			});
+
+			const configured: AgentJsonMcpServerConfig = {
+				name: 'github',
+				description: registryServer.description,
+				url: 'https://mcp.github.test',
+				transport: 'streamableHttp',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: registryServer.nodeTypeName },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+				connectionTimeoutMs: 60_000,
+			};
+			await saveConfiguration(configured);
+
+			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [configured] });
+		});
+
 		it('commits an added MCP server to the host once its configure step saves', async () => {
 			const onConfirm = vi.fn();
 			render([], onConfirm);
@@ -1161,7 +1250,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 
 			const data = getConfigData();
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'node'
+			) {
 				throw new Error('Expected a node tool');
 			}
 			expect(data.toolRef.node.credentials).toEqual({
@@ -1210,7 +1303,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			// Activating a connected managed tool routes through the managed add
 			// path, so the new instance keeps the __aiGatewayManaged credential.
 			const data = getConfigData();
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'node'
+			) {
 				throw new Error('Expected a node tool');
 			}
 			expect(data.toolRef.node.credentials).toEqual({

@@ -1,4 +1,8 @@
+import type { McpRegistryDiscoveryResponse } from '@n8n/api-types';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
 import { McpRegistryController } from '../mcp-registry.controller';
@@ -57,6 +61,48 @@ describe('McpRegistryController', () => {
 			const result = await controller.listServers();
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('discover', () => {
+		it('validates and delegates a discovery request for the authenticated user', async () => {
+			const user = mock<User>();
+			const response: McpRegistryDiscoveryResponse = {
+				status: 'connected',
+				connection: {
+					url: 'https://mcp.example.com',
+					transport: 'streamableHttp',
+					authentication: 'githubMcpOAuth2Api',
+					credentialId: 'credential-1',
+				},
+				tools: [{ name: 'list_repositories', category: 'read' }],
+			};
+			discoveryService.discover.mockResolvedValue(response);
+
+			await expect(
+				controller.discover(
+					mock<AuthenticatedRequest>({
+						user,
+						body: { slug: ' github ', credentialId: ' cred-1 ' },
+					}),
+				),
+			).resolves.toEqual(response);
+			expect(discoveryService.discover).toHaveBeenCalledWith(user, {
+				slug: 'github',
+				credentialId: 'cred-1',
+			});
+		});
+
+		it.each([
+			{},
+			{ slug: '', credentialId: 'credential-1' },
+			{ slug: 'github', credentialId: '' },
+			{ slug: 'github', credentialId: 'credential-1', extra: true },
+		])('rejects an invalid discovery request without connecting: %o', async (body) => {
+			await expect(
+				controller.discover(mock<AuthenticatedRequest>({ body })),
+			).rejects.toBeInstanceOf(BadRequestError);
+			expect(discoveryService.discover).not.toHaveBeenCalled();
 		});
 	});
 });

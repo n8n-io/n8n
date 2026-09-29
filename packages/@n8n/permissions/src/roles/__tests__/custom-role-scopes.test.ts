@@ -83,34 +83,39 @@ describe('custom role scope whitelists', () => {
 
 		expect(use).toContain('instanceAi:message');
 		expect(use).toContain('instanceAi:gateway');
+		expect(use).toContain('mcp:discover');
 		expect(manage).toContain('aiAssistant:manage');
 		expect(manage).toContain('instanceAi:manage');
 		expect(manage).toContain('instanceAi:message');
 		expect(manage).toContain('instanceAi:gateway');
+		expect(manage).toContain('mcp:discover');
 	});
 
-	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
+	it('"AiAssistant use" matches the member n8n Assistant grants', () => {
 		// Member's baseline n8n Assistant access is `instanceAi:message` +
-		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
-		// to mirror Member must get both, or it ends up strictly weaker than Member.
+		// `instanceAi:gateway` (computer-use gateway pairing) plus MCP discovery.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
-		const memberInstanceAiScopes = GLOBAL_MEMBER_SCOPES.filter((s) => s.startsWith('instanceAi:'));
-		expect(new Set(use)).toEqual(new Set(memberInstanceAiScopes));
+		const memberAssistantScopes = GLOBAL_MEMBER_SCOPES.filter(
+			(scope) => scope.startsWith('instanceAi:') || scope === 'mcp:discover',
+		);
+		expect(new Set(use)).toEqual(new Set(memberAssistantScopes));
 	});
 
 	it('exposes instance-level MCP scopes as their own use/manage options', () => {
 		const { 'Mcp use': use, 'Mcp manage': manage } = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
 
 		expect(use).toContain('mcp:oauth');
+		expect(use).not.toContain('mcp:discover');
 		expect(use).toContain('mcpApiKey:create');
 		expect(use).toContain('mcpApiKey:rotate');
 		expect(manage).toContain('mcp:manage');
 		expect(manage).toContain('mcp:oauth');
+		expect(manage).not.toContain('mcp:discover');
 		expect(manage).toContain('mcpApiKey:create');
 		expect(manage).toContain('mcpApiKey:rotate');
 	});
 
-	it('includes MCP and n8n Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
+	it('keeps MCP discovery out of the general settings.Manage bundle', () => {
 		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
 
 		for (const scope of [
@@ -125,6 +130,7 @@ describe('custom role scope whitelists', () => {
 		]) {
 			expect(bundle).toContain(scope);
 		}
+		expect(bundle).not.toContain('mcp:discover');
 	});
 
 	it('exposes "Tags: View" as exactly the tag read/list pair', () => {
