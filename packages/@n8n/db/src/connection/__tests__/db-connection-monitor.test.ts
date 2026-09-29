@@ -6,7 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type TimersPromises from 'timers/promises';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 import type { Mock, MockedFunction } from 'vitest';
-import { mock, mockDeep } from 'vitest-mock-extended';
+import { mock, mockDeep, type MockProxy } from 'vitest-mock-extended';
 
 import { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
@@ -34,11 +34,12 @@ describe('DbConnectionMonitor', () => {
 		connectionAcquisitionTimeoutMs: 30_000,
 	});
 	const logger = mock<Logger>();
-	const dbConnectionMetrics = mock<DbConnectionMetrics>();
+	let dbConnectionMetrics: MockProxy<DbConnectionMetrics>;
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		dbConnectionMetrics = mock<DbConnectionMetrics>();
 		// Default: never resolves, so query wins the ping timeout race and
 		// recovery backoff stays suspended unless a test overrides it.
 		mockedSetTimeoutP.mockImplementation(async () => await new Promise(() => {}));
