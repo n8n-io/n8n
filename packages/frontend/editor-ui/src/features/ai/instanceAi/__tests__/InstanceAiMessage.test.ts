@@ -380,4 +380,55 @@ describe('InstanceAiMessage', () => {
 
 		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
 	});
+
+	describe('answered questions', () => {
+		const answeredCall = {
+			toolCallId: 'tc-1',
+			toolName: 'ask-user',
+			args: {},
+			isLoading: false,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: '',
+				inputType: 'questions',
+				questions: [{ id: 'apps', question: 'Which apps?', type: 'multi' }],
+			},
+			result: { answered: true, answers: [{ questionId: 'apps', selectedOptions: ['HubSpot'] }] },
+		} as InstanceAiAgentNode['toolCalls'][number];
+		const greeting = { type: 'text', content: 'Hi' } as const;
+		const answer = { type: 'tool-call', toolCallId: 'tc-1' } as const;
+
+		it('should render answers that end the timeline below the message actions', () => {
+			const { getByRole, getByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({ toolCalls: [answeredCall], timeline: [greeting, answer] }),
+					}),
+				},
+			});
+
+			const copy = getByRole('button', { name: 'Copy' });
+			const bubble = getByTestId('instance-ai-answered-questions');
+			expect(bubble).toHaveTextContent('HubSpot');
+			expect(copy.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
+
+		it('should leave answers in the timeline when text follows them', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							toolCalls: [answeredCall],
+							timeline: [greeting, answer, { type: 'text', content: 'Thanks' }],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+		});
+	});
 });

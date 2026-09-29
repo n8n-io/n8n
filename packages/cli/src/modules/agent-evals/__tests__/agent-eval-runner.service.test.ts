@@ -12,7 +12,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
 import type { Agent } from '@/modules/agents/entities/agent.entity';

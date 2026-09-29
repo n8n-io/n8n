@@ -26,7 +26,7 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import type { Method } from './webhook.types';
 

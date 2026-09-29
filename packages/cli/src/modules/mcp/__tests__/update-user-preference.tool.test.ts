@@ -4,8 +4,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';

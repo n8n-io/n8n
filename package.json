@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.41.0",
+  "version": "2.42.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -54,6 +54,9 @@
     "agent:test": "node scripts/agent-check.mjs test",
     "agent:playwright": "node scripts/agent-check.mjs playwright",
     "agent:harness": "node scripts/agent-harness.mjs",
+    "profile:vitest": "node scripts/vitest-profile.mjs",
+    "profile:ci-tests": "node scripts/ci-test-phase-profile.mjs",
+    "test:inventory": "node scripts/test-inventory.mjs",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",
     "lint:styles": "turbo run lint:styles",

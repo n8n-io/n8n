@@ -1558,6 +1558,20 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addNodesAndConnections', () => {
+		it('should add nothing and clear the connection context when a node type is not loaded', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReturnValue(true);
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: 'type' }], [], {});
+
+			expect(addedNodes).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
+		});
+	});
+
 	describe('addNodes', () => {
 		it('should add nodes at specified positions', async () => {
 			const nodeTypesStore = useNodeTypesStore();
@@ -5250,7 +5264,7 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+		it('keeps stored credentials the current user can use when sharing is enabled', () => {
 			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
 			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
 
@@ -5263,14 +5277,14 @@ describe('useCanvasOperations', () => {
 							id: ownedCredential.id,
 							name: ownedCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: true,
+							currentUserCanUse: true,
 						},
 					},
 				}),
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+		it('drops stored credentials the current user cannot use when sharing is enabled', () => {
 			const foreignCredential = mock<ICredentialsResponse>({
 				id: 'cred-foreign',
 				name: 'Someone else',
@@ -5287,7 +5301,7 @@ describe('useCanvasOperations', () => {
 							id: foreignCredential.id,
 							name: foreignCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: false,
+							currentUserCanUse: false,
 						},
 					},
 				}),

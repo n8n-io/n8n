@@ -3,6 +3,7 @@ import type {
 	ExecutionOptions,
 	ResumeOptions,
 	RunOptions,
+	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
@@ -25,6 +26,7 @@ import {
 import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from './utils/fatal-session-outcome';
 import { createAttributionTracker } from './utils/mcp-attribution';
 import { bindExecutionInput } from './utils/execution-input';
 
@@ -98,7 +100,7 @@ function getMaxIterationsChunks(): StreamChunk[] {
 		{
 			type: 'text-delta',
 			id,
-			delta: 'The agent has reached the maximum number of iterations and has stopped.',
+			delta: MAX_ITERATIONS_STOPPED_MESSAGE,
 		},
 		{ type: 'text-end', id },
 	];
@@ -450,6 +452,14 @@ export class AgentTurnExecutionService {
 		turn.options.abortSignal?.throwIfAborted();
 		await config.onAdmitted?.();
 		turn.options.abortSignal?.throwIfAborted();
+		// Forward side-call model costs (title generation, observation-log
+		// observer/reflector, episodic-memory model calls) onto this execution
+		// row and its thread. The SDK prices each call; the host only adds the
+		// cost. Best-effort and idempotent per reportId.
+		const threadId = config.context.threadId;
+		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
+			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+		};
 		return await this.startTurn(turn, config, recorder, state);
 	}
 

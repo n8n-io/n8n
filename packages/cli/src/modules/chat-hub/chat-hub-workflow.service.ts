@@ -49,7 +49,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

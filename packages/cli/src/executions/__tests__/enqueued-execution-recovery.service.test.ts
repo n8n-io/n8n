@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, Project } from '@n8n/db';
@@ -5,7 +6,6 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { EventService } from '@/events/event.service';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';

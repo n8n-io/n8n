@@ -120,7 +120,7 @@ test.describe(
 	'Agent message queue @mode:multi-main',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
-		test('preserves FIFO, relays remote output, and recovers accepted messages after a main crash', async ({
+		test('preserves FIFO and deduplicates deliveries across mains and a producer crash', async ({
 			n8nContainer,
 			createApiForMain,
 			mainUrls,
@@ -144,15 +144,27 @@ test.describe(
 			});
 			await mockModel(n8nContainer);
 			const streams: Array<Awaited<ReturnType<typeof ingress.agents.openChat>>> = [];
-			const open = async (main: 0 | 1, sessionId: string, message: string, newSession?: true) => {
+			const open = async (
+				main: 0 | 1,
+				sessionId: string,
+				message: string,
+				newSession?: true,
+				messageId: string = randomUUID(),
+			) => {
 				const api = clients[main];
 				const stream = await api.agents.openChat(mainUrls[main], project.id, agent.id, {
 					sessionId,
 					message,
+					messageId,
 					newSession,
 				});
 				streams.push(stream);
 				return stream;
+			};
+			const retry = async (main: 0 | 1, sessionId: string, messageId: string) => {
+				const duplicate = await open(main, sessionId, 'changed retry', true, messageId);
+				expect(await duplicate.done).toBeUndefined();
+				expect(duplicate.events).toEqual([{ type: 'done' }]);
 			};
 			const queued = async (threadId: string) =>
 				Number(
@@ -160,23 +172,35 @@ test.describe(
 						`SELECT count(*) FROM agent_message_queue WHERE "threadId" = '${threadId}' AND "executionId" IS NULL`,
 					),
 				);
+			const queuedMessageId = async (queueId: string) =>
+				(
+					await n8nContainer.services.postgres.exec(
+						`SELECT "messageId" FROM agent_message_queue WHERE id = '${queueId}'`,
+					)
+				).trim();
 			try {
 				const threadId = randomUUID();
+				const firstId = randomUUID();
+				const secondId = randomUUID();
+				const removedId = randomUUID();
 				await signalMain(n8nContainer, 0, 'SIGSTOP');
-				const first = await open(1, threadId, 'fifo-blocked', true);
+				const first = await open(1, threadId, 'fifo-blocked', true, firstId);
 				await expect.poll(() => executionId(first.events), { timeout: 30_000 }).toBeTruthy();
 				await signalMain(n8nContainer, 0, 'SIGCONT');
-				const second = await open(0, threadId, 'fifo-remote');
+				await retry(0, threadId, firstId.toUpperCase());
+				const second = await open(0, threadId, 'fifo-remote', undefined, secondId);
 				await expect.poll(async () => await queued(threadId)).toBe(1);
+				await retry(1, threadId, secondId);
 				const third = await open(0, threadId, 'third');
 				await expect.poll(async () => await queued(threadId)).toBe(2);
 				third.disconnect();
 				// A fresh reader restores accepted input from another main without resubmission.
-				const removable = await open(0, threadId, 'remove before processing');
+				const removable = await open(0, threadId, 'remove before processing', undefined, removedId);
 				await expect
 					.poll(() => removable.events.find((event) => event.type === 'message-queued'))
 					.toBeTruthy();
 				const restored = await consumer.agents.queuedMessages(project.id, agent.id, threadId);
+				const remoteInputId = await queuedMessageId(restored.items[0].id);
 				expect(restored.items.map(({ message }) => message)).toEqual([
 					'fifo-remote',
 					'third',
@@ -188,6 +212,7 @@ test.describe(
 					threadId,
 					restored.items[2].id,
 				);
+				await retry(1, threadId, removedId);
 				expect(
 					(await ingress.agents.queuedMessages(project.id, agent.id, threadId)).items.map(
 						({ message }) => message,
@@ -226,9 +251,19 @@ test.describe(
 					)
 					.toEqual(['cancelled', 'success', 'success']);
 				expect(await second.done).toBeUndefined();
+				await retry(1, threadId, secondId);
 				expect(second.events).toContainEqual(
-					expect.objectContaining({ type: 'execution-started', sessionId: threadId }),
+					expect.objectContaining({
+						type: 'execution-started',
+						sessionId: threadId,
+						inputMessageIds: [remoteInputId],
+					}),
 				);
+				expect(
+					(await ingress.agents.history(project.id, agent.id, threadId)).messages.filter(
+						({ id }) => id === remoteInputId,
+					),
+				).toHaveLength(1);
 				expect(
 					second.events
 						.filter((event) => event.type === 'text-delta')
@@ -245,14 +280,18 @@ test.describe(
 				).toEqual(['fifo-blocked', 'fifo-remote', 'third']);
 
 				const crashThread = randomUUID();
+				const interruptedId = randomUUID();
 				await signalMain(n8nContainer, 0, 'SIGSTOP');
-				const interrupted = await open(1, crashThread, 'fifo-crash', true);
+				const interrupted = await open(1, crashThread, 'fifo-crash', true, interruptedId);
 				await expect.poll(() => executionId(interrupted.events), { timeout: 30_000 }).toBeTruthy();
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				const afterCrash = await open(0, crashThread, 'survives restart');
 				await expect.poll(async () => await queued(crashThread)).toBe(1);
+				const pending = await ingress.agents.queuedMessages(project.id, agent.id, crashThread);
+				const recoveredInputId = await queuedMessageId(pending.items[0].id);
 				const [main] = n8nContainer.findContainers('-n8n-main-2$');
 				await main.restart({ timeout: 0 });
+				await retry(0, crashThread, interruptedId);
 				await expect
 					.poll(
 						async () =>
@@ -264,6 +303,17 @@ test.describe(
 					.toEqual(['interrupted', 'success']);
 				expect(await afterCrash.done).toBeUndefined();
 				expect(afterCrash.events).toContainEqual(
+					expect.objectContaining({
+						type: 'execution-started',
+						inputMessageIds: [recoveredInputId],
+					}),
+				);
+				expect(
+					(await ingress.agents.history(project.id, agent.id, crashThread)).messages.filter(
+						({ id }) => id === recoveredInputId,
+					),
+				).toHaveLength(1);
+				expect(afterCrash.events).toContainEqual(
 					expect.objectContaining({ type: 'done', sessionId: crashThread }),
 				);
 				expect(
@@ -272,6 +322,21 @@ test.describe(
 					),
 				).toEqual(['fifo-crash', 'survives restart']);
 				expect(await queued(crashThread)).toBe(0);
+				await retry(0, crashThread, interruptedId);
+				expect(
+					await n8nContainer.services.proxy.verifyRequest(
+						{
+							method: 'POST',
+							path: '/v1/messages',
+							body: {
+								type: 'JSON',
+								json: JSON.stringify({ stream: true }),
+								matchType: 'ONLY_MATCHING_FIELDS',
+							},
+						},
+						6,
+					),
+				).toBe(true);
 			} finally {
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				for (const stream of streams) stream.disconnect();

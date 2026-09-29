@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
@@ -76,7 +76,7 @@ function makeController() {
 	const messageQueue = mock<AgentMessageQueueService>();
 	messageQueue.enqueue.mockImplementation(async (_input, onInserted) => {
 		onInserted?.('queue-1');
-		return mock<AgentMessageQueue>({ id: 'queue-1' });
+		return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 	});
 	const previewStreams = new AgentQueuedPreviewStreamService(
 		mock<Publisher>(),
@@ -779,20 +779,28 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 
-	it('acknowledges committed acceptance and relays events from the claiming main', async () => {
-		const { controller, messageQueue, previewStreams } = makeController();
+	it('completes a duplicate request without interrupting the accepted stream or its attachments', async () => {
+		const { controller, messageQueue, previewStreams, agentChatAttachmentService } =
+			makeController();
 		const commit = createDeferredPromise();
 		messageQueue.enqueue.mockImplementationOnce(async (_input, onInserted) => {
 			onInserted?.('queue-1');
 			await commit.promise;
-			return mock<AgentMessageQueue>({ id: 'queue-1' });
+			return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 		});
 		const { res, events } = makeCleanupSseResponse();
+		const payload = {
+			message: 'hi',
+			sessionId: 'thread-1',
+			messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
+			newSession: true as const,
+			attachments: [textAttachment('notes.txt')],
+		};
 		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ message: 'hi', sessionId: 'thread-1', newSession: true } as never,
+			payload,
 		);
 		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
 		expect(events()).toEqual([]);
@@ -804,6 +812,32 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 				sessionId: 'thread-1',
 			}),
 		);
+		messageQueue.enqueue.mockResolvedValueOnce({ status: 'duplicate' });
+		agentChatAttachmentService.storeInbound.mockResolvedValueOnce(
+			mock<AgentChatAttachment>({
+				id: 'duplicate-file',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 5,
+			}),
+		);
+		const duplicate = makeCleanupSseResponse();
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			duplicate.res,
+			'agent-1',
+			payload,
+		);
+		expect(messageQueue.enqueue.mock.lastCall?.[0].payload).toMatchObject({
+			messageId: payload.messageId,
+			userId: 'user-1',
+		});
+		expect(duplicate.events()).toEqual([{ type: 'done' }]);
+		expect(duplicate.res.end).toHaveBeenCalledOnce();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledExactlyOnceWith([
+			'duplicate-file',
+		]);
 		const started = {
 			type: 'execution-started' as const,
 			executionId: 'exec-1',
@@ -885,10 +919,12 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		async (newSession) => {
 			const {
 				controller,
+				messageQueue,
 				agentExecutionService,
 				agentChatAttachmentService,
 				agentExecutionOrchestratorService,
 			} = makeController();
+			messageQueue.enqueue.mockResolvedValue({ status: 'duplicate' });
 			agentExecutionService.canUseDraftThread.mockImplementation(
 				async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
 			);
@@ -899,6 +935,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 				'agent-1',
 				{
 					sessionId: 'thread-1',
+					messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
 					newSession,
 					message: 'hi',
 					attachments: [textAttachment('notes.txt')],
@@ -906,6 +943,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			);
 			expect(events()).toContainEqual(expect.objectContaining({ type: 'error' }));
 			expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(messageQueue.enqueue).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 		},
 	);

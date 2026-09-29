@@ -1,4 +1,5 @@
 import type { WorkflowGraph } from '../graph';
+import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
 	ExecutionMode,
@@ -19,6 +20,8 @@ interface BaseExecutionRecord {
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 	callerContext: CallerContext;
+	/** What kind of a response the caller expects. */
+	responseExpectation: ResponseExpectation;
 }
 
 /** A new execution to persist. Timestamps are assigned by the store. */
