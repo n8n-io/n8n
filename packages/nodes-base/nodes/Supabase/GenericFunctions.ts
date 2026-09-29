@@ -10,8 +10,120 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, UserError } from 'n8n-workflow';
+import { NodeApiError, toPathSegment, UserError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+
+type SupabaseCredentials = {
+	host: string;
+	serviceRole: string;
+};
+
+export type SupabaseProject = {
+	name: string;
+	ref: string;
+};
+
+type SupabaseProjectApiKey = {
+	api_key?: string;
+	name?: string;
+	type?: string;
+};
+
+const N8N_SECRET_KEY_NAME = 'n8n_managed_data_api';
+
+function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions) {
+	const authentication = context.getNodeParameter('authentication', 0) as string;
+	return authentication === 'oAuth2' ? 'supabaseOAuth2Api' : 'supabaseApi';
+}
+
+function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions) {
+	// Use { extractValue: true }? Or make it `options` instead of RLC?
+	const project = context.getNodeParameter('projectRef', 0);
+	let projectRef: string | undefined;
+	if (typeof project === 'string') projectRef = project;
+	if (
+		typeof project === 'object' &&
+		project !== null &&
+		'value' in project &&
+		typeof project.value === 'string'
+	) {
+		projectRef = project.value;
+	}
+
+	if (!projectRef) throw new UserError('Select a Supabase project');
+	if (!/^[a-z0-9]+$/.test(projectRef)) throw new UserError('The Supabase project ID is invalid');
+
+	return projectRef;
+}
+
+async function supabaseManagementApiRequest<T>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	resource: string,
+	qs: IDataObject = {},
+	method: IHttpRequestMethods = 'GET',
+	body: IDataObject = {},
+) {
+	try {
+		const options: IRequestOptions = {
+			method,
+			uri: `https://api.supabase.com/v1${resource}`,
+			qs,
+			body,
+			json: true,
+		};
+		if (Object.keys(body).length === 0) delete options.body;
+
+		// TODO: this is deprecated
+		return (await context.helpers.requestWithAuthentication.call(
+			context,
+			'supabaseOAuth2Api',
+			options,
+		)) as T;
+	} catch (error) {
+		throw new NodeApiError(context.getNode(), error as JsonObject);
+	}
+}
+
+export async function getSupabaseProjects(this: ILoadOptionsFunctions) {
+	return await supabaseManagementApiRequest<SupabaseProject[]>(this, '/projects');
+}
+
+async function getProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const keys = await supabaseManagementApiRequest<SupabaseProjectApiKey[]>(
+		context,
+		`/projects/${toPathSegment(projectRef)}/api-keys`,
+		{ reveal: true },
+	);
+	const secretKey =
+		keys.find((key) => key.type === 'secret' && key.name === N8N_SECRET_KEY_NAME && key.api_key) ??
+		keys.find((key) => key.type === 'secret' && key.api_key);
+
+	if (secretKey?.api_key) return secretKey.api_key;
+
+	const createdKey = await supabaseManagementApiRequest<SupabaseProjectApiKey>(
+		context,
+		`/projects/${toPathSegment(projectRef)}/api-keys`,
+		{ reveal: true },
+		'POST',
+		{
+			type: 'secret',
+			name: N8N_SECRET_KEY_NAME,
+			description:
+				"The n8n Supabase Node uses this key to access the Data API. Don't delete it if you want the node to keep working.",
+		},
+	);
+
+	if (!createdKey.api_key) {
+		throw new UserError(
+			'Supabase did not return the new secret key. Give the OAuth app Secrets Read and Write access, then reconnect the credential.',
+		);
+	}
+
+	return createdKey.api_key;
+}
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -57,19 +169,33 @@ export async function supabaseApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials<{
-		host: string;
-		serviceRole: string;
-	}>('supabaseApi');
+	const credentialType = getCredentialType(this);
+	let host: string;
+	let projectKey: string | undefined;
+
+	if (credentialType === 'supabaseOAuth2Api') {
+		const projectRef = getProjectRef(this);
+		host = `https://${projectRef}.supabase.co`;
+		projectKey = await getProjectSecretKey(this, projectRef);
+	} else {
+		const credentials = await this.getCredentials<SupabaseCredentials>(credentialType);
+		host = credentials.host;
+	}
 
 	const options: IRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
+			...(projectKey
+				? {
+						apikey: projectKey,
+						Authorization: `Bearer ${projectKey}`,
+					}
+				: {}),
 		},
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
+		uri: uri ?? `${host.replace(/\/$/, '')}/rest/v1${resource}`,
 		json: true,
 	};
 
@@ -78,7 +204,11 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
+		// TODO: these are deprecated
+		if (credentialType === 'supabaseOAuth2Api') {
+			return await this.helpers.request(options);
+		}
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (error.description) {
 			error.message = `${error.message}: ${error.description}`;
@@ -104,13 +234,17 @@ const apiDefinitionsInFlight = new Map<string, Promise<SupabaseApiDefinition>>()
 export async function getApiDefinition(
 	this: ILoadOptionsFunctions,
 ): Promise<SupabaseApiDefinition> {
-	const { host, serviceRole } = await this.getCredentials<{
-		host: string;
-		serviceRole: string;
-	}>('supabaseApi');
+	const credentialType = getCredentialType(this);
 	const header = getSchemaHeader(this, 'GET', 'loadOptions');
+	let credentialIdentity: unknown;
+	if (credentialType === 'supabaseOAuth2Api') {
+		credentialIdentity = getProjectRef(this);
+	} else {
+		const { host, serviceRole } = await this.getCredentials<SupabaseCredentials>(credentialType);
+		credentialIdentity = [host, serviceRole];
+	}
 	const key = createHash('sha256')
-		.update(JSON.stringify([host, serviceRole, header]))
+		.update(JSON.stringify([credentialType, credentialIdentity, header]))
 		.digest('hex');
 
 	const inFlight = apiDefinitionsInFlight.get(key);

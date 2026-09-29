@@ -60,7 +60,7 @@ export const rowFields: INodeProperties[] = [
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: ['useCustomSchema', 'schema'],
+			loadOptionsDependsOn: ['authentication', 'projectRef', 'useCustomSchema', 'schema'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
