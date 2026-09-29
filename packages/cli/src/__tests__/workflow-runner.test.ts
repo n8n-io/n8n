@@ -33,6 +33,7 @@ import {
 	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
+	WorkflowOperationError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -1092,13 +1093,13 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
-	it('should finalize the execution when the result cannot be read from the DB after the job ended', async () => {
+	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
 			workflowExecution = execution;
 		});
-		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
 		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
@@ -1117,16 +1118,23 @@ describe('enqueueExecution', () => {
 
 		await expect(workflowExecution).rejects.toThrowError(readError);
 		expect(reportError).toHaveBeenCalledWith(readError, { executionId: '1' });
-		expect(finalizeExecution).toHaveBeenCalledWith('1');
+		// A failed run makes the webhook answer with an error instead of a success without data
+		expect(processError).toHaveBeenCalledWith(
+			readError,
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
 	});
 
-	it('should finalize the execution without reporting when its record is gone after the job ended', async () => {
+	it('should fail the execution without reporting when its record is gone after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
 			workflowExecution = execution;
 		});
-		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
 		const reportError = vi.spyOn(Container.get(ErrorReporter), 'error').mockReturnValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
@@ -1145,9 +1153,14 @@ describe('enqueueExecution', () => {
 		// An unsaved execution is deleted by the worker, so a missing record is not a bug
 		await expect(workflowExecution).rejects.toThrowError('Could not find execution with id "1"');
 		expect(reportError).not.toHaveBeenCalled();
-		expect(finalizeExecution).toHaveBeenCalledWith('1');
+		expect(processError).toHaveBeenCalledWith(
+			expect.any(WorkflowOperationError),
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
 	});
-
 	it('should finalize the execution when pool resolution fails', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();

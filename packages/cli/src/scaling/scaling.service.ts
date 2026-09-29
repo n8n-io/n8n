@@ -102,6 +102,11 @@ export class ScalingService {
 
 		const service = Container.get(RedisClientService);
 
+		// Completion events sent while the connection was down are lost, so check the DB at once
+		service.on('connection-recovered', () => {
+			void this.jobOutcomeTracker.recheckAll();
+		});
+
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
 		const settings = { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 };
@@ -241,7 +246,6 @@ export class ScalingService {
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
-		this.jobOutcomeTracker.clear();
 	}
 
 	private async stopWorker() {
@@ -337,7 +341,7 @@ export class ScalingService {
 
 	/** Get and remove the result for a completed job. */
 	popJobResult(executionId: string): JobFinishedProps | undefined {
-		return this.jobOutcomeTracker.pop(executionId);
+		return this.jobOutcomeTracker.popResult(executionId);
 	}
 
 	/** Wait until the job ends. Rejects with the failure reason, like Bull's `job.finished()`. */

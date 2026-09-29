@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 
@@ -12,7 +12,12 @@ type PendingJobWait = {
 	jobKey: string;
 	resolve: () => void;
 	reject: (error: Error) => void;
-	recheckTimer: NodeJS.Timeout;
+};
+
+type JobOutcome = {
+	error?: Error;
+	/** Whether the request that started the job should get a success response. */
+	succeeded: boolean;
 };
 
 /** Bull job IDs are unique per queue only, so pool queues can reuse them. */
@@ -23,6 +28,14 @@ type RecheckedStatus = ExecutionStatus | 'deleted';
 /** `unknown` is stoppable and in flight elsewhere in the codebase, so it is in flight here too. */
 const IN_FLIGHT_STATUSES = new Set<RecheckedStatus>(['new', 'running', 'unknown']);
 
+/** A missing row means the worker finished and the execution was not saved, so nothing failed. */
+const SUCCEEDED_STATUSES = new Set<RecheckedStatus>(['success', 'waiting', 'deleted']);
+
+const FAILED_RESPONSE: IExecuteResponsePromiseData = {
+	body: { message: 'Workflow execution failed' },
+	statusCode: 500,
+};
+
 /**
  * Tracks the outcome of queued jobs on a `main` or `webhook` process, and lets
  * the process that enqueued a job wait for it.
@@ -31,7 +44,8 @@ const IN_FLIGHT_STATUSES = new Set<RecheckedStatus>(['new', 'running', 'unknown'
  * completion event is missed: `removeOnComplete` deletes the job before
  * Bull's poll can see it, so the poll, its listeners and the caller's
  * closure stay alive until restart. Here a missed event is covered by a
- * slow recheck of the execution status in the DB.
+ * slow recheck of the execution status in the DB, and by a recheck as soon
+ * as the Redis connection recovers.
  */
 @Service()
 export class JobOutcomeTracker {
@@ -46,6 +60,9 @@ export class JobOutcomeTracker {
 
 	/** Execution ID for each job being waited for, keyed by queue name and job ID. */
 	private readonly executionIdByJobKey = new Map<string, string>();
+
+	/** One timer for all pending waits, running only while there are any. */
+	private recheckTimer?: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,
@@ -65,12 +82,12 @@ export class JobOutcomeTracker {
 			this.results.set(executionId, result);
 		}
 
-		this.settle(executionId);
+		this.settle(executionId, { succeeded: result?.success ?? true });
 	}
 
 	/** Record a failure the worker reported, or reject the wait for it at once. */
 	recordFailed(executionId: string, error: Error) {
-		const settled = this.settle(executionId, error);
+		const settled = this.settle(executionId, { error, succeeded: false });
 		if (settled) return;
 
 		// A fast failure can arrive before the enqueuing process starts to wait
@@ -82,7 +99,7 @@ export class JobOutcomeTracker {
 		const executionId = this.executionIdByJobKey.get(toJobKey(queueName, jobId));
 		if (!executionId) return;
 
-		this.settle(executionId, error);
+		this.settle(executionId, { error, succeeded: !error });
 	}
 
 	/**
@@ -103,18 +120,14 @@ export class JobOutcomeTracker {
 
 		await new Promise<void>((resolve, reject) => {
 			const jobKey = toJobKey(job.queue.name, job.id);
-
-			const recheckTimer = setInterval(() => {
-				void this.recheck(executionId);
-			}, JOB_WAIT_RECHECK_INTERVAL_MS);
-
-			this.pendingWaits.set(executionId, { jobKey, resolve, reject, recheckTimer });
+			this.pendingWaits.set(executionId, { jobKey, resolve, reject });
 			this.executionIdByJobKey.set(jobKey, executionId);
+			this.startRecheckTimer();
 		});
 	}
 
 	/** Get and remove the result for a finished job. */
-	pop(executionId: string): JobFinishedProps | undefined {
+	popResult(executionId: string): JobFinishedProps | undefined {
 		const result = this.results.get(executionId);
 		this.results.delete(executionId);
 		this.failures.delete(executionId);
@@ -126,24 +139,78 @@ export class JobOutcomeTracker {
 		const wait = this.pendingWaits.get(executionId);
 		if (!wait) return undefined;
 
-		clearInterval(wait.recheckTimer);
 		this.pendingWaits.delete(executionId);
 		this.executionIdByJobKey.delete(wait.jobKey);
+		if (this.pendingWaits.size === 0) this.stopRecheckTimer();
+
 		return wait;
 	}
 
-	/** Drop every wait, on shutdown. */
+	/** Drop every wait. */
 	clear() {
 		for (const executionId of this.pendingWaits.keys()) this.drop(executionId);
 	}
 
+	/**
+	 * Settle every wait whose completion event was missed, once the DB shows the
+	 * execution ended. Runs on the timer, and at once when Redis reconnects.
+	 */
+	async recheckAll() {
+		if (this.pendingWaits.size === 0) return;
+
+		const statusById = await this.readStatuses([...this.pendingWaits.keys()]);
+		if (!statusById) return;
+
+		for (const [executionId, status] of statusById) {
+			if (IN_FLIGHT_STATUSES.has(status)) continue;
+
+			this.logger.warn(
+				`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
+				{ executionId, status },
+			);
+			this.settle(executionId, { succeeded: SUCCEEDED_STATUSES.has(status) });
+		}
+	}
+
+	/**
+	 * @returns the status of each execution, `deleted` when its row is gone, or
+	 * `undefined` when the read failed. The recheck interval is the retry.
+	 */
+	private async readStatuses(
+		executionIds: string[],
+	): Promise<Map<string, RecheckedStatus> | undefined> {
+		try {
+			const rows = await this.executionRepository.findStatusesByIds(executionIds);
+			const statusById = new Map<string, RecheckedStatus>(rows.map((row) => [row.id, row.status]));
+
+			for (const executionId of executionIds) {
+				if (!statusById.has(executionId)) statusById.set(executionId, 'deleted');
+			}
+
+			return statusById;
+		} catch (error) {
+			this.logger.warn(
+				`Failed to read the status of ${executionIds.length} executions, next recheck in ${JOB_WAIT_RECHECK_INTERVAL_MS / 1000}s`,
+				{ executionIds, error },
+			);
+			return undefined;
+		}
+	}
+
 	/** @returns whether a wait was pending for this execution */
-	private settle(executionId: string, error?: Error) {
+	private settle(executionId: string, outcome: JobOutcome) {
 		const wait = this.drop(executionId);
 		if (!wait) return false;
 
-		if (error) {
-			wait.reject(error);
+		// The request may still wait for a response the worker sent while this process
+		// was disconnected. Resolving twice is a no-op.
+		this.activeExecutions.resolveResponsePromise(
+			executionId,
+			outcome.succeeded ? {} : FAILED_RESPONSE,
+		);
+
+		if (outcome.error) {
+			wait.reject(outcome.error);
 		} else {
 			wait.resolve();
 		}
@@ -151,37 +218,19 @@ export class JobOutcomeTracker {
 		return true;
 	}
 
-	/** Settle a wait whose completion event was missed, once the DB shows the execution ended. */
-	private async recheck(executionId: string) {
-		if (!this.pendingWaits.has(executionId)) return;
+	private startRecheckTimer() {
+		if (this.recheckTimer) return;
 
-		const status = await this.readStatus(executionId);
-		if (status === 'unreadable' || IN_FLIGHT_STATUSES.has(status)) return;
-
-		this.logger.warn(
-			`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
-			{ executionId, status },
-		);
-		this.settle(executionId);
+		// Unref'd so pending waits do not hold the process open during shutdown
+		this.recheckTimer = setInterval(() => {
+			void this.recheckAll();
+		}, JOB_WAIT_RECHECK_INTERVAL_MS).unref();
 	}
 
-	/**
-	 * @returns the execution status, `deleted` when the row is gone, or `unreadable`
-	 * when the read failed. The recheck interval is the retry.
-	 */
-	private async readStatus(executionId: string): Promise<RecheckedStatus | 'unreadable'> {
-		try {
-			const execution = await this.executionRepository.findSingleExecution(executionId);
+	private stopRecheckTimer() {
+		if (!this.recheckTimer) return;
 
-			// A missing row means the worker finished and the execution was not saved,
-			// e.g. a manual execution with saving disabled. Nothing is left to wait for.
-			return execution?.status ?? 'deleted';
-		} catch (error) {
-			this.logger.warn(
-				`Failed to read the status of execution ${executionId}, next recheck in ${JOB_WAIT_RECHECK_INTERVAL_MS / 1000}s`,
-				{ executionId, error },
-			);
-			return 'unreadable';
-		}
+		clearInterval(this.recheckTimer);
+		this.recheckTimer = undefined;
 	}
 }

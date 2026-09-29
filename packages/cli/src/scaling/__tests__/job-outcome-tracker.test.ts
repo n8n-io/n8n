@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ExecutionRepository, IExecutionBase } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -14,7 +15,10 @@ describe('JobOutcomeTracker', () => {
 	let tracker: JobOutcomeTracker;
 
 	const job = mock<Job>({ id: 'job-1', data: { executionId: 'exec-1' }, queue: { name: 'jobs' } });
-	const result = mock<JobFinishedProps>({ status: 'success' });
+	const result = mock<JobFinishedProps>({ success: true, status: 'success' });
+
+	const statusRows = (statuses: Record<string, ExecutionStatus>) =>
+		Object.entries(statuses).map(([id, status]) => ({ id, status }));
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -31,8 +35,8 @@ describe('JobOutcomeTracker', () => {
 		it('should keep the result for an execution this process enqueued', () => {
 			tracker.recordFinished('exec-1', result);
 
-			expect(tracker.pop('exec-1')).toBe(result);
-			expect(tracker.pop('exec-1')).toBeUndefined();
+			expect(tracker.popResult('exec-1')).toBe(result);
+			expect(tracker.popResult('exec-1')).toBeUndefined();
 		});
 
 		it('should ignore the result for an execution this process did not enqueue', () => {
@@ -41,7 +45,7 @@ describe('JobOutcomeTracker', () => {
 
 			tracker.recordFinished('exec-other-main', result);
 
-			expect(tracker.pop('exec-other-main')).toBeUndefined();
+			expect(tracker.popResult('exec-other-main')).toBeUndefined();
 		});
 	});
 
@@ -52,7 +56,7 @@ describe('JobOutcomeTracker', () => {
 			tracker.recordFinished('exec-1', result);
 
 			await expect(wait).resolves.toBeUndefined();
-			expect(tracker.pop('exec-1')).toBe(result);
+			expect(tracker.popResult('exec-1')).toBe(result);
 		});
 
 		it('should resolve when an older worker reports the job as finished without a result', async () => {
@@ -61,7 +65,7 @@ describe('JobOutcomeTracker', () => {
 			tracker.recordFinished('exec-1');
 
 			await expect(wait).resolves.toBeUndefined();
-			expect(tracker.pop('exec-1')).toBeUndefined();
+			expect(tracker.popResult('exec-1')).toBeUndefined();
 		});
 
 		it('should resolve at once when the result arrived before the wait started', async () => {
@@ -119,22 +123,60 @@ describe('JobOutcomeTracker', () => {
 			await expect(wait).resolves.toBeUndefined();
 			expect(poolSettled).toBe(false);
 		});
+	});
 
+	describe('response promise', () => {
+		it('should answer the request with success when the job ended well', async () => {
+			const wait = tracker.waitFor(job);
+
+			tracker.settleByJobKey('jobs', 'job-1');
+			await wait;
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {});
+		});
+
+		it('should answer the request with an error when the job failed', async () => {
+			const wait = tracker.waitFor(job);
+
+			tracker.recordFailed('exec-1', new Error('boom'));
+			await expect(wait).rejects.toThrow();
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(
+				'exec-1',
+				expect.objectContaining({ statusCode: 500 }),
+			);
+		});
+	});
+
+	describe('recheck', () => {
 		it('should resolve from the DB when every completion event was missed', async () => {
 			vi.useFakeTimers();
-			executionRepository.findSingleExecution.mockResolvedValue(
-				mock<IExecutionBase>({ status: 'success' }),
-			);
+			executionRepository.findStatusesByIds.mockResolvedValue(statusRows({ 'exec-1': 'success' }));
 
 			const wait = tracker.waitFor(job);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
 
 			await expect(wait).resolves.toBeUndefined();
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {});
+		});
+
+		it('should answer the request with an error when the DB shows the execution failed', async () => {
+			vi.useFakeTimers();
+			executionRepository.findStatusesByIds.mockResolvedValue(statusRows({ 'exec-1': 'error' }));
+
+			const wait = tracker.waitFor(job);
+			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
+
+			await expect(wait).resolves.toBeUndefined();
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(
+				'exec-1',
+				expect.objectContaining({ statusCode: 500 }),
+			);
 		});
 
 		it('should resolve from the DB when the execution row is gone', async () => {
 			vi.useFakeTimers();
-			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+			executionRepository.findStatusesByIds.mockResolvedValue([]);
 
 			const wait = tracker.waitFor(job);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
@@ -144,34 +186,69 @@ describe('JobOutcomeTracker', () => {
 
 		it('should keep waiting while the DB still shows the execution as running', async () => {
 			vi.useFakeTimers();
-			executionRepository.findSingleExecution.mockResolvedValue(
-				mock<IExecutionBase>({ status: 'running' }),
-			);
+			executionRepository.findStatusesByIds.mockResolvedValue(statusRows({ 'exec-1': 'running' }));
 			let settled = false;
 
 			void tracker.waitFor(job).finally(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
-			expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(2);
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledTimes(2);
 			expect(settled).toBe(false);
 		});
 
 		it('should keep rechecking after a failed DB read', async () => {
 			vi.useFakeTimers();
-			executionRepository.findSingleExecution
+			executionRepository.findStatusesByIds
 				.mockRejectedValueOnce(new Error('db unavailable'))
-				.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
+				.mockResolvedValue(statusRows({ 'exec-1': 'success' }));
 
 			const wait = tracker.waitFor(job);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
 			await expect(wait).resolves.toBeUndefined();
-			expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(2);
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledTimes(2);
+		});
+
+		it('should read the status of all pending waits in one query', async () => {
+			vi.useFakeTimers();
+			const otherJob = mock<Job>({
+				id: 'job-2',
+				data: { executionId: 'exec-2' },
+				queue: { name: 'jobs' },
+			});
+			executionRepository.findStatusesByIds.mockResolvedValue(
+				statusRows({ 'exec-1': 'success', 'exec-2': 'running' }),
+			);
+			let otherSettled = false;
+
+			const wait = tracker.waitFor(job);
+			void tracker.waitFor(otherJob).finally(() => (otherSettled = true));
+			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS);
+
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledTimes(1);
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledWith(['exec-1', 'exec-2']);
+			await expect(wait).resolves.toBeUndefined();
+			expect(otherSettled).toBe(false);
+		});
+
+		it('should recheck at once on demand, e.g. when Redis reconnects', async () => {
+			executionRepository.findStatusesByIds.mockResolvedValue(statusRows({ 'exec-1': 'success' }));
+
+			const wait = tracker.waitFor(job);
+			await tracker.recheckAll();
+
+			await expect(wait).resolves.toBeUndefined();
+		});
+
+		it('should not query the DB when nothing is pending', async () => {
+			await tracker.recheckAll();
+
+			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('drop', () => {
-		it('should stop the recheck and leave the wait unsettled', async () => {
+		it('should stop the recheck once no wait is pending and leave the wait unsettled', async () => {
 			vi.useFakeTimers();
 			let settled = false;
 
@@ -179,7 +256,7 @@ describe('JobOutcomeTracker', () => {
 			tracker.drop('exec-1');
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
-			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();
 			expect(settled).toBe(false);
 		});
 	});

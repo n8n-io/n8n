@@ -33,7 +33,6 @@ import {
 	ExecutionCancelledError,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
-	OperationalError,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -876,19 +875,34 @@ export class WorkflowRunner {
 						// An async executor's throw would never settle this promise, and the
 						// active execution would keep the request alive until restart
 						this.errorReporter.error(error, { executionId });
-						this.activeExecutions.finalizeExecution(executionId);
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
 						return reject(error);
 					}
 
 					if (!fullExecutionData) {
-						// Not a bug by itself: the worker deletes an execution that is not saved
+						// Not a bug by itself: the worker deletes an execution that is not saved.
+						// Finalizing with a failed run makes the webhook respond with an error
+						// instead of a success without data.
 						this.logger.warn(`Execution ${executionId} ended but its record is gone`, {
 							executionId,
 						});
-						this.activeExecutions.finalizeExecution(executionId);
-						return reject(
-							new OperationalError(`Could not find execution with id "${executionId}"`),
+						const error = new WorkflowOperationError(
+							`Could not find execution with id "${executionId}"`,
 						);
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
 					}
 
 					runData = {
