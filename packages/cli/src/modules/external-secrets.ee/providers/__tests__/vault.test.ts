@@ -758,87 +758,42 @@ describe('VaultProvider', () => {
 			};
 		}
 
-		it('authenticates with AppRole and reads secrets using a batch token', async () => {
-			const token = batchTokenLookupResponse(
-				'batch-token',
-				new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-			);
-			const { provider, httpRequest } = await initProvider(
-				[
-					{
-						method: 'POST',
-						pathname: '/v1/auth/approle/login',
-						body: { auth: { client_token: 'batch-token' } },
-					},
-					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: token },
-					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['app'] } } },
-					{
-						method: 'GET',
-						pathname: '/v1/secret/data/app',
-						body: kvV2SecretResponse({ value: 'available' }),
-					},
-				],
-				appRoleSettings,
-			);
-			try {
-				await provider.connect();
-				await provider.update();
-
-				expect(provider.state).toBe('connected');
-				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
-				expect(httpRequest.mock.calls[0][0]).toMatchObject({
-					method: 'POST',
-					body: { role_id: 'test-role', secret_id: 'test-secret' },
-				});
-				expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
-					'X-Vault-Token': 'batch-token',
-				});
-			} finally {
-				await provider.disconnect();
-			}
-		});
-
-		it('reauthenticates with AppRole when a batch token expires', async () => {
+		it('resumes token replacement after temporary lookup failures', async () => {
 			vi.useFakeTimers();
-			vi.setSystemTime(new Date('2026-09-24T10:43:51Z'));
-			const expiresAt = Date.now() + 30 * 60 * 1000;
-			let replacementTokenIssued = false;
-			const firstToken = batchTokenLookupResponse('batch-token', new Date(expiresAt).toISOString());
-			const nextToken = batchTokenLookupResponse(
-				'replacement-token',
-				new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-			);
+			let unavailable = false;
+			let logins = 0;
+			let lookupIndexWithinConnect = 0;
 			const { provider, httpRequest } = await initProvider(
 				[
-					{
-						method: 'POST',
-						pathname: '/v1/auth/approle/login',
-						body: { auth: { client_token: 'batch-token' } },
-					},
 					{
 						method: 'POST',
 						pathname: '/v1/auth/approle/login',
 						get body() {
-							replacementTokenIssued = true;
-							return { auth: { client_token: 'replacement-token' } };
+							lookupIndexWithinConnect = 0;
+							return { auth: { client_token: `token-${++logins}` } };
 						},
 					},
-					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
-					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
-					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
-					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
 					{
 						method: 'GET',
-						pathname: '/v1/secret/metadata/',
+						pathname: '/v1/auth/token/lookup-self',
 						get status() {
-							return Date.now() >= expiresAt && !replacementTokenIssued ? 403 : 200;
+							const isSecondLookupOfConnect = ++lookupIndexWithinConnect === 2;
+							return unavailable && isSecondLookupOfConnect ? 503 : 200;
 						},
-						body: { data: { keys: ['app'] } },
+						get body() {
+							return batchTokenLookupResponse(
+								`token-${logins}`,
+								new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+							);
+						},
 					},
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['app'] } } },
 					{
 						method: 'GET',
 						pathname: '/v1/secret/data/app',
-						body: kvV2SecretResponse({ value: 'available' }),
+						get body() {
+							return kvV2SecretResponse({ value: `value-${logins}` });
+						},
 					},
 				],
 				appRoleSettings,
@@ -846,103 +801,32 @@ describe('VaultProvider', () => {
 			try {
 				await provider.connect();
 				await provider.update();
-				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
+				unavailable = true;
+				await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+				expect(provider.state).toBe('error');
+				expect(provider.getSecret('secret')).toEqual({ app: { value: 'value-1' } });
 
-				// LIGO-1209: An AppRole batch token needs a new login when its TTL ends.
-				await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
-				await provider.update();
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+				expect(provider.state).toBe('error');
+				unavailable = false;
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+				expect(provider.state).toBe('connected');
 
-				const loginCalls = httpRequest.mock.calls.filter(
-					([options]) => options.url === `${VAULT_URL}auth/approle/login`,
-				);
-				expect(loginCalls).toHaveLength(2);
-				expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
-					'X-Vault-Token': 'replacement-token',
-				});
-				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
+				for (let cycle = 0; cycle < 3; cycle++) {
+					const previousLogins = logins;
+					await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+					await provider.update();
+					expect(logins).toBeGreaterThan(previousLogins);
+					expect(provider.getSecret('secret')).toEqual({ app: { value: `value-${logins}` } });
+					expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
+						'X-Vault-Token': `token-${logins}`,
+					});
+				}
 			} finally {
 				await provider.disconnect();
 				vi.useRealTimers();
 			}
 		});
-
-		it.each(['login', 'lookup'] as const)(
-			'resumes token replacement after a temporary %s failure',
-			async (failedOperation) => {
-				vi.useFakeTimers();
-				let unavailable = false;
-				let logins = 0;
-				let lookupIndexWithinConnect = 0;
-				const { provider, httpRequest } = await initProvider(
-					[
-						{
-							method: 'POST',
-							pathname: '/v1/auth/approle/login',
-							get status() {
-								return unavailable && failedOperation === 'login' ? 503 : 200;
-							},
-							get body() {
-								lookupIndexWithinConnect = 0;
-								return { auth: { client_token: `token-${++logins}` } };
-							},
-						},
-						{
-							method: 'GET',
-							pathname: '/v1/auth/token/lookup-self',
-							get status() {
-								const isSecondLookupOfConnect = ++lookupIndexWithinConnect === 2;
-								return unavailable && failedOperation === 'lookup' && isSecondLookupOfConnect
-									? 503
-									: 200;
-							},
-							get body() {
-								return batchTokenLookupResponse(
-									`token-${logins}`,
-									new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-								);
-							},
-						},
-						{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['app'] } } },
-						{
-							method: 'GET',
-							pathname: '/v1/secret/data/app',
-							get body() {
-								return kvV2SecretResponse({ value: `value-${logins}` });
-							},
-						},
-					],
-					appRoleSettings,
-				);
-				try {
-					await provider.connect();
-					await provider.update();
-					unavailable = true;
-					await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
-					expect(provider.state).toBe('error');
-					expect(provider.getSecret('secret')).toEqual({ app: { value: 'value-1' } });
-
-					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
-					expect(provider.state).toBe('error');
-					unavailable = false;
-					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
-					expect(provider.state).toBe('connected');
-
-					for (let cycle = 0; cycle < 3; cycle++) {
-						const previousLogins = logins;
-						await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
-						await provider.update();
-						expect(logins).toBeGreaterThan(previousLogins);
-						expect(provider.getSecret('secret')).toEqual({ app: { value: `value-${logins}` } });
-						expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
-							'X-Vault-Token': `token-${logins}`,
-						});
-					}
-				} finally {
-					await provider.disconnect();
-					vi.useRealTimers();
-				}
-			},
-		);
 
 		it('keeps the reconnect retry when a token lookup completes after the connect timeout', async () => {
 			vi.useFakeTimers();

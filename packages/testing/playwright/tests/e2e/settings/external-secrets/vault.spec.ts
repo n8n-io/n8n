@@ -9,6 +9,10 @@ test.describe(
 	'HashiCorp Vault @licensed',
 	{ annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }] },
 	() => {
+		test.beforeEach(async ({ api }) => {
+			await api.enableFeature('externalSecrets');
+		});
+
 		test('syncs secrets after batch token expiry and recovers from a failed AppRole login', async ({
 			api,
 			services,
@@ -17,7 +21,6 @@ test.describe(
 			const roleName = `n8n-${nanoid()}`;
 			const settings = await vault.createBatchAppRole(roleName);
 			await vault.writeSecret(roleName, { initial: 'initial-value' });
-			await api.enableFeature('externalSecrets');
 			await api.externalSecrets.saveProviderSettings('vault', settings);
 			await api.externalSecrets.connectProvider('vault');
 			await expect
@@ -46,6 +49,9 @@ test.describe(
 			await expect
 				.poll(async () => await api.externalSecrets.getProviderState('vault'), { timeout: 15_000 })
 				.toBe('error');
+			expect(await api.externalSecrets.getSecrets('vault')).toContain(
+				`secret.${roleName}.afterExpiry`,
+			);
 			await expect
 				.poll(async () => await vault.getTokenStatus(tokenIssuedBeforeLoginFailure.client_token), {
 					timeout: 15_000,
