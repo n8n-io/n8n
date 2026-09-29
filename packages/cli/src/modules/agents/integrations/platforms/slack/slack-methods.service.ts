@@ -12,7 +12,7 @@ import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@n8n/backend-services';
 

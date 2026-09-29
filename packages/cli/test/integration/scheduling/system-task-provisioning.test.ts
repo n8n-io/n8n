@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
@@ -10,7 +11,6 @@ import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
 	SystemTaskJobRegistrar,

@@ -94,7 +94,8 @@ const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CA
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
+const nodeTypesStore = useNodeTypesStore();
+const communityNodesAndActions = computed(() => nodeTypesStore.communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
 	const hits = filterAndSearchNodes(
@@ -186,7 +187,7 @@ function onSelected(item: INodeCreateElement) {
 		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
 		const notInstalledCommunityNode =
-			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
+			isCommunityPackageName(item.key) && !nodeTypesStore.getIsNodeInstalled(item.key);
 		const nodeIcon = getNodeIconSource(
 			item.properties,
 			null,
@@ -412,8 +413,14 @@ registerKeyHook('MainViewArrowLeft', {
 				<NoResults
 					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
-					:suggest-webhook="!isNodeItemRestricted(WEBHOOK_NODE_TYPE)"
-					:suggest-http-request="!isNodeItemRestricted(HTTP_REQUEST_NODE_TYPE)"
+					:suggest-webhook="
+						!isNodeItemRestricted(WEBHOOK_NODE_TYPE) &&
+						!nodeTypesStore.isNodeTypeUnavailable(WEBHOOK_NODE_TYPE)
+					"
+					:suggest-http-request="
+						!isNodeItemRestricted(HTTP_REQUEST_NODE_TYPE) &&
+						!nodeTypesStore.isNodeTypeUnavailable(HTTP_REQUEST_NODE_TYPE)
+					"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>

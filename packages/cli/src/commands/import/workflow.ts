@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -16,7 +17,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
@@ -103,6 +103,12 @@ const flagsSchema = z.object({
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
 	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
 
 	async run(): Promise<void> {
 		const { flags } = this;

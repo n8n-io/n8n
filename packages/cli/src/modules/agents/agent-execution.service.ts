@@ -13,7 +13,7 @@ import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -155,6 +155,21 @@ export class AgentExecutionService {
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
 
+	/**
+	 * Side-call cost report ids with an in-flight transaction. Concurrent
+	 * deliveries of the same `reportId` coalesce onto the in-flight promise
+	 * instead of each running its own transaction, which would double-count.
+	 * The entry is removed when the attempt settles; a failed attempt is not
+	 * claimed, so a later replay can retry.
+	 */
+	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
+
+	/**
+	 * Per-execution in-flight side-call cost recordings, drained by
+	 * `writeTerminalExecution` before the terminal UPDATE.
+	 */
+	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -192,8 +207,12 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
-		const prepared = await this.prepareThread(params, ctx);
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
@@ -218,7 +237,13 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
-		const inputMessageIds = await this.reserveInput(params, inserted.id, predecessorId, ctx);
+		const inputMessageIds = await this.reserveInput(
+			params,
+			inserted.id,
+			predecessorId,
+			queueItem?.messageId,
+			ctx,
+		);
 		if (
 			queueItem &&
 			!(await this.queueRepository.linkExecution(
@@ -241,6 +266,7 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		executionId: string,
 		predecessorId: string | undefined,
+		queuedMessageId: string | undefined,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (predecessorId) {
@@ -252,10 +278,13 @@ export class AgentExecutionService {
 			);
 		}
 		if (params.resumeRunId || params.userMessage === null) return [];
+		if (queuedMessageId) {
+			await this.messageRepository.linkExecutionInput(executionId, queuedMessageId, params, ctx);
+			return [queuedMessageId];
+		}
 		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
-		const id = await this.messageRepository.createExecutionInput(
+		const message = await this.messageRepository.createInput(
 			{
-				executionId,
 				threadId: params.threadId,
 				resourceId: params.resourceId,
 				content,
@@ -268,7 +297,8 @@ export class AgentExecutionService {
 			},
 			ctx,
 		);
-		return [id];
+		await this.messageRepository.linkExecutionInput(executionId, message.id, params, ctx);
+		return [message.id];
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
@@ -906,7 +936,29 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
-		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
+		// Drain in-flight side-call cost recordings before the terminal UPDATE
+		// so a process exit right after finalization cannot lose side-call cost.
+		const inFlight = this.sideCallUsageInFlightByExecution.get(executionId);
+		if (inFlight) {
+			this.sideCallUsageInFlightByExecution.delete(executionId);
+			await Promise.allSettled(inFlight);
+		}
+		// The terminal status write and the main-loop cost increment run as one
+		// atomic UPDATE (`status = ... , cost = COALESCE(cost, 0) + :costIncrement`),
+		// so they commit or roll back together. Cost is applied additively rather
+		// than assigned, so a side-call `incrementCost` that lands before this
+		// terminal write is not overwritten. `record.totalCost` is the main-loop
+		// cost only; side calls price themselves onto the same column.
+		//
+		// A transient failure (DB blip, deadlock) leaves the row `running`. The
+		// heartbeat is already stopped at this point, so without a retry the row
+		// would stay `running` until the sweeper marks it `interrupted` and the
+		// main-loop cost would be lost. Retry a bounded number of times with linear
+		// backoff; the total worst-case wait stays under the sweeper's 2-min grace
+		// so a finalized row is never prematurely reaped. The one error that is
+		// definitive — `OperationalError('Agent execution is no longer running')`
+		// — means another path already finalized the row, so it is not retried.
+		const terminalValues = {
 			status,
 			stoppedAt,
 			duration: record.duration,
@@ -914,18 +966,44 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
-			storedAt: 'db',
+			storedAt: 'db' as const,
 			error: record.error,
 			failureSummary,
 			hitlStatus: hitlStatus ?? null,
-		});
-		if (!finalized) {
-			throw new OperationalError('Agent execution is no longer running', {
-				extra: { executionId },
-			});
+		};
+		const maxAttempts = 3;
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const finalized = await this.agentExecutionRepository.updateIfRunning(
+					executionId,
+					terminalValues,
+					undefined,
+					{},
+					record.totalCost ?? undefined,
+				);
+				if (!finalized) {
+					throw new OperationalError('Agent execution is no longer running', {
+						extra: { executionId },
+					});
+				}
+				return;
+			} catch (error) {
+				if (
+					error instanceof OperationalError &&
+					error.message === 'Agent execution is no longer running'
+				) {
+					throw error;
+				}
+				lastError = error;
+				if (attempt < maxAttempts) {
+					const delay = 100 * attempt;
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
 		}
+		throw lastError;
 	}
 
 	private async moveFinalTimelineToBlob(
@@ -1012,6 +1090,82 @@ export class AgentExecutionService {
 					error: result.reason,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Apply a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto its execution row
+	 * and thread totals. The SDK prices the call and sends `{ task, model,
+	 * usage, cost, reportId }`; the host only adds `cost`. Best-effort: a
+	 * failure logs a warning and never breaks the run.
+	 *
+	 * Both totals are updated in one transaction. Concurrent deliveries of the
+	 * same `reportId` coalesce onto a single in-flight transaction so they
+	 * cannot each run their own and double-count. The in-flight entry is
+	 * removed when the attempt settles, so the map does not grow unbounded.
+	 * The SDK calls `onSideCallUsage` once per model call with a fresh
+	 * `reportId`, so a sequential replay is not expected; cross-process
+	 * idempotency would need a DB-backed unique constraint, not a process-local
+	 * set.
+	 */
+	async recordSideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		// Register the in-flight promise synchronously (before any await) so a
+		// concurrent delivery observes it and waits on the same attempt rather
+		// than starting a second transaction that would double-count.
+		let attempt = this.sideCallReportInFlight.get(report.reportId);
+		if (attempt === undefined) {
+			const created = this.applySideCallUsage(executionId, threadId, report);
+			attempt = created;
+			this.sideCallReportInFlight.set(report.reportId, created);
+			let bucket = this.sideCallUsageInFlightByExecution.get(executionId);
+			if (!bucket) {
+				bucket = new Set();
+				this.sideCallUsageInFlightByExecution.set(executionId, bucket);
+			}
+			bucket.add(created);
+			void created.finally(() => bucket?.delete(created));
+		}
+		try {
+			await attempt;
+		} finally {
+			// Only the caller that created the attempt clears the slot, so a
+			// coalesced delivery does not delete a later attempt's entry.
+			if (this.sideCallReportInFlight.get(report.reportId) === attempt) {
+				this.sideCallReportInFlight.delete(report.reportId);
+			}
+		}
+	}
+
+	private async applySideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);
+				await this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					0,
+					0,
+					report.cost,
+					0,
+					ctx,
+				);
+			});
+		} catch (error) {
+			this.logger.warn('Failed to record agent side-call usage', {
+				executionId,
+				threadId,
+				task: report.task,
+				reportId: report.reportId,
+				error,
+			});
 		}
 	}
 

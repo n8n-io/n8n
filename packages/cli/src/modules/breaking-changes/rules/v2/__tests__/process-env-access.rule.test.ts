@@ -32,7 +32,7 @@ describe('ProcessEnvAccessRule', () => {
 				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',
 				category: BreakingChangeCategory.workflow,
-				severity: 'low',
+				impact: 'executionsFail',
 			});
 		});
 	});

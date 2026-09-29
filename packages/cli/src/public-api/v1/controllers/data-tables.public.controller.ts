@@ -27,10 +27,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTable } from '@/modules/data-table/data-table.entity';

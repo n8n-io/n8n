@@ -7,9 +7,7 @@ import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';

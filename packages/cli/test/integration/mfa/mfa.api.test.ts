@@ -7,7 +7,7 @@ import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
 import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
