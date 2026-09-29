@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { CREDENTIAL_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';

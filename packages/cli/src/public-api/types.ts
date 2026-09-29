@@ -205,7 +205,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace OtelSettingsRequest {
-	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }

@@ -20,7 +20,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { SlackMethodsService } from './slack-methods.service';
 import {

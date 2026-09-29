@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -25,6 +25,7 @@ import { mock, captor } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
@@ -323,6 +324,21 @@ describe('WaitTracker', () => {
 
 				return { parentExecution, subworkflowResults, postExecutePromise };
 			};
+
+			it('passes the saved child definition when a timer resumes the child', async () => {
+				setupParentExecutionTest(true);
+				const resume = vi
+					.spyOn(waitTracker, 'resumeParentExecution')
+					.mockResolvedValueOnce(undefined);
+				await waitTracker.startExecution(execution.id);
+				expect(resume).toHaveBeenCalledWith(
+					execution.data.parentExecution,
+					expect.any(Promise),
+					{ executionId: execution.id, workflowId: execution.workflowData.id },
+					execution.workflowData,
+				);
+				resume.mockRestore();
+			});
 
 			it('should resume parent execution once sub-workflow finishes by default', async () => {
 				// ARRANGE
@@ -936,30 +952,68 @@ describe('WaitTracker', () => {
 			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(2);
 		});
 
-		it('patches and resumes a parent whose tagged child has finished', async () => {
-			const parent = parkedParent([childId]);
-			executionPersistence.findSingleExecution.calledWith(parentId).mockResolvedValue(parent);
-			executionPersistence.findSingleExecution
-				.calledWith(childId)
-				.mockResolvedValue(finishedChild());
-			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'success' }]);
+		it.each([false, true])(
+			'patches a finished child with single-output policy: %s',
+			async (singleOutput) => {
+				const parent = parkedParent([childId]);
+				const child = finishedChild();
+				if (singleOutput) {
+					child.data.subWorkflowOutput = { lastRunOnly: false };
+					const task = child.data.resultData.runData['Final Node'][0];
+					task.data = { main: [[], task.data!.main![0]] };
+					child.workflowData = {
+						...child.workflowData,
+						connections: {},
+						settings: {},
+						staticData: undefined,
+						nodes: [
+							{
+								id: 'final',
+								name: 'Final Node',
+								type: 'test',
+								typeVersion: 1,
+								parameters: {},
+								position: [0, 0],
+							},
+						],
+					};
+					mockInstance(NodeTypes).getByNameAndVersion.mockReturnValue({
+						description: {
+							name: 'test',
+							displayName: 'Test',
+							group: ['transform'],
+							version: 1,
+							description: '',
+							defaults: {},
+							inputs: ['main'],
+							outputs: ['main', 'main'],
+							properties: [],
+						},
+					});
+				}
+				executionPersistence.findSingleExecution.calledWith(parentId).mockResolvedValue(parent);
+				executionPersistence.findSingleExecution.calledWith(childId).mockResolvedValue(child);
+				executionRepository.findStatusesByIds.mockResolvedValue([
+					{ id: childId, status: 'success' },
+				]);
 
-			await waitTracker.resumeParentsOfFinishedSubExecutions();
+				await waitTracker.resumeParentsOfFinishedSubExecutions();
 
-			const dataCaptor = captor<{ data: IRunExecutionData }>();
-			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-				parentId,
-				dataCaptor,
-			);
-			expect(dataCaptor.value.data.executionData?.nodeExecutionStack[0].data.main).toEqual([
-				[{ json: { data: 'child output' }, pairedItem: { item: 0 } }],
-			]);
-			expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
-				executionId: parentId,
-				expectedStatus: 'waiting',
-			});
-			expect(logger.error).not.toHaveBeenCalled();
-		});
+				const dataCaptor = captor<{ data: IRunExecutionData }>();
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					parentId,
+					dataCaptor,
+				);
+				expect(dataCaptor.value.data.executionData?.nodeExecutionStack[0].data.main).toEqual([
+					[{ json: { data: 'child output' }, pairedItem: { item: 0 } }],
+				]);
+				expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+					executionId: parentId,
+					expectedStatus: 'waiting',
+				});
+				expect(logger.error).not.toHaveBeenCalled();
+			},
+		);
 
 		it('leaves the parent parked while its child is still waiting', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(parkedParent([childId]));

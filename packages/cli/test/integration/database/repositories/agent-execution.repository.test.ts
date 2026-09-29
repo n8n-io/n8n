@@ -2116,7 +2116,7 @@ describe('AgentExecutionRepository', () => {
 		expect(await memory.getMessages('builder-without-session')).toHaveLength(1);
 	});
 
-	it('keeps output membership and positions on repeated saves and hides internal input', async () => {
+	it('keeps input and output positions on repeated saves and hides internal input', async () => {
 		const threadId = uuid();
 		const resourceId = 'user-1';
 		const memory = Container.get(N8nMemory).getImplementation(agentId);
@@ -2133,6 +2133,23 @@ describe('AgentExecutionRepository', () => {
 		};
 		const admission = await executionService.startExecutionRecording(params, new Date());
 		const [inputId] = admission.inputMessageIds;
+		const additional = await messageRepository.createInput(
+			{
+				threadId,
+				resourceId,
+				content: { role: 'user', content: [{ type: 'text', text: 'Additional internal result' }] },
+				origin: { source: null, hidden: true },
+			},
+			{},
+		);
+		for (const id of [additional.id, inputId, additional.id]) {
+			await messageRepository.linkExecutionInput(
+				admission.executionId,
+				id,
+				{ threadId, resourceId },
+				{},
+			);
+		}
 		const input = {
 			...buildInboundUserMessage(params.userMessage, [])[0],
 			id: inputId,
@@ -2157,7 +2174,16 @@ describe('AgentExecutionRepository', () => {
 			hostMetadata: { [EXECUTION_METADATA_KEY]: admission.executionId },
 		};
 		await memory.saveMessages({ ...scope, messages: [input, output] });
-		await memory.saveMessages({ ...scope, messages: [later, latest, output, input] });
+		await memory.saveMessages({
+			...scope,
+			messages: [
+				later,
+				latest,
+				output,
+				input,
+				{ ...additional.content, id: additional.id, createdAt: additional.createdAt },
+			],
+		});
 		expect((await messageRepository.findOneByOrFail({ id: inputId })).modelContent).toBeNull();
 		const links = await repository.manager.find(AgentExecutionMessageLink, {
 			where: { executionId: admission.executionId },
@@ -2167,13 +2193,14 @@ describe('AgentExecutionRepository', () => {
 			links.map(({ messageId, direction, position }) => ({ messageId, direction, position })),
 		).toEqual([
 			{ messageId: inputId, direction: 'input', position: 0 },
+			{ messageId: additional.id, direction: 'input', position: 1 },
 			{ messageId: output.id, direction: 'output', position: 0 },
 			{ messageId: later.id, direction: 'output', position: 1 },
 			{ messageId: latest.id, direction: 'output', position: 2 },
 		]);
 		const detail = await executionService.getThreadDetail(threadId, projectId, agentId, viewerId);
 		expect(detail?.executions[0]).toMatchObject({
-			inputMessageIds: [inputId],
+			inputMessageIds: [inputId, additional.id],
 			inputMessages: [],
 			userMessage: null,
 		});

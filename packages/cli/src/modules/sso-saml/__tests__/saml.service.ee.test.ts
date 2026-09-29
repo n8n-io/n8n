@@ -15,7 +15,7 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
