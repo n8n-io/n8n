@@ -66,8 +66,9 @@ async function flushDetachedRun() {
 }
 
 describe('spawn', () => {
-	it('returns a started receipt before the detached run settles', async () => {
+	it('returns before the run finishes and releases its controller when settlement loses', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
+		jobService.settle.mockResolvedValue(false);
 		let resolveRun!: (result: SubAgentRunResult) => void;
 		runner.run.mockReturnValue(new Promise((resolve) => (resolveRun = resolve)));
 
@@ -75,13 +76,16 @@ describe('spawn', () => {
 
 		expect(receipt.status).toBe('started');
 		expect(jobService.settle).not.toHaveBeenCalled();
+		expect(jobService.unregisterAbortController).not.toHaveBeenCalled();
+		const [jobId, abortController] = jobService.registerAbortController.mock.calls[0];
 
 		resolveRun(completedRunResult());
 		await flushDetachedRun();
-		expect(jobService.settle).toHaveBeenCalledWith(expect.any(String), {
+		expect(jobService.settle).toHaveBeenCalledWith(jobId, {
 			status: 'completed',
 			result: 'the answer',
 		});
+		expect(jobService.unregisterAbortController).toHaveBeenCalledWith(jobId, abortController);
 	});
 
 	it('passes the pre-minted childThreadId to the run and registers it on the job row', async () => {
