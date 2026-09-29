@@ -202,13 +202,13 @@ feature that has a policy to mutate, on the existing audit-event infrastructure.
 ## The log streaming event
 
 The same emit site also sends `n8n.audit.policy.decision.blocked` to log streaming, so a
-SIEM sees every block. The payload is the audit line plus the actor. It does not depend on
+SIEM sees every block but one kind (see below). The payload is the audit line plus the actor. It does not depend on
 the log format or on `N8N_LOG_SCOPES`.
 
 - **The host names the actor.** Every `enforce*` call takes a `PolicyActor` as its second
   argument. Checks never see it. It is a user when the host is a request with an
   authenticated user. Otherwise it is the system with a reason: `execution`, `cli-import`,
-  `activation`, `publication` or `integration`.
+  `activation`, `publication`, `integration` or `log-streaming`.
 - **A run never names a user.** Not every execution path knows reliably who started the
   run, so a block inside a run is `execution` and carries the `executionId`. Use the
   execution to find who started it. This includes manual runs and sub-workflows.
@@ -220,6 +220,10 @@ the log format or on `N8N_LOG_SCOPES`.
 - **The user fields are the same on every block.** A host that knows only the user id
   passes `{ id }`, and the relay reads the rest of the user before it sends the event. The
   fields are redactable, the same as on every other `n8n.audit.*` event.
+- **A block on a destination credential sends no event.** A webhook destination decrypts
+  its credential on every delivery. If a policy blocks it, the event would go to the same
+  destination and block again. So the relay drops `log-streaming` blocks. The audit line
+  still records them.
 - **Violations have fixed keys.** A field a check left out is `null`, not missing.
 - **Workers and webhook processes send it too.** The log streaming module runs on
   every instance type, so an event from a worker goes straight to the destinations.

@@ -916,6 +916,9 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	/** Hosts that know only the user id pass `{ id }`, so read the rest to keep the fields uniform. */
 	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		// The event would go to the destination whose credential was blocked, and block again.
+		if (event.actorType === 'system' && event.systemReason === 'log-streaming') return;
+
 		if (event.actorType === 'system' || event.user.email !== undefined) {
 			this.sendPolicyDecisionBlocked(event);
 			return;

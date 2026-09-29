@@ -35,7 +35,9 @@ export type PolicySystemReason =
 	/** The publication outbox. The publish request itself was checked with its user. */
 	| 'publication'
 	/** An integration that refreshes its own credential. */
-	| 'integration';
+	| 'integration'
+	/** A log streaming destination that reads its own credential. */
+	| 'log-streaming';
 
 /**
  * Who asked for the policed action, named on the block audit event and never shown to checks.

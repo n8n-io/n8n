@@ -3097,6 +3097,30 @@ describe('CredentialsHelper', () => {
 			);
 		});
 
+		test('uses the actor the caller names over the derived one', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: undefined,
+			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				{ kind: 'system', reason: 'log-streaming' },
+			);
+		});
+
 		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				projectId: undefined,

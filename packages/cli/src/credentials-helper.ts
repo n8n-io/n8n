@@ -564,7 +564,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		options?: IGetDecryptedCredentialsOptions,
+		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor },
 	): Promise<ICredentialDataDecryptedObject> {
 		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
 		// from their parent. Prefer expressionResolveValues.node when present: it is always
@@ -593,7 +593,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 				projectId: additionalData.projectId ?? null,
 			},
-			decryptActor(additionalData),
+			options?.actor ?? decryptActor(additionalData),
 		);
 
 		const credentials = new Credentials(

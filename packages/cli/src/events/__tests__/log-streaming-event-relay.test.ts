@@ -3120,6 +3120,18 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should not send an event when a destination credential was blocked', () => {
+			eventService.emit('policy-decision-blocked', {
+				...blocked,
+				point: 'credentialDecrypt',
+				actorType: 'system',
+				user: null,
+				systemReason: 'log-streaming',
+			});
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+
 		it('should read the user fields when the host passed only the user id', async () => {
 			userRepository.findByIdWithRole.mockResolvedValue(
 				mock<User>({
