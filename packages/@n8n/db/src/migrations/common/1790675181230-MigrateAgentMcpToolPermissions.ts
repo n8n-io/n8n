@@ -140,7 +140,7 @@ function migrateConfig(value: unknown): MigrationResult {
  * validates every MCP server before it updates a row, preserves unrelated
  * fields, and skips malformed rows instead of applying a partial conversion.
  */
-export class MigrateAgentMcpToolPermissions1790585122744 implements IrreversibleMigration {
+export class MigrateAgentMcpToolPermissions1790675181230 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		for (const table of tables) {
 			await this.migrateTable(context, table.name, table.idColumn);
