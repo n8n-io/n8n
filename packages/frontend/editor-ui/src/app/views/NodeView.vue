@@ -2216,17 +2216,22 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>
-			<div :class="$style.canvasTopLeft">
-				<N8nLogo
-					v-if="isCanvasOnlyLogoVisible"
-					size="small"
-					:collapsed="false"
-					:class="$style.canvasOnlyLogo"
-					aria-hidden="true"
-				/>
-				<Suspense v-if="!isCanvasReadOnly">
-					<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButton" />
-				</Suspense>
+			<div :class="$style.canvasTopLeftContainer">
+				<div :class="$style.canvasTopLeft">
+					<N8nLogo
+						v-if="isCanvasOnlyLogoVisible"
+						size="small"
+						:collapsed="false"
+						:class="$style.canvasOnlyLogo"
+						aria-hidden="true"
+					/>
+					<Suspense v-if="!isCanvasReadOnly">
+						<LazySetupWorkflowCredentialsButton
+							:collapsible="isCanvasOnlyLogoVisible"
+							:class="$style.setupCredentialsButton"
+						/>
+					</Suspense>
+				</div>
 			</div>
 			<EvaluationsCanvasInfoCard
 				v-if="!isCanvasReadOnly"
@@ -2371,15 +2376,20 @@ onBeforeUnmount(() => {
 	}
 }
 
+.canvasTopLeftContainer {
+	position: absolute;
+	inset: 0;
+	container: canvas / inline-size;
+	pointer-events: none;
+}
+
 .canvasTopLeft {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
 	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--xs);
-	pointer-events: none;
 }
 
 .canvasOnlyLogo {
