@@ -1143,9 +1143,6 @@ export class McpAgentToolsService {
 						const summary = toExecutionSummary(execution);
 						if (!input.includeTimeline) return { ok: true, execution: summary };
 
-						// A blob-stored timeline can be unreadable (missing, corrupted, or
-						// an unconfigured location); the detail read degrades to null. Say
-						// so instead of presenting a clean empty run.
 						if (isTimelineUnavailable(execution)) {
 							return {
 								ok: true,

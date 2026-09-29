@@ -16,11 +16,7 @@ export const DEFAULT_TIMELINE_EVENT_CHAR_BUDGET = 2_000;
 /** Character cap for free-text fields on execution summaries (userMessage, error). */
 export const SUMMARY_FIELD_CHAR_BUDGET = 1_000;
 
-/**
- * A timeline event shaped for the MCP response. Values over the character
- * budget are replaced by a truncated string preview, so the shape is looser
- * than {@link TimelineEvent}.
- */
+/** Looser than {@link TimelineEvent}: over-budget values become string previews. */
 export type ShapedTimelineEvent = Record<string, unknown>;
 
 type ToolCallEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -38,15 +34,11 @@ function isSoftFailure(event: ToolCallEvent): boolean {
 }
 
 /**
- * True when a closed tool-call event counts as a failure. Covers hard
- * failures (`success: false`) and soft failures (a workflow tool or sub-agent
- * delegation that reported an error in its output). Declined approvals are
- * not failures.
- *
- * Mirrors the failure rule in `computeExecutionFailureSummary`
- * (`@/modules/agents/utils/execution-failure-summary`). A drift-pinning test
- * in `agent-session-log.utils.test.ts` compares this filter's count against
- * that summary, so the two rules cannot diverge silently.
+ * True for hard failures (`success: false`) and soft failures (a workflow
+ * tool or sub-agent delegation that reported an error in its output);
+ * declined approvals are not failures. Mirrors the rule in the agents
+ * module's `computeExecutionFailureSummary`; a drift-pinning test compares
+ * the two so they cannot diverge silently.
  */
 export function isFailedToolCallEvent(event: TimelineEvent): event is ToolCallEvent {
 	return (
@@ -66,13 +58,10 @@ function capAndScrubText(value: string, budget: number): string {
 }
 
 /**
- * Applies the per-event character budget to every payload-bearing field of a
- * timeline. Returns the shaped events and whether anything was cut, so the
- * tool can tell the client to raise `truncate` when it needs full payloads.
- *
- * Tool payloads, suspensions, and HITL responses are secret-scrubbed at
- * record time; model-generated `text` and `reasoning` content is not, so this
- * boundary scrubs it before it leaves over MCP.
+ * Caps every payload-bearing field of a timeline at `budget` chars and says
+ * whether anything was cut. Also scrubs secrets: tool payloads are scrubbed
+ * at record time, but model-generated text and reasoning content is not, so
+ * it must not leave over MCP unscrubbed.
  */
 export function truncateTimeline(
 	events: TimelineEvent[],
@@ -87,9 +76,7 @@ export function truncateTimeline(
 		return scrubbed.slice(0, budget) + truncationMarker(scrubbed.length - budget);
 	};
 
-	// Caps a value of unknown shape at `budget` characters of its JSON form. A
-	// value over budget becomes its truncated JSON string, so the client always
-	// sees a preview instead of an oversized payload.
+	// An over-budget value becomes a truncated preview of its JSON form.
 	const capValue = (value: unknown): unknown => {
 		if (value === undefined || value === null) return value;
 		if (typeof value === 'string') return capText(value);
@@ -140,10 +127,9 @@ export function truncateTimeline(
 }
 
 /**
- * Compact per-execution summary shared by get_agent_session and
- * get_agent_execution. Free-text fields are scrubbed and capped so a long
- * prompt or provider error cannot blow the response budget. The `timeline`
- * column is deliberately never copied here.
+ * Free-text fields are scrubbed and capped so a long prompt or provider
+ * error cannot blow the response budget; `timeline` is deliberately never
+ * copied here.
  */
 export function toExecutionSummary(execution: AgentExecution) {
 	return {
@@ -170,10 +156,9 @@ export function toExecutionSummary(execution: AgentExecution) {
 }
 
 /**
- * True when an execution's timeline lives in a blob store but could not be
- * read (missing, corrupted, or an unconfigured storage location). The detail
- * read degrades to a null timeline in that case, and the tool must report it
- * instead of presenting a clean empty run.
+ * True when a blob-stored timeline could not be read (missing, corrupted, or
+ * an unconfigured location) — the read degrades to null, which must not be
+ * presented as a clean empty run.
  */
 export function isTimelineUnavailable(execution: AgentExecution): boolean {
 	return execution.storedAt !== 'db' && execution.timeline === null;
