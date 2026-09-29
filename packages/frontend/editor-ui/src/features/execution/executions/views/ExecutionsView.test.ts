@@ -173,12 +173,19 @@ describe('ExecutionsView', () => {
 			const project = renderComponent();
 			await waitAllPromises();
 			expect(project.getByTestId('filter-status-stub')).toHaveTextContent('all');
+			await fireEvent.click(project.getByTestId('filter-error-stub'));
 			project.unmount();
 
 			route.params = {};
 			const overviewAgain = renderComponent();
 			await waitAllPromises();
 			expect(overviewAgain.getByTestId('filter-status-stub')).toHaveTextContent('error');
+			overviewAgain.unmount();
+
+			route.params.projectId = 'project-1';
+			const projectAgain = renderComponent();
+			await waitAllPromises();
+			expect(projectAgain.getByTestId('filter-status-stub')).toHaveTextContent('error');
 		});
 
 		it('loads the filters of the new project when only the project changes', async () => {
