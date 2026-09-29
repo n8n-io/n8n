@@ -221,6 +221,7 @@ import {
 	buildWorkflowTestRequestBlock,
 	extractAiPreferencesBlock,
 	extractThreadArtifactsBlock,
+	threadArtifactsBlockListsTabs,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
@@ -5524,10 +5525,11 @@ export class InstanceAiService {
 		);
 		// Send the block when the history cannot be read, so the agent never has stale tabs.
 		if (!history) return freshBlock;
-		if (history.block === undefined) {
-			// With no earlier block, there is no list to correct, so "no tabs" needs no block.
-			return context?.artifacts.length === 0 ? '' : freshBlock;
-		}
+		// "No tabs" only corrects an earlier block that listed tabs. A block with no tab
+		// list, such as an editor hand-off alone, leaves nothing to correct.
+		const noTabs = context?.artifacts.length === 0;
+		if (history.block === undefined) return noTabs ? '' : freshBlock;
+		if (noTabs && !threadArtifactsBlockListsTabs(history.block)) return '';
 		return asStoredThreadContextSection(freshBlock) === history.block ? '' : freshBlock;
 	}
 

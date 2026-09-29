@@ -216,10 +216,11 @@ watch(
 	},
 	{ immediate: true },
 );
-// The agent sees the open tabs, not every artifact the thread produced.
+// The agent sees the open tabs, not every artifact the thread produced. Until the
+// stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
-	() => preview.openTabs.value,
-	(tabs) => thread.setOpenTabs(tabs),
+	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---

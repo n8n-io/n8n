@@ -257,6 +257,22 @@ export function extractAiPreferencesBlock(stored: string): string | undefined {
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
+const PREVIEW_TABS_HEADER =
+	'Tabs the user has open in this conversation’s preview, as of this message:';
+/** The tab list header of blocks stored before the tabs could be closed. */
+const LEGACY_PREVIEW_TABS_HEADER = 'Artifacts the user can see in this conversation’s preview:';
+
+/**
+ * Whether a stored thread artifacts block lists preview tabs. A block can carry
+ * only an editor hand-off, and then it lists no tabs.
+ */
+export function threadArtifactsBlockListsTabs(block: string): boolean {
+	// A whole-line match, so a resource named like the header does not count.
+	return block
+		.split('\n')
+		.some((line) => line === PREVIEW_TABS_HEADER || line === LEGACY_PREVIEW_TABS_HEADER);
+}
+
 /** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
 const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
 
@@ -605,12 +621,7 @@ export function buildThreadArtifactsBlock(
 		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
 
 	const prose = [
-		...(previewLines.length > 0
-			? [
-					'Tabs the user has open in this conversation’s preview, as of this message:',
-					...previewLines,
-				]
-			: []),
+		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
 		...(handoffLines.length > 0
 			? [
 					'The user opened this conversation from the editor, where they are looking at:',

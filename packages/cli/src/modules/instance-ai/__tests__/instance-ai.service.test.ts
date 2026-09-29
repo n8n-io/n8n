@@ -6682,6 +6682,16 @@ describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
 		);
 	});
 
+	it('does not say every tab closed after an editor hand-off that listed no tabs', async () => {
+		const service = createService();
+		const handoffOnly = buildThreadArtifactsBlock({ artifacts: [] }, [
+			{ type: 'workflow' as const, id: 'wf-9', name: 'Handed off' },
+		]);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(handoffOnly)]);
+
+		expect(await resolve(service, { artifacts: [] })).toBe('');
+	});
+
 	it('always sends a block that carries an editor hand-off', async () => {
 		const service = createService();
 		const attachments = [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }];

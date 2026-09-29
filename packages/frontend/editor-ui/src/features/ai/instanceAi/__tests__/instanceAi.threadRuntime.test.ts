@@ -1746,6 +1746,17 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		);
 	});
 
+	test('sendMessage sends no tabs while the stored tabs of the view load', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Maybe closed' });
+		runtime.setOpenTabs(null);
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toBeUndefined();
+	});
+
 	test('sendMessage forwards the open tabs instead of every produced artifact', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);
