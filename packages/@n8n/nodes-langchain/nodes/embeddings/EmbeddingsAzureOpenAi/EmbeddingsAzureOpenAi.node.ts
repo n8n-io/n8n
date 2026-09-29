@@ -7,8 +7,10 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	NodeOperationError,
+	type ICredentialDataDecryptedObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -197,6 +199,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			| typeof ENTRA_AUTH;
 
 		let target: AzureTarget;
+		// Typed credential shapes have no index signature, so they need widening
+		// to reach the restriction check. Same form as core's oauth.ts.
+		let credentialData: ICredentialDataDecryptedObject;
 		// Exactly one of these is set. The API key is a string the client keeps; the token provider
 		// is a function the client calls before each request, so a long run never reuses a stale
 		// token.
@@ -222,10 +227,12 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				foundryEndpoint: credential.foundryEndpoint,
 			};
 			tokenProvider = getBearerTokenProvider(entraCredential, AZURE_OPENAI_INFERENCE_SCOPE);
+			credentialData = credential as unknown as ICredentialDataDecryptedObject;
 		} else {
 			const credential = await this.getCredentials<AzureApiKeyCredential>(API_KEY_AUTH);
 			target = credential;
 			apiKey = credential.apiKey;
+			credentialData = credential as unknown as ICredentialDataDecryptedObject;
 		}
 
 		const credentialLabel =
@@ -252,6 +259,13 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					`Foundry endpoint is missing in the selected ${credentialLabel} credential.`,
 				);
 			}
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData,
+				url: foundryURL,
+				surface: 'Azure OpenAI',
+			});
+
 			const embeddings = new OpenAIEmbeddings({
 				// The openai client accepts a `() => Promise<string>` here and calls it per request
 				apiKey: tokenProvider ?? apiKey,
@@ -286,6 +300,15 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			);
 		}
 
+		// `||` rather than `??`, so an endpoint that is set but empty also falls back.
+		const dialledHost = target.endpoint || `https://${target.resourceName}.openai.azure.com`;
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData,
+			url: dialledHost,
+			surface: 'Azure OpenAI',
+		});
+
 		const embeddings = new AzureOpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
@@ -300,12 +323,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				fetch: aiClientFetch,
 				fetchOptions: {
 					// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
-					// `||` rather than `??`, so an endpoint that is set but empty also falls back.
-					dispatcher: getProxyAgent(
-						target.endpoint || `https://${target.resourceName}.openai.azure.com`,
-						{},
-						this.helpers.getSecureEgressFilter(),
-					),
+					dispatcher: getProxyAgent(dialledHost, {}, this.helpers.getSecureEgressFilter()),
 				},
 			},
 			...options,

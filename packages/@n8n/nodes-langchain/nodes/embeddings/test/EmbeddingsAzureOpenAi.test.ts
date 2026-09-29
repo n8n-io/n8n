@@ -159,6 +159,55 @@ describe('AzureOpenAIEmbeddings', () => {
 			);
 		});
 
+		describe('credential domain restrictions', () => {
+			const restricted = {
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'allowed.example.com',
+			};
+
+			it.each([
+				[
+					'a Foundry endpoint',
+					{ endpointType: 'foundry', foundryEndpoint: 'https://evil.example.com/openai/v1' },
+				],
+				['a classic endpoint', { endpoint: 'https://evil.example.com', apiVersion: 'v1' }],
+				['a resource-derived classic host', { resourceName: 'evil', apiVersion: 'v1' }],
+			])('refuses to send the token to %s outside the allowed domains', async (_name, target) => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					apiKey: 'test-api-key',
+					...restricted,
+					...target,
+				});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'text-embedding-3-large';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+					'Domain not allowed',
+				);
+			});
+
+			it('allows a host the credential permits', async () => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					apiKey: 'test-api-key',
+					...restricted,
+					endpointType: 'foundry',
+					foundryEndpoint: 'https://allowed.example.com/openai/v1',
+				});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'text-embedding-3-large';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+			});
+		});
+
 		it('should use OpenAIEmbeddings against the Foundry base URL', async () => {
 			const mockContext = setupMockContext();
 			const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
