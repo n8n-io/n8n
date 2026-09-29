@@ -142,6 +142,11 @@ export const HANDLED_CORPUS: string[] = [
 	"={{ $json.item.names.slice(0, 1).join(',') }}",
 	'={{ $json.item.name.toUpperCase().length }}',
 	'={{ $json.item.nothing ?? $json.item.name }}',
+	// Argument defaults that change the value but stay under the size limit:
+	// a missing replacement inserts "undefined", a null separator joins with
+	// "null".
+	"={{ $json.item.big.replaceAll('y') }}",
+	'={{ $json.item.manyEmpty.join(null) }}',
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
@@ -164,13 +169,9 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	"={{ $json.item.name.replaceAll('o', '$`') }}",
 	// join('') is bounded by the elements, not the separator.
 	"={{ $json.item.manyBig.join('') }}",
-	// Argument defaults: a missing replacement inserts "undefined", a null
-	// separator joins with "null".
-	"={{ $json.item.big.replaceAll('y') }}",
 	// Several chunks obey the same limit as one.
 	'={{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}{{ $json.item.bigger }}',
 	"={{ $json.item.bigger.replaceAll('y') }}",
-	'={{ $json.item.manyEmpty.join(null) }}',
 	'={{ $json.item.manyEmpty.join($json.item.filler) }}',
 	// Object arguments to string methods coerce on the host where the isolates
 	// see a copy; the engine owns them.

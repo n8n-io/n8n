@@ -4,10 +4,12 @@ import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
 import { ExpressionExtensions } from '../src/extensions';
 import {
+	evaluateNatively,
 	isNativelyEvaluable,
 	CALLABLE_METHODS,
 	MAX_RESULT_LENGTH,
 } from '../src/expressions/native-evaluation';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 import { Expression } from '../src/expression';
 import { Workflow } from '../src/workflow';
 import { DateTime } from 'luxon';
@@ -119,11 +121,38 @@ describe('Expression - fast native evaluation parity', () => {
 		}
 	};
 
+	// The native outcome on its own, through the same data proxy the workflow
+	// builds: HANDLED entries must be evaluated natively, RUNTIME_BAILOUT
+	// entries must hand off to the engine. Parity alone cannot tell the two
+	// apart, since a bailout returns the engine's value either way.
+	const nativeOutcome = (expr: string) => {
+		const node = workflow.getNode('Current');
+		const proxy = new WorkflowDataProxy(
+			workflow,
+			runExecutionData,
+			0,
+			0,
+			'Current',
+			[item],
+			node?.parameters ?? {},
+			'manual',
+			{},
+		).getDataProxy();
+
+		Expression.setNativeEvaluation(true);
+		try {
+			return evaluateNatively(expr.slice(1), proxy);
+		} finally {
+			Expression.setNativeEvaluation(false);
+		}
+	};
+
 	describe('handled expressions match the engine result', () => {
 		test.each(HANDLED_CORPUS)('%s', (expr) => {
 			// Guard against the parity check passing vacuously: the expression
 			// must actually fit the subset.
 			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
+			expect(nativeOutcome(expr).handled).toBe(true);
 
 			const engineResult = evaluate(expr, false);
 			const nativeResult = evaluate(expr, true);
@@ -140,6 +169,7 @@ describe('Expression - fast native evaluation parity', () => {
 	describe('expressions that bail at runtime match the engine result', () => {
 		test.each(RUNTIME_BAILOUT_CORPUS)('%s', (expr) => {
 			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
+			expect(nativeOutcome(expr).handled).toBe(false);
 
 			const engineResult = evaluate(expr, false);
 			const nativeResult = evaluate(expr, true);
