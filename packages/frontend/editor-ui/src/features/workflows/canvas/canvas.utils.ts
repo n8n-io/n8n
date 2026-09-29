@@ -121,6 +121,7 @@ export function createEmptyCanvasRenderData(
 		tooltipByNodeId: shallowReactive(new Map()),
 		hasIssuesByNodeId: shallowReactive(new Map()),
 		renderTypeByNodeId: shallowReactive(new Map()),
+		subworkflowProgressByNodeId: shallowReactive(new Map()),
 		additionalPropertiesByNodeId: computed(() => ({})),
 		...overrides,
 	};
