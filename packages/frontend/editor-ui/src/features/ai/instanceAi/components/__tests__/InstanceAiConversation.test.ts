@@ -82,6 +82,7 @@ describe('InstanceAiConversation', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		localStorage.clear();
 	});
@@ -233,7 +234,6 @@ describe('InstanceAiConversation', () => {
 		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('Got it.');
 		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
-		vi.useRealTimers();
 	});
 
 	it('emits thread-missing when the thread cannot be found', async () => {

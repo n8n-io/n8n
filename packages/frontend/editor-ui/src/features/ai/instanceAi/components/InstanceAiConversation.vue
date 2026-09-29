@@ -1228,7 +1228,8 @@ defineExpose({
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.greetingLines p {
+	// `:nth-of-type(n)` matches the specificity of the per-line rules, so it overrides them too.
+	.greetingLines p:nth-of-type(n) {
 		animation: none;
 	}
 }
