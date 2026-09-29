@@ -1,10 +1,16 @@
 import { stripHydratedFileData, type AgentDbMessage, type AgentMessage } from '@n8n/agents';
 import type { AgentMessageAuthor } from '@n8n/api-types';
-import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	chunkIds,
+	isUniqueConstraintError,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -19,6 +25,12 @@ interface RuntimeMessageScope {
 	resourceId?: string;
 }
 
+export class AgentMessageIdConflictError extends UserError {
+	constructor(readonly messageId: string) {
+		super('A message with this ID already exists');
+	}
+}
+
 @Service()
 export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -27,6 +39,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 
 	async createInput(
 		params: {
+			id?: string;
 			threadId: string;
 			resourceId: string;
 			content: AgentMessage;
@@ -52,7 +65,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			.orIgnore()
 			.execute();
 		const message = manager.create(AgentMessageEntity, {
-			id: randomUUID(),
+			id: params.id ?? randomUUID(),
 			threadId: params.threadId,
 			resourceId: params.resourceId,
 			role: 'user',
@@ -66,7 +79,17 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 					: null,
 			modelContextAt: null,
 		});
-		return await manager.save(message);
+		try {
+			// TypeORM's partial type cannot represent unknown values in JSON message content.
+			await manager.insert(
+				AgentMessageEntity,
+				message as QueryDeepPartialEntity<AgentMessageEntity>,
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new AgentMessageIdConflictError(message.id);
+			throw error;
+		}
+		return await manager.findOneByOrFail(AgentMessageEntity, { id: message.id });
 	}
 
 	async linkExecutionInput(

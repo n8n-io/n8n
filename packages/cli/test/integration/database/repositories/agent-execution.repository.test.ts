@@ -49,7 +49,11 @@ import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
 } from '@/modules/agents/agent-message-queue.service';
-import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
+import {
+	AgentMessageIdConflictError,
+	AgentMessageRepository,
+} from '@/modules/agents/repositories/agent-message.repository';
+import { AgentResourceEntity } from '@/modules/agents/entities/agent-resource.entity';
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { AgentExecutionMessageLink } from '@/modules/agents/entities/agent-execution-message-link.entity';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
@@ -188,6 +192,7 @@ describe('AgentExecutionRepository', () => {
 			queueRepository,
 			messageRepository,
 		);
+		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const queue = new AgentMessageQueueService(
 			txRunner,
 			queueRepository,
@@ -197,13 +202,14 @@ describe('AgentExecutionRepository', () => {
 			checkpointStorage,
 			connection ? new AgentRepository(connection) : agentRepo,
 			attachmentService,
-			mock<AgentExecutionUpdateBroadcaster>(),
+			queueUpdates,
 			messageRepository,
 		);
 		return {
 			txRunner,
 			threads,
 			queue,
+			queueUpdates,
 			queueRepository,
 			checkpointStorage,
 			executionService,
@@ -217,6 +223,15 @@ describe('AgentExecutionRepository', () => {
 				queue,
 			),
 		};
+	}
+
+	async function enqueue(
+		services: ReturnType<typeof recordingServices>,
+		input: Parameters<AgentMessageQueueService['enqueue']>[0],
+	) {
+		const result = await services.queue.enqueue(input);
+		if (result.status !== 'accepted') throw new Error('Expected queue acceptance');
+		return result.item;
 	}
 
 	function observePeerTransaction() {
@@ -1128,6 +1143,7 @@ describe('AgentExecutionRepository', () => {
 			threadId: string,
 			message: string,
 			sessionMode: 'new' | 'existing' = 'existing',
+			messageId?: string,
 		): Parameters<AgentMessageQueueService['enqueue']>[0] {
 			return {
 				agentId,
@@ -1139,6 +1155,7 @@ describe('AgentExecutionRepository', () => {
 					kind: 'preview',
 					message,
 					userId: owner.id,
+					messageId,
 					resourceId: `draft-chat:${owner.id}`,
 				},
 			};
@@ -1153,27 +1170,155 @@ describe('AgentExecutionRepository', () => {
 		async function finish(
 			services: ReturnType<typeof recordingServices>,
 			item: ClaimedAgentMessage,
+			finishReason: 'stop' | 'cancelled' = 'stop',
 		) {
 			const recorder = new ExecutionRecorder();
 			recorder.record({ type: 'finish', finishReason: 'stop' });
 			await services.executionService.finalizeExecution(item.admission.executionId, {
 				...item.recording,
-				record: recorder.getMessageRecord(),
+				record: { ...recorder.getMessageRecord(), finishReason },
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it.each(['preview', 'integration'] as const)(
+			'accepts one %s delivery across connections and rolls back the losing transaction',
+			async (kind) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				const original = input(threadId, 'first', 'new', uuid());
+				if (kind === 'integration') {
+					original.source = 'slack';
+					original.payload = {
+						kind,
+						message: 'first',
+						modelMessage: '[Ada]: first',
+						resourceId: uuid(),
+						author: { id: 'ada', name: 'Ada' },
+						sender: { userId: 'ada', userName: 'ada', fullName: 'Ada', isBot: false, isMe: false },
+						credentialId: 'credential',
+						platformThreadId: 'native-thread',
+						messageContext: {
+							platform: 'slack',
+							integrationConnectionId: 'slack:credential',
+							messageId: 'native-message',
+							target: { type: 'thread', threadId: 'native-thread' },
+							updatedAt: new Date().toISOString(),
+						},
+						contextConversation: { threadId, resourceId: 'ada' },
+					};
+				}
+				const retry = {
+					...original,
+					threadId: kind === 'integration' ? uuid() : threadId,
+					payload: { ...original.payload, message: 'changed retry', resourceId: uuid() },
+				};
+				const inserted = createDeferredPromise<OperationContext>();
+				const release = createDeferredPromise();
+				const insert = local.queueRepository.enqueue.bind(local.queueRepository);
+				vi.spyOn(local.queueRepository, 'enqueue').mockImplementationOnce(async (...args) => {
+					const item = await insert(...args);
+					inserted.resolve(args[3]);
+					await release.promise;
+					return item;
+				});
+				const registered = vi.fn();
+				const available = vi.fn();
+				local.queue.onAvailable = available;
+				remote.queue.onAvailable = available;
+				const competing = observePeerTransaction();
+				const first = local.queue.enqueue(original, registered);
+				const ctx = await inserted.promise;
+				const second = remote.queue.enqueue(retry, registered);
+				try {
+					await competing.started;
+					await waitForPeerLock(ctx);
+					expect(available).not.toHaveBeenCalled();
+					release.resolve();
+					const result = await first;
+					if (result.status !== 'accepted') throw new Error('Expected queue acceptance');
+					expect(await second).toEqual({ status: 'duplicate' });
+					expect(await local.queueRepository.count()).toBe(1);
+					expect(await local.messageRepository.countBy({ threadId })).toBe(1);
+					expect(await threadRepo.countBy({ agentId })).toBe(1);
+					expect(
+						await local.messageRepository.findOneByOrFail({ id: result.item.messageId }),
+					).toMatchObject({ threadId, content: buildInboundUserMessage('first', [])[0] });
+					expect(
+						await repository.manager.findOneBy(AgentResourceEntity, {
+							id: retry.payload.resourceId,
+						}),
+					).toBeNull();
+					if (kind === 'integration') {
+						expect(await threadRepo.findOneBy({ id: retry.threadId })).toBeNull();
+						expect(
+							await Container.get(AgentThreadRepository).findOneBy({ id: retry.threadId }),
+						).toBeNull();
+					}
+					expect(registered).toHaveBeenCalledExactlyOnceWith(result.item.id);
+					expect(available).toHaveBeenCalledExactlyOnceWith(threadId);
+					expect(remote.queueUpdates.notifyQueueUpdated).not.toHaveBeenCalled();
+				} finally {
+					release.resolve();
+					await Promise.allSettled([first, second]);
+					competing.restore();
+				}
+			},
+		);
+
+		it('accepts identical text with separate IDs and preserves requests without an ID', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			for (const id of [uuid(), uuid(), undefined, undefined]) {
+				await enqueue(services, input(threadId, 'same text', 'new', id));
+			}
+			expect(await services.messageRepository.countBy({ threadId })).toBe(4);
+			expect(await services.queueRepository.countBy({ threadId })).toBe(4);
+		});
+
+		it.each(['success', 'error', 'cancelled'] as const)(
+			'retains acceptance through pending, running, and %s settlement',
+			async (outcome) => {
+				const services = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				const data = input(threadId, 'original', 'new', uuid());
+				const accepted = await enqueue(services, data);
+				const original = await services.messageRepository.findOneByOrFail({
+					id: accepted.messageId,
+				});
+				expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
+				const active = await claim(services, threadId);
+				expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
+				if (outcome === 'error') {
+					await services.queue.recordFailure(active, new Error('Model unavailable'));
+					await services.queue.settle(threadId, active.admission.executionId);
+				} else {
+					await finish(services, active, outcome === 'cancelled' ? 'cancelled' : 'stop');
+				}
+				expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
+				expect(await services.queueRepository.countBy({ threadId })).toBe(0);
+				expect(await repository.findByThreadIdOrdered(threadId)).toMatchObject([
+					{ id: active.admission.executionId, status: outcome },
+				]);
+				expect(
+					await services.messageRepository.findOneByOrFail({ id: accepted.messageId }),
+				).toEqual(original);
+			},
+		);
 
 		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
 			const target = { projectId, agentId, threadId, userId: owner.id };
-			await services.queue.enqueue(input(threadId, 'active', 'new'));
+			await enqueue(services, input(threadId, 'active', 'new'));
 			const active = await claim(services, threadId);
-			const pendingInput = input(threadId, 'pending');
+			const pendingInput = input(threadId, 'pending', 'existing', uuid());
 			pendingInput.payload.attachments = [
 				{ id: 'pending-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
 			];
-			const pending = await services.queue.enqueue(pendingInput);
+			const pending = await enqueue(services, pendingInput);
 			const original = await services.messageRepository.findOneByOrFail({ id: pending.messageId });
 			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 				pending.id,
@@ -1189,6 +1334,7 @@ describe('AgentExecutionRepository', () => {
 			).rejects.toThrow('Session not found');
 			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
 			await services.queue.removePending({ ...target, queueId: pending.id });
+			expect(await services.queue.enqueue(pendingInput)).toEqual({ status: 'duplicate' });
 			expect(await services.queue.listPending(target)).toEqual({ items: [] });
 			expect(services.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
 			expect(
@@ -1216,13 +1362,19 @@ describe('AgentExecutionRepository', () => {
 		it('edits pending text without changing identity, attachments, or queue position', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const data = input(threadId, 'original', 'new');
+			const data = input(threadId, 'original', 'new', uuid());
 			data.payload.attachments = [
 				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
 			];
-			const first = await services.queue.enqueue(data);
+			const first = await enqueue(services, data);
+			await expect(
+				services.queue.enqueue({
+					...data,
+					payload: { ...data.payload, kind: 'preview', userId: uuid() },
+				}),
+			).rejects.toThrow('Session not found');
 			const original = await services.messageRepository.findOneByOrFail({ id: first.messageId });
-			const second = await services.queue.enqueue(input(threadId, 'second'));
+			const second = await enqueue(services, input(threadId, 'second'));
 			const target = {
 				projectId,
 				agentId,
@@ -1246,6 +1398,7 @@ describe('AgentExecutionRepository', () => {
 				attachments: data.payload.attachments,
 			});
 			await services.queue.updatePending(target);
+			expect(await services.queue.enqueue(data)).toEqual({ status: 'duplicate' });
 			const stored = await services.queueRepository.findOneByOrFail({ id: first.id });
 			expect(stored).toMatchObject({
 				id: first.id,
@@ -1292,7 +1445,7 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const item = await local.queue.enqueue(input(threadId, 'first', 'new'));
+				const item = await enqueue(local, input(threadId, 'first', 'new'));
 				const target = { projectId, agentId, threadId, userId: owner.id, queueId: item.id };
 				const acquired = createDeferredPromise();
 				const release = createDeferredPromise();
@@ -1351,7 +1504,7 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const first = await local.queue.enqueue(input(threadId, 'first', 'new'));
+			const first = await enqueue(local, input(threadId, 'first', 'new'));
 			const inserted = createDeferredPromise<OperationContext>();
 			const release = createDeferredPromise();
 			const insert = local.queueRepository.enqueue.bind(local.queueRepository);
@@ -1365,9 +1518,9 @@ describe('AgentExecutionRepository', () => {
 				});
 			const competing = observePeerTransaction();
 			try {
-				const second = local.queue.enqueue(input(threadId, 'second'));
+				const second = enqueue(local, input(threadId, 'second'));
 				const ctx = await inserted.promise;
-				const third = remote.queue.enqueue(input(threadId, 'third'));
+				const third = enqueue(remote, input(threadId, 'third'));
 				await competing.started;
 				await waitForPeerLock(ctx);
 				release.resolve();
@@ -1396,7 +1549,7 @@ describe('AgentExecutionRepository', () => {
 				local.executionService.startExecutionRecording(winner.item.recording, new Date()),
 			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 			const independentId = uuid();
-			await remote.queue.enqueue(input(independentId, 'independent', 'new'));
+			await enqueue(remote, input(independentId, 'independent', 'new'));
 			const independent = await claim(remote, independentId);
 			await finish(remote, independent);
 			await finish(winner.services, winner.item);
@@ -1406,49 +1559,55 @@ describe('AgentExecutionRepository', () => {
 				await finish(local, next);
 			}
 			expect(await local.queueRepository.count()).toBe(0);
-			const later = await local.queue.enqueue(input(threadId, 'later'));
+			const later = await enqueue(local, input(threadId, 'later'));
 			expect(BigInt(later.id)).toBeGreaterThan(BigInt(independent.item.id));
 		});
 
-		it('rolls back acceptance and claim without partial session or execution records', async () => {
-			const services = recordingServices();
-			const threadId = uuid();
-			const insert = services.queueRepository.enqueue.bind(services.queueRepository);
-			const failedInsert = vi
-				.spyOn(services.queueRepository, 'enqueue')
-				.mockImplementationOnce(async (...args) => {
-					await insert(...args);
-					throw new Error('acceptance failed');
+		it.each([new Error('acceptance failed'), new AgentMessageIdConflictError('another-message')])(
+			'rolls back failed acceptance and claim: %s',
+			async (error) => {
+				const services = recordingServices();
+				const threadId = uuid();
+				const data = input(threadId, 'first', 'new', uuid());
+				const insert = services.queueRepository.enqueue.bind(services.queueRepository);
+				const failedInsert = vi
+					.spyOn(services.queueRepository, 'enqueue')
+					.mockImplementationOnce(async (...args) => {
+						await insert(...args);
+						throw error;
+					});
+				await expect(services.queue.enqueue(data)).rejects.toBe(error);
+				failedInsert.mockRestore();
+				expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+				expect(await services.messageRepository.countBy({ threadId })).toBe(0);
+				expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
+				expect(await services.queueRepository.count()).toBe(0);
+				const accepted = await enqueue(services, data);
+				const failedLink = vi
+					.spyOn(services.queueRepository, 'linkExecution')
+					.mockResolvedValueOnce(false);
+				await expect(claim(services, threadId)).rejects.toBeInstanceOf(
+					AgentTurnAlreadyRunningError,
+				);
+				failedLink.mockRestore();
+				expect(await services.messageRepository.countBy({ threadId })).toBe(1);
+				expect(
+					await Container.get(AgentThreadRepository).findOneBy({ id: threadId }),
+				).not.toBeNull();
+				expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
+				expect(await repository.countBy({ threadId })).toBe(0);
+				expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
+					executionId: null,
+					messageId: accepted.messageId,
 				});
-			await expect(services.queue.enqueue(input(threadId, 'first', 'new'))).rejects.toThrow(
-				'acceptance failed',
-			);
-			failedInsert.mockRestore();
-			expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
-			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
-			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
-			expect(await services.queueRepository.count()).toBe(0);
-			const accepted = await services.queue.enqueue(input(threadId, 'first', 'new'));
-			const failedLink = vi
-				.spyOn(services.queueRepository, 'linkExecution')
-				.mockResolvedValueOnce(false);
-			await expect(claim(services, threadId)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
-			failedLink.mockRestore();
-			expect(await services.messageRepository.countBy({ threadId })).toBe(1);
-			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).not.toBeNull();
-			expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
-			expect(await repository.countBy({ threadId })).toBe(0);
-			expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
-				executionId: null,
-				messageId: accepted.messageId,
-			});
-			await finish(services, await claim(services, threadId));
-		});
+				await finish(services, await claim(services, threadId));
+			},
+		);
 
 		it('settles accepted Preview input after its session owner is deleted', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const queued = await services.queue.enqueue(input(threadId, 'pending', 'new'));
+			const queued = await enqueue(services, input(threadId, 'pending', 'new'));
 			await Container.get(UserRepository).delete(owner.id);
 
 			const active = await claim(services, threadId);
@@ -1472,8 +1631,8 @@ describe('AgentExecutionRepository', () => {
 		it('enforces active-slot uniqueness and prevents execution deletion from requeuing a message', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			await services.queue.enqueue(input(threadId, 'first', 'new'));
-			const pending = await services.queue.enqueue(input(threadId, 'second'));
+			await enqueue(services, input(threadId, 'first', 'new'));
+			const pending = await enqueue(services, input(threadId, 'second'));
 			const active = await claim(services, threadId);
 			await expect(
 				services.queueRepository.update(pending.id, { executionId: active.admission.executionId }),
@@ -1489,8 +1648,8 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			await local.queue.enqueue(input(threadId, 'interrupted', 'new'));
-			await local.queue.enqueue(input(threadId, 'next'));
+			await enqueue(local, input(threadId, 'interrupted', 'new'));
+			await enqueue(local, input(threadId, 'next'));
 			const active = await claim(remote, threadId);
 			const cutoff = new Date(Date.now() - 120_000);
 			await repository.update(active.admission.executionId, {
@@ -1524,8 +1683,9 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				await local.queue.enqueue(input(threadId, 'approval', 'new'));
-				const pending = await local.queue.enqueue(input(threadId, 'later'));
+				const original = input(threadId, 'approval', 'new', uuid());
+				await enqueue(local, original);
+				const pending = await enqueue(local, input(threadId, 'later'));
 				const active = await claim(local, threadId);
 				const runId = uuid();
 				const state: SerializableAgentState = {
@@ -1539,6 +1699,7 @@ describe('AgentExecutionRepository', () => {
 					},
 				};
 				await local.checkpointStorage.save(runId, state, agentId);
+				expect(await remote.queue.enqueue(original)).toEqual({ status: 'duplicate' });
 				if (predecessor === 'settled') await finish(local, active);
 				if (predecessor === 'interrupted') {
 					const cutoff = new Date(Date.now() - 120_000);
@@ -1557,6 +1718,8 @@ describe('AgentExecutionRepository', () => {
 					new Date(),
 				);
 				const resumedId = admission.executionId;
+				expect(admission.inputMessageIds).toEqual(active.admission.inputMessageIds);
+				expect(await remote.queue.enqueue(original)).toEqual({ status: 'duplicate' });
 				await local.queue.settle(threadId, active.admission.executionId);
 				expect(await local.queueRepository.findDeliveryState(active.item.id)).toMatchObject({
 					executionId: resumedId,
@@ -1588,14 +1751,15 @@ describe('AgentExecutionRepository', () => {
 					executionId: next.admission.executionId,
 				});
 				await finish(local, next);
+				expect(await remote.queue.enqueue(original)).toEqual({ status: 'duplicate' });
 			},
 		);
 
 		it('advances after approval expiry without waiting for pruning', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			await services.queue.enqueue(input(threadId, 'approval', 'new'));
-			const pending = await services.queue.enqueue(input(threadId, 'later'));
+			await enqueue(services, input(threadId, 'approval', 'new'));
+			const pending = await enqueue(services, input(threadId, 'later'));
 			const active = await claim(services, threadId);
 			const runId = uuid();
 			await services.checkpointStorage.save(
@@ -1622,11 +1786,11 @@ describe('AgentExecutionRepository', () => {
 			await finish(services, next);
 		});
 
-		it('removes pending input and attachments on session deletion and never recreates it', async () => {
+		it('removes pending input, attachments, and acceptance identity on session deletion', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
 			const attachment = await attachmentRepo.save(buildAttachment(threadId));
-			const accepted = input(threadId, 'pending', 'new');
+			const accepted = input(threadId, 'pending', 'new', uuid());
 			accepted.payload.attachments = [
 				{
 					id: attachment.id,
@@ -1635,7 +1799,7 @@ describe('AgentExecutionRepository', () => {
 					sizeBytes: attachment.fileSizeBytes,
 				},
 			];
-			await services.queue.enqueue(accepted);
+			await enqueue(services, accepted);
 			expect(
 				await services.executionService.deleteThread(projectId, agentId, threadId, owner.id),
 			).toBe(true);
@@ -1647,14 +1811,16 @@ describe('AgentExecutionRepository', () => {
 				{ threadId },
 			);
 			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
-			await expect(services.queue.enqueue(input(threadId, 'late'))).rejects.toThrow();
+			await expect(enqueue(services, input(threadId, 'late'))).rejects.toThrow();
 			expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+			await enqueue(services, { ...accepted, payload: { ...accepted.payload, attachments: [] } });
+			expect(await services.messageRepository.countBy({ threadId })).toBe(1);
 		});
 
 		it('cascades agent deletion through pending queue rows', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			await services.queue.enqueue(input(threadId, 'pending', 'new'));
+			await enqueue(services, input(threadId, 'pending', 'new'));
 			await agentRepo.delete(agentId);
 			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
 		});
@@ -1781,7 +1947,7 @@ describe('AgentExecutionRepository', () => {
 				contextConversation: { threadId: 'integration-context', resourceId: 'integration-user' },
 				forceBuffered: true,
 			};
-			const queued = await services.queue.enqueue({
+			const queued = await enqueue(services, {
 				agentId,
 				projectId,
 				threadId,
