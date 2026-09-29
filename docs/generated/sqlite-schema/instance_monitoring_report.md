@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(64) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_instance_monitoring_report_status" CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')))
+CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "dataPoints" text NOT NULL, "status" varchar(64) NOT NULL DEFAULT ('pending'), "deliveredAt" datetime(3), "attempts" integer NOT NULL DEFAULT (0), "lastAttemptAt" datetime(3), "lastError" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "reportDate" varchar(10), CONSTRAINT "CHK_instance_monitoring_report_status" CHECK (("status" IN ('pending', 'delivered', 'skipped_after_max_retries'))))
 ```
 
 </details>
@@ -22,6 +22,7 @@ CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "d
 | id | varchar |  | false |  |  |  |
 | lastAttemptAt | datetime(3) |  | true |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
+| reportDate | varchar(10) |  | true |  |  |  |
 | status | varchar(64) | 'pending' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -29,7 +30,7 @@ CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "d
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("status" IN ('pending', 'delivered', 'skipped_after_max_retries')) |
+| - | CHECK | CHECK (("status" IN ('pending', 'delivered', 'skipped_after_max_retries'))) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_monitoring_report_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -37,6 +38,7 @@ CREATE TABLE "instance_monitoring_report" ("id" varchar PRIMARY KEY NOT NULL, "d
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_instance_monitoring_report_reportDate | CREATE UNIQUE INDEX "IDX_instance_monitoring_report_reportDate" ON "instance_monitoring_report" ("reportDate") WHERE "reportDate" IS NOT NULL |
 | sqlite_autoindex_instance_monitoring_report_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -53,6 +55,7 @@ erDiagram
   varchar id PK
   datetime_3_ lastAttemptAt
   TEXT lastError
+  varchar_10_ reportDate
   varchar_64_ status
   datetime_3_ updatedAt
 }

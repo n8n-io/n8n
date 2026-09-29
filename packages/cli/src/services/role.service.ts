@@ -41,8 +41,7 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 

@@ -776,6 +776,22 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
 	});
 
+	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				userId: 'user-1',
+				publishedN8nChat: true,
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(
+			expect.objectContaining({ publishedN8nChat: true, userId: 'user-1' }),
+		);
+	});
+
 	it('omits the preview marker for every other draft surface', async () => {
 		const executionData = await runToolWith(
 			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE },

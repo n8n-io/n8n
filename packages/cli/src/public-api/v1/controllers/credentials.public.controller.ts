@@ -43,9 +43,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,

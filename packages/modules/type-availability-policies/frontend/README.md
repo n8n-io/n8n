@@ -35,5 +35,10 @@ popover and the dialog. The caller passes the row element and whether the row is
 contact and replace actions. The shell renders the popover and the panel where a restricted node
 appears; the module owns their copy and behaviour.
 
+`getPolicyViolations(error)` reads the structured violations off a refused save, publish or run,
+and `PolicyViolationList` groups them by scope and lists each blocked node or credential type,
+with an optional jump. The shell resolves display names and the nodes to jump to, because only
+it holds the open workflow.
+
 `packages/@n8n/module-cli/frontend-module-guide.md` holds the descriptor contract, the
 registration points, the import boundaries and the setup a module needs to render UI.

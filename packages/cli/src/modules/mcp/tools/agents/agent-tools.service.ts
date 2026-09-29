@@ -28,8 +28,7 @@ import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -61,7 +60,7 @@ import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 

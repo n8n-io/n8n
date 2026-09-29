@@ -69,7 +69,7 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 
 	displayName = 'Atlassian Service Account';
 
-	documentationUrl = 'atlassianserviceaccount';
+	documentationUrl = 'jira';
 
 	icon: Icon = 'file:icons/Atlassian.svg';
 

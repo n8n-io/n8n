@@ -11,8 +11,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';

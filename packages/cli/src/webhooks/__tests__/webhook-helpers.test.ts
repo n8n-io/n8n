@@ -58,7 +58,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-import type { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { type ResponseError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';

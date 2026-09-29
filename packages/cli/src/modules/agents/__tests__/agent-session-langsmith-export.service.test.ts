@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';

@@ -20,11 +20,13 @@ import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UnprocessableRequestError,
+} from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';

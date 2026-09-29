@@ -19,14 +19,12 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { McpToolCategory, McpToolPermission, McpToolPermissions } from '@n8n/api-types';
 
@@ -56,6 +56,20 @@ const writeConfirmationDescriptionKey = computed<BaseTextKey>(() =>
 	props.actor === 'agent'
 		? 'tools.connection.permissions.write.confirm.description.agent'
 		: 'tools.connection.permissions.write.confirm.description.assistant',
+);
+
+const permissionOptions = computed<Array<{ value: McpToolPermission; label: string }>>(() =>
+	[
+		{
+			value: 'always_allow' as const,
+			label: i18n.baseText('tools.connection.permissions.alwaysAllow'),
+		},
+		{
+			value: 'require_approval' as const,
+			label: i18n.baseText('tools.connection.permissions.requireApproval'),
+		},
+		{ value: 'blocked' as const, label: i18n.baseText('tools.connection.permissions.blocked') },
+	].filter((option) => !props.excludePermissions.includes(option.value)),
 );
 
 const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
@@ -124,6 +138,14 @@ function updateTool(toolId: string, category: McpToolCategory, permission: McpTo
 	else next[toolId] = permission;
 	toolPermissions.value = next;
 	emitSettings();
+}
+
+function isPermission(value: unknown): value is McpToolPermission {
+	return value === 'always_allow' || value === 'require_approval' || value === 'blocked';
+}
+
+function onToolChange(toolId: string, category: McpToolCategory, value: unknown) {
+	if (isPermission(value)) updateTool(toolId, category, value);
 }
 
 function hasCategoryOverrides(category: McpToolCategory): boolean {
@@ -218,13 +240,20 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 								{{ tool.description }}
 							</N8nText>
 						</div>
-						<PermissionDropdown
+						<N8nSelect
 							:class="$style.permissionSelect"
 							:model-value="toolPermissions[tool.id] ?? categories[group.category]"
+							size="small"
 							:disabled="arePermissionsDisabled"
-							:exclude-permissions="excludePermissions"
-							@update:model-value="updateTool(tool.id, group.category, $event)"
-						/>
+							@update:model-value="onToolChange(tool.id, group.category, $event)"
+						>
+							<N8nOption
+								v-for="option in permissionOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
 					</div>
 				</div>
 			</div>

@@ -108,17 +108,6 @@ export default defineConfig({
 	},
 	overrides: [
 		{
-			// Shrink-only ratchet: the two import paths that upsert a whole credential row,
-			// including `type`. There is no sealed credential import method yet.
-			// NEVER add to this list — the override is per file, so a second write here
-			// goes unreported.
-			files: [
-				'./src/commands/import/credentials.ts',
-				'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-			],
-			rules: { 'n8n-local-rules/no-unsealed-credentials-entity-write': 'off' },
-		},
-		{
 			// Public API guardrail: handlers/controllers must go through a service, never a repository.
 			files: ['./src/public-api/v1/handlers/**/*.ts', './src/public-api/v1/controllers/**/*.ts'],
 			excludeFiles: ['./src/public-api/**/__tests__/**/*.ts'],
@@ -141,22 +130,14 @@ export default defineConfig({
 			// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 			// must fail CI. Entries are removed as each handler becomes a controller.
 			files: [
-				'./src/public-api/v1/handlers/audit/audit.handler.ts',
-				'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
-				'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
 				'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
 				'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-				'./src/public-api/v1/handlers/discover/discover.handler.ts',
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-				'./src/public-api/v1/handlers/insights/insights.handler.ts',
 				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
 				'./src/public-api/v1/handlers/otel/otel.handler.ts',
-				'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 				'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-				'./src/public-api/v1/handlers/tags/tags.handler.ts',
-				'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
@@ -277,7 +258,6 @@ export default defineConfig({
 				'./src/eventbus/message-event-bus/message-event-bus.ts',
 				'./src/evaluation.ee/evaluation-collection.service.ts',
 				'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-				'./src/public-api/v1/handlers/tags/tags.handler.ts',
 				// modules/** non-persistence services surfaced by narrowing the exemption
 				'./src/modules/agents/agent-knowledge.service.ts',
 				'./src/modules/agents/agent-publish.service.ts',
