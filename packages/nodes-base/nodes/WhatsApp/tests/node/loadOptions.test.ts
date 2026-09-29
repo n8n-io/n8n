@@ -34,7 +34,7 @@ describe('WhatsApp Business Cloud load options', () => {
 				baseURL: WHATSAPP_BASE_URL,
 				url: 'business-account-id/message_templates',
 				method: 'GET',
-				qs: {},
+				qs: { fields: 'name,language' },
 			},
 		);
 		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenNthCalledWith(
@@ -44,7 +44,7 @@ describe('WhatsApp Business Cloud load options', () => {
 				baseURL: WHATSAPP_BASE_URL,
 				url: 'business-account-id/message_templates',
 				method: 'GET',
-				qs: { after: 'next-page' },
+				qs: { fields: 'name,language', after: 'next-page' },
 			},
 		);
 	});

@@ -99,7 +99,10 @@ export class WhatsApp implements INodeType {
 							baseURL: WHATSAPP_BASE_URL,
 							url: `${credentials.businessAccountId}/message_templates`,
 							method: 'GET',
-							qs: after ? { after } : {},
+							qs: {
+								fields: 'name,language',
+								...(after ? { after } : {}),
+							},
 						},
 					)) as WhatsAppTemplateListResponse;
 
