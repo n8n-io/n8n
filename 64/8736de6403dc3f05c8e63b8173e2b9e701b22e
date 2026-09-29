@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/sqlite/1790605116208-AddAgentQueueMessageReferences.ts
+  s_ffa0492de4d6b4::t_c7df107261f1cf 1-65
+packages/@n8n/db/src/migrations/postgresdb/1790605116208-AddAgentQueueMessageReferences.ts
+  s_ffa0492de4d6b4::t_c7df107261f1cf 53,57-65,67,76,81,216-221,223-226,228-229,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "648736de6403dc3f05c8e63b8173e2b9e701b22e",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
