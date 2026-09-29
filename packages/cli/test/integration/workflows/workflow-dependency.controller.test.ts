@@ -21,6 +21,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { registerAgentUsageProvider } from '@/modules/agents/register-agent-usage-provider';
 
 import { saveCredential } from '../shared/db/credentials';
+import { createFolder } from '../shared/db/folders';
 import { createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
@@ -44,7 +45,7 @@ beforeAll(() => {
 
 testServer = utils.setupTestServer({
 	endpointGroups: ['workflowDependencies'],
-	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
+	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions', 'feat:folders'],
 });
 
 beforeAll(() => {
@@ -642,5 +643,55 @@ describe('POST /workflow-dependencies/details', () => {
 		});
 
 		expect(resp.statusCode).toBe(400);
+	});
+});
+
+describe('GET /workflow-dependencies/projects/:projectId/folders/:folderId', () => {
+	it('should return deduplicated dependencies for every workflow in the folder hierarchy', async () => {
+		const owner = await createOwner();
+		const project = await projectRepo.getPersonalProjectForUserOrFail(owner.id);
+
+		const folder = await createFolder(project, { name: 'Parent' });
+		const subFolder = await createFolder(project, { name: 'Child', parentFolder: folder });
+
+		const subWorkflow = await createWorkflow({ name: 'Sub WF' }, owner);
+		const inFolder = await createWorkflow({ name: 'In folder', parentFolder: folder }, owner);
+		const inSubFolder = await createWorkflow(
+			{ name: 'In subfolder', parentFolder: subFolder },
+			owner,
+		);
+
+		// Both workflows call the same sub-workflow, so the result must list it once.
+		await seedDep(inFolder.id, 'workflowCall', subWorkflow.id);
+		await seedDep(inSubFolder.id, 'workflowCall', subWorkflow.id);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.get(`/workflow-dependencies/projects/${project.id}/folders/${folder.id}`);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toHaveLength(1);
+		expect(resp.body.data[0]).toMatchObject({
+			id: subWorkflow.id,
+			name: 'Sub WF',
+			type: 'workflowCall',
+		});
+	});
+
+	it('should deny a user without access to the project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const ownerProject = await projectRepo.getPersonalProjectForUserOrFail(owner.id);
+
+		const folder = await createFolder(ownerProject, { name: 'Owner folder' });
+		const subWorkflow = await createWorkflow({ name: 'Sub WF' }, owner);
+		const inFolder = await createWorkflow({ name: 'In folder', parentFolder: folder }, owner);
+		await seedDep(inFolder.id, 'workflowCall', subWorkflow.id);
+
+		const resp = await testServer
+			.authAgentFor(member)
+			.get(`/workflow-dependencies/projects/${ownerProject.id}/folders/${folder.id}`);
+
+		expect(resp.statusCode).toBe(403);
 	});
 });

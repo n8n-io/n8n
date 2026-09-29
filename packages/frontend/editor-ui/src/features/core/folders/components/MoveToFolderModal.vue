@@ -21,6 +21,7 @@ import type {
 	ICredentialsResponse,
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
+import type { ResolvedDependency } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from '@/app/components/Modal.vue';
@@ -74,7 +75,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
-const { fetchDependencies, getDependencies } = useDependencies();
+const { fetchDependencies, fetchFolderDependencies, getDependencies } = useDependencies();
 const toast = useToast();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
@@ -89,8 +90,14 @@ const isOwnPersonalProject = computed(() => {
 		selectedProject.value?.id === projectsStore.personalProject?.id
 	);
 });
+// There is no current project on the Overview and Shared pages, so fall back to the project the
+// resource lives in — otherwise every destination there looks like a transfer.
+const currentResourceProjectId = computed(() => {
+	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
+});
+
 const isTransferringOwnership = computed(() => {
-	return selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id;
+	return selectedProject.value && selectedProject.value?.id !== currentResourceProjectId.value;
 });
 
 const workflowCount = ref(0);
@@ -125,13 +132,7 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const usedDataTables = computed(() =>
-	isTransferringOwnership.value
-		? (getDependencies(props.data.resource.id, 'workflow')?.dependencies.filter(
-				(dep) => dep.type === 'dataTableId',
-			) ?? [])
-		: [],
-);
+const resourceDependencies = ref<ResolvedDependency[]>([]);
 
 const searchFn = useAvailableProjectSearch();
 const filterFn = (p: ProjectListItem) =>
@@ -388,13 +389,18 @@ const descriptionMessage = computed(() => {
 
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
+// Data tables belong to a single project and can't be shared, so they only survive a transfer if
+// the destination already owns them.
+const usedDataTables = computed(() =>
+	isTransferringOwnership.value
+		? resourceDependencies.value.filter(
+				(dep) => dep.type === 'dataTableId' && dep.projectId !== selectedProject.value?.id,
+			)
+		: [],
+);
+
 const isFolderSelectable = computed(() => {
 	return isOwnPersonalProject.value || !isPersonalProject.value;
-});
-
-// If there is not current project (e.g. on the Overview page), default to the resource's home project
-const currentResourceProjectId = computed(() => {
-	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
 });
 
 onMounted(async () => {
@@ -410,18 +416,22 @@ onMounted(async () => {
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
 		allCredentials.value = credentials;
+		resourceDependencies.value =
+			getDependencies(props.data.resource.id, 'workflow')?.dependencies ?? [];
 	} else {
 		if (projectsStore.currentProject?.id && currentFolder.value?.id) {
-			const [used, credentials] = await Promise.all([
-				await foldersStore.fetchFolderUsedCredentials(
+			const [used, credentials, dependencies] = await Promise.all([
+				foldersStore.fetchFolderUsedCredentials(
 					projectsStore.currentProject.id,
 					currentFolder.value.id,
 				),
 				credentialsStore.fetchAllCredentials(),
+				fetchFolderDependencies(projectsStore.currentProject.id, currentFolder.value.id),
 			]);
 
 			usedCredentials.value = used;
 			allCredentials.value = credentials;
+			resourceDependencies.value = dependencies;
 		}
 	}
 });
@@ -537,7 +547,7 @@ onMounted(async () => {
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
-				:class="$style.credentialsCallout"
+				:class="$style.calloutSpacing"
 				theme="warning"
 				data-test-id="move-modal-used-credentials-warning"
 			>
@@ -566,14 +576,21 @@ onMounted(async () => {
 			<N8nCallout
 				v-if="usedDataTables.length"
 				theme="warning"
-				:class="$style.dataTablesCallout"
+				:class="$style.calloutSpacing"
 				data-test-id="move-modal-data-tables-warning"
 			>
-				<I18nT keypath="projects.move.resource.modal.message.usedDataTables.note" scope="global">
+				<I18nT
+					:keypath="
+						data.resourceType === 'workflow'
+							? 'folders.move.modal.message.usedDataTables.workflow'
+							: 'folders.move.modal.message.usedDataTables.folder'
+					"
+					scope="global"
+				>
 					<template #dataTables>
 						<N8nTooltip placement="top">
 							<span :class="$style.tooltipText">{{
-								i18n.baseText('projects.move.resource.modal.message.usedDataTables.count', {
+								i18n.baseText('folders.move.modal.message.usedDataTables.count', {
 									adjustToNumber: usedDataTables.length,
 									interpolate: { count: usedDataTables.length },
 								})
@@ -645,11 +662,7 @@ onMounted(async () => {
 	text-decoration: underline;
 }
 
-.credentialsCallout {
-	margin-top: var(--spacing--sm);
-}
-
-.dataTablesCallout {
+.calloutSpacing {
 	margin-top: var(--spacing--sm);
 }
 

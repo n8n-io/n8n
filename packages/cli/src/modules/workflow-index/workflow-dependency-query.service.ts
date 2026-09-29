@@ -248,6 +248,35 @@ export class WorkflowDependencyQueryService {
 		);
 	}
 
+	/**
+	 * Resolved dependencies for every workflow in a folder, deduplicated. The folder filter is
+	 * recursive, so a subfolder's workflows count as the folder's own.
+	 */
+	async getFolderDependencies(
+		projectId: string,
+		folderId: string,
+		user: User,
+	): Promise<ResolvedDependency[]> {
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+		if (workflowIds.length === 0) return [];
+
+		const byWorkflow = await this.getResourceDependencies(workflowIds, 'workflow', user);
+
+		const dependencies = new Map<string, ResolvedDependency>();
+		for (const result of Object.values(byWorkflow)) {
+			for (const dependency of result.dependencies) {
+				dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+			}
+		}
+
+		return [...dependencies.values()];
+	}
+
 	private async loadDepsForResources(
 		resourceIds: string[],
 		resourceType: DependencyResourceType,

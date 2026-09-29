@@ -177,6 +177,7 @@ describe('MoveToFolderModal', () => {
 		});
 
 		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({});
+		vi.mocked(workflowDependenciesApi.getFolderDependencies).mockResolvedValue([]);
 
 		foldersStore = mockedStore(useFoldersStore);
 		foldersStore.fetchFolderUsedCredentials = vi.fn().mockResolvedValue([]);
@@ -803,6 +804,73 @@ describe('MoveToFolderModal', () => {
 			const { getByTestId, queryByTestId } = renderWorkflowModal();
 
 			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
+		});
+
+		it('should warn when transferring a folder whose workflows use data tables', async () => {
+			settingsStore.settings = enableSharing;
+			vi.mocked(workflowDependenciesApi.getFolderDependencies).mockResolvedValue([
+				{ type: 'dataTableId', id: 'dt-1', name: 'Customers', projectId: personalProject.id },
+			]);
+
+			const { getByTestId, getByText } = renderComponent({
+				props: {
+					data: {
+						resource: TEST_FOLDER_RESOURCE,
+						resourceType: 'folder',
+						workflowListEventBus: mockEventBus,
+					},
+				},
+			});
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+			await selectTeamProject(getByTestId('project-sharing-select'));
+
+			await waitFor(() =>
+				expect(getByTestId('move-modal-data-tables-warning')).toBeInTheDocument(),
+			);
+			expect(getByText('1 data table')).toBeInTheDocument();
+		});
+
+		it('should not warn about data tables the destination project already owns', async () => {
+			settingsStore.settings = enableSharing;
+			vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+				[TEST_WORKFLOW_RESOURCE.id]: {
+					dependencies: [
+						{ type: 'dataTableId', id: 'dt-1', name: 'Customers', projectId: teamProjects[0].id },
+					],
+					inaccessibleCount: 0,
+				},
+			});
+
+			const { getByTestId, queryByTestId } = renderWorkflowModal();
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+			await selectTeamProject(getByTestId('project-sharing-select'));
+
+			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
+		});
+
+		it('should not warn when the resource stays in its own project on the overview page', async () => {
+			settingsStore.settings = enableSharing;
+			// The overview page has no current project; the resource's home project is the comparand.
+			projectsStore.currentProject = null;
+			projectsStore.currentProjectId = undefined;
+			mockDataTableDependencies();
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					data: {
+						resource: { ...TEST_WORKFLOW_RESOURCE, homeProjectId: teamProjects[0].id },
+						resourceType: 'workflow',
+						workflowListEventBus: mockEventBus,
+					},
+				},
+			});
+
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+			await selectTeamProject(getByTestId('project-sharing-select'));
 
 			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
 		});
