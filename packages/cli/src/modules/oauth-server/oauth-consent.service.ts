@@ -10,10 +10,7 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ForbiddenError } from '@n8n/errors';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 
 type ConsentDetailsResult =

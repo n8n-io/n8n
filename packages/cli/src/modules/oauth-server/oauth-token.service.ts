@@ -18,8 +18,8 @@ import type {
 	OAuthTokenVerifier,
 	UserWithContext,
 } from '@/services/oauth-token-verifier-proxy.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { ProtectedResource } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

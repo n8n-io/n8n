@@ -26,10 +26,7 @@ import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@n8n/errors';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';

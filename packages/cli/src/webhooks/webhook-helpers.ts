@@ -79,7 +79,7 @@ import {
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

@@ -19,7 +19,7 @@ import { OAuthTokenService } from '../oauth-token.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

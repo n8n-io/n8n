@@ -9,7 +9,7 @@ import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
+import type { ProtectedResource } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
 

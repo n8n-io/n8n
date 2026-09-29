@@ -1,5 +1,5 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
+import type { ProtectedResourceResolver } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
