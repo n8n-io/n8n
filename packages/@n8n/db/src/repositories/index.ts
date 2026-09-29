@@ -137,6 +137,8 @@ export { WorkflowReviewActivityCommentRepository } from './workflow-review-activ
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
+	type NodeTypesInProjects,
+	type RestrictedNodeTypes,
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
