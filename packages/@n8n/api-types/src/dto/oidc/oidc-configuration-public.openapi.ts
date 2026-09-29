@@ -44,3 +44,25 @@ export const oidcConfigurationFieldDocs = {
 		example: false,
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const oidcConfigurationUpdateFieldDocs = {
+	clientSecret: {
+		description:
+			'The client secret issued when registering n8n with the OIDC provider. Submit the redacted sentinel value returned on read to keep the stored secret unchanged.',
+		example: 'my-client-secret',
+	},
+	prompt: {
+		description: 'The prompt parameter to use when authenticating.',
+		example: 'select_account',
+	},
+	authenticationContextClassReference: {
+		description:
+			'ACR values to include in the authorization request (acr_values parameter), in order of preference. Use an empty array when unused.',
+		example: ['mfa', 'pwd'] as string[],
+	},
+	additionalScopes: {
+		description:
+			'Additional scopes to request, space separated. n8n always requests `openid`, `profile` and `email`. Use an empty string when unused.',
+		example: 'groups roles',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;

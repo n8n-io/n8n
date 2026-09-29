@@ -246,6 +246,7 @@ export class AgentChatBridge {
 		const actionToolNamePattern = new RegExp(`^${integration.type}(_\\d+)?_action$`);
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
+			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
@@ -774,6 +775,7 @@ export class AgentChatBridge {
 				isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
+		let accepted = false;
 		try {
 			const [context, subject] = await Promise.all([
 				this.resolveBridgeExecutionContext(
@@ -796,7 +798,7 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
-			await this.messageQueue.enqueue({
+			const result = await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				threadId: session.memory.threadId.id,
@@ -821,9 +823,11 @@ export class AgentChatBridge {
 					slackThreadContext: context.slackThreadContext,
 				},
 			});
-		} catch (error) {
-			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			throw error;
+			accepted = result.status === 'accepted';
+		} finally {
+			if (!accepted) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
 		}
 	}
 

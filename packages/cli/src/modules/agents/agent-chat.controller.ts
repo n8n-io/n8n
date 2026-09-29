@@ -29,8 +29,7 @@ import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -87,9 +86,9 @@ export class AgentChatController {
 		return {
 			send: delivery.send,
 			abortSignal: requestController.signal,
-			onExecutionStarted: (id: string, sessionId: string) => {
+			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
 				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.send({ type: 'execution-started', executionId: id, sessionId });
+				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
 			close: () => {
@@ -189,9 +188,9 @@ export class AgentChatController {
 		// `onExecutionRecorded` only fires once the turn finalizes. A disconnect or an
 		// error before that leaves the started id as the only way to name the execution.
 		let startedExecutionId: string | undefined;
-		const onExecutionStarted = (id: string, sessionId: string) => {
+		const onExecutionStarted = (id: string, sessionId: string, inputMessageIds: string[]) => {
 			startedExecutionId = id;
-			execution.onExecutionStarted(id, sessionId);
+			execution.onExecutionStarted(id, sessionId, inputMessageIds);
 		};
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
@@ -274,9 +273,9 @@ export class AgentChatController {
 		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal } = execution;
 		let startedExecutionId: string | undefined;
-		const onExecutionStarted = (id: string, sessionId: string) => {
+		const onExecutionStarted = (id: string, sessionId: string, inputMessageIds: string[]) => {
 			startedExecutionId = id;
-			execution.onExecutionStarted(id, sessionId);
+			execution.onExecutionStarted(id, sessionId, inputMessageIds);
 		};
 		try {
 			if (!(await this.agentsService.isN8nChatPublished(agentId, req.params.projectId))) {
@@ -338,7 +337,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, newSession, attachments } = payload;
+		const { message, sessionId, messageId, newSession, attachments } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -387,7 +386,7 @@ export class AgentChatController {
 			});
 			abortSignal.throwIfAborted();
 
-			const item = await this.messageQueue.enqueue(
+			const result = await this.messageQueue.enqueue(
 				{
 					agentId,
 					projectId,
@@ -397,6 +396,7 @@ export class AgentChatController {
 					payload: {
 						kind: 'preview',
 						message,
+						messageId,
 						attachments: storedAttachments,
 						userId: req.user.id,
 						resourceId: draftChatMemoryResourceId(req.user.id),
@@ -406,17 +406,15 @@ export class AgentChatController {
 					subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
 				},
 			);
+			if (result.status === 'duplicate') {
+				send({ type: 'done' });
+				return;
+			}
 			accepted = true;
 			subscription?.accepted();
-			send({ type: 'message-queued', queueId: item.id, sessionId: threadId });
+			send({ type: 'message-queued', queueId: result.item.id, sessionId: threadId });
 			await subscription?.done;
 		} catch (error) {
-			// Committed messages own their attachments, including after a disconnect.
-			if (!accepted && storedAttachments?.length) {
-				await this.agentChatAttachmentService
-					.deleteByIds(storedAttachments.map((ref) => ref.id))
-					.catch(() => {});
-			}
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
 			send({
 				type: 'error',
@@ -426,6 +424,12 @@ export class AgentChatController {
 					: {}),
 			});
 		} finally {
+			// Committed messages own their attachments, including after a disconnect.
+			if (!accepted && storedAttachments?.length) {
+				await this.agentChatAttachmentService
+					.deleteByIds(storedAttachments.map((ref) => ref.id))
+					.catch(() => {});
+			}
 			subscription?.close();
 			delivery.close();
 		}

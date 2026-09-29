@@ -411,10 +411,11 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export {
 	OidcConfigurationPublicDto,
 	oidcConfigurationPublicSchema,
+	UpdateOidcConfigurationPublicDto,
 } from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
@@ -422,6 +423,7 @@ export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	UpdateDataTablePublicDto,

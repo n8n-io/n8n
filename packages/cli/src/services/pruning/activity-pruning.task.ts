@@ -12,9 +12,6 @@ const sweepIntervalSeconds = 1 * Time.hours.toSeconds;
  * Bounds `activity_event`, which is append-only and would otherwise grow for as long as the
  * instance is used. Age is the primary cap; the entry count is a backstop for an instance that
  * writes more inside the retention window than the window was sized for.
- *
- * Writes happen wherever the mutation lands, but the runner gives this one leader at a time — a
- * second sweeper would only contend for the same rows.
  */
 @SystemTask()
 export class ActivityPruningTask implements SystemTask {
@@ -27,7 +24,7 @@ export class ActivityPruningTask implements SystemTask {
 
 	placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		/** A new leader inherits whatever backlog built up while nobody was sweeping. */
 		runOnTakeover: true,
 	};

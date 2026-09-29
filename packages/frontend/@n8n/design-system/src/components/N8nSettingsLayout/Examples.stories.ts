@@ -1427,7 +1427,7 @@ const mcpWorkflowProjectCount = 4;
 // ---------------------------------------------------------------------------
 const mcpServerUrl = 'https://acme.app.n8n.cloud/mcp/9f3a2b';
 const mcpAuthToken = 'n8n_mcp_••••••••••••3f9a';
-const mcpDocsUrl = 'https://docs.n8n.io/manage-cloud/mcp-access/';
+const mcpDocsUrl = 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server';
 
 // Config snippets, computed once from the server URL. Most clients take the common `mcpServers`
 // JSON shape; Codex reads TOML, VS Code uses its `servers` map, Gemini an `httpUrl`, Windsurf a
@@ -1818,7 +1818,7 @@ export const ModelContextProtocol: Story = {
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
 						description="Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use."
-						docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
+						docs-url="${mcpDocsUrl}"
 					/>
 
 					<!-- Only shown when MCP is ENABLED. While disabled the whole top section (status row +

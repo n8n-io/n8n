@@ -82,8 +82,7 @@ describe('prompt profiles', () => {
 
 	it('carries the rules each measurement put there, and omits the two rejected ones', () => {
 		const concise = resolvePromptProfile({ version: 'concise@1' });
-		const options = { webhookBaseUrl: 'https://n8n.test', formBaseUrl: 'https://n8n.test/form' };
-		const rendered = getVersionedSystemPrompt(concise.profile.systemPromptVersion, options);
+		const rendered = getVersionedSystemPrompt(concise.profile.systemPromptVersion, {});
 
 		// Sentence limits: a formatting-only draft left mean sentence length flat and
 		// raised the share of sentences over 20 words. Only this rule moves it.
@@ -102,9 +101,8 @@ describe('prompt profiles', () => {
 	it('renders the concise style and keeps every shared system prompt section', () => {
 		const conciseVersion = resolvePromptProfile({ version: 'concise@1' }).profile
 			.systemPromptVersion;
-		const options = { webhookBaseUrl: 'https://n8n.test', formBaseUrl: 'https://n8n.test/form' };
-		const concise = getVersionedSystemPrompt(conciseVersion, options);
-		const standard = getSystemPrompt(options);
+		const concise = getVersionedSystemPrompt(conciseVersion, {});
+		const standard = getSystemPrompt();
 
 		expect(concise).not.toBe(standard);
 		expect(concise).toContain('Say each thing once.');
@@ -119,7 +117,6 @@ describe('prompt profiles', () => {
 			'## Setup Accuracy',
 			'## Safety',
 			'## Reply language',
-			'## Instance Info',
 		]) {
 			expect(standard).toContain(shared);
 			expect(concise).toContain(shared);
