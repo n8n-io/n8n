@@ -13,7 +13,7 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -31,7 +31,6 @@ import {
 	toAgentMcpTransport,
 } from './mcp-registry-connection';
 import { McpRegistryService } from './registry/mcp-registry.service';
-import type { McpRegistryServer } from './registry/mcp-registry.types';
 
 const discoveryTimeoutMs = 10_000;
 
@@ -49,7 +48,6 @@ type PreparedDiscovery = {
 		fetch: CustomFetch;
 	};
 	responseConnection: McpRegistryDiscoveredConnection;
-	registryServer: McpRegistryServer;
 };
 
 function disconnected(
@@ -93,7 +91,7 @@ async function listToolsWithinDeadline(
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 	const timeout = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(
-			() => reject(new OperationalError(`MCP discovery timed out after ${timeoutMs}ms`)),
+			() => reject(new Error(`MCP discovery timed out after ${timeoutMs}ms`)),
 			timeoutMs,
 		);
 	});
@@ -226,7 +224,6 @@ export class McpConnectionDiscoveryService {
 				credentialId: credential.id,
 				metadata: { nodeTypeName: connection.nodeTypeName },
 			},
-			registryServer: server,
 		};
 	}
 

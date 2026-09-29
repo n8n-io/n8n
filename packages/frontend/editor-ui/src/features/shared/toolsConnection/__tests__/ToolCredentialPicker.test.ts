@@ -198,4 +198,36 @@ describe('ToolCredentialPicker', () => {
 			'githubApi',
 		]);
 	});
+
+	it('prefers the prop adapter over the injected adapter', async () => {
+		const propAdapter = makeAdapter([
+			{ id: 'prop-credential', name: 'Prop account', type: 'mcpOAuth2Api' },
+		]);
+		propAdapter.openExistingCredential = vi.fn();
+		const injectedAdapter = makeAdapter([
+			{ id: 'injected-credential', name: 'Injected account', type: 'mcpOAuth2Api' },
+		]);
+
+		const { getByTestId, findByTestId } = renderPicker({
+			props: {
+				item: { ...baseMcpItem, status: 'connected' },
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'prop-credential' }],
+				adapter: propAdapter,
+			},
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: injectedAdapter,
+				},
+			},
+		});
+
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toHaveTextContent(
+			'Prop account',
+		);
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
+		await fireEvent.click(await findByTestId('tool-credential-picker-edit'));
+
+		expect(propAdapter.openExistingCredential).toHaveBeenCalledWith('prop-credential');
+	});
 });

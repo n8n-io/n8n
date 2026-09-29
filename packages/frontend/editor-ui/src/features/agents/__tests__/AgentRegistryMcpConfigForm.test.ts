@@ -71,7 +71,7 @@ const permissions: McpToolSettings = {
 
 function makeItem(
 	status: McpServerConnectionItem['status'],
-	connectionTimeoutMs: number,
+	connectionTimeoutMs?: number,
 ): McpServerConnectionItem {
 	return {
 		id: 'registry-config:github',
@@ -79,7 +79,10 @@ function makeItem(
 		title: 'GitHub',
 		status,
 		availableTools: [],
-		settings: { ...permissions, connectionTimeoutMs },
+		settings: {
+			...permissions,
+			...(connectionTimeoutMs === undefined ? {} : { connectionTimeoutMs }),
+		},
 	};
 }
 
@@ -88,15 +91,16 @@ function mountForm({
 	status = 'connected',
 	isNew = false,
 	onRemove,
+	itemAvailable = true,
 }: {
 	connectionTimeoutMs?: number;
 	status?: McpServerConnectionItem['status'];
 	isNew?: boolean;
 	onRemove?: () => void;
+	itemAvailable?: boolean;
 } = {}) {
-	const resolvedTimeout = connectionTimeoutMs ?? 60_000;
 	useAgentRegistryMcpConfigMock.mockReturnValue({
-		item: ref(makeItem(status, resolvedTimeout)),
+		item: ref(itemAvailable ? makeItem(status, connectionTimeoutMs) : null),
 		title: ref('github'),
 		save: saveMock,
 		changeTitle: vi.fn(),
@@ -192,8 +196,11 @@ describe('AgentRegistryMcpConfigForm', () => {
 		expect(confirm(wrapper)).toBe(false);
 		expect(saveMock).not.toHaveBeenCalled();
 		await wrapper.vm.$nextTick();
-		expect(wrapper.get('[data-testid="agent-mcp-timeout-error"]').text()).toBe(
-			'agents.toolConfig.mcp.timeout.validation',
+		const error = wrapper.get('[data-testid="agent-mcp-timeout-error"]');
+		expect(error.text()).toBe('agents.toolConfig.mcp.timeout.validation');
+		expect(error.attributes('id')).toBe('agent-mcp-connection-timeout-error');
+		expect(timeoutInput(wrapper).attributes('aria-describedby')).toBe(
+			'agent-mcp-connection-timeout-help agent-mcp-connection-timeout-error',
 		);
 	});
 
@@ -203,6 +210,12 @@ describe('AgentRegistryMcpConfigForm', () => {
 		expect(timeoutInput(wrapper).element).toBeDisabled();
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.label');
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.help');
+	});
+
+	it('disables save while the registry configuration is unavailable', () => {
+		const wrapper = mountForm({ itemAvailable: false });
+
+		expect((wrapper.vm as unknown as { saveDisabled: boolean }).saveDisabled).toBe(true);
 	});
 
 	it('keeps the server when removal is cancelled', async () => {

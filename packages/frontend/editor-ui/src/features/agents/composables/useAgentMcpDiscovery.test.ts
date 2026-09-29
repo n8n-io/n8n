@@ -138,7 +138,7 @@ describe('useAgentMcpDiscovery', () => {
 		});
 	});
 
-	it('does not expose credentials from a different cached project scope', () => {
+	it('does not expose credentials when the project scope has no usable credentials', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
 		credentialsStore.getUsableCredentialByType = vi
@@ -181,6 +181,21 @@ describe('useAgentMcpDiscovery', () => {
 			credentialId: 'credential-new',
 			item,
 		});
+	});
+
+	it('does not report a credential when quick connect is cancelled', async () => {
+		canOAuthCredentialQuickConnect.mockReturnValue(true);
+		createAndAuthorize.mockResolvedValue(undefined);
+		const onCredentialCreated = vi.fn();
+		const adapter = useAgentMcpDiscovery('project-1').createCredentialAdapter(
+			() => server,
+			onCredentialCreated,
+		);
+
+		adapter.openNewCredential('githubMcpOAuth2Api', item, ['githubMcpOAuth2Api']);
+		await flushPromises();
+
+		expect(onCredentialCreated).not.toHaveBeenCalled();
 	});
 
 	it('opens the registry credential selector when the server accepts multiple types', () => {

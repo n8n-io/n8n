@@ -102,13 +102,23 @@ const makeGenerateResult = (overrides: Partial<GenerateResult> = {}): GenerateRe
 		...overrides,
 	}) as unknown as GenerateResult;
 
-function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean } = {}) {
+function buildService(
+	overrides: {
+		queueMode?: boolean;
+		agentsActive?: boolean;
+		mcpRegistryActive?: boolean;
+	} = {},
+) {
 	const executionsConfig = mock<ExecutionsConfig>();
 	Object.defineProperty(executionsConfig, 'mode', {
 		get: () => (overrides.queueMode ? 'queue' : 'regular'),
 	});
 	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(overrides.agentsActive ?? true);
+	moduleRegistry.isActive.mockImplementation((moduleName) => {
+		if (moduleName === 'agents') return overrides.agentsActive ?? true;
+		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
+		return true;
+	});
 	return new EvalAgentExecutionService(
 		logger,
 		executionsConfig,
@@ -461,7 +471,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			toolRegistry: {},
 		});
 
-		await buildService().executeWithLlmMock('agent-1', user, request);
+		await buildService({ mcpRegistryActive: false }).executeWithLlmMock('agent-1', user, request);
 
 		expect(createMcpMockFetch).toHaveBeenCalledWith(
 			expect.objectContaining({

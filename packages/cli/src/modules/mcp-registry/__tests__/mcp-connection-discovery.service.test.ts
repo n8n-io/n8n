@@ -176,7 +176,7 @@ describe('McpConnectionDiscoveryService', () => {
 		expect(mcpClientCloseMock).toHaveBeenCalledOnce();
 	});
 
-	it('ignores registry annotations and classifies tools without live annotations by name', async () => {
+	it('ignores registry annotations when live annotations are absent', async () => {
 		mcpClientListToolsMock.mockResolvedValue([
 			{ name: 'git_hub_custom_widget' } as BuiltTool,
 			{ name: 'git_hub_delete_repository' } as BuiltTool,
@@ -257,6 +257,69 @@ describe('McpConnectionDiscoveryService', () => {
 			tools: [],
 		});
 		expect(mcpClientCloseMock).toHaveBeenCalledOnce();
+	});
+
+	it('keeps an unclassified failure unknown after the server responds', async () => {
+		proxyFetchMock.mockResolvedValue(new Response('ok'));
+		mcpClientListToolsMock.mockImplementation(async () => {
+			await mcpClientConfigs[0]![0]!.fetch('https://mcp.github.test/mcp');
+			throw new Error('Invalid MCP response');
+		});
+		const { service } = createService();
+
+		await expect(
+			service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+		).resolves.toEqual({
+			status: 'disconnected',
+			failureReason: 'unknown',
+			tools: [],
+		});
+		expect(mcpClientCloseMock).toHaveBeenCalledOnce();
+	});
+
+	it('reports credential preparation failures as authentication failures', async () => {
+		const { service, credentialsHelper } = createService();
+		credentialsHelper.getDecrypted.mockRejectedValue(new Error('Credential resolution failed'));
+
+		await expect(
+			service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+		).resolves.toEqual({
+			status: 'disconnected',
+			failureReason: 'authentication',
+			tools: [],
+		});
+		expect(mcpClientListToolsMock).not.toHaveBeenCalled();
+	});
+
+	it('times out tool discovery and closes the client', async () => {
+		vi.useFakeTimers();
+		try {
+			let notifyListToolsStarted: () => void = () => {};
+			const listToolsStarted = new Promise<void>((resolve) => {
+				notifyListToolsStarted = resolve;
+			});
+			mcpClientListToolsMock.mockImplementation(async () => {
+				notifyListToolsStarted();
+				return await new Promise<BuiltTool[]>(() => {});
+			});
+			const { service } = createService();
+
+			const resultPromise = service.discover(user, {
+				slug: 'git hub',
+				credentialId: 'credential-1',
+			});
+			await listToolsStarted;
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			await expect(resultPromise).resolves.toEqual({
+				status: 'disconnected',
+				failureReason: 'server_unavailable',
+				tools: [],
+			});
+			expect(mcpClientCloseMock).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('does not hide an inaccessible registry server as an authentication failure', async () => {

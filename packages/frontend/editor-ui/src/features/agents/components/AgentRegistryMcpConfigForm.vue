@@ -180,7 +180,11 @@ defineExpose({
 					type="number"
 					:disabled="item.status !== 'connected'"
 					:aria-invalid="Boolean(timeoutError)"
-					aria-describedby="agent-mcp-connection-timeout-help"
+					:aria-describedby="
+						timeoutError
+							? 'agent-mcp-connection-timeout-help agent-mcp-connection-timeout-error'
+							: 'agent-mcp-connection-timeout-help'
+					"
 					data-testid="agent-mcp-connection-timeout"
 					@update:model-value="timeoutInput = $event"
 				>
@@ -195,6 +199,7 @@ defineExpose({
 				</N8nText>
 				<N8nText
 					v-if="timeoutError"
+					id="agent-mcp-connection-timeout-error"
 					size="small"
 					color="danger"
 					data-testid="agent-mcp-timeout-error"

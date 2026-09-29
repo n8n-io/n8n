@@ -170,19 +170,52 @@ describe('useAgentRegistryMcpConfig', () => {
 		scope.stop();
 	});
 
-	it('removes approval requirements when the host cannot suspend for approval', async () => {
-		const onConfirm = vi.fn();
+	it.each([undefined, 0, 1.5, 120_001])(
+		'rejects invalid connection timeout %s at the save boundary',
+		async (connectionTimeoutMs) => {
+			const onConfirm = vi.fn();
+			const modalData: AgentRegistryMcpModalData = {
+				kind: 'registryMcpServer',
+				projectId: 'project-1',
+				mcpServer: {
+					name: 'github',
+					authentication: 'githubMcpOAuth2Api',
+					credential: 'credential-1',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+				},
+				onConfirm,
+			};
+			const scope = effectScope();
+			const config = scope.run(() =>
+				useAgentRegistryMcpConfig(
+					computed(() => modalData),
+					vi.fn(),
+				),
+			);
+			if (!config) throw new Error('Failed to create registry MCP config');
+			await flushPromises();
+
+			expect(
+				config.save({
+					categories: { read: 'always_allow', write: 'always_allow' },
+					connectionTimeoutMs,
+				}),
+			).toBe(false);
+			expect(onConfirm).not.toHaveBeenCalled();
+			scope.stop();
+		},
+	);
+
+	it('reports authentication failure without a selected credential', async () => {
 		const modalData: AgentRegistryMcpModalData = {
 			kind: 'registryMcpServer',
 			projectId: 'project-1',
-			supportsToolApproval: false,
 			mcpServer: {
 				name: 'github',
 				authentication: 'githubMcpOAuth2Api',
-				credential: 'credential-1',
 				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
 			},
-			onConfirm,
+			onConfirm: vi.fn(),
 		};
 		const scope = effectScope();
 		const config = scope.run(() =>
@@ -194,24 +227,11 @@ describe('useAgentRegistryMcpConfig', () => {
 		if (!config) throw new Error('Failed to create registry MCP config');
 		await flushPromises();
 
-		expect(
-			config.save({
-				categories: { read: 'require_approval', write: 'blocked' },
-				tools: {
-					search: 'require_approval',
-					delete: 'blocked',
-				},
-				connectionTimeoutMs: 60_000,
-			}),
-		).toBe(true);
-		expect(onConfirm).toHaveBeenCalledWith(
-			expect.objectContaining({
-				toolPermissions: {
-					categories: { read: 'always_allow', write: 'blocked' },
-					tools: { search: 'always_allow', delete: 'blocked' },
-				},
-			}),
-		);
+		expect(config.item.value).toMatchObject({
+			status: 'disconnected',
+			connectionFailureReason: 'authentication',
+		});
+		expect(discoverRegistry).not.toHaveBeenCalled();
 		scope.stop();
 	});
 
@@ -432,6 +452,39 @@ describe('useAgentRegistryMcpConfig', () => {
 		const modalData: AgentRegistryMcpModalData = {
 			kind: 'registryMcpServer',
 			projectId: 'project-1',
+			mcpServer: {
+				name: 'github',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+			onConfirm: vi.fn(),
+			onRemove,
+		};
+		const scope = effectScope();
+		const config = scope.run(() =>
+			useAgentRegistryMcpConfig(
+				computed(() => modalData),
+				onCredentialDeleted,
+			),
+		);
+		if (!config) throw new Error('Failed to create registry MCP config');
+		await flushPromises();
+
+		credentialChangeListeners.onDeleted?.('credential-1');
+
+		expect(onRemove).toHaveBeenCalledOnce();
+		expect(onCredentialDeleted).toHaveBeenCalledOnce();
+		scope.stop();
+	});
+
+	it('removes a new connection when its draft credential is deleted', async () => {
+		const onRemove = vi.fn();
+		const onCredentialDeleted = vi.fn();
+		const modalData: AgentRegistryMcpModalData = {
+			kind: 'registryMcpServer',
+			projectId: 'project-1',
+			isNew: true,
 			mcpServer: {
 				name: 'github',
 				authentication: 'githubMcpOAuth2Api',

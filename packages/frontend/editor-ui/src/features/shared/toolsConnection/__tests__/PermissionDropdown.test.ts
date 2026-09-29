@@ -36,6 +36,7 @@ describe('PermissionDropdown', () => {
 
 		await fireEvent.click(getByRole('button', { name: 'Allow' }));
 
+		expect(getByRole('menuitem', { name: 'Allow' })).toBeInTheDocument();
 		expect(queryByRole('menuitem', { name: 'Ask first' })).not.toBeInTheDocument();
 		expect(queryByRole('menuitem', { name: 'Block' })).not.toBeInTheDocument();
 	});

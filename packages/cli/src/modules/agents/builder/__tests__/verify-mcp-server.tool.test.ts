@@ -189,6 +189,20 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(result).toEqual({ ok: false, error: 'connection timeout' });
 	});
 
+	it('returns the recorded connection failure instead of a false success', async () => {
+		const mcpClient = makeMcpClient({
+			getConnectionFailures: vi.fn().mockReturnValue([{ error: 'authentication failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const result = await buildVerifyMcpServerTool(makeDeps()).handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({ ok: false, error: 'authentication failed' });
+	});
+
 	it('returns { ok: false, error } with stringified non-Error rejections', async () => {
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockRejectedValue('plain string error'),
