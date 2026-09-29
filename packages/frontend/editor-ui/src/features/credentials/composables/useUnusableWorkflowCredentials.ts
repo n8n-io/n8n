@@ -15,8 +15,10 @@ import { useCredentialSharing } from './useCredentialSharing';
  * before the click instead of after it, and it is one sentence for both:
  * the credential is not this user's to use either way.
  *
- * Reads `currentUserHasAccess`, which the backend derives from the same
- * question the execution check asks: can this user use this credential here.
+ * Reads `currentUserCanUse`, the workflow payload's can-use field. Kept apart
+ * from the credential list's `currentUserHasAccess`, which answers can-see: a
+ * colleague is shown every credential the workflow references, and only this
+ * field says whether they may run with it.
  *
  * @param usedCredentials the workflow's used credentials, as a getter so the
  * caller can supply them from whichever store it already holds.
@@ -31,7 +33,7 @@ export function useUnusableWorkflowCredentials(
 		if (!isEnabled.value) return [];
 
 		return Object.values(toValue(usedCredentials) ?? {}).filter(
-			(credential) => credential.currentUserHasAccess === false,
+			(credential) => credential.currentUserCanUse === false,
 		);
 	});
 

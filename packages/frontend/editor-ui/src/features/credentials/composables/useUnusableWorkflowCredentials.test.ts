@@ -11,14 +11,14 @@ describe('useUnusableWorkflowCredentials', () => {
 		id: 'ok',
 		name: 'Team Gmail',
 		credentialType: 'gmailOAuth2',
-		currentUserHasAccess: true,
+		currentUserCanUse: true,
 	};
 
 	const personallyOwned: IUsedCredential = {
 		id: 'nope',
 		name: "Alice's Gmail",
 		credentialType: 'gmailOAuth2',
-		currentUserHasAccess: false,
+		currentUserCanUse: false,
 		homeProject: {
 			id: 'p1',
 			name: 'Alice Chen <alice@acme.io>',
